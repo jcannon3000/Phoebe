@@ -5038,7 +5038,7 @@ function TimeSection({
               key={isValidElement(node) && node.key != null ? node.key : idx}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 0.7) }}
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 1.5) }}
             >
               {node}
             </motion.div>
@@ -7104,12 +7104,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     const evWeek = fWeek.filter(isEventItem);
                     const evMonth = fMonth.filter(isEventItem);
                     if (evToday.length + evTomorrow.length + evWeek.length + evMonth.length === 0) return null;
+                    // Cascade continues across the sections (and after the daily
+                    // tasks) so each event card rises in turn instead of all at once.
+                    const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
+                    const cTomorrow = evBase + evToday.length;
+                    const cWeek = cTomorrow + evTomorrow.length;
+                    const cMonth = cWeek + evWeek.length;
                     return (
                       <div style={{ marginTop: 4 }}>
-                        <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
-                        <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
-                        <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
-                        <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
+                        <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
+                        <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cTomorrow} />
+                        <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cWeek} />
+                        <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cMonth} />
                       </div>
                     );
                   }
