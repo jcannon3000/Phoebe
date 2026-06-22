@@ -87,8 +87,8 @@ export const es: Translations = {
   dashboard: {
     prayer_list: "Lista de oración",
     daily_prayer_list: "Lista de oración diaria",
-    office_customize_short: "Personalizar",
-    office_customize: "Personalizar el Oficio Diario",
+    office_customize_short: "Da forma a tu ritmo",
+    office_customize: "Da forma a tu regla de vida",
     pray_again: "Orar de nuevo →",
     view_list: "Ver lista →",
     submit_prayer_request: "¿Qué llevas hoy? 🌿",
@@ -127,7 +127,7 @@ export const es: Translations = {
     pray_for_community: "Ora por tu comunidad",
     continue_short: "Continuar",
     pray_again_short: "Orar de nuevo",
-    customize: "Personalizar",
+    customize: "Da forma a tu ritmo",
   },
   prayer_section: {
     header: "Peticiones de oración 🙏🏽",
@@ -1024,12 +1024,12 @@ export const es: Translations = {
   // Construye tu hábito diario de oración — el flujo de 3 pasos
   // Ora → Contemplación → Aprende (WayOfLoveRuleFlow).
   wol_rule: {
-    walk: "Construye tu hábito diario de oración",
+    walk: "Tu ritmo diario de oración",
     listen_eyebrow: "Oración Contemplativa",
     listen_title: "Oración Contemplativa",
     listen_body: "Dedica unos minutos al día a sentarte en silencio ante Dios — abierto a lo que Dios pueda estar diciendo y a lo que hay en tu propio corazón. Un regreso diario al amor de Dios.",
-    listen_goal_label: "Minutos de silencio al día",
-    listen_goal_note: "Te recordaremos con suavidad hacia las 7 p. m. los días que no lo alcances. Pon 0 para mantener la práctica sin una meta.",
+    listen_goal_label: "¿Cuánto tiempo te gustaría sentarte?",
+    listen_goal_note: "Una intención privada de cuánto sentarte en silencio, no una meta diaria con la que medirte. Pon 0 para mantener la práctica sin una.",
     pray_eyebrow: "Ora",
     pray_title: "Ora",
     pray_body: "¿Cómo orarás cada día?",
@@ -1062,10 +1062,10 @@ export const es: Translations = {
     reminder_label: "Recuérdame orar cada mañana",
     reminder_note: "Te enviaremos una notificación suave. Cambia la hora o desactívala cuando quieras en Ajustes.",
     finish: "Guardar mi ritmo diario",
-    done_title: "Tu ritmo diario está listo",
+    done_title: "Esta es la forma de tus días",
     done_sub: "Tu inicio y tu progreso diario ahora comienzan con tu oración, tu contemplación y tus reflexiones. Vuelve cuando quieras para cambiarlo.",
     done_reminder_hint: "¿No ves recordatorios? Activa las notificaciones de Phoebe en los Ajustes de tu teléfono.",
-    done_cta: "Ir a Progreso diario",
+    done_cta: "Conserva este ritmo",
   },
   // Way of Love practice picker / rule-of-life setup step (WayOfLoveStep).
   way_of_love: {
@@ -1181,7 +1181,7 @@ export const es: Translations = {
     go_creation: "Cuidado de la Creación →",
     go_justice: "Justicia Racial →",
     rest_carve: "Reserva un tiempo →",
-    customize: "Personaliza tu Camino del Amor",
+    customize: "Da forma a tu ritmo",
     back: "Camino del Amor",
     your_commitment: "Tu compromiso",
     set_practice: "Define tu práctica de {{title}} →",
