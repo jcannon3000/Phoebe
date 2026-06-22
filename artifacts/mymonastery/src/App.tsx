@@ -1139,7 +1139,6 @@ function App() {
           <WidgetSync />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
-          <DesktopAppPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
           <ServerDownScreen />
@@ -1161,6 +1160,9 @@ function App() {
                 router so the live banner's "Watch →" can SPA-navigate to
                 /ncmp/watch. */}
             <BottomPromptStack />
+            {/* Desktop install banner — inside the router so it can react to
+                navigation (e.g. stay hidden during the customize flow). */}
+            <DesktopAppPrompt />
             {/* Global podcast player — mounted above the route Switch so
                 audio keeps playing as you navigate. Renders its own
                 persistent <audio> + mini-player bar. */}

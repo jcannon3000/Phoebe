@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -61,6 +62,10 @@ export function DesktopAppPrompt() {
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [location] = useLocation();
+  // Never nudge mid-customize — a new user setting up their rhythm shouldn't
+  // be interrupted by the install banner.
+  const onCustomize = location.includes("rule-of-life");
 
   // Capture the install opportunity as early as possible (the event can fire
   // before our gating delay), and hide once installed.
@@ -86,14 +91,15 @@ export function DesktopAppPrompt() {
     if (isLoading) return;
     if (!user) return;
     if (!user.onboardingCompleted) return;
+    if (onCustomize) return; // not during the customize flow
     try {
       if (localStorage.getItem(DISMISS_KEY) === "1") return;
     } catch { /* private mode — fall through to show */ }
     const id = window.setTimeout(() => setShow(true), 1200);
     return () => window.clearTimeout(id);
-  }, [isLoading, user]);
+  }, [isLoading, user, onCustomize]);
 
-  if (!show) return null;
+  if (!show || onCustomize) return null;
 
   function dismiss() {
     setShow(false);

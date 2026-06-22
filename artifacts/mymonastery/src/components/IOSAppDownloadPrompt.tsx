@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -54,20 +55,25 @@ export function IOSAppDownloadPrompt() {
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
+  const [location] = useLocation();
+  // Never nudge mid-customize — a new user setting up their rhythm shouldn't
+  // be interrupted by the App Store prompt.
+  const onCustomize = location.includes("rule-of-life");
 
   useEffect(() => {
     if (!isIOSWeb()) return;
     if (isLoading) return; // wait for auth to resolve
     if (!user) return;    // not signed in → not the audience yet
     if (!user.onboardingCompleted) return; // wait until they're on the home screen
+    if (onCustomize) return; // not during the customize flow
     try {
       if (localStorage.getItem(DISMISS_KEY) === "1") return;
     } catch { /* private mode — fall through to show */ }
     const t = window.setTimeout(() => setShow(true), 1500);
     return () => window.clearTimeout(t);
-  }, [isLoading, user]);
+  }, [isLoading, user, onCustomize]);
 
-  if (!show) return null;
+  if (!show || onCustomize) return null;
 
   function dismiss() {
     setShow(false);
