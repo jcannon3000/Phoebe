@@ -6732,6 +6732,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
                 const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
+                // When you've prayed everyone else's request today, the prayer-list
+                // slot BELOW renders the FULL upcoming schedule — so this block must
+                // NOT also present events (neither the "Next up" teaser nor a
+                // "here's what's coming up" header), or the home shows the schedule
+                // twice. We only tease events here while there are still others to
+                // pray for (the schedule then sits above the prayer carousel).
+                const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
                 // The "day is kept" header shows whether or not there are events —
                 // it's the blessing on a finished rhythm, not an events label.
                 const keptHeader = (
@@ -6740,7 +6747,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       🌿 {t("dashboard.day_kept_eyebrow", { defaultValue: "The day is kept" })}
                     </p>
                     <p className="text-[15px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {noEvents
+                      {(noEvents || !hasUnprayedOthers)
                         ? t("dashboard.day_kept_rest_line", { defaultValue: "Rest in it — or sit a while longer." })
                         : t("dashboard.day_kept_events_line", { defaultValue: "Here's what's coming up." })}
                     </p>
@@ -6802,10 +6809,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // The next THREE events, flattened across the day buckets (already
                 // chronological today→month) into a single "Next up" section.
                 const isEvt = (it: DashboardItem) => it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
-                // Dedup: when you've prayed everyone else's request today, the
-                // prayer-list slot BELOW surfaces the full upcoming schedule — so
-                // listing events here too would double them. Defer to that schedule.
-                const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
+                // Dedup: only tease events here while there are still others to pray
+                // for; once prayer is done the prayer-list slot below shows the full
+                // schedule, so listing events here too would double them.
                 const allEvents = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt);
                 const nextThree = hasUnprayedOthers ? allEvents.slice(0, 3) : [];
                 // Fewer than three events to look forward to → round out the

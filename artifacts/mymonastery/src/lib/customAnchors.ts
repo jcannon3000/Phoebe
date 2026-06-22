@@ -478,12 +478,14 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null;
 // localStorage that was cleared/corrupted in the meantime and send an empty set.
 let pendingSnapshot: CustomAnchorSnapshot | null = null;
 
-// Refuse to push a snapshot that would announce "I have nothing" before we've
-// heard from the server. A genuine "deleted my last card" carries deletedIds,
-// so it still goes through; an empty-from-corruption / pre-sync / cleared-cache
-// snapshot does not. (Belt: the server merge already never deletes on absence.)
+// Refuse to push a snapshot that would announce "I have nothing" with no
+// explicit deletes. The ONLY legitimate empty push is "I deleted my last card",
+// which carries deletedIds (tombstones) — that still goes through. An empty
+// snapshot from a corrupted/cleared/re-read localStorage carries no deletedIds,
+// so it's blocked unconditionally (not just before first sync — the earlier
+// version let a post-sync corrupted re-read through). Absence never deletes.
 function safeToPush(snap: CustomAnchorSnapshot): boolean {
-  if (snap.defs.length === 0 && (!snap.deletedIds || snap.deletedIds.length === 0) && !serverSyncReceived) return false;
+  if (snap.defs.length === 0 && (!snap.deletedIds || snap.deletedIds.length === 0)) return false;
   return true;
 }
 function doPush(snap?: CustomAnchorSnapshot): void {
@@ -621,6 +623,11 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
  *  server-sync gate so the next session re-syncs before it can push. */
 export function clearCustomAnchorStorage(): void {
   serverSyncReceived = false;
+  // Flush any pending push FIRST (it carries the CURRENT user's data, incl. a
+  // practice just logged inside the debounce window) so logout doesn't drop it
+  // and a later re-login can't import a stale server snapshot over it. The
+  // keepalive PUT goes to the still-authenticated user's row, then we wipe local.
+  try { flushPendingPush(); } catch { /* best-effort */ }
   if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
   pendingSnapshot = null;
   try {
