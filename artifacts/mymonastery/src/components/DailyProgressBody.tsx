@@ -608,7 +608,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb = t("rhythm.custom_blurb", { defaultValue: "Your daily practice" });
     }
     return {
-      key: `custom-${a.id}`, emoji: a.emoji || (r ? "📖" : "✅"), rgb: "143,170,150", done: a.done, href: "",
+      key: `custom-${a.id}`, secular: true, emoji: a.emoji || (r ? "📖" : "✅"), rgb: "143,170,150", done: a.done, href: "",
       // Tapping opens the Log popup (reading stepper, or Done / Not today).
       onClick: () => setLogAnchorId(a.id),
       title: a.title,
@@ -784,13 +784,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const visibleCards = showOfficeHero
     ? coloredCards.filter((c) => c.key !== heroSide)
     : coloredCards;
+  // The rule's SPINE — offices, contemplation, the daily word, and the spiritual
+  // practices anchored to them — vs. imported/secular HABITS (user-defined custom
+  // anchors, e.g. a language streak). The spine fills Next / Earlier today; the
+  // habits ride alongside in a quieter "Also today" band, never flattened into
+  // the rule as equal peers of the offices.
+  const spineCards = visibleCards.filter((c) => !(c as { secular?: boolean }).secular);
+  const secularCards = visibleCards.filter((c) => (c as { secular?: boolean }).secular);
 
   // Split into Next (to-do) and Done, then fade each card up in a gentle
   // stagger on mount. (The earlier "fly the card from Next into Done" replay —
   // built on framer-motion layout + popLayout — glitched, so it's gone: on
   // return the finished card simply renders in Done with the same clean fade.)
   const upcomingDisplay = (() => {
-    const all = visibleCards.filter((c) => !c.done);
+    const all = spineCards.filter((c) => !c.done);
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
@@ -800,8 +807,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // day's rhythm is complete — so the home always reflects what's been prayed.
   // (We used to drop Morning Prayer + the reflection after noon; that made the
   // Done section quietly empty out as the day went on.)
-  const completedDisplay = visibleCards.filter((c) => c.done);
+  const completedDisplay = spineCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
+  // "Also today" — the imported/secular habits. Not-done ones always show
+  // (actionable, like Next); kept ones show only where the kept list does.
+  const secularDisplay = [
+    ...secularCards.filter((c) => !c.done),
+    ...((showStreak || showDone) ? secularCards.filter((c) => c.done) : []),
+  ];
+  const showAlsoToday = secularDisplay.length > 0;
 
   // On the native first app-open the splash covers the home; hold the card
   // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN
@@ -832,7 +846,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (!ready || !splashCleared || cascadeHaptedRef.current) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
-    const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
+    const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + secularDisplay.length;
     const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
     const BASE_PEAK = 0.42;    // first card's strength
@@ -949,6 +963,29 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
                 {renderCard(c, false, tintFor(upcomingDisplay.length + i))}
               </motion.div>
             ))}
+          </div>
+        </div>
+      )}
+      {/* "Also today" — imported/secular habits (a language streak, etc.) ride
+          ALONGSIDE the rule in a quieter, clearly-subordinate band, never as
+          equal peers of the offices. Still in the day, just not in the spine. */}
+      {showAlsoToday && (
+        <div className="mt-7" style={{ opacity: 0.82 }}>
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-[12.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(143,175,150,0.8)", fontFamily: FONT }}>
+              {t("daily_progress.also_today_heading", { defaultValue: "Also today" })}
+            </h3>
+            <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
+          </div>
+          <div className="flex flex-col gap-2">
+            {secularDisplay.map((c, i) => {
+              const idx = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + i;
+              return (
+                <motion.div key={c.key} {...enterUp(idx)}>
+                  {renderCard(c, false, 0.5)}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}

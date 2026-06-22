@@ -865,45 +865,22 @@ function DailyProgressPill() {
       }}
       aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
-      {t("header.daily_progress", { defaultValue: "Daily Progress" })}
+      {t("header.daily_progress_today", { defaultValue: "Today" })}
       {(() => {
-        // Past 8 anchors a single row gets cramped — shrink the dots and wrap
-        // them into two balanced rows so the pill stays tidy.
-        const many = dotDefs.length > 8;
-        const sz = many ? 5 : 6;
-        const renderDot = (d: { key: string; done: boolean }, i: number) => {
-          const pulse = allDone || recentlyDone(d.key);
-          const isLive = !allDone && i === firstUndone; // the anchor you're at now
-          // Position, not a tally: kept anchors recede (settled), the current one
-          // glows live, the ones ahead stay faint — never a "filled vs empty" score.
-          const tone = d.done
-            ? { background: "rgba(110,180,130,0.5)", border: "none" as const }
-            : isLive
-              ? { background: "rgba(150,200,165,0.95)", border: "none" as const, boxShadow: "0 0 6px rgba(110,180,130,0.6)" }
-              : { background: "transparent", border: "1px solid rgba(143,175,150,0.28)" };
-          return (
-            <span
-              key={d.key}
-              className={pulse ? "dp-dot-pulse" : undefined}
-              style={{
-                width: sz,
-                height: sz,
-                borderRadius: 999,
-                display: "inline-block",
-                ...tone,
-                animationDelay: allDone ? `${(i * 0.12).toFixed(2)}s` : undefined,
-              }}
-            />
-          );
-        };
-        if (!many) {
-          return <span className="inline-flex items-center gap-[3px]" aria-hidden>{dotDefs.map(renderDot)}</span>;
-        }
-        const mid = Math.ceil(dotDefs.length / 2);
+        // A morning->evening day-arc with a "you are here" marker — position in
+        // the day, never a filled/empty tally. The track is the day; the bright
+        // dot is now. (Replaces the anchors-as-slots meter, which parsed as a
+        // completion deficit — "N of M to go" — the reading the redesign removes.
+        // What's actually kept lives on /daily-progress via Next / Earlier today.)
+        const now = new Date();
+        const mins = now.getHours() * 60 + now.getMinutes();
+        const DAY_START = 5 * 60, DAY_END = 22 * 60; // ~dawn .. night
+        const pos = Math.min(1, Math.max(0, (mins - DAY_START) / (DAY_END - DAY_START)));
+        const W = 54;
         return (
-          <span className="inline-flex flex-col" style={{ gap: 3 }} aria-hidden>
-            <span className="inline-flex items-center gap-[3px]">{dotDefs.slice(0, mid).map((d, i) => renderDot(d, i))}</span>
-            <span className="inline-flex items-center gap-[3px]">{dotDefs.slice(mid).map((d, i) => renderDot(d, mid + i))}</span>
+          <span aria-hidden style={{ position: "relative", display: "inline-block", width: W, height: 8 }}>
+            <span style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 2.5, transform: "translateY(-50%)", borderRadius: 999, background: "rgba(143,175,150,0.3)" }} />
+            <span className={allDone ? "dp-dot-pulse" : undefined} style={{ position: "absolute", top: "50%", left: `${pos * (W - 8)}px`, width: 8, height: 8, transform: "translateY(-50%)", borderRadius: 999, background: "rgba(150,200,165,0.95)", boxShadow: "0 0 6px rgba(110,180,130,0.65)" }} />
           </span>
         );
       })()}
