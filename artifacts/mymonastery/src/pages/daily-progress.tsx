@@ -54,7 +54,7 @@ export default function DailyProgressPage() {
               fontWeight: 600,
             }}
           >
-            <Sliders size={14} /> {t("daily_progress.customize", { defaultValue: "Customize" })}
+            <Sliders size={14} /> {t("daily_progress.customize", { defaultValue: "Shape your rhythm" })}
           </Link>
         </div>
         <p className="text-sm mb-5" style={{ color: SAGE }}>

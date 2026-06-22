@@ -3661,9 +3661,9 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                 border: "1px solid rgba(46,107,64,0.4)",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
-              aria-label={t("dashboard.office_customize", { defaultValue: "Customize your daily prayer habit" })}
+              aria-label={t("dashboard.office_customize", { defaultValue: "Shape your rule of life" })}
             >
-              {t("dashboard.office_customize_short", { defaultValue: "Customize" })}
+              {t("dashboard.office_customize_short", { defaultValue: "Shape your rhythm" })}
             </Link>
           </div>
           {/* LEFT  column = title + "N people prayed with you this week"

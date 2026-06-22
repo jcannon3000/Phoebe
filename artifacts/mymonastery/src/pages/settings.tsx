@@ -623,7 +623,7 @@ function DefaultPrayerLevelSettings() {
         }}
       >
         <span aria-hidden>⚙️</span>
-        Customize your daily prayer habit
+        Shape your rule of life
         <span aria-hidden>→</span>
       </Link>
     </>

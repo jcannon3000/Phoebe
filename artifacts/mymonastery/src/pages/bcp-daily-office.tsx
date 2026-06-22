@@ -4272,7 +4272,7 @@ export default function BcpDailyOfficePage() {
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
                 style={{ background: "rgba(9,26,16, 0.297)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.18)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
               >
-                ⚙️ Customize
+                Shape your rhythm
               </Link>
             </div>
             {/* Compline (beta) — the night office, kept as a quiet link below. */}

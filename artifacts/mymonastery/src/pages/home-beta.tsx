@@ -620,7 +620,7 @@ export default function HomeBetaPage() {
                 onClick={() => setLocation("/rule-of-life")}
                 style={{ alignSelf: "center", background: "none", border: "none", color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, textDecoration: "underline", cursor: "pointer", marginTop: 4 }}
               >
-                {t("home_beta.customize", { defaultValue: "Customize your Way of Love" })}
+                {t("home_beta.customize", { defaultValue: "Shape your rhythm" })}
               </button>
             </div>
           )}
