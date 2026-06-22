@@ -169,9 +169,10 @@ export default function WayOfLoveRuleFlow({
   // reflection + minutes are instant; the server office-prefs (the global
   // default + goal) hydrate a moment later for users whose pref was set
   // globally without a per-side override.
-  // Default to 0 — no contemplation goal. A real goal hydrates from the server
-  // pref below (contemplationGoalMinutes) only if the user has set one.
-  const [goal, setGoal] = useState("0");
+  // Default to 5 minutes — a gentle starting goal. A saved goal hydrates from the
+  // server pref below (contemplationGoalMinutes) when the user has one (any value
+  // is kept, e.g. 144); clearing the field on the goal step sets "No goal" (0).
+  const [goal, setGoal] = useState("5");
   // Per-side configuration — each chosen side gets its own way + method + time.
   // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
   // no saved level defaults to "devotion", not the more involved "community".
@@ -734,18 +735,25 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
         </p>
         <div style={{ position: "relative" }}>
-          <select
-            value={GOAL_OPTIONS.includes(goalMin) || goalMin === 0 ? String(goalMin) : "5"}
-            onChange={(e) => chooseGoal(e.target.value)}
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={180}
+            // Free text so any goal is preserved (e.g. 144) instead of snapping
+            // to a fixed dropdown option. Empty = "No goal". Keep only digits and
+            // clamp to 0–180 (the same range commit uses).
+            value={goalMin > 0 ? String(goalMin) : ""}
+            placeholder="5"
+            onChange={(e) => {
+              const digits = e.target.value.replace(/[^0-9]/g, "");
+              if (digits === "") { chooseGoal("0"); return; }
+              chooseGoal(String(Math.max(0, Math.min(180, parseInt(digits, 10) || 0))));
+            }}
             aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
-            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-          >
-            <option value="0">{t("wol_rule.goal_none", { defaultValue: "No goal" })}</option>
-            {GOAL_OPTIONS.map((m) => (
-              <option key={m} value={String(m)}>{t("wol_rule.goal_minutes", { mins: m, defaultValue: `${m} minutes` })}</option>
-            ))}
-          </select>
-          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 48px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "textfield", WebkitAppearance: "none" }}
+          />
+          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 13, pointerEvents: "none", fontFamily: FONT }}>min</span>
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
           {t("wol_rule.listen_goal_note", { defaultValue: "We'll gently remind you around 7pm on days you haven't reached it. Choose “No goal” to keep the practice without one." })}
