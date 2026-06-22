@@ -90,11 +90,17 @@ export function seededShuffle(rest: string[], masterSeed: number, block: number)
 // breath boundary; the rAF loop only calls it when the index actually changes.
 export function photoForGlobalIndex(canonical: Canonical, masterSeed: number, idx: number): string {
   const { opening, rest } = canonical;
-  if (idx <= 0 || rest.length === 0) return opening ?? rest[0] ?? "";
-  const M = rest.length;
-  const block = Math.floor((idx - 1) / M);
-  const within = (idx - 1) % M;
-  return seededShuffle(rest, masterSeed, block)[within];
+  // The opening photo now rotates INTO the seeded pool rather than being pinned
+  // at index 0 — so each solo session (its own random seed) opens on a DIFFERENT
+  // landscape instead of always the same one. Synced clients share a seed, so
+  // they still agree on the photo at every index.
+  const pool = opening ? [opening, ...rest] : rest;
+  if (pool.length === 0) return "";
+  const M = pool.length;
+  const i = idx < 0 ? 0 : idx;
+  const block = Math.floor(i / M);
+  const within = i % M;
+  return seededShuffle(pool, masterSeed, block)[within];
 }
 
 // A short fingerprint of the photo SET (count + hashed sorted stems). Two clients
