@@ -65,7 +65,24 @@ type Step =
   | "morning-way" | "morning-config"
   | "evening-way" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "lectio-when" | "walk-when"
-  | "learn" | "extras" | "custom" | "done";
+  | "learn" | "extras" | "custom" | "done"
+  | "starter" | "tend";
+// Named starter rules — coherent forms a first author adopts WHOLE and tunes
+// later (you receive a rule, you don't compose one from a blank trellis). Each
+// applies to the same office-prefs + home-layout the full flow writes.
+type RulePreset = {
+  id: string; emoji: string;
+  sides: { morning: boolean; evening: boolean };
+  pray: PrayChoice;
+  silence: boolean; goalMin: number;
+  reflections: ReflectionSource[];
+};
+const RULE_PRESETS: RulePreset[] = [
+  { id: "morning-anchor", emoji: "🌅", sides: { morning: true, evening: false }, pray: "devotion", silence: false, goalMin: 0, reflections: ["fdd"] },
+  { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"] },
+  { id: "contemplative",  emoji: "🕯️", sides: { morning: true, evening: true },  pray: "devotion", silence: true,  goalMin: 10, reflections: ["fdd"] },
+];
+
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
 
@@ -142,7 +159,18 @@ export default function WayOfLoveRuleFlow({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>("when");
+  const [step, setStep] = useState<Step>(() => {
+    // Re-entry (a rhythm already shaped) opens to a quiet "tend" screen, not the
+    // full author flow; a first author meets the named starter rules. getSideLevel
+    // reads the local office prefs synchronously (reliable for a returning user).
+    try {
+      const has = getSideLevel("morning") !== null || getSideLevel("evening") !== null;
+      return has ? "tend" : "starter";
+    } catch { return "starter"; }
+  });
+  // When a named starter rule is adopted, its id parks here until the next render
+  // (after the state setters have applied) so the commit effect writes the rule.
+  const [adoptId, setAdoptId] = useState<string | null>(null);
   // When they want to pray — morning, evening, or both. Seeded from whichever
   // sides already have a per-side level; defaults to both on first run. At least
   // one side stays selected.
@@ -549,6 +577,27 @@ export default function WayOfLoveRuleFlow({
       .catch(() => {/* ignore */});
     setStep("done");
   };
+  // Adopting a named starter rule presets the flow state, then parks its id so
+  // THIS effect (next render, after the setters apply) writes it via the same
+  // commit() the full flow uses — landing on the review screen to behold it.
+  const adoptRule = (preset: RulePreset) => {
+    touchedRef.current = true;
+    setSides(preset.sides);
+    setPrayBySide({ morning: preset.pray, evening: preset.pray });
+    setContemplationStyle("silent");
+    setContemplative({ prayer: preset.silence, cobreathe: false, audio: false, examen: false, lectio: false, walk: false });
+    setGoal(String(preset.silence ? preset.goalMin : 0));
+    setNewsletters(preset.reflections);
+    setExtras({ gratitude: false, examen: false, listening: false, journaling: false, reading: false, podcasts: false });
+    try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
+    setAdoptId(preset.id);
+  };
+  useEffect(() => {
+    if (!adoptId) return;
+    setAdoptId(null);
+    commit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adoptId]);
 
   // ── Shared chrome ──────────────────────────────────────────────────────────
   // Full-bleed (negative margins cancel <Layout>'s main px-4/sm:px-6/md:px-8),
@@ -1195,6 +1244,89 @@ export default function WayOfLoveRuleFlow({
     // The user's own custom practices — each tappable back into "Create your own".
     ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),
   ];
+
+  // ── Starter — a first author receives a named rule (adopt whole, tune later),
+  // or chooses to build their own. Adopting commits the preset, then beholds it.
+  if (step === "starter") {
+    const meta = (id: string) =>
+      id === "morning-anchor" ? { label: t("wol_rule.preset_morning_anchor", { defaultValue: "A simple morning anchor" }), who: t("wol_rule.preset_morning_anchor_who", { defaultValue: "For beginning a daily habit of prayer." }) }
+      : id === "offices" ? { label: t("wol_rule.preset_offices", { defaultValue: "Morning & evening with the offices" }), who: t("wol_rule.preset_offices_who", { defaultValue: "For praying the daily office, morning and night." }) }
+      : { label: t("wol_rule.preset_contemplative", { defaultValue: "The contemplative path" }), who: t("wol_rule.preset_contemplative_who", { defaultValue: "For someone drawn to daily silence." }) };
+    return shell(
+      <>
+        <div style={{ textAlign: "center", marginTop: 8 }}>
+          <span style={{ fontSize: 38 }} aria-hidden>🕊️</span>
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "14px 0 6px" }}>
+            {t("wol_rule.starter_eyebrow", { defaultValue: "Your rule of life" })}
+          </p>
+          <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+            {t("wol_rule.starter_title", { defaultValue: "Begin with a shape" })}
+          </h1>
+          <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
+            {t("wol_rule.starter_sub", { defaultValue: "Receive a simple rule and grow into it — you can change anything after." })}
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+          {RULE_PRESETS.map((pr) => {
+            const m = meta(pr.id);
+            return (
+              <button key={pr.id} onClick={() => adoptRule(pr)} style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "15px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{pr.emoji}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{m.label}</span>
+                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{m.who}</span>
+                </span>
+                <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 18, flexShrink: 0 }} aria-hidden>›</span>
+              </button>
+            );
+          })}
+        </div>
+        <button onClick={() => { touchedRef.current = true; setStep("when"); }} style={{ marginTop: 18, background: "none", border: "none", color: SAGE, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
+          {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
+        </button>
+      </>,
+    );
+  }
+
+  // ── Tend — re-entry (a rhythm already shaped) opens here, not the full flow:
+  // a calm overview of the current rule, each row tappable to adjust. Reshaping
+  // from scratch is available but quieter (a half-step weightier than tending).
+  if (step === "tend") {
+    return shell(
+      <>
+        <div style={{ textAlign: "center", marginTop: 8 }}>
+          <span style={{ fontSize: 38 }} aria-hidden>🌿</span>
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "14px 0 6px" }}>
+            {t("wol_rule.tend_eyebrow", { defaultValue: "Your rule of life" })}
+          </p>
+          <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+            {t("wol_rule.tend_title", { defaultValue: "Tend your rhythm" })}
+          </h1>
+          <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
+            {t("wol_rule.tend_sub", { defaultValue: "Adjust a time, or add and drop as your life changes. Tap any practice." })}
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+          {reviewRows.map((r, i) => (
+            <button key={`tend-${r.label}-${i}`} onClick={() => setStep(r.step)} style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
+              <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+              </span>
+              <span style={{ color: "rgba(143,175,150,0.4)", fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={onDone} style={{ marginTop: 22, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+          {t("wol_rule.tend_done", { defaultValue: "That’s all for now" })}
+        </button>
+        <button onClick={() => { touchedRef.current = true; setStep("when"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
+          {t("wol_rule.tend_reshape", { defaultValue: "Reshape from scratch" })}
+        </button>
+      </>,
+    );
+  }
   return shell(
     <>
       <div style={{ textAlign: "center", marginTop: 8 }}>
