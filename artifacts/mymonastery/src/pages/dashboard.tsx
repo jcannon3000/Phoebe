@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
 import { LEAF_PHOTOS, HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -5035,7 +5035,7 @@ function TimeSection({
       {cascade
         ? renderedNodes.map((node, idx) => (
             <motion.div
-              key={React.isValidElement(node) && node.key != null ? node.key : idx}
+              key={isValidElement(node) && node.key != null ? node.key : idx}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 0.7) }}
