@@ -1344,14 +1344,17 @@ function OpeningSplash() {
           { key: "turned", label: "Turn" }, { key: "learned", label: "Learn" }, { key: "prayed", label: "Pray" },
         ];
         const lightsTitle = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => LIGHTS.map((l) => `${l.label}: ${v[l.key] ? "today" : "quiet"}`).join("  \u00b7  ");
-        const renderLights = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => (
-          <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden title={lightsTitle(v)}>
-            {LIGHTS.map((l) => {
-              const on = !!v[l.key];
-              return <span key={l.key} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: on ? "#6CA8E0" : "transparent", border: on ? "none" : "1.5px solid rgba(108,168,224,0.45)", boxShadow: on ? "0 0 6px rgba(108,168,224,0.55)" : "none" }} />;
-            })}
-          </span>
-        );
+        const renderLights = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => {
+          const lit = LIGHTS.filter((l) => !!v[l.key]);
+          if (lit.length === 0) return null;
+          return (
+            <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden title={lightsTitle(v)}>
+              {lit.map((l) => (
+                <span key={l.key} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }} />
+              ))}
+            </span>
+          );
+        };
         const renderAvatar = (url: string | null, name: string | null) => (
           url ? (
             <img src={url} alt={fn(name)} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: "1.5px solid #0C1F12", backgroundColor: "#1A4A2E" }} />

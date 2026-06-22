@@ -55,14 +55,15 @@ type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalC
 // full count of someone's practices. Bigger, calmer dots; three is the shared
 // goal regardless of how many anchors a person actually keeps.
 const SHARED_DOTS = 3;
-// The three coarse presence lights (Turn / Learn / Pray) for today — blue,
-// glowing when lit. Presence, not a scoreboard: no kept-counts, no lock.
+// The coarse presence lights (Turn / Learn / Pray) kept today — blue, glowing.
+// Only LIT lights are shown (no empty placeholders); renders nothing if none.
 function FellowLights({ turned, learned, prayed }: { turned: boolean; learned: boolean; prayed: boolean }) {
-  const items: Array<[boolean, string]> = [[turned, "Turn"], [learned, "Learn"], [prayed, "Pray"]];
+  const lit = ([[turned, "Turn"], [learned, "Learn"], [prayed, "Pray"]] as Array<[boolean, string]>).filter(([on]) => on);
+  if (lit.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-[6px]" aria-label="Today's presence">
-      {items.map(([on, label]) => (
-        <span key={label} title={`${label}: ${on ? "today" : "quiet"}`} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: on ? "#6CA8E0" : "transparent", border: on ? "none" : "1.5px solid rgba(108,168,224,0.45)", boxShadow: on ? "0 0 6px rgba(108,168,224,0.55)" : "none" }} />
+      {lit.map(([, label]) => (
+        <span key={label} title={`${label}: today`} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }} />
       ))}
     </span>
   );

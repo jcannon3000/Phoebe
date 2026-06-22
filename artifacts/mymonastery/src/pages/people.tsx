@@ -280,18 +280,15 @@ function PersonCard({
                     Fellow
                   </span>
                 )}
-                {isFellow && fellowLights && (
+                {isFellow && fellowLights && (fellowLights.turned || fellowLights.learned || fellowLights.prayed) && (
                   <span className="inline-flex items-center gap-[3px] flex-shrink-0" aria-label="Today's presence">
-                    {(([["turned", "Turn"], ["learned", "Learn"], ["prayed", "Pray"]] as const)).map(([k, label]) => {
-                      const on = fellowLights[k];
-                      return (
-                        <span
-                          key={k}
-                          title={`${label}: ${on ? "today" : "quiet"}`}
-                          style={{ width: 7, height: 7, borderRadius: 999, display: "inline-block", background: on ? "#6CA8E0" : "transparent", border: on ? "none" : "1px solid rgba(108,168,224,0.45)", boxShadow: on ? "0 0 6px rgba(108,168,224,0.55)" : "none" }}
-                        />
-                      );
-                    })}
+                    {(([["turned", "Turn"], ["learned", "Learn"], ["prayed", "Pray"]] as const)).filter(([k]) => fellowLights[k]).map(([k, label]) => (
+                      <span
+                        key={k}
+                        title={`${label}: today`}
+                        style={{ width: 7, height: 7, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }}
+                      />
+                    ))}
                   </span>
                 )}
               </div>
