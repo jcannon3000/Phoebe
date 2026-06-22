@@ -5,6 +5,8 @@ import { Loader2, Check } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
 
 // ─── Fellows invite link landing — /fellow/:token ────────────────────────────
 // Someone shared their "be my fellow" link. Two paths:
@@ -57,9 +59,14 @@ function ThreeLights({ lit = [true, true, false] as boolean[] }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
+  // A leaf photo backdrop, washed dark + frosted — matching the home, the
+  // opening splash and the prayer decks. Held stable for the surface (chosen
+  // once, not re-randomised on every re-render / slide advance).
+  const [leaf] = useState<string | null>(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null));
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "calc(var(--safe-top, 0px) + 28px) 24px calc(env(safe-area-inset-bottom, 0px) + 28px)", overflowY: "auto" }}>
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 80% at 50% 0%, rgba(46,107,64,0.18) 0%, rgba(8,18,12,0) 60%)" }} />
+    <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 50, isolation: "isolate", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "calc(var(--safe-top, 0px) + 28px) 24px calc(env(safe-area-inset-bottom, 0px) + 28px)", overflowY: "auto" }}>
+      {leaf && <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />}
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.52) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.82) 100%)", backdropFilter: "blur(2.5px)", WebkitBackdropFilter: "blur(2.5px)" }} />
       {children}
     </div>
   );
@@ -322,7 +329,7 @@ function Center({ children }: { children: React.ReactNode }) {
 
 function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ width: "100%", maxWidth: 360, marginBottom: 14, padding: "16px 18px", borderRadius: 18, background: "rgba(46,107,64,0.16)", border: "1px solid rgba(46,107,64,0.32)", textAlign: "left" }}>
+    <div style={{ width: "100%", maxWidth: 360, marginBottom: 14, padding: "16px 18px", borderRadius: 18, ...FROST, border: "1px solid rgba(255,255,255,0.10)", textAlign: "left" }}>
       <p style={{ color: "#E8EDE3", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15.5, fontWeight: 500, marginBottom: 12 }}>{label}</p>
       {children}
     </div>
