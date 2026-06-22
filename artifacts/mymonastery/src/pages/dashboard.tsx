@@ -6790,14 +6790,19 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // prayer-list slot BELOW surfaces the full upcoming schedule — so
                 // listing events here too would double them. Defer to that schedule.
                 const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
-                const nextThree = hasUnprayedOthers
-                  ? [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt).slice(0, 3)
-                  : [];
+                const allEvents = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt);
+                const nextThree = hasUnprayedOthers ? allEvents.slice(0, 3) : [];
+                // Fewer than three events to look forward to → round out the
+                // finished-day view with the "sit again" contemplation card.
+                const showSitAgain = allEvents.length < 3;
                 return (
                   <div>
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {nextThree.length > 0 && (
                       <motion.div {...enterUp(1)}><TimeSection label={t("dashboard.next_up_section", { defaultValue: "Next up" })} items={nextThree} {...evtProps} /></motion.div>
+                    )}
+                    {showSitAgain && (
+                      <motion.div {...enterUp(nextThree.length + 1)}>{contemplationAgainCard}</motion.div>
                     )}
                   </div>
                 );
