@@ -313,8 +313,9 @@ export default function TraditionNew() {
         </>
       )}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>
-      {/* Header */}
-      <div className="px-6 pt-6 pb-4 flex items-center gap-4">
+      {/* Header — this page has no <Layout>, so clear the status bar / notch
+          ourselves; without this the back link + progress bar sat too high. */}
+      <div className="px-6 pb-4 flex items-center gap-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}>
         <button
           onClick={() => {
             if (step === 0) { setLocation("/dashboard"); return; }
@@ -351,21 +352,31 @@ export default function TraditionNew() {
                 Choose a community 🌿
               </h1>
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>Which community is this gathering for?</p>
-              <div className="flex flex-col gap-3">
-                {adminGroups.map(g => (
-                  <button
-                    key={g.id}
-                    onClick={() => { setSelectedGroupId(g.id); setStep(2); }}
-                    className={`px-5 py-4 rounded-xl text-left transition-all ${selectedGroupId === g.id ? "animate-turn-pulse" : ""}`}
-                    style={selectedGroupId === g.id
-                      ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
-                      : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
-                  >
-                    <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-                      {g.emoji ? `${g.emoji} ` : ""}{g.name}
-                    </p>
-                  </button>
-                ))}
+              {/* Wide frosted pills — same UI as the community prayer-request
+                  audience picker: emoji + name, a ✓ on the selected one. */}
+              <div className="flex flex-col gap-2">
+                {adminGroups.map(g => {
+                  const active = selectedGroupId === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => { setSelectedGroupId(g.id); setStep(2); }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-colors"
+                      style={{
+                        background: active ? "rgba(46,107,64,0.28)" : "rgba(9,26,16,0.34)",
+                        backdropFilter: "blur(11.34px)",
+                        WebkitBackdropFilter: "blur(11.34px)",
+                        border: `1px solid ${active ? "rgba(143,175,150,0.55)" : "rgba(46,107,64,0.3)"}`,
+                      }}
+                    >
+                      <span style={{ fontSize: 20 }} aria-hidden>{g.emoji || "🌿"}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[15px] font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{g.name}</span>
+                      </span>
+                      {active && <span style={{ color: "#C8D4C0" }} aria-hidden>✓</span>}
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
