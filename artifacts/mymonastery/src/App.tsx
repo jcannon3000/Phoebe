@@ -19,6 +19,7 @@ import { LocaleSync } from "@/components/LocaleSync";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
+import { PresenceTurn } from "@/components/PresenceTurn";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
@@ -1141,6 +1142,7 @@ function App() {
           <DailyCompleteCelebration />
           <LocaleSync />
           <AppOpenTracker />
+          <PresenceTurn />
           <WidgetSync />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />

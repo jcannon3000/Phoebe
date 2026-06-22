@@ -132,6 +132,7 @@ function PersonCard({
   iPrayFor,
   prayForMe,
   isFellow,
+  fellowLights,
   activePrayerFor,
   activePrayerForMe,
 }: {
@@ -144,6 +145,7 @@ function PersonCard({
   // who they connected with via a share-link Amen flow vs through
   // a normal community / letter path.
   isFellow: boolean;
+  fellowLights: { turned: boolean; learned: boolean; prayed: boolean } | null;
   activePrayerFor: MyActivePrayerFor | null;
   activePrayerForMe: PrayerForMe | null;
 }) {
@@ -276,6 +278,20 @@ function PersonCard({
                     }}
                   >
                     Fellow
+                  </span>
+                )}
+                {isFellow && fellowLights && (
+                  <span className="inline-flex items-center gap-[3px] flex-shrink-0" aria-label="Today's presence">
+                    {(([["turned", "Turn"], ["learned", "Learn"], ["prayed", "Pray"]] as const)).map(([k, label]) => {
+                      const on = fellowLights[k];
+                      return (
+                        <span
+                          key={k}
+                          title={`${label}: ${on ? "today" : "quiet"}`}
+                          style={{ width: 7, height: 7, borderRadius: 999, display: "inline-block", background: on ? "#6CA8E0" : "transparent", border: on ? "none" : "1px solid rgba(108,168,224,0.45)", boxShadow: on ? "0 0 6px rgba(108,168,224,0.55)" : "none" }}
+                        />
+                      );
+                    })}
                   </span>
                 )}
               </div>
@@ -473,6 +489,10 @@ export default function People() {
     avatarUrl: string | null;
     source: string;
     createdAt: string | null;
+    // Today-only coarse presence lights (Turn / Learn / Pray) — blue dots.
+    turned?: boolean;
+    learned?: boolean;
+    prayed?: boolean;
   };
   const { data: fellowsData } = useQuery<{ fellows: Fellow[] }>({
     queryKey: ["/api/fellows"],
@@ -480,6 +500,14 @@ export default function People() {
     enabled: !!user,
     staleTime: 30_000,
   });
+  // Each fellow's three presence lights, keyed by userId — rendered as BLUE dots
+  // on their card (distinct from the viewer's own GREEN rhythm dots, which stay
+  // tied to their actual practices). Today-only; no counts, no history.
+  const fellowLightsByUserId = useMemo(() => {
+    const m = new Map<number, { turned: boolean; learned: boolean; prayed: boolean }>();
+    for (const f of fellowsData?.fellows ?? []) m.set(f.userId, { turned: !!f.turned, learned: !!f.learned, prayed: !!f.prayed });
+    return m;
+  }, [fellowsData]);
   // New-fellow onboarding: prompt once (same place? + share daily progress?) for
   // a recently-formed fellowship we haven't set prefs for yet. Both parties see
   // it next time they open People; answering creates the prefs row, which stops
@@ -802,6 +830,7 @@ export default function People() {
                     iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                     isFellow={fellowEmails.has(person.email.toLowerCase())}
+                    fellowLights={person.userId != null ? (fellowLightsByUserId.get(person.userId) ?? null) : null}
                     activePrayerFor={
                       iPrayFor.find(
                         p => {
