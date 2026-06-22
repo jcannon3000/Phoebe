@@ -82,8 +82,9 @@ const COLLECT_MORNING =
   "Lord God, almighty and everlasting Father, you have brought us in safety to this new day: Preserve us with your mighty power, that we may not fall into sin, nor be overcome by adversity; and in all we do, direct us to the fulfilling of your purpose; through Jesus Christ our Lord. Amen.";
 
 // "Lord Jesus, stay with us…" — collect appointed for In the Early
-// Evening (BCP p. 140). The wording is the Emmaus echo: "stay with us,
-// for evening is at hand and the day is past".
+// Evening (BCP p. 139; p. 140 is the separate "At the Close of Day"
+// devotion). The wording is the Emmaus echo: "stay with us, for evening
+// is at hand and the day is past".
 const COLLECT_EARLY_EVENING =
   "Lord Jesus, stay with us, for evening is at hand and the day is past; be our companion in the way, kindle our hearts, and awaken hope, that we may know you as you are revealed in Scripture and the breaking of bread. Grant this for the sake of your love. Amen.";
 
@@ -394,19 +395,19 @@ export async function assembleDevotion(
   // 6. Lord's Prayer
   slides.push(
     slide(id(), "lords_prayer", "🙏🏽", T.eyebrowLordsPrayer, T.lordsPrayer, {
-      bcpReference: isMorning ? "BCP p. 137" : "BCP p. 140",
+      bcpReference: isMorning ? "BCP p. 137" : "BCP p. 139",
     }),
   );
 
   // 7. Collect — the BCP "Daily Devotions for Individuals and Families" close
   // with their OWN fixed collect for the hour (Lord God, almighty… in the
-  // morning, BCP p. 137; Lord Jesus, stay with us… in the early evening, p. 140)
+  // morning, BCP p. 137; Lord Jesus, stay with us… in the early evening, p. 139)
   // — NOT the lectionary Collect of the Day, which belongs to the full Office.
   // Use the fixed devotion collect so the devotion is liturgically right. The
   // fixed collects are locale-aware via PRAYERS.devotion_collect_*.
   void collectOfTheDayRow;
   const collectText = isMorning ? T.devotionCollectMorning : T.devotionCollectEarlyEvening;
-  const collectBcpRef = isMorning ? "BCP p. 137" : "BCP p. 140";
+  const collectBcpRef = isMorning ? "BCP p. 137" : "BCP p. 139";
   slides.push(
     slide(id(), "collect", "🌿", T.eyebrowCollectOfTheDay, collectText, {
       bcpReference: collectBcpRef,

@@ -80,7 +80,7 @@ function slide(
 
 // ── Embedded BCP texts ──────────────────────────────────────────────────────
 
-// Compline's confession is shorter than MP/EP's (BCP p. 128, "Almighty
+// Compline's confession is shorter than MP/EP's (BCP p. 127, "Almighty
 // God, our heavenly Father" rather than "Most merciful God"). Embedded
 // here so this file is self-contained and a future copy edit doesn't
 // have to thread through the bcp_texts seed.
@@ -296,12 +296,14 @@ export async function assembleCompline(
     }),
   );
 
-  // 2. Confession + Absolution — BCP p. 128. Default ON (shares
-  //    bcpShowConfession with MP/EP). applyConfessionPref at the end
-  //    drops both slides if the user has opted out.
+  // 2. Confession (BCP p. 127) + Absolution (BCP p. 128). Default ON
+  //    (shares bcpShowConfession with MP/EP). applyConfessionPref at the
+  //    end drops both slides if the user has opted out. The confession
+  //    ("Almighty God our heavenly Father…") sits at the foot of p. 127;
+  //    p. 128 opens with the absolution ("May the Almighty God grant…").
   slides.push(
     slide(id(), "confession", "🙏🏽", T.eyebrowConfession, T.confessionBody, {
-      bcpReference: "BCP p. 128",
+      bcpReference: "BCP p. 127",
       isScrollable: true,
       scrollHint: T.scrollHint,
     }),
