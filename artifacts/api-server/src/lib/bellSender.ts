@@ -1048,6 +1048,14 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
 const CONTEMPLATION_GOAL_TIME = "20:30";
 
 export async function runContemplationGoalSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // DISABLED — this fired "you haven't hit your contemplation goal" at ~7pm, a
+  // DEFICIT reminder (it nudges BECAUSE you fell short), the opposite of a bell
+  // that calls you TO the practice at its hour. Silence is an invitation, not a
+  // quota: the Customizer now frames the minutes as a chosen sit length, never a
+  // daily target. The "sit at your chosen time" reminder (the bell) is separate
+  // and still fires. Left as a no-op (body kept) so the scheduler wiring and an
+  // easy revert both stay intact.
+  if (!opts.forceNow || true) return;
   try {
     const rows = await db
       .select({

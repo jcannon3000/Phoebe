@@ -609,7 +609,7 @@ export default function WayOfLoveRuleFlow({
           <div style={{ width: `${(n / totalSteps) * 100}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: FONT }}>
-          {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })} · {n}/{totalSteps}
+          {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })}
         </p>
         {showEyebrow && (
           <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
@@ -732,7 +732,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.listen_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love." })}
         </p>
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
+          {t("wol_rule.listen_goal_label", { defaultValue: "How long would you like to sit?" })}
         </p>
         <div style={{ position: "relative" }}>
           <input
@@ -750,13 +750,13 @@ export default function WayOfLoveRuleFlow({
               if (digits === "") { chooseGoal("0"); return; }
               chooseGoal(String(Math.max(0, Math.min(180, parseInt(digits, 10) || 0))));
             }}
-            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
+            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "How long would you like to sit?" })}
             style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 48px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "textfield", WebkitAppearance: "none" }}
           />
           <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 13, pointerEvents: "none", fontFamily: FONT }}>min</span>
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.listen_goal_note", { defaultValue: "We'll gently remind you around 7pm on days you haven't reached it. Choose “No goal” to keep the practice without one." })}
+          {t("wol_rule.listen_goal_note", { defaultValue: "A private intention for how long to sit — not a daily target measured against you. Leave it empty to keep the practice without one." })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -964,7 +964,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {NEWSLETTERS.map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
-          {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection — one fewer step in your rhythm." }), chooseNoReflection)}
+          {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
