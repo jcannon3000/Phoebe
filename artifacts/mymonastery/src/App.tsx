@@ -491,6 +491,11 @@ const PERSISTED_QUERY_KEYS = [
   "/api/me/contemplation-stats",
   "/api/me/reflections-read",
   "/api/me/office-prefs",
+  // The per-anchor "kept today" completions + today's Co-Breathe state. Without
+  // these the rhythm hook's `ready` gate never resolves OFFLINE for anyone with
+  // extra practices, so the whole routine failed to paint with no connection.
+  "/api/practice-completion",
+  "/api/breath/today",
   "/api/prayer-streak",
   "/api/me/garden-week",
   "/api/cac/today-meta",

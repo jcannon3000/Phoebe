@@ -457,12 +457,17 @@ export function useRhythmState(): RhythmState {
   // gate their first paint on this to fade in the settled split instead of
   // animating that reshuffle. (Cached navigations resolve synchronously, so
   // this is true on the first render and the fade just plays once.)
+  // Offline, the per-anchor completions query can't load (and may not be cached
+  // on a cold boot), so don't let it block the routine from painting — the
+  // structure still comes from the persisted office history / prefs / layout.
+  // The extras just read "not done yet" until the connection returns.
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
   const ready =
     officeHistory !== undefined &&
     contStats !== undefined &&
     reflRead !== undefined &&
     officePrefs !== undefined &&
-    (!anyExtraActive || completions !== undefined);
+    (!anyExtraActive || completions !== undefined || offline);
 
   return {
     ready,
