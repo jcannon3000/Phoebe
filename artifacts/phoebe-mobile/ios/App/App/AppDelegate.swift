@@ -2,10 +2,54 @@ import UIKit
 import Capacitor
 import UserNotifications
 
+// Forwarding notification-center delegate. Capacitor installs itself as the
+// UNUserNotificationCenter delegate (it presents foreground pushes + routes taps
+// to JS). We wrap it to change ONE thing: the daily contemplation nudge
+// (threadId "contemplation-goal") should only appear when the phone is locked /
+// the app is backgrounded — never as an in-app banner while you're actively
+// using Phoebe. willPresent fires only when the app is foreground, so returning
+// [] there suppresses the in-app banner; when locked/backgrounded the system
+// shows it normally (willPresent isn't called). Every other notification and all
+// tap handling is forwarded untouched to Capacitor's delegate.
+final class PhoebeNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = PhoebeNotificationDelegate()
+    weak var wrapped: UNUserNotificationCenterDelegate?
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        if notification.request.content.threadIdentifier == "contemplation-goal" {
+            completionHandler([])
+            return
+        }
+        if let w = wrapped,
+           w.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
+            w.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
+        } else {
+            completionHandler([.banner, .list, .sound, .badge])
+        }
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        if let w = wrapped,
+           w.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
+            w.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
+        } else {
+            completionHandler()
+        }
+    }
+}
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+
+    // Whether the forwarding notification delegate has been installed (once
+    // Capacitor has set itself as the delegate during bridge boot).
+    private var notifDelegateInstalled = false
 
     // Pending deep-link path captured at cold launch via a home-screen
     // quick action. We can't dispatch into the WebView at
@@ -93,6 +137,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        // Install our forwarding notification delegate once Capacitor has set its
+        // own (it does so during bridge boot, which is complete by the time we're
+        // active). Wrap whatever's currently there so contemplation pushes don't
+        // banner in-foreground, while every other push + tap routes as before.
+        if !notifDelegateInstalled {
+            let center = UNUserNotificationCenter.current()
+            if center.delegate !== PhoebeNotificationDelegate.shared {
+                PhoebeNotificationDelegate.shared.wrapped = center.delegate
+                center.delegate = PhoebeNotificationDelegate.shared
+                notifDelegateInstalled = true
+            }
+        }
+
         // Drain any cold-launch shortcut that was captured in
         // didFinishLaunching. By the time the app is "active," the
         // Capacitor WebView is up and ready to receive the deep-link
