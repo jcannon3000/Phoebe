@@ -125,9 +125,11 @@ export function DesktopAppPrompt() {
     <div
       className="fixed left-0 right-0 z-50 px-4"
       style={{
-        top: 0,
-        paddingTop: "max(0.75rem, var(--safe-top))",
-        paddingBottom: "0.75rem",
+        // Pinned to the BOTTOM (like the offline banner + the iOS download
+        // prompt) so banners never cover the header.
+        bottom: 0,
+        paddingTop: "0.75rem",
+        paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
         animation: "phoebe-desktop-prompt-slide 360ms ease-out",
       }}
       role="dialog"
@@ -135,7 +137,7 @@ export function DesktopAppPrompt() {
     >
       <style>{`
         @keyframes phoebe-desktop-prompt-slide {
-          from { opacity: 0; transform: translateY(-24px); }
+          from { opacity: 0; transform: translateY(24px); }
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>

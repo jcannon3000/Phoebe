@@ -93,19 +93,22 @@ export function NetworkBanner() {
       aria-live="polite"
       style={{
         position: "fixed",
-        top: 0,
+        // Pinned to the BOTTOM so it doesn't cover the header / Daily-progress
+        // pill at the top of the screen.
+        bottom: 0,
         left: 0,
         right: 0,
         zIndex: 10_000,
         background: showOffline ? "#3A2E14" : "#2A3A2E",
-        borderBottom: `1px solid ${showOffline ? "rgba(193,154,58,0.35)" : "rgba(111,175,133,0.35)"}`,
+        borderTop: `1px solid ${showOffline ? "rgba(193,154,58,0.35)" : "rgba(111,175,133,0.35)"}`,
         color: showOffline ? "#E8B872" : "#A8C5A0",
         fontSize: 13,
         lineHeight: 1.4,
         padding: "10px 16px",
+        paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
         textAlign: "center",
         fontFamily: "'Space Grotesk', sans-serif",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+        boxShadow: "0 -2px 8px rgba(0,0,0,0.35)",
       }}
     >
       {showOffline ? t("network.offline") : t("network.flaky")}
