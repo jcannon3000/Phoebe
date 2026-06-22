@@ -382,14 +382,24 @@ function setOrRemove(key: string, value: string | undefined): void {
   } catch { /* ignore */ }
 }
 
-/** Write a server snapshot DOWN into localStorage (server is authoritative). */
+/** Merge a server snapshot DOWN into localStorage. The server is authoritative
+ *  for anchors it KNOWS about, but a local-only anchor (added on this device and
+ *  not yet pushed up, or pushed while offline) is KEPT — the sync-down used to
+ *  blindly replace the list, which silently wiped a not-yet-synced custom card
+ *  (the recurring "I lost my custom practice" bug). We union by id: server defs
+ *  first, then any local-only defs appended, and push the merged set back up so
+ *  the server catches up. */
 export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | undefined): void {
   if (!snap || !Array.isArray(snap.defs)) return;
+  let needsPush = false;
   suppressPush = true;
   try {
-    // Replace the definition list (handles cross-device adds/removes), then
-    // re-stamp each anchor's per-day state + reading total.
-    saveDefs(snap.defs);
+    const serverIds = new Set(snap.defs.map((d) => d.id));
+    // Local anchors the server hasn't seen yet — keep them rather than dropping.
+    const localOnly = getCustomAnchors().filter((a) => !serverIds.has(a.id));
+    saveDefs([...snap.defs, ...localOnly]);
+    // Re-stamp per-day state + reading total for the server's anchors. Local-only
+    // anchors keep their existing localStorage state untouched.
     for (const a of snap.defs) {
       const e = snap.log?.[a.id] ?? {};
       setOrRemove(DONE_PREFIX + a.id, e.done);
@@ -397,11 +407,14 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
       setOrRemove(READ_TODAY_PREFIX + a.id, e.readToday);
       setOrRemove(READ_TOTAL_PREFIX + a.id, e.readTotal != null ? String(e.readTotal) : undefined);
     }
+    needsPush = localOnly.length > 0;
     window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } finally {
     suppressPush = false;
   }
+  // Reconcile the server with the local-only anchors we just preserved.
+  if (needsPush) pushCustomAnchors();
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
