@@ -25,7 +25,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { WeeklyGridCard } from "@/components/DailyProgressBody";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -153,17 +152,6 @@ function CelebrationOverlay({ doneCount, total, onClose }: {
       >
         {t("daily_complete.kept_count", { count: doneCount, total })}
       </motion.p>
-
-      {/* Weekly progress card — the week's rhythm at a glance. */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
-        className="relative z-10 w-full"
-        style={{ maxWidth: 460, marginTop: 22 }}
-      >
-        <WeeklyGridCard />
-      </motion.div>
 
       {/* Continue */}
       <motion.button

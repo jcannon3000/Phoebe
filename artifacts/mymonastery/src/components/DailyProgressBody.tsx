@@ -944,14 +944,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           </div>
         </div>
       )}
-      {/* The weekly practice grid sits under the daily cards on the daily-
-          progress page. Hidden on the home, where showStreak is false. */}
-      {showStreak && (
-        <motion.div {...enterUp(0)} className="mt-6">
-          {sectionHeader(t("daily_progress.weekly_progress_heading", { defaultValue: "Weekly progress" }))}
-          <WeeklyGridCard />
-        </motion.div>
-      )}
+      {/* Weekly progress grid removed — the rhythm is a fresh start each day
+          ("every day we begin again"), so no week-at-a-glance accumulation. */}
 
       {/* Log popup for a custom practice — a reading logs an amount
           (chapter/page/time); a plain practice is just Done / Not today. */}

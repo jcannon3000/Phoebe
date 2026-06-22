@@ -94,7 +94,7 @@ export function NetworkBanner() {
   useEffect(() => {
     if (!showOffline && !showFlaky) { setAutoHidden(false); return; }
     setAutoHidden(false);
-    const id = window.setTimeout(() => setAutoHidden(true), 4000);
+    const id = window.setTimeout(() => setAutoHidden(true), 5000);
     return () => window.clearTimeout(id);
   }, [showOffline, showFlaky]);
 
