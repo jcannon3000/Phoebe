@@ -70,6 +70,7 @@ function Dots({ anchors }: { anchors: WalkAnchorLite[] }) {
 // the "Cobreathed together…" line), the same gentle opacity crossfade the home
 // cards' subtitle uses — fade the current view out, swap while hidden, fade the
 // next in. One view → static (no cycling).
+const CYCLE_LINE_H = 17; // fixed row height so swapping views never reflows the card
 function CycleLine({ views }: { views: ReactNode[] }) {
   const [idx, setIdx] = useState(0);
   const [shown, setShown] = useState(true);
@@ -83,9 +84,16 @@ function CycleLine({ views }: { views: ReactNode[] }) {
     return () => { clearInterval(t); if (swap) clearTimeout(swap); };
   }, [views.length]);
   if (views.length === 0) return null;
+  // Fixed-height row; the view is absolutely centered so neither the crossfade
+  // nor a taller/shorter view changes the card's height.
   return (
-    <div style={{ opacity: shown ? 1 : 0, transition: "opacity 0.26s ease", minHeight: 16 }}>
-      {views[idx % views.length]}
+    <div style={{ position: "relative", height: CYCLE_LINE_H }}>
+      <div
+        className="absolute inset-0 flex items-center min-w-0"
+        style={{ opacity: shown ? 1 : 0, transition: "opacity 0.26s ease" }}
+      >
+        {views[idx % views.length]}
+      </div>
     </div>
   );
 }
