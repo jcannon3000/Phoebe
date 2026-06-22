@@ -3159,6 +3159,24 @@ function buildBookSections(slides: Slide[]): BookSection[] {
         // Morning Prayer's Venite has the Jubilate (Ps 100) as its appointed
         // alternative — note it so a reader can choose either at the book.
         const invitatoryDetail = headline.includes("Venite") ? `${headline} · or the Jubilate` : headline;
+        // The antiphon is said BEFORE the psalm (and repeated after it), so it
+        // LEADS the psalm block in the guide — not trails it. Tell the reader the
+        // antiphon itself when we have the text; either way the page badge + the
+        // section label point them to it in the book.
+        if (sawAntiphon) {
+          sections.push({
+            key: `${s.id}-antiphon`,
+            label: isInvitatory ? "The Invitatory Antiphon" : "The Antiphon",
+            detail: antiphonText
+              ? `“${antiphonText.replace(/^[“"]|[”"]$/g, "")}” — said before the psalm, then repeated after.`
+              : "Said before the psalm, then repeated after it.",
+            // The antiphon is printed with the psalm — fall back to the psalm's
+            // page when the antiphon slide carries no page of its own, so the
+            // reader always knows where to look.
+            page: bookPageRef(antiphonRef, ref),
+            readUrl: null,
+          });
+        }
         sections.push({
           key: s.id,
           label: isInvitatory ? "The Invitatory" : "The Psalms Appointed",
@@ -3174,16 +3192,6 @@ function buildBookSections(slides: Slide[]): BookSection[] {
           page: bookPageRef(ref),
           readUrl: null,
         });
-        // The antiphon sits with the psalm — its own card so it isn't missed.
-        if (sawAntiphon) {
-          sections.push({
-            key: `${s.id}-antiphon`,
-            label: "The Antiphon",
-            detail: antiphonText,
-            page: bookPageRef(antiphonRef),
-            readUrl: null,
-          });
-        }
         break;
       }
       case "lesson_title":
