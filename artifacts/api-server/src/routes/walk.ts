@@ -21,7 +21,7 @@ const router: IRouter = Router();
 // Fellows (and Walking Together with it) is turned off. Enforce it at the SERVER
 // so a peer's today-only rhythm dots can't be fetched by hand while the feature
 // is off — not just hidden in the UI. Every /walk route short-circuits here.
-router.use((_req, res, next) => {
+router.use("/walk", (_req, res, next) => {
   if (!FELLOWS_ENABLED) { res.status(403).json({ error: "Walking together is turned off." }); return; }
   next();
 });
