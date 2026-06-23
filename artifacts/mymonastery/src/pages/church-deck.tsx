@@ -77,57 +77,11 @@ function buildSlides(t: TFunction): Slide[] {
     muted: true,
   },
 
-  // ── Feature 1: Prayer Requests ──
-  // 5
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: t("church_deck.requests_headline"),
-    body: [
-      t("church_deck.requests_body"),
-    ],
-    mock: "prayer-requests",
-  },
+  // ─────────────────────────────────────────────────────────────
+  // The root: the Daily Office — the prayer the Church hands you
+  // ─────────────────────────────────────────────────────────────
 
-  // ── Feature 1a: Notification when community prays for you ──
-  // 6
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: t("church_deck.notification_headline"),
-    body: [
-      t("church_deck.notification_body"),
-    ],
-    mock: "prayer-notification",
-    stacked: true,
-  },
-
-  // ── Feature 1b: Praying for the world together ──
-  // 7
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: t("church_deck.world_headline"),
-    body: [
-      t("church_deck.world_body"),
-    ],
-    mock: "community-intercession",
-  },
-
-  // ── Feature 2: BCP Intercessions ──
-  // 6
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: t("church_deck.bcp_headline"),
-    body: [
-      t("church_deck.bcp_body"),
-    ],
-    mock: "bcp",
-  },
-
-  // ── Feature 3: The Daily Office ──
-  // 8
+  // The Daily Office
   {
     kind: "feature-combo",
     label: "",
@@ -138,7 +92,7 @@ function buildSlides(t: TFunction): Slide[] {
     mock: "daily-office",
   },
 
-  // ── Feature 3a: One office, four ways to pray it ──
+  // One office, prayed your way
   {
     kind: "feature-combo",
     label: "",
@@ -149,8 +103,7 @@ function buildSlides(t: TFunction): Slide[] {
     mock: "office-formats",
   },
 
-  // ── Feature 3b: Prayer Rhythm — daily habit of prayer ──
-  // 9
+  // A rhythm, held together — Daily Progress (position, not score)
   {
     kind: "feature-combo",
     label: "",
@@ -158,10 +111,10 @@ function buildSlides(t: TFunction): Slide[] {
     body: [
       t("church_deck.rhythm_body"),
     ],
-    mock: "prayer-rhythm",
+    mock: "prayer-streak",
   },
 
-  // ── Daily habit 1: a gentle reminder calls you back each day ──
+  // A gentle reminder calls you back each day
   {
     kind: "feature-combo",
     label: "",
@@ -173,15 +126,57 @@ function buildSlides(t: TFunction): Slide[] {
     stacked: true,
   },
 
-  // ── Daily habit 2: the streak that forms as you keep returning ──
+  // ─────────────────────────────────────────────────────────────
+  // Praying in common: the world's needs, the BCP intercessions
+  // ─────────────────────────────────────────────────────────────
+
+  // Praying for the world together
   {
     kind: "feature-combo",
     label: "",
-    headline: t("church_deck.habit_streak_headline"),
+    headline: t("church_deck.world_headline"),
     body: [
-      t("church_deck.habit_streak_body"),
+      t("church_deck.world_body"),
     ],
-    mock: "prayer-streak",
+    mock: "community-intercession",
+  },
+
+  // BCP Intercessions
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: t("church_deck.bcp_headline"),
+    body: [
+      t("church_deck.bcp_body"),
+    ],
+    mock: "bcp",
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // The fruit: praying for one another in your own community
+  // ─────────────────────────────────────────────────────────────
+
+  // Prayer Requests
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: t("church_deck.requests_headline"),
+    body: [
+      t("church_deck.requests_body"),
+    ],
+    mock: "prayer-requests",
+  },
+
+  // The community is gently notified when it prays for you
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: t("church_deck.notification_headline"),
+    body: [
+      t("church_deck.notification_body"),
+    ],
+    mock: "prayer-notification",
+    stacked: true,
   },
 
   // 17 — Gatherings (text + mock on one slide)
@@ -581,7 +576,7 @@ function PrayerNotificationMock() {
 function CommunityIntercessionMock() {
   const { t } = useTranslation();
   const parishes = [
-    { emoji: "🕊️", name: "Heavenly Rest" },
+    { emoji: "🕊️", name: "St. Aidan's" },
     { emoji: "🌿", name: "NYC Leaders" },
     { emoji: "🌻", name: "St George's" },
     { emoji: "🙏🏽", name: "All Souls" },
@@ -1515,15 +1510,13 @@ function DailyReminderMock() {
   );
 }
 
-/* ── Daily Progress — the real rhythm/streak screen ── */
-// Mirrors the live Daily Progress page (daily-progress.tsx): the Next/Done
-// practice rows and, the focus of this slide, the StreakCard — amber left bar,
-// 🔥 + the day-rhythm count, "Kept N of the last 7 days", the 14-day strip, and
-// the "others in your gardens" rail.
+/* ── Daily Progress — where you are in today's rhythm ── */
+// Mirrors the live Daily Progress page (daily-progress.tsx): the Next / Earlier-
+// today practice rows — position in the day, not a score. No streak, no tally,
+// no "others in your gardens" rail (deliberately removed: presence, not
+// performance).
 function DailyProgressMock() {
   const { t } = useTranslation();
-  const GREEN_BRIGHT = "110,180,130";
-  const days = [true, true, true, true, true, true, true, true, true, true, true, true, true, false];
   const row = (emoji: string, title: string, sub: string, rgb: string, done: boolean) => (
     <div
       className="rounded-2xl overflow-hidden flex mb-2"
@@ -1557,37 +1550,6 @@ function DailyProgressMock() {
       <p className="text-[8px] uppercase tracking-[0.18em] font-semibold mb-1.5 mt-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>{t("church_deck.mock_progress_done")}</p>
       {row("🌅", t("church_deck.mock_progress_morning"), t("church_deck.mock_progress_prayed"), "46,107,64", true)}
 
-      {/* StreakCard — the rhythm taking hold (amber accent). */}
-      <div className="rounded-2xl overflow-hidden flex mt-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.24)" }}>
-        <div className="w-1 flex-shrink-0" style={{ background: "rgba(193,127,36,0.85)" }} />
-        <div className="flex-1 px-3 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[16px] flex-shrink-0">🔥</span>
-            <p className="flex-1 leading-none" style={{ color: "#E8B45E", fontFamily: C.font, fontSize: 20, fontWeight: 700 }}>
-              37 <span className="text-[10px] font-semibold ml-1" style={{ color: "#D9A45B" }}>{t("church_deck.mock_progress_streak_unit")}</span>
-            </p>
-            <p className="text-[9px] text-right flex-shrink-0" style={{ color: C.sage, fontFamily: C.font }}>{t("church_deck.mock_progress_last7")}</p>
-          </div>
-          <div className="flex items-center gap-1 mt-2.5">
-            {days.map((kept, i) => (
-              <span
-                key={i}
-                className="flex-1 rounded-full"
-                style={{ height: 6, maxWidth: 16, background: kept ? `rgba(${GREEN_BRIGHT},0.85)` : "rgba(143,175,150,0.16)", border: i === days.length - 1 ? "1.5px solid rgba(240,237,230,0.75)" : "1px solid transparent" }}
-              />
-            ))}
-          </div>
-          <p className="text-[8.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>{t("church_deck.mock_progress_last14")}</p>
-          <div className="mt-2.5 pt-2.5 flex items-center gap-2" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
-            <div className="flex -space-x-1.5 flex-shrink-0">
-              {["#8B6F4E", "#5A7A8B", "#6B8B5A", "#7A5A6B"].map((bg, i) => (
-                <div key={i} className="w-5 h-5 rounded-full" style={{ background: bg, border: "1.5px solid #0C1F12" }} />
-              ))}
-            </div>
-            <p className="text-[9.5px] italic" style={{ color: C.sage, fontFamily: C.font }}>{t("church_deck.mock_progress_garden")}</p>
-          </div>
-        </div>
-      </div>
     </MockPhone>
   );
 }
