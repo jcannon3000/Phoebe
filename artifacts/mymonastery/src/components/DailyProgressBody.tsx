@@ -556,6 +556,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     enabled: reflectionSource === "cac",
   });
   const cacTitle = (cacMeta?.title ?? "").trim();
+  // What you put on for today's Audio Divina — shown as the card's second line
+  // once it's done (e.g. the album/track), in place of the generic "kept".
+  const { data: listeningLogData } = useQuery<{ entries: Array<{ day: string; what: string }> }>({
+    queryKey: ["/api/listening"],
+    queryFn: () => apiRequest("GET", "/api/listening"),
+    staleTime: 60_000,
+    enabled: listeningActive,
+  });
+  const listeningWhat = listeningActive
+    ? ((listeningLogData?.entries ?? []).find((e) => e.day === new Date().toLocaleDateString("en-CA"))?.what ?? "").trim()
+    : "";
   // Office/devotion subtitle leads with the descriptive line, then flips
   // between the two things you carry in.
   const morningBlurb = t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" });
@@ -637,7 +648,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
     title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
-    blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
+    blurb: listeningDone ? (listeningWhat || kept) : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const lectioCard = {
