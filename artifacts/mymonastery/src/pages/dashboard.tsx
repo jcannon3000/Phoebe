@@ -2887,7 +2887,7 @@ function PodcastHomeCard({ show }: { show: FollowedShow }) {
       onClick={open}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") open(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
+      style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.40)" }}
     >
       <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
         {artwork ? (

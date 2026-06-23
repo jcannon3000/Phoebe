@@ -321,7 +321,9 @@ export default function PodcastShowPage() {
                   key={ep.id}
                   className="w-full rounded-2xl p-3.5"
                   style={{
-                    background: active ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.08)",
+                    background: "rgba(9,26,16, 0.297)",
+                    backdropFilter: "blur(11.34px)",
+                    WebkitBackdropFilter: "blur(11.34px)",
                     border: `1px solid ${active ? "rgba(168,197,160,0.45)" : "rgba(46,107,64,0.22)"}`,
                   }}
                 >
