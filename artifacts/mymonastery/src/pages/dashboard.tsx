@@ -6731,6 +6731,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               standard home modules. */}
           {filter === null && (newHomeForEveryone || isBeta) && !eventsOnly && (
             <div className="mt-0 mb-3">
+              {/* Faces of everyone who prayed with you this week, above "Next".
+                  (Receiving prayers as a gathered cloud — kept; self-hides when
+                  no one has prayed with you.) */}
+              <PrayedWithWeekRail />
               {allHabitsDone ? (() => {
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
