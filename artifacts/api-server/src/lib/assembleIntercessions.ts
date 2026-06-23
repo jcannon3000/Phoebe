@@ -361,9 +361,10 @@ export async function buildIntercessionSlides(
   // collapsed body vs. per-item slides), and a shared query layer
   // would force both consumers through one transformation. The query
   // text is identical though, so any future change should land here
-  // and in the slide builder above.
+  // and in the slide builder above — including excluding the viewer's
+  // OWN requests (you don't pray for your own ask in your office/devotion).
   const gardenIds = await getGardenUserIds(userId);
-  const visibleOwnerIds = [userId, ...gardenIds];
+  const visibleOwnerIds = gardenIds.filter((id) => id !== userId);
 
   const requestRows = visibleOwnerIds.length > 0
     ? await db

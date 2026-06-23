@@ -120,6 +120,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
     podcasts:     { label: t("customize_home.module_podcasts", { defaultValue: "Podcasts" }), emoji: "🎧", sub: t("customize_home.module_podcasts_sub", { defaultValue: "Shows you've added · pick up where you left off" }) },
     requests:     { label: t("customize_home.module_requests"),  emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },
+    feeds:        { label: t("customize_home.module_feeds", { defaultValue: "Prayer feeds" }), emoji: "🌍", sub: t("customize_home.module_feeds_sub", { defaultValue: "Daily intentions from feeds you follow" }) },
   };
 }
 
