@@ -161,6 +161,18 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   });
   const fellowRequestCount = fellowReqData?.count ?? 0;
 
+  // Accepted fellows + community membership drive which social rows show. A
+  // brand-new user with neither sees no Prayer list (and "Community" reads
+  // "Fellows" until they're actually in a community).
+  const { data: fellowsListData } = useQuery<{ fellows: Array<{ userId: number }> }>({
+    queryKey: ["/api/fellows"],
+    queryFn: () => apiRequest("GET", "/api/fellows"),
+    enabled: FELLOWS_ENABLED && open && !!user && !earlyOfficesOnly,
+    staleTime: 30_000,
+  });
+  const hasFellows = (fellowsListData?.fellows?.length ?? 0) > 0;
+  const hasGroup = (groupsData?.groups?.length ?? 0) > 0;
+
   // Something new from a friend (an unseen 🙌 encouragement) → adds to the
   // People row badge so you see there's a new one waiting.
   const { data: encData } = useQuery<{ encouragements: unknown[] }>({
@@ -305,24 +317,28 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     have their own menu section; they live inside /people, which
                     is now the Community page. */}
                 <MenuRow
-                  emoji="🏘️"
-                  label={t("menu.community", { defaultValue: "Community" })}
+                  emoji={hasGroup ? "🏘️" : "👥"}
+                  label={hasGroup ? t("menu.community", { defaultValue: "Community" }) : t("menu.fellows", { defaultValue: "Fellows" })}
                   onClick={() => navigate("/people")}
                 />
-                {/* Prayer list — others' requests to pray through (off the
-                    home once you've prayed everyone's, so it lives here). */}
+                {/* Prayer list — others' requests to pray through. Hidden until
+                    you have a fellow or a community (a solo new user has none). */}
+                {(hasFellows || hasGroup) && (
                 <MenuRow
                   emoji="🙏"
                   label={t("menu.prayer_list", { defaultValue: "Prayer list" })}
                   onClick={() => navigate("/prayer-list")}
                 />
-                {/* Events — the upcoming schedule (services, gatherings,
-                    practices), its own page now that it's off the home. */}
+                )}
+                {/* Events — the upcoming schedule. Hidden until you're in a
+                    community (events come from your groups). */}
+                {hasGroup && (
                 <MenuRow
                   emoji="📅"
                   label={t("menu.events", { defaultValue: "Events" })}
                   onClick={() => navigate("/events")}
                 />
+                )}
               </div>
             )}
 

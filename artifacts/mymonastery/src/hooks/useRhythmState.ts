@@ -428,10 +428,11 @@ export function useRhythmState(): RhythmState {
       : s === "fdd" ? (hasReadFddToday() || !!reflRead?.fdd)
         : (hasReadSsjeToday() || !!reflRead?.ssje);
   const fromLayout = REFLECT_SOURCES.filter((s) => homeCardActive(user?.homeLayout, s));
-  const selectedReflections: Array<"cac" | "fdd" | "ssje"> =
-    fromLayout.length > 0
-      ? [...fromLayout]
-      : (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje" ? [reflectionSource] : []);
+  // Default new-user rhythm = Morning Devotion · Evening Devotion, no auto-
+  // reflection. A reflection is part of the rhythm ONLY when explicitly chosen
+  // in the customizer (a home-layout reflection card); un-set-up users get none.
+  void reflectionSource;
+  const selectedReflections: Array<"cac" | "fdd" | "ssje"> = [...fromLayout];
   const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
   const reflectActive = reflections.length > 0;
   const coreFlags = [

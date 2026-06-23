@@ -5344,6 +5344,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     staleTime: 0,
   });
 
+  // Community membership. A brand-new user not in any group sees NO home
+  // events — the upcoming schedule comes from the communities you belong to.
+  const { data: dashGroupsData } = useQuery<{ groups: Array<{ id: number }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const hasGroup = (dashGroupsData?.groups?.length ?? 0) > 0;
+
   // ── Daily prayer-slideshow invite ────────────────────────────────────────
   // Declared here, AFTER momentsData, because the effect's dep array reads
   // momentsData and would otherwise blow up on first render with a
@@ -5959,6 +5969,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // ── Placement + deduplication → three time buckets ────────────────────────
 
   const { todayItems, tomorrowItems, weekItems, monthItems, totalCount } = useMemo(() => {
+    // No community → no home events (the schedule is sourced from your groups).
+    if (!hasGroup) return { todayItems: [], tomorrowItems: [], weekItems: [], monthItems: [], totalCount: 0 };
     const allMoments = momentsData?.moments ?? [];
 
     // Hide practices whose creator reached the goal more than two days ago
@@ -6387,7 +6399,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
 
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly, hasGroup]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");

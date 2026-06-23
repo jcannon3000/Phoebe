@@ -672,8 +672,9 @@ export default function People() {
           </div>
         )}
 
-        {/* Your communities — moved here from the side menu. Tap a card to open
-            a community; the link below finds or starts new ones. */}
+        {/* Your communities — hidden until you're actually in one. A brand-new
+            user with no community sees only their Fellows (above). */}
+        {(groupsData?.groups?.length ?? 0) > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -712,6 +713,7 @@ export default function People() {
             {t("people.find_community", { defaultValue: "Find or start a community →" })}
           </button>
         </div>
+        )}
 
         {/* Heart to Heart (the 1:1 daily prayer exchange) is hidden for now —
             the "Start a Heart to Heart" entry card was removed. */}
