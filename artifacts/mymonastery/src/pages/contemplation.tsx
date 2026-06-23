@@ -294,7 +294,7 @@ function DailyGoalCard({
         <>
           {!hasGoal && (
             <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
-              {t("contemplation.goal_prompt", { defaultValue: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it." })}
+              {t("contemplation.goal_prompt", { defaultValue: "Set how much you'd like to sit each day — Phoebe will help you get there, at your own pace." })}
             </p>
           )}
           <div className="flex items-center gap-2">

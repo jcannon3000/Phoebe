@@ -483,7 +483,7 @@ export const en = {
   settings: {
     contemplation_goal: "Daily contemplation goal",
     contemplation_goal_blurb: "Aim for a few quiet minutes of silent prayer each day.",
-    contemplation_remind: "Remind me around 7pm if unmet",
+    contemplation_remind: "A gentle evening reminder",
     email_blurb: "Choose whether Phoebe sends you occasional emails. You can also unsubscribe from the link at the bottom of any email.",
     email_off: "Unsubscribe from emails",
     email_off_sub: "Stops non-essential email. Account & security emails still arrive.",
@@ -1098,7 +1098,7 @@ export const en = {
     side_both: "Both",
     silence_goal_eyebrow: "Pray · contemplative silence",
     silence_goal_title: "How much silence a day?",
-    silence_goal_sub: "Set a daily goal — we'll gently remind you around 7pm on days you haven't reached it. Choose None to keep the practice without a set goal.",
+    silence_goal_sub: "Set how much you'd like to sit each day — Phoebe helps you reach it at your own pace, never measured against you. Choose None to keep the practice without a set goal.",
     silence_none: "None",
     turn_today: "Today",
     turn_made_space: "You've made space for God {{count}} days in Phoebe.",

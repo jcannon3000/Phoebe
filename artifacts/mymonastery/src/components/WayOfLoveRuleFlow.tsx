@@ -33,8 +33,6 @@ import {
   getSideLevel,
   getSideEntry,
   getReflectionSource,
-  getDefaultContemplationMinutes,
-  setDefaultContemplationMinutes,
   type ReflectionSource,
   type OfficeSide,
   type DefaultOfficeEntry,
@@ -241,18 +239,6 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setContemplationStyle(s);
     try { localStorage.setItem("phoebe:contemplation-style", s); } catch { /* ignore */ }
-  };
-  // How long each silent sit runs (minutes). Asked right after a side picks
-  // Contemplation; persisted as the default contemplation length so "Begin"
-  // uses it.
-  const [contemplationLen, setContemplationLen] = useState<number>(() => {
-    const m = getDefaultContemplationMinutes();
-    return m > 0 ? m : 10;
-  });
-  const chooseContemplationLen = (m: number) => {
-    touchedRef.current = true;
-    setContemplationLen(m);
-    setDefaultContemplationMinutes(m);
   };
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
@@ -492,9 +478,14 @@ export default function WayOfLoveRuleFlow({
     // "none" reflection → no newsletter card; otherwise the first picked source
     // is the per-side close-slide reflection.
     const primary: ReflectionSource = newsletters[0] ?? "none";
-    // Contemplative Prayer drives the silence goal; if it's unselected there's no
-    // goal (0) even if a number lingered in state.
-    const effGoalMin = contemplative.prayer ? goalMin : 0;
+    // The silence goal (minutes a day) applies whenever contemplation is part of
+    // the rhythm — either as a Contemplative Prayer practice, OR as a side's
+    // prayer form set to silent contemplation. Both are "how much to sit a day".
+    // No contemplation anywhere → no goal (0), even if a number lingered in state.
+    const anySideSilentContemplation =
+      (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation") &&
+      contemplationStyle === "silent";
+    const effGoalMin = contemplative.prayer || anySideSilentContemplation ? goalMin : 0;
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
@@ -900,18 +891,19 @@ export default function WayOfLoveRuleFlow({
             ? t("wol_rule.side_config_contemplation_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder to sit in the ${cap.toLowerCase()}?` })
             : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
-        {/* For a silent contemplation sit, ask HOW LONG each sit runs. (The
-            silent-vs-Co-Breathe choice is made on the prayer-form list above.) */}
+        {/* For a silent contemplation sit, ask HOW MUCH to sit a day — the daily
+            goal (the silent-vs-Co-Breathe choice is made on the prayer-form list
+            above). Wired to the same goal the Contemplative-Prayer step sets. */}
         {isContemplation && contemplationStyle === "silent" && (
           <>
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
+              {t("wol_rule.contemplation_length_label", { defaultValue: "How much would you like to sit each day?" })}
             </p>
             <div style={{ position: "relative" }}>
               <select
-                value={String(contemplationLen)}
-                onChange={(e) => chooseContemplationLen(parseInt(e.target.value, 10))}
-                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
+                value={String(goalMin)}
+                onChange={(e) => chooseGoal(e.target.value)}
+                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How much would you like to sit each day?" })}
                 style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
               >
                 {[5, 10, 15, 20, 30, 45, 60].map((m) => (
@@ -920,6 +912,9 @@ export default function WayOfLoveRuleFlow({
               </select>
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
+            <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
+              {t("wol_rule.contemplation_length_note", { defaultValue: "A gentle daily goal — Phoebe helps you reach it at your own pace, never measured against you." })}
+            </p>
           </>
         )}
         {/* Contemplation has no on-screen/listen/book method — it's a silent
@@ -1230,7 +1225,7 @@ export default function WayOfLoveRuleFlow({
     ...SIDES.filter((s) => sides[s]).map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? "Silent sit" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? (contemplationStyle === "silent" && goalMin > 0 ? `${goalMin} min a day` : "Silent sit") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min a day` : "No daily goal", step: "contemplation-goal" as Step }] : []),

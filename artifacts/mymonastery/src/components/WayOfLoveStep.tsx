@@ -560,7 +560,7 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     } else {
       eyebrow = t("way_of_love.silence_goal_eyebrow", { defaultValue: "Pray · contemplative silence" });
       title = t("way_of_love.silence_goal_title", { defaultValue: "How much silence a day?" });
-      sub = t("way_of_love.silence_goal_sub", { defaultValue: "Set a daily goal — we'll gently remind you around 7pm on days you haven't reached it. Choose None to keep the practice without a set goal." });
+      sub = t("way_of_love.silence_goal_sub", { defaultValue: "Set how much you'd like to sit each day — Phoebe helps you reach it at your own pace, never measured against you. Choose None to keep the practice without a set goal." });
       body = (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 26 }}>
           {SILENCE_GOAL_PRESETS.map((m) => {

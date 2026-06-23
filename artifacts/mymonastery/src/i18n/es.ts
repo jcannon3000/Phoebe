@@ -479,7 +479,7 @@ export const es: Translations = {
   settings: {
     contemplation_goal: "Meta diaria de contemplación",
     contemplation_goal_blurb: "Proponte unos minutos de quietud en oración silenciosa cada día.",
-    contemplation_remind: "Recuérdamelo cerca de las 7 de la tarde si no la alcanzo",
+    contemplation_remind: "Un recordatorio suave por la tarde",
     email_blurb: "Elige si Phoebe te envía correos ocasionales. También puedes darte de baja con el enlace al final de cualquier correo.",
     email_off: "Darme de baja de los correos",
     email_off_sub: "Detiene los correos no esenciales. Los correos de cuenta y seguridad siguen llegando.",
@@ -1092,7 +1092,7 @@ export const es: Translations = {
     side_both: "Ambas",
     silence_goal_eyebrow: "Orar · silencio contemplativo",
     silence_goal_title: "¿Cuánto silencio al día?",
-    silence_goal_sub: "Fija una meta diaria: te lo recordaremos con suavidad hacia las 7 p. m. los días que no la alcances. Elige Ninguna para mantener la práctica sin una meta fija.",
+    silence_goal_sub: "Fija cuánto te gustaría sentarte cada día — Phoebe te ayuda a alcanzarlo a tu propio ritmo, nunca como una medida en tu contra. Elige Ninguna para mantener la práctica sin una meta fija.",
     silence_none: "Ninguna",
     turn_today: "Hoy",
     turn_made_space: "Has hecho espacio para Dios {{count}} días en Phoebe.",
