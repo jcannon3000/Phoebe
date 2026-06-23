@@ -7092,6 +7092,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   const ownReqs = (dashPrayerRequests ?? []).filter(
                     (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
                   );
+                  // Continue the home's ONE top-to-bottom cascade: this section sits
+                  // below the rhythm cards, the prayer-list carousel, and the events
+                  // schedule, so its fade-up must start after all of them — not
+                  // restart at delay 0 (which made it pop in out of order).
+                  const carouselCount = (dashPrayerRequests ?? []).filter(
+                    (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
+                  ).length;
+                  const eventCount = [fToday, fTomorrow, fWeek, fMonth].reduce((n, b) => n + b.filter(isEventItem).length, 0);
+                  const ownBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount + eventCount;
+                  const ownDelay = (i: number) => Math.min((ownBase + i) * 0.1, 1.5);
                   const facesInitials = (name: string | null) =>
                     (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
                   const newRequestBtn = isAdminOfAny ? (
@@ -7120,7 +7130,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           className="flex items-center gap-3 mb-2"
                           initial={{ opacity: 0, y: 6 }}
                           animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: ownDelay(0) }}
                         >
                           <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                             {t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" })}
@@ -7139,7 +7149,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                               <motion.div
                                 initial={{ opacity: 0, y: 6 }}
                                 animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(ri * 0.1, 1.5) }}
+                                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: ownDelay(ri + 1) }}
                                 className="relative flex rounded-xl overflow-hidden"
                                 style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                               >
