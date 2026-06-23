@@ -394,15 +394,8 @@ export default function CobreathePage() {
     if (breaths < 1) { setLocation("/dashboard"); return; }
     logSit(secondsKept);          // credit the contemplation sit for what was breathed
     record.mutate(secondsKept);   // count you in today's communal breath
-    // Cobreathing one-to-one with a fellow STARTS a Heart to Heart with them
-    // (Walking Together). Only when they opted into "Breathe with a fellow" AND
-    // someone was actually breathing live; the server filters to real fellows.
-    if (joinInPersonRef.current) {
-      const ids = Array.from(coBreathedRef.current.keys());
-      if (ids.length > 0) {
-        void apiRequest("POST", "/api/breath/together-with", { fellowIds: ids }).catch(() => { /* best-effort */ });
-      }
-    }
+    // Heart to Heart is OFF — cobreathing with a fellow no longer starts a 1:1
+    // prayer exchange (no Heart to Heart features are turned on).
     // The breaths actually taken — open-ended, NEVER floored to the target (four
     // breaths read as four, equal to any others). Drives the summary + the tally.
     setBreathsTaken(breaths);

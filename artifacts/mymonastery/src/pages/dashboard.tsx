@@ -6615,10 +6615,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           )}
 
           {/* Plans ("How About") — share something you're going to and your
-              fellows can come. Moved here from the People page: it belongs with
-              the upcoming schedule. Beta hosts always see the compose surface;
-              everyone else sees it only when a fellow has shared a plan. */}
-          {eventsOnly && FELLOWS_ENABLED && (
+              fellows can come. Kept on the Events page regardless of the master
+              Fellows flag (Plans + prayer-request sharing are the fellows
+              features that stay on; accountability does not). Beta hosts always
+              see the compose surface; everyone else only when a plan is shared. */}
+          {eventsOnly && (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>
