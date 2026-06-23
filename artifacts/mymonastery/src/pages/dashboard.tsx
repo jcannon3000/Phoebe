@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
+import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
@@ -6689,7 +6690,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               fellows can come. Moved here from the People page: it belongs with
               the upcoming schedule. Beta hosts always see the compose surface;
               everyone else sees it only when a fellow has shared a plan. */}
-          {eventsOnly && (
+          {eventsOnly && FELLOWS_ENABLED && (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>

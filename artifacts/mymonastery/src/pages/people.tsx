@@ -7,6 +7,7 @@ import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { useGardenSocket } from "@/hooks/useGardenSocket";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FellowsConnect } from "@/components/FellowsConnect";
@@ -445,8 +446,8 @@ function FindFriendsEntry() {
 // Fellows are 1:1 connections ONLY — an individual outside your communities who
 // can see your prayer requests and pray for you. The accountability / social
 // extras (Walking Together, 🙌 encouragements, the share-daily-progress
-// onboarding) stay OFF; flip this to re-enable them later.
-const FELLOW_EXTRAS = false;
+// onboarding) follow the single Fellows switch so they can't drift back on.
+const FELLOW_EXTRAS = FELLOWS_ENABLED;
 
 export default function People() {
   const [location, setLocation] = useLocation();

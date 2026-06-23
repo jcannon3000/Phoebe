@@ -18,6 +18,7 @@ import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacRea
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getSideLevel } from "@/lib/officePrefs";
 import { isJardinSealed } from "@/lib/jardinMode";
+import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -155,7 +156,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: fellowReqData } = useQuery<{ count: number }>({
     queryKey: ["/api/fellows/requests/count"],
     queryFn: () => apiRequest("GET", "/api/fellows/requests/count"),
-    enabled: open && !!user && rawIsBeta,
+    enabled: FELLOWS_ENABLED && open && !!user && rawIsBeta,
     staleTime: 30_000,
   });
   const fellowRequestCount = fellowReqData?.count ?? 0;
@@ -411,13 +412,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
-                {/* People (Fellows) — your 1:1 connections. Back on. */}
-                <MenuRow
-                  emoji="👥"
-                  label={t("menu.people", { defaultValue: "People" })}
-                  count={fellowRequestCount + newFromFriends}
-                  onClick={() => navigate("/people")}
-                />
+                {/* People (Fellows) turned off — the People menu row + page are
+                    hidden and fellow features paused (FELLOWS_ENABLED). */}
+                {FELLOWS_ENABLED && (
+                  <MenuRow
+                    emoji="👥"
+                    label={t("menu.people", { defaultValue: "People" })}
+                    count={fellowRequestCount + newFromFriends}
+                    onClick={() => navigate("/people")}
+                  />
+                )}
                 {/* Prayer list — others' requests to pray through (off the
                     home once you've prayed everyone's, so it lives here). */}
                 <MenuRow
@@ -1001,7 +1005,7 @@ function OpeningSplash() {
     queryKey: ["/api/fellows"],
     queryFn: () => apiRequest("GET", "/api/fellows"),
     staleTime: 60_000,
-    enabled: phase !== "gone" && !!user && native,
+    enabled: FELLOWS_ENABLED && phase !== "gone" && !!user && native,
   });
   const practicedFellows = useMemo(
     () => (fellowsResp?.fellows ?? []).filter((f) => f.turned || f.learned || f.prayed).slice(0, 4),
@@ -1014,9 +1018,10 @@ function OpeningSplash() {
   const myTurned = (() => { try { return localStorage.getItem(`phoebe:turn:${new Date().toLocaleDateString("en-CA")}`) === "1"; } catch { return false; } })();
   const myLights = { turned: myTurned, learned: rhythm.reflectDone, prayed: rhythm.morningDone || rhythm.eveningDone || rhythm.silenceDone || rhythm.cobreatheDone };
   const fellowsResolved = fellowsResp !== undefined;
-  const showFellows = fellowsResolved && practicedFellows.length > 0;
-  // Quote = the fallback, shown only once we KNOW no fellow has practiced today.
-  const showQuote = fellowsResolved && practicedFellows.length === 0;
+  const showFellows = FELLOWS_ENABLED && fellowsResolved && practicedFellows.length > 0;
+  // Quote = the fallback. With Fellows off it's always the splash; otherwise it
+  // shows once we KNOW no fellow has practiced today.
+  const showQuote = !FELLOWS_ENABLED || (fellowsResolved && practicedFellows.length === 0);
   // The faces rail is retired; keep the flag (false) so its now-dormant render +
   // cache effects still compile without ever running.
   const showFaces = false;
