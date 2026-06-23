@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -4050,6 +4051,7 @@ function PrayerListCarousel({
   viewerAvatarUrl,
   tight = false,
   hideTitle = false,
+  cascadeFrom = 0,
 }: {
   requests: PrayerListCarouselRow[];
   viewerName: string | null;
@@ -4061,8 +4063,29 @@ function PrayerListCarousel({
   /** Hide the "Prayer List" title row — used under the home tab, which
    *  already labels the section, so the title isn't repeated. */
   hideTitle?: boolean;
+  /** Global cascade start index — the carousel rows continue the home's
+   *  one top-to-bottom cascade (rhythm rows → prayer list → events). */
+  cascadeFrom?: number;
 }) {
   const { t } = useTranslation();
+  // Hold the row cascade + haptics until the app-open splash has faded (native).
+  const [splashCleared, setSplashCleared] = useState<boolean>(() => {
+    if (!isNativeShell()) return true;
+    try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
+  });
+  useEffect(() => {
+    if (splashCleared) return;
+    const clear = () => setSplashCleared(true);
+    window.addEventListener("phoebe:splash-done", clear);
+    const id = window.setTimeout(clear, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+  }, [splashCleared]);
+  const carouselHaptedRef = useRef(false);
+  useEffect(() => {
+    if (!splashCleared || carouselHaptedRef.current) return;
+    carouselHaptedRef.current = true;
+    return scheduleCascadeHaptics(cascadeFrom, requests.length);
+  }, [splashCleared, cascadeFrom, requests.length]);
   // Tapping a prayer card (anywhere, including the 🙏) opens the prayer
   // slideshow focused on that request — and queues the rest of your prayer
   // list — so you actually pray it (and Amen there), rather than a silent
@@ -4144,7 +4167,8 @@ function PrayerListCarousel({
               <Link key={req.id} href={`/prayer-mode?focus=${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+                  transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + i) * 0.1, 1.5) }}
                   // A "new" (still-unprayed) request pulses its BORDER COLOR like
                   // a today's-event card — replacing the old top-of-home "N
                   // requests waiting" card. Prayed ones rest calm.
@@ -4800,6 +4824,12 @@ function TimeSection({
     const id = window.setTimeout(clear, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
   }, [splashCleared]);
+  const evtHaptedRef = useRef(false);
+  useEffect(() => {
+    if (!cascade || !splashCleared || evtHaptedRef.current) return;
+    evtHaptedRef.current = true;
+    return scheduleCascadeHaptics(cascadeFrom, items.length);
+  }, [cascade, splashCleared, cascadeFrom, items.length]);
   if (items.length === 0 && !trailingCards) return null;
 
   // Render in the input array's order — caller (parent useMemo) has
@@ -6968,7 +6998,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   const hasEvents = evToday.length + evTomorrow.length + evWeek.length + evMonth.length > 0;
                   if (carouselRows.length === 0 && !hasEvents) return null;
                   // Cascade continues across the sections so each card rises in turn.
-                  const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
+                  const carouselFrom = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
+                  const evBase = carouselFrom + carouselRows.length;
                   const cTomorrow = evBase + evToday.length;
                   const cWeek = cTomorrow + evTomorrow.length;
                   const cMonth = cWeek + evWeek.length;
@@ -6979,6 +7010,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           requests={carouselRows}
                           viewerName={userName || null}
                           viewerAvatarUrl={user?.avatarUrl ?? null}
+                          cascadeFrom={carouselFrom}
                           tight
                         />
                       )}
