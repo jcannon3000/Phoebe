@@ -65,12 +65,12 @@ export default function BeginPrayerPage() {
     // shared server default; otherwise "ask".
     const defaultPrayerLevel = getSideLevel(side) ?? officePrefs?.defaultPrayerLevel ?? "ask";
 
-    // "Reflect & Sit" — today's Forward Day by Day (read aloud) into a
-    // silent meditation timer. Self-contained (sets its own length, logs
-    // its own contemplation session), so route straight there regardless
-    // of time of day or prayed-today state.
+    // Contemplation as a side's prayer — open the silence timer directly
+    // (NOT the Forward Day by Day reflection). Self-contained (sets its own
+    // length, logs its own contemplation session), so route straight there
+    // regardless of time of day or prayed-today state.
     if (defaultPrayerLevel === "reflect-sit") {
-      setLocation("/reflect/fdd", { replace: true });
+      setLocation("/contemplation?begin=1", { replace: true });
       return;
     }
 

@@ -6702,15 +6702,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Fewer than three events to look forward to → round out the
                 // finished-day view with the "sit again" contemplation card.
                 const showSitAgain = allEvents.length < 3;
+                void nextThree; void showSitAgain; void evtProps;
                 return (
                   <div>
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
-                    {nextThree.length > 0 && (
-                      <TimeSection label={t("dashboard.next_up_section", { defaultValue: "Next up" })} items={nextThree} {...evtProps} cascade cascadeFrom={1} />
-                    )}
-                    {showSitAgain && (
-                      <motion.div {...enterUp(nextThree.length + 1)}>{contemplationAgainCard}</motion.div>
-                    )}
+                    {/* Events live UNDER the prayer requests now (below), not here. */}
+                    <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
                   </div>
                 );
               })() : (
@@ -6732,36 +6729,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   leadCard={null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                 />
-                {/* Once the day's routine is nearly done (≤2 cards left), surface
-                    the single soonest upcoming event so the day begins handing
-                    off to what's coming. */}
-                {(() => {
-                  const remaining = Math.max(0, rhythm.totalAnchors - rhythm.doneCount);
-                  if (remaining > 2) return null;
-                  // Dedup: once you've prayed everyone else's request today, the
-                  // prayer-list slot below surfaces the FULL upcoming schedule, so
-                  // this single "Coming up" event would just repeat one of them.
-                  const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
-                  if (!hasUnprayedOthers) return null;
-                  const isEvt = (it: DashboardItem) => it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
-                  const nextEvt = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt)[0];
-                  if (!nextEvt) return null;
-                  return (
-                    <div className="mt-4">
-                      <TimeSection
-                        label={t("dashboard.coming_up_section", { defaultValue: "Coming up" })}
-                        items={[nextEvt]}
-                        userEmail={userEmail}
-                        userName={userName}
-                        onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
-                        onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
-                        onOpenGathering={(r) => setOpenGathering(r)}
-                        cascade
-                        cascadeFrom={remaining + 1}
-                      />
-                    </div>
-                  );
-                })()}
+                {/* The in-rhythm "Coming up" event teaser was removed — events
+                    always sit UNDER the prayer requests (below). */}
                 </>
               )}
             </div>
@@ -6976,42 +6945,37 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       const bDone = !b.isOwnRequest && b.myAmenedToday ? 1 : 0;
                       return aDone - bDone;
                     });
-                  // Prayer list done for today (nothing of others' left to pray
-                  // for) → surface the upcoming EVENTS here instead, in the same
-                  // spot the prayer list would have been — even if routine cards
-                  // are still left to do. Events only (practices keep their own
-                  // cards above); nothing on the calendar → render nothing.
-                  if (carouselRows.length === 0) {
-                    const evToday = fToday.filter(isEventItem);
-                    const evTomorrow = fTomorrow.filter(isEventItem);
-                    const evWeek = fWeek.filter(isEventItem);
-                    const evMonth = fMonth.filter(isEventItem);
-                    if (evToday.length + evTomorrow.length + evWeek.length + evMonth.length === 0) return null;
-                    // Cascade continues across the sections (and after the daily
-                    // tasks) so each event card rises in turn instead of all at once.
-                    const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
-                    const cTomorrow = evBase + evToday.length;
-                    const cWeek = cTomorrow + evTomorrow.length;
-                    const cMonth = cWeek + evWeek.length;
-                    return (
-                      <div style={{ marginTop: 4 }}>
-                        <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
-                        <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cTomorrow} />
-                        <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cWeek} />
-                        <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cMonth} />
-                      </div>
-                    );
-                  }
+                  // Keep the prayer-request carousel on the home; the upcoming
+                  // EVENTS always render UNDERNEATH it, never replacing it.
+                  const evToday = fToday.filter(isEventItem);
+                  const evTomorrow = fTomorrow.filter(isEventItem);
+                  const evWeek = fWeek.filter(isEventItem);
+                  const evMonth = fMonth.filter(isEventItem);
+                  const hasEvents = evToday.length + evTomorrow.length + evWeek.length + evMonth.length > 0;
+                  if (carouselRows.length === 0 && !hasEvents) return null;
+                  // Cascade continues across the sections so each card rises in turn.
+                  const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
+                  const cTomorrow = evBase + evToday.length;
+                  const cWeek = cTomorrow + evTomorrow.length;
+                  const cMonth = cWeek + evWeek.length;
                   return (
-                    <div style={{ marginTop: -12 }}>
-                      <PrayerListCarousel
-                        requests={carouselRows}
-                        viewerName={userName || null}
-                        viewerAvatarUrl={user?.avatarUrl ?? null}
-                        tight
-                      />
-                      {/* "New prayer request" CTA moved into the "Your prayer
-                          requests" section below. */}
+                    <div style={{ marginTop: carouselRows.length > 0 ? -12 : 4 }}>
+                      {carouselRows.length > 0 && (
+                        <PrayerListCarousel
+                          requests={carouselRows}
+                          viewerName={userName || null}
+                          viewerAvatarUrl={user?.avatarUrl ?? null}
+                          tight
+                        />
+                      )}
+                      {hasEvents && (
+                        <div style={{ marginTop: carouselRows.length > 0 ? 16 : 4 }}>
+                          <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
+                          <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cTomorrow} />
+                          <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cWeek} />
+                          <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cMonth} />
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
