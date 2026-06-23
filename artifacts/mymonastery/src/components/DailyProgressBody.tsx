@@ -896,20 +896,58 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
   });
 
+  // Never leave the screen blank: if the rhythm queries haven't settled within a
+  // short grace window (a slow or ERRORING endpoint leaves `ready` false forever,
+  // since React Query keeps data undefined on error), render anyway and show
+  // whatever loaded — falling back to the practices below when there's nothing.
+  const [graceElapsed, setGraceElapsed] = useState(false);
+  useEffect(() => {
+    if (ready || graceElapsed) return;
+    const id = window.setTimeout(() => setGraceElapsed(true), 2500);
+    return () => window.clearTimeout(id);
+  }, [ready, graceElapsed]);
+
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
-  if (!ready) return null;
+  if (!ready && !graceElapsed) return null;
 
   // Gap above Done: when Next still has cards, a smaller gap reads right; when
   // the hero (or nothing) is the only thing in Next it needs more breathing room.
   const doneGapCls = !(upcomingDisplay.length > 0 || officeHero) ? ""
     : upcomingDisplay.length > 0 ? "mt-4" : "mt-8";
 
+  // The home / Daily progress must NEVER be blank. When there's nothing in the
+  // rhythm to show — no office hero, nothing Next, nothing kept (an un-set-up
+  // user, or an empty/erroring rhythm) — fall back to a set of practices to
+  // begin, with the Book of Common Prayer at the top (the office is the spine).
+  const nothingToShow = !officeHero && upcomingDisplay.length === 0 && completedDisplay.length === 0;
+  const fallbackCards = [
+    { key: "fb-bcp", emoji: "📖", rgb: "46,107,64", done: false, href: `/begin-prayer?side=${hour < 15 ? "morning" : "evening"}`, title: t("rhythm.card_bcp", { defaultValue: "Book of Common Prayer" }), blurb: t("rhythm.blurb_bcp", { defaultValue: "Pray the daily office" }), cta: t("rhythm.pray", { defaultValue: "Pray" }) },
+    { key: "fb-contemplation", emoji: "🕯️", rgb: "62,124,122", done: false, href: "/contemplation?begin=1", title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }), blurb: t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" }), cta: t("rhythm.begin", { defaultValue: "Begin" }) },
+    { key: "fb-cobreathe", emoji: "🌍", rgb: "62,124,122", done: false, href: "/cobreathe?start=1", title: t("rhythm.card_cobreathe", { defaultValue: "Co-Breathe" }), blurb: t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths as a prayer for climate justice" }), cta: t("rhythm.begin", { defaultValue: "Begin" }) },
+    { key: "fb-listening", emoji: "🎵", rgb: "108,140,180", done: false, href: "/listening", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), cta: t("rhythm.begin", { defaultValue: "Begin" }) },
+    { key: "fb-lectio", emoji: "📖", rgb: "120,150,170", done: false, href: "/lectio-divina", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), blurb: t("rhythm.blurb_lectio", { defaultValue: "Sacred reading" }), cta: t("rhythm.begin", { defaultValue: "Begin" }) },
+    { key: "fb-examen", emoji: "🌗", rgb: "150,120,180", done: false, href: "/examen", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), cta: t("rhythm.begin", { defaultValue: "Begin" }) },
+    { key: "fb-gratitude", emoji: "🙏", rgb: "108,162,124", done: false, href: "/gratitude", title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }), blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }), cta: t("rhythm.write", { defaultValue: "Write" }) },
+  ];
+
   return (
     <div>
       {/* A prayer-requests card leads the whole thing when there's something
           waiting. */}
       {leadCard && <motion.div {...enterUp(0)} className="mb-3">{leadCard}</motion.div>}
+      {nothingToShow && (
+        <>
+          {sectionHeader(t("daily_progress.begin_heading", { defaultValue: "Practices" }))}
+          <div className="flex flex-col gap-2">
+            {fallbackCards.map((c, i) => (
+              <motion.div key={c.key} {...enterUp(i)}>
+                {renderCard(c as (typeof cards)[number], false, i / Math.max(1, fallbackCards.length - 1))}
+              </motion.div>
+            ))}
+          </div>
+        </>
+      )}
       {(upcomingDisplay.length > 0 || officeHero) && (
         <>
           {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
