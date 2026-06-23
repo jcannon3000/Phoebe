@@ -7,7 +7,7 @@
  * matching hashes client-side, same as find-friends.
  */
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Users, Plus, Link2 as LinkIcon, Settings2 } from "lucide-react";
@@ -55,51 +55,6 @@ type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalC
 // full count of someone's practices. Bigger, calmer dots; three is the shared
 // goal regardless of how many anchors a person actually keeps.
 const SHARED_DOTS = 3;
-// The coarse presence lights (Turn / Learn / Pray) kept today — blue, glowing.
-// Only LIT lights are shown (no empty placeholders); renders nothing if none.
-function FellowLights({ turned, learned, prayed }: { turned: boolean; learned: boolean; prayed: boolean }) {
-  const lit = ([[turned, "Turn"], [learned, "Learn"], [prayed, "Pray"]] as Array<[boolean, string]>).filter(([on]) => on);
-  if (lit.length === 0) return null;
-  return (
-    <span className="inline-flex items-center gap-[6px]" aria-label="Today's presence">
-      {lit.map(([, label]) => (
-        <span key={label} title={`${label}: today`} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }} />
-      ))}
-    </span>
-  );
-}
-
-// A second line that crossfades between a few views (the kept-dots status and
-// the "Cobreathed together…" line), the same gentle opacity crossfade the home
-// cards' subtitle uses — fade the current view out, swap while hidden, fade the
-// next in. One view → static (no cycling).
-const CYCLE_LINE_H = 17; // fixed row height so swapping views never reflows the card
-function CycleLine({ views }: { views: ReactNode[] }) {
-  const [idx, setIdx] = useState(0);
-  const [shown, setShown] = useState(true);
-  useEffect(() => {
-    if (views.length <= 1) return;
-    let swap: ReturnType<typeof setTimeout> | undefined;
-    const t = setInterval(() => {
-      setShown(false);
-      swap = setTimeout(() => { setIdx((i) => (i + 1) % views.length); setShown(true); }, 260);
-    }, 5000);
-    return () => { clearInterval(t); if (swap) clearTimeout(swap); };
-  }, [views.length]);
-  if (views.length === 0) return null;
-  // Fixed-height row; the view is absolutely centered so neither the crossfade
-  // nor a taller/shorter view changes the card's height.
-  return (
-    <div style={{ position: "relative", height: CYCLE_LINE_H }}>
-      <div
-        className="absolute inset-0 flex items-center min-w-0"
-        style={{ opacity: shown ? 1 : 0, transition: "opacity 0.26s ease" }}
-      >
-        {views[idx % views.length]}
-      </div>
-    </div>
-  );
-}
 
 function normalizePhoneClient(raw: string): string | null {
   const trimmed = (raw ?? "").trim();
@@ -290,26 +245,17 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
         <div className="flex-1 min-w-0">
           <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{f.name ?? "Someone"}</p>
           {(() => {
-            // The second line crossfades between the kept-dots status and the
-            // "Cobreathed together…" line (when both exist), like the home cards.
+            // The second line is just the quiet "Cobreathed together…" line. The
+            // blue presence dots (Turn / Learn / Pray) and the walking-together
+            // status were removed — a fellow card now holds only when you last
+            // shared the breath, nothing to keep score of.
             const lt = lastTogetherLabel(togetherByUser[f.userId]);
-            const views: ReactNode[] = [];
-            views.push(
-              <div className="flex items-center gap-2" key="status">
-                {onSabbath ? (
-                  <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{t("fellows_c.walk_sabbath", { defaultValue: "🌙 On a phone sabbath" })}</span>
-                ) : (
-                  <>
-                    <FellowLights turned={lights.turned} learned={lights.learned} prayed={lights.prayed} />
-                    <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{allLit ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" }) : t("fellows_c.walking_together", { defaultValue: "Walking together" })}</span>
-                  </>
-                )}
+            if (!lt) return null;
+            return (
+              <div className="mt-0.5">
+                <span className="text-[11.5px] truncate block" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>🫁 {lt}</span>
               </div>
             );
-            if (lt) views.push(
-              <span className="text-[11.5px] truncate block" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }} key="together">🌍 {lt}</span>
-            );
-            return views.length > 0 ? <div className="mt-0.5"><CycleLine views={views} /></div> : null;
           })()}
         </div>
         <div className="flex items-center gap-2.5 shrink-0">

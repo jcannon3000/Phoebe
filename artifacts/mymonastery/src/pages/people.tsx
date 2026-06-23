@@ -133,7 +133,7 @@ function PersonCard({
   iPrayFor,
   prayForMe,
   isFellow,
-  fellowLights,
+  lastCobreathed,
   activePrayerFor,
   activePrayerForMe,
 }: {
@@ -146,7 +146,9 @@ function PersonCard({
   // who they connected with via a share-link Amen flow vs through
   // a normal community / letter path.
   isFellow: boolean;
-  fellowLights: { turned: boolean; learned: boolean; prayed: boolean } | null;
+  // The last local day you both held the Cobreathe (YYYY-MM-DD), or null.
+  // Shown as a quiet line in place of the old blue presence dots.
+  lastCobreathed: string | null;
   activePrayerFor: MyActivePrayerFor | null;
   activePrayerForMe: PrayerForMe | null;
 }) {
@@ -169,9 +171,25 @@ function PersonCard({
   // line with no rotation — their ask is the thing to surface, not a
   // rotating shared-practice label. Only fall back to the practice
   // ticker when there's no prayer request to carry.
-  const flapLines = prayerLine
+  // "Cobreathed together…" — the most recent local day you both held the
+  // breath (fellows only). Folded into the rotating subtitle in place of the
+  // old blue presence dots.
+  const cobreatheLine = (() => {
+    if (!isFellow || !lastCobreathed) return "";
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const today = ymd(new Date());
+    if (lastCobreathed === today) return "🫁 Cobreathed together today";
+    const d0 = new Date(`${lastCobreathed}T00:00:00`);
+    const diff = Math.round((new Date(`${today}T00:00:00`).getTime() - d0.getTime()) / 86400000);
+    const when = diff === 1 ? "yesterday"
+      : diff > 1 && diff < 30 ? `${diff} days ago`
+      : d0.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `🫁 Cobreathed together ${when}`;
+  })();
+  const baseLines = prayerLine
     ? [prayerLine]
     : allNames.filter(s => s.length > 0);
+  const flapLines = cobreatheLine ? [...baseLines, cobreatheLine] : baseLines;
 
   // Best streak across shared practices
   const bestStreak = Math.max(person.maxSharedStreak, ...person.sharedPractices.map(p => p.currentStreak), 0);
@@ -279,17 +297,6 @@ function PersonCard({
                     }}
                   >
                     Fellow
-                  </span>
-                )}
-                {isFellow && fellowLights && (fellowLights.turned || fellowLights.learned || fellowLights.prayed) && (
-                  <span className="inline-flex items-center gap-[3px] flex-shrink-0" aria-label="Today's presence">
-                    {(([["turned", "Turn"], ["learned", "Learn"], ["prayed", "Pray"]] as const)).filter(([k]) => fellowLights[k]).map(([k, label]) => (
-                      <span
-                        key={k}
-                        title={`${label}: today`}
-                        style={{ width: 7, height: 7, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }}
-                      />
-                    ))}
                   </span>
                 )}
               </div>
@@ -498,14 +505,17 @@ export default function People() {
     enabled: !!user,
     staleTime: 30_000,
   });
-  // Each fellow's three presence lights, keyed by userId — rendered as BLUE dots
-  // on their card (distinct from the viewer's own GREEN rhythm dots, which stay
-  // tied to their actual practices). Today-only; no counts, no history.
-  const fellowLightsByUserId = useMemo(() => {
-    const m = new Map<number, { turned: boolean; learned: boolean; prayed: boolean }>();
-    for (const f of fellowsData?.fellows ?? []) m.set(f.userId, { turned: !!f.turned, learned: !!f.learned, prayed: !!f.prayed });
-    return m;
-  }, [fellowsData]);
+  // The most recent local day you BOTH held the Cobreathe, keyed by fellow
+  // userId (server-derived from breath_sessions, fellow-scoped). This replaces
+  // the blue presence dots on a fellow's card — a quiet "Cobreathed together…"
+  // line instead of a daily scoreboard.
+  const { data: togetherData } = useQuery<{ together: Record<number, string> }>({
+    queryKey: ["/api/breath/together"],
+    queryFn: () => apiRequest("GET", "/api/breath/together"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const cobreathedByUserId = togetherData?.together ?? {};
   // New-fellow onboarding: prompt once (same place? + share daily progress?) for
   // a recently-formed fellowship we haven't set prefs for yet. Both parties see
   // it next time they open People; answering creates the prefs row, which stops
@@ -886,7 +896,7 @@ export default function People() {
                     iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                     isFellow={fellowEmails.has(person.email.toLowerCase())}
-                    fellowLights={person.userId != null ? (fellowLightsByUserId.get(person.userId) ?? null) : null}
+                    lastCobreathed={person.userId != null ? (cobreathedByUserId[person.userId] ?? null) : null}
                     activePrayerFor={
                       iPrayFor.find(
                         p => {
