@@ -535,6 +535,16 @@ export default function People() {
     [fellowsData],
   );
 
+  // The communities you're in — shown as cards below your fellows (Communities
+  // moved here from the side menu). Offices-only accounts 403 here and just get
+  // no cards.
+  const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
   // Subtle "pray for" indicators — both directions. Keyed by lowercase email.
   const { data: iPrayFor = [] } = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
@@ -628,8 +638,13 @@ export default function People() {
       <style>{FLAP_CSS}</style>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
       <div className="max-w-2xl mx-auto w-full pb-20">
-        {/* No page eyebrow/title — the Fellows section header leads the page
-            (sized like the home section titles) so it starts higher up. */}
+        {/* Page title — this is the Community page: your fellows (1:1 prayer
+            connections) up top, then the communities you're in. */}
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t("people.community_title", { defaultValue: "Community" })}
+          </h1>
+        </div>
 
         {/* A fellow's 🙌 encouragement, if one's waiting. (Extra — off.) */}
         {FELLOW_EXTRAS && <EncouragementBanner />}
@@ -656,6 +671,47 @@ export default function People() {
             <FellowsConnect canManage={rawIsBeta} />
           </div>
         )}
+
+        {/* Your communities — moved here from the side menu. Tap a card to open
+            a community; the link below finds or starts new ones. */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("people.your_communities", { defaultValue: "Your communities" })}
+            </h3>
+            <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+          </div>
+          {(groupsData?.groups?.length ?? 0) > 0 ? (
+            <div className="space-y-2">
+              {groupsData!.groups.map((g) => (
+                <button
+                  key={g.slug}
+                  onClick={() => setLocation(`/communities/${g.slug}`)}
+                  className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.3)" }}
+                >
+                  <span className="text-2xl flex-shrink-0" aria-hidden>{g.emoji ?? "🏘️"}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[15px] font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{g.name}</span>
+                    <span className="block text-[12px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{t("menu.members", { count: g.memberCount })}</span>
+                  </span>
+                  <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 20, flexShrink: 0 }}>›</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[13px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("people.no_communities_yet", { defaultValue: "You're not in a community yet." })}
+            </p>
+          )}
+          <button
+            onClick={() => setLocation("/communities")}
+            className="mt-3 text-[13px] font-semibold transition-opacity hover:opacity-80"
+            style={{ color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          >
+            {t("people.find_community", { defaultValue: "Find or start a community →" })}
+          </button>
+        </div>
 
         {/* Heart to Heart (the 1:1 daily prayer exchange) is hidden for now —
             the "Start a Heart to Heart" entry card was removed. */}

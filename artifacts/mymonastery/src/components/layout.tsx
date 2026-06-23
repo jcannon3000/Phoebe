@@ -300,128 +300,15 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 multi-community case. */}
             {!officesOnly && !jardinShell && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                {(() => {
-                  const groups = groupsData?.groups ?? [];
-                  if (groups.length === 1) {
-                    const g = groups[0]!;
-                    const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
-                    const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
-                    return (
-                      <button
-                        onClick={() => navigate(
-                          isAdminOfThis && pendingCount > 0
-                            ? `/communities/${g.slug}/requests`
-                            : `/communities/${g.slug}`,
-                        )}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
-                        onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                        onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
-                          <div className="text-left">
-                            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                            <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("menu.members", { count: g.memberCount })}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {isAdminOfThis && pendingCount > 0 && (
-                            <span
-                              className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
-                              style={{ background: "#C58A2A", color: "#1A1208", minWidth: 18, height: 18, padding: "0 5px" }}
-                            >
-                              {pendingCount}
-                            </span>
-                          )}
-                          <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
-                        </div>
-                      </button>
-                    );
-                  }
-                  return (
-                    <MenuSection emoji="🏘️" label={t("menu.communities")}>
-                      {groups.length > 0 ? (
-                        <div style={{ position: "relative" }}>
-                          <div
-                            className="space-y-1.5"
-                            style={
-                              groups.length > 3
-                                ? {
-                                    maxHeight: 196,
-                                    overflowY: "auto",
-                                    WebkitOverflowScrolling: "touch",
-                                    paddingBottom: 8,
-                                  }
-                                : undefined
-                            }
-                          >
-                            {groups.map((g) => {
-                              const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
-                              const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
-                              return (
-                                <button
-                                  key={g.slug}
-                                  onClick={() => navigate(
-                                    isAdminOfThis && pendingCount > 0
-                                      ? `/communities/${g.slug}/requests`
-                                      : `/communities/${g.slug}`,
-                                  )}
-                                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
-                                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                                  onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
-                                    <div className="text-left">
-                                      <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                                      <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("menu.members", { count: g.memberCount })}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {isAdminOfThis && pendingCount > 0 && (
-                                      <span
-                                        className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
-                                        style={{ background: "#C58A2A", color: "#1A1208", minWidth: 18, height: 18, padding: "0 5px" }}
-                                      >
-                                        {pendingCount}
-                                      </span>
-                                    )}
-                                    <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {groups.length > 3 && (
-                            <div
-                              className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
-                              style={{ background: "linear-gradient(to bottom, transparent 10%, #040D06)" }}
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-                          <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>{t("menu.no_communities")}</p>
-                          {rawIsAdmin && (
-                            <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
-                              {t("menu.create_one")}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </MenuSection>
-                  );
-                })()}
-                {/* People (Fellows) turned off — the People menu row + page are
-                    hidden and fellow features paused (FELLOWS_ENABLED). */}
-                {FELLOWS_ENABLED && (
-                  <MenuRow
-                    emoji="👥"
-                    label={t("menu.people", { defaultValue: "People" })}
-                    count={fellowRequestCount + newFromFriends}
-                    onClick={() => navigate("/people")}
-                  />
-                )}
+                {/* Community — your fellows (1:1 prayer connections) AND the
+                    communities you're in, all on one page. Communities no longer
+                    have their own menu section; they live inside /people, which
+                    is now the Community page. */}
+                <MenuRow
+                  emoji="🏘️"
+                  label={t("menu.community", { defaultValue: "Community" })}
+                  onClick={() => navigate("/people")}
+                />
                 {/* Prayer list — others' requests to pray through (off the
                     home once you've prayed everyone's, so it lives here). */}
                 <MenuRow
