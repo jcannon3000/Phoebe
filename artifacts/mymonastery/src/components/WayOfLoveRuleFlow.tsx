@@ -781,7 +781,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.listen_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love." })}
         </p>
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.listen_goal_label", { defaultValue: "How long would you like to sit?" })}
+          {t("wol_rule.listen_goal_label", { defaultValue: "How much would you like to sit each day?" })}
         </p>
         <div style={{ position: "relative" }}>
           <input
@@ -799,13 +799,13 @@ export default function WayOfLoveRuleFlow({
               if (digits === "") { chooseGoal("0"); return; }
               chooseGoal(String(Math.max(0, Math.min(180, parseInt(digits, 10) || 0))));
             }}
-            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "How long would you like to sit?" })}
+            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "How much would you like to sit each day?" })}
             style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 48px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "textfield", WebkitAppearance: "none" }}
           />
           <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 13, pointerEvents: "none", fontFamily: FONT }}>min</span>
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.listen_goal_note", { defaultValue: "A private intention for how long to sit — not a daily target measured against you. Leave it empty to keep the practice without one." })}
+          {t("wol_rule.listen_goal_note", { defaultValue: "A gentle daily goal — Phoebe helps you reach it at your own pace. It's never measured against you; how you meet it is up to you. Set 0 to keep the practice without one." })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -1233,7 +1233,7 @@ export default function WayOfLoveRuleFlow({
       sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? "Silent sit" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
-    ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min in silence` : "No set length", step: "contemplation-goal" as Step }] : []),
+    ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min a day` : "No daily goal", step: "contemplation-goal" as Step }] : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "contemplative" as Step }] : []),
