@@ -7081,17 +7081,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     only show when you HAVE an open request; the CTA always shows so
                     you can always start one. */}
                 {filter === null && !eventsOnly && (() => {
-                  // If you've prayed everyone else's request today (or there are
-                  // none), the whole prayer section leaves home — your own
-                  // requests AND the New-request CTA. The Prayer list lives in the
-                  // menu for when you want to come back to it.
-                  const unprayedOthers = (dashPrayerRequests ?? []).filter(
-                    (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday,
-                  );
-                  if (unprayedOthers.length === 0) return null;
+                  // Your OWN open requests always stay on the home (just like
+                  // others' prayed requests now stay, sunk with a ✓) — finishing
+                  // everyone else's prayers must NOT make your own request vanish.
                   const ownReqs = (dashPrayerRequests ?? []).filter(
                     (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
                   );
+                  const unprayedOthers = (dashPrayerRequests ?? []).filter(
+                    (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday,
+                  );
+                  // Hide the whole section only when there's nothing of yours AND
+                  // nothing left to pray for (the + FAB still starts a new one).
+                  if (ownReqs.length === 0 && unprayedOthers.length === 0) return null;
                   // Continue the home's ONE top-to-bottom cascade: this section sits
                   // below the rhythm cards, the prayer-list carousel, and the events
                   // schedule, so its fade-up must start after all of them — not
