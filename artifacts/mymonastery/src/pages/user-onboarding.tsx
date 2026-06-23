@@ -618,15 +618,8 @@ type Slide =
 // are resolved through t() in InfoSlideView at render time so the deck
 // translates with the active language.
 const BASE_SLIDES: Slide[] = [
-  // Lead slide — how Phoebe helps you keep a daily routine. Shown AFTER the
-  // customizer builds the rhythm; leaving it asks to turn on reminders (mobile).
-  {
-    kind: "info",
-    title: "user_onboarding.slides.daily_habit_title",
-    body: "user_onboarding.slides.daily_habit_body",
-    mock: "prayer-rhythm",
-  },
-  // Then the profile picture, and on to the home screen.
+  // The customizer has already built the rhythm; onboarding is now just the
+  // profile picture, then on to the home screen.
   { kind: "profile-picture" },
 ];
 

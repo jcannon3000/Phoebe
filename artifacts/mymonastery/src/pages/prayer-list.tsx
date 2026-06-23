@@ -1540,14 +1540,14 @@ export default function PrayerListPage() {
             const reqTotal = req.amenPeopleCount ?? reqFaces.length;
             return (
               <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(96,141,209,0.12)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
-                  <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />
+                <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+                  <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
                       {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt={user.name ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(96,141,209,0.4)" }} />
+                        <img src={user.avatarUrl} alt={user.name ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
                       ) : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A2F4A", color: "#A8C0E0" }}>{facesInitials(user.name ?? null)}</div>
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{facesInitials(user.name ?? null)}</div>
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}</p>
@@ -1559,7 +1559,7 @@ export default function PrayerListPage() {
                             {reqFaces.map((fp, idx) => fp.avatarUrl ? (
                               <img key={idx} src={fp.avatarUrl} alt={fp.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
                             ) : (
-                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A2F4A", color: "#A8C0E0", border: "1.5px solid #0C1F12" }}>{facesInitials(fp.name ?? null)}</div>
+                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>{facesInitials(fp.name ?? null)}</div>
                             ))}
                           </div>
                           {reqTotal > reqFaces.length && (<span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>+{reqTotal - reqFaces.length}</span>)}

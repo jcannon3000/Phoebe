@@ -2863,7 +2863,7 @@ export const es: Translations = {
       first_helper: "Espera cuatro segundos antes de tocar Amén — una pequeña pausa para orar de verdad la oración.",
     },
     profile_picture: {
-      title: "Añade tu rostro.",
+      title: "Añade una foto de perfil.",
       body_part1: "Una foto ayuda a quienes oran contigo a sentir que de verdad oran ",
       body_emphasis: "contigo",
       body_part2: ". Aparece en tus peticiones de oración, en tu comunidad y cuando alguien te sostiene en oración.",

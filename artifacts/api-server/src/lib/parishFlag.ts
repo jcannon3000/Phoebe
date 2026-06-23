@@ -11,4 +11,4 @@
  * URL-typing, the subscribe endpoint will 403, and without a
  * parish_feed_id they fall through to the normal "full" tier.
  */
-export const PHOEBE_PARISH_ENABLED = true;
+export const PHOEBE_PARISH_ENABLED = false;

@@ -905,10 +905,12 @@ function OpeningSplash() {
   const myTurned = (() => { try { return localStorage.getItem(`phoebe:turn:${new Date().toLocaleDateString("en-CA")}`) === "1"; } catch { return false; } })();
   const myLights = { turned: myTurned, learned: rhythm.reflectDone, prayed: rhythm.morningDone || rhythm.eveningDone || rhythm.silenceDone || rhythm.cobreatheDone };
   const fellowsResolved = fellowsResp !== undefined;
-  const showFellows = FELLOWS_ENABLED && fellowsResolved && practicedFellows.length > 0;
-  // Quote = the fallback. With Fellows off it's always the splash; otherwise it
-  // shows once we KNOW no fellow has practiced today.
-  const showQuote = !FELLOWS_ENABLED || (fellowsResolved && practicedFellows.length === 0);
+  // The fellows-faces splash is suppressed — the app-open greeting always shows
+  // the quote, never a row of faces (no "faces header" on mobile). Keep the
+  // fellows query above so re-enabling is a one-line flip.
+  void fellowsResolved; void practicedFellows;
+  const showFellows = false;
+  const showQuote = true;
   // The faces rail is retired; keep the flag (false) so its now-dormant render +
   // cache effects still compile without ever running.
   const showFaces = false;

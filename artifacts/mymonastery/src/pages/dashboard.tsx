@@ -6765,16 +6765,14 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 const contemplationHref = "/contemplation?begin=1";
                 const contemplationAgainCard = (
                   <Link href={contemplationHref} className="block mb-5">
-                    <div className="relative flex rounded-3xl overflow-hidden transition-opacity hover:opacity-95 active:scale-[0.99]" style={{ background: `rgba(${RGB},0.12)`, border: `1px solid rgba(${RGB},0.42)` }}>
+                    <div className="relative flex rounded-3xl overflow-hidden transition-opacity hover:opacity-95 active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
                       <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${RGB},0.9)` }} />
                       <div className="flex-1 px-5 py-4 flex items-center gap-3.5">
                         <span className="text-[28px] leading-none flex-shrink-0">🕯️</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-[16px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("rhythm.card_contemplation", { defaultValue: "Contemplation" })}</p>
                           <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
-                            {rhythm.contemplationGoalMin > 0
-                              ? t("dashboard.contemplation_min_of_goal", { done: rhythm.contemplationMin, goal: rhythm.contemplationGoalMin, defaultValue: `${rhythm.contemplationMin} of ${rhythm.contemplationGoalMin} min today` })
-                              : t("dashboard.contemplation_more_blurb", { defaultValue: "Sit a while longer" })}
+                            {t("dashboard.contemplation_rested", { defaultValue: "You rested in silence today" })}
                           </p>
                         </div>
                         <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: `rgba(${RGB},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>

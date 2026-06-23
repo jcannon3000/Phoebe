@@ -2945,7 +2945,7 @@ export const en = {
       first_helper: "Wait four seconds before you tap Amen — a small pause to actually pray the prayer.",
     },
     profile_picture: {
-      title: "Add your face.",
+      title: "Add a profile picture.",
       body_part1: "A photo helps the people praying with you feel like they're praying with ",
       body_emphasis: "you",
       body_part2: ". It shows up on your prayer requests, in your community, and when someone holds you in prayer.",
