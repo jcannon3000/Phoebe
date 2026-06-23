@@ -99,10 +99,12 @@ export async function buildIntercessionsSlide(
 ): Promise<Slide | null> {
   if (!userId || userId <= 0) return null;
 
-  // --- 1. Prayer requests (own + garden). We use getGardenUserIds for
-  //        the visibility set so this matches what the user's feed shows.
+  // --- 1. Prayer requests (OTHERS' only — never the user's own). You don't
+  //        pray for your own request in your office; the intercessions are the
+  //        people you're holding up. We use getGardenUserIds for the visibility
+  //        set (matches the feed), then drop the viewer themselves.
   const gardenIds = await getGardenUserIds(userId);
-  const visibleOwnerIds = [userId, ...gardenIds];
+  const visibleOwnerIds = gardenIds.filter((id) => id !== userId);
 
   const requestRows = visibleOwnerIds.length > 0
     ? await db
