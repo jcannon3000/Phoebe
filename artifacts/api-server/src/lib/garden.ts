@@ -62,7 +62,7 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
 async function computeGardenUserIds(userId: number): Promise<number[]> {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) return [];
-  const viewerEmail = user.email.toLowerCase();
+  const viewerEmail = (user.email ?? "").toLowerCase();
 
   // Viewer's memberships, with role.
   //   `myGroupIds` — groups where the viewer is a regular member or

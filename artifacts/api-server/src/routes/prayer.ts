@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
 import { getCorrespondentUserIds } from "../lib/correspondents";
-import { getGardenUserIds } from "../lib/garden";
+import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
@@ -992,10 +992,15 @@ router.post("/prayer-requests", rateLimit({
       // built validTaggedIds, but we also skip the author here
       // (gardenIds includes them by design — they're the center of
       // their own garden — and we don't want them to push themselves).
+      // A fellow should ALWAYS get a fellow's new prayer request — even if the
+      // garden's hidden-admin veto or a stale early/legacy connection would have
+      // dropped them. Union the raw fellow ids back in. directOnly stays tagged-only.
+      const fellowIds = directOnly ? [] : await getFellowUserIds(sessionUserId);
       const recipients = directOnly
         ? Array.from(new Set(validTaggedIds))
         : Array.from(new Set([
             ...gardenIds.filter((id) => id !== sessionUserId),
+            ...fellowIds.filter((id) => id !== sessionUserId),
             ...validTaggedIds,
           ]));
       if (recipients.length === 0) return;
