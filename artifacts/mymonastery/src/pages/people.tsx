@@ -7,13 +7,9 @@ import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { useGardenSocket } from "@/hooks/useGardenSocket";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FellowsConnect } from "@/components/FellowsConnect";
-import { WalkTogether } from "@/components/WalkTogether";
-import { FellowOnboardingPrompt } from "@/components/FellowOnboardingPrompt";
-import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { VoiceMemoInbox, VoiceDraftsShelf } from "@/components/VoiceMemo";
 import { ensureVoiceKeysPublished } from "@/lib/voiceCrypto";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -133,7 +129,6 @@ function PersonCard({
   iPrayFor,
   prayForMe,
   isFellow,
-  fellowLights,
   activePrayerFor,
   activePrayerForMe,
 }: {
@@ -146,7 +141,6 @@ function PersonCard({
   // who they connected with via a share-link Amen flow vs through
   // a normal community / letter path.
   isFellow: boolean;
-  fellowLights: { turned: boolean; learned: boolean; prayed: boolean } | null;
   activePrayerFor: MyActivePrayerFor | null;
   activePrayerForMe: PrayerForMe | null;
 }) {
@@ -279,17 +273,6 @@ function PersonCard({
                     }}
                   >
                     Fellow
-                  </span>
-                )}
-                {isFellow && fellowLights && (fellowLights.turned || fellowLights.learned || fellowLights.prayed) && (
-                  <span className="inline-flex items-center gap-[3px] flex-shrink-0" aria-label="Today's presence">
-                    {(([["turned", "Turn"], ["learned", "Learn"], ["prayed", "Pray"]] as const)).filter(([k]) => fellowLights[k]).map(([k, label]) => (
-                      <span
-                        key={k}
-                        title={`${label}: today`}
-                        style={{ width: 7, height: 7, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }}
-                      />
-                    ))}
                   </span>
                 )}
               </div>
@@ -443,11 +426,10 @@ function FindFriendsEntry() {
 
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
-// Fellows are 1:1 connections ONLY — an individual outside your communities who
-// can see your prayer requests and pray for you. The accountability / social
-// extras (Walking Together, 🙌 encouragements, the share-daily-progress
-// onboarding) follow the single Fellows switch so they can't drift back on.
-const FELLOW_EXTRAS = FELLOWS_ENABLED;
+// Fellows are 1:1 connections ONLY — someone outside your communities who can
+// see your prayer requests and pray for you. There is NO accountability layer:
+// Walking Together, 🙌 encouragements, presence lights, and the share-progress
+// onboarding have all been removed.
 
 export default function People() {
   const [location, setLocation] = useLocation();
@@ -487,10 +469,6 @@ export default function People() {
     avatarUrl: string | null;
     source: string;
     createdAt: string | null;
-    // Today-only coarse presence lights (Turn / Learn / Pray) — blue dots.
-    turned?: boolean;
-    learned?: boolean;
-    prayed?: boolean;
   };
   const { data: fellowsData } = useQuery<{ fellows: Fellow[] }>({
     queryKey: ["/api/fellows"],
@@ -498,37 +476,6 @@ export default function People() {
     enabled: !!user,
     staleTime: 30_000,
   });
-  // Each fellow's three presence lights, keyed by userId — rendered as BLUE dots
-  // on their card (distinct from the viewer's own GREEN rhythm dots, which stay
-  // tied to their actual practices). Today-only; no counts, no history.
-  const fellowLightsByUserId = useMemo(() => {
-    const m = new Map<number, { turned: boolean; learned: boolean; prayed: boolean }>();
-    for (const f of fellowsData?.fellows ?? []) m.set(f.userId, { turned: !!f.turned, learned: !!f.learned, prayed: !!f.prayed });
-    return m;
-  }, [fellowsData]);
-  // New-fellow onboarding: prompt once (same place? + share daily progress?) for
-  // a recently-formed fellowship we haven't set prefs for yet. Both parties see
-  // it next time they open People; answering creates the prefs row, which stops
-  // it re-appearing. Scoped to fellows added in the last week so existing fellows
-  // aren't flooded.
-  const { data: fellowPrefsData } = useQuery<{ prefs: Record<number, { samePlace: boolean; sharePlans: boolean }> }>({
-    queryKey: ["/api/fellow-prefs"],
-    queryFn: () => apiRequest("GET", "/api/fellow-prefs"),
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-  const [onboardDismissed, setOnboardDismissed] = useState<Set<number>>(() => new Set());
-  const onboardFellow = useMemo(() => {
-    if (!rawIsBeta || !fellowPrefsData) return null;
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const f = (fellowsData?.fellows ?? []).find((x) => {
-      if (onboardDismissed.has(x.userId)) return false;
-      if (fellowPrefsData.prefs[x.userId]) return false; // already onboarded
-      const created = x.createdAt ? new Date(x.createdAt).getTime() : 0;
-      return created >= weekAgo;
-    });
-    return f ? { userId: f.userId, name: f.name, avatarUrl: f.avatarUrl } : null;
-  }, [rawIsBeta, fellowPrefsData, fellowsData, onboardDismissed]);
 
   const fellowEmails = useMemo(
     () => new Set((fellowsData?.fellows ?? []).map(f => f.email.toLowerCase())),
@@ -646,9 +593,6 @@ export default function People() {
           </h1>
         </div>
 
-        {/* A fellow's 🙌 encouragement, if one's waiting. (Extra — off.) */}
-        {FELLOW_EXTRAS && <EncouragementBanner />}
-
         {/* Voice prayers sent to me — encrypted, replayable for 3 days. */}
         {rawIsBeta && <VoiceMemoInbox />}
         {/* Voice prayers I saved to send later. */}
@@ -713,25 +657,8 @@ export default function People() {
           </button>
         </div>
 
-        {/* Heart to Heart (the 1:1 daily prayer exchange) is hidden for now —
-            the "Start a Heart to Heart" entry card was removed. */}
-
-        {/* Walking together — accountability layer on Fellows. OFF: fellows are
-            just 1:1 connections now, no accountability. */}
-        {FELLOW_EXTRAS && rawIsBeta && <WalkTogether hideCompanions />}
-
-        {/* One-time new-fellow onboarding (share daily progress?). OFF — that's
-            an accountability/sharing extra. */}
-        {FELLOW_EXTRAS && (
-          <FellowOnboardingPrompt
-            fellow={onboardFellow}
-            onDone={() => { if (onboardFellow) setOnboardDismissed((s) => new Set(s).add(onboardFellow.userId)); }}
-          />
-        )}
-
-        {/* Plans ("How About") moved to the Events page — share what you're
-            going to there, and your fellows can come. (Lives in the Dashboard's
-            eventsOnly view.) */}
+        {/* Walking Together, encouragements, and the share-progress onboarding
+            have been removed — fellows are only for sharing prayer requests. */}
 
         {/* Search bar — filters the garden list by name, email, or active
             prayer-request body. Sits directly above the garden list it filters;
@@ -884,7 +811,6 @@ export default function People() {
                     iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                     isFellow={fellowEmails.has(person.email.toLowerCase())}
-                    fellowLights={person.userId != null ? (fellowLightsByUserId.get(person.userId) ?? null) : null}
                     activePrayerFor={
                       iPrayFor.find(
                         p => {

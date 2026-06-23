@@ -1,32 +1,33 @@
 /**
  * FellowsConnect — the manual add / request-accept / search / contacts surface
- * for Fellows, embedded at the top of the People page. Backed by the existing
+ * for Fellows, embedded at the top of the Community page. Backed by the existing
  * fellows + fellow_invites tables via /api/fellows/* (accepted fellows already
- * flow into the garden → prayer-request visibility). Beta capability; the host
- * gates rendering on beta. Raw phone numbers never leave the device — contact
- * matching hashes client-side, same as find-friends.
+ * flow into the garden → prayer-request visibility).
+ *
+ * Fellows are ONLY a way to share prayer requests with someone you're not in a
+ * community with. There is no accountability here: no Walking Together, no
+ * presence lights, no encouragements, no shared progress — just the connection.
+ * Raw phone numbers never leave the device — contact matching hashes
+ * client-side, same as find-friends.
  */
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, Plus, Link2 as LinkIcon, Settings2 } from "lucide-react";
+import { Search, Users, Plus, Link2 as LinkIcon, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { FellowSettingsSheet, type FellowLite } from "@/components/FellowSettingsSheet";
 import { FROST_BLUR } from "@/lib/frost";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const CARD_BG = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.3)";
-// Frosted-glass card — the leaf backdrop blurs through, with a soft sage edge
-// (matches the home cards' "+" FAB ring).
+// Frosted-glass card — the leaf backdrop blurs through, with a soft sage edge.
 const CARD_STYLE = { background: "rgba(9,26,16, 0.297)", ...FROST_BLUR, border: "1px solid rgba(200,212,192,0.22)" } as const;
 
-type Fellow = { userId: number; name: string | null; avatarUrl: string | null; streak: number; turned?: boolean; learned?: boolean; prayed?: boolean };
+type Fellow = { userId: number; name: string | null; avatarUrl: string | null };
 type Request = { id: number; userId: number; name: string | null; avatarUrl: string | null };
 type SearchUser = { id: number; name: string | null; avatarUrl: string | null; status: "none" | "fellows" | "requested" | "incoming" };
 
@@ -44,61 +45,6 @@ function Pill({ label, onClick, kind = "solid", disabled }: { label: string; onC
     muted: { background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" },
   }[kind];
   return <button type="button" onClick={onClick} disabled={disabled} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5 transition-opacity active:scale-[0.97]" style={{ ...styles, fontFamily: FONT, opacity: disabled ? 0.6 : 1 }}>{label}</button>;
-}
-// Walking-together progress, folded into the fellow card. A companion is a
-// fellow you've both opted to walk with; their today-only rhythm dots + a
-// status line ride the second line of their fellow card.
-const DOT_ON = "rgba(110,180,130,0.95)";
-type WalkAnchorLite = { key: string; done: boolean };
-type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalCount: number; allKept: boolean; anchors: WalkAnchorLite[] } | null; progressLocked?: boolean; sabbath?: boolean };
-// Accountability sharing shows only the FIRST THREE dots for everyone — not the
-// full count of someone's practices. Bigger, calmer dots; three is the shared
-// goal regardless of how many anchors a person actually keeps.
-const SHARED_DOTS = 3;
-// The coarse presence lights (Turn / Learn / Pray) kept today — blue, glowing.
-// Only LIT lights are shown (no empty placeholders); renders nothing if none.
-function FellowLights({ turned, learned, prayed }: { turned: boolean; learned: boolean; prayed: boolean }) {
-  const lit = ([[turned, "Turn"], [learned, "Learn"], [prayed, "Pray"]] as Array<[boolean, string]>).filter(([on]) => on);
-  if (lit.length === 0) return null;
-  return (
-    <span className="inline-flex items-center gap-[6px]" aria-label="Today's presence">
-      {lit.map(([, label]) => (
-        <span key={label} title={`${label}: today`} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }} />
-      ))}
-    </span>
-  );
-}
-
-// A second line that crossfades between a few views (the kept-dots status and
-// the "Cobreathed together…" line), the same gentle opacity crossfade the home
-// cards' subtitle uses — fade the current view out, swap while hidden, fade the
-// next in. One view → static (no cycling).
-const CYCLE_LINE_H = 17; // fixed row height so swapping views never reflows the card
-function CycleLine({ views }: { views: ReactNode[] }) {
-  const [idx, setIdx] = useState(0);
-  const [shown, setShown] = useState(true);
-  useEffect(() => {
-    if (views.length <= 1) return;
-    let swap: ReturnType<typeof setTimeout> | undefined;
-    const t = setInterval(() => {
-      setShown(false);
-      swap = setTimeout(() => { setIdx((i) => (i + 1) % views.length); setShown(true); }, 260);
-    }, 5000);
-    return () => { clearInterval(t); if (swap) clearTimeout(swap); };
-  }, [views.length]);
-  if (views.length === 0) return null;
-  // Fixed-height row; the view is absolutely centered so neither the crossfade
-  // nor a taller/shorter view changes the card's height.
-  return (
-    <div style={{ position: "relative", height: CYCLE_LINE_H }}>
-      <div
-        className="absolute inset-0 flex items-center min-w-0"
-        style={{ opacity: shown ? 1 : 0, transition: "opacity 0.26s ease" }}
-      >
-        {views[idx % views.length]}
-      </div>
-    </div>
-  );
 }
 
 function normalizePhoneClient(raw: string): string | null {
@@ -120,9 +66,9 @@ async function sha256Hex(text: string): Promise<string> {
 // the fellows list itself is read-only and shown to everyone (fellows can be
 // created via shared-prayer signup for non-beta users too).
 //
-// `variant` splits the surface in two:
+// `variant`:
 //   • "people"  (default) — just your fellows + an "Add a fellow" pill that
-//     routes to the manage page. Keeps the People page clean (no big add card).
+//     routes to the manage page.
 //   • "manage"  — the full add surface (search + contacts + requests + your
 //     fellows with remove), shown on the dedicated /fellows page.
 export function FellowsConnect({ canManage = false, variant = "people" }: { canManage?: boolean; variant?: "people" | "manage" }) {
@@ -146,7 +92,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     qc.invalidateQueries({ queryKey: ["/api/fellows/search"] });
   };
   const sendReq = useMutation({ mutationFn: (userId: number) => apiRequest("POST", "/api/fellows/request", { userId }), onSuccess: invalidate });
-  // Accepting a request takes you to the Fellows (People) page to see them.
+  // Accepting a request takes you to the Community page to see them.
   const accept = useMutation({ mutationFn: (id: number) => apiRequest("POST", `/api/fellows/requests/${id}/accept`), onSuccess: () => { invalidate(); setLocation("/people"); } });
   const decline = useMutation({ mutationFn: (id: number) => apiRequest("POST", `/api/fellows/requests/${id}/decline`), onSuccess: invalidate });
   const remove = useMutation({ mutationFn: (userId: number) => apiRequest("DELETE", `/api/fellows/${userId}`), onSuccess: invalidate });
@@ -155,49 +101,12 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   const fellows = fellowsQ.data?.fellows ?? [];
   const results = searchQ.data?.users ?? [];
 
-  // Walking-together progress, keyed by fellow userId — converged onto the
-  // fellow card (dots + status on the second line). Beta-only.
-  const walkQ = useQuery<{ companions: WalkCompanionLite[] }>({ queryKey: ["/api/walk"], queryFn: () => apiRequest("GET", "/api/walk"), enabled: canManage, staleTime: 30_000 });
-  const walkByUser = new Map((walkQ.data?.companions ?? []).map((c) => [c.userId, c]));
-
-  // "Last breathed together" per fellow — the most recent local day you BOTH held
-  // the Cobreathe (server-derived from breath_sessions; cobreathe is same-day, not
-  // same-moment). Folded onto the card as a quiet 🫁 line.
-  const togetherQ = useQuery<{ together: Record<number, string> }>({ queryKey: ["/api/breath/together"], queryFn: () => apiRequest("GET", "/api/breath/together"), staleTime: 60_000 });
-  const togetherByUser = togetherQ.data?.together ?? {};
-  const lastTogetherLabel = (day: string | undefined): string | null => {
-    if (!day) return null;
-    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const todayStr = ymd(new Date());
-    if (day === todayStr) return t("fellows_c.breathed_today", { defaultValue: "Cobreathed together today" });
-    const d0 = new Date(`${day}T00:00:00`);
-    const diff = Math.round((new Date(`${todayStr}T00:00:00`).getTime() - d0.getTime()) / 86400000);
-    const when = diff === 1 ? t("fellows_c.yesterday", { defaultValue: "yesterday" })
-      : diff > 1 && diff < 30 ? t("fellows_c.n_days_ago", { count: diff, defaultValue: `${diff} days ago` })
-      : d0.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    return t("fellows_c.breathed_ago", { when, defaultValue: `Cobreathed together ${when}` });
-  };
-
   const [optReq, setOptReq] = useState<Set<number>>(() => new Set());
   const addFellow = (id: number) => { sendReq.mutate(id); setOptReq((s) => new Set(s).add(id)); };
 
-  // One-tap 🙌 encouragement — direct, no opt-in. Sends "{You} encouraged you —
-  // keep growing with Phoebe." to any fellow. Optimistic: the pill flips to
-  // "Encouraged" the instant you tap, server dedupes a double-send within an hour.
-  const [encouraged, setEncouraged] = useState<Set<number>>(() => new Set());
-  // Per-fellow sharing settings sheet (daily progress + plans/same-place).
-  const [settingsFellow, setSettingsFellow] = useState<FellowLite | null>(null);
-  const openSettings = (f: { userId: number; name: string | null; avatarUrl: string | null }) =>
-    setSettingsFellow({ userId: f.userId, name: f.name, avatarUrl: f.avatarUrl });
-  const encourage = useMutation({ mutationFn: (userId: number) => apiRequest("POST", "/api/encouragements", { toUserId: userId }) });
-  const sendEncourage = (id: number) => { encourage.mutate(id); setEncouraged((s) => new Set(s).add(id)); };
-
   // Share a personal invite link — mint/fetch the caller's stable token, then
-  // open the best share surface (native sheet, Web Share, or clipboard). Whoever
-  // opens it lands on /fellow/:token: a signed-in person gets a one-tap "become
-  // fellows" card; a brand-new visitor gets a short onboarding deck (what Phoebe
-  // is, the daily practice, the Fellows feature) + the fellows settings, then
-  // signs up and the fellowship forms.
+  // open the best share surface. Whoever opens it lands on /fellow/:token and
+  // can become fellows (sharing prayer requests with you).
   const [linkCopied, setLinkCopied] = useState(false);
   const shareInviteLink = async () => {
     try {
@@ -274,71 +183,23 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     </div>
   );
 
-  const fellowRow = (f: Fellow) => {
-    // Presence, not a scoreboard: the three coarse blue lights (Turn / Learn /
-    // Pray) for today — no kept-counts, no "pray 1:1 to see" lock. A phone
-    // sabbath still reads as a calm rest state rather than absence.
-    const onSabbath = !!walkByUser.get(f.userId)?.sabbath;
-    const lights = { turned: !!f.turned, learned: !!f.learned, prayed: !!f.prayed };
-    const allLit = lights.turned && lights.learned && lights.prayed;
-    // Encourage unlocks once they've kept the whole rhythm today (all three
-    // lights), never on a rest day — the same rule on both fellow surfaces.
-    const keptEnough = !onSabbath && allLit;
-    return (
-      <div key={`f-${f.userId}`} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={CARD_STYLE}>
-        <Avatar name={f.name ?? "Someone"} url={f.avatarUrl} />
-        <div className="flex-1 min-w-0">
-          <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{f.name ?? "Someone"}</p>
-          {(() => {
-            // The second line crossfades between the kept-dots status and the
-            // "Cobreathed together…" line (when both exist), like the home cards.
-            const lt = lastTogetherLabel(togetherByUser[f.userId]);
-            const views: ReactNode[] = [];
-            views.push(
-              <div className="flex items-center gap-2" key="status">
-                {onSabbath ? (
-                  <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{t("fellows_c.walk_sabbath", { defaultValue: "🌙 On a phone sabbath" })}</span>
-                ) : (
-                  <>
-                    <FellowLights turned={lights.turned} learned={lights.learned} prayed={lights.prayed} />
-                    <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{allLit ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" }) : t("fellows_c.walking_together", { defaultValue: "Walking together" })}</span>
-                  </>
-                )}
-              </div>
-            );
-            if (lt) views.push(
-              <span className="text-[11.5px] truncate block" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }} key="together">🌍 {lt}</span>
-            );
-            return views.length > 0 ? <div className="mt-0.5"><CycleLine views={views} /></div> : null;
-          })()}
-        </div>
-        <div className="flex items-center gap-2.5 shrink-0">
-          {/* Encourage once they've kept at least two-thirds of today. */}
-          {keptEnough && (encouraged.has(f.userId)
-            ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
-            : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
-          {/* Heart to Heart (the 1:1 prayer-request exchange) is hidden for now —
-              the per-fellow 🙏 Pray pill was removed. */}
-          {canManage && (
-            <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
-              onClick={() => openSettings(f)}
-              className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
-              style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
-              <Settings2 size={15} />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
+  // A plain fellow row — avatar + name. On the manage page a small Remove (×)
+  // sits on the right; on the people list it's just the connection.
+  const removeBtn = (f: Fellow) => (
+    <button type="button" aria-label={t("fellows_c.remove", { defaultValue: "Remove fellow" })}
+      onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: `Remove ${f.name ?? "this fellow"}?` }))) remove.mutate(f.userId); }}
+      className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
+      style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "rgba(200,150,140,0.9)" }}>
+      <X size={15} />
+    </button>
+  );
 
-  // People page: just your fellows, then an "Add a fellow" pill → /fellows
-  // (where the full add card lives). The outer section header ("Fellows") is
-  // supplied by the People page, so we don't repeat it here.
+  // People page: just your fellows, then an "Add a fellow" pill → /fellows.
+  // The outer section header ("Fellows") is supplied by the Community page.
   if (variant === "people") {
     return (
       <div className="mb-2">
-        {fellows.map(fellowRow)}
+        {fellows.map((f) => row(f.name ?? "Someone", f.avatarUrl, null, `f-${f.userId}`))}
         {canManage && (
           <Link
             href="/fellows"
@@ -351,7 +212,6 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
             )}
           </Link>
         )}
-        <FellowSettingsSheet fellow={settingsFellow} onClose={() => setSettingsFellow(null)} />
       </div>
     );
   }
@@ -397,7 +257,6 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
               <button type="button" onClick={startContacts} className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-full py-2.5 text-[13.5px] font-semibold transition-opacity active:scale-[0.99]" style={{ color: "#A8C5A0", fontFamily: FONT }}>
                 <Users size={15} /> {t("fellows_c.from_contacts", { defaultValue: "Find from your contacts" })}
               </button>
-              {/* Reassure before asking for contacts — matches the Find Friends copy. */}
               <p className="text-[11px] text-center px-3 mt-0.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
                 {t("fellows_c.contacts_privacy", { defaultValue: "Your contacts stay on your device — we only check encrypted matches, then delete them." })}
               </p>
@@ -428,32 +287,13 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
         </>
       )}
 
-      {/* Your fellows */}
+      {/* Your fellows — name + Remove. No accountability, just the connection. */}
       {fellows.length > 0 && (
         <>
           {sectionHeader(t("fellows_c.your_fellows", { defaultValue: "Your fellows" }))}
-          {fellows.map((f) => {
-            // Gate Encourage on the three shared dots being kept, same as the
-            // People-page row — so the rule is consistent across both surfaces.
-            const keptEnough = !!f.turned && !!f.learned && !!f.prayed;
-            return row(f.name ?? "Someone", f.avatarUrl,
-              <div className="flex items-center gap-2.5 shrink-0">
-                {keptEnough && (encouraged.has(f.userId)
-                  ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
-                  : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
-                {canManage && (
-                  <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
-                    onClick={() => openSettings(f)}
-                    className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
-                    style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
-                    <Settings2 size={15} />
-                  </button>
-                )}
-              </div>, `f-${f.userId}`);
-          })}
+          {fellows.map((f) => row(f.name ?? "Someone", f.avatarUrl, canManage ? removeBtn(f) : null, `f-${f.userId}`))}
         </>
       )}
-      <FellowSettingsSheet fellow={settingsFellow} onClose={() => setSettingsFellow(null)} />
     </div>
   );
 }
