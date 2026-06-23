@@ -193,16 +193,17 @@ export default function FellowInvitePage() {
   return <FellowOnboardingDeck token={token} inviter={inviter} setLocation={setLocation} />;
 }
 
-// The deck shown to a not-yet-signed-up recipient. Seven slides: welcome, what
-// Phoebe is, the daily practice, the Fellows feature, the three lights,
-// presence-not-performance, then the two fellows settings + create-account.
+// The deck shown to a not-yet-signed-up recipient. Six slides: welcome, what
+// Phoebe is, the daily practice, the Fellows feature, sharing prayer requests,
+// and sharing plans — then create-account. (No accountability/lights anymore;
+// fellows is now about carrying each other's requests and plans.)
 function FellowOnboardingDeck({ token, inviter, setLocation }: { token: string; inviter: InviteData["inviter"]; setLocation: (to: string) => void }) {
   const name = firstName(inviter.name);
   const [i, setI] = useState(0);
   const [samePlace, setSamePlace] = useState<boolean | null>(null);
   const [shareProgress, setShareProgress] = useState<boolean>(true);
 
-  const SLIDES = 7;
+  const SLIDES = 6;
   const next = () => { haptic("light"); setI((n) => Math.min(SLIDES - 1, n + 1)); };
   const back = () => setI((n) => Math.max(0, n - 1));
 
@@ -252,31 +253,17 @@ function FellowOnboardingDeck({ token, inviter, setLocation }: { token: string; 
       case 4:
         return (
           <Center key={4}>
-            <ThreeLights />
-            <h1 style={{ ...titleStyle, marginTop: 22 }}>Three quiet lights</h1>
-            <p style={subStyle}>For each fellow you'll see three soft lights for the day — whether they turned toward God, learned, and prayed. That's all. No numbers, no streaks, no ranking.</p>
+            <div style={emojiStyle}>🙏</div>
+            <h1 style={titleStyle}>Carry each other's prayers</h1>
+            <p style={subStyle}>When something's weighing on you, share it as a prayer request — quietly with {name}, or with your wider circle. They'll hold you in prayer, and you'll do the same for them.</p>
           </Center>
         );
       case 5:
         return (
           <Center key={5}>
-            <div style={emojiStyle}>🙏</div>
-            <h1 style={titleStyle}>Presence, not performance</h1>
-            <p style={subStyle}>If a fellow's lights are quiet, it isn't a nudge to correct them — it's an invitation to hold them in prayer. Phoebe never tells anyone you're "behind."</p>
-          </Center>
-        );
-      case 6:
-        return (
-          <Center key={6}>
-            <h1 style={{ ...titleStyle, marginTop: 0 }}>A couple of small choices</h1>
-            <p style={{ ...subStyle, marginBottom: 22 }}>For praying with {name}:</p>
-            <SettingRow label={`Do you and ${name} live near each other?`}>
-              <YesNo value={samePlace} onPick={setSamePlace} />
-            </SettingRow>
-            <SettingRow label={`Let ${name} see your daily prayer rhythm?`}>
-              <YesNo value={shareProgress} onPick={setShareProgress} />
-            </SettingRow>
-            <p style={{ ...subStyle, fontSize: 13.5, opacity: 0.75, marginTop: 18 }}>You can change these anytime — and only ever your own.</p>
+            <div style={emojiStyle}>🗓️</div>
+            <h1 style={titleStyle}>Invite each other along</h1>
+            <p style={subStyle}>Going to a service, a study, a shared meal? Share it as a plan, and {name} can come. The life of prayer is better shouldered together — off the page as well as on it.</p>
           </Center>
         );
       default:
