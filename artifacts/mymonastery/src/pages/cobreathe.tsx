@@ -347,7 +347,7 @@ export default function CobreathePage() {
   // Finish) and on an early end (>=30s). Guarded so the two paths don't double.
   const sitLoggedRef = useRef(false);
   const logSit = useCallback((secondsKept: number) => {
-    if (sitLoggedRef.current || secondsKept < 30) return;
+    if (sitLoggedRef.current || secondsKept < 2) return;
     sitLoggedRef.current = true;
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
@@ -384,33 +384,28 @@ export default function CobreathePage() {
   // (reached the 12th breath). Cancelling or bailing early does NOT log a
   // contemplation sit — nothing toward the daily goal, history, or Apple Health.
   // When it does count, it's logged with the FULL elapsed time (20 breaths = 20).
-  const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
-    const fromContemplation = fromContemplationRef.current;
-    if (!reached) {
-      // X / bailed early — does not count. Go to the home screen. (The office
-      // slideshow runs Cobreathe as a separate overlay (CobreatheOverlay) whose
-      // X returns to the slideshow — "unless you're in the slideshow, go back".)
-      setLocation("/dashboard");
-      return;
-    }
-    logSit(secondsKept);
-    record.mutate(secondsKept);
+  const handleEnd = useCallback((secondsKept: number, _reached: boolean) => {
+    // Presence, never performance: the breath is RECEIVED the moment it's
+    // breathed. There is NO completion gate — every breath counts, fully, the
+    // same whether you stop at four or sit past twelve. The only no-op is an
+    // empty sit (you left before a single breath finished) — not a failure, just
+    // nothing to log.
+    const breaths = Math.max(0, Math.floor(secondsKept / (CYCLE_MS / 1000)));
+    if (breaths < 1) { setLocation("/dashboard"); return; }
+    logSit(secondsKept);          // credit the contemplation sit for what was breathed
+    record.mutate(secondsKept);   // count you in today's communal breath
     // Cobreathing one-to-one with a fellow STARTS a Heart to Heart with them
-    // (and counts toward Walking Together). Only when the user opted into the
-    // "Breathe with a fellow" mode AND someone was actually breathing live with
-    // them; the server filters the ids to real fellows before pairing.
+    // (Walking Together). Only when they opted into "Breathe with a fellow" AND
+    // someone was actually breathing live; the server filters to real fellows.
     if (joinInPersonRef.current) {
       const ids = Array.from(coBreathedRef.current.keys());
       if (ids.length > 0) {
         void apiRequest("POST", "/api/breath/together-with", { fellowIds: ids }).catch(() => { /* best-effort */ });
       }
     }
-    // The actual breaths taken — open-ended, so derive from elapsed (one breath
-    // per CYCLE_MS). Floored at the 12 target. Drives the summary headline + tally.
-    setBreathsTaken(Math.max(lengthBreathsRef.current, Math.round(secondsKept / (CYCLE_MS / 1000))));
-    // Always show the concluding summary slide after a completed sit (it has its
-    // own continue button). fromContemplation is kept for the no-op note below.
-    void fromContemplation;
+    // The breaths actually taken — open-ended, NEVER floored to the target (four
+    // breaths read as four, equal to any others). Drives the summary + the tally.
+    setBreathsTaken(breaths);
     setMode("done");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -547,6 +542,10 @@ export default function CobreathePage() {
                 <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
               </div>
             </div>
+
+            <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 13.5, lineHeight: 1.5, marginTop: 12, textAlign: "center" }}>
+              {t("cobreathe.invite_note", { defaultValue: "An invitation, not a goal — breathe as many as you have in you, and stop whenever you like." })}
+            </p>
 
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
 

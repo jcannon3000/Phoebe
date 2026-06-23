@@ -668,17 +668,24 @@ export function CobreatheBreath({
   // the breath is already credited, so later backgrounding is fine.
   useEffect(() => {
     let hiddenAt = 0;
+    // Synced elapsed (s) at the moment we last went hidden, so a sit interrupted
+    // by backgrounding ENDS at the breaths kept before leaving — they still
+    // count — and background time is never counted as breathing.
+    let hiddenElapsed = 0;
     const onVis = () => {
       if (typeof document === "undefined") return;
       if (document.hidden) {
         hiddenAt = Date.now();
+        hiddenElapsed = Math.round((syncedNow() - startRef.current) / 1000);
       } else {
         const away = hiddenAt ? Date.now() - hiddenAt : 0;
         hiddenAt = 0;
         if (away > 1200 && !reachedRef.current) invalidRef.current = true;
         if (invalidRef.current && !reachedRef.current && !endedRef.current) {
           endedRef.current = true;
-          onEnd(Math.round((syncedNow() - startRef.current) / 1000), false);
+          // End at the breaths kept BEFORE backgrounding — never voided, never
+          // inflated by the time away; the breaths already breathed are received.
+          onEnd(hiddenElapsed, false);
         }
       }
     };
