@@ -3583,11 +3583,33 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                         ? (isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer"))
                         : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏🏽`}
                   </p>
-                  {/* Peer presence ("N people prayed with you this week" + the
-                      face rail) removed from the home office card — no
-                      Walking-Together / who-prayed surfacing here. */}
-                  {void countCopy}{void withAvatars}
+                  {countCopy && (
+                    <p
+                      className="text-[11px]"
+                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}
+                    >
+                      {countCopy}
+                    </p>
+                  )}
                 </div>
+                {withAvatars.length > 0 && (
+                  <div className="flex items-center -space-x-2 shrink-0">
+                    {/* Show as many faces as fit the card (up from 5); the
+                        count line above carries the true total. Capped so the
+                        rail can't overflow / crush the title — 6 on the Devotion
+                        variant (its longer title + 🌙 leave less room), 8 otherwise. */}
+                    {withAvatars.slice(0, programmedLevel === "devotion" ? 6 : 8).map((p) => (
+                      <img
+                        key={p.id}
+                        src={p.avatarUrl as string}
+                        alt={p.name}
+                        title={p.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                        style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -5192,8 +5214,30 @@ function GoalReachedModal({
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
+// Whether the app-open splash has faded (native). Cards gate their fade-up
+// cascade on this so the animation plays in front of the user instead of behind
+// the splash. Mirrors the per-component logic in PrayerListCarousel /
+// TimeSection. Web (no splash) → true immediately.
+function useSplashCleared(): boolean {
+  const [cleared, setCleared] = useState<boolean>(() => {
+    if (!isNativeShell()) return true;
+    try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
+  });
+  useEffect(() => {
+    if (cleared) return;
+    const clear = () => setCleared(true);
+    window.addEventListener("phoebe:splash-done", clear);
+    const id = window.setTimeout(clear, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+  }, [cleared]);
+  return cleared;
+}
+
 export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean } = {}) {
   const { t } = useTranslation();
+  // Gate the "Your prayer requests" cards' fade-up on the splash fading, so they
+  // cascade in front of the user (not invisibly behind the splash).
+  const ownReqSplashCleared = useSplashCleared();
   const homeBgPhoto = useMemo(
     () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
@@ -7063,7 +7107,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                             <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
                               <motion.div
                                 initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
                                 transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(ri * 0.1, 1.5) }}
                                 className="relative flex rounded-xl overflow-hidden"
                                 style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
