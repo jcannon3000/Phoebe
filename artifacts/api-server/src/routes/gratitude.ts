@@ -18,7 +18,9 @@ function wordCount(s: string): number {
 }
 
 // ── POST /api/gratitude — write a gratitude entry ──────────────────────────
-// Private by default; pass { shared: true } to also post it to the garden.
+// Gratitude is a PRIVATE practice: entries are never peer-visible. The `shared`
+// flag is always written false (the community garden was removed — presence,
+// not performance).
 router.post("/gratitude", rateLimit({
   name: "gratitude_create",
   max: 60,
@@ -33,7 +35,7 @@ router.post("/gratitude", rateLimit({
     const user = getUser(req);
     if (!user) return res.status(401).json({ error: "Not authenticated" });
 
-    const { text, shared } = req.body as { text?: unknown; shared?: unknown };
+    const { text } = req.body as { text?: unknown };
     if (!text || typeof text !== "string") {
       return res.status(400).json({ error: "Text is required" });
     }
@@ -43,9 +45,10 @@ router.post("/gratitude", rateLimit({
     if (wc > 50) return res.status(400).json({ error: "Maximum 50 words allowed" });
 
     const result = await pool.query(
+      // shared is always false — gratitude is never peer-visible.
       `INSERT INTO gratitude_responses (user_id, text, shared)
-       VALUES ($1, $2, $3) RETURNING id, created_at, shared`,
-      [user.id, trimmed, shared === true],
+       VALUES ($1, $2, FALSE) RETURNING id, created_at, shared`,
+      [user.id, trimmed],
     );
     return res.json({
       id: result.rows[0].id,
@@ -58,21 +61,21 @@ router.post("/gratitude", rateLimit({
   }
 });
 
-// ── POST /api/gratitude/:id/share — share/unshare one of your entries ──────
-// Lets the user share a private entry to the garden later, entry by entry
-// (or pull it back). Only the author can change their own entry.
+// ── POST /api/gratitude/:id/share — retained only to RETRACT old shares ─────
+// Gratitude is private now: there is no garden to share into, so this always
+// forces the entry private (shared = FALSE), whatever the request asks. It
+// exists so any pre-existing shared entry can still be pulled back.
 router.post("/gratitude/:id/share", async (req, res) => {
   try {
     const user = getUser(req);
     if (!user) return res.status(401).json({ error: "Not authenticated" });
     const id = parseInt(String(req.params.id), 10);
     if (!Number.isFinite(id)) return res.status(400).json({ error: "Bad id" });
-    const shared = (req.body as { shared?: unknown })?.shared === true;
 
     const result = await pool.query(
-      `UPDATE gratitude_responses SET shared = $1
-       WHERE id = $2 AND user_id = $3 RETURNING id, shared`,
-      [shared, id, user.id],
+      `UPDATE gratitude_responses SET shared = FALSE
+       WHERE id = $1 AND user_id = $2 RETURNING id, shared`,
+      [id, user.id],
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
     return res.json({ id: result.rows[0].id, shared: result.rows[0].shared });
@@ -112,70 +115,18 @@ router.get("/gratitude/mine", async (req, res) => {
   }
 });
 
-// ── GET /api/gratitude/responses — the garden wall ─────────────────────────
-// Shared entries from the last 7 days (everyone, including the viewer's
-// own shared ones), newest first, with per-viewer seen tracking.
-router.get("/gratitude/responses", async (req, res) => {
-  try {
-    const user = getUser(req);
-    if (!user) return res.status(401).json({ error: "Not authenticated" });
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    const responses = await pool.query(
-      `SELECT
-        gr.id, gr.text, gr.created_at, gr.user_id,
-        u.name AS author_name,
-        u.email AS author_email,
-        u.avatar_url AS author_avatar_url,
-        gs.id IS NOT NULL AS seen
-      FROM gratitude_responses gr
-      JOIN users u ON u.id = gr.user_id
-      LEFT JOIN gratitude_seen gs ON gs.gratitude_id = gr.id AND gs.user_id = $1
-      WHERE gr.shared = TRUE AND gr.created_at > $2
-      ORDER BY gr.created_at DESC
-      LIMIT 50`,
-      [user.id, since],
-    );
-
-    return res.json({
-      responses: responses.rows.map((r: any) => ({
-        id: r.id,
-        text: r.text,
-        createdAt: r.created_at,
-        authorName: r.author_name || r.author_email?.split("@")[0] || "Someone",
-        avatarUrl: r.author_avatar_url || null,
-        isYou: r.user_id === user.id,
-        isNew: !r.seen && r.user_id !== user.id,
-      })),
-    });
-  } catch (err) {
-    console.error("GET /gratitude/responses error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+// ── GET /api/gratitude/responses — the garden wall (REMOVED) ───────────────
+// Gratitude is private; there is no community garden. Always empty so no one
+// ever sees anyone else's thanks. (Kept as a stable 200 for any cached client.)
+router.get("/gratitude/responses", (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: "Not authenticated" });
+  return res.json({ responses: [] });
 });
 
-// ── GET /api/gratitude/unseen-count — new community gratitudes ─────────────
-// Drives the menu dot: how many shared garden entries (last 7 days, by other
-// people) the viewer hasn't seen yet. Cheap COUNT, mirrors the /responses
-// "isNew" rule exactly so the dot clears the moment the garden is opened.
-router.get("/gratitude/unseen-count", async (req, res) => {
-  try {
-    const user = getUser(req);
-    if (!user) return res.status(401).json({ error: "Not authenticated" });
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const result = await pool.query(
-      `SELECT COUNT(*)::int AS count
-       FROM gratitude_responses gr
-       LEFT JOIN gratitude_seen gs ON gs.gratitude_id = gr.id AND gs.user_id = $1
-       WHERE gr.shared = TRUE AND gr.created_at > $2
-         AND gr.user_id <> $1 AND gs.id IS NULL`,
-      [user.id, since],
-    );
-    return res.json({ count: result.rows[0]?.count ?? 0 });
-  } catch (err) {
-    console.error("GET /gratitude/unseen-count error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+// ── GET /api/gratitude/unseen-count — always 0 (no garden) ─────────────────
+router.get("/gratitude/unseen-count", (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: "Not authenticated" });
+  return res.json({ count: 0 });
 });
 
 // ── POST /api/gratitude/seen — mark garden entries as seen ─────────────────

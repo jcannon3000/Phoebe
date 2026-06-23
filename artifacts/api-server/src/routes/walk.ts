@@ -14,8 +14,17 @@ import { sendPushToUser } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
 import { getWalkProgressForToday } from "../lib/walkProgress";
 import { normalizePair } from "../lib/walkPairing";
+import { FELLOWS_ENABLED } from "../lib/fellowsFlag";
 
 const router: IRouter = Router();
+
+// Fellows (and Walking Together with it) is turned off. Enforce it at the SERVER
+// so a peer's today-only rhythm dots can't be fetched by hand while the feature
+// is off — not just hidden in the UI. Every /walk route short-circuits here.
+router.use((_req, res, next) => {
+  if (!FELLOWS_ENABLED) { res.status(403).json({ error: "Walking together is turned off." }); return; }
+  next();
+});
 
 function getUserId(req: unknown): number | null {
   const u = (req as { user?: { id?: number } }).user;

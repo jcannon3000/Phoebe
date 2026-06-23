@@ -5,9 +5,9 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
-// Shared gratitude composer — "name what you're grateful for." Private by
-// default with an opt-in "share with the garden" toggle (the "both"
-// shape). Used inline on the Gratitude page and inside GratitudeNudge,
+// Shared gratitude composer — "name what you're grateful for." Gratitude is a
+// PRIVATE practice: there is no sharing and no community garden (presence, not
+// performance). Used inline on the Gratitude page and inside GratitudeNudge,
 // the overlay the Daily Office close offers.
 
 const WARM = "#F0EDE6";
@@ -28,22 +28,19 @@ export function GratitudeComposer({
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [text, setText] = useState("");
-  const [shared, setShared] = useState(false);
   const wc = words(text);
   // Accept any non-empty thanks — even one word is a gift. The only ceiling is
   // a gentle 50-word cap so it stays a quick beat, not a journal entry.
   const valid = wc >= 1 && wc <= 50;
 
   const save = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/gratitude", { text: text.trim(), shared }),
+    mutationFn: () => apiRequest("POST", "/api/gratitude", { text: text.trim() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gratitude/mine"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/gratitude/responses"] });
       // Writing a gratitude = the optional "gratitude" practice is done today,
       // so the Daily-progress anchor (when added) checks off immediately.
       try { markPracticeDoneToday("gratitude"); } catch { /* non-fatal */ }
       setText("");
-      setShared(false);
       onSubmitted?.();
     },
   });
@@ -66,48 +63,14 @@ export function GratitudeComposer({
           lineHeight: 1.5,
         }}
       />
-      <div className="flex items-center justify-between gap-3 mt-2">
-        <span className="text-[11px] shrink-0" style={{ color: wc > 50 ? "#E8B872" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+      <div className="flex items-center mt-2">
+        <span className="text-[11px]" style={{ color: wc > 50 ? "#E8B872" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
           {wc === 0
             ? ""
             : wc > 50
               ? t("gratitude_composer.keep_under_50")
               : t("gratitude_composer.word_count", { count: wc })}
         </span>
-        {/* Private ↔ Public segmented toggle (private is the default). */}
-        <div
-          className="inline-flex items-center rounded-full p-0.5 shrink-0"
-          style={{ background: "rgba(15,40,24,0.6)", border: "1px solid rgba(46,107,64,0.4)" }}
-          role="group"
-          aria-label={t("gratitude_composer.visibility", { defaultValue: "Who can see this" })}
-        >
-          <button
-            type="button"
-            onClick={() => setShared(false)}
-            aria-pressed={!shared}
-            className="rounded-full px-3 py-1 text-[12px] font-semibold transition-colors"
-            style={{
-              background: !shared ? "rgba(46,107,64,0.85)" : "transparent",
-              color: !shared ? WARM : "rgba(143,175,150,0.7)",
-              fontFamily: SPACE_GROTESK,
-            }}
-          >
-            🔒 {t("gratitude_composer.private", { defaultValue: "Private" })}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShared(true)}
-            aria-pressed={shared}
-            className="rounded-full px-3 py-1 text-[12px] font-semibold transition-colors"
-            style={{
-              background: shared ? "rgba(46,107,64,0.85)" : "transparent",
-              color: shared ? WARM : "rgba(143,175,150,0.7)",
-              fontFamily: SPACE_GROTESK,
-            }}
-          >
-            🌿 {t("gratitude_composer.public", { defaultValue: "Public" })}
-          </button>
-        </div>
       </div>
       <button
         type="button"
