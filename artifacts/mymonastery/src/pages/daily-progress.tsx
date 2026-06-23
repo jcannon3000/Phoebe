@@ -11,6 +11,7 @@
 import { useMemo } from "react";
 import { Link } from "wouter";
 import { ChevronLeft, Sliders } from "lucide-react";
+import { FROST } from "@/lib/frost";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
@@ -46,8 +47,8 @@ export default function DailyProgressPage() {
             href="/rule-of-life"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 shrink-0 transition-opacity hover:opacity-90"
             style={{
-              background: "rgba(46,107,64,0.10)",
-              border: "1px solid rgba(46,107,64,0.28)",
+              ...FROST,
+              border: "1px solid rgba(46,107,64,0.4)",
               color: "#A8C5A0",
               fontFamily: FONT,
               fontSize: 13,
