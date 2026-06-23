@@ -3583,33 +3583,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                         ? (isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer"))
                         : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏🏽`}
                   </p>
-                  {countCopy && (
-                    <p
-                      className="text-[11px]"
-                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}
-                    >
-                      {countCopy}
-                    </p>
-                  )}
+                  {/* Peer presence ("N people prayed with you this week" + the
+                      face rail) removed from the home office card — no
+                      Walking-Together / who-prayed surfacing here. */}
+                  {void countCopy}{void withAvatars}
                 </div>
-                {withAvatars.length > 0 && (
-                  <div className="flex items-center -space-x-2 shrink-0">
-                    {/* Show as many faces as fit the card (up from 5); the
-                        count line above carries the true total. Capped so the
-                        rail can't overflow / crush the title — 6 on the Devotion
-                        variant (its longer title + 🌙 leave less room), 8 otherwise. */}
-                    {withAvatars.slice(0, programmedLevel === "devotion" ? 6 : 8).map((p) => (
-                      <img
-                        key={p.id}
-                        src={p.avatarUrl as string}
-                        alt={p.name}
-                        title={p.name}
-                        className="w-6 h-6 rounded-full object-cover"
-                        style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
-                      />
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })()}
@@ -7076,26 +7054,28 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         </div>
                       )}
                       <div className="flex flex-col gap-2">
-                        {ownReqs.map((req) => {
+                        {ownReqs.map((req, ri) => {
                           // Faces of who prayed for THIS request (per-request, from
                           // the API), newest-first — not the global "prayed for me".
                           const reqFaces = (req.amenFaces ?? []).filter(Boolean);
                           const reqTotal = req.amenPeopleCount ?? reqFaces.length;
                           return (
                             <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                              <div
+                              <motion.div
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(ri * 0.1, 1.5) }}
                                 className="relative flex rounded-xl overflow-hidden"
-                                style={{ background: "rgba(96,141,209,0.12)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                                style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                               >
-                                {/* Blue accent — your own request (others' cards are sage). */}
-                                <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />
+                                <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
                                 <div className="flex-1 px-4 pt-3 pb-3">
                                   <div className="flex items-center gap-3">
                                     {/* Your own avatar. */}
                                     {user?.avatarUrl ? (
-                                      <img src={user.avatarUrl} alt={userName ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(96,141,209,0.4)" }} />
+                                      <img src={user.avatarUrl} alt={userName ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
                                     ) : (
-                                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A2F4A", color: "#A8C0E0" }}>
+                                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
                                         {facesInitials(userName)}
                                       </div>
                                     )}
@@ -7115,7 +7095,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                                             p.avatarUrl ? (
                                               <img key={idx} src={p.avatarUrl} alt={p.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
                                             ) : (
-                                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A2F4A", color: "#A8C0E0", border: "1.5px solid #0C1F12" }}>
+                                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
                                                 {facesInitials(p.name)}
                                               </div>
                                             ),
@@ -7130,7 +7110,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                                     )}
                                   </div>
                                 </div>
-                              </div>
+                              </motion.div>
                             </Link>
                           );
                         })}
