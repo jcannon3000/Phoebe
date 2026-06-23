@@ -925,8 +925,25 @@ function OpeningSplash() {
   // the quote, never a row of faces (no "faces header" on mobile). Keep the
   // fellows query above so re-enabling is a one-line flip.
   void fellowsResolved; void practicedFellows;
+  // The app-open splash shows WHAT'S NEXT in the user's routine — the first
+  // still-undone anchor in order. It falls back to a contemplative quote once
+  // the day is fully kept (or there's no routine). Both wait for the rhythm to
+  // resolve so the greeting holds without a flash.
+  const reflectUndone = rhythm.reflections.some((r) => !r.done);
+  const nextUp: { emoji: string; label: string } | null =
+    (rhythm.morningActive && !rhythm.morningDone) ? { emoji: "🌅", label: "Morning prayer" }
+    : reflectUndone ? { emoji: "📖", label: "Today's reflection" }
+    : (rhythm.silenceActive && !rhythm.silenceDone) ? { emoji: "🕯️", label: "Contemplation" }
+    : (rhythm.eveningActive && !rhythm.eveningDone) ? { emoji: "🌙", label: "Evening prayer" }
+    : (rhythm.gratitudeActive && !rhythm.gratitudeDone) ? { emoji: "🙏", label: "Gratitude" }
+    : (rhythm.examenActive && !rhythm.examenDone) ? { emoji: "🌗", label: "The Examen" }
+    : (rhythm.listeningActive && !rhythm.listeningDone) ? { emoji: "🎵", label: "Audio Divina" }
+    : (rhythm.lectioActive && !rhythm.lectioDone) ? { emoji: "📖", label: "Lectio Divina" }
+    : (rhythm.walkActive && !rhythm.walkDone) ? { emoji: "🚶", label: "Contemplative walk" }
+    : null;
   const showFellows = false;
-  const showQuote = true;
+  const showWhatsNext = rhythm.ready && !!nextUp;
+  const showQuote = rhythm.ready && !nextUp;
   // The faces rail is retired; keep the flag (false) so its now-dormant render +
   // cache effects still compile without ever running.
   const showFaces = false;
@@ -1207,9 +1224,30 @@ function OpeningSplash() {
           </motion.div>
         );
       })()}
-      {/* Quote — the other alternate. A single contemplative line + attribution,
-          centred; it rises in immediately on a quote open (no greeting flash,
-          no settle delay). */}
+      {/* What's next in the routine — the first still-undone anchor. Tapping
+          anywhere on the splash fades it to the home, where they begin it. */}
+      {showWhatsNext && nextUp && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="relative w-full text-center"
+          style={{ maxWidth: 460 }}
+        >
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            Up next in your rhythm
+          </p>
+          <div className="leading-none mb-4" style={{ fontSize: 56 }}>{nextUp.emoji}</div>
+          <p className="px-4" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            {nextUp.label}
+          </p>
+          <p className="mt-5 text-[13px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            Tap to begin →
+          </p>
+        </motion.div>
+      )}
+      {/* Quote — the fallback once the day is kept. A single contemplative line
+          + attribution, centred; rises in immediately (no settle delay). */}
       {showQuote && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
