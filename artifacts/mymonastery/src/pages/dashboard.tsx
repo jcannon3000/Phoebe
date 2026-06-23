@@ -7193,17 +7193,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                             <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
                               <div
                                 className="relative flex rounded-xl overflow-hidden"
-                                style={{ background: "rgba(96,141,209,0.12)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                                style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                               >
-                                {/* Blue accent — your own request (others' cards are sage). */}
-                                <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />
+                                {/* Green frosted — your own request (matches the rest of the list). */}
+                                <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
                                 <div className="flex-1 px-4 pt-3 pb-3">
                                   <div className="flex items-center gap-3">
                                     {/* Your own avatar. */}
                                     {user?.avatarUrl ? (
-                                      <img src={user.avatarUrl} alt={userName ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(96,141,209,0.4)" }} />
+                                      <img src={user.avatarUrl} alt={userName ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.45)" }} />
                                     ) : (
-                                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A2F4A", color: "#A8C0E0" }}>
+                                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
                                         {facesInitials(userName)}
                                       </div>
                                     )}
