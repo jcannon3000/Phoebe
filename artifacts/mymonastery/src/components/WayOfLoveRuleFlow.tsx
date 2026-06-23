@@ -543,10 +543,10 @@ export default function WayOfLoveRuleFlow({
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
     // Gratitude + journaling come from the "Add to your day" step; Examen, Audio
-    // Divina (listening), and Co-Breathe come from the contemplative step. A
-    // standalone Co-Breathe card is added only when it isn't already a side's
-    // contemplation style (then it's represented by that side's office instead).
-    const wantCobreathe = contemplative.cobreathe && !cobreatheIsSideStyle;
+    // Divina (listening), and Co-Breathe come from the contemplative step. Every
+    // selected Co-Breathe now gets its own home card — it's no longer suppressed
+    // when a side also prays it as its contemplation style (that dropped the card).
+    const wantCobreathe = contemplative.cobreathe;
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.journaling ? ["journaling"] : []),
@@ -627,7 +627,7 @@ export default function WayOfLoveRuleFlow({
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
     "contemplative",
     ...(contemplative.prayer ? (["contemplation-goal"] as Step[]) : []),
-    ...(contemplative.cobreathe && !cobreatheIsSideStyle ? (["cobreathe-when"] as Step[]) : []),
+    ...(contemplative.cobreathe ? (["cobreathe-when"] as Step[]) : []),
     ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
     ...(contemplative.lectio ? (["lectio-when"] as Step[]) : []),
     ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
