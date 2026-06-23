@@ -4967,7 +4967,19 @@ function TimeSection({
 
   return (
     <div className={scrollable ? "mb-3" : "mb-5"}>
-      <SectionHeader label={label} />
+      {/* The section title fades up with the cascade too (visual only — haptics
+          are scheduled per card, so titles never buzz). */}
+      {cascade ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(cascadeFrom * 0.1, 1.5) }}
+        >
+          <SectionHeader label={label} />
+        </motion.div>
+      ) : (
+        <SectionHeader label={label} />
+      )}
       {scrollable ? (
         <div className="relative">
           <div
@@ -7090,12 +7102,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   return (
                     <div style={{ marginTop: ownReqs.length > 0 ? 28 : 16 }}>
                       {ownReqs.length > 0 && (
-                        <div className="flex items-center gap-3 mb-2">
+                        <motion.div
+                          className="flex items-center gap-3 mb-2"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+                          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                        >
                           <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                             {t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" })}
                           </h3>
                           <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-                        </div>
+                        </motion.div>
                       )}
                       <div className="flex flex-col gap-2">
                         {ownReqs.map((req, ri) => {

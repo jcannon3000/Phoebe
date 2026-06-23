@@ -4,12 +4,14 @@
  * + contacts + incoming requests + your fellows with remove), keeping the People
  * page itself clean (just your fellows + the pill).
  */
+import { useMemo } from "react";
 import { Link } from "wouter";
 import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { FellowsConnect } from "@/components/FellowsConnect";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -18,8 +20,11 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 export default function FellowsPage() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
+  // Leaf backdrop — matches the Community page; FellowsConnect's cards are
+  // already frosted glass (FROST_BLUR) so they read over the foliage.
+  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   return (
-    <Layout>
+    <Layout bgPhoto={leafBg}>
       <div className="max-w-2xl mx-auto w-full pb-20">
         <Link href="/people" className="inline-flex items-center gap-1.5 text-sm mb-3" style={{ color: SAGE }}>
           <ChevronLeft size={14} /> {t("people.title", { defaultValue: "People" })}
