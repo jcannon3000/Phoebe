@@ -3272,14 +3272,27 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // Eyebrow: office users keep "Book of Common Prayer"; the Pray Together
   // card shows "{N} Requests" (active community prayer requests others have
   // open). The /api/prayer-requests fetch dedupes with the dashboard's own.
-  const { data: officeReqData } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; expiresAt?: string | null }>>({
+  const { data: officeReqData } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; expiresAt?: string | null; ownerId?: number; ownerName?: string | null; ownerAvatarUrl?: string | null; isAnonymous?: boolean }>>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     staleTime: 60_000,
   });
-  const requestCount = (officeReqData ?? []).filter(
+  const openOfficeReqs = (officeReqData ?? []).filter(
     (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && (!r.expiresAt || new Date(r.expiresAt) > new Date()),
-  ).length;
+  );
+  const requestCount = openOfficeReqs.length;
+  // Faces of the people ASKING for prayer (open requests), deduped by owner,
+  // non-anonymous, with an avatar — shown on the office card in place of the
+  // who-prayed rail.
+  const requesterFaces: Array<{ id: number; name: string; avatarUrl: string }> = [];
+  {
+    const seenOwners = new Set<number>();
+    for (const r of openOfficeReqs) {
+      if (r.isAnonymous || typeof r.ownerId !== "number" || !r.ownerAvatarUrl || seenOwners.has(r.ownerId)) continue;
+      seenOwners.add(r.ownerId);
+      requesterFaces.push({ id: r.ownerId, name: r.ownerName ?? "", avatarUrl: r.ownerAvatarUrl });
+    }
+  }
   const eyebrow = programmedOffice
     ? t("dashboard.book_of_common_prayer")
     : requestCount > 0
@@ -3559,11 +3572,12 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
             // filtered list for the rail.
             // Count = everyone who prayed (any way, not just offices) — the
             // server's true total, which can exceed the (capped) people list.
-            const totalCount = communityPrayedData?.total ?? communityPrayed.length;
-            const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
-            const countCopy = totalCount === 0
+            // The office card surfaces who's ASKING for prayer, not who prayed:
+            // the requesters' faces + "N prayer requests".
+            const withAvatars = requesterFaces;
+            const countCopy = requestCount === 0
               ? null
-              : t("dashboard.prayed_with_you_week", { count: totalCount });
+              : t("dashboard.office_requests_sub", { count: requestCount, defaultValue: `${requestCount} prayer request${requestCount === 1 ? "" : "s"}` });
             return (
               // Title sits tight to the eyebrow above, with breathing
               // room below before the "N people prayed with you this
