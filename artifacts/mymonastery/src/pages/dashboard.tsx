@@ -17,6 +17,7 @@ import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgress
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -4785,6 +4786,20 @@ function TimeSection({
   cascade?: boolean;
   cascadeFrom?: number;
 }) {
+  // Hold the event-card cascade until the app-open splash has faded (native),
+  // so the cards rise into view rather than animating behind the splash —
+  // matching the rhythm cards in DailyProgressBody. Immediate on web.
+  const [splashCleared, setSplashCleared] = useState<boolean>(() => {
+    if (!isNativeShell()) return true;
+    try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
+  });
+  useEffect(() => {
+    if (splashCleared) return;
+    const clear = () => setSplashCleared(true);
+    window.addEventListener("phoebe:splash-done", clear);
+    const id = window.setTimeout(clear, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+  }, [splashCleared]);
   if (items.length === 0 && !trailingCards) return null;
 
   // Render in the input array's order — caller (parent useMemo) has
@@ -4909,7 +4924,7 @@ function TimeSection({
             <motion.div
               key={isValidElement(node) && node.key != null ? node.key : idx}
               initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
               transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 1.5) }}
             >
               {node}
@@ -6922,9 +6937,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       // section below the list — so the list is purely others to pray for.
                       if (r.isOwnRequest) return false;
                       if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-                      // Once you've prayed (amened) a request today it's done —
-                      // drop it from the home list entirely.
-                      if (r.myAmenedToday) return false;
+                      // Prayed (amened) requests STAY on the list — they sink to
+                      // the bottom and show a ✓, so done ones no longer disappear.
                       return true;
                     })
                     .map((r) => ({
