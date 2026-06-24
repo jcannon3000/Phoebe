@@ -29,7 +29,7 @@ const HOME_MODULES = [
   // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
-  "office", "feeds", "contemplation", "listening", "gratitude", "examen", "journaling",
+  "office", "feeds", "contemplation", "listening", "lectio", "reading", "walk", "cobreathe", "gratitude", "examen", "journaling",
   "cac", "fdd", "ssje", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -103,7 +103,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) → Gratitude →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "gratitude", "fdd", "contemplation", "listening", "examen", "journaling", "cac", "ssje", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "examen", "journaling", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "lectio", "reading", "walk", "cobreathe", "examen", "journaling", "cac", "ssje", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
