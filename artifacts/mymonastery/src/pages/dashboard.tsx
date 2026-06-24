@@ -6780,10 +6780,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 if (noEvents) {
                   return (
                     <div>
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0 }}>{keptHeader}</motion.div>
+                      <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0 }}>{keptHeader}</motion.div>
                       {/* All cards done, nothing on the calendar → the "Sit again"
-                          contemplation card stands on its own, as before. */}
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.06 }}>{contemplationAgainCard}</motion.div>
+                          contemplation card stands on its own, cascading in like
+                          the rest of the home (splash-gated + a haptic tick). */}
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}>{contemplationAgainCard}</motion.div>
                     </div>
                   );
                 }
@@ -6797,8 +6799,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // matching the Daily progress page's cascade.
                 const enterUp = (i: number) => ({
                   initial: { opacity: 0, y: 10 },
-                  animate: { opacity: 1, y: 0 },
-                  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.06, 0.42) },
+                  // Gate on the splash like the rest of the home cards, so these
+                  // cascade in AFTER the opening splash clears (not behind it),
+                  // matching the carousel/events stagger + step.
+                  animate: ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+                  transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 1.5) },
                 });
                 // The next THREE events, flattened across the day buckets (already
                 // chronological today→month) into a single "Next up" section.
@@ -6814,6 +6819,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 void nextThree; void showSitAgain; void evtProps;
                 return (
                   <div>
+                    <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
