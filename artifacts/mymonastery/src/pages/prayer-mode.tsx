@@ -2897,9 +2897,16 @@ export default function PrayerModePage() {
   // compute hasActiveOwnRequest because the trailing "ask-request"
   // slide (a soft nudge to share something) only fires for viewers
   // without an active ask, and that part of the UX is intentional.
-  const hasActiveOwnRequest = prayerRequests.some(
-    (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
-  );
+  const hasActiveOwnRequest =
+    prayerRequests.some(
+      (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
+    ) ||
+    // Also trust the dedicated /last-mine signal. The feed query can be stale or
+    // still loading at the moment the deck is built (the very staleness the
+    // mount-invalidate below was added to fight), which made the ask-request
+    // nudge surface even for someone who already has a live request. last-mine
+    // is a single-row, always-current check, so it closes that gap.
+    lastMineQuery.data?.request?.isActive === true;
 
   // queueMode === "new" builds a tightly-scoped slide list: only
   // prayer requests the viewer hasn't amen'd before. Everything else
