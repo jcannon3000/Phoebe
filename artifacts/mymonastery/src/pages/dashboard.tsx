@@ -7039,20 +7039,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       const bDone = !b.isOwnRequest && b.myAmenedToday ? 1 : 0;
                       return aDone - bDone;
                     });
-                  // Keep the prayer-request carousel on the home; the upcoming
-                  // EVENTS always render UNDERNEATH it, never replacing it.
-                  const evToday = fToday.filter(isEventItem);
-                  const evTomorrow = fTomorrow.filter(isEventItem);
-                  const evWeek = fWeek.filter(isEventItem);
-                  const evMonth = fMonth.filter(isEventItem);
-                  const hasEvents = evToday.length + evTomorrow.length + evWeek.length + evMonth.length > 0;
-                  if (carouselRows.length === 0 && !hasEvents) return null;
-                  // Cascade continues across the sections so each card rises in turn.
+                  // The prayer-request carousel leads. The upcoming EVENTS now
+                  // render BELOW the "Your prayer requests" section (just below),
+                  // so every prayer request groups above the schedule.
+                  if (carouselRows.length === 0) return null;
                   const carouselFrom = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
-                  const evBase = carouselFrom + carouselRows.length;
-                  const cTomorrow = evBase + evToday.length;
-                  const cWeek = cTomorrow + evTomorrow.length;
-                  const cMonth = cWeek + evWeek.length;
                   return (
                     <div style={{ marginTop: carouselRows.length > 0 ? -12 : 4 }}>
                       {carouselRows.length > 0 && (
@@ -7063,14 +7054,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           cascadeFrom={carouselFrom}
                           tight
                         />
-                      )}
-                      {hasEvents && (
-                        <div style={{ marginTop: carouselRows.length > 0 ? 16 : 4 }}>
-                          <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
-                          <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cTomorrow} />
-                          <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cWeek} />
-                          <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cMonth} />
-                        </div>
                       )}
                     </div>
                   );
@@ -7091,19 +7074,32 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   const unprayedOthers = (dashPrayerRequests ?? []).filter(
                     (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday,
                   );
-                  // Hide the whole section only when there's nothing of yours AND
-                  // nothing left to pray for (the + FAB still starts a new one).
-                  if (ownReqs.length === 0 && unprayedOthers.length === 0) return null;
-                  // Continue the home's ONE top-to-bottom cascade: this section sits
-                  // below the rhythm cards, the prayer-list carousel, and the events
-                  // schedule, so its fade-up must start after all of them — not
-                  // restart at delay 0 (which made it pop in out of order).
+                  // The upcoming EVENTS render BELOW this section now, so every
+                  // prayer request groups above the schedule. They share this
+                  // section's IIFE.
+                  const evToday = fToday.filter(isEventItem);
+                  const evTomorrow = fTomorrow.filter(isEventItem);
+                  const evWeek = fWeek.filter(isEventItem);
+                  const evMonth = fMonth.filter(isEventItem);
+                  const hasEvents = evToday.length + evTomorrow.length + evWeek.length + evMonth.length > 0;
+                  // Hide the whole section only when there's nothing of yours,
+                  // nothing left to pray for, AND no events (the + FAB still
+                  // starts a new request whenever the section shows).
+                  if (ownReqs.length === 0 && unprayedOthers.length === 0 && !hasEvents) return null;
+                  // The home's ONE top-to-bottom cascade: rhythm cards → others'
+                  // carousel → your requests → events. Each card's fade-up starts
+                  // after all of them, never restarting at delay 0.
                   const carouselCount = (dashPrayerRequests ?? []).filter(
                     (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
                   ).length;
-                  const eventCount = [fToday, fTomorrow, fWeek, fMonth].reduce((n, b) => n + b.filter(isEventItem).length, 0);
-                  const ownBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount + eventCount;
+                  const ownBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
                   const ownDelay = (i: number) => Math.min((ownBase + i) * 0.1, 1.5);
+                  // Your requests use ownBase + 0 (header) .. ownBase + N (cards);
+                  // the events schedule cascades in right after them.
+                  const evBase = ownBase + (ownReqs.length > 0 ? ownReqs.length + 1 : 0);
+                  const cTomorrow = evBase + evToday.length;
+                  const cWeek = cTomorrow + evTomorrow.length;
+                  const cMonth = cWeek + evWeek.length;
                   const facesInitials = (name: string | null) =>
                     (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
                   const newRequestBtn = isAdminOfAny ? (
@@ -7203,6 +7199,14 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         })}
                       </div>
                       {newRequestBtn}
+                      {hasEvents && (
+                        <div style={{ marginTop: 20 }}>
+                          <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
+                          <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cTomorrow} />
+                          <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cWeek} />
+                          <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cMonth} />
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
