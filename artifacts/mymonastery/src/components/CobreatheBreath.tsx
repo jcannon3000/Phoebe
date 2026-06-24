@@ -126,18 +126,20 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 // live in the render (they go through t()); this just fixes the set + order.
 type QuoteKind = "weil" | "merton" | "mlk" | "teresa";
 const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa"];
-// Outer per-breath ring around the globe: the lighter green fills clockwise on
-// the inhale and HOLDS through the exhale; the darker green sweeps over it on
-// the exhale. Resets each cycle.
-const RING_IN = "#86C79B";
-const RING_OUT = "#2E6B40";
+// Frosted, COLOUR-FREE rings: two warm-white "glass" tones, one 10% darker than
+// the other. The lighter tone fills clockwise on the inhale and HOLDS through
+// the exhale; the darker (≈ lighter × 0.9) sweeps over it on the exhale,
+// settling the ring back to its resting tone. Resets each cycle.
+const RING_IN = "#EFECE4";               // frosted light tone (the inhale fill)
+const RING_OUT = "#D7D4CD";              // 10% darker — the base / exhale sweep
+// Soft frosted glow (no green/blue) used by every ring's drop-shadow.
+const RING_GLOW = "rgba(240,237,230,0.45)";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
 const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
-// Inner blue SESSION ring — ONE slow circle filling once across the whole set
-// of breaths. Radius is 10% smaller than the old 47, and its thickness matches
-// the outer ring (RING_SW). The globe takes on a blue glow when the set is kept.
-const SESSION_BLUE = "#5B9DEF";
+// Inner SESSION ring — ONE slow circle filling once across the whole set of
+// breaths, in the SAME frosted light tone as the breath fill (no colour).
+const SESSION_RING = "#EFECE4";
 const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
@@ -1020,24 +1022,24 @@ export function CobreatheBreath({
           width={globePx} height={globePx} viewBox="0 0 128 128"
           style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
         >
-          {/* TWO colors only. Dark green BASE ring — the resting state, a full
-              dark-green circle the breath starts and ends on. */}
+          {/* TWO frosted tones only. The resting BASE ring — the darker (10%
+              darker) warm-white tone the breath starts and ends on. */}
           <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.9}
-            style={{ filter: "drop-shadow(0 0 4px rgba(46,107,64,0.7))" }} />
-          {/* Light green progress — draws FORWARD over the dark base on the
-              inhale and holds full. */}
+            style={{ filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
+          {/* Lighter-tone progress — draws FORWARD over the base on the inhale
+              and holds full. */}
           <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(134,199,155,0.85))" }} />
-          {/* Exhale sweep — the SAME dark green as the base (still two colors),
-              drawing FORWARD in the same direction over the light on the exhale,
-              settling the ring back to dark. Never rewinds. */}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
+          {/* Exhale sweep — the darker tone again, drawing FORWARD in the same
+              direction over the lighter on the exhale, settling the ring back to
+              its resting tone. Never rewinds. */}
           <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.9}
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 4px rgba(46,107,64,0.7))" }} />
-          {/* inner blue session ring — visible track (so the two rings read as
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
+          {/* inner session ring — a faint frosted track (so the two rings read as
               concentric even at rest) + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.34)" strokeWidth={RING_SW} />
-          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
-            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(91,157,239,0.85))" }} />
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={RING_SW} />
+          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
+            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
         </svg>
         <div
           ref={globeRef}
