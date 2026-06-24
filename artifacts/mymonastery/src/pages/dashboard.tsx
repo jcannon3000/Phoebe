@@ -4174,11 +4174,12 @@ function PrayerListCarousel({
             const amened = !!req.myAmenedToday;
             // Tapping an UN-prayed card opens the prayer slideshow (walk through
             // the undone requests, praying each). A PRAYED card isn't in that
-            // "new" queue anymore, so tapping it there went nowhere — instead
-            // open its detail page so the tap always lands somewhere. The
-            // checkbox circle on the right is a quick one-tap "pray".
+            // "new" queue anymore — the slideshow filters it out, so a tap there
+            // skipped straight to the pause slide. Instead, open its detail page
+            // so an already-prayed request always still comes up. The checkbox
+            // circle on the right is a quick one-tap "pray".
             return (
-              <Link key={req.id} href={`/prayer-mode?focus=${req.id}`} className="block">
+              <Link key={req.id} href={amened ? `/prayer-requests/${req.id}` : `/prayer-mode?focus=${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
