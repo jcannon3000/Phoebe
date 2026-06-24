@@ -18,7 +18,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { db, groupsTable, prayerRequestsTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -399,6 +399,11 @@ if (fs.existsSync(frontendDist)) {
   // 16-byte hex (32 chars) on the inviter's user row (prayer_partner_invite_token).
   const prayerDialoguePathRe = /^\/prayer-dialogue\/join\/([a-f0-9]{32})\b/i;
 
+  // "Become a fellow" invite link — /fellow/:token. Token is 16-byte hex
+  // (32 chars) in fellow_link_invites; we name the inviter so the iMessage
+  // card reads "Pray with <Name> with Phoebe" rather than the generic landing copy.
+  const fellowInvitePathRe = /^\/fellow\/([a-f0-9]{32})\b/i;
+
   app.get("/{*path}", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
@@ -525,6 +530,30 @@ if (fs.existsSync(frontendDist)) {
         }
       } catch (err) {
         logger.warn({ err, tokenPrefix: token.slice(0, 6) }, "[og] prayer-dialogue preview lookup failed");
+      }
+    }
+
+    // 3c) "Become a fellow" invite → name the inviter so the iMessage card reads
+    // as a personal invitation: "Pray with <Name> with Phoebe".
+    const fellowMatch = fellowInvitePathRe.exec(req.path);
+    if (fellowMatch) {
+      const token = fellowMatch[1]!.toLowerCase();
+      try {
+        // fellow_link_invites has no drizzle schema (raw-SQL table) — join to
+        // users for the inviter's name in one query.
+        const result = await db.execute<{ name: string | null }>(
+          sql`SELECT u.name FROM fellow_link_invites f JOIN users u ON u.id = f.sender_id WHERE f.token = ${token} LIMIT 1`,
+        );
+        const name = (result.rows[0]?.name || "").trim();
+        if (name) {
+          const first = name.split(/\s+/)[0] || name;
+          const title = `Pray with ${first} with Phoebe`;
+          const description = `${first} invited you to pray together on Phoebe — carry each other's prayers, day to day.`;
+          res.type("html").send(renderIndexWithOg(title, description));
+          return;
+        }
+      } catch (err) {
+        logger.warn({ err, tokenPrefix: token.slice(0, 6) }, "[og] fellow-invite preview lookup failed");
       }
     }
 
