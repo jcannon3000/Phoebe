@@ -1041,6 +1041,55 @@ function OfficesOnlyExtras() {
   );
 }
 
+// The header's "Daily progress ●●●●○○○" dots pill can be turned off for a
+// quieter top bar. Stored client-side (localStorage); the header reads the same
+// key and re-checks on the "phoebe:prefs-changed" event we fire below, so the
+// pill appears/disappears immediately without a reload.
+const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
+
+function HomeDisplaySettings() {
+  const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
+  const shown = !hidden;
+  const toggle = () => {
+    const nextHidden = shown; // currently shown → hide it (and vice-versa)
+    setHidden(nextHidden);
+    writeLsBool(HIDE_DP_PILL_KEY, nextHidden);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
+
+  return (
+    <>
+      <SectionHeader label="Home display" />
+
+      <SettingsCard>
+        <button
+          onClick={toggle}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Daily progress dots
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              The little row of rhythm dots in the header. Turn it off for a quieter top bar.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${shown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${shown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+      </SettingsCard>
+
+      <div className="mb-8" />
+    </>
+  );
+}
+
 function MutedPeople() {
   const { data, isLoading } = useQuery<{ muted: MutedUser[] }>({
     queryKey: ["/api/mutes"],
@@ -1754,6 +1803,11 @@ export default function SettingsPage() {
         {/* ── Default prayer depth — what the home "Begin prayer" CTA opens. ── */}
         <div className="mb-8">
           <DefaultPrayerLevelSettings />
+        </div>
+
+        {/* ── Home display — header daily-progress dots on/off ── */}
+        <div className="mb-8">
+          <HomeDisplaySettings />
         </div>
 
         {/* ── Office reminders ── */}

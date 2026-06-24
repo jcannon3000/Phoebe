@@ -668,6 +668,19 @@ function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
   const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, customAnchors } = useRhythmState();
+  // The pill can be turned off in Settings → Home display ("Daily progress
+  // dots"). Read the flag and react to live toggles (same-tab custom event +
+  // cross-tab storage event) so flipping it in settings updates the header at
+  // once, no reload.
+  const [pillHidden, setPillHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:hide-daily-progress-pill") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    const sync = () => { try { setPillHidden(localStorage.getItem("phoebe:hide-daily-progress-pill") === "1"); } catch { /* ignore */ } };
+    window.addEventListener("phoebe:prefs-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener("phoebe:prefs-changed", sync); window.removeEventListener("storage", sync); };
+  }, []);
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -758,6 +771,9 @@ function DailyProgressPill() {
     const id = setInterval(() => bumpPulse((n) => n + 1), 15_000);
     return () => clearInterval(id);
   }, [anyPulsing]);
+
+  // Turned off in Settings → Home display.
+  if (pillHidden) return null;
 
   return (
     <Link
@@ -953,16 +969,18 @@ function OpeningSplash() {
   // the day is fully kept (or there's no routine). Both wait for the rhythm to
   // resolve so the greeting holds without a flash.
   const reflectUndone = rhythm.reflections.some((r) => !r.done);
-  const nextUp: { emoji: string; label: string } | null =
-    (rhythm.morningActive && !rhythm.morningDone) ? { emoji: "🌅", label: "Morning prayer" }
-    : reflectUndone ? { emoji: "📖", label: "Today's reflection" }
-    : (rhythm.silenceActive && !rhythm.silenceDone) ? { emoji: "🕯️", label: "Contemplation" }
-    : (rhythm.eveningActive && !rhythm.eveningDone) ? { emoji: "🌙", label: "Evening prayer" }
-    : (rhythm.gratitudeActive && !rhythm.gratitudeDone) ? { emoji: "🙏", label: "Gratitude" }
-    : (rhythm.examenActive && !rhythm.examenDone) ? { emoji: "🌗", label: "The Examen" }
-    : (rhythm.listeningActive && !rhythm.listeningDone) ? { emoji: "🎵", label: "Audio Divina" }
-    : (rhythm.lectioActive && !rhythm.lectioDone) ? { emoji: "📖", label: "Lectio Divina" }
-    : (rhythm.walkActive && !rhythm.walkDone) ? { emoji: "🚶", label: "Contemplative walk" }
+  // emoji/label/blurb/rgb mirror the matching home card (DailyProgressBody) so
+  // the splash can render that practice's actual card, not a bare emoji.
+  const nextUp: { emoji: string; label: string; blurb: string; rgb: string } | null =
+    (rhythm.morningActive && !rhythm.morningDone) ? { emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" }
+    : reflectUndone ? { emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" }
+    : (rhythm.silenceActive && !rhythm.silenceDone) ? { emoji: "🕯️", label: "Contemplation", blurb: "A few minutes of stillness", rgb: "62,124,122" }
+    : (rhythm.eveningActive && !rhythm.eveningDone) ? { emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" }
+    : (rhythm.gratitudeActive && !rhythm.gratitudeDone) ? { emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" }
+    : (rhythm.examenActive && !rhythm.examenDone) ? { emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" }
+    : (rhythm.listeningActive && !rhythm.listeningDone) ? { emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" }
+    : (rhythm.lectioActive && !rhythm.lectioDone) ? { emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" }
+    : (rhythm.walkActive && !rhythm.walkDone) ? { emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" }
     : null;
   const showFellows = false;
   const showWhatsNext = rhythm.ready && !!nextUp;
@@ -1257,13 +1275,28 @@ function OpeningSplash() {
           className="relative w-full text-center"
           style={{ maxWidth: 460 }}
         >
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-4" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
             Up next in your rhythm
           </p>
-          <div className="leading-none mb-4" style={{ fontSize: 56 }}>{nextUp.emoji}</div>
-          <p className="px-4" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 600, letterSpacing: "-0.01em" }}>
-            {nextUp.label}
-          </p>
+          {/* The same card the home shows for this practice — frosted surface,
+              accent strip, emoji, title, blurb, Begin pill (cardTintBg(0.4) +
+              blur from DailyProgressBody). Tapping anywhere fades to home, where
+              the live card begins it. */}
+          <div className="relative flex rounded-3xl overflow-hidden text-left mx-auto" style={{ maxWidth: 420, background: "rgba(20,42,29,0.306)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}>
+            <div className="w-1 flex-shrink-0" style={{ background: `rgba(${nextUp.rgb},0.7)` }} />
+            <div className="flex-1 min-w-0 px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <span className="text-xl flex-shrink-0">{nextUp.emoji}</span>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.label}</p>
+                  <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.blurb}</p>
+                </div>
+                <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: `rgba(${nextUp.rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {t("rhythm.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
+                </span>
+              </div>
+            </div>
+          </div>
           <p className="mt-5 text-[13px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
             Tap to begin →
           </p>
