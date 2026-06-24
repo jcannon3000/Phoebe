@@ -576,14 +576,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
     t("rhythm.with_community", { defaultValue: "with community prayers" }),
   ];
-  // Whenever there's a minute goal, show progress toward it ("12 of 20 min
-  // today") — even once it's met — so the card always reads as minutes-of-goal.
-  // Only with no goal set does it fall back to "Kept today" / the blurb.
-  // Contemplation is NEVER framed as a quota: no "X of Y min", no deficit bar.
-  // It only marks that you entered the silence today — gently, after the fact.
-  const contemplationBlurb = silenceDone
-    ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
-    : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
+  // With a daily goal set, the card reads as goal PROGRESS — "12 of 60 min
+  // today", or "Reached today 🌿" once met — matching the home Contemplation
+  // card. Gentle, never a deficit: a short sit still keeps the dot (silenceDone
+  // = any sit). With no goal set, it falls back to "You rested in silence today".
+  const contemplationBlurb = contemplationGoalMin > 0
+    ? (contemplationMin >= contemplationGoalMin
+        ? t("rhythm.contemplation_goal_met", { defaultValue: "Reached today 🌿" })
+        : t("rhythm.contemplation_goal_progress", { done: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }))
+    : silenceDone
+      ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
+      : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   const officeTitle = (side: "Morning" | "Evening") =>
     prayerKind === "community"
