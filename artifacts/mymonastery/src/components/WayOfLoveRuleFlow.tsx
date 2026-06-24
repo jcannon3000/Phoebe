@@ -537,7 +537,15 @@ export default function WayOfLoveRuleFlow({
     // Divina (listening), and Co-Breathe come from the contemplative step. Every
     // selected Co-Breathe now gets its own home card — it's no longer suppressed
     // when a side also prays it as its contemplation style (that dropped the card).
-    const wantCobreathe = contemplative.cobreathe;
+    // Co-Breathe earns a home card from EITHER path: the Contemplation-practices
+    // toggle (contemplative.cobreathe) OR picking Co-Breathe as a side's prayer
+    // style (contemplationStyle === "cobreathe" on a contemplation side). The
+    // side path never flips contemplative.cobreathe, so without this OR a sit
+    // chosen that way produced no card. Mirrors the hydration logic above.
+    const wantCobreathe =
+      contemplative.cobreathe ||
+      (contemplationStyle === "cobreathe" &&
+        (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation"));
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.journaling ? ["journaling"] : []),
