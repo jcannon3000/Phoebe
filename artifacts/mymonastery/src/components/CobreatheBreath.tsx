@@ -126,20 +126,21 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 // live in the render (they go through t()); this just fixes the set + order.
 type QuoteKind = "weil" | "merton" | "mlk" | "teresa";
 const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa"];
-// Frosted, COLOUR-FREE rings: two warm-white "glass" tones, one 10% darker than
-// the other. The lighter tone fills clockwise on the inhale and HOLDS through
-// the exhale; the darker (≈ lighter × 0.9) sweeps over it on the exhale,
-// settling the ring back to its resting tone. Resets each cycle.
-const RING_IN = "#EFECE4";               // frosted light tone (the inhale fill)
-const RING_OUT = "#D7D4CD";              // 10% darker — the base / exhale sweep
-// Soft frosted glow (no green/blue) used by every ring's drop-shadow.
-const RING_GLOW = "rgba(240,237,230,0.45)";
+// Frosted-glass rings — the SAME translucent green as the app's card surfaces
+// (frost.ts), backed by a backdrop blur on the SVG below so the rings frost
+// what's behind them like glass. Two tones, one 10% darker than the other: the
+// lighter fills clockwise on the inhale and HOLDS; the darker (≈ lighter × 0.9)
+// sweeps over it on the exhale, settling the ring back to its resting tone.
+const RING_IN = "rgba(22,46,32,0.62)";   // card-surface green glass (lighter tone)
+const RING_OUT = "rgba(20,41,29,0.62)";  // 10% darker — the base / exhale sweep
+// Soft card-green glow used by every ring's drop-shadow.
+const RING_GLOW = "rgba(22,46,32,0.4)";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
 const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
 // Inner SESSION ring — ONE slow circle filling once across the whole set of
-// breaths, in the SAME frosted light tone as the breath fill (no colour).
-const SESSION_RING = "#EFECE4";
+// breaths, in the SAME card-surface green glass as the breath fill.
+const SESSION_RING = "rgba(22,46,32,0.62)";
 const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
@@ -1020,7 +1021,17 @@ export function CobreatheBreath({
         <svg
           aria-hidden="true"
           width={globePx} height={globePx} viewBox="0 0 128 128"
-          style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
+          style={{
+            position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none",
+            // Frost ONLY the two ring bands: a backdrop blur (the same 11.34px the
+            // cards use) clipped by a radial mask to the breath ring (~90% radius)
+            // and the session ring (~56%), so each ring reads like the app's
+            // frosted-glass card surface instead of a flat stroke. The mask also
+            // trims the per-stroke glows to the bands.
+            backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+            WebkitMaskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
+            maskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
+          }}
         >
           {/* TWO frosted tones only. The resting BASE ring — the darker (10%
               darker) warm-white tone the breath starts and ends on. */}
@@ -1037,7 +1048,7 @@ export function CobreatheBreath({
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
           {/* inner session ring — a faint frosted track (so the two rings read as
               concentric even at rest) + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={RING_SW} />
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(20,41,29,0.4)" strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
         </svg>
