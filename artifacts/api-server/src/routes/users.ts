@@ -554,7 +554,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const oldestYmd = ymds[0];
 
     // Each query returns the set of local days a practice was completed.
-    const [officeRows, contRows, healthRows, reflRows, cacRows, pcRows] = await Promise.all([
+    const [officeRows, contRows, healthRows, reflRows, cacRows, pcRows, breathRows] = await Promise.all([
       // Office, by side — same surfaces + completed gate as office-history-week.
       db.execute<{ day: string; side: string }>(sql`
         SELECT DISTINCT
@@ -603,6 +603,12 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
         WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'lectio', 'reading', 'podcasts', 'walk') AND local_date >= ${oldestYmd}
+      `),
+      // Co-Breathe sits live in breath_sessions (one row per local day), not
+      // practice_completion, so they need their own pull to fill the grid row.
+      db.execute<{ day: string }>(sql`
+        SELECT DISTINCT day FROM breath_sessions
+        WHERE user_id = ${sessionUserId} AND day >= ${oldestYmd}
       `),
     ]);
 
@@ -655,6 +661,8 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "podcasts") podcasts.add(r.local_date);
       if (r.section === "walk") walk.add(r.local_date);
     }
+    const cobreathe = new Set<string>();
+    for (const r of breathRows.rows) cobreathe.add(r.day);
     const days = ymds.map((ymd) => ({
       ymd,
       morning: morning.has(ymd),
@@ -669,6 +677,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       reading: reading.has(ymd),
       podcasts: podcasts.has(ymd),
       walk: walk.has(ymd),
+      cobreathe: cobreathe.has(ymd),
     }));
     res.json({ days });
   } catch (err) {

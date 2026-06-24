@@ -244,11 +244,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, lectioActive, readingActive, podcastsActive, walkActive, gratitudeActive, examenActive, journalingActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, lectioActive, readingActive, podcastsActive, walkActive, gratitudeActive, examenActive, journalingActive, cobreatheActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; lectio: boolean; reading: boolean; podcasts: boolean; walk: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; lectio: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -276,6 +276,7 @@ export function WeeklyGridCard() {
     // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
+    ...(cobreatheActive ? [{ id: "cobreathe", emoji: "🌍", label: t("rhythm.row_cobreathe", { defaultValue: "Co-Breathe" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.cobreathe }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
     ...(lectioActive ? [{ id: "lectio", emoji: "📖", label: t("rhythm.row_lectio", { defaultValue: "Lectio Divina" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.lectio }] : []),
     ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),
