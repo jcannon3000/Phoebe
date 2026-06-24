@@ -37,7 +37,9 @@ export default function FellowsPage() {
             {t("fellows_page.title", { defaultValue: "Add a fellow" })}
           </h1>
           <p className="text-[13px] mt-1" style={{ color: SAGE, fontFamily: FONT }}>
-            {t("fellows_page.subtitle", { defaultValue: "Search for someone, find them from your contacts, or accept a request. Fellows pray with you and see each other's requests." })}
+            {rawIsBeta
+              ? t("fellows_page.subtitle", { defaultValue: "Search for someone, find them from your contacts, or accept a request. Fellows pray with you and see each other's requests." })
+              : t("fellows_page.subtitle_invite", { defaultValue: "Share your invite link with someone — when they open it, you'll be connected as fellows. Fellows pray with you and see each other's requests." })}
           </p>
         </div>
         <FellowsConnect variant="manage" canManage={rawIsBeta} />

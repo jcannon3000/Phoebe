@@ -246,18 +246,18 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     return (
       <div className="mb-2">
         {fellows.map(fellowRow)}
-        {canManage && (
-          <Link
-            href="/fellows"
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 mt-1 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
-            style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
-          >
-            <Plus size={15} /> {t("fellows_c.add_a_fellow", { defaultValue: "Add a fellow" })}
-            {requests.length > 0 && (
-              <span className="rounded-full px-1.5" style={{ background: "#E8B45E", color: "#0C1F12", fontSize: 11, fontWeight: 700, lineHeight: "16px", minWidth: 16, textAlign: "center" }}>{requests.length}</span>
-            )}
-          </Link>
-        )}
+        {/* Always shown — taps through to /fellows, where everyone gets a
+            personal invite link to share (beta users also get search/contacts). */}
+        <Link
+          href="/fellows"
+          className="inline-flex items-center gap-2 rounded-full px-4 py-2 mt-1 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
+          style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+        >
+          <Plus size={15} /> {t("fellows_c.add_a_fellow", { defaultValue: "Add a fellow" })}
+          {requests.length > 0 && (
+            <span className="rounded-full px-1.5" style={{ background: "#E8B45E", color: "#0C1F12", fontSize: 11, fontWeight: 700, lineHeight: "16px", minWidth: 16, textAlign: "center" }}>{requests.length}</span>
+          )}
+        </Link>
         <FellowSettingsSheet fellow={settingsFellow} onClose={() => setSettingsFellow(null)} />
       </div>
     );
@@ -266,17 +266,18 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   return (
     <div className="mb-2">
       {/* Share an invite link — send it to anyone (iMessage, etc.); opening it
-          and accepting connects you as Fellows. */}
-      {canManage && (
-        <button
-          type="button"
-          onClick={shareInviteLink}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
-          style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
-        >
-          <LinkIcon size={16} /> {linkCopied ? t("fellows_c.invite_copied", { defaultValue: "Link copied!" }) : t("fellows_c.invite_link", { defaultValue: "Share your invite link" })}
-        </button>
-      )}
+          and accepting connects you as Fellows. Open to EVERYONE (the invite-link
+          endpoint isn't beta-gated) so a non-beta user — in a community or not —
+          can still add a fellow this way. Manual search/contacts below stay beta
+          (their endpoints 403 for non-beta). */}
+      <button
+        type="button"
+        onClick={shareInviteLink}
+        className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
+        style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+      >
+        <LinkIcon size={16} /> {linkCopied ? t("fellows_c.invite_copied", { defaultValue: "Link copied!" }) : t("fellows_c.invite_link", { defaultValue: "Share your invite link" })}
+      </button>
 
       {/* Add a fellow — search + contacts (beta only) */}
       {canManage && (

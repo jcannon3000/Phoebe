@@ -645,17 +645,16 @@ export default function People() {
             requests; everyone sees their fellows list (fellows also form via
             shared-prayer signup). Backed by /api/fellows (the accepted link
             already feeds the garden + your prayer list). Shown when the viewer
-            is beta OR already has fellows, so non-beta with none see nothing
-            rather than an empty header. */}
-        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("people.fellows")}</h3>
-              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-            </div>
-            <FellowsConnect canManage={rawIsBeta} />
+            always shown now — every user can add a fellow via their personal
+            invite link (beta users also get search / contacts on /fellows), so a
+            user not in a community still has a way to connect 1:1. */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("people.fellows")}</h3>
+            <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
           </div>
-        )}
+          <FellowsConnect canManage={rawIsBeta} />
+        </div>
 
         {/* Your communities — hidden until you're actually in one. A brand-new
             user with no community sees only their Fellows (above). */}
