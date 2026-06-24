@@ -547,7 +547,7 @@ if (fs.existsSync(frontendDist)) {
         const name = (result.rows[0]?.name || "").trim();
         if (name) {
           const first = name.split(/\s+/)[0] || name;
-          const title = `Pray with ${first} with Phoebe`;
+          const title = `Pray together with ${first} on Phoebe`;
           const description = `${first} invited you to pray together on Phoebe — carry each other's prayers, day to day.`;
           res.type("html").send(renderIndexWithOg(title, description));
           return;
