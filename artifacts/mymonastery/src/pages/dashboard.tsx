@@ -4040,6 +4040,20 @@ function ActiveRequestsCard({
   );
 }
 
+// Fires the shared cascade-haptic ramp for a section's cards as they rise in —
+// the same tick PrayerListCarousel / TimeSection use, so a section that isn't a
+// component of its own (e.g. the "Your prayer requests" cards) still gets a
+// haptic per card, continuing the one home-wide cascade. Renders nothing.
+function CascadeHapticTrigger({ cascadeFrom, count, splashCleared }: { cascadeFrom: number; count: number; splashCleared: boolean }) {
+  const hapted = useRef(false);
+  useEffect(() => {
+    if (!splashCleared || hapted.current || count <= 0) return;
+    hapted.current = true;
+    return scheduleCascadeHaptics(cascadeFrom, count);
+  }, [splashCleared, cascadeFrom, count]);
+  return null;
+}
+
 // ── PrayerListCarousel — vertical Prayer List peek ──────────────────────
 //
 // Vertical stack of full-width cards, identical layout to RequestCard
@@ -5646,7 +5660,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "gratitude", "examen", "journaling", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "lectio", "reading", "walk", "cobreathe", "gratitude", "examen", "journaling", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
@@ -5655,7 +5669,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["lectio", "reading", "walk", "cobreathe", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -7123,6 +7137,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   );
                   return (
                     <div style={{ marginTop: ownReqs.length > 0 ? 28 : 16 }}>
+                      <CascadeHapticTrigger cascadeFrom={ownBase} count={ownReqs.length} splashCleared={ownReqSplashCleared} />
                       {ownReqs.length > 0 && (
                         <motion.div
                           className="flex items-center gap-3 mb-2"
