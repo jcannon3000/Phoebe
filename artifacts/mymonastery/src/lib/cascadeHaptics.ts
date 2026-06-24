@@ -5,10 +5,10 @@ import { isNativeShell } from "./isNativeShell";
 // Each card's tick is keyed to its GLOBAL index so the intensity keeps climbing
 // across the whole home, and the timing matches the visual stagger in
 // DailyProgressBody (START_DELAY + index * STEP). Native only; no-op on web.
-const START_DELAY = 200; // ms — small hold so it doesn't fire before the first card
+const START_DELAY = 100; // ms — small hold so it doesn't fire before the first card (0.1s earlier than before)
 const STEP = 110;        // ms between cards (≈ the 0.1s visual stagger)
 const BASE_PEAK = 0.42;  // first card's strength
-const BASE_MS = 110;     // each tick's length
+const BASE_MS = 77;      // each tick's length — 30% shorter than the prior 110ms
 
 /**
  * Schedule a tick haptic for `count` cards whose global cascade indices run
