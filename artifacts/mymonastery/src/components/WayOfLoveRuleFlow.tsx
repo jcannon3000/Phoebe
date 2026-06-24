@@ -158,12 +158,15 @@ export default function WayOfLoveRuleFlow({
   const qc = useQueryClient();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>(() => {
-    // Re-entry (a rhythm already shaped) opens to a quiet "tend" screen, not the
-    // full author flow; a first author meets the named starter rules. getSideLevel
+    // Always open at the START of the authoring flow — even on re-entry — so the
+    // customizer walks from the beginning each time instead of landing on the
+    // "tend" overview. A returning user goes straight to "when" (their current
+    // choices are pre-filled by the hydration below, so it's a re-shape, not a
+    // reset); a first author still meets the named starter rules. getSideLevel
     // reads the local office prefs synchronously (reliable for a returning user).
     try {
       const has = getSideLevel("morning") !== null || getSideLevel("evening") !== null;
-      return has ? "tend" : "starter";
+      return has ? "when" : "starter";
     } catch { return "starter"; }
   });
   // When a named starter rule is adopted, its id parks here until the next render
