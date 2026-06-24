@@ -1,12 +1,8 @@
 /**
  * FellowSettingsSheet — per-fellow sharing settings, opened from a fellow row.
- * Two things you control for each 1:1 fellow:
- *   1. Daily progress → a one-way toggle for whether this fellow can see your
- *      today-only rhythm dots in Walking together (default on; still gated by a
- *      recent Heart to Heart). Backed by fellow_prefs.shareProgress.
- *   2. Lives in the same place as me → a subjective marker that keeps local
- *      plans local (also where plan-sharing now lives — there's no separate
- *      "share plans" switch).
+ * One thing you control for each 1:1 fellow: whether they can see the plans
+ * you're going to (kept on fellow_prefs.samePlace), so they can come along.
+ * (Walking Together's daily-rhythm-dot sharing was removed.)
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,14 +16,7 @@ const CARD_B = "rgba(46,107,64,0.3)";
 
 export type FellowLite = { userId: number; name: string | null; avatarUrl: string | null };
 
-type WalkData = {
-  companions: Array<{ pairId: number; userId: number }>;
-  incoming: Array<{ pairId: number; userId: number }>;
-  outgoing: Array<{ pairId: number; userId: number }>;
-  paused: Array<{ pairId: number; userId: number }>;
-  eligibleFellows: Array<{ userId: number }>;
-};
-type PrefsData = { prefs: Record<number, { samePlace: boolean; sharePlans?: boolean; shareProgress: boolean }> };
+type PrefsData = { prefs: Record<number, { samePlace: boolean; sharePlans?: boolean }> };
 
 function initials(name: string): string {
   return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
@@ -54,42 +43,25 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
   const open = !!fellow;
   const fid = fellow?.userId;
 
-  const { data: walk } = useQuery<WalkData>({ queryKey: ["/api/walk"], queryFn: () => apiRequest("GET", "/api/walk"), enabled: open });
   const { data: prefsData } = useQuery<PrefsData>({ queryKey: ["/api/fellow-prefs"], queryFn: () => apiRequest("GET", "/api/fellow-prefs"), enabled: open });
 
-  const invalidate = () => { qc.invalidateQueries({ queryKey: ["/api/walk"] }); };
   const invalidatePrefs = () => { qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] }); };
 
-  // Walking-together status for this fellow.
-  const find = (arr?: Array<{ pairId: number; userId: number }>) => arr?.find((x) => x.userId === fid) ?? null;
-  const active = find(walk?.companions);
-  const paused = find(walk?.paused);
-  const incoming = find(walk?.incoming);
-  const outgoing = find(walk?.outgoing);
-  const walkStatus: "active" | "paused" | "incoming" | "outgoing" | "none" =
-    active ? "active" : paused ? "paused" : incoming ? "incoming" : outgoing ? "outgoing" : "none";
-
-  const startWalk = useMutation({ mutationFn: () => apiRequest("POST", "/api/walk/request", { userId: fid }), onSuccess: invalidate });
-  const acceptWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/requests/${pairId}/accept`), onSuccess: invalidate });
-  const stopWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/${pairId}/stop`), onSuccess: invalidate });
-  const resumeWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/${pairId}/resume`), onSuccess: invalidate });
-  // Remove this fellow entirely (also ends the walk via the server cascade).
+  // Remove this fellow entirely.
   const removeFellow = useMutation({
     mutationFn: () => apiRequest("DELETE", `/api/fellows/${fid}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/fellows"] });
-      qc.invalidateQueries({ queryKey: ["/api/walk"] });
       qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] });
       onClose();
     },
   });
 
-  // Per-fellow prefs (default: not same place, daily progress shared).
+  // Per-fellow prefs (default: not same place).
   const pref = fid != null ? prefsData?.prefs?.[fid] : undefined;
   const samePlace = pref?.samePlace ?? false;
-  const shareProgress = pref?.shareProgress ?? true;
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const patchPref = (patch: { samePlace?: boolean; shareProgress?: boolean }, key: string) => {
+  const patchPref = (patch: { samePlace?: boolean }, key: string) => {
     if (fid == null) return;
     setSavingKey(key);
     apiRequest("PATCH", `/api/fellow-prefs/${fid}`, patch)
@@ -99,8 +71,6 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
   };
 
   const name = fellow?.name ?? "Someone";
-  const first = name.split(/\s+/)[0] || name;
-  const walkPending = startWalk.isPending || acceptWalk.isPending || stopWalk.isPending || resumeWalk.isPending;
 
   const Row = ({ title, sub, control }: { title: string; sub: string; control: React.ReactNode }) => (
     <div className="flex items-center gap-3 py-3.5" style={{ borderTop: "1px solid rgba(200,212,192,0.1)" }}>
@@ -137,17 +107,8 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
               </div>
             </div>
 
-            {/* 1. Daily progress — a one-way toggle for whether they see your dots. */}
-            <Row
-              title="Daily progress"
-              sub={shareProgress
-                ? `${first} can see today's rhythm once you've prayed 1:1 recently`
-                : `Your daily rhythm stays hidden from ${first}`}
-              control={<Switch on={shareProgress} disabled={savingKey === "shareProgress"} onClick={() => patchPref({ shareProgress: !shareProgress }, "shareProgress")} />}
-            />
-
-            {/* 2. Share plans — this is the toggle that gates whether they see
-                the plans you're going to (kept on the samePlace pref). */}
+            {/* Share plans — the toggle that gates whether they see the plans
+                you're going to (kept on the samePlace pref). */}
             <Row
               title="Share your plans"
               sub="Lets them see the plans you're going to, so they can come along."

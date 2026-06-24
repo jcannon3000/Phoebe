@@ -60,8 +60,8 @@ export default function MessageNewPage() {
     },
   });
 
-  // Deep-link: /messages/new?to=<userId> (e.g. from Walking together) starts or
-  // reuses the 1:1 thread and drops straight in — fire once when authed beta.
+  // Deep-link: /messages/new?to=<userId> starts or reuses the 1:1 thread and
+  // drops straight in — fire once when authed beta.
   const autoStarted = useRef(false);
   useEffect(() => {
     if (autoStarted.current || !user || !isBeta) return;

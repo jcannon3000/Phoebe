@@ -96,12 +96,12 @@ export default function FellowInvitePage() {
   // Read any stashed prefs from slide 6 (set while signed out) so we can apply
   // them once the link is accepted.
   const applyStashedPrefs = async (fellowUserId: number) => {
-    let prefs: { samePlace?: boolean; shareProgress?: boolean } | null = null;
+    let prefs: { samePlace?: boolean } | null = null;
     try {
       const raw = localStorage.getItem(PENDING_PREFS_KEY);
       if (raw) prefs = JSON.parse(raw);
     } catch { /* ignore */ }
-    if (prefs && (prefs.samePlace !== undefined || prefs.shareProgress !== undefined)) {
+    if (prefs && prefs.samePlace !== undefined) {
       await apiRequest("PATCH", `/api/fellow-prefs/${fellowUserId}`, prefs).catch(() => undefined);
     }
     try { localStorage.removeItem(PENDING_PREFS_KEY); } catch { /* ignore */ }
@@ -201,7 +201,6 @@ function FellowOnboardingDeck({ token, inviter, setLocation }: { token: string; 
   const name = firstName(inviter.name);
   const [i, setI] = useState(0);
   const [samePlace, setSamePlace] = useState<boolean | null>(null);
-  const [shareProgress, setShareProgress] = useState<boolean>(true);
 
   const SLIDES = 6;
   const next = () => { haptic("light"); setI((n) => Math.min(SLIDES - 1, n + 1)); };
@@ -210,7 +209,7 @@ function FellowOnboardingDeck({ token, inviter, setLocation }: { token: string; 
   const finish = () => {
     try {
       localStorage.setItem(PENDING_TOKEN_KEY, token);
-      localStorage.setItem(PENDING_PREFS_KEY, JSON.stringify({ samePlace: samePlace ?? false, shareProgress }));
+      localStorage.setItem(PENDING_PREFS_KEY, JSON.stringify({ samePlace: samePlace ?? false }));
     } catch { /* ignore */ }
     haptic("success");
     setLocation("/signin");

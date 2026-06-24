@@ -111,11 +111,10 @@ export function useShareDailyPrayer() {
 // new dialogue delivers instantly; afterward the next-morning cadence applies.
 export function useStartHeartToHeart() {
   const invalidate = useInvalidateExchange();
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { partnerUserId: number; body: string }) =>
       apiRequest<{ delivered: boolean }>("POST", "/api/prayer-partner/start", v),
-    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ["/api/walk"] }); },
+    onSuccess: () => { invalidate(); },
   });
 }
 export function useInvitePartner() {
