@@ -1870,7 +1870,11 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // NOT scheduled — per request, a prayer request should only ever notify when
   // it's finished/answered, never a wrapping-up reminder. (runPrayerRenewalNudge
   // -Sender is kept for manual/forceNow use but no longer fires on the cron.)
-  { name: "life-event-followup",   run: runLifeEventFollowUpSender },
+  // The life-event "how did it go?" follow-up push is intentionally NOT
+  // scheduled — per request, we don't notify when your prayer request is over.
+  // (runLifeEventFollowUpSender is kept for manual/forceNow use but no longer
+  // fires on the cron.)
+  // { name: "life-event-followup",   run: runLifeEventFollowUpSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // Weekly review + weekly digest are turned OFF for now (the settings

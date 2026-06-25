@@ -2908,6 +2908,20 @@ export default function PrayerModePage() {
     // is a single-row, always-current check, so it closes that gap.
     lastMineQuery.data?.request?.isActive === true;
 
+  // The viewer's own request that's still being carried — not answered, closed,
+  // or past its expiry. Used to end the EVENING walk on "your request, held by
+  // the community." Deliberately null once the request is OVER, so an
+  // expired/closed ask never gets a closing slide.
+  const ownActiveRequestBody =
+    prayerRequests.find(
+      (r) =>
+        r.isOwnRequest === true &&
+        !r.isAnswered &&
+        !r.closedAt &&
+        !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
+    )?.body ??
+    (lastMineQuery.data?.request?.isActive ? lastMineQuery.data.request.body : null);
+
   // queueMode === "new" builds a tightly-scoped slide list: only
   // prayer requests the viewer hasn't amen'd before. Everything else
   // (intercessions, circle intentions, prayers-for, ask-request) is
@@ -3370,6 +3384,20 @@ export default function PrayerModePage() {
         kind: "ask-request",
         text: "",
         attribution: "",
+      });
+    } else if (closingIsEvening && ownActiveRequestBody) {
+      // Evening close: end on YOUR request, held by the community — the blue
+      // "praying for you" slide showing your own ask (your photo + the request
+      // body, no Amen, just Continue). Active-only: once the request is OVER
+      // (answered / closed / expired) ownActiveRequestBody is null, so no
+      // closing slide appears for an ended request. Morning ends without it.
+      slides.push({
+        kind: "prayer-from",
+        text: ownActiveRequestBody,
+        attribution: "",
+        fullText: ownActiveRequestBody,
+        authorName: null,
+        authorAvatarUrl: null,
       });
     }
 
