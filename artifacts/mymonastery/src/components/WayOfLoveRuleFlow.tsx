@@ -883,7 +883,9 @@ export default function WayOfLoveRuleFlow({
           {/* Forward Day by Day AS the morning prayer — replaces the office card
               for whoever picks it (per-user). Morning only. */}
           {side === "morning" && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }), () => choosePrayBySide(side, "fdd"))}
-          {choiceRow(prayBySide[side] === "community", `🙏🏽 ${t("wol_rule.community_list_label", { defaultValue: "Community prayer list" })}`, t("wol_rule.community_list_sub", { defaultValue: "Pray through your prayer list — the people you're holding up." }), () => choosePrayBySide(side, "community"))}
+          {/* "Community prayer list" was removed as a morning/evening prayer
+              option per request. Existing community users still resolve via
+              prayFromLevel; it's just no longer offered here. */}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
           {/* The Examen — an evening reflective practice (toggle alongside the office). */}
