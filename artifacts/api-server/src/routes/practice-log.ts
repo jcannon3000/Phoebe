@@ -20,7 +20,11 @@ import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
-const KINDS = new Set(["reading", "podcasts", "walk"]);
+// "reading"/"podcasts"/"walk" are the daily logging practices. The four Way of
+// Love *weekly* rhythms (Commune, Go, Bless, Rest) ride the same private table —
+// one entry per kind, "kept this week" derived from the entry's `day` on the
+// client. Still strictly private: presence, not performance.
+const KINDS = new Set(["reading", "podcasts", "walk", "commune", "go", "bless", "rest"]);
 
 function isValidYmd(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;

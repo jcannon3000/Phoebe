@@ -14,6 +14,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
+import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
@@ -6991,6 +6992,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 />
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
+                {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
+                    private self-logs, a separate band below the daily spine.
+                    Beta only for now. */}
+                {isBeta && <WeeklyRhythm />}
                 </>
               )}
             </div>
