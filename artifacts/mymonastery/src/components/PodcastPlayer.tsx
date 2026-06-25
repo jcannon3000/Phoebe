@@ -348,6 +348,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [artBroken, setArtBroken] = useState(false);
   // Full-screen "now playing" listener (vs. the bottom mini-bar).
   const [expanded, setExpanded] = useState(false);
+  // After a daily office finishes, gently offer Forward Day by Day next — an
+  // optional "up next" banner, not an auto-play. Set when an office episode
+  // ends (expanded), cleared when any new episode starts or the user dismisses.
+  const [fddOffer, setFddOffer] = useState(false);
 
   const pendingSeekRef = useRef<number | null>(null);
   const lastSaveRef = useRef(0);
@@ -433,6 +437,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Core episode-start logic, shared by user-tap play and queue auto-advance.
   const startEpisode = useCallback((ep: PlayingEpisode) => {
     if (!ep.audioUrl) return;
+    setFddOffer(false); // any new episode clears the post-office FDD offer
     setCurrent((prev) => {
       if (prev && prev.showSlug === ep.showSlug && prev.episodeId === ep.episodeId) {
         audioRef.current?.play().catch(() => { /* gesture-gated */ });
@@ -473,6 +478,28 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     setExpanded(true);
     startEpisode(eps[0]);
   }, [startEpisode]);
+
+  // Tapping the post-office "up next: Forward Day by Day" offer — fetch today's
+  // FDD episode and play it in the same full-screen player.
+  const playFddNext = useCallback(async () => {
+    try {
+      const ep = await apiRequest<{ feedTitle: string | null; title: string | null; audioUrl: string | null; durationSeconds: number | null; publishedAt: string | null; imageUrl: string | null }>("GET", "/api/podcast/forward-day-by-day/today");
+      if (!ep?.audioUrl) { setFddOffer(false); return; }
+      play({
+        showSlug: "forward-day-by-day",
+        episodeId: ep.audioUrl,
+        title: ep.title,
+        audioUrl: ep.audioUrl,
+        imageUrl: ep.imageUrl,
+        showTitle: ep.feedTitle ?? "Forward Day by Day",
+        showArtwork: ep.imageUrl,
+        durationSeconds: ep.durationSeconds,
+        publishedAt: ep.publishedAt,
+        sessionSurface: "fdd-audio",
+        showHref: "/podcast/forward-day-by-day",
+      });
+    } catch { setFddOffer(false); }
+  }, [play]);
 
   // Point the audio at the current episode + autoplay when it changes.
   useEffect(() => {
@@ -773,6 +800,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (after && expanded) {
       setExpanded(false);
       setLocation(after);
+      return;
+    }
+    // No explicit handoff: if a daily office just finished (and we're still in
+    // the full-screen player), gently offer Forward Day by Day next — an
+    // optional "up next" banner, never an auto-play.
+    if (expanded && /office-podcast$/.test(current?.sessionSurface ?? "")) {
+      setFddOffer(true);
     }
   };
 
@@ -1447,6 +1481,52 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-office "up next" — gently offer Forward Day by Day after the daily
+          office finishes. Optional: Listen plays today's FDD episode; Not now
+          dismisses. Sits above the full-screen office player. */}
+      {current && expanded && fddOffer && (
+        <div
+          style={{
+            position: "fixed", left: 0, right: 0, zIndex: 80,
+            bottom: "max(1.25rem, env(safe-area-inset-bottom))",
+            display: "flex", justifyContent: "center", padding: "0 16px", fontFamily: FONT,
+          }}
+        >
+          <div
+            style={{
+              width: "100%", maxWidth: 460,
+              background: "rgba(9,26,16,0.86)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: "1px solid rgba(96,141,209,0.45)", borderRadius: 18,
+              padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(150,178,214,0.85)" }}>
+                {t("podcasts.fdd_up_next_eyebrow", { defaultValue: "Up next" })}
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600, color: "#F0EDE6" }}>
+                {t("podcasts.fdd_up_next_title", { defaultValue: "Forward Day by Day" })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFddOffer(false)}
+              style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontSize: 13, fontFamily: FONT, cursor: "pointer", padding: "8px 6px", flexShrink: 0 }}
+            >
+              {t("podcasts.fdd_up_next_dismiss", { defaultValue: "Not now" })}
+            </button>
+            <button
+              type="button"
+              onClick={playFddNext}
+              style={{ flexShrink: 0, background: "rgba(96,141,209,0.85)", color: "#F0EDE6", border: "1px solid rgba(96,141,209,0.6)", borderRadius: 999, padding: "9px 18px", fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              🎧 {t("podcasts.fdd_up_next_listen", { defaultValue: "Listen" })}
+            </button>
           </div>
         </div>
       )}
