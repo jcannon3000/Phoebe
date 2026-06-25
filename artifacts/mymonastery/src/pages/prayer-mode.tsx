@@ -357,64 +357,9 @@ function AmenButton({ slideKey, onAdvance }: {
   );
 }
 
-// "Pray along" — adopt someone else's prayer intention so it joins the
-// viewer's OWN list + daily slideshow. Self-contained (own mutation +
-// optimistic local state) so it can live inside a slide without threading
-// state up. Tapping again releases (stop carrying). adoptCount surfaces a
-// gentle "N praying along" once there's company.
-function PrayAlongButton({ requestId, initialAdopted, initialCount }: {
-  requestId: number;
-  initialAdopted: boolean;
-  initialCount: number;
-}) {
-  const queryClient = useQueryClient();
-  const [adopted, setAdopted] = useState(initialAdopted);
-  const [count, setCount] = useState(initialCount);
-  const mutation = useMutation({
-    mutationFn: (next: boolean) =>
-      apiRequest("POST", `/api/prayer-requests/${requestId}/${next ? "adopt" : "release"}`),
-    onSuccess: (data: unknown) => {
-      const n = (data as { adoptCount?: number } | null)?.adoptCount;
-      if (typeof n === "number") setCount(n);
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-    onError: () => {
-      // Roll the optimistic toggle back on failure, then refetch so the
-      // "N praying along" count re-syncs from the server (the optimistic
-      // count bump is otherwise left stranded).
-      setAdopted((a) => !a);
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-  });
-  const toggle = () => {
-    const next = !adopted;
-    setAdopted(next);
-    setCount((c) => Math.max(0, c + (next ? 1 : -1)));
-    try { triggerSubmitFeedback(); } catch { /* haptics best-effort */ }
-    mutation.mutate(next);
-  };
-  return (
-    <button
-      onClick={toggle}
-      disabled={mutation.isPending}
-      className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-      style={{
-        fontFamily: "'Space Grotesk', sans-serif",
-        background: adopted ? "rgba(46,107,64,0.28)" : "rgba(9,26,16,0.30)",
-        color: adopted ? "#A8C5A0" : "#C8D4C0",
-        border: `1px solid ${adopted ? "rgba(46,107,64,0.45)" : "rgba(200,212,192,0.20)"}`,
-        backdropFilter: "blur(11px)",
-        WebkitBackdropFilter: "blur(11px)",
-      }}
-      aria-pressed={adopted}
-    >
-      🤲 {adopted ? "Praying along" : "Pray along"}
-      {count > 1 && (
-        <span style={{ opacity: 0.7 }}>· {count}</span>
-      )}
-    </button>
-  );
-}
+// (Removed: the per-slide "Pray along" button — being on a prayer slide already
+// means you're praying it, so the button made no sense. The adopt/release API
+// is dormant.)
 
 // (Removed: NotTodayLink — the per-slide "Not today" skip link is
 // gone per user direction. The slide flow is Amen-or-X-out only.)
@@ -1237,11 +1182,10 @@ function SlideContent({
         </div>
       )}
 
-      {/* Word-of-comfort field + Pray-along — only on OTHERS' request slides.
-          The word field shows the viewer's existing word (or a compose field);
-          the Pray-along button adopts the intention into the viewer's own list +
-          slideshow. Suppressed on the viewer's OWN prayer (you don't comfort
-          yourself, and you can't pray along with your own intention). */}
+      {/* Word-of-comfort field — only on OTHERS' request slides. Shows the
+          viewer's existing word (or a compose field). Suppressed on the viewer's
+          OWN prayer (you don't comfort yourself). The "Pray along" button was
+          removed — being on the slide already means you're praying it. */}
       {slide.kind === "request" && typeof slide.requestId === "number" && !slide.isOwnPrayer && (
         <motion.div
           className="w-full flex flex-col items-center gap-3"
@@ -1250,22 +1194,7 @@ function SlideContent({
           transition={{ duration: 0.5, delay: 0.18, ease: "easeOut" }}
         >
           <RequestWordField requestId={slide.requestId} initialWord={slide.myWord ?? null} />
-          <PrayAlongButton
-            requestId={slide.requestId}
-            initialAdopted={slide.isAdopted === true}
-            initialCount={slide.adoptCount ?? 0}
-          />
         </motion.div>
-      )}
-
-      {/* Own prayer — a soft affirmation that others are carrying it with you. */}
-      {slide.kind === "request" && slide.isOwnPrayer && (slide.adoptCount ?? 0) > 0 && (
-        <p
-          className="text-[13px]"
-          style={{ color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          🤲 {slide.adoptCount} praying along with you
-        </p>
       )}
 
       {/* Custom intercession — show the user's own prayer text. When the

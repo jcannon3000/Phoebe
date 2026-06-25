@@ -267,7 +267,7 @@ export const en = {
     subtitle_default: "Others can pray along — and carry it in their own prayers too.",
     subtitle_life_event: "A milestone, a change, a hard week — share what your community can hold with you.",
     subtitle_justice: "Name the ache. Your community will pray with you for what's broken.",
-    placeholder_default: "e.g. Venezuela, a friend's healing…",
+    placeholder_default: "e.g. a doctor's appointment, a friend's healing…",
     placeholder_life_event: "Starting a new job next Monday… my dad just went into hospice…",
     placeholder_justice: "A neighbor without housing… a hard ruling today…",
     duration_question: "How long will you pray it?",

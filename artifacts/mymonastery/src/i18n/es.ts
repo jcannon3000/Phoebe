@@ -263,7 +263,7 @@ export const es: Translations = {
     subtitle_default: "Otros pueden orar contigo — y llevarlo en sus propias oraciones también.",
     subtitle_life_event: "Un acontecimiento, un cambio, una semana difícil — comparte lo que tu comunidad puede llevar contigo.",
     subtitle_justice: "Nombra el dolor. Tu comunidad orará contigo por lo que está roto.",
-    placeholder_default: "p. ej. Venezuela, la sanación de un amigo…",
+    placeholder_default: "p. ej. una cita médica, la sanación de un amigo…",
     placeholder_life_event: "Empiezo un trabajo nuevo el lunes… mi papá entró al hospicio…",
     placeholder_justice: "El desalojo del campamento anoche… el veredicto de hoy…",
     duration_question: "¿Por cuánto tiempo lo orarás?",
