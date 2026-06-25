@@ -623,8 +623,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
     };
   };
-  // "Not today" customs are hidden for the day (not shown under Done).
-  const customsForSlot = (slot: CustomSlot) => customAnchors.filter((a) => a.slot === slot && !a.skipped).map(customCard);
 
   // Journaling is a LOG-only practice — you keep it however you like (a notebook,
   // paper) and tap to mark the day, like a daily walk. No in-app typing (the
@@ -638,7 +636,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: journalingDone ? kept : t("rhythm.blurb_journaling", { defaultValue: "Kept however you like — tap to log" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
-  const journalingForSlot = (slot: CustomSlot) => (journalingActive && journalingSlot === slot) ? [journalingCard] : [];
 
   // Co-Breathe, Audio Divina, and the Examen now slot into the rhythm at the
   // time of day chosen in the customizer's contemplative step (getPracticeSlot),
@@ -679,84 +676,27 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
-  const cobreatheForSlot = (slot: CustomSlot) => (cobreatheActive && cobreatheSlot === slot) ? [cobreatheCard] : [];
-  const listeningForSlot = (slot: CustomSlot) => (listeningActive && listeningSlot === slot) ? [listeningCard] : [];
-  const lectioForSlot = (slot: CustomSlot) => (lectioActive && lectioSlot === slot) ? [lectioCard] : [];
-  const walkForSlot = (slot: CustomSlot) => (walkActive && walkSlot === slot) ? [walkCard] : [];
-  const examenForSlot = (slot: CustomSlot) => (examenActive && examenSlot === slot) ? [examenCard] : [];
-  // All the slotted optional practices for a given time of day, in a stable order.
-  const slottedForSlot = (slot: CustomSlot) => [
-    ...cobreatheForSlot(slot), ...listeningForSlot(slot), ...lectioForSlot(slot), ...walkForSlot(slot), ...examenForSlot(slot),
-    ...journalingForSlot(slot), ...customsForSlot(slot),
-  ];
-
-  const cards = [
+  // Every rhythm card carries the time of day it belongs to (its CustomSlot).
+  // We assemble them in a sensible base order, then STABLE-sort by that slot so
+  // the list ALWAYS reads morning → midday → afternoon → evening, whatever mix
+  // of practices the user has chosen and wherever each is slotted. The offices
+  // and reflections anchor morning / evening; the optional practices (Co-Breathe,
+  // Audio Divina, Lectio, Walk, Journaling, customs) ride at their chosen slot;
+  // the Examen + Gratitude are end-of-day, so they sit in the evening.
+  const SLOT_RANK: Record<CustomSlot, number> = { morning: 0, midday: 1, afternoon: 2, evening: 3 };
+  const rawCards = [
     ...(morningActive ? [{
-      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
+      key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
-    // Reflection cards lead (default second, right after Morning) — ahead of any
-    // custom morning practice, matching the daily-progress dots.
-    // One card per reflection newsletter the user follows — each its own card +
-    // dot, opening that source's reading directly (and marking it read).
-    ...reflections.map((r) => {
-      const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL;
-      const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : markSsjeRead;
-      return {
-        key: `reflect-${r.source}`, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
-        title: PUBLICATION_NAME[r.source],
-        // CAC: today's scraped title is a STATIC second line (no rotation).
-        // CAC always shows today's scraped meditation title as the second line —
-        // even once read — rather than flipping to a generic "read today".
-        blurb: (r.source === "cac" && cacTitle) ? cacTitle : (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
-        blurbCycle: undefined,
-        // Mark read on tap, but fire the completion swell only on RETURN to the app.
-        onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic); },
-        cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-      };
-    }),
-    ...slottedForSlot("morning"),
-    ...(silenceActive ? [{
-      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
-      // Always open the begin slide (length, Start contemplation, Cobreathe) —
-      // never skip straight into Cobreathe, even when that's the saved style.
-      // Choosing Cobreathe there leads to its own in-person options slide.
-      href: "/contemplation?begin=1",
-      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
-      blurb: contemplationBlurb,
-      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      // No quota bar on contemplation: silence is not a deficit to fill.
-    }] : []),
-    ...slottedForSlot("midday"),
-    ...(gratitudeActive ? [{
-      key: "gratitude", emoji: "🙏", rgb: "108,162,124", done: gratitudeDone, href: "/gratitude",
-      title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
-      blurb: gratitudeDone ? kept : t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
-      cta: t("rhythm.write", { defaultValue: "Write" }), later: false,
-    }] : []),
-    ...(readingActive ? [{
-      key: "reading", emoji: "📚", rgb: "150,140,110", done: readingDone, href: "/reading-log",
-      title: t("rhythm.card_reading", { defaultValue: "Reading" }),
-      blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
-      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-    }] : []),
-    ...(podcastsActive ? [{
-      key: "podcasts", emoji: "🎙️", rgb: "150,120,150", done: podcastsDone, href: "/podcast-log",
-      title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }),
-      blurb: podcastsDone ? kept : t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }),
-      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-    }] : []),
-    // Afternoon slotted practices sit after the day's optional practices.
-    ...slottedForSlot("afternoon"),
     ...(eveningActive ? [{
-      // Evening sits last and stays a quiet "later" card until 3 PM, so the
-      // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
-      // it becomes the office hero. Opt-in — off by default (evening pref
-      // "none"), so an un-set-up user has three anchors, not four.
-      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
+      // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
+      // so the morning rhythm leads the day; from 3 PM on it becomes the office
+      // hero. Opt-in — off by default (evening pref "none").
+      key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).
@@ -767,8 +707,59 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 15,
     }] : []),
-    ...slottedForSlot("evening"),
+    // Reflection cards lead the morning (default second, right after Morning).
+    // One card per reflection newsletter the user follows — each its own card +
+    // dot, opening that source's reading directly (and marking it read).
+    ...reflections.map((r) => {
+      const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL;
+      const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : markSsjeRead;
+      return {
+        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
+        title: PUBLICATION_NAME[r.source],
+        blurb: (r.source === "cac" && cacTitle) ? cacTitle : (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
+        blurbCycle: undefined,
+        onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic); },
+        cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+      };
+    }),
+    ...(silenceActive ? [{
+      key: "silence", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
+      href: "/contemplation?begin=1",
+      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      blurb: contemplationBlurb,
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
+    // Optional practices ride at the time of day the user chose for each.
+    ...(cobreatheActive ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
+    ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
+    ...(lectioActive ? [{ ...lectioCard, slot: lectioSlot }] : []),
+    ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
+    ...(journalingActive ? [{ ...journalingCard, slot: journalingSlot }] : []),
+    ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
+    ...(readingActive ? [{
+      key: "reading", slot: "afternoon" as CustomSlot, emoji: "📚", rgb: "150,140,110", done: readingDone, href: "/reading-log",
+      title: t("rhythm.card_reading", { defaultValue: "Reading" }),
+      blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
+      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
+    }] : []),
+    ...(podcastsActive ? [{
+      key: "podcasts", slot: "afternoon" as CustomSlot, emoji: "🎙️", rgb: "150,120,150", done: podcastsDone, href: "/podcast-log",
+      title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }),
+      blurb: podcastsDone ? kept : t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }),
+      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
+    }] : []),
+    // The Examen + Gratitude are end-of-day reflections — they belong to evening.
+    ...(examenActive ? [{ ...examenCard, slot: examenSlot }] : []),
+    ...(gratitudeActive ? [{
+      key: "gratitude", slot: "evening" as CustomSlot, emoji: "🙏", rgb: "108,162,124", done: gratitudeDone, href: "/gratitude",
+      title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
+      blurb: gratitudeDone ? kept : t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
+      cta: t("rhythm.write", { defaultValue: "Write" }), later: false,
+    }] : []),
   ];
+  // Stable sort by time-of-day slot (Array.prototype.sort is stable), so within
+  // a slot the base order above is preserved.
+  const cards = [...rawCards].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
 
   // When a dedicated office hero is supplied (the beta home), the office shows
   // as that full hero instead of a practice row. The hero is the next office to

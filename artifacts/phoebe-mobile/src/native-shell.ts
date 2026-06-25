@@ -418,6 +418,21 @@ function wireStepsNotificationExpiry() {
   window.addEventListener("phoebe:appactive", clear);
 }
 
+// ─── Prayer-reminder notification clears on app open ────────────────────────
+// The morning bell AND the evening nudge are both sent with thread-id "bell"
+// (see pushSender.ts). Once the person has opened the app, the reminder has
+// done its job — the home already shows their rhythm — so it shouldn't sit on
+// the lock screen. Clear the "bell" thread on every foreground/launch so the
+// morning (and evening) prayer reminder disappears as soon as the app opens,
+// rather than only when the prayer slideshow is finished.
+function wirePrayerBellExpiry() {
+  const clear = () => {
+    window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } }));
+  };
+  clear();
+  window.addEventListener("phoebe:appactive", clear);
+}
+
 // ─── Share sheet (native) ──────────────────────────────────────────────────
 // The web app can invoke the native share sheet by dispatching
 // `phoebe:share` with `{ title, text, url }`. We fall back silently if
@@ -1679,6 +1694,7 @@ function exposePublicApi() {
   registerForPushIfRequested();
   wireClearNotifications();
   wireStepsNotificationExpiry();
+  wirePrayerBellExpiry();
   wireNativeShare();
   wireNativeOpenUrl();
   wireNativeLocation();
