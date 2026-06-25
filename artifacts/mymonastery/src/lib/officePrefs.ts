@@ -300,6 +300,22 @@ export function setSideLevel(side: OfficeSide, v: OfficeLevel): void {
   } catch { /* non-fatal */ }
 }
 
+// How the user takes Forward Day by Day when it's their prayer / reflection:
+// "written" = open today's FDD reading; "audio" = play the FDD podcast. Per
+// device, default written. Drives the FDD home card.
+export type FddMode = "written" | "audio";
+export function getFddMode(): FddMode {
+  try {
+    return localStorage.getItem("phoebe:fdd-mode") === "audio" ? "audio" : "written";
+  } catch { return "written"; }
+}
+export function setFddMode(v: FddMode): void {
+  try {
+    localStorage.setItem("phoebe:fdd-mode", v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
 // Way to pray per side (read / listen / watch). Falls back to the shared
 // default-office-entry when this side has no override.
 export function getSideEntry(side: OfficeSide): DefaultOfficeEntry {

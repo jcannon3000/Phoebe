@@ -16,7 +16,7 @@ import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel, setSideLevel, getFddMode, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -89,6 +89,7 @@ export type Moment = {
   isActionableToday: boolean;
   isActionableTomorrow: boolean;
   intercessionTopic?: string | null;
+  intercessionFullText?: string | null;
   fastingType?: string | null;
   fastingFrom?: string | null;
   fastingDay?: string | null;
@@ -2944,10 +2945,53 @@ function FddHomeCard() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
+  // "written" (open today's FDD reading) vs "audio" (play the FDD podcast) —
+  // chosen in Customize (the fdd-mode step). Refreshes when the pref changes.
+  const [mode, setMode] = useState<"written" | "audio">(() => getFddMode());
+  useEffect(() => {
+    const refresh = () => setMode(getFddMode());
+    window.addEventListener(OFFICE_PREFS_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  const player = usePodcastPlayer();
+  // Today's FDD audio episode — only fetched when the user takes FDD by audio.
+  const { data: episode } = useQuery<{ feedTitle: string | null; title: string | null; audioUrl: string | null; durationSeconds: number | null; publishedAt: string | null; imageUrl: string | null }>({
+    queryKey: ["/api/podcast/forward-day-by-day/today"],
+    queryFn: () => apiRequest("GET", "/api/podcast/forward-day-by-day/today"),
+    enabled: mode === "audio",
+    staleTime: 30 * 60_000,
+  });
   const onClick = () => {
-    // Mark read only once the reader is closed (see CAC card above).
+    if (mode === "audio" && episode?.audioUrl) {
+      // Hand today's FDD episode to the global player (same as the office audio).
+      player.play({
+        showSlug: "forward-day-by-day",
+        episodeId: episode.audioUrl,
+        title: episode.title,
+        audioUrl: episode.audioUrl,
+        imageUrl: episode.imageUrl,
+        showTitle: episode.feedTitle ?? "Forward Day by Day",
+        showArtwork: episode.imageUrl,
+        durationSeconds: episode.durationSeconds,
+        publishedAt: episode.publishedAt,
+        sessionSurface: "fdd-audio",
+        showHref: "/podcast/forward-day-by-day",
+      });
+      // Listening to today's FDD counts as taking it — flip the card to done.
+      recordFddOpened();
+      return;
+    }
+    // Written: mark read only once the reader is closed (see CAC card above).
     openExternalThenMarkRead(FDD_TODAY_URL, recordFddOpened, { reader: true });
   };
+  const pillLabel = mode === "audio"
+    ? (hasRead ? "Listen again" : "Listen")
+    : (hasRead ? "Read again" : "Read");
+  const titleLabel = mode === "audio" ? "Forward Day by Day 🎧" : "Forward Day by Day 📖";
   return (
     <div
       role="button"
@@ -2963,7 +3007,7 @@ function FddHomeCard() {
           className="font-semibold min-w-0 truncate"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
         >
-          Forward Day by Day 📖
+          {titleLabel}
         </p>
         <div
           className="rounded-full text-center shrink-0"
@@ -2978,7 +3022,7 @@ function FddHomeCard() {
             whiteSpace: "nowrap",
           }}
         >
-          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+          {pillLabel} <span aria-hidden>→</span>
         </div>
       </div>
     </div>
@@ -4079,6 +4123,12 @@ type PrayerListCarouselRow = {
   // Whether THIS viewer has already amened this request today (their tz).
   // Drives the inline "Amen" → "Amened" button state; resets next day.
   myAmenedToday?: boolean;
+  // Community-intercession variant: same card UI (FROM {community} + body +
+  // 🙏/✓), but the avatar is the community emoji and a tap opens the prayer
+  // slideshow LED by this intercession (focusMoment), never a detail page.
+  kind?: "request" | "intercession";
+  momentToken?: string | null;
+  avatarEmoji?: string | null;
 };
 
 function PrayerListCarousel({
@@ -4201,7 +4251,17 @@ function PrayerListCarousel({
             // so an already-prayed request always still comes up. The checkbox
             // circle on the right is a quick one-tap "pray".
             return (
-              <Link key={req.id} href={amened ? `/prayer-requests/${req.id}` : `/prayer-mode?focus=${req.id}`} className="block">
+              <Link
+                key={req.kind === "intercession" ? `m-${req.id}` : `r-${req.id}`}
+                href={
+                  req.kind === "intercession"
+                    // A community intercession ALWAYS opens the slideshow (led by
+                    // it), prayed or not — never a detail page.
+                    ? `/prayer-mode?focusMoment=${encodeURIComponent(req.momentToken ?? "")}`
+                    : (amened ? `/prayer-requests/${req.id}` : `/prayer-mode?focus=${req.id}`)
+                }
+                className="block"
+              >
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
@@ -4220,7 +4280,15 @@ function PrayerListCarousel({
                   <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: `rgba(${rgb},0.72)` } : undefined} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
-                      {displayAvatar ? (
+                      {req.avatarEmoji ? (
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
+                          style={{ background: "#1A4A2E", border: "1px solid rgba(46,107,64,0.3)" }}
+                          aria-hidden
+                        >
+                          {req.avatarEmoji}
+                        </div>
+                      ) : displayAvatar ? (
                         <img
                           src={displayAvatar}
                           alt={displayName}

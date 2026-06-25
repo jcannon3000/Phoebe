@@ -33,6 +33,9 @@ import {
   getSideLevel,
   getSideEntry,
   getReflectionSource,
+  getFddMode,
+  setFddMode,
+  type FddMode,
   type ReflectionSource,
   type OfficeSide,
   type DefaultOfficeEntry,
@@ -61,6 +64,7 @@ type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd"
 type Step =
   | "when"
   | "morning-way" | "morning-config"
+  | "fdd-mode"
   | "evening-way" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "lectio-when" | "walk-when"
   | "learn" | "extras" | "custom" | "done"
@@ -249,6 +253,14 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setContemplationStyle(s);
     try { localStorage.setItem("phoebe:contemplation-style", s); } catch { /* ignore */ }
+  };
+  // Written vs audio for Forward Day by Day (the fdd-mode step, shown when FDD
+  // is the morning prayer). Persisted via officePrefs; the home FDD card reads it.
+  const [fddMode, setFddModeState] = useState<FddMode>(() => getFddMode());
+  const chooseFddMode = (m: FddMode) => {
+    touchedRef.current = true;
+    setFddModeState(m);
+    setFddMode(m);
   };
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
@@ -637,6 +649,8 @@ export default function WayOfLoveRuleFlow({
   const orderedSteps: Step[] = [
     "when",
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
+    // Picking Forward Day by Day as the morning prayer → a written/audio choice.
+    ...(sides.morning && prayBySide.morning === "fdd" ? (["fdd-mode"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
@@ -1018,6 +1032,26 @@ export default function WayOfLoveRuleFlow({
             ? t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })
             : t("wol_rule.reminder_note_off", { side: cap.toLowerCase(), defaultValue: `No ${cap.toLowerCase()} reminder — this practice still counts toward your rhythm.` })}
         </p>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── Forward Day by Day — read it, or listen to it ────────────────────────
+  // Shown only when FDD is the morning prayer. Sets the per-device fdd-mode the
+  // home FDD card reads (written = open the reading; audio = play the podcast).
+  if (step === "fdd-mode") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.fdd_mode_eyebrow", { defaultValue: "Forward Day by Day" }), t("wol_rule.fdd_mode_title", { defaultValue: "How will you take it?" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.fdd_mode_body", { defaultValue: "Read today's reflection, or listen to it read aloud." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(fddMode === "written", `📖 ${t("wol_rule.fdd_written", { defaultValue: "Read it" })}`, t("wol_rule.fdd_written_sub", { defaultValue: "Today's Forward Day by Day reflection." }), () => chooseFddMode("written"))}
+          {choiceRow(fddMode === "audio", `🎧 ${t("wol_rule.fdd_audio", { defaultValue: "Listen to it" })}`, t("wol_rule.fdd_audio_sub", { defaultValue: "The Forward Day by Day podcast, read aloud." }), () => chooseFddMode("audio"))}
+        </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
