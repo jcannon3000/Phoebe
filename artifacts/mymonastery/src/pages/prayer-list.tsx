@@ -365,10 +365,13 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Matches the request card: a ✓ once prayed, nothing before — the
-              page reads as one consistent list, not two card styles. */}
-          {prayed && (
-            <span className="text-[13px] font-bold" style={{ color: "#7ED28C" }} aria-label="Prayed">✓</span>
+          {/* Same right-side pill as the Prayer Requests card (otherCard): a ✓
+              once prayed, a 🙏🏽 tap-affordance before — so the two sections read
+              as one consistent list. */}
+          {prayed ? (
+            <span aria-label="Prayed" className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
+          ) : (
+            <span aria-hidden className="flex-shrink-0 inline-flex items-center justify-center rounded-full" style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1 }}>🙏🏽</span>
           )}
         </div>
       </div>
