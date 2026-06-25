@@ -7305,7 +7305,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       className={`w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] ${ownReqs.length > 0 ? "mt-3" : ""}`}
                       style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                     >
-                      ＋ {t("dashboard.new_prayer_request", { defaultValue: "Prayer" })}
+                      {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
                     </button>
                   ) : (
                     <Link href="/pray-request/new" className={`block ${ownReqs.length > 0 ? "mt-3" : ""}`}>
@@ -7313,7 +7313,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
                         style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                       >
-                        ＋ {t("dashboard.new_prayer_request", { defaultValue: "Prayer" })}
+                        {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
                       </div>
                     </Link>
                   );
