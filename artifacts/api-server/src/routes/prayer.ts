@@ -1712,7 +1712,8 @@ router.post("/prayer-requests/:id/adopt", rateLimit({
   // You can't adopt your own intention (it's already yours), a closed/answered
   // one, or a private (directed / parish-pastoral) one — those never spread.
   if (request.ownerId === sessionUserId) { res.status(400).json({ error: "Can't pray along with your own prayer" }); return; }
-  if (request.closedAt) { res.status(400).json({ error: "Request is closed" }); return; }
+  if (request.closedAt || request.isAnswered) { res.status(400).json({ error: "Request is closed" }); return; }
+  if (request.expiresAt && new Date(request.expiresAt) <= new Date()) { res.status(400).json({ error: "This prayer has ended" }); return; }
   if (request.directOnly || request.parishFeedId) { res.status(403).json({ error: "This prayer is private" }); return; }
   // You can only adopt a prayer you can actually SEE — its owner must be in
   // your garden (group peers + correspondents + fellows) or you must be
@@ -1751,10 +1752,16 @@ router.post("/prayer-requests/:id/adopt", rateLimit({
 });
 
 // POST /api/prayer-requests/:id/release — stop carrying an adopted prayer.
-router.post("/prayer-requests/:id/release", async (req, res): Promise<void> => {
+router.post("/prayer-requests/:id/release", rateLimit({
+  name: "prayer_request_release",
+  max: 120,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "You're updating very quickly — please slow down a moment.",
+}), async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.update(adoptedPrayersTable)
     .set({ releasedAt: new Date() })

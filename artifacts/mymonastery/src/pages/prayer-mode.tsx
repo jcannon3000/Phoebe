@@ -379,8 +379,11 @@ function PrayAlongButton({ requestId, initialAdopted, initialCount }: {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
     onError: () => {
-      // Roll the optimistic toggle back on failure.
+      // Roll the optimistic toggle back on failure, then refetch so the
+      // "N praying along" count re-syncs from the server (the optimistic
+      // count bump is otherwise left stranded).
       setAdopted((a) => !a);
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
   const toggle = () => {
