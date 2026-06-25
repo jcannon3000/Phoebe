@@ -232,7 +232,6 @@ const FellowInvitePage = lazy(() => import("./pages/fellow-invite"));
 const People = lazy(() => import("./pages/people"));
 const FellowsPage = lazy(() => import("./pages/fellows"));
 const PsalmsPage = lazy(() => import("./pages/psalms"));
-const GuidedMeditationsPage = lazy(() => import("./pages/guided-meditations"));
 const ThanksPage = lazy(() => import("./pages/thanks"));
 const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const ContemplationSetupPage = lazy(() => import("./pages/contemplation-setup"));
@@ -990,7 +989,6 @@ function Router() {
       <Route path="/examen" component={ExamenPage} />
       <Route path="/contemplation" component={ContemplationPage} />
       <Route path="/psalms" component={PsalmsPage} />
-      <Route path="/guided-meditations" component={GuidedMeditationsPage} />
       <Route path="/cobreathe/about" component={CobreatheAboutPage} />
       <Route path="/cobreathe" component={CobreathePage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}

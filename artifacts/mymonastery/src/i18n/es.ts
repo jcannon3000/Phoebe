@@ -768,7 +768,6 @@ export const es: Translations = {
     audio_morning_prayer: "Oración matutina",
     audio_evening_prayer: "Oración vespertina",
     podcasts: "Podcasts",
-    guided_meditations: "Meditaciones guiadas",
     phoebe_parish: "Parroquia Phoebe",
     practices: "Prácticas",
     contemplation: "Contemplación",

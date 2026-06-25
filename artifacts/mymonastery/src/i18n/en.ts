@@ -774,7 +774,6 @@ export const en = {
     audio_morning_prayer: "Morning Prayer",
     audio_evening_prayer: "Evening Prayer",
     podcasts: "Podcasts",
-    guided_meditations: "Guided Meditations",
     phoebe_parish: "Phoebe Parish",
     practices: "Practices",
     contemplation: "Contemplation",

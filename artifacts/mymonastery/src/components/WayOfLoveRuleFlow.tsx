@@ -688,17 +688,23 @@ export default function WayOfLoveRuleFlow({
 
   // The ordered input steps depend on which sides they chose — so the progress
   // bar and the "N/M" both adjust to the options picked.
+  // Forward Day by Day asks a written/audio MEDIUM whenever it's chosen — as a
+  // side prayer OR as the daily reflection (the default). The Psalms CYCLE is
+  // now folded into each side's config slide (no standalone step).
+  const needsFddMode =
+    (sides.morning && prayBySide.morning === "fdd") ||
+    (sides.evening && prayBySide.evening === "fdd") ||
+    newsletters.includes("fdd");
   const orderedSteps: Step[] = [
     "when",
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
-    // Picking Forward Day by Day (morning OR evening) → a written/audio choice.
-    ...((sides.morning && prayBySide.morning === "fdd") || (sides.evening && prayBySide.evening === "fdd") ? (["fdd-mode"] as Step[]) : []),
-    // Picking Praying the Psalms (on an ENABLED side) → a cycle choice.
-    ...((sides.morning && prayBySide.morning === "psalms") || (sides.evening && prayBySide.evening === "psalms") ? (["psalms-cycle"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
+    // FDD medium choice — asked AFTER the reflection/prayer is picked, so it
+    // covers FDD-as-reflection too (applies wherever FDD is used: both sides).
+    ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
     "contemplative",
     ...(contemplative.prayer ? (["contemplation-goal"] as Step[]) : []),
     ...(contemplative.cobreathe ? (["cobreathe-when"] as Step[]) : []),
@@ -987,9 +993,11 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {isContemplation
             ? t("wol_rule.side_config_contemplation_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder to sit in the ${cap.toLowerCase()}?` })
-            : noMethod
-              ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
-              : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
+            : prayBySide[side] === "psalms"
+              ? t("wol_rule.side_config_psalms_body", { side: cap.toLowerCase(), defaultValue: `Choose how the Psalter unfolds, and when you'd like a reminder in the ${cap.toLowerCase()}.` })
+              : noMethod
+                ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
+                : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
         {/* For a silent contemplation sit, ask HOW MUCH to sit a day — the daily
             goal (the silent-vs-Co-Breathe choice is made on the prayer-form list
@@ -1045,6 +1053,20 @@ export default function WayOfLoveRuleFlow({
                 )}
               </select>
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            </div>
+          </>
+        )}
+        {/* Praying the Psalms — choose the cycle right here (combined with the
+            reminder), shown on EACH Psalms side. The cycle is shared: set it
+            once and it applies wherever you pray the Psalms (morning + evening). */}
+        {prayBySide[side] === "psalms" && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.psalms_cycle_title", { defaultValue: "Which cycle?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 4 }}>
+              {choiceRow(psalmCycle === "office", `📖 ${t("wol_rule.psalms_office_label", { defaultValue: "In step with the office" })}`, t("wol_rule.psalms_office_sub", { defaultValue: "The psalms appointed in the daily office — about 2–3 a day." }), () => choosePsalmCycle("office"))}
+              {choiceRow(psalmCycle === "monthly", `📜 ${t("wol_rule.psalms_monthly_label", { defaultValue: "The whole Psalter, monthly" })}`, t("wol_rule.psalms_monthly_sub", { defaultValue: "All 150 psalms across a month — fuller, more psalms a day (about 5)." }), () => choosePsalmCycle("monthly"))}
             </div>
           </>
         )}

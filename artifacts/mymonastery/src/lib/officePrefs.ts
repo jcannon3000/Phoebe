@@ -292,11 +292,11 @@ export function getSideLevel(side: OfficeSide): OfficeLevel | null {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
     if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return raw as OfficeLevel;
   } catch { /* private mode */ }
-  // New-user default rule: Morning prayer = Praying the Psalms (Reflection
+  // New-user default rule: BOTH Morning and Evening prayer = Praying the Psalms
+  // (the 7-week daily-office cycle by default — see getPsalmCycle; Reflection
   // defaults to Forward Day by Day, handled in useRhythmState). Only applies
-  // until the user explicitly picks a morning level (stored above, which wins).
-  // Evening + other sides keep null (→ the server-side global pref).
-  if (side === "morning") return "psalms";
+  // until the user explicitly picks a level for that side (stored above, wins).
+  if (side === "morning" || side === "evening") return "psalms";
   return null;
 }
 // Like getSideLevel but WITHOUT the new-user default — returns null when the
