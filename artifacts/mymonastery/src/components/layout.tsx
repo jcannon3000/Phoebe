@@ -386,8 +386,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <MenuRow emoji="🔍" label={t("jardin.bible_lookup")} onClick={() => navigate("/jardin/bible")} />
                   <MenuRow emoji="🏆" label={t("jardin.leaderboard")} onClick={() => navigate("/jardin/leaderboard")} />
                 </>
-              ) : rawIsBeta ? (
-                <MenuRow emoji="🌿" label="El Jardín" badge={t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
               ) : null}
             </div>
 
@@ -396,6 +394,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow emoji="⚙️" label={t("menu.settings")} onClick={() => navigate("/settings")} />
               {showAdminTools && (
                 <MenuRow emoji="🔧" label={t("menu.admin_tools")} onClick={() => navigate("/admin/tools")} />
+              )}
+              {/* El Jardín — moved here to sit with Admin Tools as a beta/preview
+                  entry, rather than in the main prayer surfaces above. */}
+              {rawIsBeta && !jardinShell && (
+                <MenuRow emoji="🌿" label="El Jardín" badge={t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
               )}
               {/* Phoebe Parish — moved here from the main nav so it
                   sits alongside Admin Tools as a privileged/preview
@@ -870,6 +873,7 @@ const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
   { text: "The proper habitat for truth is human relationships.", author: "Josef Pieper" },
   { text: "Attention is the rarest and purest form of generosity.", author: "Simone Weil" },
   { text: "For one only becomes weary of what is new. One never grows weary of the old.", author: "Søren Kierkegaard" },
+  { text: "Whenever the Psalter is abandoned, an incomparable treasure vanishes from the Christian church. With its recovery will come unsuspected power.", author: "Dietrich Bonhoeffer" },
 ];
 
 function OpeningSplash() {

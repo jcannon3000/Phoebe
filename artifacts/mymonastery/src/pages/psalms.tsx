@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ChevronLeft } from "lucide-react";
@@ -18,6 +18,13 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
+
+// Shown while today's psalms load — a quiet word on praying the Psalter. One is
+// picked at random each time the reader opens.
+const PSALM_LOADING_QUOTES: Array<{ text: string; author: string }> = [
+  { text: "My strength returns to me with my cup of coffee and the reading of the psalms.", author: "Dorothy Day" },
+  { text: "In the Psalter you learn about yourself. You find depicted in it all the movements of your soul, all its changes, its ups and downs, its failures and recoveries.", author: "Athanasius" },
+];
 
 type Psalm = {
   number: number;
@@ -63,6 +70,8 @@ export default function PsalmsPage() {
     queryFn: () => apiRequest("GET", `/api/psalms/today?cycle=${cycle}&office=${office}&date=${today}`),
     staleTime: 30 * 60_000,
   });
+  // A stable random loading quote per open (doesn't reshuffle on re-render).
+  const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
   // Reading is praying — once today's psalms have loaded, mark the day done so
   // the home card flips to "Prayed".
@@ -88,7 +97,15 @@ export default function PsalmsPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm" style={{ color: SAGE, fontFamily: FONT }}>Gathering today's psalms…</p>
+          <div style={{ paddingTop: 16, maxWidth: 480 }}>
+            <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 18, lineHeight: 1.55, margin: 0, opacity: 0.92 }}>
+              &ldquo;{loadingQuote.text}&rdquo;
+            </p>
+            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12.5, letterSpacing: "0.04em", margin: "12px 0 0" }}>
+              — {loadingQuote.author}
+            </p>
+            <p className="text-sm" style={{ color: "rgba(150,140,110,0.7)", fontFamily: FONT, marginTop: 28 }}>Gathering today's psalms…</p>
+          </div>
         ) : psalms.length === 0 ? (
           <p className="text-sm" style={{ color: SAGE, fontFamily: FONT }}>
             No psalms found for today. Try again shortly.
