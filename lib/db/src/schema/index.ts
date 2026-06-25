@@ -12,6 +12,7 @@ export * from "./moment_windows";
 export * from "./prayer_requests";
 export * from "./prayer_request_amens";
 export * from "./prayer_request_tags";
+export * from "./adopted_prayers";
 export * from "./prayer_held_notifications";
 export * from "./ritual_time_suggestions";
 export * from "./user_connections_cache";

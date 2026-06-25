@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -410,6 +410,20 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     ));
   const taggedInIds = taggedInRows.map(r => r.requestId);
 
+  // Requests the viewer has ADOPTED ("pray along") — they carry these as
+  // their own going forward, so they must surface in the viewer's list +
+  // slideshow even once the owner is no longer in their garden. Active
+  // adoptions only (releasedAt IS NULL). OR'd into the visibility clause
+  // below alongside tagged-in ids.
+  const adoptedRows = await db
+    .select({ requestId: adoptedPrayersTable.requestId })
+    .from(adoptedPrayersTable)
+    .where(and(
+      eq(adoptedPrayersTable.adopterUserId, sessionUserId),
+      isNull(adoptedPrayersTable.releasedAt),
+    ));
+  const adoptedReqIds = adoptedRows.map(r => r.requestId);
+
   // Fetch muted user IDs so we can exclude their requests
   const mutedRows = await db
     .select({ mutedUserId: userMutesTable.mutedUserId })
@@ -444,12 +458,15 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     gt(prayerRequestsTable.expiresAt, new Date()),
   );
   // Visibility = (owner is in my garden) OR (I'm tagged in this
-  // specific request). Wrapped in `or()` so either signal grants
-  // access without breaking the existing garden-based filtering.
-  const visibilityFilter = taggedInIds.length > 0
+  // specific request) OR (I've adopted it). Wrapped in `or()` so any
+  // signal grants access without breaking the existing garden-based
+  // filtering. The directOnly/parish guards below still apply, so an
+  // adopted id can't slip a private request through.
+  const explicitVisibleIds = [...new Set([...taggedInIds, ...adoptedReqIds])];
+  const visibilityFilter = explicitVisibleIds.length > 0
     ? or(
         inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
-        inArray(prayerRequestsTable.id, taggedInIds),
+        inArray(prayerRequestsTable.id, explicitVisibleIds),
       )!
     : inArray(prayerRequestsTable.ownerId, visibleOwnerIds);
   const baseFilters = [
@@ -543,6 +560,22 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   for (const a of allAmenRows) {
     if (!amensByRequest.has(a.requestId)) amensByRequest.set(a.requestId, []);
     amensByRequest.get(a.requestId)!.push(a);
+  }
+
+  // Active "pray along" adoptions for these requests — drives the
+  // "N praying along" count (everyone sees it as social proof) and the
+  // viewer's own isAdopted flag (so the client renders an adopted prayer
+  // as one the viewer is carrying, not just another's request).
+  const adoptForRequests = requestIds.length > 0
+    ? await db.select({ requestId: adoptedPrayersTable.requestId, adopterUserId: adoptedPrayersTable.adopterUserId })
+        .from(adoptedPrayersTable)
+        .where(and(inArray(adoptedPrayersTable.requestId, requestIds), isNull(adoptedPrayersTable.releasedAt)))
+    : [] as Array<{ requestId: number; adopterUserId: number }>;
+  const adoptCountByRequest = new Map<number, number>();
+  const iAdoptedSet = new Set<number>();
+  for (const a of adoptForRequests) {
+    adoptCountByRequest.set(a.requestId, (adoptCountByRequest.get(a.requestId) ?? 0) + 1);
+    if (a.adopterUserId === sessionUserId) iAdoptedSet.add(a.requestId);
   }
 
   // Enrich with owner name, words, and per-user flags
@@ -645,6 +678,11 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // renders an initials bubble when avatarUrl is null.
       ownerAvatarUrl: r.isAnonymous ? null : (owner?.avatarUrl ?? null),
       isOwnRequest,
+      // "Pray along": the viewer is carrying this (not their own) request.
+      // adoptCount is the number of people actively praying it along (any
+      // viewer can see it — gentle "you're not alone" social proof).
+      isAdopted: iAdoptedSet.has(r.id),
+      adoptCount: adoptCountByRequest.get(r.id) ?? 0,
       isCorrespondent: correspondentIds.has(r.ownerId),
       words: words.map(w => ({
         authorName: w.authorName,
@@ -1654,6 +1692,83 @@ router.delete("/prayer-requests/:id", async (req, res): Promise<void> => {
 // amens on someone else's request (the list endpoint already filters
 // what they see).
 const AMEN_DAILY_CAP = 1;
+// POST /api/prayer-requests/:id/adopt — "Pray along": adopt someone else's
+// prayer intention so it joins the viewer's OWN list + daily slideshow going
+// forward (it spreads). Idempotent — re-adopting a released one revives it.
+router.post("/prayer-requests/:id/adopt", rateLimit({
+  name: "prayer_request_adopt",
+  max: 120,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "You're praying along very quickly — please slow down a moment.",
+}), async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  // You can't adopt your own intention (it's already yours), a closed/answered
+  // one, or a private (directed / parish-pastoral) one — those never spread.
+  if (request.ownerId === sessionUserId) { res.status(400).json({ error: "Can't pray along with your own prayer" }); return; }
+  if (request.closedAt) { res.status(400).json({ error: "Request is closed" }); return; }
+  if (request.directOnly || request.parishFeedId) { res.status(403).json({ error: "This prayer is private" }); return; }
+  // You can only adopt a prayer you can actually SEE — its owner must be in
+  // your garden (group peers + correspondents + fellows) or you must be
+  // tagged in it. This keeps adopt from bypassing the garden scoping that
+  // the list endpoint enforces (no praying-along with a stranger's request
+  // by guessing an id).
+  const gardenIds = await getGardenUserIds(sessionUserId);
+  let canSee = gardenIds.includes(request.ownerId);
+  if (!canSee) {
+    const [tag] = await db.select({ id: prayerRequestTagsTable.id })
+      .from(prayerRequestTagsTable)
+      .where(and(
+        eq(prayerRequestTagsTable.requestId, id),
+        eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
+        isNull(prayerRequestTagsTable.removedAt),
+      ));
+    canSee = !!tag;
+  }
+  if (!canSee) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Upsert against the (request, adopter) unique index — insert a fresh
+  // adoption or revive a previously-released one.
+  await db.insert(adoptedPrayersTable)
+    .values({ requestId: id, adopterUserId: sessionUserId })
+    .onConflictDoUpdate({
+      target: [adoptedPrayersTable.requestId, adoptedPrayersTable.adopterUserId],
+      set: { releasedAt: null, adoptedAt: new Date() },
+    });
+
+  // How many people are now carrying this (active), so the client can show
+  // "N praying along" without a refetch.
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` })
+    .from(adoptedPrayersTable)
+    .where(and(eq(adoptedPrayersTable.requestId, id), isNull(adoptedPrayersTable.releasedAt)));
+  res.json({ ok: true, adopted: true, adoptCount: n });
+});
+
+// POST /api/prayer-requests/:id/release — stop carrying an adopted prayer.
+router.post("/prayer-requests/:id/release", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.update(adoptedPrayersTable)
+    .set({ releasedAt: new Date() })
+    .where(and(
+      eq(adoptedPrayersTable.requestId, id),
+      eq(adoptedPrayersTable.adopterUserId, sessionUserId),
+      isNull(adoptedPrayersTable.releasedAt),
+    ));
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` })
+    .from(adoptedPrayersTable)
+    .where(and(eq(adoptedPrayersTable.requestId, id), isNull(adoptedPrayersTable.releasedAt)));
+  res.json({ ok: true, adopted: false, adoptCount: n });
+});
+
 router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

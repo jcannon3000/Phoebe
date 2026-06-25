@@ -1415,6 +1415,23 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_id ON prayer_request_amens (request_id)`);
 
+    // adopted_prayers — "Pray along": a user adopts someone else's prayer
+    // intention so it joins their OWN prayer list + daily slideshow going
+    // forward (distinct from a one-day amen). releasedAt = null while active;
+    // re-adopting revives the same row. Unique on (request, adopter) so a
+    // person carries an intention at most once.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS adopted_prayers (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        adopter_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        adopted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        released_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS idx_adopted_prayers_request_adopter ON adopted_prayers (request_id, adopter_user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_adopted_prayers_adopter ON adopted_prayers (adopter_user_id)`);
+
     // Daily "you've been held in prayer today" notification queue.
     // Created on the first non-owner amen of a request on a given day
     // (in the recipient's tz); incremented on each subsequent amen

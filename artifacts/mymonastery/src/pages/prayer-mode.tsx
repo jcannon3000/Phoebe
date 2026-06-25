@@ -122,6 +122,11 @@ interface PrayerRequest {
   ownerAvatarUrl?: string | null;
   isAnswered: boolean;
   isOwnRequest?: boolean;
+  // "Pray along": true when THIS viewer has adopted someone else's prayer
+  // intention (it joins their own list + slideshow). adoptCount = how many
+  // people are carrying it (any viewer can see it as gentle social proof).
+  isAdopted?: boolean;
+  adoptCount?: number;
   closedAt?: string | null;
   // The viewer's own one-line word of comfort on this request, if any.
   // Used by the slideshow to either show their existing word or offer
@@ -217,6 +222,16 @@ interface PrayerSlide {
   // of others' words of comfort, and suppresses the Amen API call
   // (you can't pray for yourself via your own request).
   isOwnRequest?: boolean;
+  // request specific — true when THIS slide is one of the viewer's own
+  // active prayer INTENTIONS (the reframed "Prayer"). It shows in the
+  // viewer's own slideshow so they pray it daily: "Your prayer" eyebrow,
+  // no word-compose field (you don't comfort yourself), no Pray-along.
+  isOwnPrayer?: boolean;
+  // request specific — true when the viewer has ADOPTED this (others' )
+  // prayer via "Pray along". Hides the Pray-along button and shows a
+  // "praying along" caption instead. adoptCount = total carriers.
+  isAdopted?: boolean;
+  adoptCount?: number;
   // request specific — the public words of comfort others have
   // left on this request. Used by the own-request slide to render
   // a read-only "what people have said" list.
@@ -338,6 +353,62 @@ function AmenButton({ slideKey, onAdvance }: {
       >
         Amen →
       </span>
+    </button>
+  );
+}
+
+// "Pray along" — adopt someone else's prayer intention so it joins the
+// viewer's OWN list + daily slideshow. Self-contained (own mutation +
+// optimistic local state) so it can live inside a slide without threading
+// state up. Tapping again releases (stop carrying). adoptCount surfaces a
+// gentle "N praying along" once there's company.
+function PrayAlongButton({ requestId, initialAdopted, initialCount }: {
+  requestId: number;
+  initialAdopted: boolean;
+  initialCount: number;
+}) {
+  const queryClient = useQueryClient();
+  const [adopted, setAdopted] = useState(initialAdopted);
+  const [count, setCount] = useState(initialCount);
+  const mutation = useMutation({
+    mutationFn: (next: boolean) =>
+      apiRequest("POST", `/api/prayer-requests/${requestId}/${next ? "adopt" : "release"}`),
+    onSuccess: (data: unknown) => {
+      const n = (data as { adoptCount?: number } | null)?.adoptCount;
+      if (typeof n === "number") setCount(n);
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+    onError: () => {
+      // Roll the optimistic toggle back on failure.
+      setAdopted((a) => !a);
+    },
+  });
+  const toggle = () => {
+    const next = !adopted;
+    setAdopted(next);
+    setCount((c) => Math.max(0, c + (next ? 1 : -1)));
+    try { triggerSubmitFeedback(); } catch { /* haptics best-effort */ }
+    mutation.mutate(next);
+  };
+  return (
+    <button
+      onClick={toggle}
+      disabled={mutation.isPending}
+      className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+      style={{
+        fontFamily: "'Space Grotesk', sans-serif",
+        background: adopted ? "rgba(46,107,64,0.28)" : "rgba(9,26,16,0.30)",
+        color: adopted ? "#A8C5A0" : "#C8D4C0",
+        border: `1px solid ${adopted ? "rgba(46,107,64,0.45)" : "rgba(200,212,192,0.20)"}`,
+        backdropFilter: "blur(11px)",
+        WebkitBackdropFilter: "blur(11px)",
+      }}
+      aria-pressed={adopted}
+    >
+      🤲 {adopted ? "Praying along" : "Pray along"}
+      {count > 1 && (
+        <span style={{ opacity: 0.7 }}>· {count}</span>
+      )}
     </button>
   );
 }
@@ -922,7 +993,7 @@ function SlideContent({
           the "Praying for" slide's layout. The avatar anchors the slide
           to a specific person so the prayer doesn't read as anonymous
           text. Intercession/circle slides skip this block. */}
-      {slide.kind === "request" && (slide.authorName || slide.authorAvatarUrl) && (
+      {slide.kind === "request" && !slide.isOwnPrayer && (slide.authorName || slide.authorAvatarUrl) && (
         <div className="flex flex-col items-center gap-3">
           {/* The author avatar's border pulses softly while their
               prayer is on screen — a small "this is them" heartbeat
@@ -966,7 +1037,11 @@ function SlideContent({
               ? "Community Intercession"
               : slide.kind === "circle-intention"
                 ? "Circle Intention"
-                : "Prayer Request"}
+                : slide.isOwnPrayer
+                  ? "Your Prayer"
+                  : slide.isAdopted
+                    ? "Praying Along"
+                    : "Prayer Request"}
           </p>
           {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
         </div>
@@ -1159,18 +1234,35 @@ function SlideContent({
         </div>
       )}
 
-      {/* Word-of-comfort field — only on request slides. Shows the viewer's
-          existing word if they've already left one, otherwise a one-line
-          compose field with a send button. */}
-      {slide.kind === "request" && typeof slide.requestId === "number" && (
+      {/* Word-of-comfort field + Pray-along — only on OTHERS' request slides.
+          The word field shows the viewer's existing word (or a compose field);
+          the Pray-along button adopts the intention into the viewer's own list +
+          slideshow. Suppressed on the viewer's OWN prayer (you don't comfort
+          yourself, and you can't pray along with your own intention). */}
+      {slide.kind === "request" && typeof slide.requestId === "number" && !slide.isOwnPrayer && (
         <motion.div
-          className="w-full flex justify-center"
+          className="w-full flex flex-col items-center gap-3"
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.18, ease: "easeOut" }}
         >
           <RequestWordField requestId={slide.requestId} initialWord={slide.myWord ?? null} />
+          <PrayAlongButton
+            requestId={slide.requestId}
+            initialAdopted={slide.isAdopted === true}
+            initialCount={slide.adoptCount ?? 0}
+          />
         </motion.div>
+      )}
+
+      {/* Own prayer — a soft affirmation that others are carrying it with you. */}
+      {slide.kind === "request" && slide.isOwnPrayer && (slide.adoptCount ?? 0) > 0 && (
+        <p
+          className="text-[13px]"
+          style={{ color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          🤲 {slide.adoptCount} praying along with you
+        </p>
       )}
 
       {/* Custom intercession — show the user's own prayer text. When the
@@ -2915,19 +3007,18 @@ export default function PrayerModePage() {
     // is a single-row, always-current check, so it closes that gap.
     lastMineQuery.data?.request?.isActive === true;
 
-  // The viewer's own request that's still being carried — not answered, closed,
-  // or past its expiry. Used to end the EVENING walk on "your request, held by
-  // the community." Deliberately null once the request is OVER, so an
-  // expired/closed ask never gets a closing slide.
-  const ownActiveRequestBody =
-    prayerRequests.find(
-      (r) =>
-        r.isOwnRequest === true &&
-        !r.isAnswered &&
-        !r.closedAt &&
-        !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
-    )?.body ??
-    (lastMineQuery.data?.request?.isActive ? lastMineQuery.data.request.body : null);
+  // The viewer's OWN active prayer INTENTIONS (the reframed "Prayer"). These
+  // close the daily walk — your own prayers show in your own slideshow so you
+  // pray them daily, framed as "your prayer" (not "people are praying for
+  // you"). Default-kind only; life-events keep their dedicated handling.
+  const ownActivePrayers = prayerRequests.filter(
+    (r) =>
+      r.isOwnRequest === true &&
+      !r.isAnswered &&
+      !r.closedAt &&
+      !(r.expiresAt && new Date(r.expiresAt) <= new Date()) &&
+      (r.kind == null || r.kind === "request"),
+  );
 
   // queueMode === "new" builds a tightly-scoped slide list: only
   // prayer requests the viewer hasn't amen'd before. Everything else
@@ -3157,6 +3248,8 @@ export default function PrayerModePage() {
             authorName: r.ownerName ?? null,
             authorAvatarUrl: r.ownerAvatarUrl ?? null,
             requestKind: r.kind ?? null,
+            isAdopted: r.isAdopted === true,
+            adoptCount: r.adoptCount ?? 0,
             // Always false in queue-new — these are by definition un-prayed.
             alreadyPrayedToday: false,
           })),
@@ -3317,6 +3410,8 @@ export default function PrayerModePage() {
         authorName: r.ownerName ?? null,
         authorAvatarUrl: r.ownerAvatarUrl ?? null,
         requestKind: r.kind ?? null,
+        isAdopted: r.isAdopted === true,
+        adoptCount: r.adoptCount ?? 0,
         alreadyPrayedToday: r.myAmenedToday === true,
       })),
     ...activePrayersFor.map((p): PrayerSlide => {
@@ -3400,20 +3495,27 @@ export default function PrayerModePage() {
         text: "",
         attribution: "",
       });
-    } else if (closingIsEvening && ownActiveRequestBody) {
-      // Evening close: end on YOUR request, held by the community — the blue
-      // "praying for you" slide showing your own ask (your photo + the request
-      // body, no Amen, just Continue). Active-only: once the request is OVER
-      // (answered / closed / expired) ownActiveRequestBody is null, so no
-      // closing slide appears for an ended request. Morning ends without it.
-      slides.push({
-        kind: "prayer-from",
-        text: ownActiveRequestBody,
-        attribution: "",
-        fullText: ownActiveRequestBody,
-        authorName: null,
-        authorAvatarUrl: null,
-      });
+    } else if (ownActivePrayers.length > 0) {
+      // Close the walk on YOUR OWN prayers — the reframed "Prayer" intentions
+      // you're carrying (e.g. "Venezuela"). They show in your own slideshow so
+      // you pray them daily, as "your prayer" (no Amen, just Continue). Both
+      // morning and evening end here; once a prayer is OVER (answered / closed /
+      // expired) it drops out, so an ended intention never gets a closing slide.
+      for (const r of ownActivePrayers) {
+        slides.push({
+          kind: "request",
+          text: r.body,
+          attribution: "",
+          requestId: r.id,
+          myWord: null,
+          authorName: null,
+          authorAvatarUrl: null,
+          requestKind: r.kind ?? null,
+          isOwnPrayer: true,
+          adoptCount: r.adoptCount ?? 0,
+          alreadyPrayedToday: r.myAmenedToday === true,
+        });
+      }
     }
 
     // Pause slide — the final slide before the closing summary. A
