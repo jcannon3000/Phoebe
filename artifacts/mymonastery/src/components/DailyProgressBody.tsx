@@ -823,9 +823,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   }, [splashCleared]);
 
   // A haptic ticks under EACH card as it cascades in (native only, once per
-  // mount). Started ~0.5s in (they read early synced to the visual stagger), and
-  // each subsequent tick is 10% more intense than the one before — with the
-  // final tick held 20% longer.
+  // mount). Started ~0.5s in (they read early synced to the visual stagger).
+  // Every tick is the SAME intensity + length — no escalation.
   const cascadeHaptedRef = useRef(false);
   useEffect(() => {
     if (!ready || !splashCleared || cascadeHaptedRef.current) return;
@@ -838,15 +837,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const count = (officeHero ? 1 : 0) + upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
     const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
-    const BASE_PEAK = 0.42;    // first card's strength
-    const BASE_MS = 110;       // each tick's length
+    const PEAK = 0.42;         // every tick's strength (uniform)
+    const DURATION_MS = 110;   // every tick's length (uniform)
     const timers: number[] = [];
     for (let i = 0; i < count; i++) {
-      const peak = Math.min(1, BASE_PEAK * Math.pow(1.1, i)); // +10% per card
-      const isLast = i === count - 1;
-      const durationMs = Math.round(BASE_MS * (isLast ? 1.2 : 1)); // last 20% longer
       timers.push(window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "tick", peak, durationMs } }));
+        window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "tick", peak: PEAK, durationMs: DURATION_MS } }));
       }, START_DELAY + i * STEP));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
