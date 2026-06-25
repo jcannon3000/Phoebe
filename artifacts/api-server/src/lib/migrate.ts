@@ -2375,6 +2375,33 @@ export async function migrate() {
       ON rule_of_life_requests (user_id)
     `);
 
+    // ── Group chat — a message stream scoped to a community (group) ───────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_messages (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        sender_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS group_messages_by_group
+      ON group_messages (group_id, created_at)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_message_reads (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS group_message_reads_unique
+      ON group_message_reads (group_id, user_id)
+    `);
+
     // ── Podcast engagement — listening history + recommendations ─────────
     // Episode snapshots (external feeds, no local episode table) so we
     // can render history + the community-recommendations feed from the DB.

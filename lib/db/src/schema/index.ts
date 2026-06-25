@@ -85,3 +85,4 @@ export * from "./walk_pairings";
 export * from "./fellow_prefs";
 
 export * from "./rule_of_life_requests";
+export * from "./group_messages";
