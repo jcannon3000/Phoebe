@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { getPracticeSlot, getJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -970,22 +971,38 @@ function OpeningSplash() {
   // still-undone anchor in order. It falls back to a contemplative quote once
   // the day is fully kept (or there's no routine). Both wait for the rhythm to
   // resolve so the greeting holds without a flash.
-  const reflectUndone = rhythm.reflections.some((r) => !r.done);
-  // emoji/label/blurb/rgb mirror the matching home card (DailyProgressBody) so
-  // the splash can render that practice's actual card, not a bare emoji.
+  // WHAT'S NEXT — the first still-undone practice in the SAME time-of-day order
+  // the home cards use (DailyProgressBody), considering EVERY anchor the user
+  // has (incl. journaling, Co-Breathe, reading, podcasts, and CUSTOM practices),
+  // so the splash never pre-empts an earlier "next thing". Evening prayer is
+  // special-cased: it only enters the running from 4pm onward AND, as an
+  // evening-slot card, only wins once everything else is done — so a midday next
+  // thing (a custom practice, journaling, Audio Divina, …) always shows ahead of it.
+  const SLOT_RANK: Record<CustomSlot, number> = { morning: 0, midday: 1, afternoon: 2, evening: 3 };
+  type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string };
+  const nextCandidates: NextCand[] = [
+    { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" },
+    ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
+    { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "A few minutes of stillness", rgb: "62,124,122" },
+    { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Co-Breathe", blurb: "12 breaths as a prayer", rgb: "62,124,122" },
+    { active: rhythm.listeningActive, done: rhythm.listeningDone, slot: getPracticeSlot("listening"), emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" },
+    { active: rhythm.lectioActive, done: rhythm.lectioDone, slot: getPracticeSlot("lectio"), emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" },
+    { active: rhythm.walkActive, done: rhythm.walkDone, slot: getPracticeSlot("walk"), emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" },
+    { active: rhythm.journalingActive, done: rhythm.journalingDone, slot: getJournalingSlot(), emoji: "📓", label: "Journaling", blurb: "Kept however you like — tap to log", rgb: "120,150,170" },
+    ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150" })),
+    { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "150,140,110" },
+    { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150" },
+    // The Examen + Gratitude are end-of-day reflections — evening slot.
+    { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
+    { active: rhythm.gratitudeActive, done: rhythm.gratitudeDone, slot: "evening", emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" },
+    // Evening prayer enters the running only from 4pm onward.
+    { active: hour >= 16 && rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" },
+  ];
+  const firstUp = nextCandidates
+    .filter((c) => c.active && !c.done)
+    .sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
   const nextUp: { emoji: string; label: string; blurb: string; rgb: string } | null =
-    (rhythm.morningActive && !rhythm.morningDone) ? { emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" }
-    : reflectUndone ? { emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" }
-    : (rhythm.silenceActive && !rhythm.silenceDone) ? { emoji: "🕯️", label: "Contemplation", blurb: "A few minutes of stillness", rgb: "62,124,122" }
-    : (rhythm.gratitudeActive && !rhythm.gratitudeDone) ? { emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" }
-    : (rhythm.examenActive && !rhythm.examenDone) ? { emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" }
-    : (rhythm.listeningActive && !rhythm.listeningDone) ? { emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" }
-    : (rhythm.lectioActive && !rhythm.lectioDone) ? { emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" }
-    : (rhythm.walkActive && !rhythm.walkDone) ? { emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" }
-    // Evening prayer surfaces LAST, and only from 4pm onward — the day's other
-    // practices come first so the morning splash isn't pre-empted by "Evening prayer".
-    : (hour >= 16 && rhythm.eveningActive && !rhythm.eveningDone) ? { emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" }
-    : null;
+    firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb } : null;
   const showFellows = false;
   const showWhatsNext = rhythm.ready && !!nextUp;
   const showQuote = rhythm.ready && !nextUp;
