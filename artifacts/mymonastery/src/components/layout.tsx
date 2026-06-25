@@ -723,11 +723,12 @@ function DailyProgressPill() {
   // live, the rest are faint (no filled-vs-empty tally to complete toward).
   const firstUndone = dotDefs.findIndex((d) => !d.done);
 
-  // Per-dot "just completed" pulse: when an activity flips done, its dot pulses
-  // for ~5 minutes. We stamp the completion time per local day in localStorage
-  // (so it survives the Layout remount on navigation) the moment a dot flips,
-  // then pulse while now − stamp < PULSE_MS.
-  const PULSE_MS = 5 * 60 * 1000;
+  // Per-dot "just completed" pulse: when an activity flips done, its dot glows
+  // for ~2 minutes — then settles. We stamp the completion time per local day in
+  // localStorage (so it survives the Layout remount on navigation) the moment a
+  // dot flips, then pulse only while now − stamp < PULSE_MS. There is NO
+  // persistent "all done" glow — each stop glows just after its own practice.
+  const PULSE_MS = 2 * 60 * 1000;
   const today = new Date().toLocaleDateString("en-CA");
   const stampsRef = useRef<{ day: string; at: Record<string, number> } | null>(null);
   if (stampsRef.current === null) {
@@ -765,7 +766,7 @@ function DailyProgressPill() {
     return at != null && nowMs - at < PULSE_MS;
   };
   // While anything is pulsing, tick periodically so the pulse expires on its own.
-  const anyPulsing = allDone || dotDefs.some((d) => recentlyDone(d.key));
+  const anyPulsing = dotDefs.some((d) => recentlyDone(d.key));
   useEffect(() => {
     if (!anyPulsing) return;
     const id = setInterval(() => bumpPulse((n) => n + 1), 15_000);
@@ -795,7 +796,9 @@ function DailyProgressPill() {
         const many = dotDefs.length > 8;
         const sz = many ? 5 : 6;
         const renderDot = (d: { key: string; done: boolean }, i: number) => {
-          const pulse = allDone || recentlyDone(d.key);
+          // A stop glows ONLY for the ~2 min right after its own practice was
+          // kept (recentlyDone) — never a persistent all-done glow.
+          const pulse = recentlyDone(d.key);
           const isLive = !allDone && i === firstUndone; // the anchor you're at now
           // Position, not a tally: kept anchors recede (settled), the current one
           // glows live, the ones ahead stay faint — never a "filled vs empty" score.
@@ -814,7 +817,6 @@ function DailyProgressPill() {
                 borderRadius: 999,
                 display: "inline-block",
                 ...tone,
-                animationDelay: allDone ? `${(i * 0.12).toFixed(2)}s` : undefined,
               }}
             />
           );
