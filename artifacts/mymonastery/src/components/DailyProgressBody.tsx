@@ -653,7 +653,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
     title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
     blurb: listeningDone ? (listeningWhat || kept) : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
   const lectioCard = {
     key: "lectio", emoji: "📖", rgb: "120,150,170", done: lectioDone, href: "/lectio-divina",
