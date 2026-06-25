@@ -2408,6 +2408,15 @@ export async function migrate() {
       ON group_message_reads (group_id, user_id)
     `);
 
+    // ── Home-load perf indexes (prayer-streak hot path) ──────────────────
+    // Amen "prayed with me today" scan is bounded to the last 48h per request.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_prayed ON prayer_request_amens (request_id, prayed_at)`);
+    // Check-in streak scans filter moment_posts by user_token + is_checkin.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_posts_token_checkin ON moment_posts (user_token, is_checkin)`);
+    // Resolve a user's tokens by LOWER(email) via a functional index instead of
+    // a full-table scan of moment_user_tokens.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_user_tokens_lower_email ON moment_user_tokens (LOWER(email))`);
+
     // ── Podcast engagement — listening history + recommendations ─────────
     // Episode snapshots (external feeds, no local episode table) so we
     // can render history + the community-recommendations feed from the DB.

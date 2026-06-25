@@ -157,19 +157,29 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const peopleRows = await db
-      .select({
-        id: usersTable.id,
-        name: usersTable.name,
-        avatarUrl: usersTable.avatarUrl,
-      })
-      .from(usersTable)
-      .where(inArray(usersTable.id, gardenIds));
+    // `day` is a local YYYY-MM-DD text; ISO dates sort lexically, so a string
+    // >= comparison is a date comparison.
+    const sevenAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(sevenDaysAgo);
 
-    // Track the LATEST time each person prayed (sessions + amens) so the rail
-    // is ordered by recency — most recent first (leftmost). Any prayer session
-    // (offices, devotions, Pray Together, feed walks, Compline) OR an Amen on a
-    // request counts as praying.
+    // The four reads are independent (all keyed on gardenIds) — run them in
+    // parallel rather than awaiting one after another on the app-open path.
+    const [peopleRows, sessionRows, amenRows, breathRows] = await Promise.all([
+      db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.id, gardenIds)),
+      db.select({ userId: prayerSessionsTable.userId, ts: prayerSessionsTable.endedAt })
+        .from(prayerSessionsTable)
+        .where(and(inArray(prayerSessionsTable.userId, gardenIds), gte(prayerSessionsTable.endedAt, sevenDaysAgo))),
+      db.select({ userId: prayerRequestAmensTable.userId, ts: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(and(inArray(prayerRequestAmensTable.userId, gardenIds), gte(prayerRequestAmensTable.prayedAt, sevenDaysAgo))),
+      db.select({ userId: breathSessionsTable.userId, day: breathSessionsTable.day })
+        .from(breathSessionsTable)
+        .where(and(inArray(breathSessionsTable.userId, gardenIds), gte(breathSessionsTable.day, sevenAgoYmd))),
+    ]);
+
+    // Track the LATEST time each person prayed (sessions + amens + breath) so the
+    // rail is ordered by recency — most recent first (leftmost).
     const latestMs = new Map<number, number>();
     const note = (userId: number | null, ts: Date | null) => {
       if (typeof userId !== "number" || !ts) return;
@@ -177,33 +187,8 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
       const prev = latestMs.get(userId);
       if (prev === undefined || ms > prev) latestMs.set(userId, ms);
     };
-    const sessionRows = await db
-      .select({ userId: prayerSessionsTable.userId, ts: prayerSessionsTable.endedAt })
-      .from(prayerSessionsTable)
-      .where(and(
-        inArray(prayerSessionsTable.userId, gardenIds),
-        gte(prayerSessionsTable.endedAt, sevenDaysAgo),
-      ));
     for (const r of sessionRows) note(r.userId, r.ts);
-    const amenRows = await db
-      .select({ userId: prayerRequestAmensTable.userId, ts: prayerRequestAmensTable.prayedAt })
-      .from(prayerRequestAmensTable)
-      .where(and(
-        inArray(prayerRequestAmensTable.userId, gardenIds),
-        gte(prayerRequestAmensTable.prayedAt, sevenDaysAgo),
-      ));
     for (const r of amenRows) note(r.userId, r.ts);
-    // Co-Breathe counts as being "with you" too — pull the breath log for the
-    // window. `day` is a local YYYY-MM-DD text; ISO dates sort lexically, so a
-    // string >= comparison is a date comparison.
-    const sevenAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(sevenDaysAgo);
-    const breathRows = await db
-      .select({ userId: breathSessionsTable.userId, day: breathSessionsTable.day })
-      .from(breathSessionsTable)
-      .where(and(
-        inArray(breathSessionsTable.userId, gardenIds),
-        gte(breathSessionsTable.day, sevenAgoYmd),
-      ));
     for (const r of breathRows) { if (r.day) note(r.userId, new Date(`${r.day}T12:00:00Z`)); }
 
     // Who cobreathed THIS WEEK → a 🌍 badge on their face. The rail is a weekly
@@ -242,13 +227,27 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const peopleRows = await db
-      .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
-      .from(usersTable)
-      .where(inArray(usersTable.id, gardenIds));
+    // Co-Breathe counts as being "with you" too (see the week endpoint).
+    const thirtyAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(thirtyDaysAgo);
 
-    // Track the LATEST time each person prayed (across sessions + amens) so the
-    // rail can be ordered by recency — most recent first (leftmost).
+    // Independent reads — run them in parallel (app-open path).
+    const [peopleRows, sessionRows, amenRows, breathRows] = await Promise.all([
+      db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.id, gardenIds)),
+      db.select({ userId: prayerSessionsTable.userId, ts: prayerSessionsTable.endedAt })
+        .from(prayerSessionsTable)
+        .where(and(inArray(prayerSessionsTable.userId, gardenIds), gte(prayerSessionsTable.endedAt, thirtyDaysAgo))),
+      db.select({ userId: prayerRequestAmensTable.userId, ts: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(and(inArray(prayerRequestAmensTable.userId, gardenIds), gte(prayerRequestAmensTable.prayedAt, thirtyDaysAgo))),
+      db.select({ userId: breathSessionsTable.userId, day: breathSessionsTable.day })
+        .from(breathSessionsTable)
+        .where(and(inArray(breathSessionsTable.userId, gardenIds), gte(breathSessionsTable.day, thirtyAgoYmd))),
+    ]);
+
+    // Track the LATEST time each person prayed (across sessions + amens + breath)
+    // so the rail can be ordered by recency — most recent first (leftmost).
     const latestMs = new Map<number, number>();
     const note = (userId: number | null, ts: Date | null) => {
       if (typeof userId !== "number" || !ts) return;
@@ -256,31 +255,8 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
       const prev = latestMs.get(userId);
       if (prev === undefined || ms > prev) latestMs.set(userId, ms);
     };
-    const sessionRows = await db
-      .select({ userId: prayerSessionsTable.userId, ts: prayerSessionsTable.endedAt })
-      .from(prayerSessionsTable)
-      .where(and(
-        inArray(prayerSessionsTable.userId, gardenIds),
-        gte(prayerSessionsTable.endedAt, thirtyDaysAgo),
-      ));
     for (const r of sessionRows) note(r.userId, r.ts);
-    const amenRows = await db
-      .select({ userId: prayerRequestAmensTable.userId, ts: prayerRequestAmensTable.prayedAt })
-      .from(prayerRequestAmensTable)
-      .where(and(
-        inArray(prayerRequestAmensTable.userId, gardenIds),
-        gte(prayerRequestAmensTable.prayedAt, thirtyDaysAgo),
-      ));
     for (const r of amenRows) note(r.userId, r.ts);
-    // Co-Breathe counts as being "with you" too (see the week endpoint).
-    const thirtyAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(thirtyDaysAgo);
-    const breathRows = await db
-      .select({ userId: breathSessionsTable.userId, day: breathSessionsTable.day })
-      .from(breathSessionsTable)
-      .where(and(
-        inArray(breathSessionsTable.userId, gardenIds),
-        gte(breathSessionsTable.day, thirtyAgoYmd),
-      ));
     for (const r of breathRows) { if (r.day) note(r.userId, new Date(`${r.day}T12:00:00Z`)); }
 
     const activePeople = peopleRows.filter((p) => latestMs.has(p.id));

@@ -1,7 +1,7 @@
 import { getInviteBaseUrl } from "../lib/urls";
 import { getCurrentTimeInTz, todayDateInTz } from "../lib/tz";
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, gt, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
@@ -4944,12 +4944,13 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
     // We lowercase in JS rather than relying on column case — the email
     // column is stored case-insensitively in practice but not all historical
     // rows agree. Safer to do the match in app code.
+    // Filter by email IN SQL (LOWER(email) functional index) — was a full-table
+    // scan of moment_user_tokens pulled into JS on every home load.
     const tokens = await db
-      .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
-      .from(momentUserTokensTable);
-    const myTokens = tokens
-      .filter(t => (t.email || "").toLowerCase() === emailLower)
-      .map(t => t.userToken);
+      .select({ userToken: momentUserTokensTable.userToken })
+      .from(momentUserTokensTable)
+      .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
+    const myTokens = tokens.map(t => t.userToken);
     if (myTokens.length === 0) {
       // No moments → moment_posts has nothing for us. Fall back to
       // the user-row marker so a request-only completion still flips
@@ -5065,13 +5066,20 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
         .where(eq(prayerRequestsTable.ownerId, sessionUserId));
       const myRequestIds = myRequests.map((r) => r.id);
       if (myRequestIds.length > 0) {
+        // Only "today" matters — bound to the last 48h (covers any timezone's
+        // today) so this doesn't scan every amen ever left on the user's
+        // requests. The exact ymd check below still filters precisely.
+        const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
         const amenRows = await db
           .select({
             userId: prayerRequestAmensTable.userId,
             prayedAt: prayerRequestAmensTable.prayedAt,
           })
           .from(prayerRequestAmensTable)
-          .where(inArray(prayerRequestAmensTable.requestId, myRequestIds));
+          .where(and(
+            inArray(prayerRequestAmensTable.requestId, myRequestIds),
+            gt(prayerRequestAmensTable.prayedAt, twoDaysAgo),
+          ));
         for (const a of amenRows) {
           if (!a.prayedAt) continue;
           if (a.userId === sessionUserId) continue; // own taps don't count
@@ -5095,9 +5103,11 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
         }
         const emails = Array.from(emailToId.keys());
         if (emails.length > 0) {
+          // Only the garden members' token rows — was a second full-table scan.
           const tokenRows = await db
             .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
-            .from(momentUserTokensTable);
+            .from(momentUserTokensTable)
+            .where(sql`LOWER(${momentUserTokensTable.email}) = ANY(${emails})`);
           const tokensByEmail = new Map<string, string[]>();
           for (const t of tokenRows) {
             const e = (t.email || "").toLowerCase();

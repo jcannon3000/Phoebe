@@ -227,6 +227,54 @@ export async function getFellowLightsForToday(userId: number): Promise<FellowLig
   return { turned, learned, prayed };
 }
 
+// Batched version of getFellowLightsForToday for a SET of users — the fellows
+// list needs lights for every fellow, and calling the single-user function in a
+// loop was ~5 round-trips PER fellow (N×5). This does a fixed ~5 queries total,
+// regardless of fellow count, with each user's "today" computed in THEIR own
+// timezone in SQL. Same authorization caveat: the caller must have already
+// confirmed these are accepted, mutual fellows.
+export async function getFellowLightsForUsers(userIds: number[]): Promise<Map<number, FellowLights>> {
+  const out = new Map<number, FellowLights>();
+  for (const id of userIds) out.set(id, { turned: false, learned: false, prayed: false });
+  if (userIds.length === 0) return out;
+
+  const users = await db.select({ id: usersTable.id, timezone: usersTable.timezone })
+    .from(usersTable).where(inArray(usersTable.id, userIds));
+  const targets = users.map((u) => {
+    const tz = u.timezone && TZ_RE.test(u.timezone) ? u.timezone : "UTC";
+    return { id: u.id, tz, ymd: ymdInTz(tz) };
+  });
+  if (targets.length === 0) return out;
+
+  // (id, tz, ymd) rows for the tz-aware prayer-sessions join, and (id, ymd)
+  // pairs for the plain ymd-keyed tables.
+  const tzValues = sql.join(targets.map((t) => sql`(${t.id}, ${t.tz}, ${t.ymd})`), sql`, `);
+  const ymdPairs = sql.join(targets.map((t) => sql`(${t.id}, ${t.ymd})`), sql`, `);
+
+  const [pray, refl, cac, turn] = await Promise.all([
+    db.execute<{ user_id: number }>(sql`
+      SELECT DISTINCT ps.user_id FROM prayer_sessions ps
+      JOIN (VALUES ${tzValues}) AS t(uid, tz, ymd) ON t.uid = ps.user_id
+      WHERE to_char((ps.ended_at AT TIME ZONE t.tz)::date, 'YYYY-MM-DD') = t.ymd
+        AND (
+          (ps.surface IN ('morning-prayer','morning-devotion','evening-prayer','early-evening-devotion') AND ps.completed = TRUE)
+          OR (ps.surface = 'national-cathedral' AND ps.duration_seconds >= 180)
+          OR (ps.surface IN ('morning-office-podcast','evening-office-podcast') AND ps.completed = TRUE)
+          OR (ps.surface = 'contemplation' AND ps.duration_seconds >= 30)
+        )
+    `),
+    db.execute<{ user_id: number }>(sql`SELECT DISTINCT user_id FROM reflection_reads WHERE (user_id, ymd) IN (${ymdPairs})`),
+    db.execute<{ user_id: number }>(sql`SELECT DISTINCT user_id FROM cac_reads WHERE (user_id, ymd) IN (${ymdPairs})`),
+    db.execute<{ user_id: number }>(sql`SELECT DISTINCT user_id FROM presence_turns WHERE (user_id, ymd) IN (${ymdPairs})`),
+  ]);
+
+  for (const r of pray.rows) { const e = out.get(r.user_id); if (e) e.prayed = true; }
+  for (const r of refl.rows) { const e = out.get(r.user_id); if (e) e.learned = true; }
+  for (const r of cac.rows) { const e = out.get(r.user_id); if (e) e.learned = true; }
+  for (const r of turn.rows) { const e = out.get(r.user_id); if (e) e.turned = true; }
+  return out;
+}
+
 // Record the viewer's "Turn" (presence) for today, in their own timezone.
 // Idempotent — one Turn per local day.
 export async function recordTurn(userId: number): Promise<void> {

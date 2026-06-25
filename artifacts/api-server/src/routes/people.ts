@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
 import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable, walkPairingsTable } from "@workspace/db";
-import { getFellowLightsForToday, recordTurn } from "../lib/walkProgress";
+import { getFellowLightsForUsers, recordTurn } from "../lib/walkProgress";
 import { computeStreak } from "../lib/streak";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 
@@ -860,9 +860,11 @@ router.get("/fellows", async (req, res): Promise<void> => {
     // The three coarse, today-only presence lights (Turn / Learn / Pray) for
     // each fellow — derived server-side in THEIR tz, the only per-user data the
     // fellows surface ever exposes. (~5–8 fellows → a handful of cheap queries.)
-    const lights = await Promise.all(rows.map(r => getFellowLightsForToday(r.fellowUserId)));
+    // ONE batched lookup for every fellow's lights (was N×5 round-trips).
+    const lights = await getFellowLightsForUsers(rows.map(r => r.fellowUserId));
+    const noLights = { turned: false, learned: false, prayed: false };
     res.json({
-      fellows: rows.map((r, i) => ({
+      fellows: rows.map((r) => ({
         userId: r.fellowUserId,
         name: r.name,
         email: r.email,
@@ -870,9 +872,9 @@ router.get("/fellows", async (req, res): Promise<void> => {
         source: r.source,
         createdAt: r.createdAt?.toISOString() ?? null,
         streak: r.streakLast && r.streakLast >= yesterdayUtc ? (r.streakCount ?? 0) : 0,
-        turned: lights[i].turned,
-        learned: lights[i].learned,
-        prayed: lights[i].prayed,
+        turned: (lights.get(r.fellowUserId) ?? noLights).turned,
+        learned: (lights.get(r.fellowUserId) ?? noLights).learned,
+        prayed: (lights.get(r.fellowUserId) ?? noLights).prayed,
       })),
     });
   } catch (err) {
