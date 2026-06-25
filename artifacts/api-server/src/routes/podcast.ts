@@ -78,6 +78,7 @@ const SHOW_THEMES: Record<string, string[]> = {
   "nc-crossroads": ["learn", "worship"],
   "living-church": ["learn", "worship"],
   "forward-day-by-day": ["pray", "learn"],
+  "scripture-day-by-day": ["pray", "learn", "scripture"],
 };
 function showThemes(slug: string): string[] {
   return SHOW_THEMES[slug] ?? [];
@@ -123,6 +124,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "📖",
     showSlugs: [
       "forward-day-by-day",
+      "scripture-day-by-day",
     ],
   },
 };
@@ -330,6 +332,16 @@ export const SHOWS: Record<string, Show> = {
     publisher: "forward-movement-shows",
     feedUrl: "https://feeds.megaphone.fm/forwarddaybyday",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b5/43/37/b5433758-400b-4d1b-c397-d3e6190ea0e7/mza_10011273729972074725.jpg/600x600bb.jpg",
+  },
+  // Scripture Day by Day — Fr. Wiley Ammons reads the day's lectionary
+  // scripture aloud. Forward Movement / Megaphone, a fresh daily episode.
+  "scripture-day-by-day": {
+    slug: "scripture-day-by-day",
+    title: "Scripture Day by Day",
+    artist: "Forward Movement",
+    publisher: "forward-movement-shows",
+    feedUrl: "https://feeds.megaphone.fm/scripturedbd",
+    artwork: "https://megaphone.imgix.net/podcasts/7bdb8cac-f23e-11ec-bd3d-6b7860fd93ef/image/RCL-bg.jpg?ixlib=rails-4.3.1&max-w=600&max-h=600&fit=crop&auto=format,compress",
   },
 };
 
