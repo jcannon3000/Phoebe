@@ -2449,7 +2449,7 @@ function NewPrayerRequestsCard({
 }) {
   const colors = CATEGORY_COLORS.practices;
   const headline = count === 1
-    ? "1 prayer request waiting"
+    ? "1 prayer waiting"
     : `${count} prayer requests waiting`;
   return (
     <Link href="/prayer-mode?queue=new" className="block">
@@ -3699,7 +3699,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
             const withAvatars = requesterFaces;
             const countCopy = requestCount === 0
               ? null
-              : t("dashboard.office_requests_sub", { count: requestCount, defaultValue: `${requestCount} prayer request${requestCount === 1 ? "" : "s"}` });
+              : t("dashboard.office_requests_sub", { count: requestCount, defaultValue: `${requestCount} prayer${requestCount === 1 ? "" : "s"}` });
             return (
               // Title sits tight to the eyebrow above, with breathing
               // room below before the "N people prayed with you this
@@ -7305,7 +7305,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       className={`w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] ${ownReqs.length > 0 ? "mt-3" : ""}`}
                       style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                     >
-                      ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
+                      ＋ {t("dashboard.new_prayer_request", { defaultValue: "Prayer" })}
                     </button>
                   ) : (
                     <Link href="/pray-request/new" className={`block ${ownReqs.length > 0 ? "mt-3" : ""}`}>
@@ -7313,7 +7313,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
                         style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                       >
-                        ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
+                        ＋ {t("dashboard.new_prayer_request", { defaultValue: "Prayer" })}
                       </div>
                     </Link>
                   );

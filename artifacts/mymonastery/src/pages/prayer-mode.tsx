@@ -1044,7 +1044,7 @@ function SlideContent({
                   ? "Your Prayer"
                   : slide.isAdopted
                     ? "Praying Along"
-                    : "Prayer Request"}
+                    : "Prayer"}
           </p>
           {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
         </div>
