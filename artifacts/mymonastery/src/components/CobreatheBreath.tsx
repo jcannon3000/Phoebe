@@ -131,16 +131,16 @@ const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa"];
 // instead of vanishing into it). Two tones, clearly apart: the BASE ring is the
 // resting sage; the active inhale sweep is ~30% lighter and HOLDS; the base tone
 // sweeps over it on the exhale, settling the ring back to its resting tone.
-const RING_IN = "rgba(162,196,174,0.7)";  // ~30% lighter sage — inhale sweep
-const RING_OUT = "rgba(122,160,135,0.7)"; // resting frosted sage — base / exhale sweep
+const RING_IN = "rgba(202,226,210,0.78)";  // bright frosty mint — inhale sweep
+const RING_OUT = "rgba(98,142,116,0.8)";   // deeper sage — base / exhale sweep (clearly darker)
 // Soft glow used by every ring's drop-shadow — picks up the lighter tone.
-const RING_GLOW = "rgba(162,196,174,0.45)";
+const RING_GLOW = "rgba(202,226,210,0.45)";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
 const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
 // Inner SESSION ring — ONE slow circle filling once across the whole set of
 // breaths, in the SAME card-surface green glass as the breath fill.
-const SESSION_RING = "rgba(162,196,174,0.7)";
+const SESSION_RING = "rgba(202,226,210,0.78)";
 const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
@@ -1033,8 +1033,8 @@ export function CobreatheBreath({
             maskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
           }}
         >
-          {/* TWO frosted tones only. The resting BASE ring — the darker (10%
-              darker) warm-white tone the breath starts and ends on. */}
+          {/* TWO frosted tones only. The resting BASE ring — the deeper sage
+              tone the breath starts and ends on (clearly darker than the inhale). */}
           <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.9}
             style={{ filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
           {/* Lighter-tone progress — draws FORWARD over the base on the inhale
@@ -1048,7 +1048,7 @@ export function CobreatheBreath({
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
           {/* inner session ring — a faint frosted track (so the two rings read as
               concentric even at rest) + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(122,160,135,0.45)" strokeWidth={RING_SW} />
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(98,142,116,0.45)" strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
         </svg>
