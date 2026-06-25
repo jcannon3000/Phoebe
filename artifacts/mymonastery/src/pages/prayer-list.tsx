@@ -364,10 +364,12 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
             {body}
           </p>
         </div>
-        <div className="flex items-center shrink-0">
-          {prayed
-            ? <span className="text-[13px] font-bold" style={{ color: "#7ED28C" }} aria-label="Prayed">✓</span>
-            : <span className="text-[16px]" aria-hidden>🙏🏽</span>}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Matches the request card: a ✓ once prayed, nothing before — the
+              page reads as one consistent list, not two card styles. */}
+          {prayed && (
+            <span className="text-[13px] font-bold" style={{ color: "#7ED28C" }} aria-label="Prayed">✓</span>
+          )}
         </div>
       </div>
     </BarCard>
