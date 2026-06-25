@@ -11,6 +11,8 @@ import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
+import { getLectionaryReadings } from "../lib/lectionary";
+import { parsePsalmRef, sliceVersesByRange } from "../lib/psalmRange";
 import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
@@ -395,6 +397,97 @@ router.get("/office/psalter", (_req, res) => {
     }))
     .sort((a, b) => a.number - b.number);
   return res.json({ psalms });
+});
+
+// ── Praying the Psalms ──────────────────────────────────────────────────────
+// The traditional BCP "30-day" Psalter — the Coverdale monthly cycle (1979 BCP
+// pp. 934–935 option). Each day of the month has a morning + evening portion;
+// the whole Psalter (1–150) is prayed once a month, so it reads MORE psalms a
+// day than the daily-office lectionary. On a 31-day month the 30th day repeats.
+const MONTHLY_PSALTER: Record<number, { morning: string[]; evening: string[] }> = {
+  1:  { morning: ["1", "2", "3", "4", "5"],            evening: ["6", "7", "8"] },
+  2:  { morning: ["9", "10", "11"],                    evening: ["12", "13", "14"] },
+  3:  { morning: ["15", "16", "17"],                   evening: ["18"] },
+  4:  { morning: ["19", "20", "21"],                   evening: ["22", "23"] },
+  5:  { morning: ["24", "25", "26"],                   evening: ["27", "28", "29"] },
+  6:  { morning: ["30", "31"],                         evening: ["32", "33", "34"] },
+  7:  { morning: ["35", "36"],                         evening: ["37"] },
+  8:  { morning: ["38", "39", "40"],                   evening: ["41", "42", "43"] },
+  9:  { morning: ["44", "45", "46"],                   evening: ["47", "48", "49"] },
+  10: { morning: ["50", "51", "52"],                   evening: ["53", "54", "55"] },
+  11: { morning: ["56", "57", "58"],                   evening: ["59", "60", "61"] },
+  12: { morning: ["62", "63", "64"],                   evening: ["65", "66", "67"] },
+  13: { morning: ["68"],                               evening: ["69", "70"] },
+  14: { morning: ["71", "72"],                         evening: ["73", "74"] },
+  15: { morning: ["75", "76", "77"],                   evening: ["78"] },
+  16: { morning: ["79", "80", "81"],                   evening: ["82", "83", "84", "85"] },
+  17: { morning: ["86", "87", "88"],                   evening: ["89"] },
+  18: { morning: ["90", "91", "92"],                   evening: ["93", "94"] },
+  19: { morning: ["95", "96", "97"],                   evening: ["98", "99", "100", "101"] },
+  20: { morning: ["102", "103"],                       evening: ["104"] },
+  21: { morning: ["105"],                              evening: ["106"] },
+  22: { morning: ["107"],                              evening: ["108", "109"] },
+  23: { morning: ["110", "111", "112", "113"],         evening: ["114", "115"] },
+  24: { morning: ["116", "117", "118"],                evening: ["119:1-32"] },
+  25: { morning: ["119:33-72"],                        evening: ["119:73-104"] },
+  26: { morning: ["119:105-144"],                      evening: ["119:145-176"] },
+  27: { morning: ["120", "121", "122", "123", "124", "125"], evening: ["126", "127", "128", "129", "130", "131"] },
+  28: { morning: ["132", "133", "134", "135"],         evening: ["136", "137", "138"] },
+  29: { morning: ["139", "140"],                       evening: ["141", "142", "143"] },
+  30: { morning: ["144", "145", "146"],                evening: ["147", "148", "149", "150"] },
+};
+
+// GET /psalms/today?cycle=office|monthly&office=morning|evening&date=YYYY-MM-DD
+// Today's appointed psalms with their full BCP text. cycle=office reuses the
+// daily-office lectionary appointment (the same psalms the office prays);
+// cycle=monthly uses the 30-day Coverdale table above. Pass the viewer's LOCAL
+// date so the monthly day-of-month is right across time zones.
+router.get("/psalms/today", (req, res) => {
+  const dateStr = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+    ? req.query.date
+    : null;
+  let date: Date;
+  try {
+    date = dateStr ? new Date(`${dateStr}T12:00:00`) : new Date();
+    if (isNaN(date.getTime())) throw new Error("bad date");
+  } catch { date = new Date(); }
+  const office: "morning" | "evening" = req.query.office === "evening" ? "evening" : "morning";
+  const cycle: "office" | "monthly" = req.query.cycle === "monthly" ? "monthly" : "office";
+
+  let refs: string[];
+  if (cycle === "monthly") {
+    // Day of month from the local date string when given (tz-safe), else server day.
+    const domRaw = dateStr ? Number(dateStr.slice(8, 10)) : date.getDate();
+    const dom = Math.min(Math.max(domRaw, 1), 30); // 31 → repeat day 30
+    refs = MONTHLY_PSALTER[dom][office];
+  } else {
+    refs = getLectionaryReadings(getOfficeDay(date), office).psalms;
+  }
+
+  const psalms = refs
+    .map((r) => parsePsalmRef(r))
+    .filter((p): p is NonNullable<typeof p> => p !== null)
+    .map((ref) => {
+      const entry = PSALTER[ref.number];
+      if (!entry) return null;
+      const content = ref.range ? sliceVersesByRange(entry.content, ref.range) : entry.content;
+      return {
+        number: ref.number,
+        title: entry.title,
+        bcpRef: entry.bcpRef,
+        content,
+        range: ref.range,
+        raw: ref.raw,
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  return res.json({
+    date: dateStr ?? date.toISOString().slice(0, 10),
+    office,
+    cycle,
+    psalms,
+  });
 });
 
 export default router;
