@@ -299,6 +299,17 @@ export function getSideLevel(side: OfficeSide): OfficeLevel | null {
   if (side === "morning") return "psalms";
   return null;
 }
+// Like getSideLevel but WITHOUT the new-user default — returns null when the
+// user has not EXPLICITLY chosen a level for this side. Use this (not
+// getSideLevel) for "has the user designed a rule yet?" / "which sides did they
+// turn on?" checks, so the Morning=Psalms default never reads as a real choice.
+export function getExplicitSideLevel(side: OfficeSide): OfficeLevel | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:level:${side}`);
+    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return raw as OfficeLevel;
+  } catch { /* private mode */ }
+  return null;
+}
 export function setSideLevel(side: OfficeSide, v: OfficeLevel): void {
   try {
     localStorage.setItem(`phoebe:office:level:${side}`, v);

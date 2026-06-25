@@ -17,7 +17,7 @@ import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { getSideLevel } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
 import { isJardinSealed } from "@/lib/jardinMode";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
@@ -836,7 +836,9 @@ function DailyProgressPill() {
 // which stops for good the moment either is true.
 function hasDesignedRoutine(u: { homeLayout?: unknown } | null | undefined): boolean {
   if (u?.homeLayout) return true;
-  try { return getSideLevel("morning") !== null || getSideLevel("evening") !== null; }
+  // EXPLICIT levels only — the Morning=Psalms new-user default must not read as
+  // "they designed a routine," or the nudge would never show.
+  try { return getExplicitSideLevel("morning") !== null || getExplicitSideLevel("evening") !== null; }
   catch { return false; }
 }
 const ROUTINE_PROMPT_KEY = "phoebe:routine-prompt-last";

@@ -3010,19 +3010,6 @@ export default function PrayerModePage() {
     // is a single-row, always-current check, so it closes that gap.
     lastMineQuery.data?.request?.isActive === true;
 
-  // The viewer's OWN active prayer INTENTIONS (the reframed "Prayer"). These
-  // close the daily walk — your own prayers show in your own slideshow so you
-  // pray them daily, framed as "your prayer" (not "people are praying for
-  // you"). Default-kind only; life-events keep their dedicated handling.
-  const ownActivePrayers = prayerRequests.filter(
-    (r) =>
-      r.isOwnRequest === true &&
-      !r.isAnswered &&
-      !r.closedAt &&
-      !(r.expiresAt && new Date(r.expiresAt) <= new Date()) &&
-      (r.kind == null || r.kind === "request"),
-  );
-
   // queueMode === "new" builds a tightly-scoped slide list: only
   // prayer requests the viewer hasn't amen'd before. Everything else
   // (intercessions, circle intentions, prayers-for, ask-request) is
@@ -3389,12 +3376,12 @@ export default function PrayerModePage() {
     ...prayerRequests
       .filter((r) => {
         if (r.isAnswered) return false;
-        // Skip the viewer's own requests — you don't need to be
-        // asked to pray for yourself in the daily slideshow.
-        // Comments / words of comfort from others are still visible
-        // on the request's own detail page; this just keeps the
-        // slideshow about holding others.
-        if (r.isOwnRequest === true) return false;
+        // Keep the viewer's OWN active intentions (the reframed "Prayer") so
+        // they show in their own slideshow as "Your prayer" — rendered without
+        // the amen / word-of-comfort / pray-along controls (see isOwnPrayer in
+        // the slide view). Own LIFE-EVENTS keep their dedicated handling, so
+        // skip only those here; own default-kind prayers stay in.
+        if (r.isOwnRequest === true && r.kind != null && r.kind !== "request") return false;
         // Defense in depth: the personal feed already drops others'
         // expired requests at the SQL layer, but a stale cache (e.g.
         // an expiry crossing while the user is mid-session) could let
@@ -3413,6 +3400,7 @@ export default function PrayerModePage() {
         authorName: r.ownerName ?? null,
         authorAvatarUrl: r.ownerAvatarUrl ?? null,
         requestKind: r.kind ?? null,
+        isOwnPrayer: r.isOwnRequest === true,
         isAdopted: r.isAdopted === true,
         adoptCount: r.adoptCount ?? 0,
         alreadyPrayedToday: r.myAmenedToday === true,
@@ -3498,28 +3486,10 @@ export default function PrayerModePage() {
         text: "",
         attribution: "",
       });
-    } else if (ownActivePrayers.length > 0) {
-      // Close the walk on YOUR OWN prayers — the reframed "Prayer" intentions
-      // you're carrying (e.g. "Venezuela"). They show in your own slideshow so
-      // you pray them daily, as "your prayer" (no Amen, just Continue). Both
-      // morning and evening end here; once a prayer is OVER (answered / closed /
-      // expired) it drops out, so an ended intention never gets a closing slide.
-      for (const r of ownActivePrayers) {
-        slides.push({
-          kind: "request",
-          text: r.body,
-          attribution: "",
-          requestId: r.id,
-          myWord: null,
-          authorName: null,
-          authorAvatarUrl: null,
-          requestKind: r.kind ?? null,
-          isOwnPrayer: true,
-          adoptCount: r.adoptCount ?? 0,
-          alreadyPrayedToday: r.myAmenedToday === true,
-        });
-      }
     }
+    // The viewer's OWN active prayers now render INLINE in the request block
+    // above (as "Your prayer" slides), so they always appear in the slideshow —
+    // no longer only as a trailing close-of-walk append.
 
     // Pause slide — the final slide before the closing summary. A
     // meditative breath: the user is invited to bring anything else

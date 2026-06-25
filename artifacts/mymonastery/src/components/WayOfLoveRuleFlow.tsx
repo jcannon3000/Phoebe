@@ -31,6 +31,7 @@ import {
   setReflectionSource,
   setSideEntry,
   getSideLevel,
+  getExplicitSideLevel,
   getSideEntry,
   getReflectionSource,
   getFddMode,
@@ -188,7 +189,7 @@ export default function WayOfLoveRuleFlow({
     // reset); a first author still meets the named starter rules. getSideLevel
     // reads the local office prefs synchronously (reliable for a returning user).
     try {
-      const has = getSideLevel("morning") !== null || getSideLevel("evening") !== null;
+      const has = getExplicitSideLevel("morning") !== null || getExplicitSideLevel("evening") !== null;
       return has ? "when" : "starter";
     } catch { return "starter"; }
   });
@@ -199,8 +200,8 @@ export default function WayOfLoveRuleFlow({
   // sides already have a per-side level; defaults to both on first run. At least
   // one side stays selected.
   const [sides, setSides] = useState<{ morning: boolean; evening: boolean }>(() => {
-    const m = getSideLevel("morning");
-    const e = getSideLevel("evening");
+    const m = getExplicitSideLevel("morning");
+    const e = getExplicitSideLevel("evening");
     if (m || e) return { morning: !!m, evening: !!e };
     return { morning: true, evening: true };
   });
@@ -229,8 +230,11 @@ export default function WayOfLoveRuleFlow({
   // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
   // no saved level defaults to "devotion", not the more involved "community".
   const [prayBySide, setPrayBySide] = useState<Record<OfficeSide, PrayChoice>>(() => ({
-    morning: prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening")) ?? "devotion",
-    evening: prayFromLevel(getSideLevel("evening")) ?? prayFromLevel(getSideLevel("morning")) ?? "devotion",
+    // Morning has a real default now (Psalms — getSideLevel returns it when
+    // unset), so the cross-mirror fallbacks below would leak that default onto
+    // evening. Each side reads only its OWN level; unset evening stays Devotion.
+    morning: prayFromLevel(getSideLevel("morning")) ?? "devotion",
+    evening: prayFromLevel(getSideLevel("evening")) ?? "devotion",
   }));
   const [methodBySide, setMethodBySide] = useState<Record<OfficeSide, DefaultOfficeEntry>>(() => ({
     morning: getSideEntry("morning"),
