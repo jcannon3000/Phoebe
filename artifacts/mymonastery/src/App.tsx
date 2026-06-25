@@ -809,43 +809,7 @@ function ParishGate({ children }: { children: ReactNode }) {
 // reads as "still loading" rather than a white flash.
 function RouteFallback() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#091A10",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "0 36px",
-      }}
-    >
-      {/* A quiet word while the app loads. */}
-      <div style={{ maxWidth: 440, textAlign: "center" }}>
-        <p
-          style={{
-            color: "rgba(240,237,230,0.78)",
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            fontStyle: "italic",
-            fontSize: 20,
-            lineHeight: 1.5,
-            margin: 0,
-          }}
-        >
-          “Always we begin again.”
-        </p>
-        <p
-          style={{
-            color: "rgba(143,175,150,0.6)",
-            fontFamily: "'Space Grotesk', system-ui, sans-serif",
-            fontSize: 12.5,
-            letterSpacing: "0.04em",
-            margin: "14px 0 0",
-          }}
-        >
-          — Benedict of Nursia
-        </p>
-      </div>
-    </div>
+    <div style={{ minHeight: "100vh", background: "#091A10" }} aria-hidden />
   );
 }
 

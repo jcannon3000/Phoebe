@@ -871,6 +871,7 @@ const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
   { text: "Attention is the rarest and purest form of generosity.", author: "Simone Weil" },
   { text: "For one only becomes weary of what is new. One never grows weary of the old.", author: "Søren Kierkegaard" },
   { text: "Whenever the Psalter is abandoned, an incomparable treasure vanishes from the Christian church. With its recovery will come unsuspected power.", author: "Dietrich Bonhoeffer" },
+  { text: "Always we begin again.", author: "Benedict of Nursia" },
 ];
 
 function OpeningSplash() {
