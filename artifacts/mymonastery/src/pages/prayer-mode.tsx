@@ -3622,7 +3622,15 @@ export default function PrayerModePage() {
   const reflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
   const isMorningClose = (closingOnly || afterOffice) && !closingIsEvening;
   const endOnReflection = isMorningClose && reflectionSource !== "none";
-  const fadeHomeNoNewsletter = isMorningClose && reflectionSource === "none";
+  // The "Add prayer / Done" closing card (ClosingSlide) is REMOVED for the plain
+  // daily prayer-list walk — being there already means you prayed, so an empty
+  // add-a-prayer card to end on made no sense. Those closes now fade to the
+  // blessing send-off and home, reusing this flag. Office finishes keep their
+  // recap / news / reminder closing slide; reflection closes keep WhatsNext.
+  const isOfficeClose = closingOnly || afterOffice || officesOnly;
+  const fadeHomeNoNewsletter =
+    (isMorningClose && reflectionSource === "none") ||
+    (!isOfficeClose && !endOnReflection && !showReflectionGate);
   // Contemplation timer overlay — opened from the pause slide's
   // quick-start card. Rendered at the page root below so it covers the
   // whole screen regardless of which slide is showing. startMinutes is
