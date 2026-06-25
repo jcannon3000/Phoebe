@@ -4334,7 +4334,10 @@ function PrayerListCarousel({
                     // A community intercession ALWAYS opens the slideshow (led by
                     // it), prayed or not — never a detail page.
                     ? `/prayer-mode?focusMoment=${encodeURIComponent(req.momentToken ?? "")}`
-                    : (amened ? `/prayer-requests/${req.id}` : `/prayer-mode?focus=${req.id}`)
+                    // A request ALWAYS opens the slideshow led by it too — even if
+                    // already prayed today (the slideshow now starts ON the
+                    // focused request rather than skipping it).
+                    : `/prayer-mode?focus=${req.id}`
                 }
                 className="block"
               >

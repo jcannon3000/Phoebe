@@ -3607,7 +3607,14 @@ export default function PrayerModePage() {
     // sent the user in to handle a specific queue, so resume-progress
     // and alreadyPrayedToday-skip don't apply (all queue slides are
     // un-prayed by construction; no localStorage to honor).
-    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
+    // A tapped prayer-list card (?focus=ID / ?focusMoment=token) always opens ON
+    // that item — even if it's already been prayed today — rather than skipping
+    // to the first un-prayed slide or jumping straight to the closing summary.
+    // The focused slide was moved to the front of the deck above, so start at 0.
+    const focusedLeads =
+      (focusId != null && captured[0]?.kind === "request" && captured[0]?.requestId === focusId) ||
+      (focusMomentToken != null && captured[0]?.kind === "intercession" && captured[0]?.momentToken === focusMomentToken);
+    if (!focusedLeads && !seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {

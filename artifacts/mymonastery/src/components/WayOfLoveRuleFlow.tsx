@@ -1005,13 +1005,13 @@ export default function WayOfLoveRuleFlow({
         {isContemplation && contemplationStyle === "silent" && (
           <>
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplation_length_label", { defaultValue: "How much would you like to sit each day?" })}
+              {t("wol_rule.contemplation_length_label", { defaultValue: "How long would you like to sit each session?" })}
             </p>
             <div style={{ position: "relative" }}>
               <select
                 value={String(goalMin)}
                 onChange={(e) => chooseGoal(e.target.value)}
-                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How much would you like to sit each day?" })}
+                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long would you like to sit each session?" })}
                 style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
               >
                 {[5, 10, 15, 20, 30, 45, 60].map((m) => (
@@ -1021,7 +1021,7 @@ export default function WayOfLoveRuleFlow({
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
             <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-              {t("wol_rule.contemplation_length_note", { defaultValue: "A gentle daily goal — Phoebe helps you reach it at your own pace, never measured against you." })}
+              {t("wol_rule.contemplation_length_note", { defaultValue: "How long each sit lasts — Phoebe times it for you, at your own pace, never measured against you." })}
             </p>
           </>
         )}
