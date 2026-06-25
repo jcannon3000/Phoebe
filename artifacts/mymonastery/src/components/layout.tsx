@@ -716,14 +716,6 @@ function DailyProgressPill() {
   // Fellows are turned off for now — we no longer ping fellows when three dots
   // are kept (that fanned out a notification to your fellows). Removed.
 
-  // Every practice for the day kept → ALL dots gently pulse colour (a staggered
-  // "you held the whole day" wave).
-  const allDone = dotDefs.length > 0 && dotDefs.every((d) => d.done);
-  // Where you are in the day — the first anchor not yet kept. Drives the
-  // "position, not score" reading of the pill: kept dots recede, this one is
-  // live, the rest are faint (no filled-vs-empty tally to complete toward).
-  const firstUndone = dotDefs.findIndex((d) => !d.done);
-
   // Per-dot "just completed" pulse: when an activity flips done, its dot glows
   // for ~2 minutes — then settles. We stamp the completion time per local day in
   // localStorage (so it survives the Layout remount on navigation) the moment a
@@ -800,14 +792,13 @@ function DailyProgressPill() {
           // A stop glows ONLY for the ~2 min right after its own practice was
           // kept (recentlyDone) — never a persistent all-done glow.
           const pulse = recentlyDone(d.key);
-          const isLive = !allDone && i === firstUndone; // the anchor you're at now
-          // Position, not a tally: kept anchors recede (settled), the current one
-          // glows live, the ones ahead stay faint — never a "filled vs empty" score.
+          // Position, not a tally: kept anchors are filled (settled); everything
+          // still to do — INCLUDING the next one — stays dark/faint. The "next"
+          // dot is no longer lit up, per design: it reads as a quiet to-do, not a
+          // highlighted target.
           const tone = d.done
             ? { background: "rgba(110,180,130,0.5)", border: "none" as const }
-            : isLive
-              ? { background: "rgba(150,200,165,0.95)", border: "none" as const, boxShadow: "0 0 6px rgba(110,180,130,0.6)" }
-              : { background: "transparent", border: "1px solid rgba(143,175,150,0.28)" };
+            : { background: "transparent", border: "1px solid rgba(143,175,150,0.28)" };
           return (
             <span
               key={d.key}
