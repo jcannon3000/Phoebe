@@ -77,6 +77,7 @@ const SHOW_THEMES: Record<string, string[]> = {
   "evening-office": ["pray", "worship", "rest"],
   "nc-crossroads": ["learn", "worship"],
   "living-church": ["learn", "worship"],
+  "national-cathedral-sermons": ["learn", "worship"],
   "forward-day-by-day": ["pray", "learn"],
   "scripture-day-by-day": ["pray", "learn", "scripture"],
 };
@@ -104,6 +105,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "nc-crossroads",
       "roundtables-on-race",
       "living-church",
+      "national-cathedral-sermons",
     ],
   },
   cac: {
@@ -332,6 +334,15 @@ export const SHOWS: Record<string, Show> = {
     publisher: "forward-movement-shows",
     feedUrl: "https://feeds.megaphone.fm/forwarddaybyday",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b5/43/37/b5433758-400b-4d1b-c397-d3e6190ea0e7/mza_10011273729972074725.jpg/600x600bb.jpg",
+  },
+  // Sermons by Washington National Cathedral — Sunday + feast-day preaching.
+  "national-cathedral-sermons": {
+    slug: "national-cathedral-sermons",
+    title: "National Cathedral Sermons",
+    artist: "Washington National Cathedral",
+    publisher: "around-the-church",
+    feedUrl: "https://feed.podbean.com/nationalcathedral/feed.xml",
+    artwork: "https://pbcdn1.podbean.com/imglogo/image-logo/5314698/Sermons_by_WNC6eo25.jpg",
   },
   // Scripture Day by Day — Fr. Wiley Ammons reads the day's lectionary
   // scripture aloud. Forward Movement / Megaphone, a fresh daily episode.
