@@ -366,7 +366,6 @@ const GroupLeaderboardPage = lazy(() => import("./pages/group-leaderboard"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
-const CommunityChatPage = lazy(() => import("./pages/community-chat"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
@@ -1037,13 +1036,7 @@ function Router() {
       <Route path="/welcome" component={WelcomePage} />
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
       <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
-      <Route path="/communities/:slug/chat" component={CommunityChatPage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
-      {/* /metrics and /settings both land on CommunitySettingsPage; the
-          page reads the URL and pre-selects the correct tab. The standalone
-          CommunityMetricsPage is kept as the module that exports the
-          reusable MetricsDashboard — it's no longer rendered as a route. */}
-      <Route path="/communities/:slug/metrics" component={CommunitySettingsPage} />
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
       <Route path="/communities/:slug/reflection" component={CommunityReflectionPage} />

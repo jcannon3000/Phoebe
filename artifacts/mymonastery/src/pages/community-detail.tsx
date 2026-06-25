@@ -1492,42 +1492,6 @@ function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupNam
   );
 }
 
-// Group chat — the community's "talk to each other" room. Shows an unread
-// badge; tapping opens the full chat. Beta, joined members only.
-function GroupChatCard({ slug }: { slug: string }) {
-  const [, setLocation] = useLocation();
-  const { data } = useQuery<{ count: number; capped: boolean }>({
-    queryKey: [`/api/groups/${slug}/chat/unread`],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/chat/unread`),
-    refetchInterval: 30_000,
-  });
-  const unread = data?.count ?? 0;
-  const badge = unread > 0 ? (data?.capped ? "99+" : String(unread)) : null;
-  return (
-    <div
-      onClick={() => setLocation(`/communities/${slug}/chat`)}
-      role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocation(`/communities/${slug}/chat`); } }}
-      className="relative flex rounded-xl overflow-hidden cursor-pointer mb-3"
-      style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}
-    >
-      <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
-      <div className="flex-1 px-4 py-3 flex items-center gap-3">
-        <span className="text-2xl" aria-hidden>💬</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>Group chat</p>
-          <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#C8D4C0" }}>
-            {unread > 0 ? `${badge} new message${unread === 1 ? "" : "s"}` : "Talk with your community."}
-          </p>
-        </div>
-        {badge && (
-          <span className="shrink-0 rounded-full text-[12px] font-bold px-2 py-0.5" style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{badge}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function CommunityDetailPage() {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
@@ -1977,10 +1941,7 @@ export default function CommunityDetailPage() {
           </div>
         </div>
 
-        {/* Group chat — the community's conversation room (beta, joined
-            members). The lightweight "talk to each other" surface held inside
-            the community frame, next to its prayer life. */}
-        {!isJardinGroup && rawIsBeta && !!myRole && <GroupChatCard slug={slug} />}
+        {/* Group chat removed from communities per request. */}
 
         {/* Admin-only — "How can I pray for you?" community prompt.
             Sends a push + email to every joined member; rate-limited
@@ -3546,14 +3507,7 @@ export default function CommunityDetailPage() {
                 transition={{ duration: 0.15 }}
                 className="flex flex-col gap-2 mb-1"
               >
-                <button
-                  onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=lectio-divina&community=${slug}`); }}
-                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                  style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-                >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 {t("community_detail.fab_lectio_title")}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_lectio_sub")}</p>
-                </button>
+                {/* Lectio Divina group feature removed per request. */}
                 <button
                   onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=intercession&community=${slug}`); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"

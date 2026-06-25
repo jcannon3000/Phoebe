@@ -7,7 +7,6 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLink, Users, Plus, X, Trash2, UserPlus } from "lucide-react";
-import { MetricsDashboard } from "./community-metrics";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -44,20 +43,6 @@ export default function CommunitySettingsPage() {
   const queryClient = useQueryClient();
   const { isBeta } = useBetaStatus();
   const { t } = useTranslation();
-
-  // Tabs within settings: "settings" (form) and "metrics" (beta only).
-  // The /metrics route deep-links to the same page with the tab pre-
-  // selected so push notifications and shared URLs keep working.
-  type Tab = "settings" | "metrics";
-  const initialTab: Tab = location.endsWith("/metrics") ? "metrics" : "settings";
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-
-  // If the user navigates between /settings and /metrics without a full
-  // reload (e.g. tapping a tab pill), keep the tab state in sync.
-  useEffect(() => {
-    if (location.endsWith("/metrics") && activeTab !== "metrics") setActiveTab("metrics");
-    if (location.endsWith("/settings") && activeTab !== "settings") setActiveTab("settings");
-  }, [location, activeTab]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -232,43 +217,6 @@ export default function CommunitySettingsPage() {
           {t("community_settings.title")}
         </h1>
         <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>{t("community_settings.subtitle", { name: group.name })}</p>
-
-        {/* ── Tab pills — Settings / Metrics (beta) ─────────────────────────
-            Metrics tab is hidden for non-beta users since the backend
-            gates the data. URL reflects the active tab (deep-linkable). */}
-        <div
-          className="flex items-center gap-2 mb-6"
-          role="tablist"
-          aria-label={t("community_settings.tabs_aria")}
-        >
-          <TabPill
-            label={t("community_settings.tab_settings")}
-            active={activeTab === "settings"}
-            onClick={() => {
-              setActiveTab("settings");
-              if (!location.endsWith("/settings")) setLocation(`/communities/${slug}/settings`);
-            }}
-          />
-          {isBeta && (
-            <TabPill
-              label={t("community_settings.tab_metrics")}
-              active={activeTab === "metrics"}
-              badge={t("community_settings.tab_metrics_badge")}
-              onClick={() => {
-                setActiveTab("metrics");
-                if (!location.endsWith("/metrics")) setLocation(`/communities/${slug}/metrics`);
-              }}
-            />
-          )}
-        </div>
-
-        {/* ── Metrics tab body ──────────────────────────────────────────── */}
-        {activeTab === "metrics" && (
-          <MetricsDashboard slug={slug} />
-        )}
-
-        {/* ── Settings tab body (existing form — everything below) ──────── */}
-        {activeTab === "settings" && (<>
 
         <button
           onClick={() => setLocation(`/communities/${slug}?tab=members`)}
@@ -849,8 +797,6 @@ export default function CommunitySettingsPage() {
             </div>
           )}
         </div>
-
-        </>)}
       </div>
     </Layout>
   );
@@ -1042,52 +988,6 @@ function SundayReflectionsToggle({ slug }: { slug: string }) {
         </button>
       </div>
     </>
-  );
-}
-
-// ─── Tab pill ──────────────────────────────────────────────────────────────
-// Small segmented-control pill used for the Settings / Metrics tabs at the
-// top of the page. Keeps visual weight low so the tabs don't compete with
-// the page header.
-function TabPill({
-  label,
-  active,
-  onClick,
-  badge,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  badge?: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors"
-      style={{
-        background: active ? "rgba(46,107,64,0.25)" : "rgba(46,107,64,0.08)",
-        color: active ? "#F0EDE6" : "#8FAF96",
-        border: `1px solid ${active ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
-        fontFamily: FONT,
-        letterSpacing: "-0.01em",
-      }}
-    >
-      <span>{label}</span>
-      {badge && (
-        <span
-          className="text-[9px] uppercase"
-          style={{
-            color: "rgba(143,175,150,0.65)",
-            letterSpacing: "0.14em",
-          }}
-        >
-          {badge}
-        </span>
-      )}
-    </button>
   );
 }
 
