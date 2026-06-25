@@ -904,15 +904,19 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
           {/* Forward Day by Day AS the morning prayer — replaces the office card
               for whoever picks it (per-user). Morning only. */}
-          {side === "morning" && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }), () => choosePrayBySide(side, "fdd"))}
+          {/* Forward Day by Day: always offered for morning; offered for evening
+              ONLY if it wasn't already chosen for the morning (one FDD a day). */}
+          {(side === "morning" || prayBySide.morning !== "fdd") && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, side === "morning" ? t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }) : t("wol_rule.pray_fdd_sub_evening", { defaultValue: "Today's reflection as your evening prayer." }), () => choosePrayBySide(side, "fdd"))}
           {/* Praying the Psalms — the appointed psalms as this side's prayer.
               Offered on both morning and evening. */}
           {choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
           {/* "Community prayer list" was removed as a morning/evening prayer
               option per request. Existing community users still resolve via
               prayFromLevel; it's just no longer offered here. */}
-          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
-          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
+          {/* Contemplative Prayer = silent sit. Co-Breathe was removed as a
+              morning/evening prayer option (it still lives in the contemplative
+              practices step). */}
+          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
           {/* The Examen — an evening reflective practice (toggle alongside the office). */}
           {side === "evening" && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
         </div>
@@ -951,6 +955,10 @@ export default function WayOfLoveRuleFlow({
     const isIntercessions = prayBySide[side] === "community";
     const isContemplation = prayBySide[side] === "contemplation";
     const method = isIntercessions ? "read" : methodBySide[side];
+    // FDD / Psalms (like contemplation) have no office "way to pray" method —
+    // they open their own card — so this config slide shows ONLY the reminder
+    // time, not the read/listen/watch dropdown.
+    const noMethod = isContemplation || prayBySide[side] === "fdd" || prayBySide[side] === "psalms";
     return shell(
       <>
         {backRow(goPrev)}
@@ -958,7 +966,9 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {isContemplation
             ? t("wol_rule.side_config_contemplation_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder to sit in the ${cap.toLowerCase()}?` })
-            : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
+            : noMethod
+              ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
+              : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
         {/* For a silent contemplation sit, ask HOW MUCH to sit a day — the daily
             goal (the silent-vs-Co-Breathe choice is made on the prayer-form list
@@ -986,9 +996,10 @@ export default function WayOfLoveRuleFlow({
             </p>
           </>
         )}
-        {/* Contemplation has no on-screen/listen/book method — it's a silent
-            sit — so the method picker is hidden for it. */}
-        {!isContemplation && (
+        {/* Contemplation / FDD / Psalms have no on-screen/listen/book method,
+            so the "Default way to pray" picker is hidden for them — only the
+            reminder time below is shown. */}
+        {!noMethod && (
           <>
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
               {t("wol_rule.method_label", { defaultValue: "Default way to pray" })}
