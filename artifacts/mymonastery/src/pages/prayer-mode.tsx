@@ -2534,6 +2534,13 @@ export default function PrayerModePage() {
     const n = v ? parseInt(v, 10) : NaN;
     return Number.isFinite(n) ? n : null;
   })();
+  // ?focusMoment=<momentToken> — a community-intercession card on the prayer
+  // list opens the walk LED by that intercession, then continues the deck.
+  const focusMomentToken = (() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("focusMoment");
+    return v && v.trim().length > 0 ? v.trim() : null;
+  })();
   // Where the slideshow returns to on finish / X-out. An explicit
   // returnTo (the office handoff) always wins. Otherwise default to
   // the viewer's home: offices-only + parish-only tiers live at
@@ -3342,6 +3349,14 @@ export default function PrayerModePage() {
   // the walk at that request, then continues through the rest of the list.
   if (focusId != null) {
     const fi = slides.findIndex((s) => s.kind === "request" && s.requestId === focusId);
+    if (fi > 0) {
+      const [hit] = slides.splice(fi, 1);
+      if (hit) slides.unshift(hit);
+    }
+  }
+  // ?focusMoment=<token> — lead with the tapped community intercession.
+  if (focusMomentToken != null) {
+    const fi = slides.findIndex((s) => s.kind === "intercession" && s.momentToken === focusMomentToken);
     if (fi > 0) {
       const [hit] = slides.splice(fi, 1);
       if (hit) slides.unshift(hit);

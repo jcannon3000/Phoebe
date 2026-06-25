@@ -42,6 +42,8 @@ type Moment = {
   computedSessionsLogged?: number;
   goalDays?: number | null;
   myLastPostAt?: string | null;
+  // Per-viewer: have I prayed (logged) this intercession today? Drives the ✓.
+  myPrayedToday?: boolean;
   // Group scoping — primary community + any extras it's shared with.
   // Rendered under the intercession title on the prayer list since
   // practices are group-based rather than people-based now.
@@ -326,40 +328,47 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
   // "+N more" tail. viewerEmail is accepted for API compatibility
   // but no longer used (we stopped filtering the member list here).
   void viewerEmail;
+  // A community intercession reads like a prayer request: the community's emoji
+  // as the avatar, "From {community}" as the eyebrow, the prayer as the body,
+  // and a 🙏/✓ for whether you've prayed it today. Tapping opens the prayer
+  // slideshow led by THIS intercession — never the moment detail page.
   const allGroups = [
     ...(moment.group ? [moment.group] : []),
     ...(moment.additionalGroups ?? []),
   ];
-  const groupLabel =
-    allGroups.length === 0
-      ? null
-      : allGroups.length === 1
-        ? `${allGroups[0].emoji ?? "🏘️"} ${allGroups[0].name}`
-        : `${allGroups[0].emoji ?? "🏘️"} ${allGroups[0].name} +${allGroups.length - 1}`;
-  const cardTitle = stripEmoji(moment.intercessionTopic || moment.intention || moment.name);
-
-  // Intercession cards no longer carry a "Pray now" / "Prayed today" /
-  // "Not today" state pill. Community intercessions are a different
-  // semantic from personal requests — you open the moment page, not
-  // a slideshow — so the CTA is always "View," rendered in the
-  // bottom-right corner. Keeps the list visually calm and removes
-  // the need for the user to mentally parse what state each moment
-  // is in before tapping.
+  const communityName =
+    allGroups.length === 0 ? "Community"
+    : allGroups.length === 1 ? allGroups[0].name
+    : `${allGroups[0].name} +${allGroups.length - 1}`;
+  const emoji = allGroups[0]?.emoji ?? "🙏🏽";
+  const body = moment.intercessionFullText?.trim() || stripEmoji(moment.intercessionTopic || moment.intention || moment.name);
+  const prayed = moment.myPrayedToday === true;
   return (
-    <BarCard href={`/moments/${moment.id}`} accent="#2E6B40">
-      <div className="relative pr-16">
-        <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
-          🙏🏽 {cardTitle}
-        </span>
-        {groupLabel && (
-          <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>{groupLabel}</p>
-        )}
-        <span
-          className="absolute bottom-0 right-0 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
-          style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
+    <BarCard
+      href={moment.momentToken ? `/prayer-mode?focusMoment=${encodeURIComponent(moment.momentToken)}` : `/moments/${moment.id}`}
+      accent="#8FAF96"
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
+          style={{ background: "#1A4A2E", border: "1px solid rgba(46,107,64,0.3)" }}
+          aria-hidden
         >
-          View
-        </span>
+          {emoji}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
+            From {communityName}
+          </p>
+          <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
+            {body}
+          </p>
+        </div>
+        <div className="flex items-center shrink-0">
+          {prayed
+            ? <span className="text-[13px] font-bold" style={{ color: "#7ED28C" }} aria-label="Prayed">✓</span>
+            : <span className="text-[16px]" aria-hidden>🙏🏽</span>}
+        </div>
       </div>
     </BarCard>
   );

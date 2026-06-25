@@ -7104,7 +7104,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     a wide "New prayer request" CTA. Leads the home, above the
                     events schedule. */}
                 {filter === null && !eventsOnly && (() => {
-                  const carouselRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
+                  const requestRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
                     .filter((r) => {
                       if (r.isAnswered) return false;
                       if (r.closedAt) return false;
@@ -7125,16 +7125,29 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       ownerName: r.ownerName ?? null,
                       ownerAvatarUrl: r.ownerAvatarUrl ?? null,
                       myAmenedToday: r.myAmenedToday,
-                    }))
-                    // Float the ones you HAVEN'T prayed yet to the top; the ones
-                    // you've already amened today sink to the bottom. (Your own
-                    // requests have no amened state, so they stay up top too.)
-                    // Stable sort keeps the original order within each group.
-                    .sort((a, b) => {
-                      const aDone = !a.isOwnRequest && a.myAmenedToday ? 1 : 0;
-                      const bDone = !b.isOwnRequest && b.myAmenedToday ? 1 : 0;
-                      return aDone - bDone;
-                    });
+                    }));
+                  // Community intercessions an admin posted join the SAME list with
+                  // the SAME card: FROM {community} + the prayer as the body, 🙏/✓
+                  // from myPrayedToday, and a tap opens the slideshow led by it.
+                  // Group-scoped only (feed intercessions have their own feed card).
+                  const intercessionRows: PrayerListCarouselRow[] = (momentsData?.moments ?? [])
+                    .filter((m) => m.templateType === "intercession" && !m.prayerFeedId && m.state !== "archived" && !!m.group)
+                    .map((m) => ({
+                      id: m.id,
+                      body: (m.intercessionFullText?.trim() || m.intercessionTopic?.trim() || m.intention?.trim() || m.name || ""),
+                      isOwnRequest: false,
+                      isAnonymous: false,
+                      ownerName: m.group?.name ?? null,
+                      ownerAvatarUrl: null,
+                      myAmenedToday: m.myPrayedToday === true,
+                      kind: "intercession" as const,
+                      momentToken: m.momentToken,
+                      avatarEmoji: m.group?.emoji ?? "🙏🏽",
+                    }));
+                  const carouselRows: PrayerListCarouselRow[] = [...requestRows, ...intercessionRows]
+                    // Float the ones you HAVEN'T prayed yet to the top; prayed
+                    // ones sink to the bottom and show a ✓. Stable within a group.
+                    .sort((a, b) => (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0));
                   // The prayer-request carousel leads. The upcoming EVENTS now
                   // render BELOW the "Your prayer requests" section (just below),
                   // so every prayer request groups above the schedule.
