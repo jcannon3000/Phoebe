@@ -612,9 +612,10 @@ export default function WayOfLoveRuleFlow({
   const shell = (children: ReactNode) => (
     <div style={{ flex: 1, minHeight: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
-        {/* Full width on mobile; capped + centered only on larger screens so the
-            elements aren't squeezed into a narrow column on a phone. */}
-        <div className="w-full sm:max-w-[480px] sm:mx-auto" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Full width on mobile; on larger screens capped + centered at the SAME
+            56rem the home uses (.dash-shell) so the customizer cards are exactly
+            as wide as the home-screen cards, not a narrower column. */}
+        <div className="w-full md:max-w-[56rem] md:mx-auto" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {children}
         </div>
       </div>
@@ -627,6 +628,9 @@ export default function WayOfLoveRuleFlow({
     "when",
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
+    // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
+    // what you'll read/listen to, then how you'll sit with it.
+    "learn",
     "contemplative",
     ...(contemplative.prayer ? (["contemplation-goal"] as Step[]) : []),
     ...(contemplative.cobreathe ? (["cobreathe-when"] as Step[]) : []),
@@ -634,7 +638,7 @@ export default function WayOfLoveRuleFlow({
     ...(contemplative.lectio ? (["lectio-when"] as Step[]) : []),
     ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
     // The Examen is always an evening practice — no time-of-day slide.
-    "learn", "extras", "custom",
+    "extras", "custom",
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
