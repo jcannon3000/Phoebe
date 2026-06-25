@@ -705,7 +705,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         : hour >= 20 ? officeTitle("Evening") : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
       blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
-      later: hour < 15,
+      later: hour < 17,
     }] : []),
     // Reflection cards lead the morning (default second, right after Morning).
     // One card per reflection newsletter the user follows — each its own card +
@@ -768,10 +768,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // small in the list when morning isn't done yet).
   // Morning leads as the office hero until it's prayed. After morning, the day
   // belongs to reflection → contemplation (small cards); the evening office
-  // stays a quiet "later" card and only becomes the hero from 3 PM on.
+  // stays a quiet "later" card and only becomes the hero from 5 PM on (matches
+  // the splash + the dashboard "what's next" hero — Evening never leads earlier).
   const heroSide: "morning" | "evening" | null =
     (morningActive && !morningDone) ? "morning"
-    : (eveningActive && hour >= 15 && !eveningDone) ? "evening"
+    : (eveningActive && hour >= 17 && !eveningDone) ? "evening"
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
   const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
