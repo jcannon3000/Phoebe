@@ -2334,6 +2334,30 @@ export async function migrate() {
       ON beta_messages (conversation_id, created_at)
     `);
 
+    // ── Rule-of-life requests (BETA) — a member asks their community's clergy
+    //    for help building a daily prayer routine. The app carries the ask; the
+    //    discernment happens with a real person.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS rule_of_life_requests (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        note TEXT,
+        status TEXT NOT NULL DEFAULT 'requested',
+        responded_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        responded_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS rule_of_life_requests_by_group
+      ON rule_of_life_requests (group_id, status)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS rule_of_life_requests_by_user
+      ON rule_of_life_requests (user_id)
+    `);
+
     // ── Podcast engagement — listening history + recommendations ─────────
     // Episode snapshots (external feeds, no local episode table) so we
     // can render history + the community-recommendations feed from the DB.

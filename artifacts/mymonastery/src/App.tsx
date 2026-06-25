@@ -364,6 +364,7 @@ const ForumThreadPage = lazy(() => import("./pages/forum-thread"));
 const GroupLeaderboardPage = lazy(() => import("./pages/group-leaderboard"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
+const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
@@ -1032,6 +1033,7 @@ function Router() {
       <Route path="/plans/:token" component={PlanSharePage} />
       <Route path="/welcome" component={WelcomePage} />
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
+      <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       {/* /metrics and /settings both land on CommunitySettingsPage; the
           page reads the URL and pre-selects the correct tab. The standalone

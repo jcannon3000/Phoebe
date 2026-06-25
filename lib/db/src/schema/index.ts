@@ -82,3 +82,5 @@ export * from "./reflection_thoughts";
 export * from "./forum";
 export * from "./walk_pairings";
 export * from "./fellow_prefs";
+
+export * from "./rule_of_life_requests";

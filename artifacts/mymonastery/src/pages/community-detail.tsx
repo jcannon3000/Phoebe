@@ -486,6 +486,114 @@ function PrayerInviteCard({ slug }: { slug: string }) {
 // picked a source yet, we still render the card for admins (with a
 // "Pick a source" sub) so they have a discoverable doorway in;
 // non-admin members see nothing until the source is set.
+// Beta — a member asks their community's clergy/leaders to help them build a
+// daily prayer routine ("rule of life"). The app just carries the ask; the
+// discernment happens with a real person. No metric, no nudge — a need reaching
+// toward the people who can help.
+function RuleOfLifeMemberCard({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [composing, setComposing] = useState(false);
+  const [note, setNote] = useState("");
+  const { data } = useQuery<{ request: { id: number; status: string; note: string | null } | null }>({
+    queryKey: [`/api/groups/${slug}/rule-of-life/mine`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/rule-of-life/mine`),
+  });
+  const send = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/rule-of-life`, { note: note.trim() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/groups/${slug}/rule-of-life/mine`] }); setComposing(false); setNote(""); },
+  });
+  const req = data?.request ?? null;
+  const isOpen = req && (req.status === "requested" || req.status === "accepted");
+
+  return (
+    <div className="relative flex rounded-xl overflow-hidden mb-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
+      <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
+      <div className="flex-1 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl" aria-hidden>🧭</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>
+              Build a rule of life
+            </p>
+            {isOpen ? (
+              <p className="text-[13px] mt-1 leading-snug" style={{ color: "#C8D4C0" }}>
+                {req!.status === "accepted"
+                  ? "A leader will reach out to talk about your daily prayer. 🌿"
+                  : "Asked — your community's leaders will reach out to help shape your daily prayer."}
+              </p>
+            ) : composing ? (
+              <div className="mt-2">
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value.slice(0, 1000))}
+                  rows={3}
+                  autoFocus
+                  placeholder="Where are you in prayer? What would you love help with? (optional)"
+                  className="w-full rounded-xl px-3 py-2 text-[14px] outline-none resize-none"
+                  style={{ background: "rgba(9,26,16,0.5)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <button type="button" disabled={send.isPending} onClick={() => send.mutate()}
+                    className="rounded-full px-4 py-1.5 text-[13px] font-semibold transition-opacity active:scale-[0.98] disabled:opacity-60"
+                    style={{ background: "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}>
+                    {send.isPending ? "Sending…" : "Ask for help →"}
+                  </button>
+                  <button type="button" onClick={() => { setComposing(false); setNote(""); }}
+                    className="text-[12px]" style={{ color: "#8FAF96" }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-[13px] mt-1 leading-snug" style={{ color: "#C8D4C0" }}>
+                  Talk with your community's leaders about your daily prayer, and shape a rhythm together.
+                </p>
+                <button type="button" onClick={() => setComposing(true)}
+                  className="mt-2 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
+                  style={{ background: "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}>
+                  Ask for help →
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Beta (admin) — a quiet entry to the rule-of-life requests their members have
+// sent. Self-hides when there are none open.
+function RuleOfLifeAdminCard({ slug }: { slug: string }) {
+  const [, setLocation] = useLocation();
+  const { data } = useQuery<{ requests: Array<{ status: string }> }>({
+    queryKey: [`/api/groups/${slug}/rule-of-life`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/rule-of-life`),
+  });
+  const openCount = (data?.requests ?? []).filter((r) => r.status === "requested").length;
+  if (openCount === 0) return null;
+  return (
+    <div
+      onClick={() => setLocation(`/communities/${slug}/rule-of-life`)}
+      role="button" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocation(`/communities/${slug}/rule-of-life`); } }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer mb-3"
+      style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
+      <div className="flex-1 px-4 py-3 flex items-center gap-3">
+        <span className="text-2xl" aria-hidden>🧭</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>Rule of life requests</p>
+          <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#C8D4C0" }}>
+            {openCount} {openCount === 1 ? "member wants" : "members want"} help building their daily prayer.
+          </p>
+        </div>
+        <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 20 }}>›</span>
+      </div>
+    </div>
+  );
+}
+
 function ReflectionEntryCard({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -1837,6 +1945,12 @@ export default function CommunityDetailPage() {
             Sends a push + email to every joined member; rate-limited
             to once per 7 days server-side. Hidden for non-admins. */}
         {!isJardinGroup && isAdmin && <PrayerInviteCard slug={slug} />}
+
+        {/* Beta — rule-of-life: members ask their community's leaders for help
+            building a daily prayer routine; leaders see + respond. The app is
+            the thread, the discernment is a real conversation. */}
+        {!isJardinGroup && rawIsBeta && !isAdmin && <RuleOfLifeMemberCard slug={slug} />}
+        {!isJardinGroup && rawIsBeta && isAdmin && <RuleOfLifeAdminCard slug={slug} />}
 
         {/* Beta-only — daily reflection entry (CAC / Forward Day by
             Day). Renders for every joined member of a beta-gated
