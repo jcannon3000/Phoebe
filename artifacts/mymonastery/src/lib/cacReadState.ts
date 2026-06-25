@@ -82,6 +82,15 @@ const ssjeTracker = makeDailyReadTracker(
   "phoebe:ssje:last-read-day", "phoebe:ssje-read",
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "ssje", ymd }).catch(() => { /* best effort */ }); },
 );
+// Praying the Psalms — local-only done tracker (no server reflection sync; it's
+// a prayer level, not a reflection source). Drives the home Psalms card's done.
+const psalmsTracker = makeDailyReadTracker(
+  "phoebe:psalms:last-read-day", "phoebe:psalms-read",
+  () => { /* local-only */ },
+);
+export const PSALMS_READ_EVENT = psalmsTracker.eventName;
+export function hasPrayedPsalmsToday(): boolean { return psalmsTracker.hasReadToday(); }
+export function markPsalmsPrayed(): void { psalmsTracker.markRead(); }
 
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with

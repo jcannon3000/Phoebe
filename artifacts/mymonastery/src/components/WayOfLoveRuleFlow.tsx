@@ -36,6 +36,9 @@ import {
   getFddMode,
   setFddMode,
   type FddMode,
+  getPsalmCycle,
+  setPsalmCycle,
+  type PsalmCycle,
   type ReflectionSource,
   type OfficeSide,
   type DefaultOfficeEntry,
@@ -60,11 +63,12 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
-type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd";
+type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms";
 type Step =
   | "when"
   | "morning-way" | "morning-config"
   | "fdd-mode"
+  | "psalms-cycle"
   | "evening-way" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "lectio-when" | "walk-when"
   | "learn" | "extras" | "custom" | "done"
@@ -90,7 +94,7 @@ const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…9
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd"> = {
+const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms"> = {
   community: "intercessions",
   devotion: "devotion",
   offices: "office",
@@ -101,6 +105,8 @@ const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "
   // Forward Day by Day IS the prayer for this side — the home FDD card replaces
   // the office card for whoever picks it.
   fdd: "fdd",
+  // Praying the Psalms IS the prayer for this side — the home Psalms card.
+  psalms: "psalms",
 };
 // Inverse of PRAY_LEVEL — read an existing office level back into a Pray
 // choice so Customize opens with the user's current pick selected.
@@ -110,6 +116,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "intercessions") return "community";
   if (level === "reflect-sit") return "contemplation";
   if (level === "fdd") return "fdd";
+  if (level === "psalms") return "psalms";
   return null;
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
@@ -120,6 +127,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   offices: "pray-office",
   contemplation: "pray-reflect-sit",
   fdd: "pray-fdd",
+  psalms: "pray-psalms",
 };
 // Each Pray choice → the morning reminder pref the office-reminder cron reads
 // (parish_office_morning_pref). "office" deep-links the nudge to Morning
@@ -134,6 +142,8 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   contemplation: "devotion",
   // FDD as morning prayer gets the lighter nudge that just opens the practice.
   fdd: "devotion",
+  // Praying the Psalms gets a reminder (a non-"none" value fires the daily push).
+  psalms: "devotion",
 };
 const DEFAULT_REMINDER_TIME = "07:30";
 
@@ -261,6 +271,13 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setFddModeState(m);
     setFddMode(m);
+  };
+  // Which Psalter cycle "Praying the Psalms" follows (the psalms-cycle step).
+  const [psalmCycle, setPsalmCycleState] = useState<PsalmCycle>(() => getPsalmCycle());
+  const choosePsalmCycle = (c: PsalmCycle) => {
+    touchedRef.current = true;
+    setPsalmCycleState(c);
+    setPsalmCycle(c);
   };
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
@@ -524,10 +541,13 @@ export default function WayOfLoveRuleFlow({
     // The global default mirrors whichever side they configured (morning first).
     const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
     apiRequest("PUT", "/api/me/office-prefs", {
-      // FDD isn't a server-side default-prayer level — the per-side LOCAL level
-      // set above drives the home FDD card. Send a safe server default so this
-      // PUT never carries the unknown "fdd" value.
-      defaultPrayerLevel: PRAY_LEVEL[prayBySide[primarySide]] === "fdd" ? "devotion" : PRAY_LEVEL[prayBySide[primarySide]],
+      // "fdd" / "psalms" aren't server-side default-prayer levels — the per-side
+      // LOCAL level set above drives the home FDD / Psalms card. Send a safe
+      // server default so this PUT never carries an unknown value.
+      defaultPrayerLevel: (() => {
+        const lvl = PRAY_LEVEL[prayBySide[primarySide]];
+        return (lvl === "fdd" || lvl === "psalms") ? "devotion" : lvl;
+      })(),
       contemplationGoalMinutes: effGoalMin,
       contemplationReminderEnabled: effGoalMin > 0,
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
@@ -651,6 +671,8 @@ export default function WayOfLoveRuleFlow({
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
     // Picking Forward Day by Day as the morning prayer → a written/audio choice.
     ...(sides.morning && prayBySide.morning === "fdd" ? (["fdd-mode"] as Step[]) : []),
+    // Picking Praying the Psalms (either side) → a cycle choice (office vs monthly).
+    ...((prayBySide.morning === "psalms" || prayBySide.evening === "psalms") ? (["psalms-cycle"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
@@ -883,6 +905,9 @@ export default function WayOfLoveRuleFlow({
           {/* Forward Day by Day AS the morning prayer — replaces the office card
               for whoever picks it (per-user). Morning only. */}
           {side === "morning" && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }), () => choosePrayBySide(side, "fdd"))}
+          {/* Praying the Psalms — the appointed psalms as this side's prayer.
+              Offered on both morning and evening. */}
+          {choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
           {/* "Community prayer list" was removed as a morning/evening prayer
               option per request. Existing community users still resolve via
               prayFromLevel; it's just no longer offered here. */}
@@ -1053,6 +1078,26 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(fddMode === "written", `📖 ${t("wol_rule.fdd_written", { defaultValue: "Read it" })}`, t("wol_rule.fdd_written_sub", { defaultValue: "Today's Forward Day by Day reflection." }), () => chooseFddMode("written"))}
           {choiceRow(fddMode === "audio", `🎧 ${t("wol_rule.fdd_audio", { defaultValue: "Listen to it" })}`, t("wol_rule.fdd_audio_sub", { defaultValue: "The Forward Day by Day podcast, read aloud." }), () => chooseFddMode("audio"))}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── Praying the Psalms — which cycle ─────────────────────────────────────
+  // Shown when either side picks Praying the Psalms. Sets the per-device cycle
+  // the home Psalms card + reader read.
+  if (step === "psalms-cycle") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.psalms_cycle_eyebrow", { defaultValue: "Praying the Psalms" }), t("wol_rule.psalms_cycle_title", { defaultValue: "Which cycle?" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.psalms_cycle_body", { defaultValue: "How the Psalter unfolds, day by day." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(psalmCycle === "office", `📖 ${t("wol_rule.psalms_office_label", { defaultValue: "In step with the office" })}`, t("wol_rule.psalms_office_sub", { defaultValue: "The psalms appointed in the daily office — about 2–3 a day." }), () => choosePsalmCycle("office"))}
+          {choiceRow(psalmCycle === "monthly", `📜 ${t("wol_rule.psalms_monthly_label", { defaultValue: "The whole Psalter, monthly" })}`, t("wol_rule.psalms_monthly_sub", { defaultValue: "All 150 psalms across a month — fuller, more psalms a day (about 5)." }), () => choosePsalmCycle("monthly"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,

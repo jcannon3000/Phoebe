@@ -280,9 +280,10 @@ export function setDefaultOfficeEntry(v: DefaultOfficeEntry): void {
 // shared pref, so anyone who never opens the split flows is unaffected.
 export type OfficeSide = "morning" | "evening";
 // "fdd" = Forward Day by Day IS this side's prayer (replaces the office card for
-// that side, per-user — only when the user picks it in Customize).
-export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd";
-const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd"];
+// that side, per-user). "psalms" = Praying the Psalms IS this side's prayer
+// (the appointed psalms, per the chosen cycle). Both per-user, set in Customize.
+export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd" | "psalms";
+const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd", "psalms"];
 
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).
@@ -312,6 +313,23 @@ export function getFddMode(): FddMode {
 export function setFddMode(v: FddMode): void {
   try {
     localStorage.setItem("phoebe:fdd-mode", v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Which Psalter cycle "Praying the Psalms" follows: "office" = the daily-office
+// lectionary appointment (in step with the office); "monthly" = the traditional
+// 30-day Coverdale cycle (the whole Psalter every month — more psalms a day).
+// Per device, default "office".
+export type PsalmCycle = "office" | "monthly";
+export function getPsalmCycle(): PsalmCycle {
+  try {
+    return localStorage.getItem("phoebe:psalm-cycle") === "monthly" ? "monthly" : "office";
+  } catch { return "office"; }
+}
+export function setPsalmCycle(v: PsalmCycle): void {
+  try {
+    localStorage.setItem("phoebe:psalm-cycle", v);
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
   } catch { /* non-fatal */ }
 }

@@ -16,7 +16,7 @@ import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel, setSideLevel, getFddMode, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -26,6 +26,7 @@ import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
+  PSALMS_READ_EVENT, hasPrayedPsalmsToday,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -3029,6 +3030,69 @@ function FddHomeCard() {
   );
 }
 
+// Praying the Psalms home card — replaces the office card for a side set to
+// "psalms". Shows today's appointed psalms (per the chosen cycle) and opens the
+// /psalms reader. Warm parchment tone, distinct from the blue FDD card.
+function PsalmsHomeCard({ side }: { side: "morning" | "evening" }) {
+  const [, goTo] = useLocation();
+  const [done, setDone] = useState(() => hasPrayedPsalmsToday());
+  const [cycle, setCycle] = useState(() => getPsalmCycle());
+  useEffect(() => {
+    const refresh = () => { setDone(hasPrayedPsalmsToday()); setCycle(getPsalmCycle()); };
+    window.addEventListener(PSALMS_READ_EVENT, refresh);
+    window.addEventListener(OFFICE_PREFS_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(PSALMS_READ_EVENT, refresh);
+      window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  const today = new Date().toLocaleDateString("en-CA");
+  const { data } = useQuery<{ psalms: Array<{ number: number; raw: string }> }>({
+    queryKey: ["/api/psalms/today", cycle, side, today],
+    queryFn: () => apiRequest("GET", `/api/psalms/today?cycle=${cycle}&office=${side}&date=${today}`),
+    staleTime: 30 * 60_000,
+  });
+  const refs = (data?.psalms ?? []).map((p) => p.raw);
+  const subtitle = refs.length > 0
+    ? `Psalm${refs.length > 1 ? "s" : ""} ${refs.join(", ")}`
+    : "Today's appointed psalms";
+  const onClick = () => goTo(`/psalms?office=${side}`);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: "rgba(150,140,110,0.13)", border: "1px solid rgba(150,140,110,0.40)" }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(150,140,110,0.85)" }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
+        <div className="min-w-0">
+          <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
+            Praying the Psalms 📜
+          </p>
+          <p className="truncate" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
+            {subtitle}
+          </p>
+        </div>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: "rgba(150,140,110,0.28)", color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500,
+            padding: "6px 14px", border: "1px solid rgba(150,140,110,0.50)", whiteSpace: "nowrap",
+          }}
+        >
+          {done ? "Prayed ✓" : "Pray"} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // SSJE Reflections home card. Mirrors CacHomeCard / FddHomeCard: opens
 // www.ssje.org/word externally (their page loads today's word
 // client-side, so the same URL every day works), tracks "read today"
@@ -3395,6 +3459,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // early return can never make a hook conditional.
   if (getSideLevel(isMorning ? "morning" : "evening") === "fdd") {
     return <FddHomeCard />;
+  }
+  // Per-user: Praying the Psalms IS this side's prayer → the Psalms card replaces
+  // the office card for this user. Same after-all-hooks placement as FDD.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "psalms") {
+    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} />;
   }
 
   const prayedTodayHalf = (() => {
