@@ -986,12 +986,14 @@ function OpeningSplash() {
     // The Examen + Gratitude are end-of-day reflections — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
     { active: rhythm.gratitudeActive, done: rhythm.gratitudeDone, slot: "evening", emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" },
-    // Evening prayer enters the running only from 5pm onward (matches the home
-    // "what's next" hero's heroAfternoon threshold) — never earlier in the day.
-    { active: hour >= 17 && rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" },
+    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" },
   ];
+  // EVENING-slot practices (Evening Prayer, the Examen, Gratitude, anything the
+  // user slotted to evening) never surface as "what's next" before 5pm — only
+  // the morning/midday/afternoon practices lead earlier in the day. From 5pm on,
+  // the evening slot joins the running (and still sorts last).
   const firstUp = nextCandidates
-    .filter((c) => c.active && !c.done)
+    .filter((c) => c.active && !c.done && (c.slot !== "evening" || hour >= 17))
     .sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
   const nextUp: { emoji: string; label: string; blurb: string; rgb: string } | null =
     firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb } : null;
