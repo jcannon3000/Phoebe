@@ -186,7 +186,7 @@ export default function PublicPrayerRequestPage() {
             marginBottom: 18,
           }}
         >
-          {request.owner.isAnonymous ? "A prayer request" : `${request.owner.name} is carrying`}
+          {request.owner.isAnonymous ? "A prayer" : `${request.owner.name} is carrying`}
         </p>
 
         {/* Card — body + small owner row + days-left chip. */}
