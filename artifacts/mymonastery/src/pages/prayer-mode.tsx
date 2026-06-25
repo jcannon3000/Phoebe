@@ -2993,22 +2993,8 @@ export default function PrayerModePage() {
 
   // Reciprocity rule: others' prayer requests are only surfaced to
   // viewers who have an open prayer request of their own. The slideshow
-  // The reciprocity rule that used to gate the request section is
-  // gone — anyone in a community sees their group's prayer requests
-  // regardless of whether they've shared one of their own. We still
-  // compute hasActiveOwnRequest because the trailing "ask-request"
-  // slide (a soft nudge to share something) only fires for viewers
-  // without an active ask, and that part of the UX is intentional.
-  const hasActiveOwnRequest =
-    prayerRequests.some(
-      (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
-    ) ||
-    // Also trust the dedicated /last-mine signal. The feed query can be stale or
-    // still loading at the moment the deck is built (the very staleness the
-    // mount-invalidate below was added to fight), which made the ask-request
-    // nudge surface even for someone who already has a live request. last-mine
-    // is a single-row, always-current check, so it closes that gap.
-    lastMineQuery.data?.request?.isActive === true;
+  // (The "ask-request" closing nudge is removed, so we no longer compute a
+  // hasActiveOwnRequest gate here — the reciprocity rule is long gone too.)
 
   // queueMode === "new" builds a tightly-scoped slide list: only
   // prayer requests the viewer hasn't amen'd before. Everything else
@@ -3480,16 +3466,10 @@ export default function PrayerModePage() {
   // for queue=prayers-for-me (notification → see who's praying for you,
   // not a moment to make a new ask).
   if (queueMode !== "new" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
-    if (!hasActiveOwnRequest) {
-      slides.push({
-        kind: "ask-request",
-        text: "",
-        attribution: "",
-      });
-    }
-    // The viewer's OWN active prayers now render INLINE in the request block
-    // above (as "Your prayer" slides), so they always appear in the slideshow —
-    // no longer only as a trailing close-of-walk append.
+    // The "Add a prayer" closing nudge slide (kind: "ask-request") is REMOVED
+    // per request — the office slideshow no longer ends on an empty add-a-prayer
+    // button. The viewer's OWN active prayers render INLINE in the request block
+    // above (as "Your prayer" slides), so they still appear in the slideshow.
 
     // Pause slide — the final slide before the closing summary. A
     // meditative breath: the user is invited to bring anything else
