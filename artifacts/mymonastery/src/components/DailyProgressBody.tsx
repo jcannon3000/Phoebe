@@ -831,7 +831,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (!ready || !splashCleared || cascadeHaptedRef.current) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
-    const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
+    // Count the office HERO card too (it leads the Next list at enterUp(0)), so
+    // it gets the first tick and every card below cascades a haptic IN the same
+    // top-to-bottom (time-of-day) order they rise in. Without the hero in the
+    // count it cascaded in silently and the ticks lagged the cards by one.
+    const count = (officeHero ? 1 : 0) + upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
     const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
     const BASE_PEAK = 0.42;    // first card's strength
@@ -846,7 +850,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       }, START_DELAY + i * STEP));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection]);
+  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection, officeHero]);
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
   // divider line trailing off to the right.
