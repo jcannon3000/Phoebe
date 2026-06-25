@@ -112,6 +112,16 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "grace-church-nyc",
     ],
   },
+  // Forward Day by Day — Forward Movement's daily devotional podcast. Ordered
+  // BEFORE CAC in the browse grid (publisher order drives the grid order).
+  "forward-movement-shows": {
+    title: "Forward Movement",
+    emoji: "📖",
+    showSlugs: [
+      "forward-day-by-day",
+      "scripture-day-by-day",
+    ],
+  },
   cac: {
     title: "Center for Action and Contemplation",
     emoji: "🌵",
@@ -122,15 +132,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-learning-how-to-see",
       "cac-love-period",
       "cac-cosmic-we",
-    ],
-  },
-  // Forward Day by Day — Forward Movement's daily devotional podcast.
-  "forward-movement-shows": {
-    title: "Forward Movement",
-    emoji: "📖",
-    showSlugs: [
-      "forward-day-by-day",
-      "scripture-day-by-day",
     ],
   },
 };
