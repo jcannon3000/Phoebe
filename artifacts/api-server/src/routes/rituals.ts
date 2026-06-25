@@ -1597,11 +1597,15 @@ router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
     }).safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Validation failed" }); return; }
 
-    const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
-    if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
-
-    const isOwner = ritual.ownerId === sessionUserId;
-    if (!isOwner && !ritual.allowMemberInvites) {
+    const access = await getRitualAccess(ritualId, sessionUserId);
+    if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+    const { ritual } = access;
+    const isOwner = access.isOwner;
+    // Non-owners may invite ONLY when the ritual allows member invites AND they
+    // are actually a member/participant. The flag alone must not authorize the
+    // whole world — that turned this into an id-enumerable calendar-invite /
+    // email-spam primitive sent from our own credentials.
+    if (!isOwner && !(ritual.allowMemberInvites && access.isMember)) {
       res.status(403).json({ error: "Only the owner can invite people to this tradition" });
       return;
     }

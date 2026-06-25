@@ -12,7 +12,7 @@ import {
 import { and, eq, inArray } from "drizzle-orm";
 import crypto from "node:crypto";
 import { sendPushToUser, sendPushToUsers } from "../lib/pushSender";
-import { rateLimit, getClientIp } from "../lib/rate-limit";
+import { rateLimit, perUserRateLimit, getClientIp } from "../lib/rate-limit";
 import { sendGatherEmail } from "../lib/gatherEmail";
 
 // ── Gather — propose a get-together, collect availability, converge, confirm ──
@@ -86,7 +86,7 @@ async function creditWorship(userIds: number[]): Promise<void> {
 }
 
 // ── Create ────────────────────────────────────────────────────────────────
-router.post("/gather", async (req: Request, res: Response): Promise<void> => {
+router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60 * 60 * 1000, message: "Too many invites created. Please try again later." }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
 
@@ -120,9 +120,10 @@ router.post("/gather", async (req: Request, res: Response): Promise<void> => {
   const inviteeUserIds = Array.isArray(body.inviteeUserIds)
     ? body.inviteeUserIds.filter((n): n is number => typeof n === "number" && n !== userId)
     : [];
-  const inviteeEmails = Array.isArray(body.inviteeEmails)
+  const inviteeEmails = (Array.isArray(body.inviteeEmails)
     ? body.inviteeEmails.map((e) => str(e, 160)).filter((e): e is string => !!e)
-    : [];
+    : []
+  ).slice(0, 20); // cap the recipient list — one request must not email thousands
   const inviteeRows = [
     ...inviteeUserIds.map((u) => ({ gatherId: gather!.id, userId: u, email: null })),
     ...inviteeEmails.map((e) => ({ gatherId: gather!.id, userId: null, email: e })),
@@ -429,7 +430,7 @@ router.post("/gather/:id/confirm", async (req: Request, res: Response): Promise<
 });
 
 // ── Nudge non-responders (auth, organizer) ──────────────────────────────────
-router.post("/gather/:id/nudge", async (req: Request, res: Response): Promise<void> => {
+router.post("/gather/:id/nudge", perUserRateLimit("gather_nudge", { max: 20, windowMs: 60 * 60 * 1000, message: "Too many reminders sent. Please wait a bit." }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
   const id = parseInt(String(req.params.id), 10);

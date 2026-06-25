@@ -41,7 +41,7 @@ export async function sendGatherEmail(opts: {
           <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.heading)}</h1>
           <p style="margin:0 0 24px;font-size:15px;color:#3a3632;line-height:1.7;">${escapeHtml(opts.intro)}</p>
           ${detailsHtml}
-          <a href="${opts.ctaUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${escapeHtml(opts.ctaLabel)} &rarr;</a>
+          <a href="${escapeHtml(opts.ctaUrl)}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${escapeHtml(opts.ctaLabel)} &rarr;</a>
           <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">You're receiving this because you were invited to this get-together on Phoebe.</p>
         </td></tr>
       </table>

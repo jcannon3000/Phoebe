@@ -243,10 +243,13 @@ export function encodeMimeMessage(options: {
   const extraHeaders = headers
     ? Object.entries(headers).map(([k, v]) => `${k}: ${String(v).replace(/[\r\n]+/g, " ")}`)
     : [];
+  // Strip CR/LF from the address + subject so a user-controlled value (e.g. a
+  // gathering title that flows into the subject) can't inject extra SMTP
+  // headers — "Title\r\nBcc: x@y" would otherwise add a silent Bcc.
   const message = [
-    `To: ${to}`,
+    `To: ${String(to).replace(/[\r\n]+/g, " ")}`,
     `From: ${INVITES_FROM_HEADER}`,
-    `Subject: ${subject}`,
+    `Subject: ${String(subject).replace(/[\r\n]+/g, " ")}`,
     ...extraHeaders,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,

@@ -649,7 +649,9 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     members: visibleMembers.map(m => ({
       id: m.id,
       name: m.name,
-      email: m.email,
+      // Member emails are visible only to admins — a regular member shouldn't be
+      // able to harvest every peer's email from a community roster.
+      email: isAdminView ? m.email : undefined,
       role: m.role,
       joinedAt: m.joinedAt,
       avatarUrl: avatarByEmail.get(m.email.toLowerCase()) ?? null,
@@ -1036,16 +1038,18 @@ router.get("/groups/:slug/metrics-debug", async (req, res): Promise<void> => {
         ) c) AS recent_checkins,
         (SELECT json_agg(row_to_json(a.*)) FROM (
           SELECT * FROM amens ORDER BY prayed_at DESC LIMIT 50
-        ) a) AS recent_amens,
-        (SELECT json_agg(row_to_json(mt.*)) FROM member_tokens mt) AS member_tokens
+        ) a) AS recent_amens
     `, [result.group.id, tz]);
     const row = q.rows[0] ?? {};
+    // NB: member share tokens are deliberately NOT returned — they're the
+    // capability credentials behind the no-auth /moment/:token surfaces, so a
+    // group admin must not be able to harvest them here. Debug metrics don't
+    // need them.
     res.json({
       adminTimezone: tz,
       todayLocal: todayStr,
       groupId: result.group.id,
       members: row.members ?? [],
-      memberTokens: row.member_tokens ?? [],
       recentCheckins: row.recent_checkins ?? [],
       recentAmens: row.recent_amens ?? [],
     });

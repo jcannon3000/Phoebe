@@ -24,6 +24,7 @@ import { sendInvitationEmail, sendReminderEmail } from "../lib/letterEmails";
 import { getInviteBaseUrl } from "../lib/urls";
 import { sendNewLetterPush } from "../lib/pushSender";
 import { ensureCorrespondenceFellows } from "../lib/correspondents";
+import { perUserRateLimit } from "../lib/rate-limit";
 // Auth + membership infra is shared with routes/phoebe.ts via
 // lib/letterAuth.ts (was duplicated byte-for-byte in both files).
 import {
@@ -38,6 +39,7 @@ const router: IRouter = Router();
 
 router.post(
   "/letters/correspondences",
+  perUserRateLimit("letters_correspondence_create", { max: 15, windowMs: 60 * 60 * 1000, message: "Too many correspondences created. Please try again later." }),
   requireSessionAuth(async (req, res, auth) => {
     const { name, groupType, members } = req.body as {
       name: string;

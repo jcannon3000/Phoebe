@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db, waitlistTable, betaUsersTable, usersTable } from "@workspace/db";
 import { z } from "zod/v4";
+import { rateLimit, getClientIp } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -28,7 +29,7 @@ async function isBetaAdmin(userId: number): Promise<boolean> {
 // POST /api/waitlist — public endpoint, no auth required.
 // Idempotent on email: re-submitting the same email returns ok without
 // creating a duplicate row, so a refresh after submitting doesn't error.
-router.post("/waitlist", async (req, res): Promise<void> => {
+router.post("/waitlist", rateLimit({ name: "waitlist_signup", max: 20, windowMs: 60 * 60 * 1000, keyFn: (req) => getClientIp(req), message: "Too many requests. Please try again later." }), async (req, res): Promise<void> => {
   const schema = z.object({
     email: z.string().email().max(254),
     name: z.string().min(1).max(120),

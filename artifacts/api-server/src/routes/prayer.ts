@@ -673,6 +673,10 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
     return {
       ...r,
+      // The public-share secret must only ever reach the owner (and never for a
+      // directed request) — the spread above would otherwise leak every listed
+      // request's shareToken to every garden viewer. Matches the by-id route.
+      shareToken: (isOwnRequest && !r.directOnly) ? (r.shareToken ?? null) : null,
       ownerName: r.isAnonymous ? null : (owner?.name ?? null),
       // Anonymous requests suppress the avatar too — the feed UI
       // renders an initials bubble when avatarUrl is null.
@@ -1785,6 +1789,35 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
   if (!request) { res.status(404).json({ error: "Not found" }); return; }
   if (request.closedAt) { res.status(400).json({ error: "Request is closed" }); return; }
+  // Visibility gate (mirrors the list scoping) — a logged-in user can only amen
+  // a request they can actually SEE, so ids can't be enumerated to amen (and
+  // push-notify + geotag) a private directed/parish intention. The owner can
+  // always amen their own.
+  if (request.ownerId !== sessionUserId) {
+    // Parish "pastoral concern" → private to the requester; nobody else amens.
+    if (request.parishFeedId) { res.status(404).json({ error: "Not found" }); return; }
+    // Tagged recipient? (the only way to see a directed request.)
+    const [tag] = await db.select({ id: prayerRequestTagsTable.id })
+      .from(prayerRequestTagsTable)
+      .where(and(
+        eq(prayerRequestTagsTable.requestId, id),
+        eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
+        isNull(prayerRequestTagsTable.removedAt),
+      ));
+    let canSee = !!tag;
+    if (!canSee && !request.directOnly) {
+      // Public request → its owner must be in my garden, or I've adopted it.
+      const gardenIds = await getGardenUserIds(sessionUserId);
+      canSee = gardenIds.includes(request.ownerId);
+      if (!canSee) {
+        const [adopted] = await db.select({ id: adoptedPrayersTable.id })
+          .from(adoptedPrayersTable)
+          .where(and(eq(adoptedPrayersTable.requestId, id), eq(adoptedPrayersTable.adopterUserId, sessionUserId)));
+        canSee = !!adopted;
+      }
+    }
+    if (!canSee) { res.status(404).json({ error: "Not found" }); return; }
+  }
   // Owners used to be a no-op here ("feels self-congratulatory"), but
   // that silently broke the community metrics dashboard — when an admin
   // was the only person touching the community, every amen was dropped

@@ -35,7 +35,8 @@ router.get("/invite/:token", async (req, res): Promise<void> => {
     frequency: ritual.frequency,
     location: ritual.location,
     organizerName: organizer?.name ?? "your organizer",
-    organizerEmail: organizer?.email,
+    // organizerEmail intentionally omitted — this is an UNAUTHENTICATED endpoint
+    // (invite token only); the UI only needs the organizer's name.
     proposedTimes: (ritual.proposedTimes as string[]) ?? [],
     confirmedTime: ritual.confirmedTime,
     inviteeName: invite.name,

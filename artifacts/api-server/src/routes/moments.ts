@@ -2769,6 +2769,13 @@ router.get("/moments/:id/groups", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
+  // Must be a participant — group attribution of a private intercession
+  // shouldn't be disclosable to any logged-in user by enumerating ids.
+  const me = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+  const myTok = await db.select({ id: momentUserTokensTable.id }).from(momentUserTokensTable)
+    .where(and(eq(momentUserTokensTable.momentId, momentId), sql`LOWER(${momentUserTokensTable.email}) = LOWER(${me[0]?.email ?? ""})`));
+  if (myTok.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
+
   const primary = moment.groupId
     ? (await db.select().from(groupsTable).where(eq(groupsTable.id, moment.groupId)))[0]
     : null;
@@ -3377,8 +3384,14 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
 });
 
 // ─── POST /api/moment/:momentToken/:userToken/post — submit a post ───────────
+// photoUrl is from an UNAUTHENTICATED guest, so bound it and restrict the
+// scheme to http(s)/data:image — never `javascript:`/other schemes that a
+// client could render into a dangerous sink.
 const PostSchema = z.object({
-  photoUrl: z.string().optional(),
+  photoUrl: z.string().max(2_000_000).refine(
+    (u) => /^(https?:\/\/|data:image\/)/i.test(u.trim()),
+    { message: "photoUrl must be an http(s) or data:image URL" },
+  ).optional(),
   reflectionText: z.string().max(280).optional(),
   isCheckin: z.boolean().default(false),
 });
@@ -3611,6 +3624,9 @@ router.get("/moments/:id/fasting-stats", async (req, res): Promise<void> => {
     const sessionUser = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
     const myEmail = sessionUser[0]?.email?.toLowerCase() ?? "";
     const myToken = allMembers.find(t => (t.email || "").toLowerCase() === myEmail);
+    // Must be a participant — otherwise these are another group's private
+    // check-in reflections (note text paired with author names), enumerable by id.
+    if (!myToken) { res.status(403).json({ error: "Not a member" }); return; }
 
     // Group by windowDate
     const byDate = new Map<string, { userTokens: Set<string>; posts: typeof allPosts }>();
