@@ -8,7 +8,6 @@ import {
   bellNotificationsTable,
   appOpensTable,
   breathSessionsTable,
-  voiceMemosTable,
   gratitudeSeenTable,
   prayerFeedPrayersTable,
   reflectionReadsTable,
@@ -70,10 +69,6 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
         db.select({ id: prayerRequestsTable.id }).from(prayerRequestsTable)
           .where(sql`COALESCE(${prayerRequestsTable.closedAt}, ${prayerRequestsTable.expiresAt}) < ${YEAR}`),
       ))],
-    // Ephemeral voice memos: hard-delete anything past its TTL (the recipient
-    // listening already deletes it immediately — this catches the unheard).
-    ["voice_memos past TTL", () =>
-      db.delete(voiceMemosTable).where(lt(voiceMemosTable.expiresAt, new Date()))],
     // High-churn bookkeeping/event-log tables that otherwise grow forever.
     // All are pure "seen / prayed / read / nudged" records — old rows have no
     // bearing on current streaks or surfaces, so prune conservatively.

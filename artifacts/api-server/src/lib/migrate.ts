@@ -3382,25 +3382,8 @@ export async function migrate() {
       )
     `);
 
-    // Ephemeral, end-to-end-encrypted voice memos. Server holds only ciphertext;
-    // rows are deleted on listen and hard-expired by the retention cron.
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS voice_memos (
-        id SERIAL PRIMARY KEY,
-        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        ciphertext TEXT NOT NULL,
-        iv TEXT NOT NULL,
-        ephemeral_public_jwk TEXT NOT NULL,
-        mime_type TEXT NOT NULL,
-        duration_ms INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        expires_at TIMESTAMPTZ NOT NULL,
-        listened_at TIMESTAMPTZ
-      )
-    `);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_voice_memos_recipient ON voice_memos (recipient_id)`);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_voice_memos_expires ON voice_memos (expires_at)`);
+    // (Voice memos feature removed — its voice_memos table is no longer created.
+    // Any existing table in prod is left orphaned/harmless; not dropped here.)
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
