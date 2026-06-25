@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
+  hasPrayedPsalmsToday, PSALMS_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -136,8 +137,15 @@ export function useRhythmState(): RhythmState {
   const [reflectLocal, setReflectLocal] = useState(
     () => hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday(),
   );
+  // FDD / Psalms used AS a side's morning/evening PRAYER (not just a reflection)
+  // must light that side's done-state. Tracked reactively with the same robust
+  // return-to-app signals as the reflection read-state.
+  const [prayerRead, setPrayerRead] = useState(() => ({ fdd: hasReadFddToday(), psalms: hasPrayedPsalmsToday() }));
   useEffect(() => {
-    const recheck = () => setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
+    const recheck = () => {
+      setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
+      setPrayerRead({ fdd: hasReadFddToday(), psalms: hasPrayedPsalmsToday() });
+    };
     // The reflection is read on a separate surface (often the in-app browser),
     // which stamps localStorage + fires a read-event. We re-check on those
     // events, but iOS WebViews don't fire `visibilitychange` reliably when the
@@ -148,6 +156,7 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(CAC_READ_EVENT, recheck);
     window.addEventListener(FDD_READ_EVENT, recheck);
     window.addEventListener(SSJE_READ_EVENT, recheck);
+    window.addEventListener(PSALMS_READ_EVENT, recheck);
     window.addEventListener("visibilitychange", recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
@@ -161,6 +170,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(CAC_READ_EVENT, recheck);
       window.removeEventListener(FDD_READ_EVENT, recheck);
       window.removeEventListener(SSJE_READ_EVENT, recheck);
+      window.removeEventListener(PSALMS_READ_EVENT, recheck);
       window.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
@@ -364,8 +374,10 @@ export function useRhythmState(): RhythmState {
     : "devotion";
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
-  const morningDone = !!todayOffice?.morning || officeLocal.morning;
-  const eveningDone = !!todayOffice?.evening || officeLocal.evening;
+  const morningDone = !!todayOffice?.morning || officeLocal.morning
+    || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalms);
+  const eveningDone = !!todayOffice?.evening || officeLocal.evening
+    || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalms);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe sits + any external
   // Apple Health mindful minutes (a Cobreathe breath logs a contemplation sit,

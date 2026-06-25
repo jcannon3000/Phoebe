@@ -82,6 +82,19 @@ export default function BeginPrayerPage() {
       return;
     }
 
+    // Praying the Psalms IS this side's prayer → open the psalms reader directly.
+    if (defaultPrayerLevel === "psalms") {
+      setLocation(`/psalms?office=${side}`, { replace: true });
+      return;
+    }
+    // Forward Day by Day IS this side's prayer → its home card (the office slot)
+    // opens the reading / plays the audio per the user's choice, so land on the
+    // home rather than the generic prayer chooser.
+    if (defaultPrayerLevel === "fdd") {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
+
     // "ask" (the out-of-box default) → show the prayer chooser, the
     // options screen with the last-prayed depth pinned on top. Only an
     // explicit per-depth default (devotion/office/intercessions) skips

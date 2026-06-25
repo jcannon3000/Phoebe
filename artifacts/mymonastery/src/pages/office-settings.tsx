@@ -285,6 +285,11 @@ export default function OfficeSettingsPage() {
         headline={side === "evening" ? t("office_settings.depth_headline_evening") : t("office_settings.depth_headline_morning")}
         sub={t("office_settings.depth_sub")}
       >
+        {(getSideLevel(side) === "fdd" || getSideLevel(side) === "psalms") && (
+          <p className="text-[13px] mb-3 px-1" style={{ color: "#C8A86A", lineHeight: 1.5 }}>
+            {t("office_settings.depth_replace_note", { defaultValue: `This side is set to ${getSideLevel(side) === "fdd" ? "Forward Day by Day" : "Praying the Psalms"} in your Rule of Life. Choosing below will replace it.` })}
+          </p>
+        )}
         {([
           { value: "ask" as const, emoji: "🤔", label: t("office_settings.depth_ask_label"), sub: t("office_settings.depth_ask_sub") },
           { value: "devotion" as const, emoji: "🌱", label: t("office_settings.depth_devotion_label"), sub: t("office_settings.depth_devotion_sub") },

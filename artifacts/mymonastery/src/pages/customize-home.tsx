@@ -81,9 +81,14 @@ const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string 
 // Which choice is active. Mirrors PrayerOfficeCard's programmedLevel: any
 // "office" signal wins, then "devotion", then explicit community —
 // otherwise the Daily Devotion default.
-function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayChoice {
+function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayChoice | null {
   const m = getSideLevel("morning");
   const e = getSideLevel("evening");
+  // FDD / Psalms are per-side prayers chosen in the Rule of Life — they have no
+  // pill in this both-sides chooser. Return null (no selection) so this page
+  // can't misrepresent them as "Devotion" and a re-tap can't silently overwrite
+  // a per-side fdd/psalms pick.
+  if (m === "fdd" || e === "fdd" || m === "psalms" || e === "psalms") return null;
   if (defaultPrayerLevel === "office" || m === "office" || e === "office") return "offices";
   if (defaultPrayerLevel === "devotion" || m === "devotion" || e === "devotion") return "devotion";
   if (defaultPrayerLevel === "intercessions" || m === "intercessions" || e === "intercessions") return "community";
@@ -351,6 +356,22 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
         {/* Pray anchor — second fixed card. Not draggable / removable; the
             pill below switches what the home's main prayer card shows. */}
         {(() => {
+          if (!prayChoice) {
+            // A per-side prayer (Forward Day by Day / Praying the Psalms) is set
+            // in the Rule of Life — show it read-only, with NO pill, so this
+            // both-sides chooser can't flatten/clobber a per-side pick.
+            return (
+              <div className="rounded-xl px-3 py-3 mb-1" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+                <div className="flex items-center gap-3">
+                  <span style={{ fontSize: 20 }}>📿</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>Your daily prayer</p>
+                    <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>Set per-side in your Rule of Life.</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
           const card = PRAY_CARD[prayChoice];
           return (
             <div

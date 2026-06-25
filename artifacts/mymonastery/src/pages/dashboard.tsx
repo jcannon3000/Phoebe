@@ -7056,6 +7056,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 case "cac":
                   return reflectionIsHero("cac") ? <CacHomeCard /> : null;
                 case "fdd":
+                  // When FDD is ALSO a side's prayer, the office slot already
+                  // renders the FDD card — suppress the reflection one to avoid
+                  // a duplicate (matters when a pinned feed disables dynamicHero).
+                  if (getSideLevel("morning") === "fdd" || getSideLevel("evening") === "fdd") return null;
                   return reflectionIsHero("fdd") ? <FddHomeCard /> : null;
                 case "ssje":
                   return reflectionIsHero("ssje") ? <SsjeHomeCard /> : null;

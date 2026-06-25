@@ -1390,13 +1390,15 @@ export default function WayOfLoveRuleFlow({
     return prayBySide[side] === "community" ? "Community Intercessions"
       : prayBySide[side] === "offices" ? `${cap} Prayer`
       : prayBySide[side] === "contemplation" ? `${cap} Contemplation`
+      : prayBySide[side] === "fdd" ? "Forward Day by Day"
+      : prayBySide[side] === "psalms" ? "Praying the Psalms"
       : `${cap} Devotion`;
   };
   const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [
     ...SIDES.filter((s) => sides[s]).map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? (contemplationStyle === "silent" && goalMin > 0 ? `${goalMin} min a day` : "Silent sit") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? (contemplationStyle === "silent" && goalMin > 0 ? `${goalMin} min a day` : "Silent sit") : prayBySide[s] === "fdd" ? (fddMode === "audio" ? "Listen" : "Read") : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min a day` : "No daily goal", step: "contemplation-goal" as Step }] : []),
