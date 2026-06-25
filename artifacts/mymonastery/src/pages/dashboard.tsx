@@ -3345,6 +3345,14 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _stateTick = stateTick; // reads below depend on this for re-render
 
+  // Per-user: when this side's prayer is Forward Day by Day, the FDD card IS the
+  // office card here — it replaces it (only the user who picked FDD; everyone
+  // else keeps their office). Morning only. Placed AFTER every hook above so the
+  // early return can never make a hook conditional.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "fdd") {
+    return <FddHomeCard />;
+  }
+
   const prayedTodayHalf = (() => {
     if (typeof window === "undefined") return false;
     const d = new Date();

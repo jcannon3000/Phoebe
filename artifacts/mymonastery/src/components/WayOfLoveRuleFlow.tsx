@@ -57,7 +57,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
-type PrayChoice = "community" | "devotion" | "offices" | "contemplation";
+type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd";
 type Step =
   | "when"
   | "morning-way" | "morning-config"
@@ -86,7 +86,7 @@ const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…9
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit"> = {
+const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd"> = {
   community: "intercessions",
   devotion: "devotion",
   offices: "office",
@@ -94,6 +94,9 @@ const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "
   // is the handled office level for a contemplative sit (begin-prayer routes it
   // to the silence timer).
   contemplation: "reflect-sit",
+  // Forward Day by Day IS the prayer for this side — the home FDD card replaces
+  // the office card for whoever picks it.
+  fdd: "fdd",
 };
 // Inverse of PRAY_LEVEL — read an existing office level back into a Pray
 // choice so Customize opens with the user's current pick selected.
@@ -102,6 +105,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "devotion") return "devotion";
   if (level === "intercessions") return "community";
   if (level === "reflect-sit") return "contemplation";
+  if (level === "fdd") return "fdd";
   return null;
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
@@ -111,6 +115,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   devotion: "pray-devotion",
   offices: "pray-office",
   contemplation: "pray-reflect-sit",
+  fdd: "pray-fdd",
 };
 // Each Pray choice → the morning reminder pref the office-reminder cron reads
 // (parish_office_morning_pref). "office" deep-links the nudge to Morning
@@ -123,6 +128,8 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   devotion: "devotion",
   offices: "office",
   contemplation: "devotion",
+  // FDD as morning prayer gets the lighter nudge that just opens the practice.
+  fdd: "devotion",
 };
 const DEFAULT_REMINDER_TIME = "07:30";
 
@@ -505,7 +512,10 @@ export default function WayOfLoveRuleFlow({
     // The global default mirrors whichever side they configured (morning first).
     const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
     apiRequest("PUT", "/api/me/office-prefs", {
-      defaultPrayerLevel: PRAY_LEVEL[prayBySide[primarySide]],
+      // FDD isn't a server-side default-prayer level — the per-side LOCAL level
+      // set above drives the home FDD card. Send a safe server default so this
+      // PUT never carries the unknown "fdd" value.
+      defaultPrayerLevel: PRAY_LEVEL[prayBySide[primarySide]] === "fdd" ? "devotion" : PRAY_LEVEL[prayBySide[primarySide]],
       contemplationGoalMinutes: effGoalMin,
       contemplationReminderEnabled: effGoalMin > 0,
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
@@ -856,6 +866,9 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, devotionSub, () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
+          {/* Forward Day by Day AS the morning prayer — replaces the office card
+              for whoever picks it (per-user). Morning only. */}
+          {side === "morning" && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }), () => choosePrayBySide(side, "fdd"))}
           {choiceRow(prayBySide[side] === "community", `🙏🏽 ${t("wol_rule.community_list_label", { defaultValue: "Community prayer list" })}`, t("wol_rule.community_list_sub", { defaultValue: "Pray through your prayer list — the people you're holding up." }), () => choosePrayBySide(side, "community"))}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}

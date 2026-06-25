@@ -279,8 +279,10 @@ export function setDefaultOfficeEntry(v: DefaultOfficeEntry): void {
 // locally per side; when a side is unset, callers fall back to the single
 // shared pref, so anyone who never opens the split flows is unaffected.
 export type OfficeSide = "morning" | "evening";
-export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
-const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"];
+// "fdd" = Forward Day by Day IS this side's prayer (replaces the office card for
+// that side, per-user — only when the user picks it in Customize).
+export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd";
+const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd"];
 
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).
