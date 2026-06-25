@@ -78,6 +78,7 @@ const SHOW_THEMES: Record<string, string[]> = {
   "nc-crossroads": ["learn", "worship"],
   "living-church": ["learn", "worship"],
   "national-cathedral-sermons": ["learn", "worship"],
+  "ssje-sermons": ["learn", "worship"],
   "forward-day-by-day": ["pray", "learn"],
   "scripture-day-by-day": ["pray", "learn", "scripture"],
 };
@@ -106,6 +107,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "roundtables-on-race",
       "living-church",
       "national-cathedral-sermons",
+      "ssje-sermons",
     ],
   },
   cac: {
@@ -334,6 +336,16 @@ export const SHOWS: Record<string, Show> = {
     publisher: "forward-movement-shows",
     feedUrl: "https://feeds.megaphone.fm/forwarddaybyday",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b5/43/37/b5433758-400b-4d1b-c397-d3e6190ea0e7/mza_10011273729972074725.jpg/600x600bb.jpg",
+  },
+  // SSJE Sermons — preaching from the Society of Saint John the Evangelist
+  // (the Cambridge MA Episcopal monastery). WordPress/Blubrry audio feed.
+  "ssje-sermons": {
+    slug: "ssje-sermons",
+    title: "SSJE Sermons",
+    artist: "Society of Saint John the Evangelist",
+    publisher: "around-the-church",
+    feedUrl: "https://www.ssje.org/category/sermon/feed/",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/7c/c6/91/7cc69120-abbd-ab9f-b7fd-6e8cb8c7c4ab/mza_6967511385700327856.jpg/600x600bb.jpg",
   },
   // Sermons by Washington National Cathedral — Sunday + feast-day preaching.
   "national-cathedral-sermons": {
