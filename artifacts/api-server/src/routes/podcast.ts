@@ -79,6 +79,7 @@ const SHOW_THEMES: Record<string, string[]> = {
   "living-church": ["learn", "worship"],
   "national-cathedral-sermons": ["learn", "worship"],
   "ssje-sermons": ["learn", "worship"],
+  "grace-church-nyc": ["learn", "worship"],
   "forward-day-by-day": ["pray", "learn"],
   "scripture-day-by-day": ["pray", "learn", "scripture"],
 };
@@ -108,6 +109,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "living-church",
       "national-cathedral-sermons",
       "ssje-sermons",
+      "grace-church-nyc",
     ],
   },
   cac: {
@@ -336,6 +338,17 @@ export const SHOWS: Record<string, Show> = {
     publisher: "forward-movement-shows",
     feedUrl: "https://feeds.megaphone.fm/forwarddaybyday",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b5/43/37/b5433758-400b-4d1b-c397-d3e6190ea0e7/mza_10011273729972074725.jpg/600x600bb.jpg",
+  },
+  // Grace Church in New York — preaching from the Episcopal parish in
+  // Greenwich Village (Broadway at 10th, a Greenwich Village fixture since 1846).
+  // SoundCloud-hosted audio feed.
+  "grace-church-nyc": {
+    slug: "grace-church-nyc",
+    title: "Grace Church in New York",
+    artist: "Grace Church in New York",
+    publisher: "around-the-church",
+    feedUrl: "https://feeds.soundcloud.com/users/soundcloud:users:666827156/sounds.rss",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/21/b8/b5/21b8b58d-7660-78b9-581e-a0266581e72f/mza_5763349292259453824.jpg/600x600bb.jpg",
   },
   // SSJE Sermons — preaching from the Society of Saint John the Evangelist
   // (the Cambridge MA Episcopal monastery). WordPress/Blubrry audio feed.
