@@ -977,12 +977,14 @@ function OpeningSplash() {
     (rhythm.morningActive && !rhythm.morningDone) ? { emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" }
     : reflectUndone ? { emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" }
     : (rhythm.silenceActive && !rhythm.silenceDone) ? { emoji: "🕯️", label: "Contemplation", blurb: "A few minutes of stillness", rgb: "62,124,122" }
-    : (rhythm.eveningActive && !rhythm.eveningDone) ? { emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" }
     : (rhythm.gratitudeActive && !rhythm.gratitudeDone) ? { emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" }
     : (rhythm.examenActive && !rhythm.examenDone) ? { emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" }
     : (rhythm.listeningActive && !rhythm.listeningDone) ? { emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" }
     : (rhythm.lectioActive && !rhythm.lectioDone) ? { emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" }
     : (rhythm.walkActive && !rhythm.walkDone) ? { emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" }
+    // Evening prayer surfaces LAST, and only from 4pm onward — the day's other
+    // practices come first so the morning splash isn't pre-empted by "Evening prayer".
+    : (hour >= 16 && rhythm.eveningActive && !rhythm.eveningDone) ? { emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" }
     : null;
   const showFellows = false;
   const showWhatsNext = rhythm.ready && !!nextUp;
@@ -1448,7 +1450,7 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
   );
 }
 
-export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number }) {
+export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false, onClose }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number; chromeless?: boolean; onClose?: () => void }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { t } = useTranslation();
@@ -1480,7 +1482,33 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
           it renders reliably (never position:fixed without isolation — that flashes
           then vanishes in the iOS WebView; see reference_page_backdrop_pattern). */}
       {bgPhoto && <LayoutBackdrop photo={bgPhoto} opacity={bgOpacity} />}
-      <header
+      {/* Chromeless mode (e.g. the Rule-of-Life customizer) drops the full Phoebe
+          top bar in favour of a single X-out, so the builder reads as a focused
+          sheet rather than a page. */}
+      {chromeless && onClose && (
+        <div
+          className="sticky top-0 z-20 px-4 sm:px-6 md:px-8 flex justify-end"
+          style={{ background: "transparent", paddingTop: "var(--top-chrome)", pointerEvents: "none" }}
+        >
+          <button
+            onClick={onClose}
+            aria-label={t("common.close", { defaultValue: "Close" })}
+            className="inline-flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{
+              pointerEvents: "auto",
+              width: 36,
+              height: 36,
+              borderRadius: 9999,
+              ...FROST_DARK,
+              color: "#C8D4C0",
+              border: "1px solid rgba(200,212,192,0.18)",
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+      {!chromeless && <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           // No bar over a backdrop photo — the image runs all the way to the top;
@@ -1541,11 +1569,14 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
             )}
           </div>
         )}
-      </header>
+      </header>}
 
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
+      {/* Chromeless drops the main's horizontal gutter so the inner shell's own
+          px-4 is the ONLY padding (otherwise the customizer cards were inset
+          twice and sat narrower than the home cards on iOS). */}
+      <main className={`flex-1 flex flex-col pb-12 max-w-7xl mx-auto w-full ${chromeless ? "pt-2" : "pt-2 px-4 sm:px-6 md:px-8"}`}>
         <motion.div
           // The page rises up over the backdrop on entry. Deliberately gentle —
           // a slower, taller rise reads as the new page lifting into place over

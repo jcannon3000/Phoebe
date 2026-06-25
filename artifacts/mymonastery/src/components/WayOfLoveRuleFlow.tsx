@@ -662,10 +662,10 @@ export default function WayOfLoveRuleFlow({
   }, [adoptId]);
 
   // ── Shared chrome ──────────────────────────────────────────────────────────
-  // Full-bleed (negative margins cancel <Layout>'s main px-4/sm:px-6/md:px-8),
-  // then the inner block re-adds the SAME small padding the home screen uses so
-  // the cards sit at the same margin as the home cards — not inset twice (which
-  // left it narrow), not jammed to the edge.
+  // The customizer mounts inside a CHROMELESS <Layout> (rule-of-life.tsx), whose
+  // <main> drops its own horizontal gutter — so this shell's px-4/sm:px-6/md:px-8
+  // is the ONLY padding and the cards sit at the SAME margin as the home cards
+  // (not inset twice, which left them narrow on iOS; not jammed to the edge).
   // The leaf backdrop is now owned by <Layout bgPhoto> (rule-of-life.tsx), so it
   // covers the WHOLE screen including behind the header. The shell stays
   // transparent and just lays out the content over it.

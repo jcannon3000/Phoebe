@@ -836,9 +836,14 @@ export default function RuleOfLifePage() {
   if (phase === "practices") {
     // Opens here directly (no questionnaire). When a maker result exists it
     // personalizes; otherwise it runs on sensible defaults. Wrapped in Layout
-    // so the Phoebe top bar (logo + nav pills) shows on this page.
+    // CHROMELESS — the Phoebe top bar is hidden so the builder reads as a focused
+    // sheet; a single X-out (top-right) closes back to the daily progress.
     return (
-      <Layout bgPhoto={flowLeaf}>
+      <Layout
+        bgPhoto={flowLeaf}
+        chromeless
+        onClose={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
+      >
         <WayOfLoveRuleFlow
           onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
           onDone={() => setLocation("/daily-progress")}
