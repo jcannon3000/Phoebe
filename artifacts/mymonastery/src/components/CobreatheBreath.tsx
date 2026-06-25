@@ -126,22 +126,21 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 // live in the render (they go through t()); this just fixes the set + order.
 type QuoteKind = "weil" | "merton" | "mlk" | "teresa";
 const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa"];
-// Frosted-glass rings — the SAME translucent green as the app's card surfaces
-// (frost.ts), backed by a backdrop blur on the SVG below so the rings frost
-// what's behind them like glass. Two tones, now clearly apart: the BASE ring is
-// the frosted card-surface green; the active inhale sweep is ~30% lighter
-// (frosted × 1.3) and HOLDS; the base tone sweeps over it on the exhale,
-// settling the ring back to its resting (darker) tone.
-const RING_IN = "rgba(29,60,42,0.62)";   // ~30% lighter than the frosted — inhale sweep
-const RING_OUT = "rgba(22,46,32,0.62)";  // the frosted card surface — base / exhale sweep
+// Frosted-glass rings — a translucent sage-green (still the card-surface family,
+// just lifted so the rings actually read as frosted glass over the dark photo
+// instead of vanishing into it). Two tones, clearly apart: the BASE ring is the
+// resting sage; the active inhale sweep is ~30% lighter and HOLDS; the base tone
+// sweeps over it on the exhale, settling the ring back to its resting tone.
+const RING_IN = "rgba(162,196,174,0.7)";  // ~30% lighter sage — inhale sweep
+const RING_OUT = "rgba(122,160,135,0.7)"; // resting frosted sage — base / exhale sweep
 // Soft glow used by every ring's drop-shadow — picks up the lighter tone.
-const RING_GLOW = "rgba(29,60,42,0.4)";
+const RING_GLOW = "rgba(162,196,174,0.45)";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
 const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
 // Inner SESSION ring — ONE slow circle filling once across the whole set of
 // breaths, in the SAME card-surface green glass as the breath fill.
-const SESSION_RING = "rgba(29,60,42,0.62)";
+const SESSION_RING = "rgba(162,196,174,0.7)";
 const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
@@ -1049,7 +1048,7 @@ export function CobreatheBreath({
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
           {/* inner session ring — a faint frosted track (so the two rings read as
               concentric even at rest) + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(22,46,32,0.4)" strokeWidth={RING_SW} />
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(122,160,135,0.45)" strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
         </svg>
