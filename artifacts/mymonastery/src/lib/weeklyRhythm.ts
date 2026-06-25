@@ -37,7 +37,7 @@ export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   {
     kind: "commune",
     label: "Commune",
-    emoji: "🤝",
+    emoji: "🤝🏽",
     prompt: "Worship together, or reach out to someone from your community.",
     askLabel: "Who did you commune with?",
     askPlaceholder: "A name, your parish, a gathering…",
@@ -46,7 +46,7 @@ export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   {
     kind: "go",
     label: "Go",
-    emoji: "🚶",
+    emoji: "🚶🏽",
     prompt: "Cross a boundary — go to someone, serve, listen.",
     askLabel: "Where did you go this week?",
     askPlaceholder: "Who you went toward, where you served…",
