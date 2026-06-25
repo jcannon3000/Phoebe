@@ -269,6 +269,18 @@ function officeSideFromSlug(slug: string | null | undefined): "morning" | "eveni
   if (slug === "office-evening" || slug === "evening-office") return "evening";
   return null;
 }
+// Per-show playback overrides, applied for EVERY play path (no per-call-site
+// wiring): an intro the listener should skip (start N seconds in) and whether
+// the show uses the immersive photographic player (like the offices) instead of
+// the plain podcast view. Keyed by show slug.
+const SHOW_OVERRIDES: Record<string, { introSkipSeconds?: number; immersive?: boolean }> = {
+  // National Cathedral sermons open with a ~22s sign-on; skip it, and give the
+  // preaching the same immersive full-screen player the offices use.
+  "national-cathedral-sermons": { introSkipSeconds: 22, immersive: true },
+};
+function showOverride(slug: string | null | undefined) {
+  return (slug && SHOW_OVERRIDES[slug]) || null;
+}
 // Local calendar date (YYYY-MM-DD) — the key the office-completed flag uses.
 function officeYmdLocal(): string {
   const d = new Date();
@@ -456,7 +468,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         : { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
       officeCreditedRef.current = null;
       podcastCreditedRef.current = false;
-      pendingSeekRef.current = loadPos(ep);
+      // Resume the saved spot; on a fresh start, skip a show's sign-on intro.
+      {
+        const savedPos = loadPos(ep);
+        pendingSeekRef.current = savedPos > 0 ? savedPos : (showOverride(ep.showSlug)?.introSkipSeconds ?? 0);
+      }
       setArtBroken(false);
       return ep;
     });
@@ -1005,7 +1021,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Office regardless of launch path (the office launcher's "office-morning" OR
   // the Audio library's "morning-office").
   const officeSide = officeSideFromSlug(current?.showSlug) ?? current?.creditMode ?? null;
-  const isOffice = officeSide !== null;
+  // The immersive photographic player is used for the offices AND any show
+  // flagged immersive (e.g. National Cathedral sermons). officeSide stays null
+  // for those, so they're never credited as an office — only the RENDER is shared.
+  const isOffice = officeSide !== null || !!showOverride(current?.showSlug)?.immersive;
   // Reverb engages only for the Forward Movement office. Build the graph + ramp
   // the wet signal in; for everything else (other podcasts, CoE office) the wet
   // gain rides to 0 so playback is the untouched dry signal.
@@ -1028,11 +1047,16 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (officeSide) {
       const dedicated = dedicatedOfficeBg(officeSide);
       if (dedicated) return dedicated;
+    } else {
+      // Immersive non-office show (e.g. cathedral sermons): use the show's own
+      // artwork as the photographic backdrop.
+      const art = current?.showArtwork || current?.imageUrl;
+      if (art) return art;
     }
     if (OFFICE_BG_PHOTOS.length === 0) return null;
     const seed = current?.episodeId || current?.showSlug || "office";
     return OFFICE_BG_PHOTOS[hashStr(seed) % OFFICE_BG_PHOTOS.length];
-  }, [isOffice, officeSide, current?.episodeId, current?.showSlug]);
+  }, [isOffice, officeSide, current?.episodeId, current?.showSlug, current?.showArtwork, current?.imageUrl]);
   const [officeRgb, setOfficeRgb] = useState<{ r: number; g: number; b: number }>({ r: 18, g: 30, b: 22 });
   useEffect(() => {
     if (!officeBg) return;
