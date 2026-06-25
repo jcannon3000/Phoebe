@@ -261,22 +261,22 @@ export const en = {
     share_pill: "Share this prayer →",
   },
   prayer_request: {
-    title_default: "How can your community\npray for you?",
+    title_default: "What are you praying for?",
     title_life_event: "What's happening in your life?",
     title_justice: "What injustice are you holding?",
-    subtitle_default: "",
+    subtitle_default: "Others can pray along — and carry it in their own prayers too.",
     subtitle_life_event: "A milestone, a change, a hard week — share what your community can hold with you.",
     subtitle_justice: "Name the ache. Your community will pray with you for what's broken.",
-    placeholder_default: "What's on your heart?",
+    placeholder_default: "e.g. Venezuela, a friend's healing…",
     placeholder_life_event: "Starting a new job next Monday… my dad just went into hospice…",
     placeholder_justice: "A neighbor without housing… a hard ruling today…",
-    duration_question: "How long should we carry it?",
+    duration_question: "How long will you pray it?",
     duration_subtitle: "Choose a watch. You can renew or release it any time.",
     duration_3_days: "3 days",
     duration_3_tagline: "A short, steady watch",
     duration_7_days: "7 days",
     duration_7_tagline: "A full week of prayer",
-    share_with_community: "Share with my community →",
+    share_with_community: "Pray & share →",
     sharing: "Sharing…",
     write_request_first: "Write a prayer request first.",
     couldnt_share: "Couldn't share this request. Please try again.",
@@ -1634,7 +1634,7 @@ export const en = {
   // Home-screen "How can your community pray for you?" composer
   // (pages/dashboard.tsx ActiveRequestsCard).
   active_requests: {
-    headline: "How can your community pray for you?",
+    headline: "What are you praying for?",
   },
   // Home-screen Prayer List carousel (pages/dashboard.tsx).
   prayer_list_carousel: {

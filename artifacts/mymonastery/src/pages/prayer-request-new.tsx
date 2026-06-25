@@ -53,7 +53,7 @@ function useKindCopy(): Record<RequestKind, { emoji: string; eyebrow: string; ti
   return {
     "request": {
       emoji: "🙏🏽",
-      eyebrow: t("prayer_request.eyebrow_default", { defaultValue: "Prayer request" }),
+      eyebrow: t("prayer_request.eyebrow_default", { defaultValue: "Prayer" }),
       title: t("prayer_request.title_default"),
       subtitle: t("prayer_request.subtitle_default"),
       placeholder: t("prayer_request.placeholder_default"),
