@@ -95,12 +95,16 @@ export type PracticeLogEntry = {
 };
 
 // A weekly practice counts as kept if it has any entry dated within the current
-// week (Sunday → now). `day` is an ISO date string, so a lexical compare works.
+// week (Sunday → today). `day` is a zero-padded ISO date, so a lexical compare
+// works. Entries arrive newest-first, so the first match is the most recent.
+// The upper bound (<= today) guards against a future-dated entry — clock skew
+// or a direct API write — falsely marking the week kept.
 export function keptThisWeek(entries: PracticeLogEntry[] | undefined): PracticeLogEntry | null {
   if (!entries || entries.length === 0) return null;
   const start = weekStartISO();
+  const today = todayISO();
   for (const e of entries) {
-    if (typeof e.day === "string" && e.day >= start) return e;
+    if (typeof e.day === "string" && e.day >= start && e.day <= today) return e;
   }
   return null;
 }

@@ -16,7 +16,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type AuthUser } from "@/hooks/useAuth";
 import { swellHaptic } from "@/lib/swellHaptic";
 import {
   WEEKLY_PRACTICES,
@@ -93,10 +93,9 @@ export function WeeklyRhythm() {
             key={openPractice.kind}
             practice={openPractice}
             entries={entriesByKind[openPractice.kind]}
-            sabbathDay={openPractice.kind === "rest" ? primarySabbathDay(user?.restDays) : null}
+            restDays={user?.restDays ?? []}
             onClose={() => setOpen(null)}
             onLogged={() => qc.invalidateQueries({ queryKey: logKey(openPractice.kind) })}
-            onSabbathChanged={() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] })}
           />
         )}
       </AnimatePresence>
@@ -165,18 +164,17 @@ function WeeklyCard({
 function LogSheet({
   practice,
   entries,
-  sabbathDay,
+  restDays,
   onClose,
   onLogged,
-  onSabbathChanged,
 }: {
   practice: WeeklyPractice;
   entries: PracticeLogEntry[];
-  sabbathDay: number | null;
+  restDays: number[];
   onClose: () => void;
   onLogged: () => void;
-  onSabbathChanged: () => void;
 }) {
+  const qc = useQueryClient();
   const [what, setWhat] = useState("");
   const [notes, setNotes] = useState("");
   const [closing, setClosing] = useState(false);
@@ -205,7 +203,15 @@ function LogSheet({
 
   const sabbathMutation = useMutation({
     mutationFn: (days: number[]) => apiRequest("PUT", "/api/me/rest-days", { days }),
-    onSuccess: onSabbathChanged,
+    // Optimistically reflect the new rest days in the auth cache so the picker
+    // highlights immediately (and a quick second tap reads the fresh set, not a
+    // stale one), then reconcile with the server's response.
+    onMutate: (days: number[]) => {
+      qc.setQueryData<AuthUser | null>(["/api/auth/me"], (prev) =>
+        prev ? { ...prev, restDays: days } : prev,
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }),
   });
 
   function close() {
@@ -260,13 +266,23 @@ function LogSheet({
             </p>
             <div className="flex gap-1.5 flex-wrap">
               {WEEKDAY_LABELS.map((label, idx) => {
-                const selected = sabbathDay === idx;
+                const selected = restDays.includes(idx);
                 return (
                   <button
                     key={idx}
                     type="button"
                     disabled={sabbathMutation.isPending}
-                    onClick={() => sabbathMutation.mutate(selected ? [] : [idx])}
+                    // Toggle this day WITHIN the existing rest-days set — never
+                    // replace it. restDays is shared with the phone-sabbath
+                    // (Settings / Walking Together), so clobbering it would wipe
+                    // any other days the user configured there.
+                    onClick={() =>
+                      sabbathMutation.mutate(
+                        selected
+                          ? restDays.filter((d) => d !== idx)
+                          : [...restDays, idx].sort((a, b) => a - b),
+                      )
+                    }
                     className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:opacity-75 disabled:opacity-50"
                     style={selected
                       ? { background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(126,210,140,0.5)", fontFamily: FONT }
@@ -278,8 +294,8 @@ function LogSheet({
               })}
             </div>
             <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-              {sabbathDay !== null
-                ? `On ${WEEKDAY_FULL[sabbathDay]} you'll see a calm sabbath, not a behind.`
+              {restDays.length > 0
+                ? `On ${restDays.map((d) => WEEKDAY_FULL[d]).join(" & ")} you'll see a calm sabbath, not a behind.`
                 : "Tap a day to set your weekly sabbath."}
             </p>
           </div>
