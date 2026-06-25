@@ -43,6 +43,8 @@ import {
   type OfficeSide,
   type DefaultOfficeEntry,
 } from "@/lib/officePrefs";
+import { useBetaStatus } from "@/hooks/useDemo";
+import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, type WeeklyKind } from "@/lib/weeklyRhythm";
 
 const BG = "#091A10";
 const CREAM = "#F0EDE6";
@@ -71,7 +73,7 @@ type Step =
   | "psalms-cycle"
   | "evening-way" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "lectio-when" | "walk-when"
-  | "learn" | "extras" | "custom" | "done"
+  | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
 // later (you receive a rule, you don't compose one from a blank trellis). Each
@@ -290,6 +292,22 @@ export default function WayOfLoveRuleFlow({
     reading: homeCardOn(user?.homeLayout, "reading"),
     podcasts: homeCardOn(user?.homeLayout, "podcasts"),
   }));
+  // Beta-only: the weekly Way of Love rhythm (Commune · Go · Bless · Rest),
+  // turned on here and kept in the "This week" home band. Persisted on its own
+  // localStorage key the moment it's toggled — DELIBERATELY separate from the
+  // home layout this flow's commit() writes, so it can't be lost on a re-save.
+  const { rawIsBeta } = useBetaStatus();
+  const [weekly, setWeekly] = useState<Record<WeeklyKind, boolean>>(() => {
+    const on = getEnabledWeekly();
+    return { commune: on.includes("commune"), go: on.includes("go"), bless: on.includes("bless"), rest: on.includes("rest") };
+  });
+  const toggleWeekly = (k: WeeklyKind) => {
+    setWeekly((prev) => {
+      const next = { ...prev, [k]: !prev[k] };
+      setEnabledWeekly((Object.keys(next) as WeeklyKind[]).filter((kk) => next[kk]));
+      return next;
+    });
+  };
   // Re-seed once auth resolves — `user` is often null on the first render, so
   // the initializer above can miss an existing selection. Guard on touchedRef
   // so it never clobbers a toggle the user already made while auth loaded.
@@ -669,10 +687,10 @@ export default function WayOfLoveRuleFlow({
   const orderedSteps: Step[] = [
     "when",
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
-    // Picking Forward Day by Day as the morning prayer → a written/audio choice.
-    ...(sides.morning && prayBySide.morning === "fdd" ? (["fdd-mode"] as Step[]) : []),
-    // Picking Praying the Psalms (either side) → a cycle choice (office vs monthly).
-    ...((prayBySide.morning === "psalms" || prayBySide.evening === "psalms") ? (["psalms-cycle"] as Step[]) : []),
+    // Picking Forward Day by Day (morning OR evening) → a written/audio choice.
+    ...((sides.morning && prayBySide.morning === "fdd") || (sides.evening && prayBySide.evening === "fdd") ? (["fdd-mode"] as Step[]) : []),
+    // Picking Praying the Psalms (on an ENABLED side) → a cycle choice.
+    ...((sides.morning && prayBySide.morning === "psalms") || (sides.evening && prayBySide.evening === "psalms") ? (["psalms-cycle"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
@@ -685,6 +703,8 @@ export default function WayOfLoveRuleFlow({
     ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
     // The Examen is always an evening practice — no time-of-day slide.
     "extras", "custom",
+    // Beta: the weekly Way of Love rhythm is offered as a final, optional step.
+    ...(rawIsBeta ? (["weekly"] as Step[]) : []),
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
@@ -1315,14 +1335,45 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-              {t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
+            {/* Beta users get one more (optional) step — the weekly rhythm —
+                before saving, so the button just continues there. */}
+            <button onClick={rawIsBeta ? goNext : commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {rawIsBeta ? t("ruleOfLife.continue", { defaultValue: "Continue" }) : t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
             </button>
             <button onClick={() => setStep("extras")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
             </button>
           </div>
         )}
+      </>,
+    );
+  }
+
+  // ── Weekly rhythm (BETA) — the Way of Love's weekly practices, opt-in. Each
+  // toggle persists immediately to its own store (lib/weeklyRhythm), so it never
+  // rides commit()/the home layout. Shows in the "This week" home band. ────────
+  if (step === "weekly") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.weekly_eyebrow", { defaultValue: "Each week" }), t("wol_rule.weekly_title", { defaultValue: "Your weekly rhythm" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 4px" }}>
+          {t("wol_rule.weekly_body", { defaultValue: "The Way of Love also turns each week. Would you like to set up your weekly practices? Keep any of these — quietly, for yourself." })}
+        </p>
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 16px", lineHeight: 1.5 }}>
+          {t("wol_rule.weekly_note", { defaultValue: "Each adds a card to the “This week” band on your home. No sharing, no streak — just a quiet log." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {WEEKLY_PRACTICES.map((p) => choiceRow(weekly[p.kind], `${p.emoji} ${p.label}`, p.prompt, () => toggleWeekly(p.kind)))}
+        </div>
+        <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            {t("wol_rule.finish_weekly", { defaultValue: "Save my rhythm" })}
+          </button>
+          <button onClick={() => setStep("custom")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+            <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+          </button>
+        </div>
       </>,
     );
   }
@@ -1446,8 +1497,7 @@ export default function WayOfLoveRuleFlow({
   return shell(
     <>
       <div style={{ textAlign: "center", marginTop: 8 }}>
-        <span style={{ fontSize: 40 }} aria-hidden>🕊️</span>
-        <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "14px 0 6px" }}>
+        <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "0 0 6px" }}>
           {t("wol_rule.done_eyebrow", { defaultValue: "Your rule of life" })}
         </p>
         <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>

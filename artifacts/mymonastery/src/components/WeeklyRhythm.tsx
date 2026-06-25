@@ -12,7 +12,7 @@
  * Sits below the daily rhythm on the home (a separate band — the daily office
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,6 +22,8 @@ import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
   WEEKDAY_FULL,
+  WEEKLY_ENABLED_EVENT,
+  getEnabledWeekly,
   keptThisWeek,
   primarySabbathDay,
   todayISO,
@@ -29,6 +31,22 @@ import {
   type WeeklyPractice,
   type PracticeLogEntry,
 } from "@/lib/weeklyRhythm";
+
+// Which weekly practices the user has turned on, kept in sync with the
+// customizer (and other tabs) via the change event + the storage event.
+function useEnabledWeekly(): WeeklyKind[] {
+  const [enabled, setEnabled] = useState<WeeklyKind[]>(() => getEnabledWeekly());
+  useEffect(() => {
+    const sync = () => setEnabled(getEnabledWeekly());
+    window.addEventListener(WEEKLY_ENABLED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(WEEKLY_ENABLED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return enabled;
+}
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -44,9 +62,13 @@ export function WeeklyRhythm() {
   const { user } = useAuth();
   const [open, setOpen] = useState<WeeklyKind | null>(null);
 
-  // One query per practice — a fixed set, so the hook count is stable.
+  // Only the practices the user has turned on in the customizer appear here.
+  const enabled = useEnabledWeekly();
+  const practices = WEEKLY_PRACTICES.filter((p) => enabled.includes(p.kind));
+
+  // One query per enabled practice (useQueries handles a variable-length set).
   const results = useQueries({
-    queries: WEEKLY_PRACTICES.map((p) => ({
+    queries: practices.map((p) => ({
       queryKey: logKey(p.kind),
       queryFn: () =>
         apiRequest("GET", `/api/practice-log/${p.kind}`) as Promise<{ entries: PracticeLogEntry[] }>,
@@ -54,14 +76,15 @@ export function WeeklyRhythm() {
     })),
   });
 
-  const entriesByKind: Record<WeeklyKind, PracticeLogEntry[]> = {
-    commune: results[0]?.data?.entries ?? [],
-    go: results[1]?.data?.entries ?? [],
-    bless: results[2]?.data?.entries ?? [],
-    rest: results[3]?.data?.entries ?? [],
-  };
+  const entriesByKind = {} as Record<WeeklyKind, PracticeLogEntry[]>;
+  practices.forEach((p, i) => {
+    entriesByKind[p.kind] = results[i]?.data?.entries ?? [];
+  });
 
-  const openPractice = WEEKLY_PRACTICES.find((p) => p.kind === open) ?? null;
+  const openPractice = practices.find((p) => p.kind === open) ?? null;
+
+  // Nothing turned on → no band at all.
+  if (practices.length === 0) return null;
 
   return (
     <div className="mt-7">
@@ -72,7 +95,7 @@ export function WeeklyRhythm() {
         This week
       </p>
       <div className="space-y-2">
-        {WEEKLY_PRACTICES.map((p) => {
+        {practices.map((p) => {
           const kept = keptThisWeek(entriesByKind[p.kind]);
           const sabbath = p.kind === "rest" ? primarySabbathDay(user?.restDays) : null;
           return (

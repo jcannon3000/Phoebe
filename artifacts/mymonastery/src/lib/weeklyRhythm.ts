@@ -109,6 +109,38 @@ export function keptThisWeek(entries: PracticeLogEntry[] | undefined): PracticeL
   return null;
 }
 
+// ── Which weekly practices are turned on ──────────────────────────────
+// Opt-in, like the daily extras: a practice only appears in the "This week"
+// band once the user enables it in the customizer. Stored on its own
+// localStorage key — DELIBERATELY independent of the home-layout / office-prefs
+// the customizer's commit() writes, so toggling weekly practices can never
+// disturb (or be disturbed by) that data-loss-prone path.
+const ENABLED_KEY = "phoebe:weekly-practices";
+export const WEEKLY_ENABLED_EVENT = "phoebe:weekly-practices-changed";
+const ALL_KINDS: WeeklyKind[] = WEEKLY_PRACTICES.map((p) => p.kind);
+
+export function getEnabledWeekly(): WeeklyKind[] {
+  try {
+    const raw = localStorage.getItem(ENABLED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return ALL_KINDS.filter((k) => parsed.includes(k));
+  } catch {
+    return [];
+  }
+}
+
+export function setEnabledWeekly(kinds: WeeklyKind[]): void {
+  const clean = ALL_KINDS.filter((k) => kinds.includes(k));
+  try {
+    localStorage.setItem(ENABLED_KEY, JSON.stringify(clean));
+    window.dispatchEvent(new Event(WEEKLY_ENABLED_EVENT));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}
+
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
