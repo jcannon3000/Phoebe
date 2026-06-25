@@ -395,11 +395,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {showAdminTools && (
                 <MenuRow emoji="🔧" label={t("menu.admin_tools")} onClick={() => navigate("/admin/tools")} />
               )}
-              {/* El Jardín — moved here to sit with Admin Tools as a beta/preview
-                  entry, rather than in the main prayer surfaces above. */}
-              {rawIsBeta && !jardinShell && (
-                <MenuRow emoji="🌿" label="El Jardín" badge={t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
-              )}
+              {/* El Jardín is NOT a main-menu entry — it lives as an option
+                  INSIDE the Admin Tools page (/admin/tools). */}
               {/* Phoebe Parish — moved here from the main nav so it
                   sits alongside Admin Tools as a privileged/preview
                   entry rather than competing with the daily-prayer

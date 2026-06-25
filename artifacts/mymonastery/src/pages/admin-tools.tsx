@@ -184,6 +184,14 @@ export default function AdminToolsPage() {
               description="View submitted feedback"
               onClick={() => setLocation("/feedback")}
             />
+            {rawIsBeta && (
+              <LinkRow
+                emoji="🌿"
+                label="El Jardín"
+                description="The Spanish-language Jardín experience (beta)"
+                onClick={() => setLocation("/menu/jardin")}
+              />
+            )}
             {isAdmin && (
               <>
                 <LinkRow
