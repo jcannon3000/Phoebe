@@ -384,16 +384,17 @@ export default function CobreathePage() {
   // (reached the 12th breath). Cancelling or bailing early does NOT log a
   // contemplation sit — nothing toward the daily goal, history, or Apple Health.
   // When it does count, it's logged with the FULL elapsed time (20 breaths = 20).
-  const handleEnd = useCallback((secondsKept: number, _reached: boolean) => {
-    // Presence, never performance: the breath is RECEIVED the moment it's
-    // breathed. There is NO completion gate — every breath counts, fully, the
-    // same whether you stop at four or sit past twelve. The only no-op is an
-    // empty sit (you left before a single breath finished) — not a failure, just
-    // nothing to log.
+  const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
+    // Completion-gated: the day's Co-Breathe is only marked COMPLETE once the
+    // full set (the 12th breath) is reached. An early end still shows the
+    // summary of what they breathed, but does NOT count the card done, credit
+    // the contemplation sit, or add them to today's communal count.
     const breaths = Math.max(0, Math.floor(secondsKept / (CYCLE_MS / 1000)));
     if (breaths < 1) { setLocation("/dashboard"); return; }
-    logSit(secondsKept);          // credit the contemplation sit for what was breathed
-    record.mutate(secondsKept);   // count you in today's communal breath
+    if (reached) {
+      logSit(secondsKept);          // credit the contemplation sit (full set only)
+      record.mutate(secondsKept);   // count you in today's communal breath + mark done
+    }
     // Heart to Heart is OFF — cobreathing with a fellow no longer starts a 1:1
     // prayer exchange (no Heart to Heart features are turned on).
     // The breaths actually taken — open-ended, NEVER floored to the target (four
