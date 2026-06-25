@@ -629,15 +629,16 @@ export default function PodcastsPage() {
             </>
           )
         ) : (
-          // ── Default browse — multi-show publishers each keep their own
-          // section; single-show publishers are stacked together into one
-          // combined grid so they pack two-across instead of each taking a
-          // half-empty section + header of its own. The source still shows
-          // on every tile via the artist line (e.g. "Ross Kane · VTS").
+          // ── Default browse — every TITLED publisher keeps its own section,
+          // rendered in publisher order (Way of Love → Sermons → Forward →
+          // From around the church → CAC), even when it has a single show, so
+          // the cascade matches the curated order. Only title-less publishers
+          // get stacked into the combined "More shows" grid at the end. The
+          // source still shows on every tile via the artist line.
           (() => {
-            const multi = publishers.filter((p) => p.shows.length > 1);
+            const multi = publishers.filter((p) => !!p.title);
             const singleShows = publishers
-              .filter((p) => p.shows.length === 1)
+              .filter((p) => !p.title)
               .flatMap((p) => p.shows);
             return (
               <>

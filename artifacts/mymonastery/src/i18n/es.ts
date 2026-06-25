@@ -1601,6 +1601,7 @@ export const es: Translations = {
     anonymous: "Anónimo",
     your_request: "Tu petición",
     from_name: "De {{name}}",
+    community_intercession: "Intercesión comunitaria",
   },
   letter_card: {
     wrote_to_you: "{{name}} escribió 🌿",

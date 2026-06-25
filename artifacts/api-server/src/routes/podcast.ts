@@ -88,38 +88,55 @@ function showThemes(slug: string): string[] {
 }
 
 // Ordered list of shows per publisher drives the browse grid.
+// Browse-grid order (publisher object insertion order drives the cascade):
+//   Way of Love → Sermons → Forward → From around the church → CAC.
+// The offices publisher stays first but is filtered out of Discover (both its
+// shows are HIDDEN_FROM_DISCOVER), so it never renders a section.
 const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: string[] }> = {
   "forward-movement": {
     title: "Forward Movement",
     emoji: "📖",
     showSlugs: ["morning-office", "evening-office"],
   },
-  // Lead section — intentionally has NO title (an empty title makes the
-  // browse skip the header). The Episcopal-world shows in a curated order
-  // open the page as one headerless grid.
-  "around-the-church": {
-    title: "",
-    emoji: "",
+  // Way of Love — The Episcopal Church's Rule of Life. Leads the grid; the
+  // first two shows are Bishop Budde's rule-of-life series and Presiding
+  // Bishop Curry's Way of Love.
+  "way-of-love": {
+    title: "Way of Love",
+    emoji: "❤️",
     showSlugs: [
-      "way-of-love-curry",
       "experiencing-jesus",
-      "green-lectionary",
-      "nc-crossroads",
-      "roundtables-on-race",
-      "living-church",
-      "national-cathedral-sermons",
-      "ssje-sermons",
-      "grace-church-nyc",
+      "way-of-love-curry",
     ],
   },
-  // Forward Day by Day — Forward Movement's daily devotional podcast. Ordered
-  // BEFORE CAC in the browse grid (publisher order drives the grid order).
+  // Sermons — preaching from around the Episcopal world.
+  sermons: {
+    title: "Sermons",
+    emoji: "🎙️",
+    showSlugs: [
+      "national-cathedral-sermons",
+    ],
+  },
+  // Forward — Forward Movement's daily devotionals (Forward Day by Day +
+  // Scripture Day by Day).
   "forward-movement-shows": {
-    title: "Forward Movement",
+    title: "Forward",
     emoji: "📖",
     showSlugs: [
       "forward-day-by-day",
       "scripture-day-by-day",
+    ],
+  },
+  // From around the church — the rest of the Episcopal-world shows.
+  "around-the-church": {
+    title: "From around the church",
+    emoji: "⛪",
+    showSlugs: [
+      "green-lectionary",
+      "nc-crossroads",
+      "roundtables-on-race",
+      "living-church",
+      "grace-church-nyc",
     ],
   },
   cac: {
@@ -140,7 +157,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
 // player. They have their own home there, so we keep them OUT of the
 // Discover browse + search — the SHOWS entries stay (so
 // /podcast/:show/today still serves them), they're just not listed.
-const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office"]);
+const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office", "ssje-sermons"]);
 
 // Individual episodes hidden by title (matched apostrophe- and
 // whitespace-insensitively). Filtered out when the feed is parsed, so
@@ -295,7 +312,7 @@ export const SHOWS: Record<string, Show> = {
     slug: "experiencing-jesus",
     title: "The Way of Love: A Rule of Life",
     artist: "Diocese of Washington",
-    publisher: "around-the-church",
+    publisher: "way-of-love",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
     artwork: "/podcast-art/budde.jpg",
     // Use her portrait for every episode — the feed provides no per-episode
@@ -307,7 +324,7 @@ export const SHOWS: Record<string, Show> = {
     slug: "way-of-love-curry",
     title: "The Way of Love with Bishop Michael Curry",
     artist: "The Episcopal Church",
-    publisher: "around-the-church",
+    publisher: "way-of-love",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
     artwork: "/podcast-art/curry.jpg",
   },
@@ -366,7 +383,7 @@ export const SHOWS: Record<string, Show> = {
     slug: "national-cathedral-sermons",
     title: "National Cathedral Sermons",
     artist: "Washington National Cathedral",
-    publisher: "around-the-church",
+    publisher: "sermons",
     feedUrl: "https://feed.podbean.com/nationalcathedral/feed.xml",
     artwork: "https://pbcdn1.podbean.com/imglogo/image-logo/5314698/Sermons_by_WNC6eo25.jpg",
   },

@@ -1642,6 +1642,7 @@ export const en = {
     anonymous: "Anonymous",
     your_request: "Your request",
     from_name: "From {{name}}",
+    community_intercession: "Community Intercession",
   },
   // Home-screen LetterCard (pages/dashboard.tsx) — per-correspondence row
   // on the home letters section. Reuses keys from `letters.*` for shared

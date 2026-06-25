@@ -4312,7 +4312,13 @@ function PrayerListCarousel({
             const displayAvatar = req.isAnonymous
               ? null
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
-            const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
+            // A community intercession is labelled as such (it's the
+            // community's shared prayer, not a "from {person}" request).
+            const eyebrow = req.kind === "intercession"
+              ? t("prayer_list_carousel.community_intercession", { defaultValue: "Community Intercession" })
+              : req.isOwnRequest
+                ? t("prayer_list_carousel.your_request")
+                : t("prayer_list_carousel.from_name", { name: displayName });
             const amened = !!req.myAmenedToday;
             // Tapping an UN-prayed card opens the prayer slideshow (walk through
             // the undone requests, praying each). A PRAYED card isn't in that
