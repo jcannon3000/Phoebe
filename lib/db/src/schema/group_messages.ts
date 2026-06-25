@@ -27,14 +27,18 @@ export const groupMessagesTable = pgTable("group_messages", {
 export type GroupMessage = typeof groupMessagesTable.$inferSelect;
 
 // Per-member read cursor for the group chat — drives the unread badge. One row
-// per (group, user); upserted to NOW() whenever the member opens the chat.
+// per (group, user). The cursor is the highest group_messages.id the member has
+// seen — a monotonic serial, NOT a wall-clock time. An id cursor avoids the
+// "marked read at NOW() while a message was mid-insert" race (that message has
+// an id greater than what we returned, so it stays unread) and is immune to
+// clock skew.
 export const groupMessageReadsTable = pgTable("group_message_reads", {
   id: serial("id").primaryKey(),
   groupId: integer("group_id").notNull()
     .references(() => groupsTable.id, { onDelete: "cascade" }),
   userId: integer("user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
-  lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull().defaultNow(),
+  lastReadMessageId: integer("last_read_message_id").notNull().default(0),
 }, (t) => ({
   uniqMember: uniqueIndex("group_message_reads_unique").on(t.groupId, t.userId),
 }));

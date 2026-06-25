@@ -7,7 +7,7 @@ import {
   groupMessageReadsTable,
   usersTable,
 } from "@workspace/db";
-import { and, eq, desc, lt, gt, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, desc, lt, gt, ne, count, inArray, isNotNull, sql } from "drizzle-orm";
 import { perUserRateLimit } from "../lib/rate-limit";
 import { sendPushToUsers } from "../lib/pushSender";
 import { logger } from "../lib/logger";
@@ -43,12 +43,15 @@ async function requireJoinedMember(slug: string, userId: number) {
   return { group, member };
 }
 
-async function markRead(groupId: number, userId: number): Promise<void> {
+// Advance the member's read cursor to `upToId` — but never backward (a poll of
+// an older page must not un-read newer messages), via GREATEST on conflict.
+async function markRead(groupId: number, userId: number, upToId: number): Promise<void> {
+  if (!Number.isFinite(upToId) || upToId <= 0) return;
   await db.insert(groupMessageReadsTable)
-    .values({ groupId, userId, lastReadAt: new Date() })
+    .values({ groupId, userId, lastReadMessageId: upToId })
     .onConflictDoUpdate({
       target: [groupMessageReadsTable.groupId, groupMessageReadsTable.userId],
-      set: { lastReadAt: new Date() },
+      set: { lastReadMessageId: sql`GREATEST(${groupMessageReadsTable.lastReadMessageId}, ${upToId})` },
     });
 }
 
@@ -60,9 +63,11 @@ router.get("/groups/:slug/chat", async (req: Request, res: Response): Promise<vo
   const ctx = await requireJoinedMember(String(req.params.slug), userId);
   if (!ctx) { res.status(404).json({ error: "Not found" }); return; }
 
-  const beforeId = Number(req.query.before);
-  const where = Number.isFinite(beforeId) && beforeId > 0
-    ? and(eq(groupMessagesTable.groupId, ctx.group.id), lt(groupMessagesTable.id, beforeId))
+  const beforeRaw = Number(req.query.before);
+  const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
+  const isNewestPage = before === null;
+  const where = before !== null
+    ? and(eq(groupMessagesTable.groupId, ctx.group.id), lt(groupMessagesTable.id, before))
     : eq(groupMessagesTable.groupId, ctx.group.id);
 
   try {
@@ -73,6 +78,9 @@ router.get("/groups/:slug/chat", async (req: Request, res: Response): Promise<vo
       .limit(PAGE + 1);
     const hasMore = rows.length > PAGE;
     const page = rows.slice(0, PAGE);
+    // Newest id ACTUALLY returned — the read cursor only ever advances to what
+    // the client received, so a message inserted mid-request stays unread.
+    const newestReturnedId = page.length > 0 ? page[0]!.id : 0;
 
     const senderIds = [...new Set(page.map((m) => m.senderUserId))];
     const senders = senderIds.length > 0
@@ -94,8 +102,8 @@ router.get("/groups/:slug/chat", async (req: Request, res: Response): Promise<vo
       };
     });
 
-    // Mark read up to now (a poll of the newest page = caught up).
-    if (!Number.isFinite(beforeId)) await markRead(ctx.group.id, userId);
+    // A poll/open of the newest page = caught up THROUGH what we returned.
+    if (isNewestPage) await markRead(ctx.group.id, userId, newestReturnedId);
 
     res.json({ groupName: ctx.group.name, groupEmoji: ctx.group.emoji ?? null, messages, hasMore });
   } catch (err) {
@@ -123,7 +131,7 @@ router.post(
         .values({ groupId: ctx.group.id, senderUserId: userId, body })
         .returning();
       // Sender has now seen their own message.
-      await markRead(ctx.group.id, userId);
+      await markRead(ctx.group.id, userId, row!.id);
 
       const [me] = await db.select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
         .from(usersTable).where(eq(usersTable.id, userId));
@@ -172,21 +180,21 @@ router.get("/groups/:slug/chat/unread", async (req: Request, res: Response): Pro
   if (!ctx) { res.status(404).json({ error: "Not found" }); return; }
 
   try {
-    const [readRow] = await db.select({ lastReadAt: groupMessageReadsTable.lastReadAt })
+    const [readRow] = await db.select({ cursor: groupMessageReadsTable.lastReadMessageId })
       .from(groupMessageReadsTable)
       .where(and(eq(groupMessageReadsTable.groupId, ctx.group.id), eq(groupMessageReadsTable.userId, userId)));
-    const since = readRow?.lastReadAt ?? null;
-    const where = since
-      ? and(
-          eq(groupMessagesTable.groupId, ctx.group.id),
-          gt(groupMessagesTable.createdAt, since),
-          // not-mine handled below
-        )
-      : eq(groupMessagesTable.groupId, ctx.group.id);
-    const rows = await db.select({ id: groupMessagesTable.id, sender: groupMessagesTable.senderUserId })
-      .from(groupMessagesTable).where(where).limit(100);
-    const count = rows.filter((r) => r.sender !== userId).length;
-    res.json({ count, capped: count >= 100 });
+    const cursor = readRow?.cursor ?? 0;
+    // Count in SQL: messages newer than the cursor not sent by me. No LIMIT, no
+    // JS filter — so own messages never consume a cap and the total is exact.
+    const [c] = await db.select({ value: count() })
+      .from(groupMessagesTable)
+      .where(and(
+        eq(groupMessagesTable.groupId, ctx.group.id),
+        gt(groupMessagesTable.id, cursor),
+        ne(groupMessagesTable.senderUserId, userId),
+      ));
+    const n = Number(c?.value ?? 0);
+    res.json({ count: n, capped: n > 99 });
   } catch (err) {
     logger.warn({ err, slug: req.params.slug }, "[group-chat] unread failed");
     res.status(500).json({ error: "server_error" });

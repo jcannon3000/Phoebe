@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ChevronLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -43,11 +43,29 @@ export default function CommunityChatPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const lastCountRef = useRef(0);
+  // True while the user is within ~80px of the bottom — so a 4s poll doesn't
+  // yank them down while they're scrolled up reading history.
+  const nearBottomRef = useRef(true);
+
+  // Keyboard inset (Capacitor runs KeyboardResize.None, so the WebView doesn't
+  // shrink — we lift the whole fixed surface above the keyboard ourselves).
+  const [kbH, setKbH] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const update = () => setKbH(Math.max(0, window.innerHeight - (vv?.height ?? window.innerHeight)));
+    update();
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    return () => { vv?.removeEventListener("resize", update); vv?.removeEventListener("scroll", update); };
+  }, []);
 
   const key = [`/api/groups/${slug}/chat`];
-  const { data, isLoading, isError } = useQuery<ChatResponse>({
+  const { data, isLoading, isError, error } = useQuery<ChatResponse>({
     queryKey: key,
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/chat`),
     refetchInterval: 4000,
@@ -56,28 +74,45 @@ export default function CommunityChatPage() {
 
   const messages = useMemo(() => data?.messages ?? [], [data]);
 
-  // Auto-scroll to the newest message when the count grows (new message in, or
-  // first load). Doesn't fight the user scrolling up to read history mid-poll.
+  // Auto-scroll only when the user is already near the bottom, or the newest
+  // message is their own — never interrupt someone reading older history.
   useEffect(() => {
-    if (messages.length !== lastCountRef.current) {
-      lastCountRef.current = messages.length;
+    if (messages.length === lastCountRef.current) return;
+    lastCountRef.current = messages.length;
+    const last = messages[messages.length - 1];
+    if (nearBottomRef.current || last?.mine) {
       endRef.current?.scrollIntoView({ behavior: "auto" });
     }
-  }, [messages.length]);
+  }, [messages]);
+
+  // Keep the textarea grown to its content (one line → multi-line), capped.
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
+  }, [draft]);
 
   const send = useMutation({
     mutationFn: (body: string) => apiRequest("POST", `/api/groups/${slug}/chat`, { body }),
-    onSuccess: () => { setDraft(""); qc.invalidateQueries({ queryKey: key }); },
+    onSuccess: () => { setDraft(""); setSendError(null); qc.invalidateQueries({ queryKey: key }); },
+    onError: (e) => {
+      // Keep the draft so nothing is lost; surface a retryable error.
+      setSendError(e instanceof ApiError ? e.message : "Couldn't send. Check your connection and try again.");
+    },
   });
 
   function submit() {
     const body = draft.trim();
     if (!body || send.isPending) return;
+    setSendError(null);
     send.mutate(body);
   }
 
+  const notMember = isError && error instanceof ApiError && error.status === 403;
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, background: BG, display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: kbH, zIndex: 50, background: BG, display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <div
         style={{
@@ -101,10 +136,20 @@ export default function CommunityChatPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-3" style={{ overflowAnchor: "none" }}>
+      <div
+        ref={scrollRef}
+        onScroll={() => {
+          const el = scrollRef.current;
+          if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}
+        className="flex-1 overflow-y-auto px-3 py-3"
+        style={{ overflowAnchor: "none" }}
+      >
         {isError ? (
           <p className="text-center text-[13.5px] mt-10" style={{ color: "#C47A65", fontFamily: FONT }}>
-            You need to be a member of this community to see its chat.
+            {notMember
+              ? "You need to be a member of this community to see its chat."
+              : "Couldn't load the chat. Check your connection and try again in a moment."}
           </p>
         ) : isLoading ? (
           <p className="text-center text-[13px] mt-10" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>Loading…</p>
@@ -137,8 +182,19 @@ export default function CommunityChatPage() {
           WebkitBackdropFilter: "blur(11.34px)",
         }}
       >
+        {sendError && (
+          <button
+            type="button"
+            onClick={() => { setSendError(null); submit(); }}
+            className="w-full text-left mb-1.5 px-1 text-[12px]"
+            style={{ color: "#E0A07A", fontFamily: FONT }}
+          >
+            {sendError} · Tap to retry
+          </button>
+        )}
         <div className="flex items-end gap-2">
           <textarea
+            ref={taRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}

@@ -2394,8 +2394,14 @@ export async function migrate() {
         id SERIAL PRIMARY KEY,
         group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        last_read_message_id INTEGER NOT NULL DEFAULT 0
       )
+    `);
+    // The cursor moved from a wall-clock time to a message-id (see schema) —
+    // add the column for any table created before that change.
+    await run(client, `
+      ALTER TABLE group_message_reads
+      ADD COLUMN IF NOT EXISTS last_read_message_id INTEGER NOT NULL DEFAULT 0
     `);
     await run(client, `
       CREATE UNIQUE INDEX IF NOT EXISTS group_message_reads_unique
