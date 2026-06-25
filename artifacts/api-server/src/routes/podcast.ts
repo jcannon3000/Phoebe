@@ -405,6 +405,52 @@ export type ParsedFeed = {
 const TTL_MS = 30 * 60_000;
 const cache = new Map<string, { at: number; data: ParsedFeed }>();
 
+// Feed fetches hit fixed, trusted hosts (the static SHOWS registry — never a
+// user-supplied URL), so this isn't an SSRF surface. These bounds are
+// availability hardening: a hung or oversized trusted feed must not stall a
+// request thread or exhaust memory. Feeds are light XML, so 8 MB / 10 s is
+// generous headroom.
+const FEED_TIMEOUT_MS = 10_000;
+const FEED_MAX_BYTES = 8 * 1024 * 1024;
+
+async function fetchFeedText(url: string): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FEED_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml, text/html" },
+    });
+    if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
+    // Reject early when the server declares an oversized body…
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > FEED_MAX_BYTES) {
+      throw new Error(`feed too large: ${declared} bytes`);
+    }
+    // …and bound the actual read too, since Content-Length can be absent
+    // (chunked) or lie. Stream the body and stop once the cap is exceeded.
+    const reader = res.body?.getReader();
+    if (!reader) return await res.text();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > FEED_MAX_BYTES) {
+          await reader.cancel();
+          throw new Error("feed exceeded size cap");
+        }
+        chunks.push(value);
+      }
+    }
+    return Buffer.concat(chunks).toString("utf-8");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function parseDurationSeconds(raw: string | null): number | null {
   if (!raw) return null;
   const t = raw.trim();
@@ -552,11 +598,7 @@ export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
     return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) };
   }
   try {
-    const res = await fetch(show.feedUrl, {
-      headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml, text/html" },
-    });
-    if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
-    const body = await res.text();
+    const body = await fetchFeedText(show.feedUrl);
     const parsed = show.kind === "scrape-roundtables"
       ? scrapeRoundtables(body, show.title)
       : parseFeed(body, Math.max(limit, 50));

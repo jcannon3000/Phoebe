@@ -26,6 +26,7 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { logger } from "../lib/logger";
+import { safeFetch } from "../lib/ssrfGuard";
 
 const router: IRouter = Router();
 
@@ -154,13 +155,15 @@ async function resolveTodaysMeta(key: PlaylistKey, playlistId: string): Promise<
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
     let durationSeconds: number | null = null;
     try {
-      const watchRes = await fetch(watchUrl, {
+      // safeFetch re-validates the host on every redirect hop, so a YouTube
+      // 30x toward an internal address can't be followed.
+      const watchRes = await safeFetch(watchUrl, {
+        timeoutMs: 5_000,
         headers: {
           "User-Agent": UA,
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
         },
-        signal: controller.signal,
       });
       if (watchRes.ok) {
         const html = await watchRes.text();
