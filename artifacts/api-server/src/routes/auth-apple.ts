@@ -22,6 +22,7 @@
  */
 
 import { Router, type IRouter } from "express";
+import { loginFreshSession } from "../lib/session";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -159,8 +160,9 @@ router.post("/auth/apple/native", async (req, res): Promise<void> => {
       user = created;
     }
 
-    // 6. Log in via Passport so the browser session cookie picks up.
-    req.login(user as Express.User, (err) => {
+    // 6. Log in via Passport so the browser session cookie picks up. Rotate the
+    // session id first (defeats fixation).
+    loginFreshSession(req, user as Express.User, (err) => {
       if (err) {
         console.error("[auth:apple] req.login failed:", err);
         res.status(500).json({ error: "login_failed" });

@@ -1,5 +1,6 @@
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import type { Request } from "express";
 
 // The single express-session middleware, shared between the HTTP app (app.ts)
 // and the WebSocket upgrade authentication (ws.ts). Pulling it out into its own
@@ -28,3 +29,24 @@ export const sessionMiddleware = session({
       : {}),
   },
 });
+
+/**
+ * Establish an authenticated session while defeating SESSION FIXATION: rotate
+ * the session id BEFORE writing the login identity, so a pre-login
+ * (attacker-planted) session id can never carry into the authenticated session.
+ * Use this in place of a bare `req.login(...)` on every auth-completion path
+ * (password login, register, token exchange, Google/Apple sign-in).
+ *
+ * `regenerate()` swaps in a fresh empty session (new id); the subsequent
+ * `req.login` persists `passport.user` into THAT new session.
+ */
+export function loginFreshSession(
+  req: Request,
+  user: Express.User,
+  done: (err?: unknown) => void,
+): void {
+  req.session.regenerate((rerr) => {
+    if (rerr) { done(rerr); return; }
+    req.login(user, (lerr) => done(lerr ?? undefined));
+  });
+}

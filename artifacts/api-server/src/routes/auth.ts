@@ -2,6 +2,7 @@ import { getFrontendUrl, getInviteBaseUrl } from "../lib/urls";
 import { sendPasswordResetEmail } from "../lib/email";
 import { Router, type IRouter } from "express";
 import passport from "passport";
+import { loginFreshSession } from "../lib/session";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
@@ -162,9 +163,16 @@ router.get(
     passport.authenticate("google", { failureRedirect: `${frontendURL}/?error=auth_failed` })(req, res, next);
   },
   (req, res) => {
-    // Explicitly save session before redirect to avoid race condition
-    req.session.save(() => {
-      res.redirect(`${frontendURL}/dashboard`);
+    // passport.authenticate has already logged the user in; rotate the session
+    // id (re-logging into the fresh session) to defeat fixation, then save
+    // before redirect to avoid a race.
+    const u = req.user as Express.User | undefined;
+    if (!u) { res.redirect(`${frontendURL}/?error=auth_failed`); return; }
+    loginFreshSession(req, u, (err) => {
+      if (err) { res.redirect(`${frontendURL}/?error=auth_failed`); return; }
+      req.session.save(() => {
+        res.redirect(`${frontendURL}/dashboard`);
+      });
     });
   }
 );
@@ -770,7 +778,7 @@ router.post(
     return;
   }
 
-  req.login(user as Express.User, (err) => {
+  loginFreshSession(req, user as Express.User, (err) => {
     if (err) {
       console.error("[auth/exchange-token] req.login failed:", err);
       res.status(500).json({ error: "login_failed" });
@@ -1075,7 +1083,7 @@ router.post(
     }
   }
 
-  req.login(user, (err) => {
+  loginFreshSession(req, user as Express.User, (err) => {
     if (err) { res.status(500).json({ error: "Login failed after registration." }); return; }
     req.session.save(() => res.json({ ok: true, joinedGroupSlug: inviteGroupSlug }));
   });
@@ -1123,7 +1131,7 @@ router.post(
     res.status(401).json({ error: "Incorrect email or password." }); return;
   }
 
-  req.login(user, (err) => {
+  loginFreshSession(req, user as Express.User, (err) => {
     if (err) { res.status(500).json({ error: "Login failed." }); return; }
     req.session.save(() => res.json({ ok: true }));
   });
