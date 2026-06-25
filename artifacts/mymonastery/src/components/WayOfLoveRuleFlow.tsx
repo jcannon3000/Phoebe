@@ -920,16 +920,13 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Praying the Psalms — the FIRST option on both morning and evening. */}
+          {choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, devotionSub, () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
-          {/* Forward Day by Day AS the morning prayer — replaces the office card
-              for whoever picks it (per-user). Morning only. */}
           {/* Forward Day by Day: always offered for morning; offered for evening
               ONLY if it wasn't already chosen for the morning (one FDD a day). */}
           {(side === "morning" || prayBySide.morning !== "fdd") && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, side === "morning" ? t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }) : t("wol_rule.pray_fdd_sub_evening", { defaultValue: "Today's reflection as your evening prayer." }), () => choosePrayBySide(side, "fdd"))}
-          {/* Praying the Psalms — the appointed psalms as this side's prayer.
-              Offered on both morning and evening. */}
-          {choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
           {/* "Community prayer list" was removed as a morning/evening prayer
               option per request. Existing community users still resolve via
               prayFromLevel; it's just no longer offered here. */}
@@ -1102,7 +1099,7 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.fdd_mode_eyebrow", { defaultValue: "Forward Day by Day" }), t("wol_rule.fdd_mode_title", { defaultValue: "How will you take it?" }))}
+        {stepHeader(t("wol_rule.fdd_mode_eyebrow", { defaultValue: "Forward Day by Day" }), t("wol_rule.fdd_mode_title", { defaultValue: "What medium would you like?" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.fdd_mode_body", { defaultValue: "Read today's reflection, or listen to it read aloud." })}
         </p>
