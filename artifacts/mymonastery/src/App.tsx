@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from "@t
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
-import { ApiError } from "@/lib/queryClient";
+import { ApiError, apiRequest } from "@/lib/queryClient";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
 // foreground / every 5 min) so the Cobreathe communal breath is already aligned
 // the instant a session opens — every device shares one schedule.
@@ -1155,7 +1155,26 @@ function NativeJournalOpener() {
 
 function App() {
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={rqPersistOptions}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={rqPersistOptions}
+      onSuccess={() => {
+        // The instant the persisted cache is restored — before the dashboard
+        // mounts and while the opening splash still covers the screen — kick the
+        // heaviest home queries so their network round-trips run in the
+        // background and the content is ready (or close) by the time the splash
+        // is dismissed. Same keys/queryFn the dashboard uses, so they dedupe.
+        // Only when a session is cached, so an unauthenticated open doesn't 401.
+        if (!queryClient.getQueryData(["/api/auth/me"])) return;
+        const warm = (key: string) =>
+          void queryClient.prefetchQuery({ queryKey: [key], queryFn: () => apiRequest("GET", key) });
+        warm("/api/moments");
+        warm("/api/prayer-requests");
+        warm("/api/prayer-streak");
+        warm("/api/me/garden-week");
+        warm("/api/me/prayer-days");
+      }}
+    >
       <TooltipProvider>
         <ErrorBoundary>
           <GlobalButtonHaptics />

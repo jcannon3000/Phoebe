@@ -1681,8 +1681,13 @@ router.get("/moments", async (req, res): Promise<void> => {
           ...primaryPractices.map(p => p.id),
           ...secondaryPractices.map(p => p.id),
         ]));
-        await Promise.all(allPracticeIds.map(id => reconcileGroupPracticeMembers(id)));
+        // Reconcile in the BACKGROUND so the home GET doesn't block on member
+        // writes — a newly-added member's tokens land by their next poll rather
+        // than this response. The dedup Set is filled synchronously so the
+        // post-pass below still skips these practices.
         for (const id of allPracticeIds) reconciledGroupPracticeIds.add(id);
+        void Promise.all(allPracticeIds.map(id => reconcileGroupPracticeMembers(id)))
+          .catch(err => console.error("[GET /api/moments] bg group reconcile failed:", err));
       }
 
       // Same pre-reconcile pattern for feed-scoped intercessions:
@@ -1701,8 +1706,9 @@ router.get("/moments", async (req, res): Promise<void> => {
             inArray(sharedMomentsTable.prayerFeedId, myFeedIds),
             sql`${sharedMomentsTable.state} != 'archived'`,
           ));
-        await Promise.all(feedPractices.map(p => reconcileFeedPracticeMembers(p.id)));
         for (const p of feedPractices) reconciledFeedPracticeIds.add(p.id);
+        void Promise.all(feedPractices.map(p => reconcileFeedPracticeMembers(p.id)))
+          .catch(err => console.error("[GET /api/moments] bg feed reconcile failed:", err));
       }
     } catch (err) {
       console.error("[GET /api/moments] pre-reconcile failed:", err);
@@ -1817,16 +1823,17 @@ router.get("/moments", async (req, res): Promise<void> => {
     // pre-pass already handled. Gated on the same shouldReconcile flag as
     // the pre-pass so a throttled read does zero reconcile writes.
     if (shouldReconcile) {
-      await Promise.all(
+      // Background, like the pre-pass — never block the home GET on member writes.
+      void Promise.all(
         flatMoments
           .filter(m => m.groupId !== null && m.groupId !== undefined && !reconciledGroupPracticeIds.has(m.id))
           .map(m => reconcileGroupPracticeMembers(m.id))
-      );
-      await Promise.all(
+      ).catch(err => console.error("[GET /api/moments] bg post group reconcile failed:", err));
+      void Promise.all(
         flatMoments
           .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined && !reconciledFeedPracticeIds.has(m.id))
           .map(m => reconcileFeedPracticeMembers(m.id))
-      );
+      ).catch(err => console.error("[GET /api/moments] bg post feed reconcile failed:", err));
     }
 
     // Build a set of emails that have actual user accounts (i.e. have signed up).

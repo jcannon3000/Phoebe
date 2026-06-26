@@ -5643,9 +5643,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user,
-    // Always refetch when the dashboard mounts so that renew / archive
-    // mutations from the detail page are reflected immediately.
-    staleTime: 0,
+    // Render instantly from the persisted cache on a warm open, then refresh in
+    // the background — staleTime:0 forced a blocking refetch on every open, which
+    // is the slowest home call. Detail-page renew/archive already invalidate this
+    // key explicitly (see the focus/appactive handlers below), so a short window
+    // doesn't hide those edits.
+    staleTime: 60_000,
   });
 
   // Community membership. A brand-new user not in any group sees NO home
