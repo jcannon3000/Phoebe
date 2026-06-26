@@ -356,7 +356,6 @@ const PublicFeedPage = lazy(() => import("./pages/public-feed"));
 const CommunitiesPage = lazy(() => import("./pages/communities"));
 const CommunitiesBrowsePage = lazy(() => import("./pages/communities-browse"));
 const CommunityRequestsPage = lazy(() => import("./pages/community-requests"));
-const WelcomePage = lazy(() => import("./pages/welcome"));
 import WelcomePublicPage from "./pages/welcome-public";
 const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
@@ -1033,7 +1032,11 @@ function Router() {
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
       <Route path="/prayer-dialogue/join/:token" component={PrayerDialogueJoinPage} />
       <Route path="/plans/:token" component={PlanSharePage} />
-      <Route path="/welcome" component={WelcomePage} />
+      {/* The old post-signup "Find a community" picker is retired — a fresh
+          signup (from the home screen or after praying the office) lands on the
+          home, not a community-finder. The page is kept out of the flow by
+          redirecting any residual link to /welcome straight to the dashboard. */}
+      <Route path="/welcome">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
       <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
