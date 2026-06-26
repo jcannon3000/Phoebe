@@ -812,7 +812,7 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Contemplation" }))}
+        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Contemplative Practices" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
           {t("wol_rule.contemplative_body", { defaultValue: "Beyond silence, choose any other contemplative practices for your day — each becomes its own card." })}
         </p>
@@ -870,17 +870,20 @@ export default function WayOfLoveRuleFlow({
       <>
         {backRow(goPrev)}
         {stepHeader(t("wol_rule.silence_eyebrow", { defaultValue: "Return" }), t("wol_rule.silence_title", { defaultValue: "Silence" }))}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
-          {t("wol_rule.silence_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Sit in silence before God a few minutes a day, open to what God might be speaking and to what's on your own heart." })}
+        <p style={{ color: CREAM, fontSize: 17, fontFamily: "Georgia, serif", fontStyle: "italic", lineHeight: 1.55, margin: "16px 0 0" }}>
+          {t("wol_rule.silence_body", { defaultValue: "“All of humanity's problems stem from man's inability to sit quietly in a room alone.”" })}
         </p>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.silence_goal_label", { defaultValue: "How much silence each day?" })}
+        <p style={{ color: SAGE_DIM, fontSize: 13, fontFamily: FONT, margin: "8px 0 0" }}>
+          {t("wol_rule.silence_quote_attr", { defaultValue: "— Blaise Pascal" })}
+        </p>
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "26px 0 10px" }}>
+          {t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
         </p>
         <div style={{ position: "relative" }}>
           <select
             value={String(goalMin)}
             onChange={(e) => chooseGoal(e.target.value)}
-            aria-label={t("wol_rule.silence_goal_label", { defaultValue: "How much silence each day?" })}
+            aria-label={t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
             style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
           >
             <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
@@ -893,7 +896,7 @@ export default function WayOfLoveRuleFlow({
           <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace, by sitting with the timer or logging silence you keep on your own. It's never measured against you." })}
+          {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
