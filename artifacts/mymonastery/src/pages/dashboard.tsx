@@ -3034,7 +3034,7 @@ function FddHomeCard() {
 // Praying the Psalms home card — replaces the office card for a side set to
 // "psalms". Shows today's appointed psalms (per the chosen cycle) and opens the
 // /psalms reader. Warm parchment tone, distinct from the blue FDD card.
-function PsalmsHomeCard({ side }: { side: "morning" | "evening" }) {
+function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
   const [, goTo] = useLocation();
   const [done, setDone] = useState(() => hasPrayedPsalmsToday());
   const [cycle, setCycle] = useState(() => getPsalmCycle());
@@ -3056,10 +3056,44 @@ function PsalmsHomeCard({ side }: { side: "morning" | "evening" }) {
     staleTime: 30 * 60_000,
   });
   const refs = (data?.psalms ?? []).map((p) => p.raw);
+  // Named for the side, like the office hero — "Morning Psalms" / "Evening Psalms".
+  const title = side === "evening" ? "Evening Psalms" : "Morning Psalms";
   const subtitle = refs.length > 0
     ? `Psalm${refs.length > 1 ? "s" : ""} ${refs.join(", ")}`
     : "Today's appointed psalms";
   const onClick = () => goTo(`/psalms?office=${side}`);
+
+  // Hero layout — the big "what's next" card, mirroring the office hero, when
+  // Praying the Psalms is this side's prayer.
+  if (hero) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+        className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-5"
+        style={{ background: "rgba(150,140,110,0.13)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(150,140,110,0.40)" }}
+      >
+        <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(150,140,110,0.85)" }} />
+        <div className="flex-1 px-5 py-5">
+          <div className="flex items-start gap-3.5">
+            <span className="text-[34px] leading-none flex-shrink-0">📜</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
+              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>{subtitle}</p>
+            </div>
+            <div className="flex-shrink-0">
+              <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: "rgba(150,140,110,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {done ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> Pray again</> : "Pray"} <span aria-hidden className="ml-1">→</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       role="button"
@@ -3073,7 +3107,7 @@ function PsalmsHomeCard({ side }: { side: "morning" | "evening" }) {
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
         <div className="min-w-0">
           <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
-            Praying the Psalms 📜
+            {title} 📜
           </p>
           <p className="truncate" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
             {subtitle}
@@ -3464,7 +3498,9 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // Per-user: Praying the Psalms IS this side's prayer → the Psalms card replaces
   // the office card for this user. Same after-all-hooks placement as FDD.
   if (getSideLevel(isMorning ? "morning" : "evening") === "psalms") {
-    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} />;
+    // A forced side (the home "what's next" / office-hero slot) renders the big
+    // hero variant; the compact mini stays small.
+    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
 
   const prayedTodayHalf = (() => {
@@ -5144,9 +5180,7 @@ function TimeSection({
               key={isValidElement(node) && node.key != null ? node.key : idx}
               initial={{ opacity: 0, y: 8 }}
               animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-              // +0.12 so the cards rise just AFTER the section title (which fades
-              // at cascadeFrom*0.1) — title first, then the cards cascade under it.
-              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 1.5) + 0.12 }}
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 1.5) }}
             >
               {node}
             </motion.div>

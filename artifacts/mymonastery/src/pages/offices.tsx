@@ -92,6 +92,22 @@ export default function OfficesPage() {
     href: "/bcp/daily-office?mode=compline",
     available: isNight,
   };
+  // Praying the Psalms — leads each section: the day's appointed psalms for that
+  // office, from the daily-office lectionary (cycle=office), as a slideshow.
+  const morningPsalms: CardSpec = {
+    emoji: "📜",
+    title: t("offices.morning_psalms", { defaultValue: "Morning Psalms" }),
+    sub: t("offices.psalms_sub", { defaultValue: "The day's appointed psalms" }),
+    href: "/psalms?office=morning&cycle=office",
+    available: isMorning,
+  };
+  const eveningPsalms: CardSpec = {
+    emoji: "📜",
+    title: t("offices.evening_psalms", { defaultValue: "Evening Psalms" }),
+    sub: t("offices.psalms_sub", { defaultValue: "The day's appointed psalms" }),
+    href: "/psalms?office=evening&cycle=office",
+    available: isEvening,
+  };
 
   return (
     <Layout>
@@ -115,6 +131,8 @@ export default function OfficesPage() {
 
         <SectionLabel>{t("offices.in_the_morning")}</SectionLabel>
         <div className="space-y-6 mb-10">
+          {/* Psalms first — the appointed psalms for the day. */}
+          <OfficeOption spec={morningPsalms} />
           <div>
             <OfficeOption spec={morningOffice} />
             {/* Alternate ways to pray Morning Prayer — listen to
@@ -162,6 +180,8 @@ export default function OfficesPage() {
 
         <SectionLabel>{t("offices.in_the_evening")}</SectionLabel>
         <div className="space-y-6 mb-10">
+          {/* Psalms first — the appointed psalms for the day. */}
+          <OfficeOption spec={eveningPsalms} />
           <div>
             <OfficeOption spec={eveningOffice} />
             {/* Listen to Forward Movement's audio Evening Prayer. */}

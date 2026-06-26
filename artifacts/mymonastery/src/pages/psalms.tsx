@@ -123,7 +123,10 @@ export default function PsalmsPage() {
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const office: "morning" | "evening" = params.get("office") === "evening" ? "evening" : "morning";
-  const cycle = getPsalmCycle();
+  // An explicit ?cycle wins (the Daily Offices "Psalms" entry forces the office
+  // lectionary); otherwise fall back to the user's saved cycle preference.
+  const cycleParam = params.get("cycle");
+  const cycle = cycleParam === "office" || cycleParam === "monthly" ? cycleParam : getPsalmCycle();
   const today = new Date().toLocaleDateString("en-CA");
   const BG = office === "evening" ? EVENING_BG : MORNING_BG;
 
