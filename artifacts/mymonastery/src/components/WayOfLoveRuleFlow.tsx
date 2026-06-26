@@ -1215,7 +1215,7 @@ export default function WayOfLoveRuleFlow({
               <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
                 {t("wol_rule.journaling_when", { defaultValue: "When do you journal?" })}
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
                 {CUSTOM_SLOTS.map((s) => {
                   const on = journalingSlot === s;
                   const label = SLOT_LABEL[s];
@@ -1329,7 +1329,7 @@ export default function WayOfLoveRuleFlow({
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
               {t("wol_rule.custom_when", { defaultValue: "When in the day?" })}
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
               {CUSTOM_SLOTS.map((sl) => {
                 const on = customSlot === sl;
                 const label = SLOT_LABEL[sl];
