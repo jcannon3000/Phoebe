@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
-import { getPracticeSlot, getJournalingSlot, SLOT_RANK, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -995,7 +995,10 @@ function OpeningSplash() {
   // the morning/midday/afternoon practices lead earlier in the day. From 5pm on,
   // the evening slot joins the running (and still sorts last).
   const firstUp = nextCandidates
-    .filter((c) => c.active && !c.done && (c.slot !== "evening" || hour >= 17))
+    // Only surface a practice whose slot window is open — mirrors the
+    // daily-progress time-gate so the home "what's next" never offers a
+    // tappable practice before its window (Midday 10 / Afternoon 2 / Evening 5).
+    .filter((c) => c.active && !c.done && isSlotOpen(c.slot))
     .sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
   const nextUp: { emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean } | null =
     firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb, logOnly: firstUp.logOnly } : null;

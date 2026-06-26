@@ -140,11 +140,11 @@ export function useRhythmState(): RhythmState {
   // FDD / Psalms used AS a side's morning/evening PRAYER (not just a reflection)
   // must light that side's done-state. Tracked reactively with the same robust
   // return-to-app signals as the reflection read-state.
-  const [prayerRead, setPrayerRead] = useState(() => ({ fdd: hasReadFddToday(), psalms: hasPrayedPsalmsToday() }));
+  const [prayerRead, setPrayerRead] = useState(() => ({ fdd: hasReadFddToday(), psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening") }));
   useEffect(() => {
     const recheck = () => {
       setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
-      setPrayerRead({ fdd: hasReadFddToday(), psalms: hasPrayedPsalmsToday() });
+      setPrayerRead({ fdd: hasReadFddToday(), psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening") });
     };
     // The reflection is read on a separate surface (often the in-app browser),
     // which stamps localStorage + fires a read-event. We re-check on those
@@ -375,9 +375,9 @@ export function useRhythmState(): RhythmState {
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
   const morningDone = !!todayOffice?.morning || officeLocal.morning
-    || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalms);
+    || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalmsMorning);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
-    || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalms);
+    || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalmsEvening);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe sits + any external
   // Apple Health mindful minutes (a Cobreathe breath logs a contemplation sit,

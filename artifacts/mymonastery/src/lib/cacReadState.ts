@@ -84,13 +84,15 @@ const ssjeTracker = makeDailyReadTracker(
 );
 // Praying the Psalms — local-only done tracker (no server reflection sync; it's
 // a prayer level, not a reflection source). Drives the home Psalms card's done.
-const psalmsTracker = makeDailyReadTracker(
-  "phoebe:psalms:last-read-day", "phoebe:psalms-read",
-  () => { /* local-only */ },
-);
-export const PSALMS_READ_EVENT = psalmsTracker.eventName;
-export function hasPrayedPsalmsToday(): boolean { return psalmsTracker.hasReadToday(); }
-export function markPsalmsPrayed(): void { psalmsTracker.markRead(); }
+// SIDE-SCOPED: morning and evening psalms are tracked separately, so praying the
+// morning psalms doesn't mark the evening side done (a user can have psalms on
+// both). Both fire the same event so every listener refreshes.
+export const PSALMS_READ_EVENT = "phoebe:psalms-read";
+const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-read-day", PSALMS_READ_EVENT, () => { /* local-only */ });
+const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => { /* local-only */ });
+const psalmsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? psalmsTrackerEvening : psalmsTrackerMorning);
+export function hasPrayedPsalmsToday(side: "morning" | "evening" = "morning"): boolean { return psalmsTrackerFor(side).hasReadToday(); }
+export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); }
 
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with

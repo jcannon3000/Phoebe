@@ -139,11 +139,6 @@ export default function PsalmsPage() {
 
   const psalmSlides = useMemo(() => buildPsalmSlides(data?.psalms ?? []), [data]);
 
-  // Reading is praying — mark the day done once the psalms have loaded.
-  useEffect(() => {
-    if (psalmSlides.length > 0) markPsalmsPrayed();
-  }, [psalmSlides.length]);
-
   // One concluding slide after the office-shaped slides (index === length).
   const total = psalmSlides.length + 1;
   const emptyScrollable = useMemo(() => new Set<number>(), []);
@@ -151,6 +146,13 @@ export default function PsalmsPage() {
     currentIndex, direction, scrollBlocked, contentRef,
     handleClick, handleTouchStart, handleTouchEnd, handleTouchMove, handleScroll,
   } = useSlideshow({ total, scrollableSlides: emptyScrollable });
+
+  // Praying is COMPLETING — mark the day done only once the reader reaches the
+  // concluding slide (not on open), matching the office-completed invariant. The
+  // mark is side-scoped so morning psalms don't mark the evening side done.
+  useEffect(() => {
+    if (psalmSlides.length > 0 && currentIndex >= psalmSlides.length) markPsalmsPrayed(office);
+  }, [currentIndex, psalmSlides.length, office]);
 
   const goHome = () => setLocation("/dashboard");
 

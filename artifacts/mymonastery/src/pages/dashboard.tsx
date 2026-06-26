@@ -3036,10 +3036,10 @@ function FddHomeCard() {
 // /psalms reader. Warm parchment tone, distinct from the blue FDD card.
 function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
   const [, goTo] = useLocation();
-  const [done, setDone] = useState(() => hasPrayedPsalmsToday());
+  const [done, setDone] = useState(() => hasPrayedPsalmsToday(side));
   const [cycle, setCycle] = useState(() => getPsalmCycle());
   useEffect(() => {
-    const refresh = () => { setDone(hasPrayedPsalmsToday()); setCycle(getPsalmCycle()); };
+    const refresh = () => { setDone(hasPrayedPsalmsToday(side)); setCycle(getPsalmCycle()); };
     window.addEventListener(PSALMS_READ_EVENT, refresh);
     window.addEventListener(OFFICE_PREFS_EVENT, refresh);
     document.addEventListener("visibilitychange", refresh);
