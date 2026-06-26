@@ -1284,7 +1284,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // look. A plain render helper (NOT a component) so it inlines and the native
     // select never remounts mid-selection. Stops propagation so a tap can't
     // bubble to the slide tap-nav.
-    const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "psalms" ? `${sideWord} Psalms` : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
+    const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "psalms" ? "Today's Psalms" : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
     const methodValue = screenOnly ? "screen" : prayMethod;
     const methodLabel = methodValue === "screen" ? "On screen" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : "Physical BCP";
 
@@ -1375,8 +1375,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               if (w === "psalms" || w === "office" || w === "devotion") setSideLevel(officeSide, w);
             }, (
               <>
+                <option value="psalms">Today's Psalms</option>
                 <option value="intercessions">Community Intercessions</option>
-                <option value="psalms">Pray psalms</option>
                 <option value="devotion">{sideWord} Devotion</option>
                 <option value="office">{sideWord} Prayer</option>
               </>
@@ -4268,7 +4268,7 @@ export default function BcpDailyOfficePage() {
             </div>
             <div style={officeRow}>
               <span style={officeRowLabel}>Practice</span>
-              <span style={officeRowValue}>{practicePick === "psalms" ? "Pray psalms" : practicePick === "devotion" ? "Devotion (short)" : "Full Office"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
+              <span style={officeRowValue}>{practicePick === "psalms" ? "Today's Psalms" : practicePick === "devotion" ? "Devotion (short)" : "Full Office"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
               <select
                 value={practicePick}
                 onChange={(e) => {
@@ -4281,9 +4281,9 @@ export default function BcpDailyOfficePage() {
                 style={officeRowSelect}
                 aria-label="Practice"
               >
+                <option value="psalms">Today's Psalms</option>
                 <option value="devotion">Devotion (short)</option>
                 <option value="full">Full Office</option>
-                <option value="psalms">Pray psalms</option>
               </select>
             </div>
             {/* "How" only applies to the office/devotion (read · book · listen ·
