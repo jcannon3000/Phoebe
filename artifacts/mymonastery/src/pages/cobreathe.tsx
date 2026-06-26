@@ -21,11 +21,11 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 // per breath, shuffled per session. Drop a new photo into that folder and it
 // joins the rotation automatically; no manifest to edit.
 //
-// IMPORTANT: the top-level `*` glob is the SHARED pool used everywhere else
-// (office/intercession/contemplation via @/lib/earthPhotos). Co-Breathe ALSO
-// pulls two extra subfolders — `bad/` and `animals/` — into its "Planet" set.
-// Those are intentionally NOT in the top-level glob, so they only ever appear
-// here in Co-Breathe and never on the office or intercession slides.
+// The top-level `*` glob is the SHARED, curated pool used everywhere (office /
+// intercession / contemplation via @/lib/earthPhotos). Co-Breathe shows EXACTLY
+// this set — the same photos that live in the curated Pictures library. (The
+// old `bad/` + `animals/` Co-Breathe-only subfolders were dropped: they held
+// rejected images that aren't in the library, so they're no longer shown.)
 const COBREATHE_TOP_PHOTOS = Object.values(
   import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,webp}", {
     eager: true,
@@ -33,26 +33,7 @@ const COBREATHE_TOP_PHOTOS = Object.values(
     import: "default",
   }),
 ) as string[];
-const COBREATHE_BAD_PHOTOS = Object.values(
-  import.meta.glob("@/assets/cobreathe/bad/*.{jpg,jpeg,png,avif,webp}", {
-    eager: true,
-    query: "?url",
-    import: "default",
-  }),
-) as string[];
-const COBREATHE_ANIMAL_PHOTOS = Object.values(
-  import.meta.glob("@/assets/cobreathe/animals/*.{jpg,jpeg,png,avif,webp}", {
-    eager: true,
-    query: "?url",
-    import: "default",
-  }),
-) as string[];
-// "The Planet" = the shared landscapes PLUS the Co-Breathe-only bad/animal sets.
-const COBREATHE_PHOTOS = [
-  ...COBREATHE_TOP_PHOTOS,
-  ...COBREATHE_BAD_PHOTOS,
-  ...COBREATHE_ANIMAL_PHOTOS,
-];
+const COBREATHE_PHOTOS = [...COBREATHE_TOP_PHOTOS];
 
 // Fingerprint of the bundled photo set — two clients only sync if it matches,
 // so a build/version drift (different photos) safely falls back to solo order.

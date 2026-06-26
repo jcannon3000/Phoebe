@@ -968,7 +968,11 @@ function OpeningSplash() {
   // special-cased: it only enters the running from 4pm onward AND, as an
   // evening-slot card, only wins once everything else is done — so a midday next
   // thing (a custom practice, journaling, Audio Divina, …) always shows ahead of it.
-  type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string };
+  // `logOnly` marks an anchor that's just a "did you do it" log indicator (a
+  // custom practice, journaling, reading, podcasts) — there's no in-app activity
+  // to start, you just tap to log it. The splash hides the "Begin →" pill for
+  // these (a Begin CTA on a pure log indicator is misleading).
+  type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean };
   const nextCandidates: NextCand[] = [
     { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" },
     ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
@@ -977,10 +981,10 @@ function OpeningSplash() {
     { active: rhythm.listeningActive, done: rhythm.listeningDone, slot: getPracticeSlot("listening"), emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" },
     { active: rhythm.lectioActive, done: rhythm.lectioDone, slot: getPracticeSlot("lectio"), emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" },
     { active: rhythm.walkActive, done: rhythm.walkDone, slot: getPracticeSlot("walk"), emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" },
-    { active: rhythm.journalingActive, done: rhythm.journalingDone, slot: getJournalingSlot(), emoji: "📓", label: "Journaling", blurb: "Kept however you like — tap to log", rgb: "120,150,170" },
-    ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150" })),
-    { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "150,140,110" },
-    { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150" },
+    { active: rhythm.journalingActive, done: rhythm.journalingDone, slot: getJournalingSlot(), emoji: "📓", label: "Journaling", blurb: "Kept however you like — tap to log", rgb: "120,150,170", logOnly: true },
+    ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150", logOnly: true })),
+    { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "150,140,110", logOnly: true },
+    { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
     // The Examen + Gratitude are end-of-day reflections — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
     { active: rhythm.gratitudeActive, done: rhythm.gratitudeDone, slot: "evening", emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" },
@@ -993,8 +997,8 @@ function OpeningSplash() {
   const firstUp = nextCandidates
     .filter((c) => c.active && !c.done && (c.slot !== "evening" || hour >= 17))
     .sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
-  const nextUp: { emoji: string; label: string; blurb: string; rgb: string } | null =
-    firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb } : null;
+  const nextUp: { emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean } | null =
+    firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb, logOnly: firstUp.logOnly } : null;
   const showFellows = false;
   const showWhatsNext = rhythm.ready && !!nextUp;
   const showQuote = rhythm.ready && !nextUp;
@@ -1304,9 +1308,13 @@ function OpeningSplash() {
                   <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.label}</p>
                   <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.blurb}</p>
                 </div>
-                <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: `rgba(${nextUp.rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {t("rhythm.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
-                </span>
+                {/* No "Begin" pill for pure log indicators (custom practices,
+                    journaling, reading, podcasts) — there's nothing to start. */}
+                {!nextUp.logOnly && (
+                  <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: `rgba(${nextUp.rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {t("rhythm.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>

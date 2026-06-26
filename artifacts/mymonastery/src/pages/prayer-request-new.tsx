@@ -218,10 +218,6 @@ export default function PrayerRequestNew() {
       animate={{ y: closing ? "100%" : 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       onAnimationComplete={() => { if (closing) setLocation(closing); }}
-      // Tapping the background (anywhere outside the form content) closes the
-      // slide — the content container below stops propagation so taps on the
-      // textarea / dropdown / buttons don't dismiss it.
-      onClick={handleBack}
       style={{ position: "fixed", inset: 0, zIndex: 60, isolation: "isolate", minHeight: "100dvh", overflowY: "auto", background: BG, overflowX: "hidden" }}
     >
       {/* A still landscape behind the page, faded gently up under a dark wash. */}
@@ -248,7 +244,7 @@ export default function PrayerRequestNew() {
         </button>
       </div>
 
-      <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "8px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "8px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
         {/* One slide — centered, matching the office-close "How can the community
             pray for you?" ask: eyebrow, italic title, note, then write + share. */}
         <div className="flex flex-col items-center text-center gap-5">
