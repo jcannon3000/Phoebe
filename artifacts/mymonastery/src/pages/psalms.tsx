@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
-import { getPsalmCycle } from "@/lib/officePrefs";
+import { getPsalmCycle, getSideLevel } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
@@ -109,6 +109,12 @@ export default function PsalmsPage() {
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const office: "morning" | "evening" = params.get("office") === "evening" ? "evening" : "morning";
+  // Physical-BCP mode: show the page-number guide instead of the slideshow.
+  const book = params.get("book") === "1";
+  // When Praying the Psalms IS this side's prayer, finishing hands off to the
+  // office's closing flow (the reflection / newsletter "next thing"), exactly
+  // like the office close — instead of just dropping back home.
+  const isDailyPrayer = getSideLevel(office) === "psalms";
   const cycleParam = params.get("cycle");
   const cycle = cycleParam === "office" || cycleParam === "monthly" ? cycleParam : getPsalmCycle();
   const today = new Date().toLocaleDateString("en-CA");
@@ -121,22 +127,30 @@ export default function PsalmsPage() {
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
   const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
-  // One concluding slide after the psalm slides (index === slides.length).
-  const total = slides.length + 1;
+  // No extra concluding slide — finishing hands straight off (to the office
+  // close when this is the daily prayer, else home), matching the office.
+  const total = slides.length;
   const [index, setIndex] = useState(0);
-  const onConcluding = index >= slides.length;
 
   // A still leaf backdrop, picked once — matching the office slideshow.
   const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
-  // Praying is COMPLETING — mark the day done only once the reader reaches the
-  // concluding slide. Side-scoped so morning psalms don't mark evening done.
-  useEffect(() => {
-    if (slides.length > 0 && index >= slides.length) markPsalmsPrayed(office);
-  }, [index, slides.length, office]);
-
   const goHome = () => setLocation("/dashboard");
-  const next = () => setIndex((i) => Math.min(i + 1, slides.length));
+  // Finishing the psalms = the day's Praying-the-Psalms is kept (side-scoped).
+  // When the psalms ARE this side's prayer, hand off to the office's closing
+  // flow (the reflection / newsletter "next thing"); otherwise drop home.
+  const finish = () => {
+    markPsalmsPrayed(office);
+    if (isDailyPrayer) {
+      setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
+    } else {
+      goHome();
+    }
+  };
+  const advance = () => {
+    if (index >= slides.length - 1) { finish(); return; }
+    setIndex((i) => i + 1);
+  };
   const back = () => { if (index <= 0) { goHome(); return; } setIndex((i) => Math.max(i - 1, 0)); };
 
   const eyebrowLabel = office === "evening" ? "The Psalm Appointed For This Evening" : "The Psalm Appointed For This Morning";
@@ -163,8 +177,49 @@ export default function PsalmsPage() {
     );
   }
 
-  const slide = onConcluding ? null : slides[index];
+  const slide = slides[index];
   const atEnd = index >= slides.length - 1;
+
+  // ── Physical-BCP guide ────────────────────────────────────────────────────
+  // Chosen "How → Physical BCP": instead of the slideshow, show where to find
+  // today's psalms in the book — one card per psalm with its page number.
+  if (book) {
+    const psalms = data?.psalms ?? [];
+    return (
+      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+        {leaf && (
+          <>
+            <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7, zIndex: -2 }} />
+            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.8) 0%, rgba(12,31,18,0.66) 45%, rgba(12,31,18,0.84) 100%)" }} />
+          </>
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
+          <button onClick={goHome} style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
+          <span style={{ borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>{office === "evening" ? "Evening Psalms" : "Morning Psalms"}</span>
+          <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "8px 0 4px", fontWeight: 600 }}>{eyebrowLabel}</p>
+          <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 44px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 6px", textAlign: "center" }}>Today's Psalms</h1>
+          <p style={{ fontSize: 14.5, fontFamily: FONT, color: SOFT_GREEN, margin: "0 0 22px", textAlign: "center" }}>Find them in your Book of Common Prayer.</p>
+          <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 12 }}>
+            {psalms.map((p) => (
+              <div key={p.number + "-" + p.raw} style={{ display: "flex", alignItems: "center", gap: 14, borderRadius: 16, padding: "16px 18px", background: "rgba(22,46,32,0.45)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.22)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 18, fontWeight: 700 }}>Psalm {refLabel(p)}</p>
+                  {p.title && <p style={{ margin: "2px 0 0", color: "rgba(200,212,192,0.6)", fontFamily: SERIF, fontStyle: "italic", fontSize: 14 }}>{p.title}</p>}
+                </div>
+                <span style={{ flexShrink: 0, color: PAGE_REF, fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.04em" }}>{p.bcpRef || ""}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={finish} style={{ marginTop: 26, background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.4)", color: WARM, borderRadius: 999, padding: "12px 30px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            I've prayed them <span aria-hidden>→</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
@@ -185,16 +240,9 @@ export default function PsalmsPage() {
         <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
       </div>
 
-      {/* Slide counter. */}
-      {!onConcluding && (
-        <div style={{ position: "absolute", top: "max(0.75rem, var(--safe-top))", right: 0, left: 0, textAlign: "center", fontSize: 12, color: "rgba(143,175,150,0.4)", fontFamily: FONT, pointerEvents: "none", zIndex: 2, marginTop: -2 }}>
-          {index + 1} of {total}
-        </div>
-      )}
-
       {/* Slide body — tap the right half to advance, left half to go back. */}
       <div
-        onClick={(e) => { const w = (e.currentTarget as HTMLElement).clientWidth; if (e.clientX > w / 2) next(); else back(); }}
+        onClick={(e) => { const w = (e.currentTarget as HTMLElement).clientWidth; if (e.clientX > w / 2) advance(); else back(); }}
         style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "8px 28px 0", cursor: "pointer", WebkitOverflowScrolling: "touch" }}
       >
         {slide?.kind === "title" && (
@@ -232,26 +280,16 @@ export default function PsalmsPage() {
           </div>
         )}
 
-        {onConcluding && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 18 }}>
-            <div style={{ fontSize: 40 }} aria-hidden>🌿</div>
-            <p style={{ color: "#E8E4D8", fontFamily: SERIF, fontStyle: "italic", fontSize: 20, lineHeight: 1.5, margin: 0, maxWidth: 420 }}>The psalms are prayed.</p>
-            <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 13, letterSpacing: "0.04em", margin: 0 }}>{office === "evening" ? "Evening Psalms" : "Morning Psalms"}</p>
-            <button onClick={goHome} style={{ marginTop: 12, background: "rgba(46,107,64,0.4)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, borderRadius: 999, padding: "11px 30px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>Home</button>
-          </div>
-        )}
       </div>
 
-      {/* Footer — Back · counter · Next/Done. */}
-      {!onConcluding && (
-        <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 max(1.25rem, env(safe-area-inset-bottom))" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(9,26,16,0.55)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.22)", borderRadius: 999, padding: "8px 10px 8px 18px" }}>
-            <button onClick={back} style={{ background: "none", border: "none", color: SOFT_GREEN, fontFamily: FONT, fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "6px 10px" }}>Back</button>
-            <span style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.08em" }}>{index + 1} of {total} · PSALM</span>
-            <button onClick={next} style={{ background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.4)", color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, borderRadius: 999, padding: "8px 20px", cursor: "pointer" }}>{atEnd ? "Done" : "Next"}</button>
-          </div>
+      {/* Footer — Back · section label · Next/Done. */}
+      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 max(1.25rem, env(safe-area-inset-bottom))" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(9,26,16,0.55)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.22)", borderRadius: 999, padding: "8px 10px 8px 18px" }}>
+          <button onClick={back} style={{ background: "none", border: "none", color: SOFT_GREEN, fontFamily: FONT, fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "6px 10px" }}>Back</button>
+          <span style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.08em" }}>PSALM {index + 1} / {total}</span>
+          <button onClick={advance} style={{ background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.4)", color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, borderRadius: 999, padding: "8px 20px", cursor: "pointer" }}>{atEnd ? "Done" : "Next"}</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

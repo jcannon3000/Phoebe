@@ -4198,12 +4198,16 @@ export default function BcpDailyOfficePage() {
   // St John's stream). methodPick is clamped to a valid one for Begin.
   // Physical BCP leads the list, then On screen · Listen · Watch (morning
   // weekdays only, when the Cathedral streams).
-  const howOptions: DefaultOfficeEntry[] = [
-    "book",
-    "read",
-    "listen",
-    ...(todPick === "morning" && weekday ? (["watch"] as const) : []),
-  ];
+  const howOptions: DefaultOfficeEntry[] = practicePick === "psalms"
+    // Praying the Psalms: only on-screen (the slideshow) or Physical BCP (a
+    // page-number guide) — no Listen / Watch.
+    ? ["book", "read"]
+    : [
+        "book",
+        "read",
+        "listen",
+        ...(todPick === "morning" && weekday ? (["watch"] as const) : []),
+      ];
   // Match the first-slide labels ("On screen", not "Digital Slideshow").
   const HOW_LABEL: Record<DefaultOfficeEntry, string> = {
     read: "On screen",
@@ -4214,7 +4218,8 @@ export default function BcpDailyOfficePage() {
   const effMethod: DefaultOfficeEntry = howOptions.includes(methodPick) ? methodPick : "read";
   const beginOffice = () => {
     if (practicePick === "psalms") {
-      setLocation(`/psalms?office=${todPick}`);
+      // On screen → the slideshow; Physical BCP → the page-number guide.
+      setLocation(`/psalms?office=${todPick}${effMethod === "book" ? "&book=1" : ""}`);
       return;
     }
     if (practicePick === "devotion") {
@@ -4286,9 +4291,9 @@ export default function BcpDailyOfficePage() {
                 <option value="full">Full Office</option>
               </select>
             </div>
-            {/* "How" only applies to the office/devotion (read · book · listen ·
-                watch). Praying the Psalms is on-screen only, so the row is hidden. */}
-            {practicePick !== "psalms" && (
+            {/* "How" — Physical BCP / On screen (+ Listen / Watch for the full
+                office). Praying the Psalms offers Physical BCP (a page guide) or
+                On screen (the slideshow). */}
             <div style={officeRow}>
               <span style={officeRowLabel}>How</span>
               <span style={officeRowValue}>{HOW_LABEL[effMethod]} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
@@ -4298,7 +4303,6 @@ export default function BcpDailyOfficePage() {
                 ))}
               </select>
             </div>
-            )}
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
 
             <button
