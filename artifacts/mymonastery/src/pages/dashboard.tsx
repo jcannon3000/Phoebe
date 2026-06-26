@@ -7324,9 +7324,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   // Cascade base for the events schedule: after the rhythm cards
                   // and the prayer-list carousel (which now also holds your own
                   // requests).
-                  const carouselCount = (dashPrayerRequests ?? []).filter(
+                  // The carousel holds BOTH prayer requests AND community
+                  // intercessions — count both, or the events cascade starts too
+                  // early and an event card rises at the same time as the last
+                  // intercession (they'd overlap). Mirrors the carouselRows build
+                  // in the prayer-list section above.
+                  const requestCount = (dashPrayerRequests ?? []).filter(
                     (r) => !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
                   ).length;
+                  const intercessionCount = (momentsData?.moments ?? []).filter(
+                    (m) => m.templateType === "intercession" && !m.prayerFeedId && m.state !== "archived" && !!m.group,
+                  ).length;
+                  const carouselCount = requestCount + intercessionCount;
                   const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
                   const cTomorrow = evBase + evToday.length;
                   const cWeek = cTomorrow + evTomorrow.length;
