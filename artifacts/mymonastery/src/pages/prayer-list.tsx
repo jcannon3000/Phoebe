@@ -1550,8 +1550,7 @@ export default function PrayerListPage() {
             );
           };
           const ownCard = (req: PrayerRequest) => {
-            const reqFaces = (req.amenFaces ?? []).filter(Boolean);
-            const reqTotal = req.amenPeopleCount ?? reqFaces.length;
+            const amened = !!req.myAmenedToday;
             return (
               <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
                 <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
@@ -1567,17 +1566,10 @@ export default function PrayerListPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}</p>
                         <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>{req.body}</p>
                       </div>
-                      {reqFaces.length > 0 && (
-                        <div className="flex-shrink-0 flex items-center">
-                          <div className="flex -space-x-2">
-                            {reqFaces.map((fp, idx) => fp.avatarUrl ? (
-                              <img key={idx} src={fp.avatarUrl} alt={fp.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
-                            ) : (
-                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>{facesInitials(fp.name ?? null)}</div>
-                            ))}
-                          </div>
-                          {reqTotal > reqFaces.length && (<span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>+{reqTotal - reqFaces.length}</span>)}
-                        </div>
+                      {amened ? (
+                        <span aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })} className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
+                      ) : (
+                        <span aria-hidden className="flex-shrink-0 inline-flex items-center justify-center rounded-full" style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1 }}>🙏🏽</span>
                       )}
                     </div>
                   </div>
