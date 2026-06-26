@@ -4359,17 +4359,31 @@ function PrayerListCarousel({
                   <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: `rgba(${rgb},0.72)` } : undefined} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
-                      {/* No more profile pictures — a community intercession
-                          keeps its category emoji; person requests show no
-                          avatar (the eyebrow names them; the 🙏/✓ pill on the
-                          right is the status indicator). */}
-                      {req.avatarEmoji && (
+                      {/* LEFT avatar — the requester's own profile picture (mine
+                          on my own request, the other person's on theirs). The
+                          who-prayed-for-me face stack on the RIGHT is gone; the
+                          🙏/✓ pill there is the status indicator. */}
+                      {req.avatarEmoji ? (
                         <div
                           className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
                           style={{ background: "#1A4A2E", border: "1px solid rgba(46,107,64,0.3)" }}
                           aria-hidden
                         >
                           {req.avatarEmoji}
+                        </div>
+                      ) : displayAvatar ? (
+                        <img
+                          src={displayAvatar}
+                          alt={displayName}
+                          className="w-9 h-9 rounded-full object-cover shrink-0"
+                          style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                        />
+                      ) : (
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+                          style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                        >
+                          {initials(displayName)}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
