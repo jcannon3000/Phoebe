@@ -52,15 +52,17 @@ export default function Onboarding() {
   const [error, setError] = useState("");
 
   const searchParams = new URLSearchParams(window.location.search);
-  const explicitRedirect = searchParams.get("redirect");
+  // A fresh sign-up / sign-in always lands on the home — the same place an
+  // office signup ends up — never the retired "Find a community" page. We still
+  // honor a real ?redirect (e.g. a community-INVITE link), but never /welcome.
+  const rawRedirect = searchParams.get("redirect");
+  const explicitRedirect = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("/welcome")
+    ? rawRedirect
+    : null;
 
   useEffect(() => {
     if (!isLoading && user) {
-      if (explicitRedirect) {
-        setLocation(explicitRedirect);
-        return;
-      }
-      setLocation("/dashboard");
+      setLocation(explicitRedirect ?? "/dashboard");
     }
   }, [user, isLoading, setLocation, explicitRedirect]);
 
