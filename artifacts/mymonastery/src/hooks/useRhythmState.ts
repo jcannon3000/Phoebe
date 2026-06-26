@@ -384,7 +384,14 @@ export function useRhythmState(): RhythmState {
   // so it's already counted here). It only counts as KEPT once the daily goal is
   // met — if no goal is set, any silence counts.
   const contemplationMin = Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
-  const contemplationGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
+  const rawGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
+  // Starter rule: an un-set-up user (no saved home layout) gets a 5-minute
+  // silence by default — alongside Morning/Evening Psalms + Forward Day by Day.
+  // Once they customize (which writes a home layout) their chosen goal wins,
+  // including 0 = "no daily goal". The column's DB default is 0, so the value
+  // alone can't tell uncustomized-0 from chosen-0 — the home layout is the
+  // "have they designed a rule yet?" signal (same as the reflection fallback).
+  const contemplationGoalMin = (!user?.homeLayout && rawGoalMin === 0) ? 5 : rawGoalMin;
   // Silence is a daily-MINUTES goal: the dot lights (and the Silence card shows
   // ✓) once today's contemplation minutes reach the chosen goal, the card's
   // progress bar filling on the way there. If no goal is set, any silence counts.
@@ -428,7 +435,7 @@ export function useRhythmState(): RhythmState {
   // evening is part of the rhythm by default (un-set-up evening pref falls back to
   // "devotion", not "none").
   const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "devotion") !== "none";
-  const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 0) > 0;
+  const silenceActive = contemplationGoalMin > 0;
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
