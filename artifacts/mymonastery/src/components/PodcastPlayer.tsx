@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -357,7 +356,6 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     return () => { window.removeEventListener("pointerup", clear); window.removeEventListener("pointercancel", clear); };
   }, []);
   const [rate, setRate] = useState(1);
-  const [artBroken, setArtBroken] = useState(false);
   // Full-screen "now playing" listener (vs. the bottom mini-bar).
   const [expanded, setExpanded] = useState(false);
   // After a daily office finishes, gently offer Forward Day by Day next — an
@@ -473,7 +471,6 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         const savedPos = loadPos(ep);
         pendingSeekRef.current = savedPos > 0 ? savedPos : (showOverride(ep.showSlug)?.introSkipSeconds ?? 0);
       }
-      setArtBroken(false);
       return ep;
     });
   }, [commitSession]);
@@ -1012,7 +1009,6 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   };
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const art = (!artBroken && (current?.imageUrl || current?.showArtwork)) || null;
 
   // ── Office immersive backdrop ──────────────────────────────────────────
   // When the now-playing episode is a daily office, choose a stable landscape
@@ -1021,14 +1017,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Office regardless of launch path (the office launcher's "office-morning" OR
   // the Audio library's "morning-office").
   const officeSide = officeSideFromSlug(current?.showSlug) ?? current?.creditMode ?? null;
-  // The immersive photographic player is used for the offices AND any show
-  // flagged immersive (e.g. National Cathedral sermons). officeSide stays null
-  // for those, so they're never credited as an office — only the RENDER is shared.
-  const isOffice = officeSide !== null || !!showOverride(current?.showSlug)?.immersive;
+  // The immersive photographic player (full-bleed LANDSCAPE photo melting into a
+  // sampled colour) is now used for ALL audio — offices, podcasts, FDD, sermons,
+  // everything — so every listen happens in the same prayerful space. officeSide
+  // stays null for non-offices, so only the daily office is credited as the
+  // office and gets the FM/CoE source toggle; the RENDER is shared everywhere.
   // Reverb engages only for the Forward Movement office. Build the graph + ramp
   // the wet signal in; for everything else (other podcasts, CoE office) the wet
   // gain rides to 0 so playback is the untouched dry signal.
-  const reverbOn = OFFICE_REVERB_ENABLED && isOffice && officeAudioSource === "forward-movement";
+  const reverbOn = OFFICE_REVERB_ENABLED && officeSide !== null && officeAudioSource === "forward-movement";
   useEffect(() => {
     if (reverbOn) ensureReverbGraph();
     const ctx = audioCtxRef.current;
@@ -1041,22 +1038,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reverbOn]);
   const officeBg = useMemo(() => {
-    if (!isOffice) return null;
-    // A hand-picked background for this side (e.g. fm-morning.jpg) wins; else a
-    // stable random Cobreathe photo.
+    if (!current) return null;
+    // The daily office can have a hand-picked background for its side
+    // (e.g. fm-morning.jpg); otherwise — and for every other kind of audio —
+    // use a stable LANDSCAPE photo from the Cobreathe library. We deliberately
+    // do NOT fall back to a show's square artwork: every listen gets the same
+    // full-bleed landscape backdrop.
     if (officeSide) {
       const dedicated = dedicatedOfficeBg(officeSide);
       if (dedicated) return dedicated;
-    } else {
-      // Immersive non-office show (e.g. cathedral sermons): use the show's own
-      // artwork as the photographic backdrop.
-      const art = current?.showArtwork || current?.imageUrl;
-      if (art) return art;
     }
     if (OFFICE_BG_PHOTOS.length === 0) return null;
-    const seed = current?.episodeId || current?.showSlug || "office";
+    const seed = current?.episodeId || current?.showSlug || "audio";
     return OFFICE_BG_PHOTOS[hashStr(seed) % OFFICE_BG_PHOTOS.length];
-  }, [isOffice, officeSide, current?.episodeId, current?.showSlug, current?.showArtwork, current?.imageUrl]);
+  }, [current, officeSide, current?.episodeId, current?.showSlug]);
   const [officeRgb, setOfficeRgb] = useState<{ r: number; g: number; b: number }>({ r: 18, g: 30, b: 22 });
   useEffect(() => {
     if (!officeBg) return;
@@ -1090,9 +1085,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const displayPct = scrubFrac != null ? scrubFrac * 100 : pct;
   const displayTime = scrubFrac != null && duration > 0 ? scrubFrac * duration : currentTime;
   const displayRemaining = duration > 0 ? Math.max(0, duration - displayTime) : 0;
-  // The office mini-bar shows the day's landscape photo, not the podcast feed
-  // artwork (we no longer surface the FM/CoE thumbnail anywhere).
-  const miniArt = isOffice ? officeBg : art;
+  // The mini-bar shows the landscape backdrop photo for every kind of audio,
+  // matching the full-screen immersive player (no square feed artwork anywhere).
+  const miniArt = officeBg;
 
   // ── Synced liturgy section titles ("transcription / section title") ───────
   // The read-aloud office is time-aligned server-side: each liturgical part
@@ -1115,7 +1110,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 6000; },
   });
   const officeSectionTitle = useMemo(() => {
-    if (!isOffice) return null;
+    if (!officeSide) return null;
     const secs = (alignData?.sections ?? [])
       .filter((s) => s.type !== "appeal")
       .slice()
@@ -1139,7 +1134,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       return /^psalms?\b/i.test(title) ? title : t("podcasts.psalm_appointed", { defaultValue: "The Psalm Appointed" });
     }
     return title || humanizeSectionType(active.type);
-  }, [isOffice, alignData, currentTime, t]);
+  }, [officeSide, alignData, currentTime, t]);
   // The title shown on the immersive office player: the live liturgy part when
   // we have one, else the episode title.
   const officeTitle = officeSectionTitle ?? current?.title ?? t("podcasts.now_playing_fallback");
@@ -1198,14 +1193,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", minWidth: 0, flex: 1 }}
             >
               {miniArt ? (
-                <img src={miniArt} alt="" onError={() => { if (!isOffice) setArtBroken(true); }}
+                <img src={miniArt} alt=""
                   style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "rgba(143,175,150,0.12)" }} />
               ) : (
                 <div style={{ width: 40, height: 40, borderRadius: 8, flexShrink: 0, background: "rgba(46,107,64,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎧</div>
               )}
               <div style={{ minWidth: 0, textAlign: "left" }}>
                 <p style={{ fontSize: 12.5, fontWeight: 600, color: "#F0EDE6", margin: 0, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
-                  {isOffice ? officeTitle : (current.title ?? t("podcasts.now_playing_fallback"))}
+                  {officeTitle}
                 </p>
                 <p style={{ fontSize: 10.5, color: "rgba(143,175,150,0.8)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
                   {fmtClock(currentTime)}{duration > 0 ? ` / ${fmtClock(duration)}` : ""}{current.showTitle ? ` · ${current.showTitle}` : ""}
@@ -1242,7 +1237,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
           library photo up top, melting through a gradient into a colour
           sampled from the photo, with the transport over the image and the
           time / title / scrubber on the solid colour below. */}
-      {current && expanded && isOffice && (
+      {current && expanded && (
         <div
           style={{
             position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F6F0E6",
@@ -1306,6 +1301,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                 style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
                 <IconSkip secs={30} forward />
               </button>
+              {queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length && (
+                <button type="button" onClick={skipToNext}
+                  aria-label={t("podcasts.a11y_next", { defaultValue: "Next episode" })}
+                  style={{ background: "none", border: "none", color: "#FFFFFF", fontSize: 26, lineHeight: 0, padding: 4, cursor: "pointer" }}>
+                  ⏭
+                </button>
+              )}
             </div>
 
             {/* Lower block on the solid colour: big remaining time, scrubber,
@@ -1332,177 +1334,67 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 700, margin: "16px 0 0", lineHeight: 1.18, color: "#F6F0E6", transition: "opacity 0.3s" }}>
                 {officeTitle}
               </h2>
-              <p style={{ fontSize: 14, color: "rgba(246,240,230,0.72)", margin: "5px 0 0", fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {current.showTitle ?? ""}
-              </p>
-
-              {/* Forward Movement ↔ Church of England — light-on-photo styling */}
-              <div
-                role="tablist"
-                aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
-                style={{ display: "inline-flex", gap: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
-              >
-                {(["forward-movement", "church-of-england"] as const).map((s) => {
-                  const active = officeAudioSource === s;
-                  return (
-                    <button key={s} type="button" role="tab" aria-selected={active}
-                      onClick={() => switchOfficeSource(s)} disabled={sourceSwitching}
-                      style={{
-                        borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600, fontFamily: FONT,
-                        cursor: sourceSwitching ? "wait" : "pointer", whiteSpace: "nowrap",
-                        background: active ? "rgba(255,255,255,0.18)" : "transparent",
-                        border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "transparent"}`,
-                        color: active ? "#FFFFFF" : "rgba(246,240,230,0.6)",
-                        transition: "background 0.15s, color 0.15s",
-                      }}>
-                      {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm",
-                        { defaultValue: s === "church-of-england" ? "Church of England" : "Forward Movement" })}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Full-screen "now playing" listener — opened by starting an
-          episode or tapping the mini-bar. Carries the Recommend action
-          (the show list no longer does). Drives the same <audio> as the
-          mini-bar, so collapsing keeps playback going. */}
-      {current && expanded && !isOffice && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F0EDE6",
-            background: "#0C1F12",
-            display: "flex", flexDirection: "column",
-            paddingTop: "max(0.75rem, var(--safe-top))",
-            paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
-          }}
-        >
-          {/* Drifting gradient backdrop — same animation as the home /
-              office slides, behind the now-playing content. */}
-          <AnimatedBackground base="#0C1F12" variant="pronounced" />
-          {/* Top bar: minimize / label / spacer (no close — use the mini-bar) */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 16px 0", flexShrink: 0 }}>
-            <button type="button" onClick={() => setExpanded(false)} aria-label={t("podcasts.a11y_minimize")}
-              style={{ background: "none", border: "none", color: "rgba(168,197,160,0.95)", fontSize: 28, lineHeight: 1, cursor: "pointer", padding: 4 }}>
-              ⌄
-            </button>
-            <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(143,175,150,0.75)" }}>
-              {t("podcasts.now_playing")}
-            </span>
-            {/* Same width as the minimize button so NOW PLAYING stays centered */}
-            <span style={{ width: 36 }} />
-          </div>
-
-          {/* Center: cover art + title + show + description (scrolls if long) */}
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 26px 8px", textAlign: "center" }}>
-            {art ? (
-              <img src={art} alt="" onError={() => setArtBroken(true)}
-                style={{ width: "min(64vw, 288px)", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 22, background: "rgba(143,175,150,0.12)", boxShadow: "0 16px 40px rgba(0,0,0,0.4)" }} />
-            ) : (
-              <div style={{ width: "min(64vw, 288px)", aspectRatio: "1 / 1", borderRadius: 22, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72 }} aria-hidden>🎧</div>
-            )}
-            <h2 style={{ fontSize: 21, fontWeight: 800, margin: "24px 0 0", lineHeight: 1.2, maxWidth: 460 }}>
-              {current.title ?? t("podcasts.now_playing_fallback")}
-            </h2>
-            <button type="button"
-              onClick={() => { setExpanded(false); setLocation(current.showHref ?? `/podcasts/show/${current.showSlug}`); }}
-              style={{ background: "none", border: "none", color: "#8FAF96", fontFamily: FONT, fontSize: 13.5, margin: "8px 0 0", cursor: "pointer", padding: 0 }}>
-              {current.showTitle ?? t("podcasts.view_show")}
-            </button>
-            {current.showSlug?.startsWith("office-") && (
-              <div
-                role="tablist"
-                aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
-                style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
-              >
-                {(["forward-movement", "church-of-england"] as const).map((s) => {
-                  const active = officeAudioSource === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => switchOfficeSource(s)}
-                      disabled={sourceSwitching}
-                      style={{
-                        borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600,
-                        fontFamily: FONT, cursor: sourceSwitching ? "wait" : "pointer",
-                        whiteSpace: "nowrap",
-                        background: active ? "rgba(96,141,209,0.15)" : "transparent",
-                        border: `1px solid ${active ? "rgba(96,141,209,0.45)" : "transparent"}`,
-                        color: active ? "#F0EDE6" : "rgba(143,175,150,0.55)",
-                        transition: "background 0.15s, color 0.15s",
-                      }}
-                    >
-                      {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm",
-                        { defaultValue: s === "church-of-england" ? "Church of England" : "Forward Movement" })}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {current.description && (
-              <p style={{ fontSize: 13, color: "rgba(200,212,192,0.85)", lineHeight: 1.55, margin: "18px 0 0", maxWidth: 460, textAlign: "left", whiteSpace: "pre-line" }}>
-                {current.description}
-              </p>
-            )}
-          </div>
-
-          {/* Controls pinned to the bottom */}
-          <div style={{ flexShrink: 0, padding: "8px 26px 0" }}>
-            <div {...scrubHandlers} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(displayPct)}
-              style={{ position: "relative", padding: "10px 0", cursor: "pointer", touchAction: "none" }}>
-              <div style={{ height: 6, borderRadius: 999, background: "rgba(143,175,150,0.18)", overflow: "hidden" }}>
-                <div style={{ width: `${displayPct}%`, height: "100%", background: "#A8C5A0" }} />
-              </div>
-              <div style={{ position: "absolute", top: "50%", left: `${displayPct}%`, width: 15, height: 15, borderRadius: "50%", background: "#C8D4C0", transform: "translate(-50%, -50%)", boxShadow: "0 1px 5px rgba(0,0,0,0.45)", pointerEvents: "none" }} />
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(143,175,150,0.8)", margin: "2px 2px 0" }}>
-              <span>{fmtClock(displayTime)}</span>
-              <span>{duration > 0 ? fmtClock(duration) : "--:--"}</span>
-            </div>
-
-            {(() => {
-              const hasNext = queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length;
-              return (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 26, margin: "14px 0 0" }}>
-                  <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
-                    style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>⟲15</button>
-                  <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
-                    style={{ width: 64, height: 64, borderRadius: "50%", background: "#A8C5A0", color: "#0A1A0F", border: "none", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {isPlaying ? "⏸" : "▶"}
-                  </button>
-                  <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
-                    style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>30⟳</button>
-                  <button type="button" onClick={skipToNext} disabled={!hasNext}
-                    aria-label={t("podcasts.a11y_next", { defaultValue: "Next episode" })}
-                    style={{ background: "none", border: "none", fontSize: 22, lineHeight: 1, padding: 0, cursor: hasNext ? "pointer" : "default", color: hasNext ? "#C8D4C0" : "rgba(200,212,192,0.22)", transition: "color 0.2s" }}>
-                    ⏭
-                  </button>
-                </div>
-              );
-            })()}
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 0" }}>
-              <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
-                style={{ background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>
-                {rate}×
-              </button>
-              {!current.hideRecommend && (
-                <button type="button" onClick={toggleRecommend}
-                  className="transition-opacity hover:opacity-90"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 16px",
-                    fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
-                    background: isRecommended ? "rgba(212,160,70,0.18)" : "rgba(46,107,64,0.14)",
-                    color: isRecommended ? "#F0DCA8" : "rgba(168,197,160,0.95)",
-                    border: `1px solid ${isRecommended ? "rgba(212,160,70,0.45)" : "rgba(46,107,64,0.3)"}`,
-                  }}>
-                  {isRecommended ? `♥ ${t("podcasts.recommended")}` : `♡ ${t("podcasts.recommend")}`}
+              {/* Show line: a plain label for offices, a tappable "view show"
+                  link for podcasts (so the immersive player keeps the library's
+                  show navigation). */}
+              {officeSide !== null ? (
+                <p style={{ fontSize: 14, color: "rgba(246,240,230,0.72)", margin: "5px 0 0", fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {current.showTitle ?? ""}
+                </p>
+              ) : (
+                <button type="button"
+                  onClick={() => { setExpanded(false); setLocation(current.showHref ?? `/podcasts/show/${current.showSlug}`); }}
+                  style={{ background: "none", border: "none", padding: 0, margin: "5px 0 0", fontFamily: FONT, fontSize: 14, color: "rgba(246,240,230,0.78)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", display: "block", textAlign: "left" }}>
+                  {current.showTitle ?? t("podcasts.view_show")}
                 </button>
+              )}
+
+              {officeSide !== null ? (
+                /* Forward Movement ↔ Church of England — offices only */
+                <div
+                  role="tablist"
+                  aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
+                  style={{ display: "inline-flex", gap: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
+                >
+                  {(["forward-movement", "church-of-england"] as const).map((s) => {
+                    const active = officeAudioSource === s;
+                    return (
+                      <button key={s} type="button" role="tab" aria-selected={active}
+                        onClick={() => switchOfficeSource(s)} disabled={sourceSwitching}
+                        style={{
+                          borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600, fontFamily: FONT,
+                          cursor: sourceSwitching ? "wait" : "pointer", whiteSpace: "nowrap",
+                          background: active ? "rgba(255,255,255,0.18)" : "transparent",
+                          border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "transparent"}`,
+                          color: active ? "#FFFFFF" : "rgba(246,240,230,0.6)",
+                          transition: "background 0.15s, color 0.15s",
+                        }}>
+                        {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm",
+                          { defaultValue: s === "church-of-england" ? "Church of England" : "Forward Movement" })}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Podcast actions: playback speed + Recommend (♡), light-on-photo. */
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "16px 0 0" }}>
+                  <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
+                    style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "#F6F0E6", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: FONT }}>
+                    {rate}×
+                  </button>
+                  {!current.hideRecommend && (
+                    <button type="button" onClick={toggleRecommend}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 16px",
+                        fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
+                        background: isRecommended ? "rgba(240,220,168,0.20)" : "rgba(255,255,255,0.10)",
+                        color: isRecommended ? "#F0DCA8" : "#F6F0E6",
+                        border: `1px solid ${isRecommended ? "rgba(240,220,168,0.5)" : "rgba(255,255,255,0.18)"}`,
+                      }}>
+                      {isRecommended ? `♥ ${t("podcasts.recommended")}` : `♡ ${t("podcasts.recommend")}`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
