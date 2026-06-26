@@ -4244,6 +4244,7 @@ function PrayerListCarousel({
   tight = false,
   hideTitle = false,
   cascadeFrom = 0,
+  cascadeReady = true,
 }: {
   requests: PrayerListCarouselRow[];
   viewerName: string | null;
@@ -4258,6 +4259,10 @@ function PrayerListCarousel({
   /** Global cascade start index — the carousel rows continue the home's
    *  one top-to-bottom cascade (rhythm rows → prayer list → events). */
   cascadeFrom?: number;
+  /** Hold the cascade until the rhythm cards ABOVE are rendered + settled, so
+   *  the prayer list comes in AFTER them and never animates while the layout
+   *  above is still shifting (which read as a post-settle "shimmy"). */
+  cascadeReady?: boolean;
 }) {
   const { t } = useTranslation();
   // Hold the row cascade + haptics until the app-open splash has faded (native).
@@ -4272,12 +4277,16 @@ function PrayerListCarousel({
     const id = window.setTimeout(clear, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
   }, [splashCleared]);
+  // The cascade runs only once the splash has faded AND the rhythm cards above
+  // have settled (cascadeReady) — so the prayer list rises after them, in one
+  // continuous wave, and never animates while the layout above is still moving.
+  const cascadeOn = splashCleared && cascadeReady;
   const carouselHaptedRef = useRef(false);
   useEffect(() => {
-    if (!splashCleared || carouselHaptedRef.current) return;
+    if (!cascadeOn || carouselHaptedRef.current) return;
     carouselHaptedRef.current = true;
     return scheduleCascadeHaptics(cascadeFrom, requests.length);
-  }, [splashCleared, cascadeFrom, requests.length]);
+  }, [cascadeOn, cascadeFrom, requests.length]);
   // Tapping a prayer card (anywhere, including the 🙏) opens the prayer
   // slideshow focused on that request — and queues the rest of your prayer
   // list — so you actually pray it (and Amen there), rather than a silent
@@ -4385,14 +4394,13 @@ function PrayerListCarousel({
                 className="block"
               >
                 <motion.div
-                  // Cascade the prayer list one card after another (a clear, self-
-                  // contained stagger keyed to each card's own index), so it rises
-                  // like the routine cards rather than arriving all at once. A
-                  // bigger per-card step than the rhythm so the wave is visible even
-                  // in a short list.
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.14, 1.2) }}
+                  // Continue the home's one top-to-bottom wave: each card's delay
+                  // is its GLOBAL index (cascadeFrom + i), so the prayer list rises
+                  // right after the rhythm cards above. Gated on cascadeOn so it
+                  // only starts once those are settled — no animating mid-reflow.
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={cascadeOn ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+                  transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + i) * 0.1, 1.4) }}
                   // A "new" (still-unprayed) request pulses its BORDER COLOR like
                   // a today's-event card — replacing the old top-of-home "N
                   // requests waiting" card. Prayed ones rest calm.
@@ -7302,6 +7310,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           viewerName={userName || null}
                           viewerAvatarUrl={user?.avatarUrl ?? null}
                           cascadeFrom={carouselFrom}
+                          cascadeReady={rhythm.ready}
                           tight
                         />
                       )}
