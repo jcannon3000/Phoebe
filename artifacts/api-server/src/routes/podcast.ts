@@ -115,6 +115,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "🎙️",
     showSlugs: [
       "national-cathedral-sermons",
+      "grace-church-nyc",
     ],
   },
   // Forward — Forward Movement's daily devotionals (Forward Day by Day +
@@ -136,7 +137,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "nc-crossroads",
       "roundtables-on-race",
       "living-church",
-      "grace-church-nyc",
     ],
   },
   cac: {
@@ -364,7 +364,7 @@ export const SHOWS: Record<string, Show> = {
     slug: "grace-church-nyc",
     title: "Grace Church in New York",
     artist: "Grace Church in New York",
-    publisher: "around-the-church",
+    publisher: "sermons",
     feedUrl: "https://feeds.soundcloud.com/users/soundcloud:users:666827156/sounds.rss",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/21/b8/b5/21b8b58d-7660-78b9-581e-a0266581e72f/mza_5763349292259453824.jpg/600x600bb.jpg",
   },
