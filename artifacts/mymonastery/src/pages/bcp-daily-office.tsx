@@ -4033,8 +4033,14 @@ export default function BcpDailyOfficePage() {
   // an office's opening slide: Time of day · Practice · How → Begin). ──
   const __h = new Date().getHours();
   const [todPick, setTodPick] = useState<OfficeSide>(__h >= 14 && __h < 20 ? "evening" : "morning");
-  const [practicePick, setPracticePick] = useState<"devotion" | "full">(
-    () => (getSideLevel(__h >= 14 ? "evening" : "morning") === "office" ? "full" : "devotion"),
+  // The Practice the landing opens on, seeded from this side's saved level —
+  // "psalms" (Praying the Psalms) and "full" (the office) round-trip through
+  // getSideLevel; everything else reads as the short devotion.
+  type Practice = "devotion" | "full" | "psalms";
+  const practiceForLevel = (lvl: string | null): Practice =>
+    lvl === "psalms" ? "psalms" : lvl === "office" ? "full" : "devotion";
+  const [practicePick, setPracticePick] = useState<Practice>(
+    () => practiceForLevel(getSideLevel(__h >= 14 ? "evening" : "morning")),
   );
   const [methodPick, setMethodPick] = useState<DefaultOfficeEntry>("read");
   // A leaf behind the landing, matching the office slideshow's leaf field.
@@ -4207,6 +4213,10 @@ export default function BcpDailyOfficePage() {
   };
   const effMethod: DefaultOfficeEntry = howOptions.includes(methodPick) ? methodPick : "read";
   const beginOffice = () => {
+    if (practicePick === "psalms") {
+      setLocation(`/psalms?office=${todPick}`);
+      return;
+    }
     if (practicePick === "devotion") {
       const mode = todPick === "morning" ? "morning-devotion" : "early-evening-devotion";
       const m = (effMethod === "book" || effMethod === "watch") ? effMethod : "read";
@@ -4251,19 +4261,34 @@ export default function BcpDailyOfficePage() {
             <div style={officeRow}>
               <span style={officeRowLabel}>Time of day</span>
               <span style={officeRowValue}>{todPick === "morning" ? "Morning" : "Evening"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
-              <select value={todPick} onChange={(e) => setTodPick(e.target.value as OfficeSide)} style={officeRowSelect} aria-label="Time of day">
+              <select value={todPick} onChange={(e) => { const s = e.target.value as OfficeSide; setTodPick(s); setPracticePick(practiceForLevel(getSideLevel(s))); }} style={officeRowSelect} aria-label="Time of day">
                 <option value="morning">Morning</option>
                 <option value="evening">Evening</option>
               </select>
             </div>
             <div style={officeRow}>
               <span style={officeRowLabel}>Practice</span>
-              <span style={officeRowValue}>{practicePick === "devotion" ? "Devotion (short)" : "Full Office"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
-              <select value={practicePick} onChange={(e) => setPracticePick(e.target.value as "devotion" | "full")} style={officeRowSelect} aria-label="Practice">
+              <span style={officeRowValue}>{practicePick === "psalms" ? "Pray psalms" : practicePick === "devotion" ? "Devotion (short)" : "Full Office"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
+              <select
+                value={practicePick}
+                onChange={(e) => {
+                  const p = e.target.value as Practice;
+                  setPracticePick(p);
+                  // Persist the choice for this side so it holds (Praying the
+                  // Psalms round-trips through getSideLevel + the home cards).
+                  setSideLevel(todPick, p === "psalms" ? "psalms" : p === "full" ? "office" : "devotion");
+                }}
+                style={officeRowSelect}
+                aria-label="Practice"
+              >
                 <option value="devotion">Devotion (short)</option>
                 <option value="full">Full Office</option>
+                <option value="psalms">Pray psalms</option>
               </select>
             </div>
+            {/* "How" only applies to the office/devotion (read · book · listen ·
+                watch). Praying the Psalms is on-screen only, so the row is hidden. */}
+            {practicePick !== "psalms" && (
             <div style={officeRow}>
               <span style={officeRowLabel}>How</span>
               <span style={officeRowValue}>{HOW_LABEL[effMethod]} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
@@ -4273,6 +4298,7 @@ export default function BcpDailyOfficePage() {
                 ))}
               </select>
             </div>
+            )}
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
 
             <button

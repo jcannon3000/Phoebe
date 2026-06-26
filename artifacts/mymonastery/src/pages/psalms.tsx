@@ -92,8 +92,9 @@ function buildPsalmSlides(psalms: Psalm[]): Slide[] {
     ? (psalms[0].title || `Psalm ${refLabel(psalms[0])}`)
     : `Psalms ${psalms.map((p) => p.number).join(" & ")}`;
 
-  // Title slide.
-  slides.push(blankSlide(id(), "psalm_title", combinedEyebrow, "", {
+  // Title slide. Carry a short body so it doesn't read as a blank page — the
+  // generic renderer otherwise shows only the small eyebrow + title.
+  slides.push(blankSlide(id(), "psalm_title", combinedEyebrow, "Today's appointed psalms — tap to begin.", {
     title: combinedTitle,
     bcpReference: psalms[0].bcpRef || null,
   }));
