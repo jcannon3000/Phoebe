@@ -817,11 +817,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const sortedCards = [...rawCards].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
   // Time-gate each slotted card: you can't complete a practice before its slot's
   // window opens (Midday 10 AM, Afternoon 2 PM, Evening 5 PM). Morning + Anytime
-  // are always open. A gated card stays a quiet, non-tappable "from <time>" card
-  // (the existing `later` treatment) until its window arrives.
+  // are always open. A gated card stays a quiet, non-tappable "Later" card (the
+  // existing `later` treatment) until its window arrives — no time on the pill.
   const cards = sortedCards.map((c) => {
     if (c.done || isSlotOpen(c.slot)) return c;
-    return { ...c, later: true, laterLabel: slotOpensLabel(c.slot) ?? undefined };
+    return { ...c, later: true };
   });
 
   // When a dedicated office hero is supplied (the beta home), the office shows
