@@ -4244,7 +4244,6 @@ function PrayerListCarousel({
   tight = false,
   hideTitle = false,
   cascadeFrom = 0,
-  cascadeReady = true,
 }: {
   requests: PrayerListCarouselRow[];
   viewerName: string | null;
@@ -4259,10 +4258,6 @@ function PrayerListCarousel({
   /** Global cascade start index — the carousel rows continue the home's
    *  one top-to-bottom cascade (rhythm rows → prayer list → events). */
   cascadeFrom?: number;
-  /** Hold the cascade until the rhythm cards ABOVE are rendered + settled, so
-   *  the prayer list comes in AFTER them and never animates while the layout
-   *  above is still shifting (which read as a post-settle "shimmy"). */
-  cascadeReady?: boolean;
 }) {
   const { t } = useTranslation();
   // Hold the row cascade + haptics until the app-open splash has faded (native).
@@ -4277,10 +4272,12 @@ function PrayerListCarousel({
     const id = window.setTimeout(clear, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
   }, [splashCleared]);
-  // The cascade runs only once the splash has faded AND the rhythm cards above
-  // have settled (cascadeReady) — so the prayer list rises after them, in one
-  // continuous wave, and never animates while the layout above is still moving.
-  const cascadeOn = splashCleared && cascadeReady;
+  // The cascade runs once the splash has faded, on the SAME timeline as the
+  // rhythm cards above (each card's delay is its global cascadeFrom index), so
+  // the prayer list flows continuously right after the routine. It must NOT wait
+  // on a separate readiness flag — that made the cards pop in as a delayed batch
+  // ~2s after the rhythm (which paints from cache well before the flag flips).
+  const cascadeOn = splashCleared;
   const carouselHaptedRef = useRef(false);
   useEffect(() => {
     if (!cascadeOn || carouselHaptedRef.current) return;
@@ -7310,7 +7307,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           viewerName={userName || null}
                           viewerAvatarUrl={user?.avatarUrl ?? null}
                           cascadeFrom={carouselFrom}
-                          cascadeReady={rhythm.ready}
                           tight
                         />
                       )}
