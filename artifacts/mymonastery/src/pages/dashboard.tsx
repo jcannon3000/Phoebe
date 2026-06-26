@@ -4359,27 +4359,17 @@ function PrayerListCarousel({
                   <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: `rgba(${rgb},0.72)` } : undefined} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
-                      {req.avatarEmoji ? (
+                      {/* No more profile pictures — a community intercession
+                          keeps its category emoji; person requests show no
+                          avatar (the eyebrow names them; the 🙏/✓ pill on the
+                          right is the status indicator). */}
+                      {req.avatarEmoji && (
                         <div
                           className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
                           style={{ background: "#1A4A2E", border: "1px solid rgba(46,107,64,0.3)" }}
                           aria-hidden
                         >
                           {req.avatarEmoji}
-                        </div>
-                      ) : displayAvatar ? (
-                        <img
-                          src={displayAvatar}
-                          alt={displayName}
-                          className="w-9 h-9 rounded-full object-cover shrink-0"
-                          style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                        />
-                      ) : (
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-                          style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                        >
-                          {initials(displayName)}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
@@ -4401,8 +4391,9 @@ function PrayerListCarousel({
                           decorative spans — the whole card is a Link, so tapping
                           the 🙏 opens the prayer slideshow on THIS request (and
                           queues the rest of your prayer list) to pray it there,
-                          rather than a silent one-tap amen. Not on your own request. */}
-                      {!req.isOwnRequest && (
+                          rather than a silent one-tap amen. Shown on your own
+                          request too, so you can see whether you've prayed it. */}
+                      {(
                         amened ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })}
@@ -7196,9 +7187,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       if (r.isAnswered) return false;
                       if (r.closedAt) return false;
                       if (typeof r.body !== "string" || r.body.length === 0) return false;
-                      // Your OWN requests move to their own "Your prayer requests"
-                      // section below the list — so the list is purely others to pray for.
-                      if (r.isOwnRequest) return false;
+                      // Your OWN requests now show in this SAME list as everyone
+                      // else's (with the 🙏/✓ pill reflecting whether you've prayed
+                      // it yourself) — no separate "Your prayer requests" section.
                       if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
                       // Prayed (amened) requests STAY on the list — they sink to
                       // the bottom and show a ✓, so done ones no longer disappear.
@@ -7261,54 +7252,36 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     only show when you HAVE an open request; the CTA always shows so
                     you can always start one. */}
                 {filter === null && !eventsOnly && (() => {
-                  // Your OWN open requests always stay on the home (just like
-                  // others' prayed requests now stay, sunk with a ✓) — finishing
-                  // everyone else's prayers must NOT make your own request vanish.
-                  const ownReqs = (dashPrayerRequests ?? []).filter(
-                    (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
-                  );
-                  const unprayedOthers = (dashPrayerRequests ?? []).filter(
-                    (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday,
-                  );
-                  // The upcoming EVENTS render BELOW this section now, so every
-                  // prayer request groups above the schedule. They share this
-                  // section's IIFE.
+                  // The upcoming EVENTS render below the prayer list. The "Add
+                  // prayer" button always sits directly under the list (your own
+                  // requests now live in that list too, with the 🙏/✓ pill), so
+                  // you can start a new request from the home at any time.
                   const evToday = fToday.filter(isEventItem);
                   const evTomorrow = fTomorrow.filter(isEventItem);
                   const evWeek = fWeek.filter(isEventItem);
                   const evMonth = fMonth.filter(isEventItem);
                   const hasEvents = evToday.length + evTomorrow.length + evWeek.length + evMonth.length > 0;
-                  // Hide the whole section only when there's nothing of yours,
-                  // nothing left to pray for, AND no events (the + FAB still
-                  // starts a new request whenever the section shows).
-                  if (ownReqs.length === 0 && unprayedOthers.length === 0 && !hasEvents) return null;
-                  // The home's ONE top-to-bottom cascade: rhythm cards → others'
-                  // carousel → your requests → events. Each card's fade-up starts
-                  // after all of them, never restarting at delay 0.
+                  // Cascade base for the events schedule: after the rhythm cards
+                  // and the prayer-list carousel (which now also holds your own
+                  // requests).
                   const carouselCount = (dashPrayerRequests ?? []).filter(
-                    (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
+                    (r) => !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
                   ).length;
-                  const ownBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
-                  const ownDelay = (i: number) => Math.min((ownBase + i) * 0.1, 1.5);
-                  // Your requests use ownBase + 0 (header) .. ownBase + N (cards);
-                  // the events schedule cascades in right after them.
-                  const evBase = ownBase + (ownReqs.length > 0 ? ownReqs.length + 1 : 0);
+                  const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
                   const cTomorrow = evBase + evToday.length;
                   const cWeek = cTomorrow + evTomorrow.length;
                   const cMonth = cWeek + evWeek.length;
-                  const facesInitials = (name: string | null) =>
-                    (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
                   const newRequestBtn = isAdminOfAny ? (
                     <button
                       type="button"
                       onClick={() => setShowNewPrayerChoice(true)}
-                      className={`w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] ${ownReqs.length > 0 ? "mt-3" : ""}`}
+                      className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
                       style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                     >
                       {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
                     </button>
                   ) : (
-                    <Link href="/pray-request/new" className={`block ${ownReqs.length > 0 ? "mt-3" : ""}`}>
+                    <Link href="/pray-request/new" className="block">
                       <div
                         className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
                         style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
@@ -7318,83 +7291,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     </Link>
                   );
                   return (
-                    <div style={{ marginTop: ownReqs.length > 0 ? 28 : 16 }}>
-                      <CascadeHapticTrigger cascadeFrom={ownBase} count={ownReqs.length} splashCleared={ownReqSplashCleared} />
-                      {ownReqs.length > 0 && (
-                        <motion.div
-                          className="flex items-center gap-3 mb-2"
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: ownDelay(0) }}
-                        >
-                          <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                            {t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" })}
-                          </h3>
-                          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-                        </motion.div>
-                      )}
-                      <div className="flex flex-col gap-2">
-                        {ownReqs.map((req, ri) => {
-                          // Faces of who prayed for THIS request (per-request, from
-                          // the API), newest-first — not the global "prayed for me".
-                          const reqFaces = (req.amenFaces ?? []).filter(Boolean);
-                          const reqTotal = req.amenPeopleCount ?? reqFaces.length;
-                          return (
-                            <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                              <motion.div
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: ownDelay(ri + 1) }}
-                                className="relative flex rounded-xl overflow-hidden"
-                                style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
-                              >
-                                <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
-                                <div className="flex-1 px-4 pt-3 pb-3">
-                                  <div className="flex items-center gap-3">
-                                    {/* Your own avatar. */}
-                                    {user?.avatarUrl ? (
-                                      <img src={user.avatarUrl} alt={userName ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
-                                    ) : (
-                                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
-                                        {facesInitials(userName)}
-                                      </div>
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
-                                        {t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}
-                                      </p>
-                                      <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
-                                        {req.body}
-                                      </p>
-                                    </div>
-                                    {/* Overlapped faces of who prayed for THIS request. */}
-                                    {reqFaces.length > 0 && (
-                                      <div className="flex-shrink-0 flex items-center" aria-label={t("dashboard.prayed_for_this_request", { defaultValue: "Prayed for this request" })}>
-                                        <div className="flex -space-x-2">
-                                          {reqFaces.map((p, idx) =>
-                                            p.avatarUrl ? (
-                                              <img key={idx} src={p.avatarUrl} alt={p.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
-                                            ) : (
-                                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
-                                                {facesInitials(p.name)}
-                                              </div>
-                                            ),
-                                          )}
-                                        </div>
-                                        {reqTotal > reqFaces.length && (
-                                          <span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                                            +{reqTotal - reqFaces.length}
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </Link>
-                          );
-                        })}
-                      </div>
+                    <div style={{ marginTop: 12 }}>
                       {newRequestBtn}
                       {hasEvents && (
                         <div style={{ marginTop: 20 }}>

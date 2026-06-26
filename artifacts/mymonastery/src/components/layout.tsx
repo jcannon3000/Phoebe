@@ -789,20 +789,15 @@ function DailyProgressPill() {
         const many = dotDefs.length > 8;
         const sz = many ? 5 : 6;
         const renderDot = (d: { key: string; done: boolean }, i: number) => {
-          // A stop glows ONLY for the ~2 min right after its own practice was
-          // kept (recentlyDone) — never a persistent all-done glow.
-          const pulse = recentlyDone(d.key);
-          // Position, not a tally: kept anchors are filled (settled); everything
-          // still to do — INCLUDING the next one — stays dark/faint. The "next"
-          // dot is no longer lit up, per design: it reads as a quiet to-do, not a
-          // highlighted target.
+          // Dots no longer glow/pulse — kept anchors are simply filled (settled);
+          // everything still to do — INCLUDING the next one — stays dark/faint.
+          // Position, not a tally, and no animation drawing the eye.
           const tone = d.done
             ? { background: "rgba(110,180,130,0.5)", border: "none" as const }
             : { background: "transparent", border: "1px solid rgba(143,175,150,0.28)" };
           return (
             <span
               key={d.key}
-              className={pulse ? "dp-dot-pulse" : undefined}
               style={{
                 width: sz,
                 height: sz,
