@@ -11,7 +11,7 @@ const router: IRouter = Router();
 
 // GET /api/invite/:token — no auth required
 router.get("/invite/:token", rateLimit({ name: "invite_view", max: 60, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
-  const { token } = req.params;
+  const token = String(req.params.token ?? "");
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
 
   const [invite] = await db.select().from(inviteTokensTable).where(eq(inviteTokensTable.token, token));
@@ -58,7 +58,7 @@ const RespondBody = z.object({
 });
 
 router.post("/invite/:token/respond", rateLimit({ name: "invite_respond", max: 20, windowMs: 60 * 60 * 1000, message: "Too many responses. Please try again later." }), async (req, res): Promise<void> => {
-  const { token } = req.params;
+  const token = String(req.params.token ?? "");
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
 
   const parsed = RespondBody.safeParse(req.body);

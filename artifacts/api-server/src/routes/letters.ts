@@ -757,7 +757,7 @@ router.get(
 // ─── INVITATIONS ────────────────────────────────────────────────────────────
 
 router.get("/letters/invite/:token", rateLimit({ name: "letters_invite_view", max: 60, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
-  const { token } = req.params;
+  const token = String(req.params.token ?? "");
 
   const [member] = await db
     .select()
@@ -804,7 +804,7 @@ router.get("/letters/invite/:token", rateLimit({ name: "letters_invite_view", ma
 });
 
 router.post("/letters/invite/:token/accept", rateLimit({ name: "letters_invite_accept", max: 20, windowMs: 60 * 60 * 1000, message: "Too many attempts. Please try again later." }), async (req, res): Promise<void> => {
-  const { token } = req.params;
+  const token = String(req.params.token ?? "");
   const { name, email } = req.body as { name: string; email: string };
 
   if (!name || !email) {

@@ -483,7 +483,7 @@ router.get("/people", async (req, res): Promise<void> => {
 // GET /api/people/:email?ownerId=N
 // Returns a full relationship profile for a specific person
 router.get("/people/:email", async (req, res): Promise<void> => {
-  const email = decodeURIComponent(req.params.email ?? "");
+  let email = decodeURIComponent(req.params.email ?? "");
   // Owner = the session user (never trust ?ownerId — same IDOR as GET /people).
   // This is the viewer's relationship profile with `email`, so it must be scoped
   // to the caller, not an arbitrary id from the query string.
@@ -494,6 +494,18 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   if (!email) {
     res.status(400).json({ error: "email is required" });
     return;
+  }
+  // The find-friends contact-match rows link by numeric user id (they carry no
+  // email), so a numeric param means "look this user up by id" — resolve it to
+  // their email and continue, since the rest of this handler is email-keyed.
+  // Still scoped to the session user (a relationship view), so no new exposure.
+  if (/^\d+$/.test(email)) {
+    const [u] = await db
+      .select({ email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, parseInt(email, 10)));
+    if (!u?.email) { res.status(404).json({ error: "not_found" }); return; }
+    email = u.email;
   }
 
   const { user: owner, rituals: allRituals } = await getUserRituals(ownerId);
