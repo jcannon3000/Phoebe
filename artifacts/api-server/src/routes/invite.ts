@@ -5,11 +5,12 @@ import {
   db, ritualsTable, inviteTokensTable, scheduleResponsesTable, meetupsTable, usersTable,
 } from "@workspace/db";
 import { updateCalendarEvent } from "../lib/calendar";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
 // GET /api/invite/:token — no auth required
-router.get("/invite/:token", async (req, res): Promise<void> => {
+router.get("/invite/:token", rateLimit({ name: "invite_view", max: 60, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
   const { token } = req.params;
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
 
@@ -56,7 +57,7 @@ const RespondBody = z.object({
   isUpdate: z.boolean().optional(),
 });
 
-router.post("/invite/:token/respond", async (req, res): Promise<void> => {
+router.post("/invite/:token/respond", rateLimit({ name: "invite_respond", max: 20, windowMs: 60 * 60 * 1000, message: "Too many responses. Please try again later." }), async (req, res): Promise<void> => {
   const { token } = req.params;
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
 

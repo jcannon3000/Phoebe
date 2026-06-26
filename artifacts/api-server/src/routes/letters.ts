@@ -24,7 +24,7 @@ import { sendInvitationEmail, sendReminderEmail } from "../lib/letterEmails";
 import { getInviteBaseUrl } from "../lib/urls";
 import { sendNewLetterPush } from "../lib/pushSender";
 import { ensureCorrespondenceFellows } from "../lib/correspondents";
-import { perUserRateLimit } from "../lib/rate-limit";
+import { perUserRateLimit, rateLimit } from "../lib/rate-limit";
 // Auth + membership infra is shared with routes/phoebe.ts via
 // lib/letterAuth.ts (was duplicated byte-for-byte in both files).
 import {
@@ -756,7 +756,7 @@ router.get(
 
 // ─── INVITATIONS ────────────────────────────────────────────────────────────
 
-router.get("/letters/invite/:token", async (req, res): Promise<void> => {
+router.get("/letters/invite/:token", rateLimit({ name: "letters_invite_view", max: 60, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
   const { token } = req.params;
 
   const [member] = await db
@@ -803,7 +803,7 @@ router.get("/letters/invite/:token", async (req, res): Promise<void> => {
   });
 });
 
-router.post("/letters/invite/:token/accept", async (req, res): Promise<void> => {
+router.post("/letters/invite/:token/accept", rateLimit({ name: "letters_invite_accept", max: 20, windowMs: 60 * 60 * 1000, message: "Too many attempts. Please try again later." }), async (req, res): Promise<void> => {
   const { token } = req.params;
   const { name, email } = req.body as { name: string; email: string };
 

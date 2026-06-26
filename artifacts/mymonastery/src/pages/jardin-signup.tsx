@@ -97,7 +97,7 @@ export default function JardinSignupPage() {
 
         <button
           type="button"
-          onClick={() => setLocation("/login")}
+          onClick={() => setLocation("/signin")}
           className="w-full text-center text-xs mt-4 hover:opacity-80"
           style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, cursor: "pointer" }}
         >

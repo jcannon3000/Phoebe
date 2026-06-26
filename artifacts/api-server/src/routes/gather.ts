@@ -86,6 +86,23 @@ async function creditWorship(userIds: number[]): Promise<void> {
 }
 
 // ── Create ────────────────────────────────────────────────────────────────
+// Daily per-user cap on invitee EMAILS sent through gather invites, across ALL
+// of a user's gatherings. A backstop on the shared mail sender so one account
+// can't blast it even by creating many gatherings. In-memory + single-instance,
+// mirroring lib/rate-limit.ts; the window resets 24h after the first send.
+// Returns the prefix of `emails` that fits the remaining daily budget.
+const GATHER_EMAIL_DAILY_CAP = 60;
+const gatherEmailBudget = new Map<number, { count: number; resetAt: number }>();
+function takeGatherEmailBudget(userId: number, emails: string[]): string[] {
+  if (emails.length === 0) return emails;
+  const now = Date.now();
+  let b = gatherEmailBudget.get(userId);
+  if (!b || b.resetAt <= now) { b = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 }; gatherEmailBudget.set(userId, b); }
+  const allowed = emails.slice(0, Math.max(0, GATHER_EMAIL_DAILY_CAP - b.count));
+  b.count += allowed.length;
+  return allowed;
+}
+
 router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60 * 60 * 1000, message: "Too many invites created. Please try again later." }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
@@ -120,10 +137,17 @@ router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60
   const inviteeUserIds = Array.isArray(body.inviteeUserIds)
     ? body.inviteeUserIds.filter((n): n is number => typeof n === "number" && n !== userId)
     : [];
-  const inviteeEmails = (Array.isArray(body.inviteeEmails)
+  const inviteeEmailsRaw = (Array.isArray(body.inviteeEmails)
     ? body.inviteeEmails.map((e) => str(e, 160)).filter((e): e is string => !!e)
     : []
-  ).slice(0, 20); // cap the recipient list — one request must not email thousands
+  ).slice(0, 20); // per-request cap — one request must not email thousands
+  // Daily backstop: bound how many invitee emails ONE user can send across all
+  // their gatherings per day (truncate, don't reject — the gathering is still
+  // created and the organizer can re-share the link).
+  const inviteeEmails = takeGatherEmailBudget(userId, inviteeEmailsRaw);
+  if (inviteeEmails.length < inviteeEmailsRaw.length) {
+    console.warn(`[gather] user ${userId} hit the daily invite-email cap (${GATHER_EMAIL_DAILY_CAP}/day); sent ${inviteeEmails.length}/${inviteeEmailsRaw.length}`);
+  }
   const inviteeRows = [
     ...inviteeUserIds.map((u) => ({ gatherId: gather!.id, userId: u, email: null })),
     ...inviteeEmails.map((e) => ({ gatherId: gather!.id, userId: null, email: e })),

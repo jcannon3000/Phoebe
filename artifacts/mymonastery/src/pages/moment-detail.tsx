@@ -803,7 +803,7 @@ export default function MomentDetail() {
             <div className="flex flex-wrap gap-1.5 mb-1.5">
               {data.group && (
                 <a
-                  href={`/community/${data.group.slug}`}
+                  href={`/communities/${data.group.slug}`}
                   className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 transition-opacity hover:opacity-80"
                   style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
                 >
@@ -816,7 +816,7 @@ export default function MomentDetail() {
                 .map(g => (
                   <a
                     key={g.id}
-                    href={`/community/${g.slug}`}
+                    href={`/communities/${g.slug}`}
                     className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 transition-opacity hover:opacity-80"
                     style={{ background: "rgba(46,107,64,0.12)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.2)" }}
                   >

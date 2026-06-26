@@ -25,7 +25,6 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
 import { Share } from "@capacitor/share";
-import { Geolocation } from "@capacitor/geolocation";
 import { Browser } from "@capacitor/browser";
 import { Preferences } from "@capacitor/preferences";
 import { Contacts } from "@capacitor-community/contacts";
@@ -450,57 +449,6 @@ function wireNativeShare() {
       });
     } catch {
       // User cancelled or share unavailable — no action needed.
-    }
-  });
-}
-
-// Opt-in location for the "places I've been prayed for" map. The web app
-// dispatches `phoebe:request-location` when the user has turned sharing on
-// and taps Amen; we resolve the OS permission and answer with
-// `phoebe:location` { lat, lng } or `phoebe:location-error`. The web helper
-// coarsens to ~1 mile and has its own timeout, so we just report the raw fix
-// or an error and never block.
-//
-// "Allow Once" handling: iOS grants that choice for the current session only —
-// on the next launch the status reverts to "prompt". So an allow-once user
-// would otherwise be re-prompted on the first Amen of *every* launch. For the
-// Amen path we cap the re-prompt to once per calendar day, so they're asked
-// again each day they pray but never nagged twice the same day. A persistent
-// "While Using" grant captures silently every Amen; the explicit opt-in from
-// Settings / the soft pre-prompt passes force=true and always prompts.
-const LOC_PROMPT_DAY_KEY = "phoebe:pray-location-prompt-day";
-function locationDayStamp(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-function locationPromptedToday(): boolean {
-  try { return window.localStorage.getItem(LOC_PROMPT_DAY_KEY) === locationDayStamp(); } catch { return false; }
-}
-function markLocationPromptedToday(): void {
-  try { window.localStorage.setItem(LOC_PROMPT_DAY_KEY, locationDayStamp()); } catch { /* best effort */ }
-}
-function wireNativeLocation() {
-  window.addEventListener("phoebe:request-location", async (e) => {
-    const force = !!(e as CustomEvent).detail?.force;
-    const fail = () => window.dispatchEvent(new CustomEvent("phoebe:location-error"));
-    try {
-      const perm = await Geolocation.checkPermissions();
-      const granted = perm.location === "granted" || perm.coarseLocation === "granted";
-      if (!granted) {
-        // Not persistently granted: never asked, or an "Allow Once" grant that
-        // expired on relaunch. Prompt now — but on the Amen path (force=false)
-        // only once per day so allow-once users are re-asked daily, not nagged.
-        if (!force && locationPromptedToday()) { fail(); return; }
-        markLocationPromptedToday();
-        const req = await Geolocation.requestPermissions();
-        if (req.location !== "granted" && req.coarseLocation !== "granted") { fail(); return; }
-      }
-      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
-      window.dispatchEvent(new CustomEvent("phoebe:location", {
-        detail: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-      }));
-    } catch {
-      fail();
     }
   });
 }
@@ -1697,7 +1645,6 @@ function exposePublicApi() {
   wirePrayerBellExpiry();
   wireNativeShare();
   wireNativeOpenUrl();
-  wireNativeLocation();
   wireHaptics();
   wireContacts();
   wireAppleSignIn();

@@ -85,23 +85,6 @@
             </array>
         </dict>
 
-        <!-- Coarse location (~1 mile) — attached to an Amen ONLY when the
-             user opts in (Settings → Prayer map). Stored linked to their
-             account; used to show the person prayed for a map of where their
-             prayers came from. Coarsened on-device; not used for tracking. -->
-        <dict>
-            <key>NSPrivacyCollectedDataType</key>
-            <string>NSPrivacyCollectedDataTypeCoarseLocation</string>
-            <key>NSPrivacyCollectedDataTypeLinked</key>
-            <true/>
-            <key>NSPrivacyCollectedDataTypeTracking</key>
-            <false/>
-            <key>NSPrivacyCollectedDataTypePurposes</key>
-            <array>
-                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-            </array>
-        </dict>
-
         <!-- Health (Mindful Minutes) — read from Apple Health (HealthKit
              mindfulSession) and uploaded to the server (PUT
              /api/me/contemplation-health-minutes) so the daily contemplation

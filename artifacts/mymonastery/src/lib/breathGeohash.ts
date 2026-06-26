@@ -1,10 +1,13 @@
-// breathGeohash — coarse "same air" location for Cobreathe. The ONLY job here is
-// to turn a one-shot device fix into a 5-char geohash (~5km cell) and hand back
-// JUST that bucket. Raw latitude/longitude never leave this function: we encode
-// before returning, so app code, the network, and the server only ever see a
-// coarse cell — never coordinates. Used only when the user has opted in
-// (shareBreathLocation) and the feature is beta-gated at the call site.
-import { isNativeShell } from "@/lib/isNativeShell";
+// breathGeohash — geohash helper for Cobreathe "same air".
+//
+// LOCATION REMOVED (App Store): Phoebe no longer requests device location at
+// all. `getBreathBucket` / `getBreathCoords` are now null-returning stubs that
+// never touch navigator.geolocation and never dispatch the native
+// `phoebe:request-location` bridge event, so no iOS location prompt can fire.
+// They are kept (rather than deleted) so existing callers — useCobreatheSync,
+// BreathNearInvite — compile and simply no-op; every caller already guards on a
+// null result. `encodeGeohash` stays exported because it's a pure helper still
+// imported elsewhere.
 
 const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"; // geohash alphabet (no a,i,l,o)
 
@@ -27,86 +30,12 @@ export function encodeGeohash(lat: number, lng: number, precision = 5): string {
   return geohash;
 }
 
-// Resolve a coarse bucket for the breath, or null if unavailable / denied.
-// `force` (true from the explicit opt-in / Settings) always prompts; false (the
-// quiet in-breath path) defers to the native bridge's once-a-day prompt cap.
-export function getBreathBucket(opts: { force?: boolean } = {}): Promise<string | null> {
-  const { force = false } = opts;
-
-  // Native shell: go through the location bridge (handles the iOS permission
-  // sheet + the daily prompt cap). Await a single location / error event.
-  if (isNativeShell()) {
-    return new Promise<string | null>((resolve) => {
-      let done = false;
-      const finish = (val: string | null) => {
-        if (done) return; done = true;
-        window.removeEventListener("phoebe:location", onLoc as EventListener);
-        window.removeEventListener("phoebe:location-error", onErr);
-        clearTimeout(timer);
-        resolve(val);
-      };
-      const onLoc = (e: Event) => {
-        const d = (e as CustomEvent).detail as { lat?: number; lng?: number } | undefined;
-        if (d && typeof d.lat === "number" && typeof d.lng === "number") finish(encodeGeohash(d.lat, d.lng, 5));
-        else finish(null);
-      };
-      const onErr = () => finish(null);
-      window.addEventListener("phoebe:location", onLoc as EventListener);
-      window.addEventListener("phoebe:location-error", onErr);
-      const timer = setTimeout(() => finish(null), 10_000);
-      window.dispatchEvent(new CustomEvent("phoebe:request-location", { detail: { force } }));
-    });
-  }
-
-  // Web fallback: the browser geolocation prompt.
-  return new Promise<string | null>((resolve) => {
-    try {
-      if (!navigator.geolocation) { resolve(null); return; }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(encodeGeohash(pos.coords.latitude, pos.coords.longitude, 5)),
-        () => resolve(null),
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
-      );
-    } catch { resolve(null); }
-  });
+// Location removed — no-op stub. Always resolves null; never prompts.
+export function getBreathBucket(_opts: { force?: boolean } = {}): Promise<string | null> {
+  return Promise.resolve(null);
 }
 
-// PRECISE coords for the "breathing together" map — UNLIKE getBreathBucket, this
-// returns raw lat/lng. Only call it when the user has explicitly opted into an
-// in-person session (precise location is the whole point of the map). The server
-// relays these ONLY to the breather's mutual Fellows.
-export function getBreathCoords(opts: { force?: boolean } = {}): Promise<{ lat: number; lng: number } | null> {
-  const { force = false } = opts;
-  if (isNativeShell()) {
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = (val: { lat: number; lng: number } | null) => {
-        if (done) return; done = true;
-        window.removeEventListener("phoebe:location", onLoc as EventListener);
-        window.removeEventListener("phoebe:location-error", onErr);
-        clearTimeout(timer);
-        resolve(val);
-      };
-      const onLoc = (e: Event) => {
-        const d = (e as CustomEvent).detail as { lat?: number; lng?: number } | undefined;
-        if (d && typeof d.lat === "number" && typeof d.lng === "number") finish({ lat: d.lat, lng: d.lng });
-        else finish(null);
-      };
-      const onErr = () => finish(null);
-      window.addEventListener("phoebe:location", onLoc as EventListener);
-      window.addEventListener("phoebe:location-error", onErr);
-      const timer = setTimeout(() => finish(null), 10_000);
-      window.dispatchEvent(new CustomEvent("phoebe:request-location", { detail: { force } }));
-    });
-  }
-  return new Promise((resolve) => {
-    try {
-      if (!navigator.geolocation) { resolve(null); return; }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => resolve(null),
-        { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
-      );
-    } catch { resolve(null); }
-  });
+// Location removed — no-op stub. Always resolves null; never prompts.
+export function getBreathCoords(_opts: { force?: boolean } = {}): Promise<{ lat: number; lng: number } | null> {
+  return Promise.resolve(null);
 }

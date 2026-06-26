@@ -245,6 +245,16 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   if (variant === "people") {
     return (
       <div className="mb-2">
+        {fellowsQ.isError && fellows.length === 0 && (
+          <button
+            type="button"
+            onClick={() => fellowsQ.refetch()}
+            className="w-full text-left rounded-2xl px-4 py-3 mb-1 text-[13px] transition-opacity active:opacity-80"
+            style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)", color: SAGE, fontFamily: FONT, cursor: "pointer" }}
+          >
+            {t("fellows_c.load_error", { defaultValue: "Couldn't load your fellows. Tap to retry." })}
+          </button>
+        )}
         {fellows.map(fellowRow)}
         {/* Always shown — taps through to /fellows, where everyone gets a
             personal invite link to share (beta users also get search/contacts). */}
@@ -334,6 +344,19 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
               <Pill label={t("fellows_c.decline", { defaultValue: "Decline" })} kind="muted" onClick={() => decline.mutate(r.id)} disabled={decline.isPending} />
             </div>, `r-${r.id}`))}
         </>
+      )}
+
+      {/* Couldn't load fellows — explicit error state with a retry, so a failed
+          load reads as an error rather than as "you have no fellows". */}
+      {fellowsQ.isError && fellows.length === 0 && (
+        <button
+          type="button"
+          onClick={() => fellowsQ.refetch()}
+          className="w-full text-left rounded-2xl px-4 py-3 mb-2 text-[13px] transition-opacity active:opacity-80"
+          style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)", color: SAGE, fontFamily: FONT, cursor: "pointer" }}
+        >
+          {t("fellows_c.load_error", { defaultValue: "Couldn't load your fellows. Tap to retry." })}
+        </button>
       )}
 
       {/* Your fellows */}

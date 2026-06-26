@@ -71,10 +71,6 @@
 	<string>Phoebe reads your Mindful Minutes from Apple Health so time you spend in meditation or silence — including in apps like Calm or Insight Timer — can count toward your daily contemplation goal.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Phoebe saves your contemplative sits to Apple Health as Mindful Minutes, so the silence you keep here shows up alongside your other mindfulness time.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>If you turn it on, Phoebe attaches a rough (about a mile) location when you pray for someone, so they can see a map of the places their prayers came from. Your exact location is never shared, and this stays off until you enable it.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>If you turn it on, Phoebe attaches a rough (about a mile) location when you pray for someone, so they can see a map of the places their prayers came from. Your exact location is never shared, and this stays off until you enable it.</string>
 
 	<!-- Spotify in-app playback (Listening / audio divina): lets the app detect
 	     and app-remote to the installed Spotify app via the Spotify iOS SDK.

@@ -12,9 +12,6 @@ PODS:
   - CapacitorCommunityKeepAwake (8.0.1):
     - Capacitor
   - CapacitorCordova (8.4.0)
-  - CapacitorGeolocation (8.2.0):
-    - Capacitor
-    - IONGeolocationLib (= 2.1.0)
   - CapacitorHaptics (8.0.2):
     - Capacitor
   - CapacitorKeyboard (8.0.3):
@@ -33,7 +30,6 @@ PODS:
     - Capacitor
   - CapgoCapacitorNativeBiometric (7.1.13):
     - Capacitor
-  - IONGeolocationLib (2.1.0)
 
 DEPENDENCIES:
   - "Capacitor (from `../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios`)"
@@ -43,7 +39,6 @@ DEPENDENCIES:
   - "CapacitorCommunityContacts (from `../../../../node_modules/.pnpm/@capacitor-community+contacts@7.2.0_@capacitor+core@8.4.0/node_modules/@capacitor-community/contacts`)"
   - "CapacitorCommunityKeepAwake (from `../../../../node_modules/.pnpm/@capacitor-community+keep-awake@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor-community/keep-awake`)"
   - "CapacitorCordova (from `../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios`)"
-  - "CapacitorGeolocation (from `../../../../node_modules/.pnpm/@capacitor+geolocation@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/geolocation`)"
   - "CapacitorHaptics (from `../../../../node_modules/.pnpm/@capacitor+haptics@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/haptics`)"
   - "CapacitorKeyboard (from `../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.3_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard`)"
   - "CapacitorLocalNotifications (from `../../../../node_modules/.pnpm/@capacitor+local-notifications@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/local-notifications`)"
@@ -53,10 +48,6 @@ DEPENDENCIES:
   - "CapacitorSplashScreen (from `../../../../node_modules/.pnpm/@capacitor+splash-screen@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/splash-screen`)"
   - "CapacitorStatusBar (from `../../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/status-bar`)"
   - "CapgoCapacitorNativeBiometric (from `../../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.4.5_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-native-biometric`)"
-
-SPEC REPOS:
-  trunk:
-    - IONGeolocationLib
 
 EXTERNAL SOURCES:
   Capacitor:
@@ -73,8 +64,6 @@ EXTERNAL SOURCES:
     :path: "../../../../node_modules/.pnpm/@capacitor-community+keep-awake@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor-community/keep-awake"
   CapacitorCordova:
     :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios"
-  CapacitorGeolocation:
-    :path: "../../../../node_modules/.pnpm/@capacitor+geolocation@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/geolocation"
   CapacitorHaptics:
     :path: "../../../../node_modules/.pnpm/@capacitor+haptics@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/haptics"
   CapacitorKeyboard:
@@ -102,7 +91,6 @@ SPEC CHECKSUMS:
   CapacitorCommunityContacts: 12008d6650ba80d7bb948a70fe31fec6813d49dc
   CapacitorCommunityKeepAwake: d41922812644562e94a79acaf7f41e6d9413af8c
   CapacitorCordova: 71d81f350e6c30bf2a846593b5c480fbd68e9bac
-  CapacitorGeolocation: b36f6287bfc9f2eefa04dc900496f2c8ae666136
   CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
   CapacitorKeyboard: 31c8285d92c9d1410071d52449f16d2c6673b6f4
   CapacitorLocalNotifications: 2615aa008f608b95d3921a778ee1988abf1e6148
@@ -112,8 +100,7 @@ SPEC CHECKSUMS:
   CapacitorSplashScreen: 4b46c72298db552b3c57ce021ef028b6dc7f1fa7
   CapacitorStatusBar: 01d5763b4ed720de5ce2edbc938de6a98f4c8f32
   CapgoCapacitorNativeBiometric: c9a116d9516b3f52dd335aea6a0c5073be36fe5a
-  IONGeolocationLib: 6a7b6f76063fb1b01cfb14fae7d0f526e3c9b271
 
-PODFILE CHECKSUM: d7522126dc42a07670f76e61a78ba12d0eed32bc
+PODFILE CHECKSUM: d0768f80651ee4422fa65b372648593849628ea9
 
 COCOAPODS: 1.16.2

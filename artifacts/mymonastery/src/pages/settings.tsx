@@ -1694,57 +1694,6 @@ function NewsActionsSettings() {
   );
 }
 
-// Cobreathe "same air" (beta) — opt in/out of sharing a COARSE location while
-// breathing, so you can see how many others are breathing nearby. Off by
-// default; one tap kills it (nothing about location is ever stored).
-function BreathLocationSettings() {
-  const { user } = useAuth();
-  const { isBeta } = useBetaStatus();
-  const queryClient = useQueryClient();
-  const save = useMutation({
-    mutationFn: (shareBreathLocation: boolean) =>
-      apiRequest("PATCH", "/api/auth/me/breath-location", { shareBreathLocation }),
-    onSuccess: (_data, shareBreathLocation) => {
-      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
-        prev ? { ...prev, shareBreathLocation } : prev,
-      );
-    },
-  });
-  if (!isBeta || !user) return null;
-  const on = !!user.shareBreathLocation;
-  const options: Array<{ value: boolean; label: string; sub: string }> = [
-    { value: true, label: "On", sub: "See how many people are breathing the same air nearby while you Cobreathe." },
-    { value: false, label: "Off", sub: "Cobreathe without sharing any location." },
-  ];
-  return (
-    <>
-      <SectionHeader label="Breathe with people near you" />
-      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        We use your location only while you're breathing, to show how many people are sharing the same air near you. We never see or store your exact location — only a rough area, only for the length of your breath. People you're connected to may see your first name; everyone else is just part of a count.
-      </p>
-      <SettingsCard>
-        {options.map((opt, i) => {
-          const isSelected = on === opt.value;
-          return (
-            <button
-              key={String(opt.value)}
-              type="button"
-              onClick={() => save.mutate(opt.value)}
-              className="w-full flex items-center gap-3 py-2.5 text-left"
-              style={{ borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
-            >
-              <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`, background: isSelected ? "#A8C5A0" : "transparent", flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>{opt.label}</p>
-                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>{opt.sub}</p>
-              </div>
-            </button>
-          );
-        })}
-      </SettingsCard>
-    </>
-  );
-}
 
 // ─── Main Settings Page ─────────────────────────────────────────────────────
 
@@ -1840,11 +1789,6 @@ export default function SettingsPage() {
         {/* ── Notifications master switch ── */}
         <div className="mb-8">
           <NotificationsSettings />
-        </div>
-
-        {/* ── Cobreathe "same air" (beta) ── */}
-        <div className="mb-8">
-          <BreathLocationSettings />
         </div>
 
         {/* ── Email opt-in/out ── */}

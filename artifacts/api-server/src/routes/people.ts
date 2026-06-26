@@ -861,8 +861,17 @@ router.get("/fellows", async (req, res): Promise<void> => {
     // each fellow — derived server-side in THEIR tz, the only per-user data the
     // fellows surface ever exposes. (~5–8 fellows → a handful of cheap queries.)
     // ONE batched lookup for every fellow's lights (was N×5 round-trips).
-    const lights = await getFellowLightsForUsers(rows.map(r => r.fellowUserId));
+    // Degrade gracefully: the lights are a non-essential enrichment derived from
+    // heavier raw SQL. If that lookup throws, still return the fellows list with
+    // no lights rather than 500ing the whole surface — a lights-query failure
+    // once emptied the entire Community fellows list (looked like "no fellows").
     const noLights = { turned: false, learned: false, prayed: false };
+    let lights: Awaited<ReturnType<typeof getFellowLightsForUsers>> = new Map();
+    try {
+      lights = await getFellowLightsForUsers(rows.map(r => r.fellowUserId));
+    } catch (e) {
+      console.error("[fellows GET] lights lookup failed; returning fellows without lights:", e);
+    }
     res.json({
       fellows: rows.map((r) => ({
         userId: r.fellowUserId,
