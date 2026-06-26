@@ -4299,7 +4299,14 @@ function PrayerListCarousel({
       {/* Title row mirrors SectionShell on /prayer-list. Under the home tab
           the title is hidden entirely (the tab already names the section). */}
       {hideTitle ? null : (
-        <div className="flex items-center gap-3 mb-2">
+        // The title fades up with the cascade too (matches the events sections +
+        // the Daily-progress headers), so it doesn't pop in ahead of its cards.
+        <motion.div
+          className="flex items-center gap-3 mb-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(cascadeFrom * 0.1, 1.5) }}
+        >
           <h3
             className="text-lg font-semibold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
@@ -4318,7 +4325,7 @@ function PrayerListCarousel({
           >
             {t("prayer_list_carousel.view_all")}
           </Link>
-        </div>
+        </motion.div>
       )}
 
       <div style={{ position: "relative" }}>
