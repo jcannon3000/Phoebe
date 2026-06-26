@@ -109,6 +109,10 @@ function buildPsalmSlides(psalms: Psalm[]): Slide[] {
     slides.push(blankSlide(id(), "psalm", `Psalm ${refLabel(c.psalm)}`, c.content, {
       title: c.psalm.title || null,
       bcpReference: c.psalm.bcpRef || null,
+      // Scrollable so the full verse text is always reachable — without this the
+      // content sits in a clipped (overflow:hidden) region and a tall psalm can
+      // render below the fold, leaving an apparently blank page.
+      isScrollable: true,
       // The verse renderer shows metadata.psalmTitle above the first chunk.
       metadata: c.first && c.psalm.title ? { psalmTitle: c.psalm.title, psalmNumber: c.psalm.number } : { psalmNumber: c.psalm.number },
     }));

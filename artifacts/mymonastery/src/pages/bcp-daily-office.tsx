@@ -22,7 +22,7 @@ import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
-import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -614,8 +614,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // default before landing here, so the ROUTE is the intent. (Seeding from the
   // saved per-side default instead mislabeled an intentional "Morning Prayer" as
   // the default "Morning Devotion" — they could switch, but it opened wrong.)
-  type WayToPray = "devotion" | "intercessions" | "office";
-  const [wayToPray, setWayToPray] = useState<WayToPray>(() => (isDevotion ? "devotion" : "office"));
+  type WayToPray = "devotion" | "intercessions" | "office" | "psalms";
+  // Seed from the saved per-side level ONLY for Psalms (so a side set to Praying
+  // the Psalms in the customizer opens as "Pray psalms" here, and holds). For
+  // devotion/office the ROUTE stays the intent (see note above).
+  const [wayToPray, setWayToPray] = useState<WayToPray>(() =>
+    getSideLevel(officeSide) === "psalms" ? "psalms" : (isDevotion ? "devotion" : "office"),
+  );
   // How they want to pray it — the second row of the welcome chooser. Depends
   // on the way above: Community Intercessions is on-screen only. "watch" is a
   // morning-weekday-only option (the National Cathedral broadcast).
@@ -1234,6 +1239,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
   };
   const launchWay = (way: WayToPray, method: PrayMethod) => {
+    if (way === "psalms") { setViewerLocation(`/psalms?office=${officeSide}`); return; }
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
     if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
     if (method === "watch") { goToWatch(); return; }
@@ -1269,13 +1275,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     const canChoose = !officesOnlyViewer && !cameFromPicker && !onComplete;
     const sideWord = eveningSide ? "Evening" : "Morning";
     const isIntercessions = wayToPray === "intercessions";
+    const isPsalms = wayToPray === "psalms";
+    // Intercessions AND Psalms are on-screen only (no Listen / Physical book /
+    // Watch), so the "How" row collapses to a single On-screen option for both.
+    const screenOnly = isIntercessions || isPsalms;
     const showWatch = officeSide === "morning" && isWeekday;
     // A shared, full-width styled <select> with the chevron, matching the pill
     // look. A plain render helper (NOT a component) so it inlines and the native
     // select never remounts mid-selection. Stops propagation so a tap can't
     // bubble to the slide tap-nav.
-    const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
-    const methodValue = isIntercessions ? "screen" : prayMethod;
+    const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "psalms" ? `${sideWord} Psalms` : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
+    const methodValue = screenOnly ? "screen" : prayMethod;
     const methodLabel = methodValue === "screen" ? "On screen" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : "Physical BCP";
 
     // A screen-wide settings pill: CATEGORY on the left, the chosen value +
@@ -1356,18 +1366,24 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             {dropdown("way-to-pray", wayToPray, wayLabel, "Practice", (v) => {
               const w = v as WayToPray;
               setWayToPray(w);
-              // Intercessions is on-screen only — snap the method back.
-              if (w === "intercessions") setPrayMethod("screen");
+              // Intercessions + Psalms are on-screen only — snap the method back.
+              if (w === "intercessions" || w === "psalms") setPrayMethod("screen");
+              // Persist an explicit office-method choice so it holds next time —
+              // Psalms especially, which round-trips through getSideLevel and
+              // shows up across the home cards + splash. Intercessions isn't a
+              // per-side level, so it isn't persisted.
+              if (w === "psalms" || w === "office" || w === "devotion") setSideLevel(officeSide, w);
             }, (
               <>
                 <option value="intercessions">Community Intercessions</option>
+                <option value="psalms">Pray psalms</option>
                 <option value="devotion">{sideWord} Devotion</option>
                 <option value="office">{sideWord} Prayer</option>
               </>
             ))}
-            {/* Row 2 — the method, based on the way. Intercessions = digital only. */}
+            {/* Row 2 — the method, based on the way. Intercessions + Psalms = digital only. */}
             {dropdown("pray-method", methodValue, methodLabel, "How", (v) => setPrayMethod(v as PrayMethod), (
-              isIntercessions ? (
+              screenOnly ? (
                 <option value="screen">On screen</option>
               ) : (
                 <>
@@ -1383,7 +1399,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         {/* Row 3 — Begin. */}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); canChoose ? launchWay(wayToPray, isIntercessions ? "screen" : prayMethod) : next(); }}
+          onClick={(e) => { e.stopPropagation(); canChoose ? launchWay(wayToPray, screenOnly ? "screen" : prayMethod) : next(); }}
           style={{
             width: "100%",
             marginTop: 6,
