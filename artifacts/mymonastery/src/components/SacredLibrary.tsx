@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeIOS } from "@/lib/spotify";
-import { appleMusicAvailable, playAppleItem, playAppleLibraryItem, getAppleLibraryPlaylists, appleNowPlaying, appleSkipNext, appleSkipPrevious, useAppleMusicPlayback, type AppleLibraryItem } from "@/lib/appleMusic";
+import { appleMusicAvailable, playAppleItem, appleNowPlaying, appleSkipNext, appleSkipPrevious, useAppleMusicPlayback } from "@/lib/appleMusic";
 import {
   getSacredLibrary, addToSacredLibrary, removeFromSacredLibrary, parseMusicLink,
   searchCatalog, catalogSearchAvailable, KIND_EMOJI, SERVICE_LABEL,
@@ -44,14 +44,12 @@ export function SacredLibrary() {
   const [adding, setAdding] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<SacredItem | null>(null);
   const apple = useAppleMusicPlayback();
-  const [library, setLibrary] = useState<AppleLibraryItem[]>([]);
   // Live now-playing (title/artwork) while a playlist advances — the iPod feel.
   const [np, setNp] = useState<{ title: string; subtitle?: string; artworkUrl?: string } | null>(null);
 
   useEffect(() => {
     const refresh = () => setItems(getSacredLibrary());
     window.addEventListener(SACRED_LIBRARY_EVENT, refresh);
-    if (appleMusicAvailable()) getAppleLibraryPlaylists().then(setLibrary).catch(() => {});
     return () => window.removeEventListener(SACRED_LIBRARY_EVENT, refresh);
   }, []);
 
@@ -64,12 +62,6 @@ export function SacredLibrary() {
     const id = window.setInterval(tick, 2000);
     return () => { on = false; window.clearInterval(id); };
   }, [active]);
-
-  const playLibrary = async (it: AppleLibraryItem) => {
-    setNowPlaying({ id: `lib-${it.id}`, kind: "playlist", title: it.title, subtitle: it.subtitle, service: "apple", url: "", artworkUrl: it.artworkUrl, appleId: it.id, addedAt: 0 });
-    const ok = await playAppleLibraryItem(it.id);
-    if (!ok) setNowPlaying(null);
-  };
 
   const playItem = async (it: SacredItem) => {
     // In-app for Apple items we have a catalog id for; otherwise open the app.
@@ -110,27 +102,9 @@ export function SacredLibrary() {
         </div>
       )}
 
-      {/* Browse YOUR Apple Music library (iOS native) */}
-      {appleMusicAvailable() && (
-        <div className="mb-4">
-          <p className="text-[11px] uppercase tracking-[0.16em] mb-2" style={{ color: SAGE, fontFamily: FONT }}>Your Apple Music</p>
-          {library.length === 0 ? (
-            <p className="text-[12.5px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>Loading your playlists…</p>
-          ) : (
-            <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-              {library.map((pl) => (
-                <button key={pl.id} onClick={() => playLibrary(pl)} className="flex-shrink-0 w-24 text-left active:opacity-80">
-                  <ArtworkThumb src={pl.artworkUrl} className="w-24 h-24 rounded-xl" fallback="📃" fallbackSize={28} />
-                  <p className="text-[12px] font-medium truncate mt-1.5" style={{ color: WARM, fontFamily: FONT }}>{pl.title}</p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
       {!appleMusicAvailable() && (
         <p className="text-[12px] leading-snug mb-4 rounded-xl px-3 py-2.5" style={{ color: "rgba(143,175,150,0.8)", background: "rgba(255,255,255,0.04)", fontFamily: FONT }}>
-          🎧 Open Phoebe on your iPhone to browse and play your Apple Music library here. On the web you can still search and save.
+          🎧 Open Phoebe on your iPhone to play your saved music in-app. On the web you can still search and save.
         </p>
       )}
 

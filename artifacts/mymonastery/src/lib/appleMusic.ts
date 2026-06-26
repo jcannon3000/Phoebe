@@ -120,8 +120,9 @@ export async function searchAppleCatalog(term: string): Promise<AppleSearchResul
   const p = plugin();
   if (!p || !term.trim()) return [];
   try {
-    const auth = await p.authorize();
-    if (auth.status !== "authorized") return [];
+    // Catalog search needs NO Apple Music permission — MusicKit catalog requests
+    // use the app's entitlement (developer token) only. So we never call
+    // authorize() here; searching must never trigger the permission prompt.
     const res = await p.searchCatalog({ term });
     return Array.isArray(res?.results) ? res.results : [];
   } catch {

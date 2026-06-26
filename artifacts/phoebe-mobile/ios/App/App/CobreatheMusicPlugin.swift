@@ -170,18 +170,16 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // Search the Apple Music CATALOG for songs, albums, and playlists the
-    // listener can add to their Sacred Library. Native MusicKit search uses the
-    // app's MusicKit entitlement + the user's Apple Music auth — no developer
-    // JWT needed (that's only the web/MusicKit-JS path).
+    // listener can add to their Sacred Library. Catalog search uses ONLY the
+    // app's MusicKit entitlement (developer token) — it needs NO user
+    // authorization, so this path NEVER requests Apple Music permission. (User
+    // auth is only needed to play, which is requested lazily at playback time.)
     @objc func searchCatalog(_ call: CAPPluginCall) {
         let term = (call.getString("term") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !term.isEmpty else { call.resolve(["results": []]); return }
         if #available(iOS 16.0, *) {
             Task {
                 do {
-                    guard MusicAuthorization.currentStatus == .authorized else {
-                        call.resolve(["results": [], "reason": "not-authorized"]); return
-                    }
                     var request = MusicCatalogSearchRequest(term: term, types: [Artist.self, Song.self, Album.self, Playlist.self])
                     request.limit = 5
                     let response = try await request.response()
