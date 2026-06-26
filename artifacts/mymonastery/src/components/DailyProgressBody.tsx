@@ -909,6 +909,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
   });
+  // Cards rise a beat AFTER their section title — the title fades up first, then
+  // the cards cascade in under it (rather than the title + first card together).
+  const TITLE_LEAD = 0.12;
+  const enterUpCard = (i: number) => ({
+    initial: { opacity: 0, y: 8 },
+    animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
+    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) + TITLE_LEAD },
+  });
 
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
@@ -931,14 +939,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <motion.div {...enterUp(0)}>{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Today" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {/* The office hero leads the Next list — above Contemplation. */}
-            {officeHero && <motion.div {...enterUp(0)}>{officeHero}</motion.div>}
+            {officeHero && <motion.div {...enterUpCard(0)}>{officeHero}</motion.div>}
             {/* Praying this office from the physical book? A one-tap log sits
                 right under the card — no need to open the page guide. */}
             {officeHero && heroSide && (
               <BookOfficeLogRow side={heroSide} done={heroSide === "morning" ? morningDone : eveningDone} />
             )}
             {upcomingDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
+              <motion.div key={c.key} {...enterUpCard(i + (officeHero ? 1 : 0))}>
                 {renderCard(c, i === 0 && leadPulse, tintFor(i))}
               </motion.div>
             ))}
@@ -952,7 +960,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <motion.div {...enterUp(upcomingDisplay.length)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Earlier today" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(upcomingDisplay.length + i)}>
+              <motion.div key={c.key} {...enterUpCard(upcomingDisplay.length + i)}>
                 {renderCard(c, false, tintFor(upcomingDisplay.length + i))}
               </motion.div>
             ))}

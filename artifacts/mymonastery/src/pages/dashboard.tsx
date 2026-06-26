@@ -5144,7 +5144,9 @@ function TimeSection({
               key={isValidElement(node) && node.key != null ? node.key : idx}
               initial={{ opacity: 0, y: 8 }}
               animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 1.5) }}
+              // +0.12 so the cards rise just AFTER the section title (which fades
+              // at cascadeFrom*0.1) — title first, then the cards cascade under it.
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 1.5) + 0.12 }}
             >
               {node}
             </motion.div>
