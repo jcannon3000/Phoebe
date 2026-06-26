@@ -272,12 +272,14 @@ function officeSideFromSlug(slug: string | null | undefined): "morning" | "eveni
 // wiring): an intro the listener should skip (start N seconds in) and whether
 // the show uses the immersive photographic player (like the offices) instead of
 // the plain podcast view. Keyed by show slug.
-const SHOW_OVERRIDES: Record<string, { introSkipSeconds?: number; immersive?: boolean }> = {
+const SHOW_OVERRIDES: Record<string, { introSkipSeconds?: number; outroTrimSeconds?: number; immersive?: boolean }> = {
   // National Cathedral sermons open with a ~22s sign-on; skip it, and give the
   // preaching the same immersive full-screen player the offices use.
   "national-cathedral-sermons": { introSkipSeconds: 22, immersive: true },
-  // Forward Day by Day opens with a ~19s intro; start past it.
-  "forward-day-by-day": { introSkipSeconds: 19 },
+  // Forward Day by Day opens with a ~19s intro; start past it. It also ends with
+  // a ~51s outro (credits / closing) — skip it: treat the episode as finished
+  // 51s early so it closes out and hands off to the next thing.
+  "forward-day-by-day": { introSkipSeconds: 19, outroTrimSeconds: 51 },
 };
 function showOverride(slug: string | null | undefined) {
   return (slug && SHOW_OVERRIDES[slug]) || null;
@@ -389,6 +391,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Whether THIS podcast play has already credited the Podcasts daily practice
   // (so the ≥2-min credit fires once per episode play).
   const podcastCreditedRef = useRef(false);
+  // Whether the outro-trim early-finish has already fired this play (so a show
+  // with outroTrimSeconds — e.g. FDD — closes out exactly once).
+  const outroTriggeredRef = useRef(false);
 
   const closeSeg = useCallback(() => {
     if (seg.current.start !== null) {
@@ -468,6 +473,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         : { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
       officeCreditedRef.current = null;
       podcastCreditedRef.current = false;
+      outroTriggeredRef.current = false;
       // Resume the saved spot; on a fresh start, skip a show's sign-on intro.
       {
         const savedPos = loadPos(ep);
@@ -781,6 +787,30 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         podcastCreditedRef.current = true;
         markPracticeDoneToday("podcasts");
       }
+    }
+    // Outro trim — a show with outroTrimSeconds (FDD) ends its last N seconds of
+    // credits/closing, so we treat the episode as finished that early: pause and
+    // run the normal end flow (auto-advance the queue / hand off to the next
+    // thing / close out). Fires once per play.
+    const outroTrim = showOverride(current.showSlug)?.outroTrimSeconds ?? 0;
+    if (
+      outroTrim > 0 &&
+      !outroTriggeredRef.current &&
+      isFinite(a.duration) && a.duration > 0 &&
+      a.currentTime >= a.duration - outroTrim
+    ) {
+      outroTriggeredRef.current = true;
+      a.pause();
+      const hasQueueNext = queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length;
+      const hasHandoff = !!current.afterEndHref && expanded;
+      if (hasQueueNext || hasHandoff) {
+        // Advance the queue / hand off to the next thing.
+        onEndedEv();
+      } else {
+        // Nothing queued — just close the player out (the listen is finished).
+        closePlayer();
+      }
+      return;
     }
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) { lastSaveRef.current = now; savePos(current, a.currentTime); }
