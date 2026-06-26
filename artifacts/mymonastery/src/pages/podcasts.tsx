@@ -395,7 +395,12 @@ export default function PodcastsPage() {
     queryKey: ["/api/podcasts"],
     queryFn: () => apiRequest("GET", "/api/podcasts"),
     enabled: !!user,
-    staleTime: 60 * 60_000,
+    // The library is server-defined (publisher order / show list). Keep cached
+    // data for a quick paint, but refetch on each open so server-side changes
+    // (e.g. moving a show between publishers) show up without waiting out a long
+    // stale window or a cold relaunch.
+    staleTime: 5 * 60_000,
+    refetchOnMount: "always",
   });
 
   const [query, setQuery] = useState("");
