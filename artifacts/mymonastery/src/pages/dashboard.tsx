@@ -3062,6 +3062,10 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
     ? `Psalm${refs.length > 1 ? "s" : ""} ${refs.join(", ")}`
     : "Today's appointed psalms";
   const onClick = () => goTo(`/psalms?office=${side}`);
+  // Same colour as the side's office card (green for morning, violet for
+  // evening) — not a beige/parchment tone — so it sits with the other rhythm
+  // cards rather than standing out.
+  const rgb = side === "evening" ? "124,116,196" : "46,107,64";
 
   // Hero layout — the big "what's next" card, mirroring the office hero, when
   // Praying the Psalms is this side's prayer.
@@ -3072,10 +3076,10 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
         tabIndex={0}
         onClick={onClick}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
-        className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-5"
-        style={{ background: "rgba(150,140,110,0.13)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(150,140,110,0.40)" }}
+        className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+        style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(150,140,110,0.85)" }} />
+        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
         <div className="flex-1 px-5 py-5">
           <div className="flex items-start gap-3.5">
             <span className="text-[34px] leading-none flex-shrink-0">📜</span>
@@ -3084,7 +3088,7 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
               <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>{subtitle}</p>
             </div>
             <div className="flex-shrink-0">
-              <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: "rgba(150,140,110,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {done ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> Pray again</> : "Pray"} <span aria-hidden className="ml-1">→</span>
               </span>
             </div>
@@ -3101,9 +3105,9 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(150,140,110,0.13)", border: "1px solid rgba(150,140,110,0.40)" }}
+      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: "rgba(150,140,110,0.85)" }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
         <div className="min-w-0">
           <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
@@ -3116,9 +3120,9 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
         <div
           className="rounded-full text-center shrink-0"
           style={{
-            background: "rgba(150,140,110,0.28)", color: "#F0EDE6",
+            background: `rgba(${rgb},0.28)`, color: "#F0EDE6",
             fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500,
-            padding: "6px 14px", border: "1px solid rgba(150,140,110,0.50)", whiteSpace: "nowrap",
+            padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap",
           }}
         >
           {done ? "Prayed ✓" : "Pray"} <span aria-hidden>→</span>
