@@ -42,8 +42,10 @@ type Psalm = {
   raw: string;
 };
 
-// A rendered slide: the big title, a chunk of verses, or the doxology.
+// A rendered slide: the threshold intro, the big psalm title, a chunk of
+// verses, or the doxology.
 type PsalmSlide =
+  | { kind: "intro"; title: string; subtitle: string }
   | { kind: "title"; headline: string; bcpRef: string }
   | { kind: "verses"; eyebrow: string; verses: Verse[]; bcpRef: string }
   | { kind: "gloria"; eyebrow: string };
@@ -126,7 +128,18 @@ export default function PsalmsPage() {
   });
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
-  const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
+  const slides = useMemo(() => {
+    const ps = buildSlides(data?.psalms ?? []);
+    if (ps.length === 0) return ps;
+    // A threshold intro slide, like the daily office's opening — names the
+    // office this stands in for and that we're praying it through the psalms.
+    const intro: PsalmSlide = {
+      kind: "intro",
+      title: office === "evening" ? "Evening Prayer" : "Morning Prayer",
+      subtitle: "The psalms appointed for today, from the Book of Common Prayer.",
+    };
+    return [intro, ...ps];
+  }, [data, office]);
   // No extra concluding slide — finishing hands straight off (to the office
   // close when this is the daily prayer, else home), matching the office.
   const total = slides.length;
@@ -245,6 +258,14 @@ export default function PsalmsPage() {
         onClick={(e) => { const w = (e.currentTarget as HTMLElement).clientWidth; if (e.clientX > w / 2) advance(); else back(); }}
         style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "8px 28px 0", cursor: "pointer", WebkitOverflowScrolling: "touch" }}
       >
+        {slide?.kind === "intro" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 18, maxWidth: 540, margin: "0 auto" }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Before you begin</p>
+            <h1 className="title-glow-breathe" style={{ fontFamily: FONT, fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.05 }}>{slide.title}</h1>
+            <p style={{ fontSize: 17, lineHeight: 1.7, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: 0 }}>{slide.subtitle}</p>
+          </div>
+        )}
+
         {slide?.kind === "title" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>{eyebrowLabel}</p>

@@ -4385,14 +4385,14 @@ function PrayerListCarousel({
                 className="block"
               >
                 <motion.div
-                  // Match the routine card's fade-up EXACTLY (same y travel, ease,
-                  // and a stable per-index delay) so the prayer list rises the same
-                  // way — not a separate later "shimmy". The prayer list loads on
-                  // its own query, so a cascadeFrom-based delay (capped higher) made
-                  // it animate out of sync with the rhythm cards above it.
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-                  transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.1, 0.7) }}
+                  // Cascade the prayer list one card after another (a clear, self-
+                  // contained stagger keyed to each card's own index), so it rises
+                  // like the routine cards rather than arriving all at once. A
+                  // bigger per-card step than the rhythm so the wave is visible even
+                  // in a short list.
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.14, 1.2) }}
                   // A "new" (still-unprayed) request pulses its BORDER COLOR like
                   // a today's-event card — replacing the old top-of-home "N
                   // requests waiting" card. Prayed ones rest calm.
