@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
-import { getPsalmCycle, getSideLevel } from "@/lib/officePrefs";
+import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
-// Opens the psalms appointed for today (per the chosen cycle: the daily-office
-// lectionary, or the traditional 30-day monthly Psalter) and shows them in the
-// SAME immersive dark style as Morning/Evening Prayer in the office viewer — a
-// leaf backdrop, a big "Psalm N · From the Daily Office Lectionary" title slide,
-// then the pointed verses with a verse-number gutter, with the BCP page number
-// on every slide. Self-contained (it does NOT reuse the office viewer), so it
-// never touches the office's progress/completion state — finishing marks only
-// the day's Praying-the-Psalms practice (markPsalmsPrayed), per side.
+// Opens with a "before you begin" chooser (lectionary + format, the same pill
+// UI the office intro uses), then renders today's appointed psalms in the SAME
+// immersive dark style as Morning/Evening Prayer — a leaf backdrop, a big
+// "Psalm N · From the Daily Office Lectionary" title slide, then the pointed
+// verses with a verse-number gutter, the BCP page on every slide. "Physical
+// BCP" shows a page-number guide instead. Self-contained (it does NOT reuse the
+// office viewer), so finishing marks only the day's Praying-the-Psalms practice.
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -42,10 +41,8 @@ type Psalm = {
   raw: string;
 };
 
-// A rendered slide: the threshold intro, the big psalm title, a chunk of
-// verses, or the doxology.
+// A rendered slide: the big psalm title, a chunk of verses, or the doxology.
 type PsalmSlide =
-  | { kind: "intro"; title: string; subtitle: string }
   | { kind: "title"; headline: string; bcpRef: string }
   | { kind: "verses"; eyebrow: string; verses: Verse[]; bcpRef: string }
   | { kind: "gloria"; eyebrow: string };
@@ -56,7 +53,7 @@ type Verse = { num: string; lines: string[] };
 
 // Split the pointed BCP text into verses (a line beginning "N " starts one;
 // continuation/hemistich lines belong to the verse above), then group into
-// chunks of `versesPerChunk` (4, like the office).
+// chunks of 4 (like the office).
 function parseVerses(content: string): Verse[] {
   const verses: Verse[] = [];
   let cur: Verse | null = null;
@@ -111,15 +108,21 @@ export default function PsalmsPage() {
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const office: "morning" | "evening" = params.get("office") === "evening" ? "evening" : "morning";
-  // Physical-BCP mode: show the page-number guide instead of the slideshow.
-  const book = params.get("book") === "1";
   // When Praying the Psalms IS this side's prayer, finishing hands off to the
-  // office's closing flow (the reflection / newsletter "next thing"), exactly
-  // like the office close — instead of just dropping back home.
+  // office's closing flow (the reflection / newsletter "next thing").
   const isDailyPrayer = getSideLevel(office) === "psalms";
-  const cycleParam = params.get("cycle");
-  const cycle = cycleParam === "office" || cycleParam === "monthly" ? cycleParam : getPsalmCycle();
   const today = new Date().toLocaleDateString("en-CA");
+  const sideLabel = office === "evening" ? "Evening Psalms" : "Morning Psalms";
+
+  // Chooser state — the lectionary + format, seeded from URL / saved pref.
+  const [cycle, setCycle] = useState<PsalmCycle>(() => {
+    const c = params.get("cycle");
+    return c === "office" || c === "monthly" ? c : getPsalmCycle();
+  });
+  const [format, setFormat] = useState<"screen" | "book">(() => (params.get("book") === "1" ? "book" : "screen"));
+  // intro = the "before you begin" chooser; read = the verse slideshow; guide =
+  // the physical-book page-number list.
+  const [step, setStep] = useState<"intro" | "read" | "guide">("intro");
 
   const { data, isLoading } = useQuery<{ psalms: Psalm[] }>({
     queryKey: ["/api/psalms/today", cycle, office, today],
@@ -128,20 +131,7 @@ export default function PsalmsPage() {
   });
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
-  const slides = useMemo(() => {
-    const ps = buildSlides(data?.psalms ?? []);
-    if (ps.length === 0) return ps;
-    // A threshold intro slide, like the daily office's opening — names the
-    // office this stands in for and that we're praying it through the psalms.
-    const intro: PsalmSlide = {
-      kind: "intro",
-      title: office === "evening" ? "Evening Prayer" : "Morning Prayer",
-      subtitle: "The psalms appointed for today, from the Book of Common Prayer.",
-    };
-    return [intro, ...ps];
-  }, [data, office]);
-  // No extra concluding slide — finishing hands straight off (to the office
-  // close when this is the daily prayer, else home), matching the office.
+  const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
   const total = slides.length;
   const [index, setIndex] = useState(0);
 
@@ -150,21 +140,24 @@ export default function PsalmsPage() {
 
   const goHome = () => setLocation("/dashboard");
   // Finishing the psalms = the day's Praying-the-Psalms is kept (side-scoped).
-  // When the psalms ARE this side's prayer, hand off to the office's closing
-  // flow (the reflection / newsletter "next thing"); otherwise drop home.
   const finish = () => {
     markPsalmsPrayed(office);
-    if (isDailyPrayer) {
-      setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
-    } else {
-      goHome();
-    }
+    if (isDailyPrayer) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
+    else goHome();
+  };
+  const beginFromIntro = () => {
+    setPsalmCycle(cycle); // remember the chosen lectionary
+    if (format === "book") setStep("guide");
+    else { setIndex(0); setStep("read"); }
   };
   const advance = () => {
     if (index >= slides.length - 1) { finish(); return; }
     setIndex((i) => i + 1);
   };
-  const back = () => { if (index <= 0) { goHome(); return; } setIndex((i) => Math.max(i - 1, 0)); };
+  const back = () => {
+    if (index > 0) { setIndex((i) => i - 1); return; }
+    setStep("intro"); // at the first slide → back to the chooser
+  };
 
   const eyebrowLabel = office === "evening" ? "The Psalm Appointed For This Evening" : "The Psalm Appointed For This Morning";
   const sourceLabel = cycle === "monthly" ? "From the Monthly Psalter" : "From the Daily Office Lectionary";
@@ -190,30 +183,73 @@ export default function PsalmsPage() {
     );
   }
 
-  const slide = slides[index];
-  const atEnd = index >= slides.length - 1;
+  // Shared chrome — leaf backdrop + header (Back · side label · close).
+  const Backdrop = leaf ? (
+    <>
+      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7, zIndex: -2 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.8) 0%, rgba(12,31,18,0.64) 45%, rgba(12,31,18,0.84) 100%)" }} />
+    </>
+  ) : null;
+  const header = (onBack: () => void) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
+      <span style={{ borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>{sideLabel}</span>
+      <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+    </div>
+  );
 
-  // ── Physical-BCP guide ────────────────────────────────────────────────────
-  // Chosen "How → Physical BCP": instead of the slideshow, show where to find
-  // today's psalms in the book — one card per psalm with its page number.
-  if (book) {
+  // ── Intro chooser — same pill UI as the office "before you begin" ─────────
+  if (step === "intro") {
+    const pill = (label: string, value: string, opts: Array<{ value: string; label: string }>, onChange: (v: string) => void) => (
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(24,46,34,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+        <span style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600 }}>{label}</span>
+        <span style={{ color: SOFT_GREEN, fontFamily: FONT, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {opts.find((o) => o.value === value)?.label}<span aria-hidden style={{ opacity: 0.7 }}>▾</span>
+        </span>
+        <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, appearance: "none", WebkitAppearance: "none", MozAppearance: "none", border: "none", outline: "none", cursor: "pointer", background: "transparent", color: WARM }}>
+          {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+    );
+    return (
+      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+        {Backdrop}
+        {header(goHome)}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "8px 28px", gap: 16 }}>
+          <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Before you begin</p>
+          <h1 className="title-glow-breathe" style={{ fontFamily: FONT, fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.05 }}>{sideLabel}</h1>
+          <p style={{ fontSize: 16, lineHeight: 1.6, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: "0 0 8px" }}>The psalms appointed for today, from the Book of Common Prayer.</p>
+          <div style={{ width: "100%", maxWidth: 380, display: "flex", flexDirection: "column", gap: 10 }}>
+            {pill("Lectionary", cycle, [
+              { value: "office", label: "Daily Office Lectionary" },
+              { value: "monthly", label: "Monthly Psalter" },
+            ], (v) => setCycle(v as PsalmCycle))}
+            {pill("Format", format, [
+              { value: "screen", label: "On screen" },
+              { value: "book", label: "Physical BCP" },
+            ], (v) => setFormat(v as "screen" | "book"))}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, padding: "10px 28px max(1.25rem, env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>
+          <button onClick={beginFromIntro} style={{ width: "100%", maxWidth: 380, background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, borderRadius: 999, padding: "14px 24px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
+            Begin <span aria-hidden>→</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Physical-BCP guide — one card per psalm with its page number ─────────
+  if (step === "guide") {
     const psalms = data?.psalms ?? [];
     return (
       <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
-        {leaf && (
-          <>
-            <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7, zIndex: -2 }} />
-            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.8) 0%, rgba(12,31,18,0.66) 45%, rgba(12,31,18,0.84) 100%)" }} />
-          </>
-        )}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
-          <button onClick={goHome} style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
-          <span style={{ borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>{office === "evening" ? "Evening Psalms" : "Morning Psalms"}</span>
-          <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-        </div>
+        {Backdrop}
+        {header(() => setStep("intro"))}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "8px 0 4px", fontWeight: 600 }}>{eyebrowLabel}</p>
-          <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 44px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 6px", textAlign: "center" }}>Today's Psalms</h1>
+          <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 44px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 6px", textAlign: "center" }}>{sideLabel}</h1>
           <p style={{ fontSize: 14.5, fontFamily: FONT, color: SOFT_GREEN, margin: "0 0 22px", textAlign: "center" }}>Find them in your Book of Common Prayer.</p>
           <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 12 }}>
             {psalms.map((p) => (
@@ -234,38 +270,19 @@ export default function PsalmsPage() {
     );
   }
 
+  // ── Read — the verse slideshow ───────────────────────────────────────────
+  const slide = slides[index];
+  const atEnd = index >= slides.length - 1;
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
-      {/* Leaf backdrop, darkened — the office's immersive field. */}
-      {leaf && (
-        <>
-          <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7, zIndex: -2 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.78) 0%, rgba(12,31,18,0.62) 45%, rgba(12,31,18,0.82) 100%)" }} />
-        </>
-      )}
-
-      {/* Header — Back · Today's Psalms · close. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
-        <button onClick={back} style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
-        <span style={{ borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>
-          {office === "evening" ? "Evening Psalms" : "Morning Psalms"}
-        </span>
-        <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-      </div>
+      {Backdrop}
+      {header(back)}
 
       {/* Slide body — tap the right half to advance, left half to go back. */}
       <div
         onClick={(e) => { const w = (e.currentTarget as HTMLElement).clientWidth; if (e.clientX > w / 2) advance(); else back(); }}
         style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "8px 28px 0", cursor: "pointer", WebkitOverflowScrolling: "touch" }}
       >
-        {slide?.kind === "intro" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 18, maxWidth: 540, margin: "0 auto" }}>
-            <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Before you begin</p>
-            <h1 className="title-glow-breathe" style={{ fontFamily: FONT, fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.05 }}>{slide.title}</h1>
-            <p style={{ fontSize: 17, lineHeight: 1.7, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: 0 }}>{slide.subtitle}</p>
-          </div>
-        )}
-
         {slide?.kind === "title" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>{eyebrowLabel}</p>
@@ -285,7 +302,7 @@ export default function PsalmsPage() {
                 <span style={{ flexShrink: 0, width: 18, textAlign: "right", color: "rgba(143,175,150,0.45)", fontFamily: FONT, fontSize: 18, lineHeight: 1.5, paddingTop: 1 }}>{v.num}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {v.lines.map((ln, j) => (
-                    <p key={j} style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 20, lineHeight: 1.5, paddingLeft: j === 0 ? 0 : 0 }}>{ln}</p>
+                    <p key={j} style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 20, lineHeight: 1.5 }}>{ln}</p>
                   ))}
                 </div>
               </div>
@@ -300,7 +317,6 @@ export default function PsalmsPage() {
             <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 22, lineHeight: 1.6, margin: 0 }}>{GLORIA_PATRI}</p>
           </div>
         )}
-
       </div>
 
       {/* Footer — Back · section label · Next/Done. */}
