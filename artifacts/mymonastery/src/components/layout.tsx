@@ -974,7 +974,7 @@ function OpeningSplash() {
   // these (a Begin CTA on a pure log indicator is misleading).
   type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean };
   const nextCandidates: NextCand[] = [
-    { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" },
+    { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : "Morning prayer", blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : "Begin the day with the office", rgb: "46,107,64" },
     ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
     { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "A few minutes of stillness", rgb: "62,124,122" },
     { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Co-Breathe", blurb: "12 breaths as a prayer", rgb: "62,124,122" },
@@ -988,7 +988,7 @@ function OpeningSplash() {
     // The Examen + Gratitude are end-of-day reflections — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
     { active: rhythm.gratitudeActive, done: rhythm.gratitudeDone, slot: "evening", emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" },
-    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: "Evening prayer", blurb: "Mark the day's end with the office", rgb: "124,116,196" },
+    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : "Evening prayer", blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : "Mark the day's end with the office", rgb: "124,116,196" },
   ];
   // EVENING-slot practices (Evening Prayer, the Examen, Gratitude, anything the
   // user slotted to evening) never surface as "what's next" before 5pm — only

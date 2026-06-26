@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -615,12 +615,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
       : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
-  const officeTitle = (side: "Morning" | "Evening") =>
-    prayerKind === "community"
+  const officeTitle = (side: "Morning" | "Evening") => {
+    // Praying the Psalms IS this side's prayer → the card reads "Morning Psalms"
+    // / "Evening Psalms" (matching the PsalmsHomeCard hero), not "… Prayer".
+    if (getSideLevel(side.toLowerCase() as "morning" | "evening") === "psalms") {
+      return t(`rhythm.card_${side.toLowerCase()}_psalms`, { defaultValue: `${side} Psalms` });
+    }
+    return prayerKind === "community"
       ? t("rhythm.card_community", { defaultValue: "Pray together" })
       : prayerKind === "devotion"
         ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
         : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
+  };
 
   // Custom practices slot into the rhythm by their time-of-day: morning ones
   // ride with Morning Prayer, midday after contemplation, afternoon after the
