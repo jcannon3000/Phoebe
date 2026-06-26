@@ -276,6 +276,8 @@ const SHOW_OVERRIDES: Record<string, { introSkipSeconds?: number; immersive?: bo
   // National Cathedral sermons open with a ~22s sign-on; skip it, and give the
   // preaching the same immersive full-screen player the offices use.
   "national-cathedral-sermons": { introSkipSeconds: 22, immersive: true },
+  // Forward Day by Day opens with a ~19s intro; start past it.
+  "forward-day-by-day": { introSkipSeconds: 19 },
 };
 function showOverride(slug: string | null | undefined) {
   return (slug && SHOW_OVERRIDES[slug]) || null;

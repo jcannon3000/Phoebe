@@ -934,9 +934,10 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, devotionSub, () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
-          {/* Forward Day by Day: always offered for morning; offered for evening
-              ONLY if it wasn't already chosen for the morning (one FDD a day). */}
-          {(side === "morning" || prayBySide.morning !== "fdd") && choiceRow(prayBySide[side] === "fdd", `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, side === "morning" ? t("wol_rule.pray_fdd_sub", { defaultValue: "Today's reflection as your morning prayer." }) : t("wol_rule.pray_fdd_sub_evening", { defaultValue: "Today's reflection as your evening prayer." }), () => choosePrayBySide(side, "fdd"))}
+          {/* Forward Day by Day was removed as a morning/evening prayer option
+              per request. Existing FDD users still resolve via PRAY_LEVEL["fdd"];
+              it's just no longer offered here. (FDD remains a daily reflection
+              source in the Learn step.) */}
           {/* "Community prayer list" was removed as a morning/evening prayer
               option per request. Existing community users still resolve via
               prayFromLevel; it's just no longer offered here. */}
