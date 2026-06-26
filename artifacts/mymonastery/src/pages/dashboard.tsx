@@ -5742,6 +5742,48 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       if (raw.length <= 300_000) localStorage.setItem("phoebe:prayer-list-snapshot", raw);
     } catch { /* ignore (quota / private mode) */ }
   }, [user, dashPrayerRequests]);
+  // The home prayer-list carousel rows — the viewer's OWN + others' open prayer
+  // requests AND group community intercessions, in one sorted list. Computed
+  // ONCE here so the carousel render and the events' cascade base both use the
+  // SAME rows and the same count: a single source of truth keeps the cascade
+  // smooth across every card type (own request, others' request, intercession)
+  // with no gap or overlap at the events boundary.
+  const homeCarouselRows = useMemo<PrayerListCarouselRow[]>(() => {
+    const requestRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
+      .filter((r) => {
+        if (r.isAnswered) return false;
+        if (r.closedAt) return false;
+        if (typeof r.body !== "string" || r.body.length === 0) return false;
+        if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+        return true; // own requests included (they show in this same list)
+      })
+      .map((r) => ({
+        id: r.id,
+        body: r.body ?? "",
+        isOwnRequest: r.isOwnRequest,
+        isAnonymous: r.isAnonymous,
+        ownerName: r.ownerName ?? null,
+        ownerAvatarUrl: r.ownerAvatarUrl ?? null,
+        myAmenedToday: r.myAmenedToday,
+      }));
+    const intercessionRows: PrayerListCarouselRow[] = (momentsData?.moments ?? [])
+      .filter((m) => m.templateType === "intercession" && !m.prayerFeedId && m.state !== "archived" && !!m.group)
+      .map((m) => ({
+        id: m.id,
+        body: (m.intercessionFullText?.trim() || m.intercessionTopic?.trim() || m.intention?.trim() || m.name || ""),
+        isOwnRequest: false,
+        isAnonymous: false,
+        ownerName: m.group?.name ?? null,
+        ownerAvatarUrl: null,
+        myAmenedToday: m.myPrayedToday === true,
+        kind: "intercession" as const,
+        momentToken: m.momentToken,
+        avatarEmoji: m.group?.emoji ?? "🙏🏽",
+      }));
+    // Unprayed float to the top; prayed sink (stable within a group).
+    return [...requestRows, ...intercessionRows]
+      .sort((a, b) => (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0));
+  }, [dashPrayerRequests, momentsData]);
   // (The own-request card's "who prayed for THIS request" faces now come per-
   // request from /api/prayer-requests (req.amenFaces), so the global
   // prayed-for-me-month query that used to back it here was removed.)
@@ -7242,53 +7284,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     a wide "New prayer request" CTA. Leads the home, above the
                     events schedule. */}
                 {filter === null && !eventsOnly && (() => {
-                  const requestRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
-                    .filter((r) => {
-                      if (r.isAnswered) return false;
-                      if (r.closedAt) return false;
-                      if (typeof r.body !== "string" || r.body.length === 0) return false;
-                      // Your OWN requests now show in this SAME list as everyone
-                      // else's (with the 🙏/✓ pill reflecting whether you've prayed
-                      // it yourself) — no separate "Your prayer requests" section.
-                      if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-                      // Prayed (amened) requests STAY on the list — they sink to
-                      // the bottom and show a ✓, so done ones no longer disappear.
-                      return true;
-                    })
-                    .map((r) => ({
-                      id: r.id,
-                      body: r.body ?? "",
-                      isOwnRequest: r.isOwnRequest,
-                      isAnonymous: r.isAnonymous,
-                      ownerName: r.ownerName ?? null,
-                      ownerAvatarUrl: r.ownerAvatarUrl ?? null,
-                      myAmenedToday: r.myAmenedToday,
-                    }));
-                  // Community intercessions an admin posted join the SAME list with
-                  // the SAME card: FROM {community} + the prayer as the body, 🙏/✓
-                  // from myPrayedToday, and a tap opens the slideshow led by it.
-                  // Group-scoped only (feed intercessions have their own feed card).
-                  const intercessionRows: PrayerListCarouselRow[] = (momentsData?.moments ?? [])
-                    .filter((m) => m.templateType === "intercession" && !m.prayerFeedId && m.state !== "archived" && !!m.group)
-                    .map((m) => ({
-                      id: m.id,
-                      body: (m.intercessionFullText?.trim() || m.intercessionTopic?.trim() || m.intention?.trim() || m.name || ""),
-                      isOwnRequest: false,
-                      isAnonymous: false,
-                      ownerName: m.group?.name ?? null,
-                      ownerAvatarUrl: null,
-                      myAmenedToday: m.myPrayedToday === true,
-                      kind: "intercession" as const,
-                      momentToken: m.momentToken,
-                      avatarEmoji: m.group?.emoji ?? "🙏🏽",
-                    }));
-                  const carouselRows: PrayerListCarouselRow[] = [...requestRows, ...intercessionRows]
-                    // Float the ones you HAVEN'T prayed yet to the top; prayed
-                    // ones sink to the bottom and show a ✓. Stable within a group.
-                    .sort((a, b) => (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0));
-                  // The prayer-request carousel leads. The upcoming EVENTS now
-                  // render BELOW the "Your prayer requests" section (just below),
-                  // so every prayer request groups above the schedule.
+                  // One source of truth (see homeCarouselRows above) — own +
+                  // others' requests AND community intercessions, already sorted.
+                  const carouselRows = homeCarouselRows;
                   if (carouselRows.length === 0) return null;
                   const carouselFrom = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
                   return (
@@ -7324,18 +7322,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   // Cascade base for the events schedule: after the rhythm cards
                   // and the prayer-list carousel (which now also holds your own
                   // requests).
-                  // The carousel holds BOTH prayer requests AND community
-                  // intercessions — count both, or the events cascade starts too
-                  // early and an event card rises at the same time as the last
-                  // intercession (they'd overlap). Mirrors the carouselRows build
-                  // in the prayer-list section above.
-                  const requestCount = (dashPrayerRequests ?? []).filter(
-                    (r) => !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()),
-                  ).length;
-                  const intercessionCount = (momentsData?.moments ?? []).filter(
-                    (m) => m.templateType === "intercession" && !m.prayerFeedId && m.state !== "archived" && !!m.group,
-                  ).length;
-                  const carouselCount = requestCount + intercessionCount;
+                  // Resume the cascade exactly one step after the WHOLE carousel
+                  // (own + others' requests AND intercessions) — same rows the
+                  // carousel renders, so the count can never drift and an event
+                  // can't rise alongside the last prayer card.
+                  const carouselCount = homeCarouselRows.length;
                   const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
                   const cTomorrow = evBase + evToday.length;
                   const cWeek = cTomorrow + evTomorrow.length;
