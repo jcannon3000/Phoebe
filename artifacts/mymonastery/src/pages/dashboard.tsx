@@ -7327,7 +7327,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   // carousel renders, so the count can never drift and an event
                   // can't rise alongside the last prayer card.
                   const carouselCount = homeCarouselRows.length;
-                  const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
+                  // The "Add a prayer" pill cascades in like a card, right after
+                  // the carousel; the events then resume one step after the pill.
+                  const addPrayerFrom = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
+                  const evBase = addPrayerFrom + 1;
                   const cTomorrow = evBase + evToday.length;
                   const cWeek = cTomorrow + evTomorrow.length;
                   const cMonth = cWeek + evWeek.length;
@@ -7352,7 +7355,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   );
                   return (
                     <div style={{ marginTop: 12 }}>
-                      {newRequestBtn}
+                      {/* The pill fades up with the cascade, like a card — at the
+                          index right after the prayer-list carousel. */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(addPrayerFrom * 0.1, 1.5) }}
+                      >
+                        {newRequestBtn}
+                      </motion.div>
                       {hasEvents && (
                         <div style={{ marginTop: 20 }}>
                           <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
