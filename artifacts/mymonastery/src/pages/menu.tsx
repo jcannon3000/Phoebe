@@ -64,6 +64,10 @@ export default function MenuPage() {
   groups.push({
     header: t("menu.hdr_pray"),
     items: [
+      // Daily progress — the same surface the header "Daily progress" pill opens.
+      // Also here in the menu so it's reachable when the pill doesn't fit the
+      // header (small phones), or when it's turned off in Settings.
+      { emoji: "📿", label: t("menu.daily_progress", { defaultValue: "Daily progress" }), sub: t("menu.daily_progress_sub", { defaultValue: "Today's rhythm at a glance" }), onClick: () => go("/daily-progress") },
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
