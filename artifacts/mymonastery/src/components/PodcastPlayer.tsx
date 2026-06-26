@@ -280,6 +280,8 @@ const SHOW_OVERRIDES: Record<string, { introSkipSeconds?: number; outroTrimSecon
   // a ~51s outro (credits / closing) — skip it: treat the episode as finished
   // 51s early so it closes out and hands off to the next thing.
   "forward-day-by-day": { introSkipSeconds: 19, outroTrimSeconds: 51 },
+  // Scripture Day by Day ends with a ~20s outro — skip it the same way.
+  "scripture-day-by-day": { outroTrimSeconds: 20 },
 };
 function showOverride(slug: string | null | undefined) {
   return (slug && SHOW_OVERRIDES[slug]) || null;
