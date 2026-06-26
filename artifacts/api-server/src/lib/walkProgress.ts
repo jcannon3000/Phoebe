@@ -247,9 +247,12 @@ export async function getFellowLightsForUsers(userIds: number[]): Promise<Map<nu
   if (targets.length === 0) return out;
 
   // (id, tz, ymd) rows for the tz-aware prayer-sessions join, and (id, ymd)
-  // pairs for the plain ymd-keyed tables.
-  const tzValues = sql.join(targets.map((t) => sql`(${t.id}, ${t.tz}, ${t.ymd})`), sql`, `);
-  const ymdPairs = sql.join(targets.map((t) => sql`(${t.id}, ${t.ymd})`), sql`, `);
+  // pairs for the plain ymd-keyed tables. Each value is CAST explicitly —
+  // Postgres can't infer column types for a VALUES list (or row constructor) of
+  // bare bound parameters, so without the casts the prayer-sessions query throws
+  // ("could not determine data type of parameter") and /api/fellows 500s.
+  const tzValues = sql.join(targets.map((t) => sql`(${t.id}::int, ${t.tz}::text, ${t.ymd}::text)`), sql`, `);
+  const ymdPairs = sql.join(targets.map((t) => sql`(${t.id}::int, ${t.ymd}::text)`), sql`, `);
 
   const [pray, refl, cac, turn] = await Promise.all([
     db.execute<{ user_id: number }>(sql`
