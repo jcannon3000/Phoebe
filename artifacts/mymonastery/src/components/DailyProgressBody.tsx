@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
@@ -367,7 +367,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, secondaryAction, pulse, pulseOnLoad = true, tint = 0.4, blurDelay,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
@@ -375,6 +375,9 @@ function PracticeCard({
   tint?: number;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
+  /** Optional secondary action (e.g. "Log minutes") rendered as a small text
+   *  button below the row. Doesn't trigger the card's primary navigation. */
+  secondaryAction?: { label: string; onClick: () => void };
   /** When a DONE card should still invite action (e.g. contemplation can keep
    *  going past its goal), this CTA replaces the plain ✓ and the card stays
    *  tappable to `href`/`onClick`. */
@@ -540,6 +543,18 @@ function PracticeCard({
             />
           </div>
         )}
+        {secondaryAction && !waiting && (
+          <div className="mt-2.5 flex justify-end">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); secondaryAction.onClick(); }}
+              className="text-[11.5px] font-medium rounded-full px-3 py-1 active:scale-[0.97]"
+              style={{ color: SAGE, background: "rgba(143,175,150,0.12)", border: "1px solid rgba(143,175,150,0.25)", fontFamily: FONT }}
+            >
+              {secondaryAction.label}
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -568,6 +583,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
+  const [silenceLog, setSilenceLog] = useState(false);
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
   const reflectionSource = useEffectiveReflectionSource();
@@ -757,9 +773,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(silenceActive ? [{
       key: "silence", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
       href: "/contemplation?begin=1",
-      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      title: t("rhythm.card_silence", { defaultValue: "Silence" }),
       blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      // Goal progress bar fills as today's contemplation minutes accrue; once the
+      // goal is met the card keeps inviting more ("Sit again").
+      progress: { current: contemplationMin, goal: contemplationGoalMin },
+      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // Track silence kept off-app without sitting: a quick minutes log that adds
+      // to the same contemplation stats the timer records.
+      secondaryAction: { label: t("rhythm.log_silence", { defaultValue: "Log minutes" }), onClick: () => setSilenceLog(true) },
     }] : []),
     // Optional practices ride at the time of day the user chose for each.
     ...(cobreatheActive ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
@@ -904,7 +927,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const lead = upcomingDisplay[0] as (undefined | (typeof cards)[number] & { later?: boolean });
   const leadPulse = !!lead && !lead.done && !lead.later && (
     lead.key === "evening" ? hour >= 17
-    : lead.key === "contemplation" ? !(contemplationGoalMin > 0 && contemplationMin > contemplationGoalMin * 0.5 && hour < 15)
+    : lead.key === "silence" ? !(contemplationGoalMin > 0 && contemplationMin > contemplationGoalMin * 0.5 && hour < 15)
     : true
   );
 
@@ -929,6 +952,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       onClick={"onClick" in c ? (c.onClick as (() => void) | undefined) : undefined}
       doneCta={(c as { doneCta?: string }).doneCta}
+      secondaryAction={(c as { secondaryAction?: { label: string; onClick: () => void } }).secondaryAction}
       pulse={pulse}
       pulseOnLoad={splashCleared}
       blurDelay={blurDelay}
@@ -1007,6 +1031,101 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         if (!a) return null;
         return <LogSheet anchor={a} onClose={() => setLogAnchorId(null)} t={t} />;
       })()}
+      {silenceLog && (
+        <SilenceLogSheet goalMin={contemplationGoalMin} onClose={() => setSilenceLog(false)} t={t} />
+      )}
+    </div>
+  );
+}
+
+// SilenceLogSheet — a quick minutes log for silence kept off-app. Records a
+// contemplation prayer_session (so it feeds the SAME contemplation stats + the
+// Silence goal progress bar) without making the user sit through the timer.
+function SilenceLogSheet({ goalMin, onClose, t }: {
+  goalMin: number;
+  onClose: () => void;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState<number>(goalMin > 0 ? goalMin : 10);
+  const [saving, setSaving] = useState(false);
+  const bump = (d: number) => setAmount((n) => Math.max(5, Math.min(180, n + d)));
+  const log = () => {
+    if (saving || amount <= 0) return;
+    setSaving(true);
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - amount * 60_000);
+    apiRequest("POST", "/api/prayer-sessions", {
+      surface: "contemplation",
+      durationSeconds: amount * 60,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      isPrivate: true,
+    })
+      .catch(() => undefined)
+      .finally(() => {
+        qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        qc.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+        try { swellHaptic(); } catch { /* ignore */ }
+        onClose();
+      });
+  };
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-end justify-center"
+      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full"
+        style={{ maxWidth: 460, margin: "0 10px", background: "rgba(6,18,11,0.62)", backdropFilter: "blur(14.4px)", WebkitBackdropFilter: "blur(14.4px)", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <span style={{ fontSize: 26 }}>🕯️</span>
+          <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{t("rhythm.card_silence", { defaultValue: "Silence" })}</p>
+        </div>
+        <p className="text-[12.5px] mb-2" style={{ color: SAGE, fontFamily: FONT }}>
+          {t("rhythm.silence_how_long", { defaultValue: "How many minutes of silence did you keep?" })}
+        </p>
+        <div className="flex items-center justify-center gap-4 mb-3">
+          <button
+            type="button"
+            onClick={() => bump(-5)}
+            aria-label={t("common.decrease", { defaultValue: "Decrease" })}
+            className="rounded-full flex items-center justify-center active:scale-[0.95]"
+            style={{ width: 44, height: 44, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: WARM, fontSize: 22, fontFamily: FONT }}
+          >−</button>
+          <div className="text-center" style={{ minWidth: 120 }}>
+            <span className="text-[30px] font-bold" style={{ color: WARM, fontFamily: FONT }}>{amount}</span>
+            <span className="text-[14px] ml-1.5" style={{ color: SAGE, fontFamily: FONT }}>{t("rhythm.min", { defaultValue: "min" })}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => bump(5)}
+            aria-label={t("common.increase", { defaultValue: "Increase" })}
+            className="rounded-full flex items-center justify-center active:scale-[0.95]"
+            style={{ width: 44, height: 44, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: WARM, fontSize: 22, fontFamily: FONT }}
+          >+</button>
+        </div>
+        <button
+          type="button"
+          disabled={saving || amount <= 0}
+          onClick={log}
+          className="w-full rounded-2xl py-3.5 mt-1 text-[15px] font-semibold active:scale-[0.99] disabled:opacity-40"
+          style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+        >
+          ✓ {t("rhythm.log_silence_btn", { defaultValue: "Log silence" })}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full text-center text-[13px] mt-3"
+          style={{ color: SAGE, background: "none", border: "none", fontFamily: FONT, cursor: "pointer" }}
+        >
+          {t("common.cancel", { defaultValue: "Cancel" })}
+        </button>
+      </div>
     </div>
   );
 }

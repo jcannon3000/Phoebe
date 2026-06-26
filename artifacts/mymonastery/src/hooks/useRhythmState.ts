@@ -385,12 +385,10 @@ export function useRhythmState(): RhythmState {
   // met — if no goal is set, any silence counts.
   const contemplationMin = Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
   const contemplationGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
-  // Contemplation is kept the moment you've ENTERED the silence today (any sit,
-  // or external mindful minutes) — never gated on reaching the daily goal. The
-  // chosen minutes are a gentle daily goal (progress is shown on the home card +
-  // the contemplation page), but the rhythm dot lights on entering the silence,
-  // so a short sit still counts — it's never about falling short of the goal.
-  const silenceDone = contemplationMin > 0;
+  // Silence is a daily-MINUTES goal: the dot lights (and the Silence card shows
+  // ✓) once today's contemplation minutes reach the chosen goal, the card's
+  // progress bar filling on the way there. If no goal is set, any silence counts.
+  const silenceDone = contemplationGoalMin > 0 ? contemplationMin >= contemplationGoalMin : contemplationMin > 0;
 
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));

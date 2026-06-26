@@ -93,7 +93,7 @@ const RULE_PRESETS: RulePreset[] = [
 ];
 
 // Contemplation goal options — a single dropdown in 5-minute increments.
-const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
+const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…90
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
@@ -550,14 +550,13 @@ export default function WayOfLoveRuleFlow({
     // "none" reflection → no newsletter card; otherwise the first picked source
     // is the per-side close-slide reflection.
     const primary: ReflectionSource = newsletters[0] ?? "none";
-    // The silence goal (minutes a day) applies whenever contemplation is part of
-    // the rhythm — either as a Contemplative Prayer practice, OR as a side's
-    // prayer form set to silent contemplation. Both are "how much to sit a day".
-    // No contemplation anywhere → no goal (0), even if a number lingered in state.
+    // Silence is its own step now (a daily-minutes goal) — the chosen value IS the
+    // goal (0 = None). A side whose prayer form is silent contemplation still
+    // implies some daily silence, so fall back to a 10-min goal in that case.
     const anySideSilentContemplation =
       (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation") &&
       contemplationStyle === "silent";
-    const effGoalMin = contemplative.prayer || anySideSilentContemplation ? goalMin : 0;
+    const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
@@ -716,8 +715,10 @@ export default function WayOfLoveRuleFlow({
     // FDD medium choice — asked AFTER the reflection/prayer is picked, so it
     // covers FDD-as-reflection too (applies wherever FDD is used: both sides).
     ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
+    // Silence (the daily-minutes goal, i.e. the silent sit) comes FIRST, then the
+    // other contemplative options — each of which becomes its own card.
+    "contemplation-goal",
     "contemplative",
-    ...(contemplative.prayer ? (["contemplation-goal"] as Step[]) : []),
     ...(contemplative.cobreathe ? (["cobreathe-when"] as Step[]) : []),
     ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
     ...(contemplative.lectio ? (["lectio-when"] as Step[]) : []),
@@ -813,10 +814,9 @@ export default function WayOfLoveRuleFlow({
         {backRow(goPrev)}
         {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Contemplation" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
-          {t("wol_rule.contemplative_body", { defaultValue: "Choose the contemplative practices for your day — pick as many as you like." })}
+          {t("wol_rule.contemplative_body", { defaultValue: "Beyond silence, choose any other contemplative practices for your day — each becomes its own card." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(contemplative.prayer, `🕯️ ${t("wol_rule.cp_prayer", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.cp_prayer_sub", { defaultValue: "Sit in silence before God." }), () => toggleContemplative("prayer"))}
           {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {choiceRow(contemplative.lectio, `📖 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Sacred reading." }), () => toggleContemplative("lectio"))}
@@ -864,41 +864,36 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Contemplative Prayer — silence goal ──────────────────────────────────
+  // ── Silence — the daily-minutes goal (the silent sit), chosen FIRST ───────
   if (step === "contemplation-goal") {
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Contemplative Prayer" }))}
+        {stepHeader(t("wol_rule.silence_eyebrow", { defaultValue: "Return" }), t("wol_rule.silence_title", { defaultValue: "Silence" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
-          {t("wol_rule.listen_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love." })}
+          {t("wol_rule.silence_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Sit in silence before God a few minutes a day, open to what God might be speaking and to what's on your own heart." })}
         </p>
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.listen_goal_label", { defaultValue: "How much would you like to sit each day?" })}
+          {t("wol_rule.silence_goal_label", { defaultValue: "How much silence each day?" })}
         </p>
         <div style={{ position: "relative" }}>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={180}
-            // Free text so any goal is preserved (e.g. 144) instead of snapping
-            // to a fixed dropdown option. Empty = "No goal". Keep only digits and
-            // clamp to 0–180 (the same range commit uses).
-            value={goalMin > 0 ? String(goalMin) : ""}
-            placeholder="5"
-            onChange={(e) => {
-              const digits = e.target.value.replace(/[^0-9]/g, "");
-              if (digits === "") { chooseGoal("0"); return; }
-              chooseGoal(String(Math.max(0, Math.min(180, parseInt(digits, 10) || 0))));
-            }}
-            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "How much would you like to sit each day?" })}
-            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 48px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "textfield", WebkitAppearance: "none" }}
-          />
-          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 13, pointerEvents: "none", fontFamily: FONT }}>min</span>
+          <select
+            value={String(goalMin)}
+            onChange={(e) => chooseGoal(e.target.value)}
+            aria-label={t("wol_rule.silence_goal_label", { defaultValue: "How much silence each day?" })}
+            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+          >
+            <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
+            {/* Preserve a previously-saved non-standard goal (e.g. 144) as an option. */}
+            {goalMin > 0 && !GOAL_OPTIONS.includes(goalMin) && (
+              <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
+            )}
+            {GOAL_OPTIONS.map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
+          </select>
+          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.listen_goal_note", { defaultValue: "A gentle daily goal — Phoebe helps you reach it at your own pace. It's never measured against you; how you meet it is up to you. Set 0 to keep the practice without one." })}
+          {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace, by sitting with the timer or logging silence you keep on your own. It's never measured against you." })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -1430,7 +1425,7 @@ export default function WayOfLoveRuleFlow({
       sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? (contemplationStyle === "silent" && goalMin > 0 ? `${goalMin} min a day` : "Silent sit") : prayBySide[s] === "fdd" ? (fddMode === "audio" ? "Listen" : "Read") : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
-    ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min a day` : "No daily goal", step: "contemplation-goal" as Step }] : []),
+    ...(goalMin > 0 ? [{ emoji: "🕯️", label: "Silence", sub: `${goalMin} min a day`, step: "contemplation-goal" as Step }] : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "contemplative" as Step }] : []),
