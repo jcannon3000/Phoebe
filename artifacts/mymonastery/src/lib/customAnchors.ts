@@ -18,8 +18,36 @@ import { swellHaptic } from "@/lib/swellHaptic";
 // daily rhythm (a morning walk near Morning Prayer, an evening stretch near the
 // evening office, etc.). Defaults to "afternoon" (a neutral middle) for anchors
 // created before this field existed.
-export type CustomSlot = "morning" | "midday" | "afternoon" | "evening";
-export const CUSTOM_SLOTS: CustomSlot[] = ["morning", "midday", "afternoon", "evening"];
+export type CustomSlot = "morning" | "anytime" | "midday" | "afternoon" | "evening";
+export const CUSTOM_SLOTS: CustomSlot[] = ["morning", "anytime", "midday", "afternoon", "evening"];
+
+// Ordering of the slots in the daily rhythm. "anytime" sits right after the
+// morning cards but carries no time gate.
+export const SLOT_RANK: Record<CustomSlot, number> = {
+  morning: 0, anytime: 1, midday: 2, afternoon: 3, evening: 4,
+};
+
+// The local hour (0–23) each slot's window OPENS. A slotted practice can't be
+// completed before its window. Morning opens at the start of the day; "anytime"
+// is never gated (always available, just ordered after morning).
+export const SLOT_OPEN_HOUR: Record<CustomSlot, number> = {
+  morning: 0, anytime: 0, midday: 10, afternoon: 14, evening: 17,
+};
+
+// Is the slot's window open right now? Morning + anytime are always open.
+export function isSlotOpen(slot: CustomSlot, now: Date = new Date()): boolean {
+  return now.getHours() >= (SLOT_OPEN_HOUR[slot] ?? 0);
+}
+
+// A short "opens at" label for a gated slot (e.g. "10 AM"), or null when the
+// slot is never gated (morning / anytime).
+export function slotOpensLabel(slot: CustomSlot): string | null {
+  const h = SLOT_OPEN_HOUR[slot] ?? 0;
+  if (h <= 0) return null;
+  const am = h < 12;
+  const hr12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hr12} ${am ? "AM" : "PM"}`;
+}
 
 // Journaling (a built-in optional practice) is flexible about WHEN — morning
 // pages, an evening reflection — so, like a custom anchor, it carries a

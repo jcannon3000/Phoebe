@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, SLOT_RANK, isSlotOpen, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -683,7 +683,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // and reflections anchor morning / evening; the optional practices (Co-Breathe,
   // Audio Divina, Lectio, Walk, Journaling, customs) ride at their chosen slot;
   // the Examen + Gratitude are end-of-day, so they sit in the evening.
-  const SLOT_RANK: Record<CustomSlot, number> = { morning: 0, midday: 1, afternoon: 2, evening: 3 };
   const rawCards = [
     ...(morningActive ? [{
       key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
@@ -759,7 +758,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   ];
   // Stable sort by time-of-day slot (Array.prototype.sort is stable), so within
   // a slot the base order above is preserved.
-  const cards = [...rawCards].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
+  const sortedCards = [...rawCards].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
+  // Time-gate each slotted card: you can't complete a practice before its slot's
+  // window opens (Midday 10 AM, Afternoon 2 PM, Evening 5 PM). Morning + Anytime
+  // are always open. A gated card stays a quiet, non-tappable "from <time>" card
+  // (the existing `later` treatment) until its window arrives.
+  const cards = sortedCards.map((c) => {
+    if (c.done || isSlotOpen(c.slot)) return c;
+    return { ...c, later: true, laterLabel: slotOpensLabel(c.slot) ?? undefined };
+  });
 
   // When a dedicated office hero is supplied (the beta home), the office shows
   // as that full hero instead of a practice row. The hero is the next office to
@@ -884,7 +891,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       rgb={c.rgb}
       tint={tint}
       later={c.later}
-      laterLabel={t("rhythm.later", { defaultValue: "Later" })}
+      laterLabel={("laterLabel" in c && c.laterLabel) ? (c.laterLabel as string) : t("rhythm.later", { defaultValue: "Later" })}
       progress={(c as { progress?: { current: number; goal: number } }).progress}
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       onClick={"onClick" in c ? (c.onClick as (() => void) | undefined) : undefined}

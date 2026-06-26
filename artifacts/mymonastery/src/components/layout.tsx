@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
-import { getPracticeSlot, getJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, getJournalingSlot, SLOT_RANK, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -968,7 +968,6 @@ function OpeningSplash() {
   // special-cased: it only enters the running from 4pm onward AND, as an
   // evening-slot card, only wins once everything else is done — so a midday next
   // thing (a custom practice, journaling, Audio Divina, …) always shows ahead of it.
-  const SLOT_RANK: Record<CustomSlot, number> = { morning: 0, midday: 1, afternoon: 2, evening: 3 };
   type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string };
   const nextCandidates: NextCand[] = [
     { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: "Morning prayer", blurb: "Begin the day with the office", rgb: "46,107,64" },

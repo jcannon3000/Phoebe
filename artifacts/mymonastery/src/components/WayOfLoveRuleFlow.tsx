@@ -241,8 +241,13 @@ export default function WayOfLoveRuleFlow({
     evening: getSideEntry("evening"),
   }));
   // Multiple daily reflections may be followed — each shows its own home card
-  // and counts toward the Reflect anchor. Seeded from the current single source.
+  // and counts toward the Reflect anchor. The home reads the chosen set from the
+  // home-layout cards (cac/fdd/ssje), so seed from THOSE — otherwise re-opening
+  // the customizer only pre-selected one. Fall back to the single effective
+  // source / FDD default for an un-set-up user (no saved layout yet).
   const [newsletters, setNewsletters] = useState<ReflectionSource[]>(() => {
+    const fromLayout = (["cac", "fdd", "ssje"] as const).filter((s) => homeCardOn(user?.homeLayout, s));
+    if (fromLayout.length > 0) return [...fromLayout];
     const r = getReflectionSource();
     return r && r !== "none" ? [r] : ["fdd"];
   });
@@ -367,6 +372,11 @@ export default function WayOfLoveRuleFlow({
       reading: homeCardOn(user.homeLayout, "reading"),
       podcasts: homeCardOn(user.homeLayout, "podcasts"),
     });
+    // Re-seed the reflection multi-select from the layout cards too — same
+    // reason: `user` was likely null at the initializer, so an existing
+    // cac+fdd+ssje selection would otherwise collapse to one on re-open.
+    const fromLayout = (["cac", "fdd", "ssje"] as const).filter((s) => homeCardOn(user.homeLayout, s));
+    if (fromLayout.length > 0) setNewsletters([...fromLayout]);
     setContemplative((c) => touchedRef.current ? c : {
       prayer: prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation",
       cobreathe: homeCardOn(user.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation")),
@@ -413,6 +423,7 @@ export default function WayOfLoveRuleFlow({
   );
   const SLOT_LABEL: Record<CustomSlot, string> = {
     morning: t("wol_rule.slot_morning", { defaultValue: "Morning" }),
+    anytime: t("wol_rule.slot_anytime", { defaultValue: "Anytime" }),
     midday: t("wol_rule.slot_midday", { defaultValue: "Midday" }),
     afternoon: t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" }),
     evening: t("wol_rule.slot_evening", { defaultValue: "Evening" }),
@@ -1207,10 +1218,7 @@ export default function WayOfLoveRuleFlow({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
                 {CUSTOM_SLOTS.map((s) => {
                   const on = journalingSlot === s;
-                  const label = s === "morning" ? t("wol_rule.slot_morning", { defaultValue: "Morning" })
-                    : s === "midday" ? t("wol_rule.slot_midday", { defaultValue: "Midday" })
-                      : s === "afternoon" ? t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" })
-                        : t("wol_rule.slot_evening", { defaultValue: "Evening" });
+                  const label = SLOT_LABEL[s];
                   return (
                     <button
                       key={s}
@@ -1324,10 +1332,7 @@ export default function WayOfLoveRuleFlow({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
               {CUSTOM_SLOTS.map((sl) => {
                 const on = customSlot === sl;
-                const label = sl === "morning" ? t("wol_rule.slot_morning", { defaultValue: "Morning" })
-                  : sl === "midday" ? t("wol_rule.slot_midday", { defaultValue: "Midday" })
-                    : sl === "afternoon" ? t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" })
-                      : t("wol_rule.slot_evening", { defaultValue: "Evening" });
+                const label = SLOT_LABEL[sl];
                 return (
                   <button
                     key={sl}
