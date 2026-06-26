@@ -367,7 +367,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
@@ -394,8 +394,26 @@ function PracticeCard({
   /** Gate the one-shot outline load-pulse so it only runs after the splash has
    *  faded (the cascade shouldn't fire behind the splash). */
   pulseOnLoad?: boolean;
+  /** When set, the frosted backdrop blur RAMPS IN (0 → full) starting at this
+   *  delay (seconds) — the card's cascade landing time — instead of the static
+   *  blur that WebKit otherwise repaints for every card at once after the
+   *  cascade settles. Each card's blur then arrives gradually as it lands. */
+  blurDelay?: number;
 }) {
   const waiting = !!later && !done;
+  // Gradual per-card blur-in. When blurDelay is provided we drop the static
+  // backdrop-filter from `style` and animate it (both unprefixed + -webkit- so
+  // it works across iOS 15.x) from blur(0) → full. It stays at 0 while the card
+  // is still behind the opening splash (pulseOnLoad === splashCleared is false),
+  // then — when the splash clears and the card cascades up — ramps in starting
+  // at its landing time, so each card's frosted backdrop arrives as it settles
+  // instead of every card's blur popping in at once after the cascade.
+  const blurOn = blurDelay != null;
+  const blurTarget = blurOn ? (pulseOnLoad ? "blur(11.34px)" : "blur(0px)") : "blur(11.34px)";
+  const blurInitial = blurOn ? { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" } : undefined;
+  const blurAnimate = blurOn ? { backdropFilter: blurTarget, WebkitBackdropFilter: blurTarget } : undefined;
+  const blurTransition = blurOn ? { backdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const }, WebkitBackdropFilter: { delay: blurDelay, duration: 0.7, ease: "easeOut" as const } } : undefined;
+  const staticBlur = blurOn ? {} : { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" };
   // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
   // (so the reflection keeps flipping its publication name ↔ today's title even
   // after it's read). Cards that shouldn't cycle when done simply pass no cycle.
@@ -486,9 +504,18 @@ function PracticeCard({
   const row = (
     <motion.div
       className={`${pulse || !pulseOnLoad ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
-      animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
-      transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
+      style={{ background: cardTintBg(tint), ...staticBlur, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      initial={blurInitial}
+      animate={
+        pulse
+          ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder], ...(blurAnimate ?? {}) }
+          : blurAnimate
+      }
+      transition={
+        pulse
+          ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" }, ...(blurTransition ?? {}) }
+          : blurTransition
+      }
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
@@ -880,7 +907,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const stackCount = upcomingDisplay.length + completedDisplay.length;
   const tintFor = (globalIdx: number) => (stackCount <= 1 ? 0.4 : globalIdx / (stackCount - 1));
 
-  const renderCard = (c: (typeof cards)[number], pulse = false, tint = 0.4) => (
+  const renderCard = (c: (typeof cards)[number], pulse = false, tint = 0.4, blurDelay?: number) => (
     <PracticeCard
       href={c.href}
       emoji={c.emoji}
@@ -898,8 +925,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       doneCta={(c as { doneCta?: string }).doneCta}
       pulse={pulse}
       pulseOnLoad={splashCleared}
+      blurDelay={blurDelay}
     />
   );
+  // The blur on a card starts as it LANDS — its cascade delay (enterUp) plus a
+  // little, so the frosted backdrop ramps in just as the card settles. min()
+  // caps it to the same ceiling enterUp uses so late cards don't lag too far.
+  const blurLand = (i: number) => Math.min(i * 0.1, 0.7) + 0.25;
 
   // Gentle staggered fade-up — each card rises in just after the one above it.
   // A clear cascade: a touch more travel + a longer per-card gap so the cards
@@ -939,7 +971,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
             )}
             {upcomingDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
-                {renderCard(c, i === 0 && leadPulse, tintFor(i))}
+                {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (officeHero ? 1 : 0)))}
               </motion.div>
             ))}
           </div>
@@ -953,7 +985,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(upcomingDisplay.length + i)}>
-                {renderCard(c, false, tintFor(upcomingDisplay.length + i))}
+                {renderCard(c, false, tintFor(upcomingDisplay.length + i), blurLand(upcomingDisplay.length + i))}
               </motion.div>
             ))}
           </div>
