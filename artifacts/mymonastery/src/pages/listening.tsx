@@ -68,6 +68,9 @@ export default function ListeningPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [picked, setPicked] = useState(false);
+  // Whether the "what" field is focused — drives the recents list that shows
+  // before any catalog search (your own recent listens, one tap to refill).
+  const [searchFocused, setSearchFocused] = useState(false);
   // Artwork of the picked song/artist/album (shown in the log) + an optional
   // reflection on the listening.
   const [artworkUrl, setArtworkUrl] = useState("");
@@ -114,6 +117,28 @@ export default function ListeningPage() {
     staleTime: 60_000,
   });
   const entries = logData?.entries ?? [];
+  // Your recent listens, deduped by title (newest first) — shown at the top of
+  // the search the moment you focus it, so re-logging a favourite is one tap.
+  const recents = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { what: string; artworkUrl?: string; medium: ListeningMedium }[] = [];
+    for (const e of [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))) {
+      const key = e.what?.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push({ what: e.what.trim(), artworkUrl: e.artworkUrl, medium: e.medium });
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [entries]);
+  function chooseRecent(r: { what: string; artworkUrl?: string; medium: ListeningMedium }) {
+    setWhat(r.what);
+    setArtworkUrl(r.artworkUrl ?? "");
+    chooseMedium(r.medium);
+    setPicked(true);
+    setResults([]);
+    setSearchFocused(false);
+  }
   // Share-with-fellows toggle for a new entry (default private), mirroring gratitude.
   const [shareOnLog, setShareOnLog] = useState(false);
   // Which log you're viewing in the history screen: your own, or your fellows'.
@@ -220,10 +245,37 @@ export default function ListeningPage() {
         <input
           value={what}
           onChange={(e) => { setWhat(e.target.value); setPicked(false); setArtworkUrl(""); }}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
           placeholder="A song, album, or artist…"
           className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
           style={glassField}
         />
+        {/* Recents — your own recent listens, shown the moment the field is
+            focused and before you've typed a search. One tap refills everything. */}
+        {searchFocused && !picked && what.trim().length < 2 && recents.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1.5 max-h-[44vh] overflow-y-auto">
+            <p className="text-[10px] uppercase tracking-[0.18em] px-1 pt-1 pb-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Recent</p>
+            {recents.map((r, i) => (
+              <button
+                key={`recent-${i}`}
+                type="button"
+                onClick={() => chooseRecent(r)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                {r.artworkUrl ? (
+                  <img src={r.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <span className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[18px]" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[r.medium] ?? "🎧"}</span>
+                )}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.what}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         {/* Apple Music suggestions — artists, songs, albums. Tap one to fill the
             field. Stays empty (plain typing) when no catalog source is wired. */}
         {!picked && (searching || results.length > 0) && (
