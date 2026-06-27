@@ -730,7 +730,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Audio Divina, Lectio, Walk, Journaling, customs) ride at their chosen slot;
   // the Examen + Gratitude are end-of-day, so they sit in the evening.
   const rawCards = [
-    ...(morningActive ? [{
+    // Morning drops off Daily progress once the morning is past (afternoon) and
+    // it wasn't prayed — we don't nag about a missed morning or pretend it's
+    // done; it simply isn't shown. If they DID pray it, it stays (kept).
+    ...(morningActive && (morningDone || hour < 12) ? [{
       key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
