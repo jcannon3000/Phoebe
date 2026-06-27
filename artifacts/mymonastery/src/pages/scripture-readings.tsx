@@ -134,10 +134,16 @@ export default function ScriptureReadingsPage() {
   const playableKinds = inScope.filter((k) => sectionByKind.has(k));
   const canPlayThrough = !!audioUrl && playableKinds.length > 0;
 
-  const baseEpisode = (sec: Section, onSegmentEnd?: () => void): PlayingEpisode => ({
+  const baseEpisode = (sec: Section, onSegmentEnd?: () => void): PlayingEpisode => {
+    const kind = sec.id as ReadingKind;
+    const citation = readings.find((r) => r.kind === kind)?.citation || sec.title || KIND_LABEL[kind];
+    return {
     showSlug: "scripture-day-by-day",
     episodeId: audioUrl!, // /today gives no guid; the day's audio url is a stable id
-    title: ep?.title ?? "Scripture Day by Day",
+    // The player shows the category over the artwork (segmentEyebrow) with the
+    // citation as the title.
+    title: citation,
+    segmentEyebrow: KIND_LABEL[kind],
     audioUrl: audioUrl!,
     imageUrl: ep?.imageUrl ?? null,
     showTitle: "Scripture Day by Day",
@@ -150,7 +156,8 @@ export default function ScriptureReadingsPage() {
     // section's start (or the episode end) when the alignment left the end open.
     stopAtSeconds: stopFor(sec),
     onSegmentEnd,
-  });
+    };
+  };
 
   // Play just one reading (a single tap on a card).
   const playReading = (sec: Section) => {

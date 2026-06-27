@@ -90,6 +90,10 @@ export type PlayingEpisode = {
   // next segment itself (the Listen-to-Scripture play-through: passage → chime →
   // next passage).
   onSegmentEnd?: () => void;
+  // When set, the full-screen player shows this small eyebrow over the artwork
+  // above `title` — used by Listen to Scripture to label the part being read
+  // ("Psalm" / "Gospel"), with the citation as the title.
+  segmentEyebrow?: string | null;
 };
 
 type PlayerCtx = {
@@ -1353,6 +1357,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               ) : <span style={{ width: 34 }} />}
             </div>
 
+            {/* Reading label over the photo — category (eyebrow) + citation.
+                Listen to Scripture sets this per passage so the player names what
+                you're hearing right on the image. */}
+            {current.segmentEyebrow && (
+              <div style={{ textAlign: "center", padding: "6px 26px 0", flexShrink: 0 }}>
+                <p style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "rgba(246,240,230,0.9)", margin: 0, textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}>
+                  {current.segmentEyebrow}
+                </p>
+                <p style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 700, color: "#F6F0E6", margin: "5px 0 0", lineHeight: 1.2, textShadow: "0 1px 12px rgba(0,0,0,0.55)" }}>
+                  {current.title}
+                </p>
+              </div>
+            )}
+
             {/* Transport over the photo */}
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 30, minHeight: 0 }}>
               <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
@@ -1403,9 +1421,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                 <span>{duration > 0 ? `-${fmtClock(displayRemaining)}` : "--:--"}</span>
               </div>
 
-              <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 700, margin: "16px 0 0", lineHeight: 1.18, color: "#F6F0E6", transition: "opacity 0.3s" }}>
-                {officeTitle}
-              </h2>
+              {/* The verse is already shown over the photo for scripture
+                  segments — don't repeat it here. */}
+              {!current.segmentEyebrow && (
+                <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 700, margin: "16px 0 0", lineHeight: 1.18, color: "#F6F0E6", transition: "opacity 0.3s" }}>
+                  {officeTitle}
+                </h2>
+              )}
               {/* Show line: a plain label for offices, a tappable "view show"
                   link for podcasts (so the immersive player keeps the library's
                   show navigation). */}
