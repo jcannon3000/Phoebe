@@ -1228,12 +1228,15 @@ export default function PrayerListPage() {
   // The viewer's PRIVATE prayer list (prayer_intentions) — the people / things
   // they keep in prayer, shown here alongside the community requests as "Your
   // prayer list". Stays private until they share an item.
-  const { data: intentionsData } = useQuery<{ intentions: PrayerIntention[] }>({
+  const { data: intentionsData } = useQuery<{ intentions: PrayerIntention[]; encrypted?: boolean }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
     enabled: !!user,
   });
   const myIntentions = (intentionsData?.intentions ?? []).filter((i) => !i.answered);
+  // Only show the "encrypted" note when at-rest encryption is actually active
+  // server-side (a key is configured) — never claim it when it isn't true.
+  const listEncrypted = !!intentionsData?.encrypted;
   const markIntentionAnswered = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-intentions/${id}`, { answered: true }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] }),
@@ -1534,6 +1537,12 @@ export default function PrayerListPage() {
         {/* ── My list (private intentions) ─────────────────────────────── */}
         {tab === "mine" && (
           <>
+            {listEncrypted && (
+              <p className="text-[12px] mb-3 flex items-center justify-center gap-1.5" style={{ color: "rgba(143,175,150,0.75)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                <span aria-hidden>🔒</span>
+                {t("intentions.encrypted_note", { defaultValue: "Your private prayers are encrypted on our servers." })}
+              </p>
+            )}
             <Link href="/pray-request/new?dest=list" className="block mb-3">
               <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
                 ＋ {t("intentions.add", { defaultValue: "Add to my list" })}

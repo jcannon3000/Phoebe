@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
 import { rateLimit } from "../lib/rate-limit";
+import { encryptField, decryptField, fieldEncryptionActive } from "../lib/fieldCrypto";
 
 // ── Personal prayer list ("prayer intentions") ─────────────────────────────
 // A PRIVATE list of the things / people a user is holding in prayer. Each item
@@ -33,8 +34,10 @@ function toJson(r: Row) {
   return {
     id: r.id,
     kind: r.kind === "person" ? "person" : "text",
-    personName: r.person_name ?? "",
-    body: r.body ?? "",
+    // person_name + body are stored encrypted at rest (see fieldCrypto); decrypt
+    // on the way out. Legacy plaintext rows decrypt to themselves (no prefix).
+    personName: decryptField(r.person_name ?? ""),
+    body: decryptField(r.body ?? ""),
     answered: !!r.answered,
     answeredAt: r.answered_at,
     shared: !!r.shared,
@@ -56,7 +59,10 @@ router.get("/prayer-intentions", async (req, res) => {
         ORDER BY answered ASC, created_at ASC`,
       [user.id],
     );
-    return res.json({ intentions: result.rows.map(toJson) });
+    // `encrypted` tells the client whether at-rest encryption is actually
+    // active (a key is configured), so it only shows the "encrypted" note when
+    // the claim is true.
+    return res.json({ intentions: result.rows.map(toJson), encrypted: fieldEncryptionActive() });
   } catch (err) {
     console.error("GET /prayer-intentions error:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -103,7 +109,7 @@ router.post("/prayer-intentions", rateLimit({
       `INSERT INTO prayer_intentions (user_id, kind, person_name, body)
        VALUES ($1, $2, $3, $4)
        RETURNING id, kind, person_name, body, answered, answered_at, shared, shared_request_id, created_at`,
-      [user.id, kind, name, text],
+      [user.id, kind, encryptField(name), encryptField(text)],
     );
     return res.json({ intention: toJson(result.rows[0]) });
   } catch (err) {
@@ -128,8 +134,8 @@ router.patch("/prayer-intentions/:id", async (req, res) => {
     const sets: string[] = [];
     const vals: unknown[] = [];
     let i = 1;
-    if (typeof personName === "string") { sets.push(`person_name = $${i++}`); vals.push(personName.trim().slice(0, 80)); }
-    if (typeof body === "string") { sets.push(`body = $${i++}`); vals.push(body.trim().slice(0, 500)); }
+    if (typeof personName === "string") { sets.push(`person_name = $${i++}`); vals.push(encryptField(personName.trim().slice(0, 80))); }
+    if (typeof body === "string") { sets.push(`body = $${i++}`); vals.push(encryptField(body.trim().slice(0, 500))); }
     if (typeof answered === "boolean") {
       sets.push(`answered = $${i++}`); vals.push(answered);
       sets.push(`answered_at = $${i++}`); vals.push(answered ? new Date().toISOString() : null);
