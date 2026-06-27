@@ -104,6 +104,19 @@ export default function ScriptureReadingsPage() {
     return m;
   }, [sections]);
 
+  // All sections in audio order — used to bound a reading that has no explicit
+  // end: its end is the NEXT thing in the audio (even an out-of-scope reading,
+  // or the intro/outro), so a passage never spills past its own part.
+  const sectionsByStart = useMemo(
+    () => [...sections].sort((a, b) => a.startSeconds - b.startSeconds),
+    [sections],
+  );
+  const stopFor = (sec: Section): number | undefined => {
+    if (sec.endSeconds != null) return sec.endSeconds;
+    const next = sectionsByStart.find((s) => s.startSeconds > sec.startSeconds + 0.5);
+    return next ? next.startSeconds : (ep?.durationSeconds ?? undefined);
+  };
+
   // The four readings in spoken order. Prefer the feed-parsed citations (shown
   // even before alignment); fall back to the aligned section titles.
   const readings: Reading[] = useMemo(() => {
@@ -133,7 +146,9 @@ export default function ScriptureReadingsPage() {
     sessionSurface: "scripture-audio",
     showHref: "/podcasts/show/scripture-day-by-day",
     startAtSeconds: sec.startSeconds,
-    stopAtSeconds: sec.endSeconds ?? undefined,
+    // Always bound the segment to this reading's part — fall back to the next
+    // section's start (or the episode end) when the alignment left the end open.
+    stopAtSeconds: stopFor(sec),
     onSegmentEnd,
   });
 
