@@ -72,9 +72,9 @@ export default function MenuPage() {
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
       { emoji: "🎧", label: t("menu.podcasts", { defaultValue: "Podcasts" }), sub: t("menu.podcasts_sub", { defaultValue: "The full library" }), onClick: () => go("/podcasts") },
-      // Prayer List — a personal list of who & what you're holding in prayer,
-      // prayed through in a quiet slideshow; shareable to a community / circle.
-      { emoji: "🕊️", label: t("menu.my_prayer_list", { defaultValue: "My Prayer List" }), sub: t("menu.my_prayer_list_sub", { defaultValue: "Your own list of who & what you're praying for" }), onClick: () => go("/intentions") },
+      // (The personal "prayer list" now lives inside the community Prayer list
+      // page — reachable via Community → Prayer list — and the Add-prayer
+      // composer's "Keep on my list" option; no separate menu entry.)
       // Gratitude — its own surface (journal + the community garden). The dot
       // lights when a fellow has shared a new thanksgiving you haven't seen.
       ...(rawIsBeta ? [{ emoji: "🙏", label: t("menu.gratitude", { defaultValue: "Gratitude" }), sub: t("menu.gratitude_sub", { defaultValue: "Give thanks · see your community's" }), badge: t("menu.beta_badge"), dot: hasNewGratitude, onClick: () => go("/gratitude") }] : []),

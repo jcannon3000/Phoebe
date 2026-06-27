@@ -105,6 +105,13 @@ export default function PrayerRequestNew() {
   const copy = KIND_COPY[kind];
 
   const [body, setBody] = useState("");
+  // Destination: keep it on your PRIVATE list (prayer_intentions) or SHARE it
+  // with the community (prayer_requests). Only the default "request" kind can be
+  // private — life-events / justice are inherently community asks. A private
+  // item can also be "a person" (name + optional note), like the prayer list.
+  const [dest, setDest] = useState<"share" | "list">("share");
+  const [listKind, setListKind] = useState<"text" | "person">("text");
+  const [personName, setPersonName] = useState("");
   // One calm landscape behind the page, picked once and faded gently up under a
   // dark wash (matching the office/Co-Breathe slides).
   const bgPhoto = useMemo(
@@ -161,6 +168,22 @@ export default function PrayerRequestNew() {
     },
   });
 
+  // Private list: add to prayer_intentions instead of sharing. Text or a person.
+  const addToListMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/prayer-intentions", listKind === "person"
+        ? { kind: "person", personName: personName.trim(), body: body.trim() }
+        : { kind: "text", body: body.trim() }),
+    onSuccess: () => {
+      triggerSubmitFeedback();
+      qc.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
+      close("/prayer-list");
+    },
+    onError: (err: any) => {
+      setError(err?.message || t("prayer_request.couldnt_share", { defaultValue: "Couldn't save that — try again." }));
+    },
+  });
+
   // Renew-instead: the user's most-recent PAST request (expired or released),
   // so they can bring it back for another 7 days instead of writing a fresh one
   // — the same surface the office-close ask slide shows.
@@ -188,8 +211,23 @@ export default function PrayerRequestNew() {
     },
   });
 
+  // Private-list submit needs either a name (person) or body text (intention);
+  // sharing always needs body text.
+  const canSubmit = dest === "list" && listKind === "person"
+    ? personName.trim().length > 0
+    : body.trim().length > 0;
+  const submitting = createMutation.isPending || addToListMutation.isPending;
+
   // One slide now: validate, then submit. (Life events also carry a title + date.)
   function handleSubmit() {
+    if (dest === "list") {
+      if (listKind === "person" ? personName.trim().length === 0 : body.trim().length === 0) {
+        setError(t("prayer_request.write_request_first")); return;
+      }
+      setError("");
+      addToListMutation.mutate();
+      return;
+    }
     if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
     if (isLifeEvent) {
       if (eventTitle.trim().length === 0) { setError(t("prayer_request.life_event_need_title", { defaultValue: "Give it a short title." })); return; }
@@ -255,6 +293,55 @@ export default function PrayerRequestNew() {
             {copy.title}
           </h1>
 
+          {/* Destination — keep it on your private list, or share it with the
+              community. Only the default "request" kind offers privacy. */}
+          {!isLifeEvent && kind === "request" && (
+            <div className="w-full flex gap-2">
+              {([
+                ["share", t("prayer_request.dest_share", { defaultValue: "Share with community" })],
+                ["list", t("prayer_request.dest_list", { defaultValue: "Keep on my list" })],
+              ] as const).map(([val, label]) => {
+                const on = dest === val;
+                return (
+                  <button key={val} type="button" onClick={() => { setDest(val); setError(""); }}
+                    className="flex-1 rounded-full text-[13px] font-semibold py-2.5 transition-opacity active:scale-[0.98]"
+                    style={{ fontFamily: SPACE, color: on ? CREAM : SAGE, background: on ? "rgba(46,107,64,0.42)" : GLASS, border: `1px solid ${on ? "rgba(168,197,160,0.5)" : GLASS_BORDER}` }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Private list can be a free intention OR a person (name + note). */}
+          {dest === "list" && (
+            <div className="w-full flex gap-2">
+              {([
+                ["text", t("intentions.an_intention", { defaultValue: "An intention" })],
+                ["person", t("intentions.a_person", { defaultValue: "A person" })],
+              ] as const).map(([val, label]) => {
+                const on = listKind === val;
+                return (
+                  <button key={val} type="button" onClick={() => { setListKind(val); setError(""); }}
+                    className="flex-1 rounded-full text-[12.5px] font-semibold py-2 transition-opacity active:scale-[0.98]"
+                    style={{ fontFamily: SPACE, color: on ? CREAM : SAGE, background: on ? "rgba(96,140,180,0.32)" : GLASS, border: `1px solid ${on ? "rgba(96,140,180,0.5)" : GLASS_BORDER}` }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {dest === "list" && listKind === "person" && (
+            <input
+              type="text"
+              value={personName}
+              onChange={(e) => { setPersonName(e.target.value.slice(0, 80)); setError(""); }}
+              placeholder={t("intentions.name_ph", { defaultValue: "Their name" })}
+              className="w-full px-5 py-3.5 text-[15px]"
+              style={{ ...glassField, fontFamily: SPACE }}
+            />
+          )}
+
           {/* Life-event: a short title + the date it happens. */}
           {isLifeEvent && (
             <div className="w-full space-y-3 text-left">
@@ -287,14 +374,19 @@ export default function PrayerRequestNew() {
             value={body}
             onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
             rows={4}
-            placeholder={copy.placeholder}
+            placeholder={dest === "list"
+              ? (listKind === "person"
+                  ? t("intentions.note_ph", { defaultValue: "What are you praying for them? (optional)" })
+                  : t("intentions.text_ph", { defaultValue: "What are you praying for?" }))
+              : copy.placeholder}
             className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
             style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
-              Life events derive their lifetime from the event date instead. */}
-          {!isLifeEvent && (
+              Life events derive their lifetime from the event date instead.
+              A private list item isn't shared, so it has no carry window. */}
+          {!isLifeEvent && dest === "share" && (
             <div className="w-full">
             <select
               value={days}
@@ -319,11 +411,13 @@ export default function PrayerRequestNew() {
           <div className="flex flex-col gap-3 w-full mt-1">
             <button
               onClick={handleSubmit}
-              disabled={body.trim().length === 0 || createMutation.isPending}
+              disabled={!canSubmit || submitting}
               className="px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: "rgba(46,107,64,0.55)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", color: CREAM, fontFamily: SPACE, border: "1px solid rgba(168,197,160,0.5)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", cursor: "pointer" }}
             >
-              {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
+              {dest === "list"
+                ? (addToListMutation.isPending ? t("intentions.adding", { defaultValue: "Adding…" }) : t("intentions.add", { defaultValue: "Add to my list" }))
+                : (createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community"))}
             </button>
             <button
               onClick={handleBack}

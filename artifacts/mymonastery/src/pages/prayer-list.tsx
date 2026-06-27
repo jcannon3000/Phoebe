@@ -58,6 +58,16 @@ type Moment = {
   prayerFeedId?: number | null;
 };
 
+// A private prayer-list item (prayer_intentions) — text or a person.
+type PrayerIntention = {
+  id: number;
+  kind: "text" | "person";
+  personName: string;
+  body: string;
+  answered: boolean;
+  shared: boolean;
+};
+
 type PrayerRequest = {
   id: number;
   body: string;
@@ -1202,6 +1212,20 @@ export default function PrayerListPage() {
     enabled: !!user,
   });
 
+  // The viewer's PRIVATE prayer list (prayer_intentions) — the people / things
+  // they keep in prayer, shown here alongside the community requests as "Your
+  // prayer list". Stays private until they share an item.
+  const { data: intentionsData } = useQuery<{ intentions: PrayerIntention[] }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
+    enabled: !!user,
+  });
+  const myIntentions = (intentionsData?.intentions ?? []).filter((i) => !i.answered);
+  const markIntentionAnswered = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-intentions/${id}`, { answered: true }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] }),
+  });
+
   // The viewer's own PAST requests — answered, released, or expired.
   // The live /prayer-requests feed only carries active rows (plus the
   // owner's own expired ones), so a dedicated endpoint backs the faded
@@ -1595,6 +1619,51 @@ export default function PrayerListPage() {
                   </div>
                 </Link>
               </section>
+
+              {/* Your prayer list — the viewer's PRIVATE intentions (people /
+                  things they keep in prayer). Only the owner sees these; an item
+                  becomes a community request via the "Add prayer → Share" flow. */}
+              {myIntentions.length > 0 && (
+                <section>
+                  {sectionHead(t("intentions.your_list_heading", { defaultValue: "Your prayer list" }))}
+                  <Link href="/intentions?pray=1" className="block mb-2">
+                    <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "11px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13.5, fontWeight: 600 }}>
+                      🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
+                    </div>
+                  </Link>
+                  <div className="flex flex-col gap-2">
+                    {myIntentions.map((it) => {
+                      const head = it.kind === "person" ? (it.personName || "Someone") : it.body;
+                      const sub = it.kind === "person" ? it.body : "";
+                      return (
+                        <div key={it.id} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                          <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+                          <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                            <span aria-hidden className="text-base flex-shrink-0">{it.kind === "person" ? "🙏" : "🕊️"}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm leading-snug" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{head}</p>
+                              {sub && <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", wordBreak: "break-word" }}>{sub}</p>}
+                              {it.shared && <p className="text-[10.5px] mt-1" style={{ color: "rgba(96,140,180,0.95)" }}>✓ {t("intentions.shared", { defaultValue: "Shared — others are praying along" })}</p>}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => markIntentionAnswered.mutate(it.id)}
+                              aria-label={t("intentions.answered", { defaultValue: "Answered" })}
+                              className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+                              style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}
+                            >✓</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Link href="/intentions" className="block mt-2">
+                    <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}>
+                      {t("intentions.manage", { defaultValue: "Edit my list" })}
+                    </div>
+                  </Link>
+                </section>
+              )}
             </>
           );
         })()}
