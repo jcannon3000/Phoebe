@@ -248,6 +248,16 @@ export function ContemplationTimer({
   // octave 0 = the lower opening voicing, 2 = the brighter close.
   function playBell(octave: 0 | 2) {
     if (isNativeShell()) {
+      // The same swell tone Co-Breathe uses (PhoebeAudio.smoothSwell): a gentler
+      // peak to open the sit, a fuller one to close. Falls back to the .caf bell
+      // on an older shell without the plugin's swell.
+      const swell = (window as unknown as {
+        Capacitor?: { Plugins?: { PhoebeAudio?: { smoothSwell?: (o: { durationMs: number; peak: number; sharpness: number }) => Promise<unknown> } } };
+      }).Capacitor?.Plugins?.PhoebeAudio?.smoothSwell;
+      if (swell) {
+        void swell({ durationMs: octave === 0 ? 520 : 660, peak: octave === 0 ? 0.85 : 1, sharpness: 0.45 }).catch(() => {});
+        return;
+      }
       nativeEvent("phoebe:contemplation-play-bell", {
         sound: octave === 0 ? "PhoebeRising-low.caf" : "PhoebeRising-high.caf",
       });
