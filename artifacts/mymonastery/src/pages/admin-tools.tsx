@@ -184,6 +184,12 @@ export default function AdminToolsPage() {
               description="View submitted feedback"
               onClick={() => setLocation("/feedback")}
             />
+            <LinkRow
+              emoji="🕯️"
+              label="Vision deck"
+              description="The 'technology of holding' story — Phoebe's why"
+              onClick={() => setLocation("/vision-deck")}
+            />
             {rawIsBeta && (
               <LinkRow
                 emoji="🌿"
