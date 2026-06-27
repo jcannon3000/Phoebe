@@ -1350,6 +1350,10 @@ export default function PrayerListPage() {
   // When null, all four sections are visible, each clamped to ~3.5 cards
   // with a scroll + fade so the list reads as "peek, don't bury."
   const [focused, setFocused] = useState<SectionKey | null>(null);
+  // Two views, toggled at the top: "mine" = your PRIVATE prayer list
+  // (prayer_intentions, only you see it); "community" = the shared list (others'
+  // prayers + your shared requests + intercessions). Default to your own list.
+  const [tab, setTab] = useState<"mine" | "community">("mine");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -1481,10 +1485,92 @@ export default function PrayerListPage() {
             {t("prayer_list.title")} 🙏🏽
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            {t("prayer_list.subtitle")}
+            {tab === "mine"
+              ? t("prayer_list.subtitle_mine", { defaultValue: "The people and things you're holding in prayer — private to you." })
+              : t("prayer_list.subtitle")}
           </p>
         </div>
 
+        {/* Toggle — your private list vs the shared community list. */}
+        <div className="flex gap-2 mb-5">
+          {([
+            ["mine", t("prayer_list.tab_mine", { defaultValue: "My list" })],
+            ["community", t("prayer_list.tab_community", { defaultValue: "Community" })],
+          ] as const).map(([val, label]) => {
+            const on = tab === val;
+            const onBg = val === "mine" ? "rgba(96,140,180,0.32)" : "rgba(46,107,64,0.42)";
+            const onBorder = val === "mine" ? "rgba(96,140,180,0.5)" : "rgba(168,197,160,0.5)";
+            return (
+              <button
+                key={val}
+                type="button"
+                onClick={() => { setTab(val); setFocused(null); }}
+                className="flex-1 rounded-full text-[14px] font-semibold py-2.5 transition-opacity active:scale-[0.98]"
+                style={{ fontFamily: "'Space Grotesk', sans-serif", color: on ? "#F0EDE6" : "#8FAF96", background: on ? onBg : "rgba(9,26,16,0.297)", border: `1px solid ${on ? onBorder : "rgba(200,212,192,0.16)"}` }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── My list (private intentions) ─────────────────────────────── */}
+        {tab === "mine" && (
+          <>
+            <Link href="/pray-request/new?dest=list" className="block mb-3">
+              <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
+                ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
+              </div>
+            </Link>
+            {myIntentions.length > 0 ? (
+              <>
+                <Link href="/intentions?pray=1" className="block mb-3">
+                  <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
+                    🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
+                  </div>
+                </Link>
+                <div className="flex flex-col gap-2">
+                  {myIntentions.map((it) => {
+                    const head = it.kind === "person" ? (it.personName || "Someone") : it.body;
+                    const sub = it.kind === "person" ? it.body : "";
+                    return (
+                      <div key={it.id} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+                        <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                          <span aria-hidden className="text-base flex-shrink-0">{it.kind === "person" ? "🙏" : "🕊️"}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm leading-snug" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{head}</p>
+                            {sub && <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", wordBreak: "break-word" }}>{sub}</p>}
+                            {it.shared && <p className="text-[10.5px] mt-1" style={{ color: "rgba(96,140,180,0.95)" }}>✓ {t("intentions.shared", { defaultValue: "Shared — others are praying along" })}</p>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => markIntentionAnswered.mutate(it.id)}
+                            aria-label={t("intentions.answered", { defaultValue: "Answered" })}
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+                            style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}
+                          >✓</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Link href="/intentions" className="block mt-3">
+                  <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}>
+                    {t("intentions.manage", { defaultValue: "Edit my list" })}
+                  </div>
+                </Link>
+              </>
+            ) : (
+              <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("intentions.empty", { defaultValue: "Add the people and things you want to keep in prayer. They stay private until you choose to share." })}
+              </p>
+            )}
+          </>
+        )}
+
+        {/* ── Community (the shared list) ──────────────────────────────── */}
+        {tab === "community" && (<>
         {/* "Pray through all" — explicit slideshow entry for users
             who want the contemplative walk through the whole list.
             The dashboard no longer surfaces this as a daily ritual
@@ -1619,51 +1705,6 @@ export default function PrayerListPage() {
                   </div>
                 </Link>
               </section>
-
-              {/* Your prayer list — the viewer's PRIVATE intentions (people /
-                  things they keep in prayer). Only the owner sees these; an item
-                  becomes a community request via the "Add prayer → Share" flow. */}
-              {myIntentions.length > 0 && (
-                <section>
-                  {sectionHead(t("intentions.your_list_heading", { defaultValue: "Your prayer list" }))}
-                  <Link href="/intentions?pray=1" className="block mb-2">
-                    <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "11px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13.5, fontWeight: 600 }}>
-                      🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
-                    </div>
-                  </Link>
-                  <div className="flex flex-col gap-2">
-                    {myIntentions.map((it) => {
-                      const head = it.kind === "person" ? (it.personName || "Someone") : it.body;
-                      const sub = it.kind === "person" ? it.body : "";
-                      return (
-                        <div key={it.id} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                          <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
-                          <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
-                            <span aria-hidden className="text-base flex-shrink-0">{it.kind === "person" ? "🙏" : "🕊️"}</span>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm leading-snug" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{head}</p>
-                              {sub && <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", wordBreak: "break-word" }}>{sub}</p>}
-                              {it.shared && <p className="text-[10.5px] mt-1" style={{ color: "rgba(96,140,180,0.95)" }}>✓ {t("intentions.shared", { defaultValue: "Shared — others are praying along" })}</p>}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => markIntentionAnswered.mutate(it.id)}
-                              aria-label={t("intentions.answered", { defaultValue: "Answered" })}
-                              className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
-                              style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}
-                            >✓</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <Link href="/intentions" className="block mt-2">
-                    <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}>
-                      {t("intentions.manage", { defaultValue: "Edit my list" })}
-                    </div>
-                  </Link>
-                </section>
-              )}
             </>
           );
         })()}
@@ -1689,6 +1730,7 @@ export default function PrayerListPage() {
             ))}
           </SectionShell>
         )}
+        </>)}
 
         {/* Prayers I'm praying — "prayers for others" that I committed
             to. User asked (2026-04) for this section to be restored so

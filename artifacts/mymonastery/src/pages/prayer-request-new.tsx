@@ -109,7 +109,10 @@ export default function PrayerRequestNew() {
   // with the community (prayer_requests). Only the default "request" kind can be
   // private — life-events / justice are inherently community asks. A private
   // item can also be "a person" (name + optional note), like the prayer list.
-  const [dest, setDest] = useState<"share" | "list">("share");
+  const [dest, setDest] = useState<"share" | "list">(() => {
+    try { return new URLSearchParams(search).get("dest") === "list" ? "list" : "share"; }
+    catch { return "share"; }
+  });
   const [listKind, setListKind] = useState<"text" | "person">("text");
   const [personName, setPersonName] = useState("");
   // One calm landscape behind the page, picked once and faded gently up under a
