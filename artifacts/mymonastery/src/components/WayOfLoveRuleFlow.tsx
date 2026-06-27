@@ -195,18 +195,11 @@ export default function WayOfLoveRuleFlow({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>(() => {
-    // Always open at the START of the authoring flow — even on re-entry — so the
-    // customizer walks from the beginning each time instead of landing on the
-    // "tend" overview. A returning user goes straight to "when" (their current
-    // choices are pre-filled by the hydration below, so it's a re-shape, not a
-    // reset); a first author still meets the named starter rules. getSideLevel
-    // reads the local office prefs synchronously (reliable for a returning user).
-    try {
-      const has = getExplicitSideLevel("morning") !== null || getExplicitSideLevel("evening") !== null;
-      return has ? "when" : "starter";
-    } catch { return "starter"; }
-  });
+  // Everyone — new or returning — opens straight into the shaping flow at
+  // "when". The first-run "starter" suggestions screen was removed: a new user
+  // just starts (their defaults already match the home), they aren't handed a
+  // menu of preset rules first.
+  const [step, setStep] = useState<Step>("when");
   // When a named starter rule is adopted, its id parks here until the next render
   // (after the state setters have applied) so the commit effect writes the rule.
   const [adoptId, setAdoptId] = useState<string | null>(null);
