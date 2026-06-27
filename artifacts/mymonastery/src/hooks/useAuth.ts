@@ -69,6 +69,8 @@ export interface AuthUser {
   // Routine settings (per-side office levels, slots, etc.), synced across devices
   // (lib/routineSync). null = none synced yet.
   ruleConfig: { values: Record<string, string>; updatedAt: number } | null;
+  // "Grow my silence" ladder state (enabled + current rung). null = off.
+  silenceLadder: { enabled: boolean; level: number; levelDays: number; missStreak: number; lastEvalDate: string } | null;
   // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat); [] = none.
   restDays: number[];
   // Master notifications switch (Settings → Notifications).

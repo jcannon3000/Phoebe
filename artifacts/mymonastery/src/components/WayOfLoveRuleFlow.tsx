@@ -395,6 +395,15 @@ export default function WayOfLoveRuleFlow({
     });
   }, [user]);
 
+  // Seed the silence sizing mode once `user` lands (the ladder lives on the user,
+  // not in homeLayout, so it gets its own one-shot hydrate independent of the
+  // homeLayout-gated effect above).
+  useEffect(() => {
+    if (silenceModeHydrated.current || touchedRef.current || !user) return;
+    silenceModeHydrated.current = true;
+    if (user.silenceLadder?.enabled) setSilenceMode("grow");
+  }, [user]);
+
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
@@ -410,6 +419,13 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
+  // Contemplative-Prayer silence sizing: a FIXED daily amount (the dropdown), or
+  // the guided "grow my silence" ladder — start at 5 min, +5 every kept week up
+  // to 30. Seeded from the saved ladder state (re-seeded in the hydration effect
+  // once `user` resolves, since it's usually null at this initializer).
+  const [silenceMode, setSilenceMode] = useState<"grow" | "fixed">(() => (user?.silenceLadder?.enabled ? "grow" : "fixed"));
+  const silenceModeHydrated = useRef(false);
+  const chooseSilenceMode = (m: "grow" | "fixed") => { touchedRef.current = true; setSilenceMode(m); };
   // Per-practice time-of-day slot for the slotted practices.
   const [slotByPractice, setSlotByPractice] = useState<Record<"cobreathe" | "listening" | "examen" | "lectio" | "walk", CustomSlot>>(() => ({
     cobreathe: getPracticeSlot("cobreathe"),
@@ -580,6 +596,11 @@ export default function WayOfLoveRuleFlow({
     setReflectionSource(primary);
     // The global default mirrors whichever side they configured (morning first).
     const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
+    // "Grow my silence" ladder is on whenever they chose the guided mode on the
+    // Silence slide — the same standalone treatment the fixed dropdown gets (the
+    // goal is written regardless of the later multi-select). Otherwise we
+    // explicitly disable it so a previously-enabled ladder stops driving the goal.
+    const wantLadder = silenceMode === "grow";
     apiRequest("PUT", "/api/me/office-prefs", {
       // "fdd" / "psalms" / "examen" aren't server-side default-prayer levels —
       // the per-side LOCAL level set above drives the home FDD / Psalms / Examen
@@ -589,7 +610,7 @@ export default function WayOfLoveRuleFlow({
         return (lvl === "fdd" || lvl === "psalms" || lvl === "examen") ? "devotion" : lvl;
       })(),
       contemplationGoalMinutes: effGoalMin,
-      contemplationReminderEnabled: effGoalMin > 0,
+      contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
       // the server's daily office-reminder push fire) at its chosen time.
       // A side reminds only when it's part of the rhythm AND they didn't pick
@@ -598,7 +619,17 @@ export default function WayOfLoveRuleFlow({
       evening: sides.evening && reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
       morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
       eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
-    }).catch(() => {/* best-effort */});
+    })
+      // Sync the silence ladder AFTER office-prefs lands so, when enabled, the
+      // server's current rung (which /me/silence-ladder writes into
+      // contemplationGoalMinutes) wins over the dropdown value just sent above.
+      .then(() => apiRequest("PUT", "/api/me/silence-ladder", { enabled: wantLadder }))
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["/api/me/silence-ladder"] });
+        qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
+        qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      })
+      .catch(() => {/* best-effort */});
     // Ask the native shell to register for push (request iOS permission if it
     // hasn't been granted, or re-register a dropped token). No-op on web — no
     // listener is attached there. Without an active device token the server's
@@ -674,6 +705,8 @@ export default function WayOfLoveRuleFlow({
     setPrayBySide({ morning: preset.pray, evening: preset.pray });
     setContemplationStyle("silent");
     setContemplative({ prayer: preset.silence, cobreathe: false, audio: false, examen: false, lectio: false, walk: false });
+    // Starter rules carry a fixed minutes goal — adopt the fixed sizing, not the ladder.
+    setSilenceMode("fixed");
     setGoal(String(preset.silence ? preset.goalMin : 0));
     setNewsletters(preset.reflections);
     setExtras({ gratitude: false, examen: false, listening: false, journaling: false, reading: false, podcasts: false });
@@ -889,27 +922,49 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.silence_quote_attr", { defaultValue: "— Blaise Pascal" })}
         </p>
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "26px 0 10px" }}>
-          {t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
+          {t("wol_rule.silence_mode_label", { defaultValue: "How would you like to practice?" })}
         </p>
-        <div style={{ position: "relative" }}>
-          <select
-            value={String(goalMin)}
-            onChange={(e) => chooseGoal(e.target.value)}
-            aria-label={t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
-            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-          >
-            <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
-            {/* Preserve a previously-saved non-standard goal (e.g. 144) as an option. */}
-            {goalMin > 0 && !GOAL_OPTIONS.includes(goalMin) && (
-              <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
-            )}
-            {GOAL_OPTIONS.map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
-          </select>
-          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(
+            silenceMode === "grow",
+            `🌱 ${t("wol_rule.silence_grow_title", { defaultValue: "Grow toward 30 min" })}`,
+            t("wol_rule.silence_grow_sub", { defaultValue: "Start at 5 minutes a day. Keep it for a week and you move up 5 — gently, all the way to 30." }),
+            () => chooseSilenceMode("grow"),
+          )}
+          {choiceRow(
+            silenceMode === "fixed",
+            `🕯️ ${t("wol_rule.silence_fixed_title", { defaultValue: "A fixed amount" })}`,
+            t("wol_rule.silence_fixed_sub", { defaultValue: "Set the same daily goal and keep it." }),
+            () => chooseSilenceMode("fixed"),
+          )}
         </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
-        </p>
+        {silenceMode === "fixed" ? (
+          <>
+            <div style={{ position: "relative", marginTop: 16 }}>
+              <select
+                value={String(goalMin)}
+                onChange={(e) => chooseGoal(e.target.value)}
+                aria-label={t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
+                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+              >
+                <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
+                {/* Preserve a previously-saved non-standard goal (e.g. 144) as an option. */}
+                {goalMin > 0 && !GOAL_OPTIONS.includes(goalMin) && (
+                  <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
+                )}
+                {GOAL_OPTIONS.map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            </div>
+            <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
+              {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
+            </p>
+          </>
+        ) : (
+          <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "14px 0 0", lineHeight: 1.5 }}>
+            {t("wol_rule.silence_grow_note", { defaultValue: "Miss a single day and your place holds — grace for one. Miss two in a row and you ease back down 5 minutes. It's never measured against you." })}
+          </p>
+        )}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
@@ -1443,7 +1498,11 @@ export default function WayOfLoveRuleFlow({
       sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? (contemplationStyle === "silent" && goalMin > 0 ? `${goalMin} min a day` : "Silent sit") : prayBySide[s] === "fdd" ? (fddMode === "audio" ? "Listen" : "Read") : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
-    ...(goalMin > 0 ? [{ emoji: "🕯️", label: "Silence", sub: `${goalMin} min a day`, step: "contemplation-goal" as Step }] : []),
+    ...(silenceMode === "grow"
+      ? [{ emoji: "🌱", label: "Silence", sub: "Growing toward 30 min", step: "contemplation-goal" as Step }]
+      : goalMin > 0
+      ? [{ emoji: "🕯️", label: "Silence", sub: `${goalMin} min a day`, step: "contemplation-goal" as Step }]
+      : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "contemplative" as Step }] : []),

@@ -265,6 +265,7 @@ router.get("/auth/me", async (req, res) => {
     homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
     customAnchors: { defs: unknown[]; log: Record<string, unknown>; updatedAt?: number; tombstones?: Record<string, number> } | null;
     ruleConfig: { values: Record<string, string>; updatedAt: number } | null;
+    silenceLadder: { enabled: boolean; level: number; levelDays: number; missStreak: number; lastEvalDate: string } | null;
     restDays: number[];
     pushEnabled: boolean;
     emailEnabled: boolean;
@@ -342,6 +343,9 @@ router.get("/auth/me", async (req, res) => {
     customAnchors: u.customAnchors ?? null,
     // Routine settings (office levels, slots, etc.), synced (lib/routineSync).
     ruleConfig: u.ruleConfig ?? null,
+    // "Grow my silence" ladder state (enabled + current rung). Eval runs on
+    // GET /api/me/silence-ladder; this is the read-only snapshot.
+    silenceLadder: u.silenceLadder ?? null,
     // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat).
     restDays: Array.isArray(u.restDays) ? u.restDays : [],
     // Master notifications switch (Settings → Notifications).

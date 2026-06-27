@@ -2064,6 +2064,8 @@ export async function migrate() {
     // Routine settings (office levels, slots, etc.) synced across devices as one
     // blob (lib/routineSync) so a person's rhythm matches phone ↔ web.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS rule_config JSONB`);
+    // "Grow my silence" ladder state (opt-in guided contemplation program).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS silence_ladder JSONB`);
     // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_days JSONB`);
 

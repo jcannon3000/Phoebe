@@ -442,6 +442,128 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
 });
 
+// ── "Grow my silence" ladder ────────────────────────────────────────────────
+// The opt-in guided program: the daily contemplation goal auto-advances 5→30 min
+// — a week (7 counted days) per rung; one missed day is forgiven, two misses in
+// a row ease back a rung (floor 5). When enabled the ladder DRIVES the user's
+// contemplationGoalMinutes (= current level), so the existing Silence card + goal
+// nudge just reflect the rung. State lives in users.silence_ladder and is caught
+// up lazily on GET (each COMPLETED day since lastEvalDate is scored — today is
+// still in progress, so it isn't scored until tomorrow).
+type LadderState = { enabled: boolean; level: number; levelDays: number; missStreak: number; lastEvalDate: string };
+const LADDER_MIN = 5, LADDER_MAX = 30, LADDER_STEP = 5, LADDER_WEEK = 7;
+function ladderYmd(tz: string, d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+}
+function ladderAddDays(ymd: string, days: number): string {
+  const [y, m, dd] = ymd.split("-").map((n) => parseInt(n, 10));
+  const dt = new Date(Date.UTC(y, m - 1, dd));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+// Catch the ladder up to "yesterday"; also keeps contemplationGoalMinutes = level.
+async function evalLadder(userId: number, tz: string, state: LadderState, todayYmd: string): Promise<LadderState> {
+  const yesterday = ladderAddDays(todayYmd, -1);
+  if (state.lastEvalDate >= yesterday) return state; // already scored through yesterday
+  let fromYmd = ladderAddDays(state.lastEvalDate, 1);
+  // Bound a long absence so the loop + scan can't run away.
+  if (ladderAddDays(fromYmd, 90) < yesterday) fromYmd = ladderAddDays(yesterday, -90);
+  const [sitRows, healthRows] = await Promise.all([
+    db.execute<{ day: string; secs: number }>(sql`
+      SELECT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
+             COALESCE(SUM(duration_seconds), 0) AS secs
+      FROM prayer_sessions
+      WHERE user_id = ${userId} AND surface = 'contemplation'
+        AND ended_at >= NOW() - INTERVAL '95 days'
+        AND (ended_at AT TIME ZONE ${tz})::date >= ${fromYmd}::date
+        AND (ended_at AT TIME ZONE ${tz})::date <= ${yesterday}::date
+      GROUP BY 1
+    `),
+    db.execute<{ day: string; minutes: number }>(sql`
+      SELECT day, COALESCE(SUM(minutes), 0) AS minutes FROM contemplation_health_minutes
+      WHERE user_id = ${userId} AND minutes > 0 AND day >= ${fromYmd} AND day <= ${yesterday}
+      GROUP BY day
+    `),
+  ]);
+  const minByDay = new Map<string, number>();
+  for (const r of sitRows.rows) minByDay.set(r.day, Math.floor(Number(r.secs) / 60));
+  for (const r of healthRows.rows) minByDay.set(r.day, (minByDay.get(r.day) ?? 0) + Number(r.minutes));
+
+  let { level, levelDays, missStreak } = state;
+  for (let day = fromYmd; day <= yesterday; day = ladderAddDays(day, 1)) {
+    const mins = minByDay.get(day) ?? 0;
+    if (mins >= level) {
+      missStreak = 0; // an isolated miss is healed by the next counted day
+      levelDays += 1;
+      if (levelDays >= LADDER_WEEK) { level = Math.min(LADDER_MAX, level + LADDER_STEP); levelDays = 0; }
+    } else {
+      missStreak += 1; // one miss forgiven; the second in a row eases back
+      if (missStreak >= 2) { level = Math.max(LADDER_MIN, level - LADDER_STEP); levelDays = 0; missStreak = 0; }
+    }
+  }
+  const next: LadderState = { enabled: true, level, levelDays, missStreak, lastEvalDate: yesterday };
+  await db.update(usersTable).set({ silenceLadder: next, contemplationGoalMinutes: level }).where(eq(usersTable.id, userId));
+  return next;
+}
+
+router.get("/me/silence-ladder", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [u] = await db.select({ timezone: usersTable.timezone, silenceLadder: usersTable.silenceLadder }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+    const tz = u?.timezone || "UTC";
+    const state = (u?.silenceLadder as LadderState | null) ?? null;
+    if (!state || !state.enabled) { res.json({ enabled: false }); return; }
+    const todayYmd = ladderYmd(tz, new Date());
+    const evaled = await evalLadder(sessionUserId, tz, state, todayYmd);
+    const [todaySits, todayHealth] = await Promise.all([
+      db.execute<{ secs: number }>(sql`SELECT COALESCE(SUM(duration_seconds),0) AS secs FROM prayer_sessions WHERE user_id = ${sessionUserId} AND surface = 'contemplation' AND (ended_at AT TIME ZONE ${tz})::date = ${todayYmd}::date`),
+      db.execute<{ minutes: number }>(sql`SELECT COALESCE(SUM(minutes),0) AS minutes FROM contemplation_health_minutes WHERE user_id = ${sessionUserId} AND day = ${todayYmd}`),
+    ]);
+    const todayMinutes = Math.floor(Number(todaySits.rows[0]?.secs ?? 0) / 60) + Number(todayHealth.rows[0]?.minutes ?? 0);
+    res.json({
+      enabled: true,
+      level: evaled.level,
+      levelDays: evaled.levelDays,
+      daysToNext: evaled.level >= LADDER_MAX ? 0 : LADDER_WEEK - evaled.levelDays,
+      nextLevel: Math.min(LADDER_MAX, evaled.level + LADDER_STEP),
+      atMax: evaled.level >= LADDER_MAX,
+      todayMinutes,
+      todayMet: todayMinutes >= evaled.level,
+    });
+  } catch (err) {
+    console.error("[silence-ladder] GET failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.put("/me/silence-ladder", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const enabled = (req.body as { enabled?: unknown })?.enabled === true;
+  try {
+    const [u] = await db.select({ timezone: usersTable.timezone, silenceLadder: usersTable.silenceLadder }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+    const tz = u?.timezone || "UTC";
+    const prev = (u?.silenceLadder as LadderState | null) ?? null;
+    const todayYmd = ladderYmd(tz, new Date());
+    if (!enabled) {
+      const next: LadderState = prev ? { ...prev, enabled: false } : { enabled: false, level: LADDER_MIN, levelDays: 0, missStreak: 0, lastEvalDate: todayYmd };
+      await db.update(usersTable).set({ silenceLadder: next }).where(eq(usersTable.id, sessionUserId));
+      res.json({ ok: true, enabled: false });
+      return;
+    }
+    // Enable: resume from the saved rung (or start at 5). lastEvalDate = today so
+    // scoring begins tomorrow; today still counts when it completes.
+    const level = prev && prev.level >= LADDER_MIN && prev.level <= LADDER_MAX ? prev.level : LADDER_MIN;
+    const next: LadderState = { enabled: true, level, levelDays: prev?.levelDays ?? 0, missStreak: 0, lastEvalDate: todayYmd };
+    await db.update(usersTable).set({ silenceLadder: next, contemplationGoalMinutes: level }).where(eq(usersTable.id, sessionUserId));
+    res.json({ ok: true, enabled: true, level });
+  } catch (err) {
+    console.error("[silence-ladder] PUT failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /me/office-history-week — past 7 days (today inclusive) of
 // office/devotion completions for the current user, broken down by
 // side (morning / evening). Drives the "Your prayer rhythm" habit

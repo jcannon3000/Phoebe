@@ -258,6 +258,11 @@ export const usersTable = pgTable("users", {
   // customAnchors below). `values` = the localStorage routine keys; `updatedAt`
   // is a last-write-wins clock.
   ruleConfig: jsonb("rule_config").$type<{ values: Record<string, string>; updatedAt: number }>(),
+  // "Grow my silence" ladder (opt-in): auto-advances the daily contemplation
+  // goal 5→30 (a week per rung; one miss forgiven, two-in-a-row eases back).
+  // When enabled it DRIVES contemplationGoalMinutes (= the current level), so the
+  // existing Silence card + goal nudge just work.
+  silenceLadder: jsonb("silence_ladder").$type<{ enabled: boolean; level: number; levelDays: number; missStreak: number; lastEvalDate: string }>(),
   // Custom rituals (user-defined daily anchors) + their per-day state, an
   // opaque blob the client owns (lib/customAnchors CustomAnchorSnapshot). Stored
   // here so a person's rituals are their DATA and sync across devices (phone /

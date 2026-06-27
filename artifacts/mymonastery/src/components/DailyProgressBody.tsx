@@ -564,7 +564,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, silenceLadder, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -607,13 +607,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // today", or "Reached today 🌿" once met — matching the home Contemplation
   // card. Gentle, never a deficit: a short sit still keeps the dot (silenceDone
   // = any sit). With no goal set, it falls back to "You rested in silence today".
-  const contemplationBlurb = contemplationGoalMin > 0
+  const contemplationBlurb = silenceLadder
+    // "Grow my silence" ladder: the blurb carries the climb toward 30 min.
     ? (contemplationMin >= contemplationGoalMin
-        ? t("rhythm.contemplation_goal_met", { defaultValue: "Reached today 🌿" })
-        : t("rhythm.contemplation_goal_progress", { done: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }))
-    : silenceDone
-      ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
-      : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
+        ? (silenceLadder.atMax
+            ? t("rhythm.silence_summit", { defaultValue: "Reached 30 min — your summit 🌿" })
+            : t("rhythm.silence_met_grow", { count: silenceLadder.daysToNext, next: silenceLadder.nextLevel, defaultValue: `Kept today · ${silenceLadder.daysToNext} more to ${silenceLadder.nextLevel} min` }))
+        : t("rhythm.silence_progress_grow", { done: contemplationMin, goal: contemplationGoalMin, next: silenceLadder.nextLevel, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min · growing to ${silenceLadder.nextLevel}` }))
+    : contemplationGoalMin > 0
+      ? (contemplationMin >= contemplationGoalMin
+          ? t("rhythm.contemplation_goal_met", { defaultValue: "Reached today 🌿" })
+          : t("rhythm.contemplation_goal_progress", { done: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }))
+      : silenceDone
+        ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
+        : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   const officeTitle = (side: "Morning" | "Evening") => {
     // Praying the Psalms IS this side's prayer → the card reads "Morning Psalms"

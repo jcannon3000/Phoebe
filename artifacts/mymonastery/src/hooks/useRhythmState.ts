@@ -107,6 +107,9 @@ export type RhythmState = {
    *  Contemplation card's goal progress. */
   contemplationMin: number;
   contemplationGoalMin: number;
+  /** "Grow my silence" ladder state when enabled (else null) — the current rung
+   *  drives contemplationGoalMin; daysToNext/nextLevel feed the card. */
+  silenceLadder: { level: number; levelDays: number; daysToNext: number; nextLevel: number; atMax: boolean } | null;
 };
 
 // Is an optional-practice card surfaced on the user's home layout? A card
@@ -369,6 +372,17 @@ export function useRhythmState(): RhythmState {
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
   });
+  // "Grow my silence" ladder — the GET also runs the server-side daily catch-up
+  // eval (advancing / easing the rung) and returns the authoritative current
+  // rung. Only fetched when the user has the ladder enabled; `day` in the key
+  // refetches each local day so the eval runs once a day.
+  const ladderEnabled = !!user?.silenceLadder?.enabled;
+  const { data: ladderData } = useQuery<{ enabled: boolean; level?: number; levelDays?: number; daysToNext?: number; nextLevel?: number; atMax?: boolean }>({
+    queryKey: ["/api/me/silence-ladder", day],
+    queryFn: () => apiRequest("GET", "/api/me/silence-ladder"),
+    enabled: ladderEnabled,
+    staleTime: 60_000,
+  });
   const dpl = officePrefs?.defaultPrayerLevel;
   const ml = getSideLevel("morning");
   const el = getSideLevel("evening");
@@ -396,7 +410,10 @@ export function useRhythmState(): RhythmState {
   // including 0 = "no daily goal". The column's DB default is 0, so the value
   // alone can't tell uncustomized-0 from chosen-0 — the home layout is the
   // "have they designed a rule yet?" signal (same as the reflection fallback).
-  const contemplationGoalMin = (!user?.homeLayout && rawGoalMin === 0) ? 5 : rawGoalMin;
+  // When the ladder is on, the current rung IS the goal (the ladder GET just
+  // re-evaluated it). Otherwise a saved goal, or the 5-minute starter default.
+  const ladderLevel = ladderEnabled && typeof ladderData?.level === "number" ? ladderData.level : null;
+  const contemplationGoalMin = ladderLevel != null ? ladderLevel : ((!user?.homeLayout && rawGoalMin === 0) ? 5 : rawGoalMin);
   // Silence is a daily-MINUTES goal: the dot lights (and the Silence card shows
   // ✓) once today's contemplation minutes reach the chosen goal, the card's
   // progress bar filling on the way there. If no goal is set, any silence counts.
@@ -544,5 +561,8 @@ export function useRhythmState(): RhythmState {
     prayerKind,
     contemplationMin,
     contemplationGoalMin,
+    silenceLadder: ladderEnabled && ladderData?.enabled && typeof ladderData.level === "number"
+      ? { level: ladderData.level, levelDays: ladderData.levelDays ?? 0, daysToNext: ladderData.daysToNext ?? 0, nextLevel: ladderData.nextLevel ?? ladderData.level, atMax: !!ladderData.atMax }
+      : null,
   };
 }
