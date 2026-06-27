@@ -88,6 +88,12 @@ type RulePreset = {
   reflections: ReflectionSource[];
 };
 const RULE_PRESETS: RulePreset[] = [
+  // FIRST = the shape a brand-new user already has on their home (Morning +
+  // Evening Psalms + Forward Day by Day + a 5-minute silence). Keep this in sync
+  // with the new-user defaults: getSideLevel→"psalms", the FDD reflection
+  // fallback, and the 5-minute starter goal in useRhythmState. So the customizer
+  // opens reflecting what's on the home, not a different rule.
+  { id: "psalms-daily",   emoji: "📜", sides: { morning: true, evening: true },  pray: "psalms",   silence: true,  goalMin: 5,  reflections: ["fdd"] },
   { id: "morning-anchor", emoji: "🌅", sides: { morning: true, evening: false }, pray: "devotion", silence: false, goalMin: 0, reflections: ["fdd"] },
   { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"] },
   { id: "contemplative",  emoji: "🕯️", sides: { morning: true, evening: true },  pray: "devotion", silence: true,  goalMin: 10, reflections: ["fdd"] },
@@ -1535,7 +1541,8 @@ export default function WayOfLoveRuleFlow({
   // or chooses to build their own. Adopting commits the preset, then beholds it.
   if (step === "starter") {
     const meta = (id: string) =>
-      id === "morning-anchor" ? { label: t("wol_rule.preset_morning_anchor", { defaultValue: "A simple morning anchor" }), who: t("wol_rule.preset_morning_anchor_who", { defaultValue: "For beginning a daily habit of prayer." }) }
+      id === "psalms-daily" ? { label: t("wol_rule.preset_psalms", { defaultValue: "Praying the Psalms" }), who: t("wol_rule.preset_psalms_who", { defaultValue: "The day's psalms, morning and evening, with a few minutes of silence." }) }
+      : id === "morning-anchor" ? { label: t("wol_rule.preset_morning_anchor", { defaultValue: "A simple morning anchor" }), who: t("wol_rule.preset_morning_anchor_who", { defaultValue: "For beginning a daily habit of prayer." }) }
       : id === "offices" ? { label: t("wol_rule.preset_offices", { defaultValue: "Morning & evening with the offices" }), who: t("wol_rule.preset_offices_who", { defaultValue: "For praying the daily office, morning and night." }) }
       : { label: t("wol_rule.preset_contemplative", { defaultValue: "The contemplative path" }), who: t("wol_rule.preset_contemplative_who", { defaultValue: "For someone drawn to daily silence." }) };
     return shell(
