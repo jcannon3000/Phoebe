@@ -7,8 +7,8 @@
 // account can find it in /prayer-feeds and subscribe. Seeded idempotently on
 // every boot from migrate.ts — re-running keeps titles fresh without clobbering
 // subscriptions.
-import { db, prayerFeedsTable, prayerFeedEntriesTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { db, prayerFeedsTable, prayerFeedEntriesTable, sharedMomentsTable } from "@workspace/db";
+import { eq, and, inArray, sql } from "drizzle-orm";
 
 const FEED = {
   slug: "diocese-of-new-york",
@@ -440,39 +440,81 @@ export async function seedDioceseNyIntercession(): Promise<number> {
     .where(eq(prayerFeedsTable.slug, FEED.slug));
   if (!feed) return 0;
 
-  const now = new Date();
+  // The subscribable prayer-feed surfaces (/prayer-feeds/today, the slideshow,
+  // the community detail) read a feed's intercessions from shared_moments
+  // (template_type = 'intercession') — NOT prayer_feed_entries, which now only
+  // backs parish-office intercessions. So each calendar day becomes one
+  // intercession MOMENT on this feed, like a scraped/news intercession does.
+  // momentToken is the idempotency key: a deterministic per-day slug means a
+  // re-run keeps the title fresh and never creates duplicates.
   const rows = ENTRIES.map((e) => ({
-    feedId: feed.id,
-    entryDate: e.d,
-    slot: 1,
-    title: e.t,
-    body: BODY,
-    source: "custom",
-    state: "published",
-    publishedAt: now,
+    prayerFeedId: feed.id,
+    groupId: null as number | null,
+    name: e.t,
+    intention: e.t,
+    intercessionTopic: e.t,
+    intercessionFullText: BODY,
+    intercessionSource: "custom",
+    templateType: "intercession",
+    loggingType: "photo",
+    frequency: "daily",
+    scheduledTime: "08:00",
+    timezone: FEED.timezone,
+    windowMinutes: 60,
+    // Long-lived: the whole 2026 calendar stays prayable all year.
+    goalDays: 365,
+    state: "active",
+    momentToken: `dny-${e.d}`,
+    // Don't fan out 365 "new intercession" pushes — they just appear in-feed.
+    notifySubscribersAt: null as Date | null,
+    publishedByUserId: null as number | null,
   }));
 
+  // Which tokens already exist? Anything new gets a subscriber-token reconcile
+  // so existing subscribers can pray it immediately.
+  const allTokens = rows.map((r) => r.momentToken);
+  const existing = new Set(
+    (
+      await db
+        .select({ token: sharedMomentsTable.momentToken })
+        .from(sharedMomentsTable)
+        .where(inArray(sharedMomentsTable.momentToken, allTokens))
+    ).map((r) => r.token),
+  );
+
   // Upsert in chunks — keep each day's title fresh (so a future correction
-  // propagates) while leaving pray counts and ids intact.
+  // propagates) and re-activate if a row was archived, leaving ids + pray
+  // counts intact.
   const CHUNK = 100;
   for (let i = 0; i < rows.length; i += CHUNK) {
     await db
-      .insert(prayerFeedEntriesTable)
+      .insert(sharedMomentsTable)
       .values(rows.slice(i, i + CHUNK))
       .onConflictDoUpdate({
-        target: [
-          prayerFeedEntriesTable.feedId,
-          prayerFeedEntriesTable.entryDate,
-          prayerFeedEntriesTable.slot,
-        ],
+        target: sharedMomentsTable.momentToken,
         set: {
-          title: sql`excluded.title`,
-          body: sql`excluded.body`,
+          prayerFeedId: sql`excluded.prayer_feed_id`,
+          name: sql`excluded.name`,
+          intention: sql`excluded.intention`,
+          intercessionTopic: sql`excluded.intercession_topic`,
+          intercessionFullText: sql`excluded.intercession_full_text`,
           state: sql`excluded.state`,
-          publishedAt: sql`excluded.published_at`,
-          updatedAt: now,
         },
       });
   }
+
+  // Grant the new moments' subscriber tokens (idempotent; only acts when the
+  // feed already has subscribers). Dynamic import avoids a seed→routes cycle.
+  if (existing.size < rows.length) {
+    try {
+      const { reconcileAllPracticesForFeed } = await import("../routes/groups");
+      await reconcileAllPracticesForFeed(feed.id);
+    } catch { /* tokens reconcile on next subscribe */ }
+  }
+
+  // Clean up the earlier (wrong-table) seed: those prayer_feed_entries rows
+  // were never read by any feed surface, so drop them to avoid confusion.
+  await db.delete(prayerFeedEntriesTable).where(eq(prayerFeedEntriesTable.feedId, feed.id));
+
   return rows.length;
 }
