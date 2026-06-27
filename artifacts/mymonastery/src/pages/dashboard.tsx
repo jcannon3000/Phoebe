@@ -2522,7 +2522,7 @@ function NewPrayerRequestsCard({
 // A one-line card that taps through to /contemplation. Hidden by
 // default; surfaced (and pinnable to the top) from the Customize page so
 // someone whose daily rhythm is silent prayer can lead with it.
-export function ContemplationHomeCard() {
+export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {}) {
   const qc = useQueryClient();
 
   // Invalidate contemplation-stats whenever the dashboard becomes visible —
@@ -2563,6 +2563,46 @@ export function ContemplationHomeCard() {
   const doneMin = Math.floor((stats?.todaySeconds ?? 0) / 60) + (stats?.healthMinutesToday ?? 0);
   const met = goalMin > 0 && doneMin >= goalMin;
   const progressLabel = goalMin <= 0 ? null : met ? "Goal reached 🌿" : `${doneMin} of ${goalMin} min today`;
+
+  // Hero layout — the big "what's next" card, mirroring the office hero, when
+  // Contemplation is set as this side's daily prayer. Same teal palette as the
+  // compact card so it reads as the same anchor.
+  if (hero) {
+    const rgb = "62,124,122";
+    return (
+      <Link href="/contemplation" className="block">
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        >
+          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+          <div className="flex-1 px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <span className="text-[34px] leading-none flex-shrink-0">🕯️</span>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Contemplation</p>
+                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: met ? "#A8C5A0" : "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {progressLabel ?? "A few minutes of stillness"}
+                </p>
+                {goalMin > 0 && !met && (
+                  <div className="mt-2.5 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)", maxWidth: 220 }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-shrink-0">
+                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> Sit again</> : "Begin"} <span aria-hidden className="ml-1">→</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <Link href="/contemplation" className="block">
@@ -2690,7 +2730,39 @@ function GratitudeHomeCard() {
   );
 }
 
-function ExamenHomeCard() {
+function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
+  // Hero layout — the big "what's next" card, mirroring the office hero, when
+  // the Examen is set as this side's daily prayer (usually evening). Same green
+  // palette as the compact card so it reads as the same anchor.
+  if (hero) {
+    const rgb = "90,140,114";
+    return (
+      <Link href="/examen" className="block">
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        >
+          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+          <div className="flex-1 px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <span className="text-[34px] leading-none flex-shrink-0">🤔</span>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>The Examen</p>
+                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Review the day with God</p>
+              </div>
+              <div className="flex-shrink-0">
+                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Begin <span aria-hidden className="ml-1">→</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
   return (
     <PracticeHomeCard
       href="/examen"
@@ -3061,7 +3133,7 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
   const subtitle = refs.length > 0
     ? `Psalm${refs.length > 1 ? "s" : ""} ${refs.join(", ")}`
     : "Today's appointed psalms";
-  const onClick = () => goTo(`/psalms?office=${side}`);
+  const onClick = () => goTo(`/psalms?office=${side}&begin=1`);
   // Same colour as the side's office card (green for morning, violet for
   // evening) — not a beige/parchment tone — so it sits with the other rhythm
   // cards rather than standing out.
@@ -3505,6 +3577,15 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     // A forced side (the home "what's next" / office-hero slot) renders the big
     // hero variant; the compact mini stays small.
     return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
+  }
+  // Per-user: Contemplation / the Examen IS this side's prayer → its card
+  // replaces the office card for this user. Same after-all-hooks placement as
+  // FDD/Psalms; the forced (hero) slot renders the big variant.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "reflect-sit") {
+    return <ContemplationHomeCard hero={!compact && !!forceSide} />;
+  }
+  if (getSideLevel(isMorning ? "morning" : "evening") === "examen") {
+    return <ExamenHomeCard hero={!compact && !!forceSide} />;
   }
 
   const prayedTodayHalf = (() => {

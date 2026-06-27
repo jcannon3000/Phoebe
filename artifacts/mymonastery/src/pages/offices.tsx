@@ -98,14 +98,14 @@ export default function OfficesPage() {
     emoji: "📜",
     title: t("offices.morning_psalms", { defaultValue: "Morning Psalms" }),
     sub: t("offices.psalms_sub", { defaultValue: "The day's appointed psalms" }),
-    href: "/psalms?office=morning&cycle=office",
+    href: "/psalms?office=morning&cycle=office&begin=1",
     available: isMorning,
   };
   const eveningPsalms: CardSpec = {
     emoji: "📜",
     title: t("offices.evening_psalms", { defaultValue: "Evening Psalms" }),
     sub: t("offices.psalms_sub", { defaultValue: "The day's appointed psalms" }),
-    href: "/psalms?office=evening&cycle=office",
+    href: "/psalms?office=evening&cycle=office&begin=1",
     available: isEvening,
   };
 

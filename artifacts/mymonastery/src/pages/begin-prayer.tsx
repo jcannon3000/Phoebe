@@ -82,9 +82,16 @@ export default function BeginPrayerPage() {
       return;
     }
 
-    // Praying the Psalms IS this side's prayer → open the psalms reader directly.
+    // Praying the Psalms IS this side's prayer → open the psalms reader directly
+    // (begin=1 skips the "before you begin" intro — they already chose psalms).
     if (defaultPrayerLevel === "psalms") {
-      setLocation(`/psalms?office=${side}`, { replace: true });
+      setLocation(`/psalms?office=${side}&begin=1`, { replace: true });
+      return;
+    }
+    // The Examen IS this side's prayer → open the Examen directly (self-contained,
+    // logs its own session), regardless of time of day or prayed-today state.
+    if (defaultPrayerLevel === "examen") {
+      setLocation("/examen", { replace: true });
       return;
     }
     // Forward Day by Day IS this side's prayer → its home card (the office slot)
