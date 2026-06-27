@@ -31,6 +31,8 @@ import { WidgetSync } from "@/lib/widgetSync";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
+import { syncRoutineFromServer, pushRoutineConfig, type RoutineConfig } from "@/lib/routineSync";
+import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
 
 // Scroll the window to (0, 0) on every route change. Without this,
@@ -117,10 +119,24 @@ function CustomAnchorServerSync() {
   useEffect(() => {
     if (isLoading || !user) return;
     const snap = user.customAnchors ?? null;
-    const key = `${user.id}:${JSON.stringify(snap)}`;
+    const rc = (user as { ruleConfig?: RoutineConfig | null }).ruleConfig ?? null;
+    const key = `${user.id}:${JSON.stringify(snap)}:${JSON.stringify(rc)}`;
     if (lastSyncedRef.current === key) return;
     lastSyncedRef.current = key;
     syncCustomAnchorsFromServer(snap as unknown as CustomAnchorSnapshot | null);
+    // Routine settings (office levels, slots, etc.) — same migrate-up-or-adopt
+    // sync, so the rhythm matches phone ↔ web (lib/routineSync).
+    syncRoutineFromServer(rc);
+  }, [user, isLoading]);
+  // Any routine-setting change (office method, reflection source, fdd mode,
+  // psalm cycle, etc. all fire OFFICE_PREFS_EVENT) pushes the updated routine up
+  // so it syncs across devices. Slot setters push themselves. Debounced in
+  // routineSync; the server→local apply uses a different event so there's no loop.
+  useEffect(() => {
+    if (isLoading || !user) return;
+    const push = () => pushRoutineConfig();
+    window.addEventListener(OFFICE_PREFS_EVENT, push);
+    return () => window.removeEventListener(OFFICE_PREFS_EVENT, push);
   }, [user, isLoading]);
   return null;
 }

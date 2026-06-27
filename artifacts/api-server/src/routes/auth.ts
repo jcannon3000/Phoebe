@@ -264,6 +264,7 @@ router.get("/auth/me", async (req, res) => {
     feedFirstHome: boolean;
     homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
     customAnchors: { defs: unknown[]; log: Record<string, unknown>; updatedAt?: number; tombstones?: Record<string, number> } | null;
+    ruleConfig: { values: Record<string, string>; updatedAt: number } | null;
     restDays: number[];
     pushEnabled: boolean;
     emailEnabled: boolean;
@@ -339,6 +340,8 @@ router.get("/auth/me", async (req, res) => {
     homeLayout: u.homeLayout ?? null,
     // Custom rituals + per-day state, synced across devices (lib/customAnchors).
     customAnchors: u.customAnchors ?? null,
+    // Routine settings (office levels, slots, etc.), synced (lib/routineSync).
+    ruleConfig: u.ruleConfig ?? null,
     // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat).
     restDays: Array.isArray(u.restDays) ? u.restDays : [],
     // Master notifications switch (Settings → Notifications).

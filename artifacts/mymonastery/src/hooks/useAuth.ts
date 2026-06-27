@@ -66,6 +66,9 @@ export interface AuthUser {
   // Custom rituals + per-day state, synced across devices (lib/customAnchors).
   // An opaque blob the client owns; null = none synced yet.
   customAnchors: { defs: unknown[]; log?: Record<string, unknown>; updatedAt?: number } | null;
+  // Routine settings (per-side office levels, slots, etc.), synced across devices
+  // (lib/routineSync). null = none synced yet.
+  ruleConfig: { values: Record<string, string>; updatedAt: number } | null;
   // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat); [] = none.
   restDays: number[];
   // Master notifications switch (Settings → Notifications).

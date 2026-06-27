@@ -2533,6 +2533,45 @@ router.put("/me/custom-anchors", async (req, res): Promise<void> => {
   }
 });
 
+// ── Routine config (per-side office levels, slots, etc.) ─────────────────────
+// A single synced blob of the routine's per-device localStorage SETTINGS so the
+// rhythm matches across devices (mirrors custom-anchors above, but the values
+// are plain strings, so the merge is last-write-wins by `updatedAt` rather than
+// a field union). The client owns the key/value shape (lib/routineSync).
+router.put("/me/rule-config", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const body = req.body as { values?: unknown; updatedAt?: unknown };
+  const rawValues = (body && typeof body.values === "object" && body.values && !Array.isArray(body.values))
+    ? (body.values as Record<string, unknown>) : null;
+  if (!rawValues) { res.status(400).json({ error: "values must be an object" }); return; }
+  // Keep only sane string→string entries (cap count + lengths).
+  const values: Record<string, string> = {};
+  let n = 0;
+  for (const [k, v] of Object.entries(rawValues)) {
+    if (n >= 64) break;
+    if (typeof k === "string" && k.length <= 80 && typeof v === "string" && v.length <= 8000) { values[k] = v; n++; }
+  }
+  const updatedAt = typeof body.updatedAt === "number" && Number.isFinite(body.updatedAt) ? body.updatedAt : Date.now();
+  try {
+    // Last-write-wins: a stale push from an older device can't clobber a newer
+    // stored config. If stored is newer, keep it and echo it back to reconcile.
+    const [row] = await db.select({ rc: usersTable.ruleConfig }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1);
+    const stored = row?.rc as { values: Record<string, string>; updatedAt: number } | null | undefined;
+    if (stored && typeof stored.updatedAt === "number" && stored.updatedAt > updatedAt) {
+      res.json({ ok: true, ruleConfig: stored });
+      return;
+    }
+    const next = { values, updatedAt };
+    if (JSON.stringify(next).length > 32_000) { res.status(413).json({ error: "config too large" }); return; }
+    await db.update(usersTable).set({ ruleConfig: next }).where(eq(usersTable.id, sessionUserId));
+    res.json({ ok: true, ruleConfig: next });
+  } catch (err) {
+    console.error("[/me/rule-config PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ── Phone sabbath (rest days) ────────────────────────────────────────────────
 // Weekday numbers (0=Sun..6=Sat) the user rests from their phone. On those days
 // fellows see a calm "on a sabbath" state instead of "fell behind". Body:

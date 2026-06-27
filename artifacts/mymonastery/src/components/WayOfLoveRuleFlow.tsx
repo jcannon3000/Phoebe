@@ -24,6 +24,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { pushRoutineConfig } from "@/lib/routineSync";
 import {
   setSideLevel,
   setSideReflection,
@@ -66,7 +67,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
-type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms";
+type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen";
 type Step =
   | "when"
   | "morning-way" | "morning-config"
@@ -97,7 +98,7 @@ const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms"> = {
+const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen"> = {
   community: "intercessions",
   devotion: "devotion",
   offices: "office",
@@ -110,6 +111,9 @@ const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "
   fdd: "fdd",
   // Praying the Psalms IS the prayer for this side — the home Psalms card.
   psalms: "psalms",
+  // The Ignatian Examen IS the prayer for this side (usually evening) — the
+  // home Examen card replaces the office card for whoever picks it.
+  examen: "examen",
 };
 // Inverse of PRAY_LEVEL — read an existing office level back into a Pray
 // choice so Customize opens with the user's current pick selected.
@@ -120,6 +124,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "reflect-sit") return "contemplation";
   if (level === "fdd") return "fdd";
   if (level === "psalms") return "psalms";
+  if (level === "examen") return "examen";
   return null;
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
@@ -131,6 +136,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   contemplation: "pray-reflect-sit",
   fdd: "pray-fdd",
   psalms: "pray-psalms",
+  examen: "pray-examen",
 };
 // Each Pray choice → the morning reminder pref the office-reminder cron reads
 // (parish_office_morning_pref). "office" deep-links the nudge to Morning
@@ -147,6 +153,8 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   fdd: "devotion",
   // Praying the Psalms gets a reminder (a non-"none" value fires the daily push).
   psalms: "devotion",
+  // The Examen gets the lighter nudge that just opens the practice.
+  examen: "devotion",
 };
 const DEFAULT_REMINDER_TIME = "07:30";
 
@@ -573,12 +581,12 @@ export default function WayOfLoveRuleFlow({
     // The global default mirrors whichever side they configured (morning first).
     const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
     apiRequest("PUT", "/api/me/office-prefs", {
-      // "fdd" / "psalms" aren't server-side default-prayer levels — the per-side
-      // LOCAL level set above drives the home FDD / Psalms card. Send a safe
-      // server default so this PUT never carries an unknown value.
+      // "fdd" / "psalms" / "examen" aren't server-side default-prayer levels —
+      // the per-side LOCAL level set above drives the home FDD / Psalms / Examen
+      // card. Send a safe server default so this PUT never carries an unknown value.
       defaultPrayerLevel: (() => {
         const lvl = PRAY_LEVEL[prayBySide[primarySide]];
-        return (lvl === "fdd" || lvl === "psalms") ? "devotion" : lvl;
+        return (lvl === "fdd" || lvl === "psalms" || lvl === "examen") ? "devotion" : lvl;
       })(),
       contemplationGoalMinutes: effGoalMin,
       contemplationReminderEnabled: effGoalMin > 0,
@@ -651,6 +659,10 @@ export default function WayOfLoveRuleFlow({
     apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
       .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
       .catch(() => {/* ignore */});
+    // Sync the per-device routine settings (office levels, slots, reflection
+    // source, fdd mode, psalm cycle, etc.) up so the rhythm matches across
+    // devices — every setSide*/setPracticeSlot write is in localStorage by now.
+    pushRoutineConfig();
     setStep("done");
   };
   // Adopting a named starter rule presets the flow state, then parks its id so
@@ -954,8 +966,10 @@ export default function WayOfLoveRuleFlow({
               morning/evening prayer option (it still lives in the contemplative
               practices step). */}
           {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
-          {/* The Examen — an evening reflective practice (toggle alongside the office). */}
-          {side === "evening" && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
+          {/* The Examen IS this side's prayer (usually evening) — replaces the
+              office card with the Examen hero. (Distinct from the add-on Examen
+              toggle in the contemplative-practices step, which sits alongside.) */}
+          {side === "evening" && choiceRow(prayBySide[side] === "examen", `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => choosePrayBySide(side, "examen"))}
         </div>
 
         {/* Add your own practice for this part of the day — logged like a custom
@@ -1419,6 +1433,7 @@ export default function WayOfLoveRuleFlow({
       : prayBySide[side] === "contemplation" ? `${cap} Contemplation`
       : prayBySide[side] === "fdd" ? "Forward Day by Day"
       : prayBySide[side] === "psalms" ? "Praying the Psalms"
+      : prayBySide[side] === "examen" ? "The Examen"
       : `${cap} Devotion`;
   };
   const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [

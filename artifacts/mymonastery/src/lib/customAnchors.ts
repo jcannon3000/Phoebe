@@ -12,6 +12,7 @@
 // when the LIST changes, one when a CHECK toggles.
 
 import { apiRequest } from "@/lib/queryClient";
+import { pushRoutineConfig } from "@/lib/routineSync";
 import { swellHaptic } from "@/lib/swellHaptic";
 
 // Where in the day this practice belongs — drives where its card slots into the
@@ -64,6 +65,7 @@ export function getJournalingSlot(): CustomSlot {
 }
 export function setJournalingSlot(slot: CustomSlot): void {
   try { localStorage.setItem(JOURNALING_SLOT_KEY, slot); } catch { /* private mode */ }
+  pushRoutineConfig(); // sync the slot change across devices (lib/routineSync)
 }
 
 // Other built-in practices that the customizer now places at a chosen time of day
@@ -87,6 +89,7 @@ export function getPracticeSlot(key: SlottedPractice): CustomSlot {
 }
 export function setPracticeSlot(key: SlottedPractice, slot: CustomSlot): void {
   try { localStorage.setItem(`phoebe:slot:${key}`, slot); } catch { /* private mode */ }
+  pushRoutineConfig(); // sync the slot change across devices (lib/routineSync)
 }
 
 // A reading ritual is a custom anchor you LOG by an amount rather than a plain

@@ -10,6 +10,7 @@ import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceComplet
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 
 // How the user has chosen to pray the daily office — drives whether the
@@ -166,6 +167,9 @@ export function useRhythmState(): RhythmState {
     // (a reflection opened externally stamps read-state, then fires this).
     window.addEventListener("phoebe:appactive", recheck);
     window.addEventListener("phoebe:browserfinished", recheck);
+    // A cross-device routine sync rewrote the local office levels / slots — force
+    // a re-read so the cards reflect the synced rhythm (lib/routineSync).
+    window.addEventListener(ROUTINE_SYNCED_EVENT, recheck);
     return () => {
       window.removeEventListener(CAC_READ_EVENT, recheck);
       window.removeEventListener(FDD_READ_EVENT, recheck);
@@ -177,6 +181,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener("storage", recheck);
       window.removeEventListener("phoebe:appactive", recheck);
       window.removeEventListener("phoebe:browserfinished", recheck);
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, recheck);
     };
   }, []);
 

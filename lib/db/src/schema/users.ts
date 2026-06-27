@@ -252,6 +252,12 @@ export const usersTable = pgTable("users", {
   // off. NULL = the user hasn't customized, so the dashboard derives a
   // sensible default from feed_first_home (preserving today's layout).
   homeLayout: jsonb("home_layout").$type<{ order: string[]; hidden: string[] }>(),
+  // Routine config — the per-device routine SETTINGS (per-side office levels,
+  // reflection source, practice time-of-day slots, FDD mode, psalm cycle, etc.)
+  // synced as one blob so a person's rhythm matches across devices (mirrors
+  // customAnchors below). `values` = the localStorage routine keys; `updatedAt`
+  // is a last-write-wins clock.
+  ruleConfig: jsonb("rule_config").$type<{ values: Record<string, string>; updatedAt: number }>(),
   // Custom rituals (user-defined daily anchors) + their per-day state, an
   // opaque blob the client owns (lib/customAnchors CustomAnchorSnapshot). Stored
   // here so a person's rituals are their DATA and sync across devices (phone /
