@@ -152,7 +152,7 @@ export default function ListeningPage() {
       <RiseSheet bgPhoto={bgPhoto}>
         {() => (
         <>
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.70) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.84) 100%)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)" }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(6,14,9,0.88) 0%, rgba(6,14,9,0.82) 45%, rgba(6,14,9,0.94) 100%)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
         <motion.div className="w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
           <button onClick={() => setView("log")} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             ← <span>Audio Divina</span>
@@ -205,7 +205,7 @@ export default function ListeningPage() {
     <RiseSheet bgPhoto={bgPhoto}>
       {() => (
       <>
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.70) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.84) 100%)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)" }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(6,14,9,0.88) 0%, rgba(6,14,9,0.82) 45%, rgba(6,14,9,0.94) 100%)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
       <div className="w-full">
         {/* Header — title only, no emoji */}
         <div className="mb-7">
