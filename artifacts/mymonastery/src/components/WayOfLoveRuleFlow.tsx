@@ -932,7 +932,7 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(
             silenceMode === "grow",
             `🌱 ${t("wol_rule.silence_grow_title", { defaultValue: "Grow toward 30 min" })}`,
-            t("wol_rule.silence_grow_sub", { defaultValue: "Start at 5 minutes a day. Keep it for a week and you move up 5 — gently, all the way to 30." }),
+            t("wol_rule.silence_grow_sub", { defaultValue: "Start at 5 minutes a day and increase by five minutes each week — gently, all the way to 30." }),
             () => chooseSilenceMode("grow"),
           )}
           {choiceRow(
