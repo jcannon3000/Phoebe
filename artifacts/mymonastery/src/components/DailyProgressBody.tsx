@@ -565,7 +565,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, silenceLadder, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, silenceLadder, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -710,9 +710,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
+  const scriptureCard = {
+    key: "scripture", emoji: "📖", rgb: "108,140,180", done: scriptureDone, href: "/scripture/readings",
+    title: t("rhythm.card_scripture", { defaultValue: "Listen to Scripture" }),
+    blurb: scriptureDone ? kept : t("rhythm.blurb_scripture", { defaultValue: "The day's readings, heard aloud" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
   const lectioSlot = getPracticeSlot("lectio");
+  const scriptureSlot = getPracticeSlot("scripture");
   const walkSlot = getPracticeSlot("walk");
   // The Examen is always an evening practice (no time-of-day picker).
   const examenSlot: CustomSlot = "evening";
@@ -785,6 +792,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(cobreatheActive ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(lectioActive ? [{ ...lectioCard, slot: lectioSlot }] : []),
+    ...(scriptureActive ? [{ ...scriptureCard, slot: scriptureSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(journalingActive ? [{ ...journalingCard, slot: journalingSlot }] : []),
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),

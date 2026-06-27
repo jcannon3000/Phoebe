@@ -78,6 +78,7 @@ export type RhythmState = {
   walkActive: boolean;
   cobreatheActive: boolean;
   prayerListActive: boolean;
+  scriptureActive: boolean;
   gratitudeDone: boolean;
   examenDone: boolean;
   listeningDone: boolean;
@@ -88,6 +89,7 @@ export type RhythmState = {
   walkDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
+  scriptureDone: boolean;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
   customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; reading?: ReadingConfig; done: boolean; skipped: boolean }>;
@@ -203,6 +205,7 @@ export function useRhythmState(): RhythmState {
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
     prayerList: hasPracticeDoneToday("prayer-list"),
+    scripture: hasPracticeDoneToday("scripture"),
   }));
   useEffect(() => {
     const recheck = () => setPracticeLocal({
@@ -215,6 +218,7 @@ export function useRhythmState(): RhythmState {
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
       prayerList: hasPracticeDoneToday("prayer-list"),
+      scripture: hasPracticeDoneToday("scripture"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -313,7 +317,10 @@ export function useRhythmState(): RhythmState {
   // Personal prayer list — a logging-first practice (prayed through its
   // slideshow); appears only when selected in the customizer.
   const prayerListActive = homeCardActive(user?.homeLayout, "prayer-list");
-  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive || walkActive || prayerListActive;
+  // Listen to Scripture — the day's appointed readings, heard one passage at a
+  // time (Scripture Day by Day); a slotted contemplative practice.
+  const scriptureActive = homeCardActive(user?.homeLayout, "scripture");
+  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive || walkActive || prayerListActive || scriptureActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -435,6 +442,7 @@ export function useRhythmState(): RhythmState {
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
+  const scriptureDone = scriptureActive && (practiceLocal.scripture || serverDone("scripture"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
@@ -503,6 +511,7 @@ export function useRhythmState(): RhythmState {
     ...(walkActive ? [walkDone] : []),
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
+    ...(scriptureActive ? [scriptureDone] : []),
     ...(examenActive ? [examenDone] : []),
     ...(journalingActive ? [journalingDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
@@ -551,6 +560,7 @@ export function useRhythmState(): RhythmState {
     walkActive,
     cobreatheActive,
     prayerListActive,
+    scriptureActive,
     gratitudeDone,
     examenDone,
     listeningDone,
@@ -561,6 +571,7 @@ export function useRhythmState(): RhythmState {
     walkDone,
     cobreatheDone,
     prayerListDone,
+    scriptureDone,
     customAnchors,
     totalAnchors,
     doneCount,

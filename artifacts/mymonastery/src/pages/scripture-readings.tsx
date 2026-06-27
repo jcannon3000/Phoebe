@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 // ── Scripture Day by Day — listen reading by reading ───────────────────────
 //
@@ -98,6 +99,9 @@ export default function ScriptureReadingsPage() {
   // and stopping at its end.
   const playReading = (sec: Section) => {
     if (!audioUrl) return;
+    // Listening to any of the day's passages keeps the Listen-to-Scripture
+    // practice for today (home card + dot).
+    markPracticeDoneToday("scripture");
     player.play({
       showSlug: "scripture-day-by-day",
       episodeId: audioUrl, // /today gives no guid; the day's audio url is a stable id

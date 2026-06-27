@@ -668,7 +668,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -705,6 +705,7 @@ function DailyProgressPill() {
     ...(cobreatheActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
     ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
     ...(lectioActive ? [{ key: "lectio", done: lectioDone }] : []),
+    ...(scriptureActive ? [{ key: "scripture", done: scriptureDone }] : []),
     ...(readingActive ? [{ key: "reading", done: readingDone }] : []),
     ...(podcastsActive ? [{ key: "podcasts", done: podcastsDone }] : []),
     ...(walkActive ? [{ key: "walk", done: walkDone }] : []),
@@ -980,6 +981,7 @@ function OpeningSplash() {
     { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Co-Breathe", blurb: "12 breaths as a prayer", rgb: "62,124,122" },
     { active: rhythm.listeningActive, done: rhythm.listeningDone, slot: getPracticeSlot("listening"), emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" },
     { active: rhythm.lectioActive, done: rhythm.lectioDone, slot: getPracticeSlot("lectio"), emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" },
+    { active: rhythm.scriptureActive, done: rhythm.scriptureDone, slot: getPracticeSlot("scripture"), emoji: "📖", label: "Listen to Scripture", blurb: "The day's readings, heard aloud", rgb: "108,140,180" },
     { active: rhythm.walkActive, done: rhythm.walkDone, slot: getPracticeSlot("walk"), emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" },
     { active: rhythm.journalingActive, done: rhythm.journalingDone, slot: getJournalingSlot(), emoji: "📓", label: "Journaling", blurb: "Kept however you like — tap to log", rgb: "120,150,170", logOnly: true },
     ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150", logOnly: true })),
