@@ -1441,6 +1441,10 @@ export default function PrayerListPage() {
   const sortedActiveRequests = [...activeRequests].sort(
     (a, b) => Number(b.isOwnRequest) - Number(a.isOwnRequest),
   );
+  // The viewer's OWN active requests (the public/shared prayers they created) —
+  // surfaced on "My list" too so every prayer they've added shows there,
+  // whether it's private (an intention) or shared with the community.
+  const mySharedRequests = sortedActiveRequests.filter((r) => r.isOwnRequest);
 
   // Past prayers (expired or acknowledged) that aren't surfaced in
   // the live "Prayers for You" section. We compute this by filtering
@@ -1522,13 +1526,15 @@ export default function PrayerListPage() {
                 ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
               </div>
             </Link>
-            {myIntentions.length > 0 ? (
+            {(myIntentions.length > 0 || mySharedRequests.length > 0) ? (
               <>
+                {myIntentions.length > 0 && (
                 <Link href="/intentions?pray=1" className="block mb-3">
                   <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
                     🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
                   </div>
                 </Link>
+                )}
                 <div className="flex flex-col gap-2">
                   {myIntentions.map((it) => {
                     const head = it.kind === "person" ? (it.personName || "Someone") : it.body;
@@ -1554,12 +1560,31 @@ export default function PrayerListPage() {
                       </div>
                     );
                   })}
+                  {/* Your OWN shared/public prayers also live here, tagged
+                      "Shared" — tap through to the community request detail. */}
+                  {mySharedRequests.map((req) => (
+                    <Link key={`req-${req.id}`} href={`/prayer-requests/${req.id}`} className="block">
+                      <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
+                        <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                          <span aria-hidden className="text-base flex-shrink-0">🙏</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.shared_label", { defaultValue: "Shared with community" })}</p>
+                            <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{req.body}</p>
+                          </div>
+                          <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 20, flexShrink: 0 }}>›</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
+                {myIntentions.length > 0 && (
                 <Link href="/intentions" className="block mt-3">
                   <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}>
                     {t("intentions.manage", { defaultValue: "Edit my list" })}
                   </div>
                 </Link>
+                )}
               </>
             ) : (
               <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
