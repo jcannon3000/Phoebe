@@ -3494,43 +3494,13 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // "prayed today" tracking; community keeps the once-a-day Pray Together flow.
   const programmedOffice = programmedLevel !== null;
 
-  // ── One-time switch to the Daily Devotion default (this update) ─────────
-  // The home prayer card now defaults to the Daily Devotion. One-time,
-  // per-device migration: EVERY user not already on Devotion — including
-  // those on the communal "Pray Together" card AND those on the Daily
-  // Offices — is switched to the Daily Devotion. Only users already on
-  // Devotion are left untouched. A localStorage stamp fires it once, so a
-  // user can re-pick the Office or community in Customize home afterward
-  // without being pulled back.
   const queryClient = useQueryClient();
-  const devotionDefaultRanRef = useRef(false);
-  useEffect(() => {
-    if (devotionDefaultRanRef.current) return;
-    // Wait for office-prefs so we read the true server level, not the
-    // transient value before the query resolves.
-    if (officePrefs === undefined) return;
-    const KEY = "phoebe:reset:devotion-default:v3";
-    try {
-      if (localStorage.getItem(KEY) === "1") { devotionDefaultRanRef.current = true; return; }
-    } catch {
-      return; // no localStorage (private mode) — skip rather than loop
-    }
-    devotionDefaultRanRef.current = true;
-    const markDone = () => { try { localStorage.setItem(KEY, "1"); } catch { /* retry next load */ } };
-    if (programmedLevel !== "devotion") {
-      // On the community OR an Office card → switch to the Daily Devotion default.
-      setSideLevel("morning", "devotion");
-      setSideLevel("evening", "devotion");
-      apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "devotion" })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
-          markDone();
-        })
-        .catch(() => { devotionDefaultRanRef.current = false; /* leave unstamped — retry next load */ });
-    } else {
-      markDone(); // already on Devotion — nothing to migrate
-    }
-  }, [officePrefs, programmedLevel, queryClient]);
+  // (Removed) The one-time "switch every non-Devotion user to the Daily Devotion
+  // default" migration lived here. That transition (from the retired offices-only
+  // / community defaults) is long past, and the new-user default is now Praying
+  // the Psalms with an explicit level chosen in Customize. The migration was
+  // force-resetting BOTH sides to "devotion" — clobbering the psalms default and
+  // people's evening-prayer choices ("evening keeps going back to devotion").
 
   const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
