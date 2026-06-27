@@ -29,7 +29,9 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:contemplation-style",
   // Practice time-of-day slots (customAnchors.ts).
   "phoebe:slot:cobreathe", "phoebe:slot:listening", "phoebe:slot:examen",
-  "phoebe:slot:lectio", "phoebe:slot:walk", "phoebe:journaling-slot",
+  "phoebe:slot:lectio", "phoebe:slot:walk", "phoebe:slot:scripture", "phoebe:journaling-slot",
+  // Listen-to-Scripture: which readings to play through.
+  "phoebe:scripture-scope",
 ];
 
 const UPDATED_AT_KEY = "phoebe:routine:updated-at";

@@ -75,6 +75,21 @@ export type PlayingEpisode = {
   // newsletter). Only navigated if the full-screen player is still open, so
   // a backgrounded listen doesn't yank the user mid-task.
   afterEndHref?: string;
+  // ── Segment playback (scripture readings) ──
+  // Start at this offset (seconds) instead of the saved resume position — e.g.
+  // tapping "Gospel" brings the episode up at the Gospel's start — and pause
+  // once playback reaches stopAtSeconds, so a single reading plays just its
+  // part and then stops. A later manual scrub/skip releases the stop.
+  startAtSeconds?: number;
+  stopAtSeconds?: number;
+  // When a segment (stopAtSeconds) finishes, collapse the full-screen player
+  // back to the mini-bar instead of staying open — used by the office
+  // slideshow so a lesson's "Listen" returns to the slides when it ends.
+  collapseOnStop?: boolean;
+  // Fired once when a segment (stopAtSeconds) finishes — lets a caller chain the
+  // next segment itself (the Listen-to-Scripture play-through: passage → chime →
+  // next passage).
+  onSegmentEnd?: () => void;
 };
 
 type PlayerCtx = {
@@ -396,6 +411,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Whether the outro-trim early-finish has already fired this play (so a show
   // with outroTrimSeconds — e.g. FDD — closes out exactly once).
   const outroTriggeredRef = useRef(false);
+  // When set, pause once playback reaches this offset — the end of a single
+  // reading played via PlayingEpisode.stopAtSeconds. Cleared after it fires or
+  // on a manual seek, so continuing past it plays normally.
+  const segmentStopRef = useRef<number | null>(null);
 
   const closeSeg = useCallback(() => {
     if (seg.current.start !== null) {
@@ -459,7 +478,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     setFddOffer(false); // any new episode clears the post-office FDD offer
     setCurrent((prev) => {
       if (prev && prev.showSlug === ep.showSlug && prev.episodeId === ep.episodeId) {
-        audioRef.current?.play().catch(() => { /* gesture-gated */ });
+        // Same episode already loaded — jump to the requested segment (e.g.
+        // tapping a different reading) without reloading the audio.
+        const a = audioRef.current;
+        if (a && ep.startAtSeconds != null) { a.currentTime = ep.startAtSeconds; setCurrentTime(ep.startAtSeconds); }
+        segmentStopRef.current = ep.stopAtSeconds ?? null;
+        a?.play().catch(() => { /* gesture-gated */ });
         return prev;
       }
       const a = audioRef.current;
@@ -476,11 +500,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       officeCreditedRef.current = null;
       podcastCreditedRef.current = false;
       outroTriggeredRef.current = false;
-      // Resume the saved spot; on a fresh start, skip a show's sign-on intro.
+      // A segment request (startAtSeconds) wins; else resume the saved spot;
+      // else, on a fresh start, skip a show's sign-on intro.
       {
         const savedPos = loadPos(ep);
-        pendingSeekRef.current = savedPos > 0 ? savedPos : (showOverride(ep.showSlug)?.introSkipSeconds ?? 0);
+        pendingSeekRef.current = ep.startAtSeconds != null
+          ? ep.startAtSeconds
+          : savedPos > 0 ? savedPos : (showOverride(ep.showSlug)?.introSkipSeconds ?? 0);
       }
+      segmentStopRef.current = ep.stopAtSeconds ?? null;
       return ep;
     });
   }, [commitSession]);
@@ -766,12 +794,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current; if (!a || !current) return;
     setCurrentTime(a.currentTime);
     syncMediaPosition();
+    // Segment stop — when playing a single reading (stopAtSeconds), pause at its
+    // end. Fires once; cleared so a manual resume plays straight on.
+    if (segmentStopRef.current != null && a.currentTime >= segmentStopRef.current - 0.2) {
+      segmentStopRef.current = null;
+      a.pause();
+      if (current.collapseOnStop) setExpanded(false);
+      current.onSegmentEnd?.();
+      return;
+    }
     // Office credit: the moment the listener crosses 60% of the episode, count
     // the office as prayed today (works whether opened from the office launcher
     // or the Audio library). Fires once per play.
     const officeSide = officeSideFromSlug(current.showSlug) ?? current.creditMode ?? null;
     if (
       officeSide &&
+      segmentStopRef.current == null && // don't credit a whole office during a single-reading segment play
       officeCreditedRef.current !== current.episodeId &&
       isFinite(a.duration) && a.duration > 0 &&
       a.currentTime / a.duration >= OFFICE_CREDIT_FRACTION
@@ -876,7 +914,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       a.pause();
     }
   }, [current]);
-  const seekTo = (t: number) => { const a = audioRef.current; if (a) { a.currentTime = t; setCurrentTime(t); } };
+  const seekTo = (t: number) => { segmentStopRef.current = null; const a = audioRef.current; if (a) { a.currentTime = t; setCurrentTime(t); } };
   const skip = (delta: number) => {
     const a = audioRef.current; if (!a) return;
     const max = a.duration && isFinite(a.duration) ? a.duration : a.currentTime + delta;

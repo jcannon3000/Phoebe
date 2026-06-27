@@ -93,6 +93,24 @@ export function setPracticeSlot(key: SlottedPractice, slot: CustomSlot): void {
   pushRoutineConfig(); // sync the slot change across devices (lib/routineSync)
 }
 
+// Listen-to-Scripture scope — which of the day's readings to play through:
+// just the Psalms, Psalms + Gospel (skipping OT/NT), or all four. Per-device,
+// synced via routineSync like the slots.
+export type ScriptureScope = "psalms" | "psalms-gospel" | "all";
+const SCRIPTURE_SCOPES: ScriptureScope[] = ["psalms", "psalms-gospel", "all"];
+export function getScriptureScope(): ScriptureScope {
+  try {
+    const v = localStorage.getItem("phoebe:scripture-scope") as ScriptureScope | null;
+    return v && SCRIPTURE_SCOPES.includes(v) ? v : "all";
+  } catch {
+    return "all";
+  }
+}
+export function setScriptureScope(scope: ScriptureScope): void {
+  try { localStorage.setItem("phoebe:scripture-scope", scope); } catch { /* private mode */ }
+  pushRoutineConfig();
+}
+
 // A reading ritual is a custom anchor you LOG by an amount rather than a plain
 // check. The unit is how you measure a sitting — by chapter, by page, or by
 // time (minutes). An optional per-day goal gives the log a target; logging any

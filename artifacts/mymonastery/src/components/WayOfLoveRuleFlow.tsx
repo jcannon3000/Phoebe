@@ -23,7 +23,7 @@ import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import {
   setSideLevel,
@@ -450,6 +450,10 @@ export default function WayOfLoveRuleFlow({
     setSlotByPractice((p) => ({ ...p, [key]: slot }));
     setPracticeSlot(key, slot);
   };
+  // Listen-to-Scripture scope (which readings to play through) — set on the
+  // scripture-when slide alongside the time of day.
+  const [scriptureScope, setScriptureScopeState] = useState<ScriptureScope>(() => getScriptureScope());
+  const chooseScriptureScope = (s: ScriptureScope) => { touchedRef.current = true; setScriptureScopeState(s); setScriptureScope(s); };
   // Co-Breathe is already placed if a chosen side prays it as its contemplation
   // STYLE — then we don't ask for a separate time-of-day or add a standalone card.
   const cobreatheIsSideStyle = contemplationStyle === "cobreathe" && (
@@ -909,6 +913,18 @@ export default function WayOfLoveRuleFlow({
         {backRow(goPrev)}
         {stepHeader(meta.label, meta.label)}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>{meta.body}</p>
+        {step === "scripture-when" && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.scripture_scope_label", { defaultValue: "What would you like to hear?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {choiceRow(scriptureScope === "psalms", `🎵 ${t("wol_rule.scripture_scope_psalms", { defaultValue: "Psalms" })}`, t("wol_rule.scripture_scope_psalms_sub", { defaultValue: "The day's psalm only." }), () => chooseScriptureScope("psalms"))}
+              {choiceRow(scriptureScope === "psalms-gospel", `✝️ ${t("wol_rule.scripture_scope_pg", { defaultValue: "Psalms & Gospel" })}`, t("wol_rule.scripture_scope_pg_sub", { defaultValue: "The psalm, then the Gospel — the Old Testament and Epistle are skipped." }), () => chooseScriptureScope("psalms-gospel"))}
+              {choiceRow(scriptureScope === "all", `📖 ${t("wol_rule.scripture_scope_all", { defaultValue: "All four readings" })}`, t("wol_rule.scripture_scope_all_sub", { defaultValue: "Old Testament, Psalm, Epistle, and Gospel." }), () => chooseScriptureScope("all"))}
+            </div>
+          </>
+        )}
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.when_label", { defaultValue: "What time of day?" })}
         </p>
