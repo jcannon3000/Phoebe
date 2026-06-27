@@ -104,6 +104,58 @@ function locateHeuristic(readings: ScriptureReading[], transcript: Transcript): 
   return located;
 }
 
+// ── Recognition: spoken-announcement anchor (deterministic) ────────────────
+//
+// Scripture Day by Day ANNOUNCES each reading before reading it — "A reading
+// from Numbers…", "Psalm 107…", "The Holy Gospel… according to Matthew…". So
+// the most reliable anchor is the announcement itself: find the reading's book
+// word, confirmed by its chapter number appearing in the next few words. The
+// chapter number disambiguates the real announcement from an incidental mention
+// (e.g. the word "psalm" said in passing earlier). No model, no guessing — if
+// the transcript is decent, every reading is found.
+
+// The chapter number from a citation: the first number AFTER the book name, so
+// "1 Corinthians 13:1" → "13" (not the book's "1"), "Psalm 107:33-43, 108" → "107".
+function chapterOf(citation: string): string | null {
+  const book = citation.match(/^(.*?)\s+\d/)?.[1] ?? "";
+  const m = citation.slice(book.length).match(/\d+/);
+  return m ? m[0] : null;
+}
+
+// A small lead so the segment opens on the announcement ("A reading from…"),
+// not mid-phrase on the book word.
+const ANNOUNCEMENT_LEAD = 2.5;
+
+function locateByAnnouncement(readings: ScriptureReading[], transcript: Transcript): Located {
+  const toks = transcriptTokens(transcript);
+  const located: Located = new Map();
+  let cursor = 0;
+  for (const r of readings) {
+    const anchor = bookAnchor(r.citation); // last book word: "numbers", "psalm", "matthew"
+    const chapter = chapterOf(r.citation); // "20", "107", "21"
+    let bookOnly = -1; // book word seen but chapter not confirmed nearby
+    let strong = -1;   // book word AND its chapter number nearby — the announcement
+    for (let i = cursor; i < toks.length; i++) {
+      if (toks[i].w !== anchor) continue;
+      if (bookOnly < 0) bookOnly = i;
+      if (!chapter) { strong = i; break; }
+      const hi = Math.min(toks.length - 1, i + 6);
+      let near = false;
+      for (let j = i + 1; j <= hi; j++) { if (toks[j].w === chapter) { near = true; break; } }
+      if (near) { strong = i; break; }
+    }
+    const hit = strong >= 0 ? strong : bookOnly;
+    if (hit >= 0) {
+      located.set(r.kind, {
+        start: round1(Math.max(0, toks[hit].t - ANNOUNCEMENT_LEAD)),
+        confidence: strong >= 0 ? 0.95 : 0.6,
+      });
+      cursor = hit + 1; // strictly after — readings are in order
+    }
+  }
+  return located;
+}
+
 // ── Recognition: LLM ───────────────────────────────────────────────────────
 
 async function locateLLM(
@@ -181,15 +233,16 @@ function buildTimeline(
   const conf: number[] = new Array(n).fill(0);
   const predicted: boolean[] = new Array(n).fill(false);
 
-  // Recognised starts, monotonic and never before the intro. A start the
-  // recogniser placed inside the intro is CLAMPED up to INTRO_SECONDS rather
-  // than dropped, so a correct-but-early OT recognition isn't discarded.
-  let lastT = INTRO_SECONDS;
+  // Recognised starts, kept STRICTLY increasing and never before the intro. A
+  // start the recogniser placed inside the intro is CLAMPED up to INTRO_SECONDS
+  // (not dropped); a later reading that would tie the previous start is left to
+  // the predictor rather than sharing an identical, zero-length segment.
+  let lastT = 0;
   for (let i = 0; i < n; i++) {
     const l = located.get(readings[i].kind);
     if (!l) continue;
     const s = Math.max(l.start, INTRO_SECONDS);
-    if (s >= lastT) {
+    if (s > lastT) {
       start[i] = s;
       conf[i] = l.confidence;
       lastT = s;
@@ -252,20 +305,28 @@ export async function alignScripture(
 ): Promise<{ sections: OfficeAlignmentSection[]; aligner: string }> {
   if (readings.length === 0) return { sections: [], aligner: "none" };
 
-  let located: Located | null = null;
-  let outroStart: number | null = null;
-  let aligner = "heuristic";
+  // PRIMARY: the spoken announcement (deterministic — book word + chapter
+  // number). The LLM is kept only to detect the outro and to fill any reading
+  // the announcement matcher couldn't find; the book-name heuristic is the last
+  // resort. Per-reading precedence so one weak reading can't drag the others.
+  const byAnnouncement = locateByAnnouncement(readings, transcript);
+  let llm: { located: Located; outroStartSeconds: number | null } | null = null;
   try {
-    const llm = await locateLLM(readings, transcript);
-    if (llm && llm.located.size > 0) {
-      located = llm.located;
-      outroStart = llm.outroStartSeconds;
-      aligner = "openai";
-    }
+    llm = await locateLLM(readings, transcript);
   } catch (e) {
-    console.warn("[scripture-align] LLM alignment failed, falling back to heuristic:", e);
+    console.warn("[scripture-align] LLM step failed:", e);
   }
-  if (!located) located = locateHeuristic(readings, transcript);
+  const heuristic = locateHeuristic(readings, transcript);
+
+  const located: Located = new Map();
+  for (const r of readings) {
+    const pick = byAnnouncement.get(r.kind) ?? llm?.located.get(r.kind) ?? heuristic.get(r.kind);
+    if (pick) located.set(r.kind, pick);
+  }
+  let outroStart: number | null = llm?.outroStartSeconds ?? null;
+  const aligner = byAnnouncement.size === readings.length
+    ? "announce"
+    : llm && llm.located.size > 0 ? "announce+llm" : "announce+heuristic";
 
   // Ignore an outro the recogniser placed at/before the last recognised
   // reading — using it would give the final reading a negative-length segment.

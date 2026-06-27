@@ -58,11 +58,6 @@ const SCOPE_LABEL: Record<ScriptureScope, string> = {
 };
 const SCOPES: ScriptureScope[] = ["psalms", "psalms-gospel", "all"];
 
-// Empirical correction: the Psalm marker lands ~20s late on Scripture Day by Day
-// (its announcement/antiphon trips the alignment). Pull the psalm start back this
-// many seconds (clamped so it can't cross into the previous reading).
-const PSALM_START_LEAD = 20;
-
 type Episode = { audioUrl: string | null; durationSeconds: number | null; title: string | null; imageUrl: string | null };
 
 export default function ScriptureReadingsPage() {
@@ -142,14 +137,6 @@ export default function ScriptureReadingsPage() {
   const baseEpisode = (sec: Section, onSegmentEnd?: () => void): PlayingEpisode => {
     const kind = sec.id as ReadingKind;
     const citation = readings.find((r) => r.kind === kind)?.citation || sec.title || KIND_LABEL[kind];
-    // The Psalm marker consistently lands ~20s late on this feed (its
-    // announcement/antiphon throws the alignment), so pull the psalm start back.
-    // Clamped so it never crosses into the previous reading.
-    let startAt = sec.startSeconds;
-    if (kind === "psalm") {
-      const prevStart = sectionsByStart.filter((s) => s.startSeconds < sec.startSeconds - 0.5).pop()?.startSeconds ?? 0;
-      startAt = Math.max(prevStart + 1, sec.startSeconds - PSALM_START_LEAD);
-    }
     return {
     showSlug: "scripture-day-by-day",
     episodeId: audioUrl!, // /today gives no guid; the day's audio url is a stable id
@@ -164,7 +151,7 @@ export default function ScriptureReadingsPage() {
     durationSeconds: ep?.durationSeconds ?? null,
     sessionSurface: "scripture-audio",
     showHref: "/podcasts/show/scripture-day-by-day",
-    startAtSeconds: startAt,
+    startAtSeconds: sec.startSeconds,
     // Always bound the segment to this reading's part — fall back to the next
     // section's start (or the episode end) when the alignment left the end open.
     stopAtSeconds: stopFor(sec),

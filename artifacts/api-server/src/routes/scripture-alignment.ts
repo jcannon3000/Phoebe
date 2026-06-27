@@ -60,6 +60,16 @@ router.get("/podcast/scripture/timestamps", async (req: Request, res: Response):
   // read for today (past days just serve whatever was stored).
   const readings = isToday ? await readingsForToday() : [];
 
+  // Self-heal: if today's stored timeline predates the deterministic
+  // announcement matcher (an old "openai"/"heuristic" aligner), re-run it once
+  // so the corrected markers replace the stale guess. Serve "building" meanwhile
+  // so the client polls for the new one.
+  if (isToday && row?.status === "done" && !String(row.aligner ?? "").startsWith("announce")) {
+    triggerOnce(`scripture-realign:${episodeDate}`, () => buildScriptureAlignment({ force: true }));
+    res.json({ episodeDate, status: "building", readings, sections: [] });
+    return;
+  }
+
   if (!row || row.status !== "done") {
     const status = row?.status ?? "none";
     // On-demand fallback: the first open of today's episode kicks off the
