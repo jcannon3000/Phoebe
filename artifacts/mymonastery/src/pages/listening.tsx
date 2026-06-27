@@ -204,6 +204,8 @@ export default function ListeningPage() {
   return (
     <RiseSheet bgPhoto={bgPhoto}>
       {() => (
+      <>
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.70) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.84) 100%)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)" }} />
       <div className="w-full">
         {/* Header — title only, no emoji */}
         <div className="mb-7">
@@ -301,6 +303,7 @@ export default function ListeningPage() {
             section header + View all, then the first 7 cards (yours + fellows). */}
         <LogPreviewSection entries={entries} shared={sharedEntries} onViewAll={() => setView("history")} />
       </div>
+      </>
       )}
     </RiseSheet>
   );
