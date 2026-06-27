@@ -202,6 +202,40 @@ function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean;
   return n;
 }
 
+// How many prayers the user will pray THROUGH in their slideshow right now —
+// the exact set the office's intercession handoff reads (community
+// intercessions + others' open requests + active prayers-for-others). Reuses
+// the same query keys, so it shares React Query's cache (no extra fetches). The
+// office card shows this so its "N prayers" matches the slideshow, not just the
+// others'-requests subset.
+function useSlideshowPrayerCount(): number {
+  const { data: moments } = useQuery<{ moments: Array<{ templateType?: string | null; group?: { id?: number } | null }> }>({
+    queryKey: ["/api/moments"], queryFn: () => apiRequest("GET", "/api/moments"), staleTime: 60_000,
+  });
+  const { data: circle } = useQuery<{ intentions: Array<{ groupId: number }> }>({
+    queryKey: ["/api/groups/me/circle-intentions"], queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"), staleTime: 60_000,
+  });
+  const { data: reqs } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null }>>({
+    queryKey: ["/api/prayer-requests"], queryFn: () => apiRequest("GET", "/api/prayer-requests"), staleTime: 60_000,
+  });
+  const { data: prayersFor } = useQuery<Array<{ id: number; expired: boolean; expiresAt: string }>>({
+    queryKey: ["/api/prayers-for/mine"], queryFn: () => apiRequest("GET", "/api/prayers-for/mine"), staleTime: 60_000,
+  });
+  return useMemo(() => {
+    const intentionCountByGroup = new Map<number, number>();
+    for (const i of (circle?.intentions ?? [])) intentionCountByGroup.set(i.groupId, (intentionCountByGroup.get(i.groupId) ?? 0) + 1);
+    let activeIntercessions = 0;
+    for (const m of (moments?.moments ?? [])) {
+      if (m.templateType !== "intercession") continue;
+      const gid = m.group?.id;
+      const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
+      activeIntercessions += intentions > 0 ? intentions : 1;
+    }
+    const othersRequests = (reqs ?? []).filter((r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt).length;
+    return activeIntercessions + othersRequests + countActivePrayersFor(prayersFor);
+  }, [moments, circle, reqs, prayersFor]);
+}
+
 function nextDayLabel(date: Date): string {
   // Mirrors community-detail.tsx#gatheringDayLabel so the same
   // gathering renders the same line on the home dashboard and the
@@ -3517,6 +3551,9 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && (!r.expiresAt || new Date(r.expiresAt) > new Date()),
   );
   const requestCount = openOfficeReqs.length;
+  // The full count of what the office's prayer slideshow will walk through —
+  // so the "N prayers" subtitle matches the slideshow, not just open requests.
+  const slideshowCount = useSlideshowPrayerCount();
   // Faces of the people ASKING for prayer (open requests), deduped by owner,
   // non-anonymous, with an avatar — shown on the office card in place of the
   // who-prayed rail.
@@ -3835,9 +3872,9 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
             // The office card surfaces who's ASKING for prayer, not who prayed:
             // the requesters' faces + "N prayer requests".
             const withAvatars = requesterFaces;
-            const countCopy = requestCount === 0
+            const countCopy = slideshowCount === 0
               ? null
-              : t("dashboard.office_requests_sub", { count: requestCount, defaultValue: `${requestCount} prayer${requestCount === 1 ? "" : "s"}` });
+              : t("dashboard.office_requests_sub", { count: slideshowCount, defaultValue: `${slideshowCount} prayer${slideshowCount === 1 ? "" : "s"}` });
             return (
               // Title sits tight to the eyebrow above, with breathing
               // room below before the "N people prayed with you this
