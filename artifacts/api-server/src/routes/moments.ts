@@ -1748,12 +1748,18 @@ router.get("/moments", async (req, res): Promise<void> => {
     // intercession kept appearing). Track the LIVE ids and treat anything not
     // in that set (incl. deleted feeds) as off.
     const liveFeedIds = new Set<number>();
+    // Feed name per id — drives the slide's feed pill (was hardcoded "Climate
+    // Justice" client-side; now shows the actual feed, e.g. "Diocese of New York").
+    const feedTitleById = new Map<number, string>();
     if (momentFeedIds.length > 0) {
       const feedStateRows = await db
-        .select({ id: prayerFeedsTable.id, state: prayerFeedsTable.state })
+        .select({ id: prayerFeedsTable.id, state: prayerFeedsTable.state, title: prayerFeedsTable.title })
         .from(prayerFeedsTable)
         .where(inArray(prayerFeedsTable.id, momentFeedIds));
-      for (const f of feedStateRows) if (f.state === "live") liveFeedIds.add(f.id);
+      for (const f of feedStateRows) {
+        if (f.state === "live") liveFeedIds.add(f.id);
+        feedTitleById.set(f.id, f.title);
+      }
     }
     const flatMoments = rawMoments
       .filter(m => {
@@ -2309,6 +2315,7 @@ router.get("/moments", async (req, res): Promise<void> => {
 
         return {
           ...m,
+          prayerFeedTitle: m.prayerFeedId ? feedTitleById.get(m.prayerFeedId) ?? null : null,
           // Whether the viewer has already logged a prayer for this
           // intercession today. Drives the prayer-feed rotating deck
           // in the slideshow — un-prayed cards bubble to the top.
@@ -2388,6 +2395,7 @@ router.get("/moments", async (req, res): Promise<void> => {
         const myToken = userTokenRows.find(t => t.momentId === m.id);
         return {
           ...m,
+          prayerFeedTitle: m.prayerFeedId ? feedTitleById.get(m.prayerFeedId) ?? null : null,
           group: m.groupId ? groupMap.get(m.groupId) ?? null : effectiveGroupByMomentId.get(m.id) ?? null,
           additionalGroups: additionalGroupsByMomentId.get(m.id) ?? [],
           memberCount: 0,

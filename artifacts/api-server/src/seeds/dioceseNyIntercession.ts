@@ -19,10 +19,10 @@ const FEED = {
   timezone: "America/New_York",
 };
 
-// A gentle, universal framing for the day's intention. The intention itself is
-// the entry title (a parish, ministry, person, observance, or cause); this body
-// is the same for every day and reads naturally for all of them.
-const BODY = "Hold this intention in your prayers today.";
+// No body: the intention IS the entry title (a parish, ministry, person,
+// observance, or cause), so a generic "Hold this intention…" line just added
+// noise on the slide. An empty body hides the body box entirely.
+const BODY = "";
 
 // One row per calendar day. `d` is a naive YYYY-MM-DD interpreted in the feed's
 // timezone; `t` is that day's intention.

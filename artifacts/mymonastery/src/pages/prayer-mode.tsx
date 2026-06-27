@@ -81,11 +81,11 @@ type Moment = {
   intercessionTopic?: string | null;
   intercessionFullText?: string | null;
   intercessionSource?: string | null;
-  // Set when the intercession is scoped to a prayer feed instead of a
-  // group. Drives the "Climate Justice" pill on the slide. For v1
-  // phoebe-climate is the only feed, so a non-null prayerFeedId is
-  // treated as the climate-justice tag.
+  // Set when the intercession is scoped to a prayer feed instead of a group.
   prayerFeedId?: number | null;
+  // The feed's name — drives the pill under the eyebrow (e.g. "Diocese of New
+  // York"). Replaces the old hardcoded "Climate Justice" tag.
+  prayerFeedTitle?: string | null;
   // Creation time — orders a feed's intercession deck newest-first.
   createdAt?: string | null;
   // Whether the viewer has prayed this intercession today. Drives the
@@ -3098,7 +3098,7 @@ export default function PrayerModePage() {
               }));
             }
           }
-          const feedTag = m.prayerFeedId ? "Climate Justice" : null;
+          const feedTag = m.prayerFeedTitle ?? null;
           const finalAttribution = m.prayerFeedId && !attributionLabel
             ? "Your community is holding this."
             : attributionLabel
@@ -3236,7 +3236,7 @@ export default function PrayerModePage() {
       // the eyebrow. phoebe-climate is the only feed for now, so a
       // non-null prayerFeedId is treated as the climate tag — generalize
       // to per-feed pill text when more feeds exist.
-      const feedTag = m.prayerFeedId ? "Climate Justice" : null;
+      const feedTag = m.prayerFeedTitle ?? null;
       // Feed-scoped moments don't have a primary group; replace the
       // empty "with …" attribution with a softer subtitle so the slide
       // doesn't read like a one-person prayer.
