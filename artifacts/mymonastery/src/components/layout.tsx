@@ -1213,15 +1213,9 @@ function OpeningSplash() {
         </motion.div>
       ) : (
       <>
-      {/* Greeting — shown on every variant now (fellows, the quote fallback, or
-          the brief loading hold), so the content fades up beneath it without the
-          greeting ever flashing in or out. */}
-      <p
-        className="text-center px-8 mb-8 relative"
-        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
-      >
-        {firstName ? `${greeting}, ${firstName}` : greeting}
-      </p>
+      {/* The greeting is NOT a standalone top line: on the quote splash it would
+          read oddly, so it now rides up with the "up next" card (below) and is
+          simply absent on the quote variant. */}
       {showFaces && (() => {
         // Prefer the live set; fall back to last session's cached faces so the
         // rail paints instantly on a cold open (no network wait) — but ONLY when
@@ -1295,6 +1289,10 @@ function OpeningSplash() {
           className="relative w-full text-center"
           style={{ maxWidth: 460 }}
         >
+          {/* Greeting — rides up with the card (not a static top line). */}
+          <p className="text-center px-8 mb-8" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            {firstName ? `${greeting}, ${firstName}` : greeting}
+          </p>
           <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-4" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
             Up next in your rhythm
           </p>
