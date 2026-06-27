@@ -845,7 +845,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // stays a quiet "later" card and only becomes the hero from 5 PM on (matches
   // the splash + the dashboard "what's next" hero — Evening never leads earlier).
   const heroSide: "morning" | "evening" | null =
-    (morningActive && !morningDone) ? "morning"
+    // Morning only leads as the hero while it's still morning — past noon a
+    // not-yet-prayed morning steps aside (matches the omitted morning card +
+    // the dashboard "what's next" gate), so the afternoon never shows a morning
+    // hero. Evening takes the hero from 5 PM.
+    (morningActive && !morningDone && hour < 12) ? "morning"
     : (eveningActive && hour >= 17 && !eveningDone) ? "evening"
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
