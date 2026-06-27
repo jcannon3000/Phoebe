@@ -364,6 +364,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <>
                   <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
                   <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
+                  {/* My Prayer List — the user's OWN list of intentions (distinct
+                      from the community "Prayer list" above, which is others'
+                      requests). Always available; opens the manage + pray-through
+                      page. */}
+                  <MenuRow emoji="🕊️" label={t("menu.my_prayer_list", { defaultValue: "My Prayer List" })} onClick={() => navigate("/intentions")} />
                   <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
                   <MenuRow emoji="🎙️" label={t("menu.podcasts", { defaultValue: "Podcasts" })} onClick={() => goCategory("/podcasts")} />
                 </>

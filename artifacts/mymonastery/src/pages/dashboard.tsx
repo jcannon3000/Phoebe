@@ -2736,7 +2736,7 @@ function PrayerListHomeCard() {
   return (
     <PracticeHomeCard
       href="/intentions?pray=1"
-      label="Prayer List 🕊️"
+      label="My Prayer List 🕊️"
       cta="Pray"
       tintBg="rgba(96,140,180,0.12)"
       tintBorder="rgba(96,140,180,0.35)"

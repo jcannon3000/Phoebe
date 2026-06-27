@@ -284,7 +284,7 @@ export function WeeklyGridCard() {
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
     ...(gratitudeActive ? [{ id: "gratitude", emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124", doneFor: (d: Day) => !!d.gratitude }] : []),
-    ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
+    ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
     ...(journalingActive ? [{ id: "journaling", emoji: "📓", label: t("rhythm.row_journaling", { defaultValue: "Journaling" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.journaling }] : []),
     // The user's own custom anchors — one row each, filled from local per-day
@@ -807,7 +807,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }] : []),
     ...(prayerListActive ? [{
       key: "prayer-list", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "96,140,180", done: prayerListDone, href: "/intentions?pray=1",
-      title: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }),
+      title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }),
       blurb: prayerListDone ? kept : t("rhythm.blurb_prayer_list", { defaultValue: "Pray through your list" }),
       cta: t("rhythm.pray", { defaultValue: "Pray" }), later: false,
     }] : []),

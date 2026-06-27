@@ -1276,7 +1276,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
-          {choiceRow(extras.prayerList, `🕊️ ${t("wol_rule.extra_prayer_list", { defaultValue: "Prayer List" })}`, t("wol_rule.extra_prayer_list_sub", { defaultValue: "Keep a personal list of who and what you're praying for." }), () => toggleExtra("prayerList"))}
+          {choiceRow(extras.prayerList, `🕊️ ${t("wol_rule.extra_prayer_list", { defaultValue: "My Prayer List" })}`, t("wol_rule.extra_prayer_list_sub", { defaultValue: "Keep a personal list of who and what you're praying for." }), () => toggleExtra("prayerList"))}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {choiceRow(extras.reading, `📚 ${t("wol_rule.extra_reading", { defaultValue: "Reading" })}`, t("wol_rule.extra_reading_sub", { defaultValue: "Log what you read." }), () => toggleExtra("reading"))}
@@ -1515,7 +1515,7 @@ export default function WayOfLoveRuleFlow({
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
-    ...(extras.prayerList ? [{ emoji: "🕊️", label: "Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
+    ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
     ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),

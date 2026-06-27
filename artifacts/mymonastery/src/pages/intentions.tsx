@@ -141,7 +141,7 @@ export default function IntentionsPage() {
         <div className="flex items-start gap-3 mb-6">
           <div className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: `rgba(${RGB},0.18)`, border: `1px solid rgba(${RGB},0.35)` }}>🕊️</div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{t("intentions.title", { defaultValue: "Prayer List" })}</h1>
+            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{t("intentions.title", { defaultValue: "My Prayer List" })}</h1>
             <p className="text-xs mt-0.5" style={{ color: SAGE }}>{t("intentions.subtitle", { defaultValue: "The people and things you're holding in prayer" })}</p>
           </div>
         </div>
