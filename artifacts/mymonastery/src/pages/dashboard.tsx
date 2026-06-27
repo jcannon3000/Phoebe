@@ -6102,7 +6102,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // Only anchors the user actually keeps drive the hero. A turned-off office
     // (morning/evening pref "none") or reflection (source "none") never becomes
     // the "what's next" card; with everything kept, the community summary shows.
-    const morningPending = rhythm.morningActive && !rhythm.morningDone;
+    // Morning only leads the hero while it's still morning — once it's past noon
+    // we don't surface a missed morning office; the hero moves on to reflection /
+    // evening (matches Daily progress dropping the morning card in the afternoon).
+    const morningPending = rhythm.morningActive && !rhythm.morningDone && heroNowHour < 12;
     const eveningPending = rhythm.eveningActive && !rhythm.eveningDone;
     const reflectPending = rhythm.reflectActive && !rhythm.reflectDone && reflectAvailable;
     if (!morningPending && !eveningPending && !reflectPending) return { kind: "summary" };
