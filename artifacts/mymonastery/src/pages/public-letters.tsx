@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 import { motion } from "framer-motion";
 
 // ── Public, no-login Letters signup ──────────────────────────────────────────
@@ -161,6 +162,7 @@ function SignupStep({ onBack, onDone }: { onBack: () => void; onDone: () => void
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {
+        clearDailyCompletionFlags();
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         onDone();
       } else if (res.status === 400 && typeof data.error === "string" && /already exists/i.test(data.error)) {

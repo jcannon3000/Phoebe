@@ -7575,22 +7575,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     requests were sitting in their slideshow — wrong
                     signal. The "Join a community" path stays for
                     genuinely brand-new users with no context. */}
-                {filter === null
-                  && !eventsOnly
-                  && totalCount === 0
-                  && pendingPrayerCount === 0
-                  && (dashGroups?.groups?.length ?? 0) === 0 && (
-                  <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
-                    <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>
-                      Nothing here yet. 🌱
-                    </p>
-                    <Link href="/communities/browse">
-                      <span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>
-                        Join a community to get started →
-                      </span>
-                    </Link>
-                  </div>
-                )}
+                {/* The old "Join a community to get started" empty-state was
+                    removed per request — we don't push community on a solo user
+                    who isn't in one. A fresh user already has their daily rhythm
+                    (Morning/Evening + reflection + silence), so there's no truly
+                    empty state to fill, and community surfaces stay opt-in. */}
               </motion.div>
             </AnimatePresence>
           );

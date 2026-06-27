@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -382,6 +383,7 @@ export default function CommunityJoinPage() {
       });
       const data = await res.json();
       if (data.ok) {
+        clearDailyCompletionFlags();
         // Server already linked the new user to the group_members row.
         // Route through the full product onboarding (profile pic, BCP
         // intros, gatherings, bell setup, first prayer request), then

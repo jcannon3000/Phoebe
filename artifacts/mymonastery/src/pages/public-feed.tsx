@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -597,6 +598,7 @@ function SignupStep({
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {
+        clearDailyCompletionFlags();
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         onDone();
       } else if (res.status === 400 && typeof data.error === "string" && /already exists/i.test(data.error)) {

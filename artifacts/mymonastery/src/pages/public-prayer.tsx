@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { OfficeViewer, type LiturgyMode } from "./bcp-daily-office";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 
 // ── Public, no-login prayer ──────────────────────────────────────────────────
 //
@@ -304,6 +305,10 @@ function SignupStep({ onBack, onDone }: {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {
+        // A fresh account must start with an empty day — clear any device-local
+        // "done today" flags left by the pre-signup prayer (else the new home
+        // hides Morning Psalms / today's reflection as already done).
+        clearDailyCompletionFlags();
         // Refresh the auth cache so the app sees the new session before
         // the done step navigates into /parish.
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });

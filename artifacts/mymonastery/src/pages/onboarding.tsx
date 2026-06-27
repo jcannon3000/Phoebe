@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -131,6 +132,7 @@ export default function Onboarding() {
       if (data.ok) {
         // register logs the user in (server req.login); refresh /auth/me and the
         // redirect effect carries them into the app (the signup → customize flow).
+        clearDailyCompletionFlags();
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
         window.scrollTo(0, 0);
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });

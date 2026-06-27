@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 
 // Public Prayer Request page
 //
@@ -459,6 +460,7 @@ function SignupForm({
       });
       const json = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (r.ok && json.ok) {
+        clearDailyCompletionFlags();
         await qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
         onSuccess();
       } else {

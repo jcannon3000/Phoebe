@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearDailyCompletionFlags } from "@/lib/completionReset";
 import { useAuth } from "@/hooks/useAuth";
 
 // ── Letter invite landing (token-authenticated, public) ──────────────────────
@@ -144,6 +145,7 @@ export default function LetterInvitePage() {
         setSubmitting(false);
         return;
       }
+      clearDailyCompletionFlags();
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
 
       // Claim the invite — links the new userId to the
