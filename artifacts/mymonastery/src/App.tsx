@@ -352,6 +352,7 @@ const CustomizeHomeAddPage = lazy(() =>
   import("./pages/customize-home").then((m) => ({ default: m.CustomizeHomeAddPage })),
 );
 const GratitudePage = lazy(() => import("./pages/gratitude"));
+const IntentionsPage = lazy(() => import("./pages/intentions"));
 const ListeningPage = lazy(() => import("./pages/listening"));
 const LectioDivinaPage = lazy(() => import("./pages/lectio-divina"));
 const ReadingLogPage = lazy(() => import("./pages/reading-log"));
@@ -781,6 +782,7 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/cobreathe/about" ||
         location === "/examen" ||
         location === "/gratitude" ||
+        location === "/intentions" ||
         location === "/listening" ||
         location === "/find-your-rhythm" ||
         location === "/spotify-callback" ||
@@ -1008,6 +1010,7 @@ function Router() {
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
+      <Route path="/intentions" component={IntentionsPage} />
       <Route path="/listening" component={ListeningPage} />
       <Route path="/lectio-divina" component={LectioDivinaPage} />
       <Route path="/reading-log" component={ReadingLogPage} />

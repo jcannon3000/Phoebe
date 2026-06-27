@@ -301,13 +301,14 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; journaling: boolean; reading: boolean; podcasts: boolean }>(() => ({
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; journaling: boolean; reading: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
     gratitude: homeCardOn(user?.homeLayout, "gratitude"),
     examen: homeCardOn(user?.homeLayout, "examen"),
     listening: homeCardOn(user?.homeLayout, "listening"),
     journaling: homeCardOn(user?.homeLayout, "journaling"),
     reading: homeCardOn(user?.homeLayout, "reading"),
     podcasts: homeCardOn(user?.homeLayout, "podcasts"),
+    prayerList: homeCardOn(user?.homeLayout, "prayer-list"),
   }));
   // Beta-only: the weekly Way of Love rhythm (Commune · Go · Bless · Rest),
   // turned on here and kept in the "This week" home band. Persisted on its own
@@ -379,6 +380,7 @@ export default function WayOfLoveRuleFlow({
       journaling: homeCardOn(user.homeLayout, "journaling"),
       reading: homeCardOn(user.homeLayout, "reading"),
       podcasts: homeCardOn(user.homeLayout, "podcasts"),
+      prayerList: homeCardOn(user.homeLayout, "prayer-list"),
     });
     // Re-seed the reflection multi-select from the layout cards too — same
     // reason: `user` was likely null at the initializer, so an existing
@@ -497,7 +499,7 @@ export default function WayOfLoveRuleFlow({
     setCustomList(getCustomAnchors());
     setAddingCustom(false);
   };
-  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling" | "reading" | "podcasts") => {
+  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling" | "reading" | "podcasts" | "prayerList") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
@@ -664,6 +666,7 @@ export default function WayOfLoveRuleFlow({
         (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation"));
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
+      ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.journaling ? ["journaling"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
@@ -675,6 +678,7 @@ export default function WayOfLoveRuleFlow({
     ];
     const offKeys = [
       ...(extras.gratitude ? [] : ["gratitude"]),
+      ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.journaling ? [] : ["journaling"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
@@ -709,7 +713,7 @@ export default function WayOfLoveRuleFlow({
     setSilenceMode("fixed");
     setGoal(String(preset.silence ? preset.goalMin : 0));
     setNewsletters(preset.reflections);
-    setExtras({ gratitude: false, examen: false, listening: false, journaling: false, reading: false, podcasts: false });
+    setExtras({ gratitude: false, examen: false, listening: false, journaling: false, reading: false, podcasts: false, prayerList: false });
     try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
     setAdoptId(preset.id);
   };
@@ -1272,6 +1276,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
+          {choiceRow(extras.prayerList, `🕊️ ${t("wol_rule.extra_prayer_list", { defaultValue: "Prayer List" })}`, t("wol_rule.extra_prayer_list_sub", { defaultValue: "Keep a personal list of who and what you're praying for." }), () => toggleExtra("prayerList"))}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {choiceRow(extras.reading, `📚 ${t("wol_rule.extra_reading", { defaultValue: "Reading" })}`, t("wol_rule.extra_reading_sub", { defaultValue: "Log what you read." }), () => toggleExtra("reading"))}
@@ -1510,6 +1515,7 @@ export default function WayOfLoveRuleFlow({
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
+    ...(extras.prayerList ? [{ emoji: "🕊️", label: "Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
     ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),

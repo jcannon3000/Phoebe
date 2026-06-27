@@ -724,7 +724,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'lectio', 'reading', 'podcasts', 'walk') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'lectio', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
@@ -773,6 +773,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const reading = new Set<string>();
     const podcasts = new Set<string>();
     const walk = new Set<string>();
+    const prayerList = new Set<string>();
     for (const r of pcRows.rows) {
       if (r.section === "gratitude") gratitude.add(r.local_date);
       if (r.section === "examen") examen.add(r.local_date);
@@ -782,6 +783,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "reading") reading.add(r.local_date);
       if (r.section === "podcasts") podcasts.add(r.local_date);
       if (r.section === "walk") walk.add(r.local_date);
+      if (r.section === "prayer-list") prayerList.add(r.local_date);
     }
     const cobreathe = new Set<string>();
     for (const r of breathRows.rows) cobreathe.add(r.day);
@@ -800,6 +802,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       podcasts: podcasts.has(ymd),
       walk: walk.has(ymd),
       cobreathe: cobreathe.has(ymd),
+      prayerList: prayerList.has(ymd),
     }));
     res.json({ days });
   } catch (err) {

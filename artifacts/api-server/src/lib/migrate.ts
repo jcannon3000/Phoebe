@@ -3245,6 +3245,28 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS practice_log_entries_user_kind_idx ON practice_log_entries (user_id, kind)`);
     await run(client, `CREATE INDEX IF NOT EXISTS practice_log_entries_shared_idx ON practice_log_entries (kind, shared)`);
 
+    // ── prayer_intentions (the personal prayer list) ────────────────────────
+    // A private list of the things / people a user is holding in prayer. Each
+    // item is either free text ("peace in Sudan") or a person (name + optional
+    // note). Private by default; `shared` flips true once the user posts it to
+    // a community / their circle (which creates a normal prayer_request — the
+    // pray-along/amen infra — and we stash its id in shared_request_id).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_intentions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL DEFAULT 'text',
+        person_name TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL DEFAULT '',
+        answered BOOLEAN NOT NULL DEFAULT FALSE,
+        answered_at TIMESTAMPTZ,
+        shared BOOLEAN NOT NULL DEFAULT FALSE,
+        shared_request_id INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayer_intentions_user_idx ON prayer_intentions (user_id, answered, created_at)`);
+
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this
     // table carries the other daily-reflection sources so the daily-progress
