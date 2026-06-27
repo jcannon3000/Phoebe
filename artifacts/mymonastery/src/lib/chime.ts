@@ -1,10 +1,23 @@
-// A gentle two-note bell, synthesised with WebAudio so there's no audio asset to
-// ship or decode. Used as the transition cue between readings in the
-// Listen-to-Scripture play-through. Safe to call repeatedly; no-ops if WebAudio
-// is unavailable or the gesture hasn't unlocked the context yet.
+// Transition cue between readings in the Listen-to-Scripture play-through.
+//
+// On device this plays the SAME swell tone Co-Breathe uses (the native
+// PhoebeAudio.smoothSwell), so the chime matches the rest of the app. On the web
+// (no native plugin) it falls back to a soft two-note bell synthesised with
+// WebAudio. Safe to call repeatedly; no-ops if neither is available.
+
+type SmoothSwell = (o: { durationMs: number; peak: number; sharpness: number }) => Promise<unknown>;
+
+function nativeSwell(): SmoothSwell | null {
+  try {
+    return (window as unknown as {
+      Capacitor?: { Plugins?: { PhoebeAudio?: { smoothSwell?: SmoothSwell } } };
+    }).Capacitor?.Plugins?.PhoebeAudio?.smoothSwell ?? null;
+  } catch {
+    return null;
+  }
+}
 
 let ctx: AudioContext | null = null;
-
 function audioCtx(): AudioContext | null {
   try {
     const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -17,17 +30,12 @@ function audioCtx(): AudioContext | null {
   }
 }
 
-// Play a soft chime. Two sine partials (a fifth apart), each with a quick attack
-// and a long exponential decay — a calm bell, not a notification ping.
-export function playChime(): void {
+// Soft two-note bell (web fallback only).
+function webBell(): void {
   const ac = audioCtx();
   if (!ac) return;
   const now = ac.currentTime;
-  const partials: Array<{ freq: number; delay: number; gain: number }> = [
-    { freq: 528, delay: 0, gain: 0.16 },
-    { freq: 792, delay: 0.1, gain: 0.11 },
-  ];
-  for (const p of partials) {
+  for (const p of [{ freq: 528, delay: 0, gain: 0.16 }, { freq: 792, delay: 0.1, gain: 0.11 }]) {
     const osc = ac.createOscillator();
     const gain = ac.createGain();
     osc.type = "sine";
@@ -42,6 +50,17 @@ export function playChime(): void {
   }
 }
 
-// Roughly how long the chime rings — callers wait this long before starting the
-// next passage so the cue isn't stepped on.
+export function playChime(): void {
+  const swell = nativeSwell();
+  if (swell) {
+    // A fuller, slower swell than Co-Breathe's per-breath tap — a clear, calm
+    // transition rather than a buzz.
+    void swell({ durationMs: 520, peak: 1, sharpness: 0.45 }).catch(() => {});
+    return;
+  }
+  webBell();
+}
+
+// Roughly how long the cue rings — callers wait this long before starting the
+// next passage so it isn't stepped on.
 export const CHIME_MS = 1500;
