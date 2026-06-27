@@ -1,5 +1,6 @@
 import { getInviteBaseUrl } from "../lib/urls";
 import { getCurrentTimeInTz, todayDateInTz } from "../lib/tz";
+import { ensureDailyMomentsForFeeds } from "../lib/feedDailyPromotion";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, gt, sql } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -1699,6 +1700,11 @@ router.get("/moments", async (req, res): Promise<void> => {
         .from(prayerFeedSubscriptionsTable)
         .where(eq(prayerFeedSubscriptionsTable.userId, sessionUserId));
       const myFeedIds = [...new Set(myFeedRows.map(r => r.feedId))];
+      // Date-programmed feeds (e.g. the Diocese of New York calendar) mirror
+      // today's entry into a live moment lazily on read — do it here too, so the
+      // prayer slideshow (which reads /api/moments, not the feed surfaces) gets
+      // today's intention. No-op for feeds without programmed entries.
+      await ensureDailyMomentsForFeeds(myFeedIds);
       if (myFeedIds.length > 0) {
         const feedPractices = await db.select({ id: sharedMomentsTable.id })
           .from(sharedMomentsTable)
