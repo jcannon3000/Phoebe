@@ -21,6 +21,7 @@ import { inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import crypto from "crypto";
 import { todayInZone } from "../lib/tz";
+import { ensureDailyMomentsForFeeds } from "../lib/feedDailyPromotion";
 
 const router: IRouter = Router();
 
@@ -164,6 +165,11 @@ async function loadFeedIntercessions(
 ): Promise<Map<number, FeedIntercession[]>> {
   const byFeed = new Map<number, FeedIntercession[]>();
   if (feedIds.length === 0) return byFeed;
+
+  // Mirror today's date-programmed entry (if any) into each feed's live
+  // intercession, so a feed an editor programs by day surfaces "what they have
+  // that day" through this same moments path. No-op for feeds without entries.
+  await ensureDailyMomentsForFeeds(feedIds);
 
   const moments = await db
     .select({
@@ -1316,6 +1322,10 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
       return;
     }
   }
+  // Surface today's date-programmed entry (if any) as this feed's live
+  // intercession before listing — keeps the slideshow + detail in step with
+  // "what they have that day."
+  await ensureDailyMomentsForFeeds([feed.id]);
   const conditions = [eq(sharedMomentsTable.prayerFeedId, feed.id)];
   if (!isCreator) conditions.push(eq(sharedMomentsTable.state, "active"));
   const rows = await db
