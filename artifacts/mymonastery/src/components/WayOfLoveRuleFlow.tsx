@@ -1300,7 +1300,8 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
-          {choiceRow(extras.prayerList, `🕊️ ${t("wol_rule.extra_prayer_list", { defaultValue: "My Prayer List" })}`, t("wol_rule.extra_prayer_list_sub", { defaultValue: "Keep a personal list of who and what you're praying for." }), () => toggleExtra("prayerList"))}
+          {/* Prayer List removed from "Add to your day" — it now lives inside the
+              Prayer list page (the "My list" tab), not as a separate anchor. */}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {choiceRow(extras.reading, `📚 ${t("wol_rule.extra_reading", { defaultValue: "Reading" })}`, t("wol_rule.extra_reading_sub", { defaultValue: "Log what you read." }), () => toggleExtra("reading"))}
