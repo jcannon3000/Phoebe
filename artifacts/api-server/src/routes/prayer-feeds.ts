@@ -147,6 +147,7 @@ type FeedIntercession = {
   title: string;
   body: string | null;
   learnMoreUrl: string | null;
+  momentToken: string | null;
   createdAt: Date;
   prayedToday: boolean;
   prayCount: number;
@@ -179,6 +180,7 @@ async function loadFeedIntercessions(
       name: sharedMomentsTable.name,
       body: sharedMomentsTable.intercessionFullText,
       learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+      momentToken: sharedMomentsTable.momentToken,
       createdAt: sharedMomentsTable.createdAt,
       timezone: sharedMomentsTable.timezone,
     })
@@ -241,6 +243,7 @@ async function loadFeedIntercessions(
       title: m.topic || m.name || "Intercession",
       body: m.body,
       learnMoreUrl: m.learnMoreUrl,
+      momentToken: m.momentToken,
       createdAt: m.createdAt,
       prayedToday: myWindowDates.get(m.id)?.has(today) ?? false,
       prayCount: prayerEmails.get(m.id)?.size ?? 0,
@@ -428,6 +431,7 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     title: string;
     body: string;
     learnMoreUrl: string | null;
+    momentToken: string | null;
     isRecurring: boolean;
     prayedToday: boolean;
   };
@@ -444,6 +448,7 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
         title: m.title,
         body: m.body ?? "",
         learnMoreUrl: m.learnMoreUrl,
+        momentToken: m.momentToken,
         isRecurring: false,
         prayedToday: m.prayedToday,
       });

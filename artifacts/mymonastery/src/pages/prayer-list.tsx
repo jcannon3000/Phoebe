@@ -404,7 +404,7 @@ function FeedCard({
     feedSlug: string;
     feedTitle: string;
     feedCoverEmoji: string | null;
-    entries: Array<{ id: number; slot: number; title: string; isRecurring: boolean; prayedToday: boolean }>;
+    entries: Array<{ id: number; slot: number; title: string; momentToken: string | null; isRecurring: boolean; prayedToday: boolean }>;
   };
 }) {
   const cover = feed.feedCoverEmoji ?? "🕊️";
@@ -417,8 +417,19 @@ function FeedCard({
       ? feed.entries[0].title
       : `${count} intercessions today`;
   const prayed = count > 0 && feed.entries.every((e) => e.prayedToday);
+  // Tap opens TODAY'S intercession, not the feed: a single entry goes straight
+  // to its pray slideshow (like every other community card); several today go to
+  // the feed's pray-through slideshow; nothing today falls back to the feed page.
+  const single = count === 1 ? feed.entries[0] : null;
+  const href = single
+    ? (single.momentToken
+        ? `/prayer-mode?focusMoment=${encodeURIComponent(single.momentToken)}`
+        : `/moments/${single.id}`)
+    : count > 1
+      ? `/prayer-mode?queue=feed&slug=${feed.feedSlug}`
+      : `/prayer-feeds/${feed.feedSlug}`;
   return (
-    <BarCard href={`/prayer-feeds/${feed.feedSlug}`} accent="#8FAF96">
+    <BarCard href={href} accent="#8FAF96">
       <div className="flex items-center gap-3">
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
@@ -1288,6 +1299,7 @@ export default function PrayerListPage() {
       title: string;
       body: string;
       learnMoreUrl: string | null;
+      momentToken: string | null;
       isRecurring: boolean;
       prayedToday: boolean;
     }>;
@@ -1318,7 +1330,7 @@ export default function PrayerListPage() {
   const feedsToday = (() => {
     const entriesByFeed = new Map<
       number,
-      Array<{ id: number; slot: number; title: string; isRecurring: boolean; prayedToday: boolean }>
+      Array<{ id: number; slot: number; title: string; momentToken: string | null; isRecurring: boolean; prayedToday: boolean }>
     >();
     for (const e of feedTodayData?.entries ?? []) {
       const cur = entriesByFeed.get(e.feedId) ?? [];
@@ -1326,6 +1338,7 @@ export default function PrayerListPage() {
         id: e.id,
         slot: e.slot,
         title: e.title,
+        momentToken: e.momentToken,
         isRecurring: e.isRecurring,
         prayedToday: e.prayedToday,
       });
