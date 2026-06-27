@@ -6,7 +6,6 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 
 // Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
@@ -92,11 +91,6 @@ export default function ListeningPage() {
     setPicked(true);
     setResults([]);
   }
-  // A still landscape behind the page (the shared non-animal set), picked once.
-  const bgPhoto = useMemo(
-    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
-    [],
-  );
   const [medium, setMedium] = useState<ListeningMedium>(() => {
     try {
       const v = localStorage.getItem("phoebe:audio-divina-medium");
@@ -174,11 +168,9 @@ export default function ListeningPage() {
   // ——— History (the log) ———
   if (view === "history") {
     return (
-      <RiseSheet bgPhoto={bgPhoto}>
+      <RiseSheet>
         {() => (
-        <>
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(6,14,9,0.88) 0%, rgba(6,14,9,0.82) 45%, rgba(6,14,9,0.94) 100%)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
-        <motion.div className="w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
+        <>        <motion.div className="w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
           <button onClick={() => setView("log")} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             ← <span>Audio Divina</span>
           </button>
@@ -227,11 +219,9 @@ export default function ListeningPage() {
 
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
-    <RiseSheet bgPhoto={bgPhoto}>
+    <RiseSheet>
       {() => (
-      <>
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(6,14,9,0.88) 0%, rgba(6,14,9,0.82) 45%, rgba(6,14,9,0.94) 100%)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }} />
-      <div className="w-full">
+      <>      <div className="w-full">
         {/* Header — title only, no emoji */}
         <div className="mb-7">
           <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
