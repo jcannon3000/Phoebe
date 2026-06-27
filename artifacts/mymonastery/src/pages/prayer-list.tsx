@@ -409,26 +409,39 @@ function FeedCard({
 }) {
   const cover = feed.feedCoverEmoji ?? "🕊️";
   const count = feed.entries.length;
-  const subtitle = count === 0
+  // Read like a community intercession: the feed's emoji as the avatar, the feed
+  // name as the eyebrow, today's intention as the body, and the same ✓/🙏🏽 pill.
+  const body = count === 0
     ? "Nothing yet today"
     : count === 1
       ? feed.entries[0].title
       : `${count} intercessions today`;
+  const prayed = count > 0 && feed.entries.every((e) => e.prayedToday);
   return (
-    <BarCard href={`/prayer-feeds/${feed.feedSlug}`} accent="#2E6B40">
-      <div className="relative pr-16">
-        <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
-          {cover} {feed.feedTitle}
-        </span>
-        <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>
-          {subtitle}
-        </p>
-        <span
-          className="absolute bottom-0 right-0 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
-          style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
+    <BarCard href={`/prayer-feeds/${feed.feedSlug}`} accent="#8FAF96">
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0"
+          style={{ background: "#1A4A2E", border: "1px solid rgba(46,107,64,0.3)" }}
+          aria-hidden
         >
-          View
-        </span>
+          {cover}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
+            {feed.feedTitle}
+          </p>
+          <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
+            {body}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {prayed ? (
+            <span aria-label="Prayed" className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
+          ) : (
+            <span aria-hidden className="flex-shrink-0 inline-flex items-center justify-center rounded-full" style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1 }}>🙏🏽</span>
+          )}
+        </div>
       </div>
     </BarCard>
   );
