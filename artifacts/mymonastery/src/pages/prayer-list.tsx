@@ -1714,10 +1714,20 @@ export default function PrayerListPage() {
           };
           return (
             <>
-              {others.length > 0 && (
+              {(others.length > 0 || feedsToday.length > 0 || intercessionsSorted.length > 0) && (
                 <section>
-                  {sectionHead(t("prayer_list.section_requests"))}
-                  <div className="flex flex-col gap-2">{others.map((r, i) => otherCard(r, i))}</div>
+                  {sectionHead(t("prayer_list.section_community_prayers", { defaultValue: "Community Prayers" }))}
+                  <div className="flex flex-col gap-2">
+                    {others.map((r, i) => otherCard(r, i))}
+                    {/* Community intercessions — subscribed prayer feeds + ongoing
+                        intercessions, grouped here under Community Prayers. */}
+                    {feedsToday.map((f) => (
+                      <FeedCard key={`feed-${f.feedId}`} feed={f} />
+                    ))}
+                    {intercessionsSorted.map((m) => (
+                      <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
+                    ))}
+                  </div>
                 </section>
               )}
               <section>
@@ -1733,28 +1743,6 @@ export default function PrayerListPage() {
             </>
           );
         })()}
-
-        {/* Community intercessions — ongoing community practices (subscribed
-            prayer feeds first, then individual intercessions). Restored per
-            request. Auto-hides when there's nothing today. */}
-        {(intercessionsSorted.length > 0 || feedsToday.length > 0)
-          && (focused === null || focused === "intercessions") && (
-          <SectionShell
-            id="intercessions"
-            label={t("prayer_list.section_community", { defaultValue: "Community intercessions" })}
-            count={intercessionsSorted.length + feedsToday.length}
-            focused={focused}
-            onFocus={setFocused}
-            maxRows={7}
-          >
-            {feedsToday.map((f) => (
-              <FeedCard key={`feed-${f.feedId}`} feed={f} />
-            ))}
-            {intercessionsSorted.map((m) => (
-              <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
-            ))}
-          </SectionShell>
-        )}
         </>)}
 
         {/* Prayers I'm praying — "prayers for others" that I committed
