@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
 
 // Creator manage page for a Prayer Feed.
 //
@@ -87,6 +89,8 @@ export default function PrayerFeedManagePage() {
   const qc = useQueryClient();
   // Two-tap confirm gate for the destructive delete-feed button.
   const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
+  // A leaf photo behind the whole manage surface (frosted cards sit over it).
+  const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -129,7 +133,7 @@ export default function PrayerFeedManagePage() {
   // ── Render ──────────────────────────────────────────────────────────────
   if (authLoading || !user || feedQ.isLoading) {
     return (
-      <Layout>
+      <Layout bgPhoto={bgPhoto}>
         <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
           {t("prayer_feed_manage.loading")}
         </div>
@@ -138,7 +142,7 @@ export default function PrayerFeedManagePage() {
   }
   if (!feed || !feedQ.data?.isCreator) {
     return (
-      <Layout>
+      <Layout bgPhoto={bgPhoto}>
         <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
           {t("prayer_feed_manage.not_available")}
         </div>
@@ -147,7 +151,7 @@ export default function PrayerFeedManagePage() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div className="max-w-xl mx-auto w-full">
         <button
           onClick={() => setLocation("/dashboard")}
@@ -790,6 +794,14 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
   });
 
   const items = listQ.data?.intercessions ?? [];
+  // A long feed (e.g. a daily calendar) shouldn't fill the whole page — show a
+  // handful of cards, fade the rest out, and let the editor expand on tap. Stay
+  // expanded while editing so the inline form is never hidden.
+  const [showAll, setShowAll] = useState(false);
+  const COLLAPSED_COUNT = 6;
+  const expanded = showAll || editingId !== null;
+  const visibleItems = expanded ? items : items.slice(0, COLLAPSED_COUNT);
+  const hiddenCount = items.length - visibleItems.length;
 
   function startNew() {
     setDraft({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
@@ -844,8 +856,9 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
         {t("prayer_feed_manage.intercessions_desc")}
       </p>
 
+      <div className="relative">
       <div className="space-y-2 mb-3">
-        {items.map((it) => {
+        {visibleItems.map((it) => {
           const isAction = it.intercessionSource === "action";
           // When this item is being edited, expand the form inline in
           // place of the row — no scrolling needed.
@@ -872,7 +885,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
             <div
               key={it.id}
               className="w-full rounded-xl px-4 py-3 flex items-center gap-3"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.45)" }}
+              style={{ ...FROST, border: "1px solid rgba(46,107,64,0.45)" }}
             >
               <button
                 type="button"
@@ -924,6 +937,28 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
           </p>
         )}
       </div>
+      {/* Fade the bottom of the collapsed list so it reads as "more below". */}
+      {!expanded && hiddenCount > 0 && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0"
+          style={{ height: 96, background: "linear-gradient(180deg, rgba(9,26,16,0) 0%, rgba(9,26,16,0.85) 80%)" }}
+        />
+      )}
+      </div>
+      {/* Show all / fewer toggle — only when the list is long enough to collapse. */}
+      {items.length > COLLAPSED_COUNT && editingId === null && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="w-full rounded-xl text-center mb-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ ...FROST, padding: "10px 16px", border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontSize: 13, fontWeight: 600 }}
+        >
+          {showAll
+            ? t("prayer_feed_manage.show_fewer", { defaultValue: "Show fewer" })
+            : t("prayer_feed_manage.show_all", { count: hiddenCount, defaultValue: `Show all ${items.length}` })}
+        </button>
+      )}
 
       {/* "Add new" composer — only shown when composing a brand-new item,
           not when editing an existing one (that form is inline above). */}
