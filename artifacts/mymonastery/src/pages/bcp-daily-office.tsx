@@ -979,7 +979,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       })
       .catch(() => { /* best-effort — the localStorage flag below still flips the local UI */ });
     try {
-      localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+      if (viewerUser) localStorage.setItem(officeCompletedKey(resolvedMode), "1");
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     clearOfficeReminderNotifications();
@@ -1198,7 +1198,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // still see the completed flag and decide what copy to show.
     completedRef.current = true;
     try {
-      localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+      if (viewerUser) localStorage.setItem(officeCompletedKey(resolvedMode), "1");
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     // The public /pray page handles its own close (a sign-up invite)
@@ -2996,7 +2996,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               // for prayer-shaped closings, Done for non-prayer ones).
               completedRef.current = true;
               try {
-                localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+                if (viewerUser) localStorage.setItem(officeCompletedKey(resolvedMode), "1");
                 localStorage.removeItem(officeProgressKey(resolvedMode));
               } catch { /* non-fatal */ }
               // Clear the daily reminder pushes — the "Done" path is the
