@@ -1239,7 +1239,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
   };
   const launchWay = (way: WayToPray, method: PrayMethod) => {
-    if (way === "psalms") { setViewerLocation(`/psalms?office=${officeSide}`); return; }
+    // Psalms: the reader already chose their way + format here, so skip the
+    // psalms "before you begin" intro (begin=1) — book → the page-number guide.
+    if (way === "psalms") { setViewerLocation(`/psalms?office=${officeSide}${method === "book" ? "&book=1" : ""}&begin=1`); return; }
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
     if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
     if (method === "watch") { goToWatch(); return; }
@@ -4219,7 +4221,9 @@ export default function BcpDailyOfficePage() {
   const beginOffice = () => {
     if (practicePick === "psalms") {
       // On screen → the slideshow; Physical BCP → the page-number guide.
-      setLocation(`/psalms?office=${todPick}${effMethod === "book" ? "&book=1" : ""}`);
+      // begin=1: the lectionary + format were just chosen here, so skip the
+      // psalms "before you begin" intro and drop straight in.
+      setLocation(`/psalms?office=${todPick}${effMethod === "book" ? "&book=1" : ""}&begin=1`);
       return;
     }
     if (practicePick === "devotion") {

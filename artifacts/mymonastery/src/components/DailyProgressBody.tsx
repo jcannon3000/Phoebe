@@ -618,9 +618,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const officeTitle = (side: "Morning" | "Evening") => {
     // Praying the Psalms IS this side's prayer → the card reads "Morning Psalms"
     // / "Evening Psalms" (matching the PsalmsHomeCard hero), not "… Prayer".
-    if (getSideLevel(side.toLowerCase() as "morning" | "evening") === "psalms") {
+    const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
+    if (lvl === "psalms") {
       return t(`rhythm.card_${side.toLowerCase()}_psalms`, { defaultValue: `${side} Psalms` });
     }
+    // Contemplation / the Examen IS this side's prayer → name the card after the
+    // practice (matching the home hero), not "… Prayer".
+    if (lvl === "reflect-sit") return t("rhythm.card_contemplation", { defaultValue: "Contemplation" });
+    if (lvl === "examen") return t("rhythm.card_examen", { defaultValue: "The Examen" });
     return prayerKind === "community"
       ? t("rhythm.card_community", { defaultValue: "Pray together" })
       : prayerKind === "devotion"

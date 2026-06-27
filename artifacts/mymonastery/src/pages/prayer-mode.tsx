@@ -42,6 +42,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
+import { useRhythmState } from "@/hooks/useRhythmState";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
@@ -2159,16 +2160,10 @@ function PrayerCompletedSlide({
   reflectionSource?: Exclude<ReflectionSource, "none"> | null;
 }) {
   const { t } = useTranslation();
-  // Same source the home splash uses, so it says "this month" and matches.
-  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null }>; total?: number }>({
-    queryKey: ["/api/prayer-streak/community-prayed-month"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),
-    staleTime: 60_000,
-  });
-  const people = data?.people ?? [];
-  const faces = people.slice(0, 7);
-  const overflow = Math.max(0, people.length - faces.length);
-  const total = data?.total ?? people.length;
+  const [, go] = useLocation();
+  // The day's rhythm — so once the newsletter is read (or there's none) the close
+  // points at WHATEVER ELSE the user has next, not a community tally.
+  const rhythm = useRhythmState();
 
   const refl = reflectionSource;
   const reflName = refl === "fdd" ? "Forward Day by Day" : refl === "ssje" ? "Brother, Give Us a Word" : "CAC Daily Meditation";
@@ -2196,10 +2191,25 @@ function PrayerCompletedSlide({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refl]);
 
-  const faceVariant = {
-    hidden: { opacity: 0, y: 14 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } },
-  };
+  // Show the newsletter as the what's-next IF it's this user's reflection and
+  // hasn't been read yet; otherwise point them at WHATEVER ELSE is next in their
+  // rhythm (the first still-undone anchor, in day order). When nothing's left we
+  // just send them off with the blessing line — no community tally either way.
+  const showReflCard = !!refl && !alreadyReadRef.current;
+  const nextUp = (() => {
+    if (showReflCard) return null;
+    if (rhythm.eveningActive && !rhythm.eveningDone)
+      return { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" };
+    if (rhythm.silenceActive && !rhythm.silenceDone)
+      return { emoji: "🕯️", title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }), blurb: t("rhythm.blurb_silence", { defaultValue: "A few minutes of stillness" }), href: "/contemplation" };
+    if (rhythm.examenActive && !rhythm.examenDone)
+      return { emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), href: "/examen" };
+    if (rhythm.gratitudeActive && !rhythm.gratitudeDone)
+      return { emoji: "🌾", title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }), blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name today's gifts" }), href: "/gratitude" };
+    if (rhythm.listeningActive && !rhythm.listeningDone)
+      return { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), href: "/listening" };
+    return null;
+  })();
 
   return (
     <div className="w-full flex flex-col items-center text-center" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease", gap: 26 }}>
@@ -2210,39 +2220,12 @@ function PrayerCompletedSlide({
         {t("prayer_mode.prayer_completed", { defaultValue: "Prayer completed" })}
       </motion.p>
 
-      {faces.length > 0 && (
-        <motion.div
-          className="flex flex-col items-center w-full" style={{ maxWidth: 420 }}
-          initial="hidden" animate="show"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
-        >
-          <div className="flex items-center justify-center -space-x-3">
-            {faces.map((p) => (
-              p.avatarUrl ? (
-                <motion.img key={p.id} variants={faceVariant} src={p.avatarUrl} alt={(p.name ?? "").trim().split(/\s+/)[0] || "Someone"} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
-              ) : (
-                <motion.div key={p.id} variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
-                  {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
-                </motion.div>
-              )
-            ))}
-            {overflow > 0 && (
-              <motion.div variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}>
-                +{overflow}
-              </motion.div>
-            )}
-          </div>
-          <motion.p variants={faceVariant} className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {t("splash.prayed_with_you_total", { count: total, defaultValue: `You prayed with ${total} ${total === 1 ? "person" : "people"} this month` })}
-          </motion.p>
-        </motion.div>
-      )}
-
       {/* Today's reflection — rendered as the SAME card as the home daily-progress
           rhythm (left bar, 📖, publication, blurb, Read pill → ✓ when done), not a
-          bespoke slide card. Hidden entirely if it was already read before this
-          close; otherwise reading it flips this card to its Done state live. */}
-      {refl && !alreadyReadRef.current && (
+          bespoke slide card. Shown only when the newsletter is THIS user's
+          reflection and hasn't been read yet; otherwise the next-up card below
+          takes its place. Reading it flips this card to its Done state live. */}
+      {showReflCard && (
         <motion.button
           type="button" onClick={openReflection}
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24 }}
@@ -2275,6 +2258,37 @@ function PrayerCompletedSlide({
                 {t("common.read", { defaultValue: "Read" })} <span aria-hidden>→</span>
               </span>
             )}
+          </div>
+        </motion.button>
+      )}
+
+      {/* Newsletter already done (or none) → point at whatever else is next in
+          the rhythm. Same card shape as the reflection card, tapping it begins
+          that practice (leaving the close — they're done praying). */}
+      {!showReflCard && nextUp && (
+        <motion.button
+          type="button" onClick={() => go(nextUp.href)}
+          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24 }}
+          className="w-full relative flex rounded-2xl overflow-hidden text-left transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{
+            maxWidth: 360, cursor: "pointer",
+            background: "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.14) 100%)",
+            border: "1px solid rgba(46,107,64,0.16)",
+          }}
+        >
+          <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.7)" }} />
+          <div className="flex-1 min-w-0 px-4 py-3.5 flex items-center gap-3">
+            <span className="text-xl flex-shrink-0" aria-hidden>{nextUp.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9.5px] font-semibold leading-none mb-1" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                {t("prayer_mode.up_next", { defaultValue: "Up next" })}
+              </p>
+              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.title}</p>
+              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.blurb}</p>
+            </div>
+            <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: "rgba(46,107,64,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("common.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
+            </span>
           </div>
         </motion.button>
       )}
@@ -3846,6 +3860,14 @@ export default function PrayerModePage() {
     }
   }, [phase, fadeHomeNoNewsletter]);
 
+  // The old "Add prayer / Done" closing card (ClosingSlide) is GONE everywhere —
+  // an empty add-a-prayer slide to end a slideshow on made no sense. The office /
+  // offices-only closes that used to render it now auto-route past it: if there's
+  // unseen "As you go" news to hand off to we still show that; otherwise we run
+  // the normal finish (handleDone — logs check-ins, marks completed, send-off).
+  // Mirrors fadeHomeNoNewsletter, but keeps the news handoff + completion logging.
+  const autoClosedRef = useRef(false);
+
   // Move to the next slide without recording an amen / check-in.
   // Used by the "Not today" hyperlink under the Amen button — gives
   // viewers a quiet way to pass on a particular prayer (e.g. "I
@@ -4209,6 +4231,28 @@ export default function PrayerModePage() {
     }, 300);
   };
 
+  // Auto-route past the removed "Add prayer / Done" closing card. When we land on
+  // the closing phase for the office / offices-only paths (the only ones that
+  // still hit this branch — the rest fade via fadeHomeNoNewsletter), skip the
+  // empty slide: hand off to the "As you go" news slide if there's unseen news,
+  // otherwise run the normal finish. Same routing the slide's Done used to do.
+  useEffect(() => {
+    if (
+      phase === "closing" &&
+      !showReflectionGate &&
+      !endOnReflection &&
+      !fadeHomeNoNewsletter &&
+      !autoClosedRef.current
+    ) {
+      autoClosedRef.current = true;
+      if ((closingOnly || officesOnly || afterOffice) && unseenNews.hasUnseen) {
+        setPhase("news");
+      } else {
+        void handleDone();
+      }
+    }
+  }, [phase, showReflectionGate, endOnReflection, fadeHomeNoNewsletter, closingOnly, officesOnly, afterOffice, unseenNews.hasUnseen]);
+
   // When offices-only users finish a prayer-feed walk, also stamp
   // the daily office-completed localStorage flag for the current
   // half-day (morning vs evening, threshold = noon local). The
@@ -4443,36 +4487,9 @@ export default function PrayerModePage() {
             visible={slideVisible}
           />
         )}
-        {phase === "closing" && !showReflectionGate && !endOnReflection && !fadeHomeNoNewsletter && (
-          <ClosingSlide
-            celebration={celebration}
-            streak={celebration?.streak ?? streakData?.streak ?? 0}
-            coPrayers={coPrayersData?.people ?? []}
-            officesOnly={officesOnly}
-            // ClosingSlide's primary button advances to the habit
-            // rhythm slide on TWO paths:
-            //   • closingOnly — office handoff (existing behaviour)
-            //   • offices-only — feed walkers also land on their
-            //     habit page so they can see today's rhythm
-            // Otherwise it exits to the home screen.
-            // The closing slide is now the END of the office close (the habit /
-            // rhythm slide was consolidated away). It only advances when there's
-            // unseen "As you go" news to show; otherwise Done exits.
-            onDone={
-              (closingOnly || officesOnly || afterOffice) && unseenNews.hasUnseen
-                ? () => setPhase("news")
-                : handleDone
-            }
-            visible={slideVisible}
-            showSetReminder={showSetReminder}
-            reminderSide={reminderSide}
-            doneLabel={
-              (closingOnly || officesOnly || afterOffice) && unseenNews.hasUnseen
-                ? t("common.continue")
-                : t("common.done")
-            }
-          />
-        )}
+        {/* The "Add prayer / Done" ClosingSlide was removed everywhere — this
+            office / offices-only branch now auto-routes (see the autoClosedRef
+            effect above): unseen news → the news slide, else the normal finish. */}
         {/* Optional "As you go" news slide — only when a followed source
             has new stories (unseenNews.hasUnseen gates the transition into
             this phase from the closing slide). Continue marks seen + lands

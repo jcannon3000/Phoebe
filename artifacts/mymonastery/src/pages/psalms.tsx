@@ -120,9 +120,16 @@ export default function PsalmsPage() {
     return c === "office" || c === "monthly" ? c : getPsalmCycle();
   });
   const [format, setFormat] = useState<"screen" | "book">(() => (params.get("book") === "1" ? "book" : "screen"));
+  // Coming from the Daily Prayer chooser (?begin=1) the user already picked their
+  // lectionary + format there, so skip the "before you begin" intro and drop
+  // straight into the reading (or the physical-book guide). Only the home Psalms
+  // card / a bare /psalms link still opens on the chooser.
+  const skipIntro = params.get("begin") === "1";
   // intro = the "before you begin" chooser; read = the verse slideshow; guide =
   // the physical-book page-number list.
-  const [step, setStep] = useState<"intro" | "read" | "guide">("intro");
+  const [step, setStep] = useState<"intro" | "read" | "guide">(
+    skipIntro ? (params.get("book") === "1" ? "guide" : "read") : "intro",
+  );
 
   const { data, isLoading } = useQuery<{ psalms: Psalm[] }>({
     queryKey: ["/api/psalms/today", cycle, office, today],
@@ -154,9 +161,13 @@ export default function PsalmsPage() {
     if (index >= slides.length - 1) { finish(); return; }
     setIndex((i) => i + 1);
   };
+  // Back from the first slide / the guide: normally returns to the chooser, but
+  // when we skipped it (came from Daily Prayer) there's no chooser to return to,
+  // so leave the way they came in.
+  const backToChooser = () => { if (skipIntro) goHome(); else setStep("intro"); };
   const back = () => {
     if (index > 0) { setIndex((i) => i - 1); return; }
-    setStep("intro"); // at the first slide → back to the chooser
+    backToChooser(); // at the first slide → back to the chooser (or out)
   };
 
   const eyebrowLabel = office === "evening" ? "The Psalm Appointed For This Evening" : "The Psalm Appointed For This Morning";
@@ -246,7 +257,7 @@ export default function PsalmsPage() {
     return (
       <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
         {Backdrop}
-        {header(() => setStep("intro"))}
+        {header(backToChooser)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "8px 0 4px", fontWeight: 600 }}>{eyebrowLabel}</p>
           <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 44px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 6px", textAlign: "center" }}>{sideLabel}</h1>
