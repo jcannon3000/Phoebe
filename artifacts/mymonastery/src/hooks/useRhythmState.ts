@@ -313,7 +313,10 @@ export function useRhythmState(): RhythmState {
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.
-  const cobreatheActive = homeCardActive(user?.homeLayout, "cobreathe");
+  // On by default for an un-set-up user (no saved home layout) — Co-Breathe is
+  // part of the starter rhythm (Prayer List · Contemplation · CAC · Silence ·
+  // Co-Breathe). Once the user customizes, the saved layout decides.
+  const cobreatheActive = homeCardActive(user?.homeLayout, "cobreathe") || !user?.homeLayout;
   // Personal prayer list — a logging-first practice (prayed through its
   // slideshow); appears only when selected in the customizer.
   const prayerListActive = homeCardActive(user?.homeLayout, "prayer-list");

@@ -143,10 +143,10 @@ export function getExplicitReflectionSource(): ReflectionSource | null {
 // Backward-compatible reader: explicit pick, else the CAC default.
 // Does NOT consult the home screen (no access to the server user here);
 // React call sites that want the full precedence use
-// useEffectiveReflectionSource() below. Default is FDD — Forward Day by Day —
-// the un-set-up reflection in the starter rule.
+// useEffectiveReflectionSource() below. Default is CAC — the Center for Action
+// and Contemplation daily meditation — the un-set-up reflection in the starter rule.
 export function getReflectionSource(): ReflectionSource {
-  return getExplicitReflectionSource() ?? "fdd";
+  return getExplicitReflectionSource() ?? "cac";
 }
 
 // Home layout shape we care about (mirror of AuthUser.homeLayout).
@@ -176,7 +176,7 @@ function visibleHomeReflection(homeLayout: HomeLayoutLike): ReflectionSource | n
 export function deriveReflectionSource(homeLayout: HomeLayoutLike): ReflectionSource {
   const explicit = getExplicitReflectionSource();
   if (explicit) return explicit;
-  return visibleHomeReflection(homeLayout) ?? "fdd";
+  return visibleHomeReflection(homeLayout) ?? "cac";
 }
 
 export function setReflectionSource(v: ReflectionSource): void {
@@ -292,11 +292,12 @@ export function getSideLevel(side: OfficeSide): OfficeLevel | null {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
     if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return raw as OfficeLevel;
   } catch { /* private mode */ }
-  // New-user default rule: BOTH Morning and Evening prayer = Praying the Psalms
-  // (the 7-week daily-office cycle by default — see getPsalmCycle; Reflection
-  // defaults to Forward Day by Day, handled in useRhythmState). Only applies
-  // until the user explicitly picks a level for that side (stored above, wins).
-  if (side === "morning" || side === "evening") return "psalms";
+  // New-user default rule: Morning = the Prayer List (community intercessions),
+  // Evening = Contemplation (a silent sit). Reflection defaults to CAC + a
+  // 5-minute Silence goal + Co-Breathe, all handled in useRhythmState. Only
+  // applies until the user explicitly picks a level for that side (stored above).
+  if (side === "morning") return "intercessions";
+  if (side === "evening") return "reflect-sit";
   return null;
 }
 // Like getSideLevel but WITHOUT the new-user default — returns null when the
