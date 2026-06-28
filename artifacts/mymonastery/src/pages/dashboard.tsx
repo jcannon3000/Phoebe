@@ -3863,7 +3863,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                       ? (isMorning ? t("offices.morning_devotion", { defaultValue: "Morning Devotion" }) : t("offices.evening_devotion", { defaultValue: "Evening Devotion" }))
                       : programmedLevel === "office"
                         ? (isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer"))
-                        : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏🏽`}
+                        : `${t("dashboard.prayer_list_title", { defaultValue: "Prayer List" })} 🙏🏽`}
                   </p>
                   {countCopy && (
                     <p
