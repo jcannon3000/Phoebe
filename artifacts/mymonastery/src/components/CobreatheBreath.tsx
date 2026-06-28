@@ -163,6 +163,7 @@ export function CobreatheBreath({
   todayCount,
   backgroundImage,
   photos,
+  prayerTexts,
   coffeePhotos,
   topic = "planet",
   followSeed,
@@ -197,6 +198,11 @@ export function CobreatheBreath({
   // set is shuffled once per session and rotated through, one photo per breath.
   // No captions: the images speak for themselves.
   photos?: string[];
+  // BETA "Pray the breath": instead of photos, the top half shows ONE of the
+  // user's own prayer requests at a time (just the text, as a quiet title),
+  // rotating one per breath and breathing in/out with the lungs. When provided
+  // (non-empty), the photo field is suppressed and these titles take its place.
+  prayerTexts?: string[];
   // The "Coffee" topic — instead of swapping the whole library, we KEEP the
   // planet photos and sprinkle coffee in: every three breaths shows 1 coffee
   // then 2 planet. These are the coffee-only images for that 1-in-3 slot.
@@ -340,6 +346,15 @@ export function CobreatheBreath({
   const photoBRef = useRef<HTMLImageElement>(null);
   const photoLastIdxRef = useRef<number>(-1);
   const photoPreloadedRef = useRef<number>(-1);
+  // BETA "Pray the breath": a single prayer-request title in the top half,
+  // rotated one per breath and breathed in/out with the lungs (like the photo
+  // group, but text). Driven from refs inside the rAF clock so the swap lands
+  // at the bottom of the breath (where it's faded out) and never races render.
+  const prayerGroupRef = useRef<HTMLDivElement>(null);
+  const prayerTextRef = useRef<HTMLDivElement>(null);
+  const prayerLastIdxRef = useRef<number>(-1);
+  const prayerTextsRef = useRef<string[]>(prayerTexts ?? []);
+  prayerTextsRef.current = prayerTexts ?? [];
   // Counts inhale tones since this breath began, so the octave always STARTS
   // on the lowest (0) and rotates 0,1,2 per breath — regardless of where the
   // global clock happens to be when the user starts.
@@ -363,7 +378,12 @@ export function CobreatheBreath({
   }
   const topicRef = useRef(topic);
   topicRef.current = topic;
-  const hasPhotos = photoLibrary.length > 0;
+  // BETA prayer mode wins over photos: when the caller passes prayer titles, the
+  // top half becomes rotating prayer text and the photo field is suppressed.
+  const usePrayers = !!prayerTexts && prayerTexts.length > 0;
+  const usePrayersRef = useRef(usePrayers);
+  usePrayersRef.current = usePrayers;
+  const hasPhotos = !usePrayers && photoLibrary.length > 0;
   // Our own random seed — used when we're the leader or breathing solo.
   const ownSeedRef = useRef<number>(randomSeed());
   // Live mirror of the follow props until counting begins, then FROZEN so a
@@ -555,6 +575,28 @@ export function CobreatheBreath({
           const nextUrl = photoAt(idx + 1);
           if (prevEl.getAttribute("src") !== nextUrl) prevEl.src = nextUrl;
           photoPreloadedRef.current = idx;
+        }
+      }
+      // ── BETA "Pray the breath": rotating prayer-request title ────────────
+      // Same rhythm as the photo field, but text. ONE of the user's prayer
+      // requests at a time fills the top half; it breathes in/out with the
+      // lungs and swaps to the next request at the bottom of each breath (where
+      // it's faded out, so the change is unseen). Stays readable — a floor keeps
+      // the words legible through the exhale rather than vanishing entirely.
+      if (usePrayersRef.current) {
+        const texts = prayerTextsRef.current;
+        if (texts.length > 0) {
+          const localIdx = isCounting
+            ? Math.max(0, Math.floor((now - countStartRef.current) / CYCLE_MS))
+            : 0;
+          const pIdx = ((localIdx % texts.length) + texts.length) % texts.length;
+          if (pIdx !== prayerLastIdxRef.current) {
+            prayerLastIdxRef.current = pIdx;
+            if (prayerTextRef.current) prayerTextRef.current.textContent = texts[pIdx];
+          }
+          if (prayerGroupRef.current) {
+            prayerGroupRef.current.style.opacity = (0.42 + Math.pow(pAnim, 1.15) * 0.58).toFixed(4);
+          }
         }
       }
       // The phase word — "Breathe In" / "Breathe Out" — fades UP from nothing at
@@ -897,6 +939,40 @@ export function CobreatheBreath({
           {/* (No legibility gradient overlay — removed per request. The photo's
               own bottom mask ramp-down above is the only fade; the deep-green
               page background keeps the breath text readable.) */}
+        </div>
+      )}
+
+      {/* BETA "Pray the breath": one of the user's prayer requests, set as a
+          quiet title in the TOP HALF. It breathes in/out with the lungs and
+          rotates to the next request each breath (driven by the rAF loop via
+          prayerGroupRef/prayerTextRef). No photos in this mode — just the words
+          to hold, rising and receding with the breath. */}
+      {usePrayers && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute", left: 0, right: 0, top: 0, height: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "calc(var(--safe-top) + 64px) 32px 16px",
+            pointerEvents: "none", zIndex: 1,
+          }}
+        >
+          <div ref={prayerGroupRef} style={{ willChange: "opacity", opacity: 0, width: "100%", maxWidth: 520 }}>
+            <div
+              ref={prayerTextRef}
+              style={{
+                fontFamily: "Georgia, serif", fontStyle: "italic",
+                fontSize: "clamp(22px, 6.4vw, 30px)", lineHeight: 1.32,
+                textAlign: "center", color: "#EAF6F4",
+                textShadow: "0 2px 18px rgba(4,13,8,0.7)",
+                letterSpacing: 0.2,
+                // Long request bodies stay bounded to the top half — clamp to a
+                // few lines rather than spilling over the breath below.
+                display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            />
+          </div>
         </div>
       )}
 

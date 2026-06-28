@@ -347,6 +347,7 @@ const ExamenPage = lazy(() => import("./pages/examen"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
 const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
+const PrayBreathPage = lazy(() => import("./pages/pray-breath"));
 const SaintsIndex = lazy(() => import("./pages/Saints/SaintsIndex"));
 const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
 const CustomizeHomeAddPage = lazy(() =>
@@ -782,6 +783,7 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/contemplation" ||
         location === "/cobreathe" ||
         location === "/cobreathe/about" ||
+        location === "/pray-breath" ||
         location === "/examen" ||
         location === "/gratitude" ||
         location === "/intentions" ||
@@ -1011,6 +1013,9 @@ function Router() {
       <Route path="/psalms" component={PsalmsPage} />
       <Route path="/cobreathe/about" component={CobreatheAboutPage} />
       <Route path="/cobreathe" component={CobreathePage} />
+      {/* BETA "Pray the breath" — Co-Breathe with the user's prayer requests as
+          the rotating text in the top half, instead of photos. */}
+      <Route path="/pray-breath" component={PrayBreathPage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
