@@ -36,6 +36,10 @@ export interface AuthUser {
   // contact-discovery match endpoint, but we only surface the raw
   // form to the UI for editing.
   phoneNumber: string | null;
+  // True once an SMS code was confirmed (Twilio Verify). discoverableByPhone
+  // is the explicit opt-in that makes a verified number findable by contacts.
+  phoneVerified?: boolean;
+  discoverableByPhone?: boolean;
   climateEnrolled: boolean;
   climateOnboardingCompleted: boolean;
   climateOnly: boolean;

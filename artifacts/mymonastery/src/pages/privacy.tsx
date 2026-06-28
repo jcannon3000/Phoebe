@@ -197,7 +197,14 @@ export function PrivacyBody() {
           </p>
           <p>
             There are no public profiles. Your account is not discoverable unless someone already knows your
-            email or has your invite link.
+            email, has your invite link, or — if you choose to turn it on — has your verified phone number
+            saved in their contacts.
+          </p>
+          <p>
+            Finding contacts by phone is optional and off by default. If you verify your number, it stays
+            private until you switch on “let people who have my number find me” in Settings. When a contact
+            looks for friends, their phone numbers are hashed on their device and only the hashes are sent —
+            we never store anyone’s address book, and we never reveal which of your numbers matched.
           </p>
           <p>We may disclose data if required by law or valid legal process.</p>
         </Section>

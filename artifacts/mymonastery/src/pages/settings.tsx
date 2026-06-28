@@ -1194,10 +1194,14 @@ function PhoneSection() {
       apiRequest("POST", "/api/users/me/phone", { phone }),
     onSuccess: (data: unknown) => {
       const body = data as { phoneNumber: string };
+      // The no-Twilio fallback marks the number verified server-side, so the
+      // discoverable toggle should appear (phoneVerified: true).
       queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
-        prev ? { ...prev, phoneNumber: body.phoneNumber } : prev);
+        prev ? { ...prev, phoneNumber: body.phoneNumber, phoneVerified: true } : prev);
       setEditing(false);
       setError(null);
+      setVerifyStage("idle");
+      setCode("");
       // Clear the iOS picker too — we've taken one of its candidates.
       setIosCandidates([]);
       setIosStage("idle");
@@ -1217,10 +1221,64 @@ function PhoneSection() {
     mutationFn: () => apiRequest("DELETE", "/api/users/me/phone"),
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
-        prev ? { ...prev, phoneNumber: null } : prev);
+        prev ? { ...prev, phoneNumber: null, phoneVerified: false, discoverableByPhone: false } : prev);
       setEditing(false);
       setDraft("");
       setError(null);
+      setVerifyStage("idle");
+      setCode("");
+    },
+  });
+
+  // ── SMS verification flow ────────────────────────────────────────────────
+  // "Send code" → Twilio texts a code → enter it → verified. We only persist
+  // the number once the code checks out. If the server says verification
+  // isn't configured (503), we fall back to the legacy self-attest save so
+  // self-host / dev still works.
+  const [verifyStage, setVerifyStage] = useState<"idle" | "code">("idle");
+  const [code, setCode] = useState("");
+  const [pendingPhone, setPendingPhone] = useState("");
+
+  const startMutation = useMutation({
+    mutationFn: (phone: string) => apiRequest("POST", "/api/users/me/phone/start", { phone }),
+    onSuccess: (_data, phone) => { setPendingPhone(phone); setVerifyStage("code"); setError(null); setCode(""); },
+    onError: (err: unknown, phone) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      // 503 → no Twilio configured: fall back to the legacy self-attest save.
+      if (/verification_unavailable|503/i.test(msg)) { saveMutation.mutate(phone); return; }
+      setError(
+        /phone_taken|409/i.test(msg) ? "Another account is using this number. Contact support if that's you."
+          : /invalid_phone|400/i.test(msg) ? "That doesn't look like a valid phone number. Try +1 555 123 4567."
+            : /rate_limited|429/i.test(msg) ? "Too many attempts on this number — please wait a few minutes."
+              : "Couldn't send a code. Tap Send code to try again.",
+      );
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: (args: { phone: string; code: string }) => apiRequest("POST", "/api/users/me/phone/verify", args),
+    onSuccess: (data: unknown) => {
+      const body = data as { phoneNumber: string };
+      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
+        prev ? { ...prev, phoneNumber: body.phoneNumber, phoneVerified: true } : prev);
+      setEditing(false); setError(null); setVerifyStage("idle"); setCode("");
+      setIosCandidates([]); setIosStage("idle");
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(
+        /code_expired|410/i.test(msg) ? "That code expired. Tap Resend to get a new one."
+          : /code_incorrect|400/i.test(msg) ? "That code wasn't right. Check it and try again."
+            : "Couldn't verify. Try again, or resend the code.",
+      );
+    },
+  });
+
+  const discoverMutation = useMutation({
+    mutationFn: (enabled: boolean) => apiRequest("PATCH", "/api/users/me/discoverable-by-phone", { enabled }),
+    onSuccess: (_data, enabled) => {
+      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
+        prev ? { ...prev, discoverableByPhone: enabled } : prev);
     },
   });
 
@@ -1336,40 +1394,74 @@ function PhoneSection() {
         Phone number
       </p>
       <p className="text-xs mb-3" style={{ color: "#8FAF96" }}>
-        People who have you in their contacts will be able to find you on
-        Phoebe.
+        Verify your number so we know it's really yours. We only use it to help
+        you find contacts — you stay hidden until you turn on “let people find
+        me” below.
       </p>
 
       {!editing && current && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm flex-1" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {current}
-          </span>
-          <button
-            onClick={() => { setDraft(current); setEditing(true); }}
-            className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
-            style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0" }}
-          >
-            Change
-          </button>
-          <button
-            onClick={() => removeMutation.mutate()}
-            disabled={removeMutation.isPending}
-            className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ color: "#8FAF96" }}
-          >
-            Remove
-          </button>
-        </div>
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-sm flex-1 flex items-center gap-1.5" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {current}
+              {user?.phoneVerified && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0" }}>✓ Verified</span>
+              )}
+            </span>
+            <button
+              onClick={() => { setDraft(current); setEditing(true); setVerifyStage("idle"); setCode(""); }}
+              className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
+              style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0" }}
+            >
+              Change
+            </button>
+            <button
+              onClick={() => removeMutation.mutate()}
+              disabled={removeMutation.isPending}
+              className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ color: "#8FAF96" }}
+            >
+              Remove
+            </button>
+          </div>
+
+          {/* Opt-in discovery toggle — only meaningful (and only enabled) once
+              the number is verified. Verifying alone never makes you findable. */}
+          {user?.phoneVerified && (
+            <button
+              type="button"
+              onClick={() => discoverMutation.mutate(!user?.discoverableByPhone)}
+              disabled={discoverMutation.isPending}
+              className="w-full mt-3 flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.3)" }}
+            >
+              <span className="text-xs flex-1" style={{ color: "#C8D4C0" }}>
+                Let people who have my number find me on Phoebe
+              </span>
+              <span
+                className="flex-shrink-0 rounded-full transition-colors"
+                style={{
+                  width: 38, height: 22, padding: 2,
+                  background: user?.discoverableByPhone ? "rgba(46,107,64,0.85)" : "rgba(143,175,150,0.25)",
+                }}
+              >
+                <span className="block rounded-full transition-transform" style={{
+                  width: 18, height: 18, background: "#F0EDE6",
+                  transform: user?.discoverableByPhone ? "translateX(16px)" : "translateX(0)",
+                }} />
+              </span>
+            </button>
+          )}
+        </>
       )}
 
-      {(editing || !current) && (
+      {(editing || !current) && verifyStage === "idle" && (
         <div className="space-y-3">
           {/* iOS Contacts pre-fill — only meaningful on the native shell.
               The sequencer here is: idle → tap → reading → either we
               get candidates (rendered as pick buttons) or one of the
               error/denied/no-match states. Picking a candidate fires
-              saveMutation directly. */}
+              the verify flow directly. */}
           <button
             onClick={pickFromIosContacts}
             disabled={iosStage === "reading"}
@@ -1443,13 +1535,13 @@ function PhoneSection() {
             <button
               onClick={() => {
                 if (!draft.trim()) { setError("Enter a phone number first."); return; }
-                saveMutation.mutate(draft);
+                startMutation.mutate(draft.trim());
               }}
-              disabled={!draft.trim() || saveMutation.isPending}
+              disabled={!draft.trim() || startMutation.isPending || saveMutation.isPending}
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
               style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0" }}
             >
-              {saveMutation.isPending ? "Saving…" : "Save"}
+              {startMutation.isPending || saveMutation.isPending ? "Sending…" : "Send code"}
             </button>
             {editing && current && (
               <button
@@ -1460,6 +1552,60 @@ function PhoneSection() {
                 Cancel
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Code-entry stage — shown after a code is texted. The number is only
+          stored once the code checks out. */}
+      {(editing || !current) && verifyStage === "code" && (
+        <div className="space-y-3">
+          <p className="text-xs" style={{ color: "#C8D4C0" }}>
+            We texted a code to <span style={{ color: "#A8C5A0" }}>{pendingPhone}</span>. Enter it to verify.
+          </p>
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => { setCode(e.target.value.replace(/[^\d]/g, "").slice(0, 8)); setError(null); }}
+            placeholder="123456"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            className="w-full text-center px-3 py-2.5 rounded-lg outline-none tracking-[0.4em]"
+            style={{
+              color: "#F0EDE6",
+              background: "rgba(200,212,192,0.05)",
+              border: `1px solid ${error ? "rgba(196,122,101,0.6)" : "rgba(46,107,64,0.3)"}`,
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 20,
+            }}
+          />
+          {error && (
+            <p className="text-xs" style={{ color: "#C47A65" }}>{error}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { if (code.length >= 4) verifyMutation.mutate({ phone: pendingPhone, code }); }}
+              disabled={code.length < 4 || verifyMutation.isPending}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0" }}
+            >
+              {verifyMutation.isPending ? "Verifying…" : "Verify"}
+            </button>
+            <button
+              onClick={() => startMutation.mutate(pendingPhone)}
+              disabled={startMutation.isPending}
+              className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ color: "#A8C5A0" }}
+            >
+              {startMutation.isPending ? "Resending…" : "Resend"}
+            </button>
+            <button
+              onClick={() => { setVerifyStage("idle"); setCode(""); setError(null); }}
+              className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80 ml-auto"
+              style={{ color: "#8FAF96" }}
+            >
+              Change number
+            </button>
           </div>
         </div>
       )}

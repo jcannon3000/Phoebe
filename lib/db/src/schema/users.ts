@@ -73,6 +73,17 @@ export const usersTable = pgTable("users", {
   phoneNumber: text("phone_number"),
   phoneNumberNormalized: text("phone_number_normalized"),
   phoneHash: text("phone_hash"),
+  // Set the moment an SMS code (Twilio Verify) is confirmed. NULL = the
+  // number is unverified / self-attested. Contact discovery only ever
+  // surfaces VERIFIED numbers, so a self-typed number can't impersonate a
+  // contact entry or be matched against an address book.
+  phoneVerifiedAt: timestamp("phone_verified_at"),
+  // Opt-in: false by default, even after verifying. Verifying your number
+  // does NOT make you findable — the user must explicitly turn on "let
+  // people find me by my phone number". Preserves the standing privacy
+  // promise that an account isn't discoverable unless the finder already
+  // knows the user. Discovery requires phone_verified_at IS NOT NULL too.
+  discoverableByPhone: boolean("discoverable_by_phone").notNull().default(false),
   climateEnrolled: boolean("climate_enrolled").notNull().default(false),
   // Distinct from `onboardingCompleted` (Phoebe's general onboarding tour).
   // Climate has its own short intro shown once after signup; this column

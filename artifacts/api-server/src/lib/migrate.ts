@@ -866,6 +866,12 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number_normalized TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_hash TEXT`);
+    // SMS verification (Twilio Verify): phone_verified_at is set only once a
+    // texted code is confirmed; discoverable_by_phone is the explicit opt-in
+    // that makes a verified number findable by contacts. A row needs BOTH
+    // (verified AND opted-in) to surface in /contacts/match.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS discoverable_by_phone BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS users_phone_normalized_uk ON users (phone_number_normalized) WHERE phone_number_normalized IS NOT NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS users_phone_hash_idx ON users (phone_hash) WHERE phone_hash IS NOT NULL`);
 

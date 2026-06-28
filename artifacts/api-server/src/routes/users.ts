@@ -13,6 +13,8 @@ import {
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
 import { normalizePhone, hashPhone } from "../lib/phone";
+import { isVerifyConfigured, startVerification, checkVerification } from "../lib/twilioVerify";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -201,13 +203,23 @@ router.post("/users/me/phone", async (req, res): Promise<void> => {
     return;
   }
 
+  // When SMS verification is configured, this self-attest setter is
+  // disabled — the number must go through /phone/start + /phone/verify so
+  // we only ever store a number the user proved they control. The client
+  // is expected to use the verify flow; this guard is the server backstop.
+  if (isVerifyConfigured()) {
+    res.status(400).json({
+      error: "verification_required",
+      message: "Please verify this number with the code we text you.",
+    });
+    return;
+  }
+
   const hash = hashPhone(normalized);
 
   // Check for collision with another user (the unique index would
   // throw, but a friendly 409 is nicer than a 500 from a constraint
-  // violation). A collision means someone else already claimed this
-  // number — which in v1 (no SMS verification) might just mean a
-  // typo or a recycled number; we tell the user to contact support.
+  // violation).
   const [existing] = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -220,11 +232,15 @@ router.post("/users/me/phone", async (req, res): Promise<void> => {
     return;
   }
 
+  // No-Twilio fallback (dev / self-host without an account): treat the
+  // self-attested number as verified-at-now so end-to-end contact discovery
+  // still works locally. Deployments with Twilio configured never reach here.
   await db.update(usersTable)
     .set({
       phoneNumber: raw.trim(),
       phoneNumberNormalized: normalized,
       phoneHash: hash,
+      phoneVerifiedAt: new Date(),
     })
     .where(eq(usersTable.id, sessionUser.id));
 
@@ -240,10 +256,159 @@ router.delete("/users/me/phone", async (req, res): Promise<void> => {
       phoneNumber: null,
       phoneNumberNormalized: null,
       phoneHash: null,
+      phoneVerifiedAt: null,
+      // Removing the number also removes discoverability — can't be findable
+      // by a number you no longer have on file.
+      discoverableByPhone: false,
     })
     .where(eq(usersTable.id, sessionUser.id));
 
   res.json({ ok: true });
+});
+
+// ─── SMS phone verification (Twilio Verify) ────────────────────────────────
+//
+// POST /users/me/phone/start   { phone }          → texts a 6-digit code
+// POST /users/me/phone/verify  { phone, code }     → on "approved", stores
+//                                                     the number + marks it
+//                                                     verified
+//
+// We only persist the number (display + normalized + hash) once a texted
+// code is confirmed, so a stored number always belongs to whoever holds the
+// SIM. The code itself is generated, sent, and checked by Twilio — it never
+// touches our database.
+router.post("/users/me/phone/start", rateLimit({
+  // A handful of code requests per number/account per window is plenty for a
+  // legitimate verify (Twilio adds its own per-number throttle on top).
+  name: "phone_verify_start",
+  max: 6,
+  windowMs: 15 * 60 * 1000,
+  keyFn: (req) => {
+    const u = (req as { user?: { id?: number } }).user;
+    return u?.id ? `u:${u.id}` : null;
+  },
+  message: "Too many code requests — please wait a few minutes and try again.",
+}), async (req, res): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (!isVerifyConfigured()) {
+    res.status(503).json({ error: "verification_unavailable", message: "Phone verification isn't available right now." });
+    return;
+  }
+
+  const raw = String((req.body as { phone?: unknown } | null)?.phone ?? "");
+  const normalized = normalizePhone(raw);
+  if (!normalized) {
+    res.status(400).json({ error: "invalid_phone", message: "That doesn't look like a valid phone number. Try +1 555 123 4567." });
+    return;
+  }
+
+  // Reject up-front if a DIFFERENT account already verified this number, so the
+  // user doesn't burn an SMS just to fail at the verify step.
+  const [existing] = await db
+    .select({ id: usersTable.id, verifiedAt: usersTable.phoneVerifiedAt })
+    .from(usersTable)
+    .where(eq(usersTable.phoneNumberNormalized, normalized));
+  if (existing && existing.id !== sessionUser.id && existing.verifiedAt) {
+    res.status(409).json({ error: "phone_taken", message: "Another account is using this number. If that's you, please contact support." });
+    return;
+  }
+
+  const result = await startVerification(normalized);
+  if (!result.ok) {
+    if (result.reason === "invalid_number") { res.status(400).json({ error: "invalid_phone", message: "We couldn't text that number. Double-check it and try again." }); return; }
+    if (result.reason === "rate_limited") { res.status(429).json({ error: "rate_limited", message: "Too many attempts on this number. Please wait a bit." }); return; }
+    res.status(502).json({ error: "send_failed", message: "We couldn't send a code right now. Please try again." });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+router.post("/users/me/phone/verify", rateLimit({
+  name: "phone_verify_check",
+  max: 10,
+  windowMs: 15 * 60 * 1000,
+  keyFn: (req) => {
+    const u = (req as { user?: { id?: number } }).user;
+    return u?.id ? `u:${u.id}` : null;
+  },
+  message: "Too many attempts — please request a new code in a few minutes.",
+}), async (req, res): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (!isVerifyConfigured()) {
+    res.status(503).json({ error: "verification_unavailable", message: "Phone verification isn't available right now." });
+    return;
+  }
+
+  const body = (req.body ?? {}) as { phone?: unknown; code?: unknown };
+  const normalized = normalizePhone(String(body.phone ?? ""));
+  const code = String(body.code ?? "").trim();
+  if (!normalized) { res.status(400).json({ error: "invalid_phone", message: "That doesn't look like a valid phone number." }); return; }
+  if (!/^\d{4,10}$/.test(code)) { res.status(400).json({ error: "invalid_code", message: "Enter the code we texted you." }); return; }
+
+  const check = await checkVerification(normalized, code);
+  if (!check.ok) {
+    if (check.reason === "expired") { res.status(410).json({ error: "code_expired", message: "That code expired. Tap Resend to get a new one." }); return; }
+    res.status(502).json({ error: "verify_failed", message: "We couldn't check that code right now. Please try again." }); return;
+  }
+  if (!check.approved) {
+    res.status(400).json({ error: "code_incorrect", message: "That code wasn't right. Check it and try again." });
+    return;
+  }
+
+  // Approved — claim the number. Re-check the collision under the unique index
+  // (another account could have verified it between /start and now).
+  const [existing] = await db
+    .select({ id: usersTable.id, verifiedAt: usersTable.phoneVerifiedAt })
+    .from(usersTable)
+    .where(eq(usersTable.phoneNumberNormalized, normalized));
+  if (existing && existing.id !== sessionUser.id && existing.verifiedAt) {
+    res.status(409).json({ error: "phone_taken", message: "Another account just verified this number." });
+    return;
+  }
+
+  const raw = String(body.phone ?? "").trim();
+  await db.update(usersTable)
+    .set({
+      phoneNumber: raw,
+      phoneNumberNormalized: normalized,
+      phoneHash: hashPhone(normalized),
+      phoneVerifiedAt: new Date(),
+    })
+    .where(eq(usersTable.id, sessionUser.id));
+
+  res.json({ ok: true, phoneNumber: raw, phoneNumberNormalized: normalized, phoneVerified: true });
+});
+
+// ─── Discoverable-by-phone opt-in ──────────────────────────────────────────
+// PATCH /users/me/discoverable-by-phone { enabled: boolean }
+// Verifying a number does NOT make you findable; this explicit toggle does.
+// Can only be turned ON for a verified number.
+router.patch("/users/me/discoverable-by-phone", async (req, res): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const enabled = !!(req.body as { enabled?: unknown } | null)?.enabled;
+
+  if (enabled) {
+    const [me] = await db
+      .select({ verifiedAt: usersTable.phoneVerifiedAt })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUser.id));
+    if (!me?.verifiedAt) {
+      res.status(400).json({ error: "phone_unverified", message: "Verify your phone number before turning this on." });
+      return;
+    }
+  }
+
+  await db.update(usersTable)
+    .set({ discoverableByPhone: enabled })
+    .where(eq(usersTable.id, sessionUser.id));
+
+  res.json({ ok: true, discoverableByPhone: enabled });
 });
 
 // ─── Office reminder prefs (everyone) ───────────────────────────────────

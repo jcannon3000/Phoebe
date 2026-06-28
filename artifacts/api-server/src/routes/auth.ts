@@ -251,6 +251,8 @@ router.get("/auth/me", async (req, res) => {
     prayerInviteLastShownDate: string | null;
     prayerInviteLastShownAt: Date | string | null;
     phoneNumber: string | null;
+    phoneVerifiedAt: Date | string | null;
+    discoverableByPhone: boolean;
     climateEnrolled: boolean;
     climateOnboardingCompleted: boolean;
     climateOnly: boolean;
@@ -316,6 +318,11 @@ router.get("/auth/me", async (req, res) => {
           : String(u.prayerInviteLastShownAt))
       : null,
     phoneNumber: u.phoneNumber ?? null,
+    // Verified = an SMS code was confirmed (boolean for the client; the
+    // timestamp stays server-side). discoverableByPhone is the opt-in that
+    // makes a verified number findable by contacts.
+    phoneVerified: !!u.phoneVerifiedAt,
+    discoverableByPhone: u.discoverableByPhone ?? false,
     climateEnrolled: u.climateEnrolled ?? false,
     climateOnboardingCompleted: u.climateOnboardingCompleted ?? false,
     climateOnly: u.climateOnly ?? false,

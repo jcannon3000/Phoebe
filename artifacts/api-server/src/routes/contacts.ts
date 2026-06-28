@@ -149,6 +149,12 @@ router.post("/contacts/match", rateLimit({
       isNotNull(usersTable.phoneHash),
       inArray(usersTable.phoneHash, hashes),
       ne(usersTable.id, sessionUserId),
+      // Only surface numbers that are BOTH verified (a texted code was
+      // confirmed) AND explicitly opted into discovery. A self-typed or
+      // unverified number, or a verified number whose owner hasn't turned on
+      // "find me by phone", is never matchable.
+      isNotNull(usersTable.phoneVerifiedAt),
+      eq(usersTable.discoverableByPhone, true),
     ));
 
   // Build hash → index map so we can return the request-array position
