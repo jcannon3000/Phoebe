@@ -595,7 +595,10 @@ export function CobreatheBreath({
             if (prayerTextRef.current) prayerTextRef.current.textContent = texts[pIdx];
           }
           if (prayerGroupRef.current) {
-            prayerGroupRef.current.style.opacity = (0.42 + Math.pow(pAnim, 1.15) * 0.58).toFixed(4);
+            // Fully breathe the text up and down with the lungs — rises from
+            // nothing on the inhale, fades back to nothing at the bottom of the
+            // exhale (where the next request swaps in, unseen).
+            prayerGroupRef.current.style.opacity = Math.pow(pAnim, 1.1).toFixed(4);
           }
         }
       }
@@ -1073,7 +1076,9 @@ export function CobreatheBreath({
           grab it anywhere on screen (24px clear of the edges + the top/bottom
           text); let go near home and it springs back to centre. The outer ring
           breathes (lighter green in, darker green out); the inner blue ring fills
-          once across the whole set. */}
+          once across the whole set. Hidden in "Pray the breath" mode — there the
+          breathing prayer text IS the focal point, not the globe. */}
+      {!usePrayers && (
       <div
         ref={globeCellRef}
         onPointerDown={onGlobeDown}
@@ -1149,6 +1154,7 @@ export function CobreatheBreath({
           <span style={{ fontSize: Math.round(globePx * 0.5), lineHeight: 1 }}>{globe}</span>
         </div>
       </div>
+      )}
 
       {/* "Breathing together" map — when you opted into an in-person session and
           Fellows are breathing with you (precise coords), show where they are with
