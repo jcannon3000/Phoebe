@@ -2604,7 +2604,8 @@ export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {})
   if (hero) {
     const rgb = "62,124,122";
     return (
-      <Link href="/contemplation" className="block">
+      // Begin a sit (like the normal Silence card) — not the stats page.
+      <Link href="/contemplation?begin=1" className="block">
         <div
           role="button"
           tabIndex={0}
