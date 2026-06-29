@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -8,7 +8,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FROST } from "@/lib/frost";
 import { getScriptureScope, setScriptureScope, type ScriptureScope } from "@/lib/customAnchors";
-import { playChime, CHIME_MS } from "@/lib/chime";
+import { playChime } from "@/lib/chime";
 
 // ── Scripture Day by Day — listen reading by reading ───────────────────────
 //
@@ -112,7 +112,9 @@ export default function ScriptureReadingsPage() {
     [sections],
   );
   const stopFor = (sec: Section): number | undefined => {
-    if (sec.endSeconds != null) return sec.endSeconds;
+    // Trust an explicit end only when it's actually after the start — a bad
+    // alignment row (end <= start) would otherwise stop the segment instantly.
+    if (sec.endSeconds != null && sec.endSeconds > sec.startSeconds) return sec.endSeconds;
     const next = sectionsByStart.find((s) => s.startSeconds > sec.startSeconds + 0.5);
     return next ? next.startSeconds : (ep?.durationSeconds ?? undefined);
   };
@@ -134,7 +136,7 @@ export default function ScriptureReadingsPage() {
   const playableKinds = inScope.filter((k) => sectionByKind.has(k));
   const canPlayThrough = !!audioUrl && playableKinds.length > 0;
 
-  const baseEpisode = (sec: Section, onSegmentEnd?: () => void): PlayingEpisode => {
+  const baseEpisode = (sec: Section, onSegmentEnd?: () => void, seekThrough?: boolean): PlayingEpisode => {
     const kind = sec.id as ReadingKind;
     const citation = readings.find((r) => r.kind === kind)?.citation || sec.title || KIND_LABEL[kind];
     return {
@@ -156,12 +158,28 @@ export default function ScriptureReadingsPage() {
     // section's start (or the episode end) when the alignment left the end open.
     stopAtSeconds: stopFor(sec),
     onSegmentEnd,
+    // Non-final readings in a play-through seek straight to the next passage
+    // without pausing (iOS would gate the resume otherwise).
+    seekThroughOnStop: seekThrough,
     };
   };
 
-  // Play just one reading (a single tap on a card).
+  // A play-THROUGH is a chain of segments with a chime between each. Track it so
+  // a single-reading tap, a re-tap of "Listen", or leaving the page can cancel
+  // the pending next-passage timer — otherwise an orphaned timer would hijack
+  // playback ~1.5s later, and a double-tap would run two chains over one <audio>.
+  const chainActive = useRef(false);
+  const chainTimer = useRef<number | null>(null);
+  const cancelChain = () => {
+    chainActive.current = false;
+    if (chainTimer.current != null) { window.clearTimeout(chainTimer.current); chainTimer.current = null; }
+  };
+  useEffect(() => () => cancelChain(), []);
+
+  // Play just one reading (a single tap on a card) — cancels any running chain.
   const playReading = (sec: Section) => {
     if (!audioUrl) return;
+    cancelChain();
     markPracticeDoneToday("scripture");
     player.play(baseEpisode(sec));
   };
@@ -171,18 +189,28 @@ export default function ScriptureReadingsPage() {
   // so it jumps straight from the psalm to the Gospel.
   const playThrough = () => {
     if (!audioUrl || playableKinds.length === 0) return;
+    cancelChain(); // never run two chains at once; restart cleanly
     markPracticeDoneToday("scripture");
+    chainActive.current = true;
     let i = 0;
     const step = () => {
+      if (!chainActive.current) return;
       const sec = sectionByKind.get(playableKinds[i]);
-      if (!sec) return;
+      if (!sec) { chainActive.current = false; return; }
+      // Every reading but the last is a "seek-through": at its end the <audio>
+      // keeps playing and we jump straight to the next passage (no pause → iOS
+      // can't gate the continuation). The chime rings over the transition.
+      const isLast = i >= playableKinds.length - 1;
       player.play(baseEpisode(sec, () => {
+        if (!chainActive.current) return;
         i += 1;
         if (i < playableKinds.length) {
           playChime();
-          window.setTimeout(step, CHIME_MS);
+          step(); // seek immediately (the element is still playing)
+        } else {
+          chainActive.current = false;
         }
-      }));
+      }, !isLast));
     };
     step();
   };

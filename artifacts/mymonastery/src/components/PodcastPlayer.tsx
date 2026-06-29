@@ -90,6 +90,13 @@ export type PlayingEpisode = {
   // next segment itself (the Listen-to-Scripture play-through: passage → chime →
   // next passage).
   onSegmentEnd?: () => void;
+  // For a chained play-through (Listen-to-Scripture): when this segment reaches
+  // stopAtSeconds, do NOT pause — keep the <audio> playing so onSegmentEnd can
+  // seek straight to the next in-scope reading. Pausing here and resuming ~1.5s
+  // later (after the chime) is autoplay-gated on iOS, so the next reading would
+  // never start. The LAST reading in a chain leaves this false so it stops
+  // normally at its end.
+  seekThroughOnStop?: boolean;
   // When set, the full-screen player shows this small eyebrow over the artwork
   // above `title` — used by Listen to Scripture to label the part being read
   // ("Psalm" / "Gospel"), with the citation as the title.
@@ -802,7 +809,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     // end. Fires once; cleared so a manual resume plays straight on.
     if (segmentStopRef.current != null && a.currentTime >= segmentStopRef.current - 0.2) {
       segmentStopRef.current = null;
-      a.pause();
+      // A chained play-through seeks straight to the next reading in onSegmentEnd
+      // — keep playing so iOS doesn't gate the (gapless) continuation. A single
+      // reading (or the last reading in a chain) pauses at its end as before.
+      if (!current.seekThroughOnStop) a.pause();
       if (current.collapseOnStop) setExpanded(false);
       current.onSegmentEnd?.();
       return;
