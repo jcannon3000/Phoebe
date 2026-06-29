@@ -1236,6 +1236,40 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   };
   const canShare = typeof navigator !== "undefined" && typeof (navigator as { share?: unknown }).share === "function";
 
+  // The skip-back / play-pause / skip-forward (+ next) buttons. Extracted so the
+  // immersive player can place them in the vertical middle (podcasts/office) OR
+  // down in the lower block (Listen-to-Scripture, where the centered passage
+  // title takes the middle — mirroring an office lesson title slide).
+  const transportRow = (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30 }}>
+      <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
+        style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
+        <IconSkip secs={15} />
+      </button>
+      <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
+        style={{
+          width: 96, height: 96, borderRadius: "50%", border: "none", cursor: "pointer",
+          background: "rgba(18,20,18,0.34)", color: "#FFFFFF",
+          backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+        }}>
+        {isPlaying ? <IconPause /> : <IconPlay />}
+      </button>
+      <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
+        style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
+        <IconSkip secs={30} forward />
+      </button>
+      {queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length && (
+        <button type="button" onClick={skipToNext}
+          aria-label={t("podcasts.a11y_next", { defaultValue: "Next episode" })}
+          style={{ background: "none", border: "none", color: "#FFFFFF", fontSize: 26, lineHeight: 0, padding: 4, cursor: "pointer" }}>
+          ⏭
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <Ctx.Provider value={{ current, isPlaying, play, playQueue, toggle, isCurrent }}>
       {children}
@@ -1367,52 +1401,32 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               ) : <span style={{ width: 34 }} />}
             </div>
 
-            {/* Reading label over the photo — category (eyebrow) + citation.
-                Listen to Scripture sets this per passage so the player names what
-                you're hearing right on the image. */}
-            {current.segmentEyebrow && (
-              <div style={{ textAlign: "center", padding: "6px 26px 0", flexShrink: 0 }}>
-                <p style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "rgba(246,240,230,0.9)", margin: 0, textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}>
-                  {current.segmentEyebrow}
-                </p>
-                <p style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 700, color: "#F6F0E6", margin: "5px 0 0", lineHeight: 1.2, textShadow: "0 1px 12px rgba(0,0,0,0.55)" }}>
-                  {current.title}
-                </p>
-              </div>
-            )}
 
-            {/* Transport over the photo */}
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 30, minHeight: 0 }}>
-              <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
-                style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
-                <IconSkip secs={15} />
-              </button>
-              <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
-                style={{
-                  width: 96, height: 96, borderRadius: "50%", border: "none", cursor: "pointer",
-                  background: "rgba(18,20,18,0.34)", color: "#FFFFFF",
-                  backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
-                }}>
-                {isPlaying ? <IconPause /> : <IconPlay />}
-              </button>
-              <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
-                style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
-                <IconSkip secs={30} forward />
-              </button>
-              {queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length && (
-                <button type="button" onClick={skipToNext}
-                  aria-label={t("podcasts.a11y_next", { defaultValue: "Next episode" })}
-                  style={{ background: "none", border: "none", color: "#FFFFFF", fontSize: 26, lineHeight: 0, padding: 4, cursor: "pointer" }}>
-                  ⏭
-                </button>
-              )}
+            {/* Vertical middle. For Listen-to-Scripture (segmentEyebrow set) the
+                passage TITLE sits here — big, centred, serif, like an office
+                lesson title slide — and the transport moves down to the lower
+                block. For podcasts/office the transport stays centred here. */}
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0, padding: "0 28px" }}>
+              {current.segmentEyebrow ? (
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.22em", color: "rgba(246,240,230,0.9)", margin: 0, textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}>
+                    {current.segmentEyebrow}
+                  </p>
+                  <p style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 700, color: "#F6F0E6", margin: "12px 0 0", lineHeight: 1.22, letterSpacing: "-0.01em", textShadow: "0 1px 14px rgba(0,0,0,0.6)" }}>
+                    {current.title}
+                  </p>
+                </div>
+              ) : transportRow}
             </div>
 
             {/* Lower block on the solid colour: big remaining time, scrubber,
                 title, show, and the office source toggle. */}
             <div style={{ flexShrink: 0, padding: "0 26px" }}>
+              {/* Scripture: the transport lives down here (the title took the
+                  middle). Podcasts/office already have it in the middle. */}
+              {current.segmentEyebrow && (
+                <div style={{ marginBottom: 22 }}>{transportRow}</div>
+              )}
               <div style={{ display: "flex", alignItems: "flex-end" }}>
                 <span style={{ fontFamily: SERIF, fontSize: 58, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1, color: "#F6F0E6" }}>
                   {duration > 0 ? fmtClock(displayRemaining) : fmtClock(displayTime)}
