@@ -1046,10 +1046,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       {/* Weekly progress grid removed — the rhythm is a fresh start each day
           ("every day we begin again"), so no week-at-a-glance accumulation. */}
 
-      {/* "Grow my silence" climb — sits at the bottom of the rhythm for anyone
-          on the ladder (self-gates to null otherwise). Shows here AND on the
-          home, since the home renders this same body. */}
-      <SilenceLadderCard className="mt-4" />
+      {/* "Grow my silence" climb — bottom of the rhythm for anyone on the
+          ladder (self-gates to null otherwise). Only on the Daily Progress page
+          (showStreak), NOT the home; the Contemplation page renders it directly. */}
+      {showStreak && <SilenceLadderCard className="mt-4" />}
 
       {/* Log popup for a custom practice — a reading logs an amount
           (chapter/page/time); a plain practice is just Done / Not today. */}
