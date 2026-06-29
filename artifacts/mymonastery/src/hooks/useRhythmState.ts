@@ -9,7 +9,7 @@ import {
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
-import { getSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -471,11 +471,25 @@ export function useRhythmState(): RhythmState {
   // A chosen office level (anything but the "ask"/not-chosen sentinel or null)
   // means the office is in the rhythm. null falls back to the server pref.
   const isActiveLevel = (l: typeof ml) => l != null && l !== "ask";
-  const morningActive = isActiveLevel(ml) || (officePrefs?.morning ?? "devotion") !== "none";
-  // Starter rule = Morning Devotion · Forward Day by Day · Evening Devotion, so
-  // evening is part of the rhythm by default (un-set-up evening pref falls back to
-  // "devotion", not "none").
-  const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "devotion") !== "none";
+  // For "is this side part of the rhythm?" use the EXPLICIT level (null unless the
+  // user actually chose one) — NOT getSideLevel, whose new-user defaults
+  // (morning "intercessions", evening "reflect-sit") are active levels and would
+  // force a side on even after the user turned it OFF in the customizer.
+  const mlExplicit = getExplicitSideLevel("morning");
+  const elExplicit = getExplicitSideLevel("evening");
+  // Has the user designed a rule yet? A saved home layout is the signal.
+  const customized = !!user?.homeLayout;
+  // A side a CUSTOMIZED user explicitly set on THIS device is authoritative —
+  // "ask" means they turned it off, and that wins even over a stale server pref
+  // (e.g. an office-prefs PUT that was dropped). With no explicit local level we
+  // fall back to the cross-device server pref (off unless it's a real office).
+  // Un-set-up users keep the starter rule (Morning + Evening on by default).
+  const morningActive = customized
+    ? (mlExplicit != null ? isActiveLevel(mlExplicit) : ((officePrefs?.morning ?? null) != null && officePrefs?.morning !== "none"))
+    : (isActiveLevel(ml) || (officePrefs?.morning ?? "devotion") !== "none");
+  const eveningActive = customized
+    ? (elExplicit != null ? isActiveLevel(elExplicit) : ((officePrefs?.evening ?? null) != null && officePrefs?.evening !== "none"))
+    : (isActiveLevel(el) || (officePrefs?.evening ?? "devotion") !== "none");
   const silenceActive = contemplationGoalMin > 0;
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
