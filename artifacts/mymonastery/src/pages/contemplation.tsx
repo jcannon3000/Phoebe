@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { getSideMinutes } from "@/lib/officePrefs";
 import { useAuth } from "@/hooks/useAuth";
+import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
 import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, type MindfulSession } from "@/lib/appleHealth";
@@ -194,61 +195,6 @@ function StatTile({ label, value }: { label: string; value: string }) {
 // HealthKit). Hidden on web. This proves the read pipeline end-to-end; it does
 // NOT yet feed the goal — wiring it in (with de-dup of Phoebe's own sits, and
 // uploading to the server so the 7pm nudge sees it) is the deliberate next step.
-// Shape of GET /api/me/silence-ladder when the "grow my silence" ladder is on.
-type LadderResp = {
-  enabled: boolean;
-  level: number;        // this rung's minutes/day goal
-  levelDays: number;    // counted (completed) days kept at this rung
-  daysToNext: number;   // 7 − levelDays (server scores only completed days)
-  nextLevel: number;
-  atMax: boolean;
-  todayMinutes: number;
-  todayMet: boolean;
-};
-
-// "Grow my silence" ladder progress — shown on the Contemplation page in place
-// of the manual goal editor when the ladder is on. The rung is the daily goal;
-// a 7-dot week bar fills as days are kept (today counts the moment it's met),
-// and the caption carries the climb to the next rung (or the 30-min summit).
-function SilenceLadderCard({ ladder }: { ladder: LadderResp }) {
-  const { t } = useTranslation();
-  // Today counts toward the week the instant it's met, even though the server
-  // only scores it tomorrow — so the bar and the count feel live.
-  const keptThisWeek = Math.min(7, ladder.levelDays + (ladder.todayMet ? 1 : 0));
-  const daysLeft = Math.max(0, ladder.daysToNext - (ladder.todayMet ? 1 : 0));
-  const caption = ladder.atMax
-    ? t("contemplation.ladder_summit", { defaultValue: "You've reached 30 min — your summit 🌿" })
-    : daysLeft <= 0
-      ? t("contemplation.ladder_grows_tomorrow", { next: ladder.nextLevel, defaultValue: `Grows to ${ladder.nextLevel} min tomorrow 🌿` })
-      : t("contemplation.ladder_days_to_next", { count: daysLeft, next: ladder.nextLevel, defaultValue: `${daysLeft} ${daysLeft === 1 ? "day" : "days"} to ${ladder.nextLevel} min` });
-  return (
-    <div className="rounded-2xl mt-4 p-4" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {t("contemplation.ladder_title", { defaultValue: "Growing your silence" })}
-        </p>
-        <span className="text-[12px] font-semibold" style={{ color: ladder.todayMet ? "#A8C5A0" : SAGE, fontFamily: SPACE_GROTESK }}>
-          {t("contemplation.ladder_rung", { level: ladder.level, defaultValue: `${ladder.level} min / day` })}
-        </span>
-      </div>
-      {/* Week bar — seven segments; the kept days fill, the rest sit faint. */}
-      <div className="flex items-center gap-1.5 mb-2.5" aria-hidden>
-        {Array.from({ length: 7 }, (_, i) => (
-          <div key={i} className="flex-1 rounded-full" style={{ height: 6, background: i < keptThisWeek ? "#6FAF85" : "rgba(46,107,64,0.22)", transition: "background 0.3s" }} />
-        ))}
-      </div>
-      <div className="flex items-center justify-between">
-        <p className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: 0 }}>{caption}</p>
-        <p className="text-[12px]" style={{ color: ladder.todayMet ? "#A8C5A0" : SAGE, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {ladder.todayMet
-            ? t("contemplation.ladder_kept_today", { defaultValue: "Kept today ✓" })
-            : t("contemplation.ladder_today_progress", { done: ladder.todayMinutes, goal: ladder.level, defaultValue: `${ladder.todayMinutes} of ${ladder.level} min today` })}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // Daily goal card — set a minutes/day target and see today's progress toward
 // it. Setting a goal (> 0) turns on a gentle ~7pm reminder ONLY on days it's
 // still unmet (no nudge once the goal is reached). The target is a free field —
@@ -747,18 +693,9 @@ export default function ContemplationPage() {
       apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: minutes }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
   });
-  // "Grow my silence" ladder — when enabled, the rung drives the daily goal and
-  // we show the climb (this rung, the week's kept days, and how many to the next
-  // rung) instead of the manual goal editor. The GET also runs the server-side
-  // daily catch-up. Keyed by local day so it re-evaluates across midnight.
+  // "Grow my silence" ladder — when on, the climb card (SilenceLadderCard,
+  // self-fetching + frosted) replaces the manual goal editor.
   const ladderEnabled = !!user?.silenceLadder?.enabled;
-  const today = new Date().toLocaleDateString("en-CA");
-  const { data: ladder } = useQuery<LadderResp>({
-    queryKey: ["/api/me/silence-ladder", today],
-    queryFn: () => apiRequest("GET", "/api/me/silence-ladder"),
-    enabled: ladderEnabled,
-    staleTime: 60_000,
-  });
 
   // Focused "begin" mode — arrived from the home contemplation card (?begin=1).
   // Shows ONLY the choose-your-sit pills (length, Start, Cobreathe); the stats,
@@ -911,7 +848,7 @@ export default function ContemplationPage() {
             {beginPills}
             {/* The "grow my silence" climb, shown right under the pills so it's
                 the first thing you see when opening Contemplation. */}
-            {ladderEnabled && ladder && <SilenceLadderCard ladder={ladder} />}
+            <SilenceLadderCard className="mt-4" />
           </div>
         </div>
         <ContemplationTimer
@@ -955,8 +892,8 @@ export default function ContemplationPage() {
         {!beginMode && (<>
         {/* When the "grow my silence" ladder is on it DRIVES the goal, so show
             the climb instead of the manual goal editor. */}
-        {ladderEnabled && ladder ? (
-          <SilenceLadderCard ladder={ladder} />
+        {ladderEnabled ? (
+          <SilenceLadderCard className="mt-4" />
         ) : (
           <DailyGoalCard
             goalMinutes={goalMinutes}

@@ -23,6 +23,7 @@ import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToda
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -1044,6 +1045,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       )}
       {/* Weekly progress grid removed — the rhythm is a fresh start each day
           ("every day we begin again"), so no week-at-a-glance accumulation. */}
+
+      {/* "Grow my silence" climb — sits at the bottom of the rhythm for anyone
+          on the ladder (self-gates to null otherwise). Shows here AND on the
+          home, since the home renders this same body. */}
+      <SilenceLadderCard className="mt-4" />
 
       {/* Log popup for a custom practice — a reading logs an amount
           (chapter/page/time); a plain practice is just Done / Not today. */}
