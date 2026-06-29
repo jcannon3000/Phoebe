@@ -571,6 +571,9 @@ export async function migrate() {
     // ── Prayer: new columns + prayer_words table ─────────────────────────────
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS created_by_name TEXT`);
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL DEFAULT false`);
+    // "One time" community ask — surfaces first + leaves a person's list once
+    // they've prayed it; false = ongoing. See routes/prayer.ts list filter+sort.
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS one_time BOOLEAN NOT NULL DEFAULT false`);
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ`);
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS close_reason TEXT`);

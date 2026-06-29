@@ -68,21 +68,42 @@ export default function IntentionsPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
 
   // ── Add composer ─────────────────────────────────────────────────────────
-  const [addKind, setAddKind] = useState<"text" | "person">("text");
+  // One field. Private by default; "Sharing" also posts a prayer request to
+  // your circle so others can pray along, and "Ongoing" shares it without the
+  // 7-day expiry. Existing person items still display and edit.
   const [text, setText] = useState("");
-  const [name, setName] = useState("");
-  const [note, setNote] = useState("");
+  const [audience, setAudience] = useState<"private" | "shared">("private");
+  // Community cadence: "one-time" surfaces first on others' lists and leaves a
+  // person's list once they've prayed it (or after 7 days); "ongoing" stays.
+  const [cadence, setCadence] = useState<"one-time" | "ongoing">("one-time");
+  const [submitting, setSubmitting] = useState(false);
+  const sharing = audience === "shared";
   const addMut = useMutation({
     mutationFn: (payload: { kind: string; body?: string; personName?: string }) =>
-      apiRequest("POST", "/api/prayer-intentions", payload),
-    onSuccess: () => { setText(""); setName(""); setNote(""); invalidate(); },
+      apiRequest("POST", "/api/prayer-intentions", payload) as Promise<{ intention: Intention }>,
   });
-  const canAdd = addKind === "text" ? text.trim().length > 0 : name.trim().length > 0;
-  const submitAdd = () => {
-    if (!canAdd || addMut.isPending) return;
-    addMut.mutate(addKind === "text"
-      ? { kind: "text", body: text }
-      : { kind: "person", personName: name, body: note });
+  const canAdd = text.trim().length > 0;
+  const submitAdd = async () => {
+    if (!canAdd || submitting) return;
+    setSubmitting(true);
+    try {
+      const created = await addMut.mutateAsync({ kind: "text", body: text });
+      // The intention is saved — clear the composer now so a failed share can't
+      // strand the typed text and tempt a duplicate submit.
+      setText(""); setAudience("private"); setCadence("one-time");
+      if (sharing) {
+        try {
+          const req = await apiRequest("POST", "/api/prayer-requests", {
+            body: text,
+            isAnonymous: false,
+            ...(cadence === "ongoing" ? { ongoing: true } : { oneTime: true }),
+          }) as { id?: number; request?: { id?: number } };
+          const reqId = req?.request?.id ?? req?.id ?? null;
+          if (reqId != null) await patchMut.mutateAsync({ id: created.intention.id, shared: true, sharedRequestId: reqId });
+        } catch { /* saved privately; the share failed (e.g. request cap) — retry via the per-item Share button */ }
+      }
+    } catch { /* creating the intention failed */ }
+    finally { setSubmitting(false); invalidate(); }
   };
 
   const patchMut = useMutation({
@@ -128,7 +149,7 @@ export default function IntentionsPage() {
     );
   }
 
-  const pill = (label: string, on: boolean, onClick: () => void) => (
+  const seg = (label: string, on: boolean, onClick: () => void) => (
     <button type="button" onClick={onClick} className="flex-1 rounded-full text-[13px] font-semibold py-2 transition-opacity active:scale-[0.98]"
       style={{ fontFamily: FONT, color: on ? WARM : SAGE, background: on ? `rgba(${RGB},0.32)` : "transparent", border: `1px solid rgba(${RGB},${on ? 0.5 : 0.22})` }}>
       {label}
@@ -156,24 +177,32 @@ export default function IntentionsPage() {
 
         {/* Add composer */}
         <div className="rounded-2xl p-4 mb-6" style={{ ...FROST, border: `1px solid rgba(${RGB},0.25)` }}>
-          <div className="flex gap-2 mb-3">
-            {pill(t("intentions.an_intention", { defaultValue: "An intention" }), addKind === "text", () => setAddKind("text"))}
-            {pill(t("intentions.a_person", { defaultValue: "A person" }), addKind === "person", () => setAddKind("person"))}
-          </div>
-          {addKind === "person" && (
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("intentions.name_ph", { defaultValue: "Their name" })}
-              className="w-full rounded-xl px-3.5 py-2.5 mb-2 text-[15px] outline-none"
-              style={{ background: "rgba(0,0,0,0.25)", color: WARM, fontFamily: FONT, border: `1px solid rgba(${RGB},0.25)` }} />
-          )}
-          <textarea value={addKind === "person" ? note : text} onChange={(e) => (addKind === "person" ? setNote : setText)(e.target.value)}
-            placeholder={addKind === "person" ? t("intentions.note_ph", { defaultValue: "What are you praying for them? (optional)" }) : t("intentions.text_ph", { defaultValue: "What are you praying for?" })}
-            rows={addKind === "person" ? 2 : 3}
+          <textarea value={text} onChange={(e) => setText(e.target.value)}
+            placeholder={t("intentions.text_ph", { defaultValue: "What are you praying for?" })}
+            rows={3}
             className="w-full rounded-xl px-3.5 py-2.5 text-[15px] outline-none resize-none"
             style={{ background: "rgba(0,0,0,0.25)", color: WARM, fontFamily: FONT, border: `1px solid rgba(${RGB},0.25)` }} />
-          <button type="button" onClick={submitAdd} disabled={!canAdd || addMut.isPending}
+          <div className="flex gap-2 mt-3">
+            {seg(t("intentions.private", { defaultValue: "On my list" }), !sharing, () => setAudience("private"))}
+            {seg(t("intentions.sharing", { defaultValue: "With the community" }), sharing, () => setAudience("shared"))}
+          </div>
+          {sharing && (
+            <>
+              <div className="flex gap-2 mt-2">
+                {seg(t("intentions.cadence_one_time", { defaultValue: "One time" }), cadence === "one-time", () => setCadence("one-time"))}
+                {seg(t("intentions.ongoing", { defaultValue: "Ongoing" }), cadence === "ongoing", () => setCadence("ongoing"))}
+              </div>
+              <p className="text-[11.5px] mt-2 px-1 leading-snug" style={{ color: SAGE, fontFamily: FONT }}>
+                {cadence === "one-time"
+                  ? t("intentions.cadence_one_time_hint", { defaultValue: "Shows first on the community's list and leaves once each person has prayed it — or after 7 days." })
+                  : t("intentions.cadence_ongoing_hint", { defaultValue: "Stays on the community's prayer list until you mark it answered or remove it." })}
+              </p>
+            </>
+          )}
+          <button type="button" onClick={submitAdd} disabled={!canAdd || submitting}
             className="w-full rounded-full mt-3 text-[14px] font-semibold py-2.5 transition-opacity active:scale-[0.98]"
             style={{ background: canAdd ? `rgba(${RGB},0.85)` : "rgba(255,255,255,0.08)", color: canAdd ? WARM : "rgba(240,237,230,0.4)", fontFamily: FONT, cursor: canAdd ? "pointer" : "default" }}>
-            {t("intentions.add", { defaultValue: "Add to my list" })}
+            {sharing ? t("intentions.add_share", { defaultValue: "Add & share" }) : t("intentions.add", { defaultValue: "Add to my list" })}
           </button>
         </div>
 

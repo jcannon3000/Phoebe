@@ -682,6 +682,9 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // renders an initials bubble when avatarUrl is null.
       ownerAvatarUrl: r.isAnonymous ? null : (owner?.avatarUrl ?? null),
       isOwnRequest,
+      // "One time" community ask — surfaces first, and leaves a viewer's list
+      // the moment they've prayed it (see the filter + sort below).
+      oneTime: r.oneTime ?? false,
       // "Pray along": the viewer is carrying this (not their own) request.
       // adoptCount is the number of people actively praying it along (any
       // viewer can see it — gentle "you're not alone" social proof).
@@ -716,15 +719,23 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     };
   });
 
-  // Order: pure chronological (createdAt-desc), already established
-  // by the SQL query above. We deliberately do NOT re-tier by
-  // ownership or correspondent status — the user wants the list to
-  // read like a feed, not a triaged inbox. The `isCorrespondent`
-  // and `isOwnRequest` flags are still attached to every row so the
-  // client can decorate cards with a correspondent badge or "Your
-  // request" label without that decoration affecting position.
+  // "One time" community asks: a viewer who has ALREADY prayed one once drops
+  // it from their list (the request lives on for others until they pray it or
+  // it expires). The owner always keeps seeing their own.
+  const visible = enriched.filter((r) => !(r.oneTime && r.myAmenedEver && !r.isOwnRequest));
 
-  res.json(enriched);
+  // Order: one-time asks the viewer hasn't prayed yet surface FIRST (a gentle
+  // "pray this once" nudge at the top); everything else keeps the chronological
+  // (createdAt-desc) order from the SQL query. V8's Array.sort is stable, so
+  // returning 0 for same-tier rows preserves that order. We otherwise do NOT
+  // re-tier by ownership/correspondent — the rest reads like a feed.
+  visible.sort((a, b) => {
+    const aFirst = a.oneTime && !a.myAmenedEver ? 1 : 0;
+    const bFirst = b.oneTime && !b.myAmenedEver ? 1 : 0;
+    return bFirst - aFirst;
+  });
+
+  res.json(visible);
 });
 
 // GET /api/prayer-requests/mine/past — the viewer's OWN past requests:
@@ -865,6 +876,13 @@ router.post("/prayer-requests", rateLimit({
     // schema stays permissive — any missing/invalid value falls back to
     // the 7-day default rather than 400ing the submission.
     durationDays: z.number().int().min(1).max(30).optional().default(7),
+    // "Ongoing" requests skip the 7–30 day clock — a far-future expiry keeps
+    // them on the list until they're answered or released.
+    ongoing: z.boolean().optional().default(false),
+    // "One time" community ask: surfaces first + leaves a person's list once
+    // they've prayed it once; bounded by a 7-day expiry. Mutually exclusive
+    // with ongoing (one-time wins if both are somehow sent).
+    oneTime: z.boolean().optional().default(false),
     // Author's framing at submission. Drives the optional pill on cards /
     // slideshow. Default "request" renders no pill. Older iOS bundles
     // don't send this; defaults to "request" so they're never rejected.
@@ -942,9 +960,16 @@ router.post("/prayer-requests", rateLimit({
       return;
     }
   }
+  // One-time wins over ongoing: it always carries the 7-day expiry so an
+  // unprayed one-time ask drops off everyone's list after a week.
+  const oneTime = parsed.data.oneTime && parsed.data.kind === "request";
   const expiresAt = eventDate
     ? new Date(eventDate.getTime() + 2 * 24 * 60 * 60 * 1000)
-    : new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
+    : oneTime
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      : parsed.data.ongoing
+        ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000)
+        : new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
 
   // Every new request gets a public share token at creation time.
   // The /p/:token public page reads through this slug; without one,
@@ -968,6 +993,7 @@ router.post("/prayer-requests", rateLimit({
       eventDate,
       eventTitle: parsed.data.kind === "life-event" ? (parsed.data.eventTitle?.trim() || null) : null,
       expiresAt,
+      oneTime,
       shareToken,
       directOnly,
     })
@@ -2695,9 +2721,12 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
       .where(eq(anonymousAmensTable.requestId, row.id));
     const prayedCount = realAmenRows.length + anonAmenRows.length;
 
-    const daysLeft = row.expiresAt
+    const daysLeftRaw = row.expiresAt
       ? Math.max(0, Math.ceil((row.expiresAt.getTime() - Date.now()) / 86_400_000))
       : null;
+    // "Ongoing" requests carry a ~100-year expiry sentinel — don't surface that
+    // as a giant "36500 days left" countdown on the public share page.
+    const daysLeft = daysLeftRaw != null && daysLeftRaw > 365 ? null : daysLeftRaw;
 
     res.json({
       request: {

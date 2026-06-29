@@ -31,6 +31,11 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   kind: text("kind").notNull().default("request"),
   createdByName: text("created_by_name"),
   isAnonymous: boolean("is_anonymous").notNull().default(false),
+  // "One time" community ask: surfaces FIRST on others' prayer lists and leaves
+  // a given person's list the moment THEY pray it once (vs "ongoing", which
+  // stays). Still bounded by expiresAt (7 days), so an unprayed one-time request
+  // drops off for everyone after a week. False = ongoing.
+  oneTime: boolean("one_time").notNull().default(false),
   isAnswered: boolean("is_answered").notNull().default(false),
   answeredAt: timestamp("answered_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
