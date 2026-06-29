@@ -631,13 +631,10 @@ export default function MomentNew() {
   // range when the user toggles from weekly back to daily.
   useEffect(() => {
     if (step !== "schedule" || templateId !== "intercession") return;
-    if (frequency === "weekly") {
-      if (practiceDurationDays === null) setPracticeDurationDays(7);
-    } else {
-      if (practiceDurationDays === null || practiceDurationDays < 1 || practiceDurationDays > 14) {
-        setPracticeDurationDays(1);
-      }
-    }
+    // "How long" = 1–7 days or Ongoing (0). Seed a week by default; keep a
+    // chosen 0 (Ongoing); clamp a stale longer value (e.g. an old 14) to 7.
+    if (practiceDurationDays === null) setPracticeDurationDays(7);
+    else if (practiceDurationDays > 7) setPracticeDurationDays(7);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, frequency]);
   const [invitedPeople, setInvitedPeople] = useState<{ name: string; email: string }[]>([]);
@@ -1923,9 +1920,15 @@ export default function MomentNew() {
                 <div className="space-y-6 flex-1">
                   <div>
                     <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                      {t("moment_new.schedule.title")} 🌿
+                      {templateId === "intercession"
+                        ? t("moment_new.schedule.title_intercession", { defaultValue: "How long would you like to pray it?" })
+                        : t("moment_new.schedule.title")} 🌿
                     </h2>
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>{t("moment_new.schedule.subtitle")}</p>
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>
+                      {templateId === "intercession"
+                        ? t("moment_new.schedule.subtitle_intercession", { defaultValue: "It stays on the community's prayer list for this long." })
+                        : t("moment_new.schedule.subtitle")}
+                    </p>
                   </div>
 
                   {/* Frequency — the every-day / once-a-week toggle. Hidden for
@@ -1987,9 +1990,10 @@ export default function MomentNew() {
                           className="text-[14px] font-medium outline-none bg-transparent pr-5 text-right"
                           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", colorScheme: "dark", appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}
                         >
-                          {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+                          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
                           ))}
+                          <option value={0}>{t("moment_new.duration.ongoing.label", { defaultValue: "Ongoing" })}</option>
                         </select>
                         <span aria-hidden style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", color: "#8FAF96", fontSize: 11, pointerEvents: "none" }}>▾</span>
                       </div>
