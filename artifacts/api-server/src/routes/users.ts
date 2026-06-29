@@ -717,10 +717,13 @@ router.put("/me/silence-ladder", async (req, res): Promise<void> => {
       res.json({ ok: true, enabled: false });
       return;
     }
-    // Enable: resume from the saved rung (or start at 5). lastEvalDate = today so
-    // scoring begins tomorrow; today still counts when it completes.
+    // Enable: resume from the saved rung (or start at 5). lastEvalDate =
+    // YESTERDAY so the day they turn it on still gets scored once it completes
+    // (tomorrow's catch-up scores today). Setting it to today skipped the
+    // enable day entirely — "I kept it 2 days but it still says 7" — because
+    // that day was never counted.
     const level = prev && prev.level >= LADDER_MIN && prev.level <= LADDER_MAX ? prev.level : LADDER_MIN;
-    const next: LadderState = { enabled: true, level, levelDays: prev?.levelDays ?? 0, missStreak: 0, lastEvalDate: todayYmd };
+    const next: LadderState = { enabled: true, level, levelDays: prev?.levelDays ?? 0, missStreak: 0, lastEvalDate: ladderAddDays(todayYmd, -1) };
     await db.update(usersTable).set({ silenceLadder: next, contemplationGoalMinutes: level }).where(eq(usersTable.id, sessionUserId));
     res.json({ ok: true, enabled: true, level });
   } catch (err) {

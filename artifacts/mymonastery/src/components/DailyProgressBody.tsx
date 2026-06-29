@@ -608,12 +608,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // today", or "Reached today 🌿" once met — matching the home Contemplation
   // card. Gentle, never a deficit: a short sit still keeps the dot (silenceDone
   // = any sit). With no goal set, it falls back to "You rested in silence today".
+  // Days still needed to reach the next rung. This branch only renders when
+  // the goal is MET today, so today already counts toward the climb — subtract
+  // it from the server's daysToNext (which scores completed days up to
+  // yesterday). 0 left = today was the last day; the rung grows tomorrow.
+  const ladderDaysLeft = silenceLadder ? Math.max(0, silenceLadder.daysToNext - 1) : 0;
   const contemplationBlurb = silenceLadder
     // "Grow my silence" ladder: the blurb carries the climb toward 30 min.
     ? (contemplationMin >= contemplationGoalMin
         ? (silenceLadder.atMax
             ? t("rhythm.silence_summit", { defaultValue: "Reached 30 min — your summit 🌿" })
-            : t("rhythm.silence_met_grow", { count: silenceLadder.daysToNext, next: silenceLadder.nextLevel, defaultValue: `Kept today · ${silenceLadder.daysToNext} more to ${silenceLadder.nextLevel} min` }))
+            : ladderDaysLeft <= 0
+              ? t("rhythm.silence_grows_tomorrow", { next: silenceLadder.nextLevel, defaultValue: `Kept today · grows to ${silenceLadder.nextLevel} min tomorrow 🌿` })
+              : t("rhythm.silence_met_grow", { count: ladderDaysLeft, next: silenceLadder.nextLevel, defaultValue: `Kept today · ${ladderDaysLeft} ${ladderDaysLeft === 1 ? "day" : "days"} to ${silenceLadder.nextLevel} min` }))
         : t("rhythm.silence_progress_grow", { done: contemplationMin, goal: contemplationGoalMin, next: silenceLadder.nextLevel, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min · growing to ${silenceLadder.nextLevel}` }))
     : contemplationGoalMin > 0
       ? (contemplationMin >= contemplationGoalMin
