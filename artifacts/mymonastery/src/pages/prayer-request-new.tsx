@@ -121,8 +121,10 @@ export default function PrayerRequestNew() {
     () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
   );
-  // How long the garden carries it — a 1–7 day dropdown, default 3.
-  const [days, setDays] = useState<number>(3);
+  // Share cadence, encoded in `days`: -1 = one time (surfaces first, leaves a
+  // person's list once they've prayed it, 7-day expiry), 0 = ongoing. Default
+  // one-time.
+  const [days, setDays] = useState<number>(-1);
   const [error, setError] = useState("");
   // Sheet dismissal: this screen rises from the bottom on open and slides back
   // DOWN on close/finish (like a podcast player closing — but it doesn't dock).
@@ -148,7 +150,7 @@ export default function PrayerRequestNew() {
       apiRequest("POST", "/api/prayer-requests", {
         body: body.trim(),
         isAnonymous: false,
-        durationDays: days,
+        ...(days === 0 ? { ongoing: true } : days === -1 ? { oneTime: true } : { durationDays: days }),
         kind,
         // Life-event only: a title + the date (sent as LOCAL noon so the
         // owner-tz calendar date is unambiguous). Ignored for other kinds.
@@ -402,9 +404,8 @@ export default function PrayerRequestNew() {
                 textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
               }}
             >
-              {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
-              ))}
+              <option value={-1}>{t("prayer_request.duration_one_time", { defaultValue: "One time" })}</option>
+              <option value={0}>{t("prayer_request.duration_ongoing", { defaultValue: "Ongoing" })}</option>
             </select>
             </div>
           )}
