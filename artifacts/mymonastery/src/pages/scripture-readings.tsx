@@ -66,6 +66,9 @@ export default function ScriptureReadingsPage() {
   const player = usePodcastPlayer();
   const [scope, setScope] = useState<ScriptureScope>(() => getScriptureScope());
   const chooseScope = (s: ScriptureScope) => { setScope(s); setScriptureScope(s); };
+  // When the last (or only) reading finishes, we leave the reading list for a
+  // quiet "Prayer completed" conclusion that points on to what's next.
+  const [completed, setCompleted] = useState(false);
 
   // A leaf photo behind the page, picked once.
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -161,6 +164,9 @@ export default function ScriptureReadingsPage() {
     // Non-final readings in a play-through seek straight to the next passage
     // without pausing (iOS would gate the resume otherwise).
     seekThroughOnStop: seekThrough,
+    // The final/only reading collapses the full-screen player so the
+    // "Prayer completed" conclusion can take over cleanly.
+    collapseOnStop: !seekThrough,
     };
   };
 
@@ -181,7 +187,8 @@ export default function ScriptureReadingsPage() {
     if (!audioUrl) return;
     cancelChain();
     markPracticeDoneToday("scripture");
-    player.play(baseEpisode(sec));
+    // A single reading ends straight into the conclusion.
+    player.play(baseEpisode(sec, () => setCompleted(true)));
   };
 
   // Play THROUGH the in-scope readings: passage → chime → next passage. Out-of-
@@ -209,6 +216,7 @@ export default function ScriptureReadingsPage() {
           step(); // seek immediately (the element is still playing)
         } else {
           chainActive.current = false;
+          setCompleted(true); // all in-scope readings done → conclusion
         }
       }, !isLast));
     };
@@ -216,6 +224,39 @@ export default function ScriptureReadingsPage() {
   };
 
   if (authLoading || !user) return null;
+
+  // ── Conclusion ─────────────────────────────────────────────────────────────
+  // After the last (or only) reading, leave the list for a quiet "Prayer
+  // completed" slide that carries on to what's next (the home rhythm).
+  if (completed) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "#0C1F12", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "calc(var(--safe-top) + 24px) 32px calc(env(safe-area-inset-bottom) + 32px)", isolation: "isolate" }}>
+        {bgPhoto && (
+          <>
+            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, backgroundImage: `url(${bgPhoto})`, backgroundSize: "cover", backgroundPosition: "center", opacity: 0.4 }} />
+            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.7) 45%, rgba(8,22,15,0.86) 100%)" }} />
+          </>
+        )}
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 360, textAlign: "center" }}>
+          <div style={{ fontSize: 44, marginBottom: 16 }}>🌿</div>
+          <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 26, letterSpacing: "-0.01em", marginBottom: 10 }}>
+            Prayer completed
+          </p>
+          <p style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 17, lineHeight: 1.5, marginBottom: 28 }}>
+            You've heard today's Word — carry it with you.
+          </p>
+          <button
+            type="button"
+            onClick={() => setLocation("/dashboard")}
+            className="w-full rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT, fontSize: 16, fontWeight: 600, padding: "15px" }}
+          >
+            See what's next <span aria-hidden>→</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
