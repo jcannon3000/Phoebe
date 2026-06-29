@@ -31,6 +31,7 @@ import {
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 import { useUnseenNews } from "@/components/NewsClosingSlide";
+import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import { OfficeCloseEvents } from "@/components/OfficeCloseEvents";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -3614,7 +3615,7 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit" | "blessing">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit" | "blessing" | "prompts">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
   // A real prayer close ends on the blessing send-off (the universal final
   // beat). Only "just viewing my rhythm" (?progressOnly=1) skips it and goes
   // straight home.
@@ -3824,7 +3825,7 @@ export default function PrayerModePage() {
   // the warmer #11291C, every other phase is #0C1F12 — so the top of the
   // screen never reads as a different color than the slide under it.
   useEffect(() => {
-    const phaseBg = phase === "closing" || phase === "blessing" ? "#11291C" : "#0C1F12";
+    const phaseBg = phase === "closing" || phase === "blessing" || phase === "prompts" ? "#11291C" : "#0C1F12";
     document.body.style.backgroundColor = phaseBg;
     document.documentElement.style.backgroundColor = phaseBg;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", phaseBg);
@@ -3838,12 +3839,27 @@ export default function PrayerModePage() {
   // POSTs already logged every check-in during the walk, so there's
   // nothing left to record here — we just exit. Mirrors the fade
   // timing handleDone uses so the transition feels the same.
-  const exitToFinish = () => {
+  // The real exit: fade the slideshow out and go home.
+  const reallyExit = () => {
     setSlideVisible(false);
     setTimeout(() => {
       setVisible(false);
       setTimeout(() => setLocation(finishHref), 500);
     }, 300);
+  };
+  // Every close path funnels through exitToFinish. The FIRST time, intercept it
+  // to show the "anything to lift up?" prompts slide (the extra closing slide,
+  // shown once); its Continue then calls reallyExit. So office / devotion /
+  // community closes all end on the prompts before heading home.
+  const promptsShownRef = useRef(false);
+  const exitToFinish = () => {
+    if (!promptsShownRef.current) {
+      promptsShownRef.current = true;
+      setSlideVisible(false);
+      setTimeout(() => { setPhase("prompts"); setSlideVisible(true); }, 240);
+      return;
+    }
+    reallyExit();
   };
 
   // Morning close with no daily reflection ("newsletter"): skip the community
@@ -4502,6 +4518,13 @@ export default function PrayerModePage() {
         )}
         {phase === "blessing" && (
           <PrayerCompletedSlide onDone={exitToFinish} visible={slideVisible} />
+        )}
+        {/* Extra closing slide — seven prompts to write a prayer, each opening
+            an input screen in place. Shown once at the very end of the close. */}
+        {phase === "prompts" && (
+          <div className="w-full" style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.4s ease" }}>
+            <PrayerPromptsSlide onContinue={reallyExit} />
+          </div>
         )}
       </div>
 
