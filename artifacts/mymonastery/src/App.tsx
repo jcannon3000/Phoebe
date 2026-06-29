@@ -32,6 +32,7 @@ import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
 import { syncRoutineFromServer, pushRoutineConfig, type RoutineConfig } from "@/lib/routineSync";
+import { flushHomeLayout } from "@/lib/homeLayoutCache";
 import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
 
@@ -127,6 +128,9 @@ function CustomAnchorServerSync() {
     // Routine settings (office levels, slots, etc.) — same migrate-up-or-adopt
     // sync, so the rhythm matches phone ↔ web (lib/routineSync).
     syncRoutineFromServer(rc);
+    // Home layout — if a save was dropped (iOS suspended the WebView mid-PUT),
+    // re-send it on load so the routine the user set actually lands.
+    flushHomeLayout(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
   }, [user, isLoading]);
   // Any routine-setting change (office method, reflection source, fdd mode,
   // psalm cycle, etc. all fire OFFICE_PREFS_EVENT) pushes the updated routine up

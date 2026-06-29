@@ -25,6 +25,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
+import { saveHomeLayout } from "@/lib/homeLayoutCache";
 import {
   setSideLevel,
   setSideReflection,
@@ -699,9 +700,12 @@ export default function WayOfLoveRuleFlow({
     const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
     // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
     const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
-    apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
+    // Cache the layout locally + PUT through the durable helper, so finishing
+    // the customizer and immediately leaving the app on iOS can't drop the
+    // save (the in-flight PUT would otherwise die with the suspended WebView).
+    saveHomeLayout({ order, hidden, v: HOME_LAYOUT_VERSION })
       .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
-      .catch(() => {/* ignore */});
+      .catch(() => {/* stays cached + dirty; re-pushed next app-active */});
     // Sync the per-device routine settings (office levels, slots, reflection
     // source, fdd mode, psalm cycle, etc.) up so the rhythm matches across
     // devices — every setSide*/setPracticeSlot write is in localStorage by now.

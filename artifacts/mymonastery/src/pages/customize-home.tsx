@@ -6,6 +6,7 @@ import { ChevronLeft, GripVertical, Plus, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { saveHomeLayout } from "@/lib/homeLayoutCache";
 import { getSideLevel, setSideLevel, type OfficeLevel } from "@/lib/officePrefs";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 
@@ -171,8 +172,10 @@ function useHomeLayout(user: AuthUser) {
   });
 
   const saveLayout = useMutation({
+    // Durable: caches the layout locally + retries, so a dropped PUT (e.g. an
+    // iOS WebView suspended right after saving) can't lose the change.
     mutationFn: (layout: { order: string[]; hidden: string[] }) =>
-      apiRequest("PUT", "/api/me/home-layout", { ...layout, v: HOME_LAYOUT_VERSION }),
+      saveHomeLayout({ ...layout, v: HOME_LAYOUT_VERSION }),
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: ["/api/auth/me"] });
       const prev = queryClient.getQueryData(["/api/auth/me"]);

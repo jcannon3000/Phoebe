@@ -7,6 +7,7 @@ import {
 } from "@/lib/persistentAuth";
 import { clearIdbCache } from "@/lib/idbCache";
 import { clearCustomAnchorStorage } from "@/lib/customAnchors";
+import { applyCachedHomeLayout } from "@/lib/homeLayoutCache";
 
 // Phoebe Parish — derived server-side from beta_users + group_members
 // + users.parish_feed_id + users.offices_only. "full" sees everything
@@ -104,7 +105,7 @@ async function fetchMe(): Promise<AuthUser | null> {
     if (retry.status === 401) return null;
     if (!retry.ok) throw new Error("Failed to fetch user");
     const user = (await retry.json()) as AuthUser;
-    return user;
+    return applyCachedHomeLayout(user);
   }
   if (!res.ok) throw new Error("Failed to fetch user");
   const user = (await res.json()) as AuthUser;
@@ -112,7 +113,10 @@ async function fetchMe(): Promise<AuthUser | null> {
   // so we can recover from a future cookie loss. No-op on subsequent
   // loads (helper short-circuits when a token is already stored).
   ensurePersistentToken().catch(() => {});
-  return user;
+  // If a just-set routine hasn't reached the server yet (PUT dropped to an iOS
+  // WebView suspension), the locally-cached layout is the user's true latest
+  // intent — let it win until the re-push lands (lib/homeLayoutCache).
+  return applyCachedHomeLayout(user);
 }
 
 export function useAuth() {

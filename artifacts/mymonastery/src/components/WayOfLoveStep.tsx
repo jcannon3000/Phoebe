@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
+import { saveHomeLayout, HOME_LAYOUT_VERSION } from "@/lib/homeLayoutCache";
 import { computeTurnConsistency, engagementDays, type EngagementOfficeDay } from "@/lib/turnConsistency";
 import {
   setSideLevel,
@@ -269,13 +270,14 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     // panels are hidden (addable later from Customize). Stamped with the
     // current home-layout version so it persists past the reset.
     {
-      const HOME_LAYOUT_VERSION = 2; // keep in sync with dashboard.tsx / customize-home.tsx
       const otherNewsletters = (["cac", "fdd", "ssje"] as const).filter((n) => n !== reflectionChoice);
       const order = ["requests", "contemplation", "office", reflectionChoice, "feeds", "gratitude", "examen", "ncmp", "podcasts", ...otherNewsletters];
       const hidden = ["feeds", "gratitude", "examen", "ncmp", "podcasts", ...otherNewsletters];
-      apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
+      // Durable save (caches locally + retries) so an iOS WebView suspension
+      // right after committing can't drop the layout.
+      saveHomeLayout({ order, hidden, v: HOME_LAYOUT_VERSION })
         .then(() => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }))
-        .catch(() => {/* ignore */});
+        .catch(() => {/* stays cached + dirty; re-pushed next app-active */});
     }
     setStep("committed");
   };

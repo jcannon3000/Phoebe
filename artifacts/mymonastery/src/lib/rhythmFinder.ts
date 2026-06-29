@@ -12,6 +12,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { setSideLevel } from "@/lib/officePrefs";
 import { setJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
+import { saveHomeLayout } from "@/lib/homeLayoutCache";
 
 // ——— Question model (drives the slideshow UI) ———
 
@@ -276,7 +277,9 @@ export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...otherReflections];
   // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
   const hidden = ["ncmp", "podcasts", ...extrasOff, ...otherReflections];
-  await apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION }).catch(() => { /* best-effort */ });
+  // Durable save (caches locally + retries) so an iOS WebView suspension right
+  // after applying the rhythm can't drop the layout.
+  await saveHomeLayout({ order, hidden, v: HOME_LAYOUT_VERSION }).catch(() => { /* stays cached + dirty; re-pushed next app-active */ });
 
   // Per-device choices the customizer also sets.
   try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
