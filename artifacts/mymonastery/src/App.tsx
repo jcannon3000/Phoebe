@@ -111,9 +111,34 @@ function CustomAnchorServerSync() {
   // edit.
   useEffect(() => {
     qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    const refresh = () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    // Re-pull the user (it carries ruleConfig + customAnchors) whenever the app
+    // returns to the foreground, so a routine/ritual edited on ANOTHER device is
+    // adopted here. Native fires `phoebe:appactive`; the web/PWA has no such
+    // event and refetchOnWindowFocus is off — so we ALSO listen for tab
+    // visibility + window focus. Without this, an already-open web tab keeps a
+    // stale ruleConfig all day and never picks up a routine changed on iOS.
+    // Throttled to 8s: it's only the small auth query, but a quick app-switch
+    // shouldn't refetch on every focus tick.
+    let lastAt = 0;
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastAt < 8000) return;
+      lastAt = now;
+      // Returning to the foreground — re-send a home layout whose save never
+      // reached the server (dropped to an iOS WebView suspension). No-op unless
+      // something is pending (lib/homeLayoutCache).
+      flushHomeLayout(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    };
     window.addEventListener("phoebe:appactive", refresh);
-    return () => window.removeEventListener("phoebe:appactive", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("phoebe:appactive", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
   }, [qc]);
   // Re-sync whenever the server snapshot's CONTENT changes (not just once per
   // user.id) — so a ritual pushed from another device is imported, not ignored.
@@ -328,6 +353,7 @@ const PrayerListPage = lazy(() => import("./pages/prayer-list"));
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
 const DailyProgressPage = lazy(() => import("./pages/daily-progress"));
+const RoutinePrintPage = lazy(() => import("./pages/routine-print"));
 const RuleOfLifePage = lazy(() => import("./pages/rule-of-life"));
 const RuleOfLifeViewPage = lazy(() => import("./pages/rule-of-life-view"));
 const BeginPrayerPage = lazy(() => import("./pages/begin-prayer"));
@@ -1004,6 +1030,7 @@ function Router() {
       <Route path="/settings" component={SettingsPage} />
       <Route path="/daily-practice" component={DailyPracticePage} />
       <Route path="/daily-progress" component={DailyProgressPage} />
+      <Route path="/routine-print" component={RoutinePrintPage} />
       {/* /rule-of-life/:id must sit above /rule-of-life so the id param isn't lost */}
       <Route path="/rule-of-life/:id" component={RuleOfLifeViewPage} />
       <Route path="/rule-of-life" component={RuleOfLifePage} />
@@ -1181,6 +1208,45 @@ function ForegroundRefresh() {
   return null;
 }
 
+// Android hardware Back button. Without a handler the first Back press exits the
+// app from anywhere. Route Back through the WebView history so it navigates
+// within Phoebe; from a root screen, minimise (background) rather than kill the
+// app so timers/audio/state survive — like the iOS home gesture. No-op on iOS
+// (no hardware Back) and on plain web (no Capacitor runtime). Registered via the
+// window.Capacitor.Plugins shim to match the app's other native access points.
+function AndroidBackButton() {
+  useEffect(() => {
+    type BackEv = { canGoBack?: boolean };
+    type AppPlugin = {
+      addListener?: (
+        event: "backButton",
+        cb: (ev: BackEv) => void,
+      ) => Promise<{ remove: () => void }> | { remove: () => void };
+      minimizeApp?: () => void;
+    };
+    const appPlugin = (window as unknown as {
+      Capacitor?: { Plugins?: { App?: AppPlugin } };
+    }).Capacitor?.Plugins?.App;
+    if (!appPlugin?.addListener) return; // not Android native — nothing to wire
+
+    let handle: { remove: () => void } | null = null;
+    const onBack = (ev: BackEv) => {
+      // Trust Capacitor's own canGoBack (computed from the WebView history);
+      // fall back to history length if it's ever absent.
+      const canGoBack = typeof ev?.canGoBack === "boolean"
+        ? ev.canGoBack
+        : window.history.length > 1;
+      if (canGoBack) window.history.back();
+      else appPlugin.minimizeApp?.();
+    };
+    Promise.resolve(appPlugin.addListener("backButton", onBack))
+      .then((h) => { handle = h; })
+      .catch(() => { /* listener unavailable — no-op */ });
+    return () => { try { handle?.remove(); } catch { /* ignore */ } };
+  }, []);
+  return null;
+}
+
 // The in-app browser's bottom-bar Journal button dismisses the browser and
 // fires `phoebe:open-journal` from native; take the reader to the journal.
 function NativeJournalOpener() {
@@ -1229,6 +1295,7 @@ function App() {
           <ServerDownScreen />
           <DayBoundaryRefresh />
           <ForegroundRefresh />
+          <AndroidBackButton />
           <NotificationTapPrewarm />
           <PullToRefresh />
           <PageFadeOverlay />

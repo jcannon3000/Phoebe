@@ -274,6 +274,23 @@ export default function PodcastShowPage() {
               {followed ? "✓ On your home" : "+ Add to home"}
             </button>
           )}
+          {/* Scripture Day by Day reads four passages a day — jump straight to
+              hearing any one of them (OT, Psalm, NT, Gospel). */}
+          {slug === "scripture-day-by-day" && (
+            <button
+              type="button"
+              onClick={() => setLocation("/scripture/readings")}
+              style={{
+                marginTop: 12,
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "#2D5E3F", border: "1px solid rgba(168,197,160,0.4)",
+                color: PALETTE.warm, fontFamily: FONT, fontSize: 13.5, fontWeight: 700,
+                padding: "10px 18px", borderRadius: 999, cursor: "pointer",
+              }}
+            >
+              📖 Listen reading by reading →
+            </button>
+          )}
         </div>
 
         {isLoading && episodes.length === 0 ? (

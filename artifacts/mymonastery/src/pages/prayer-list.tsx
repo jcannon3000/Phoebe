@@ -1373,6 +1373,32 @@ export default function PrayerListPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
+  // "Keep praying" on the released popup — renew brings the prayer back for
+  // another 7 days (clears the released state) instead of letting it rest.
+  const renewReleasedMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/released-unread"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
+    },
+  });
+  // The X closes the popup without deciding — it resurfaces next visit if the
+  // release is still unacknowledged. Advance steps to the next released prayer.
+  const [releasedDismissed, setReleasedDismissed] = useState(false);
+  const advanceReleased = () => setReleasedIndex((i) => (i + 1 < released.length ? i + 1 : 0));
+
+  // The viewer's OWN past prayers (released / answered / expired) — for the
+  // collapsible "Past prayers" section on the mine tab, each renewable.
+  // /mine/past returns the array directly (not wrapped).
+  const { data: pastMineData } = useQuery<Array<{ id: number; body: string }>>({
+    queryKey: ["/api/prayer-requests/mine/past"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/mine/past"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const pastMine = pastMineData ?? [];
+  const [showPast, setShowPast] = useState(false);
 
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   // When non-null, the page collapses to a single category + a back button.
@@ -1580,13 +1606,20 @@ export default function PrayerListPage() {
                     const sub = it.kind === "person" ? it.body : "";
                     return (
                       <div key={it.id} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+                        {/* Same shell + green accent + 🙏 as a community prayer — a prayer
+                            kept on your list reads as just another prayer; the eyebrow is
+                            the only tell that it's private to you. */}
+                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
                         <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
-                          <span aria-hidden className="text-base flex-shrink-0">{it.kind === "person" ? "🙏" : "🕊️"}</span>
+                          <span aria-hidden className="text-base flex-shrink-0">🙏</span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-snug" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{head}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
+                              {it.shared
+                                ? t("intentions.shared_label", { defaultValue: "Shared with community" })
+                                : t("intentions.private_label", { defaultValue: "Private to you" })}
+                            </p>
+                            <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{head}</p>
                             {sub && <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", wordBreak: "break-word" }}>{sub}</p>}
-                            {it.shared && <p className="text-[10.5px] mt-1" style={{ color: "rgba(96,140,180,0.95)" }}>✓ {t("intentions.shared", { defaultValue: "Shared — others are praying along" })}</p>}
                           </div>
                           <button
                             type="button"
@@ -1629,6 +1662,46 @@ export default function PrayerListPage() {
               <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {t("intentions.empty", { defaultValue: "Add the people and things you want to keep in prayer. They stay private until you choose to share." })}
               </p>
+            )}
+
+            {/* Past prayers — released / ended / answered ones, collapsed behind a
+                button; tap Renew on the right to bring one back. Shown regardless
+                of whether the active list is empty. */}
+            {pastMine.length > 0 && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPast((s) => !s)}
+                  className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
+                >
+                  🕯️ {t("intentions.past_prayers", { defaultValue: "Past prayers" })} ({pastMine.length}) {showPast ? "▴" : "▾"}
+                </button>
+                {showPast && (
+                  <div className="flex flex-col gap-2 mt-2">
+                    {pastMine.map((p) => (
+                      <div key={`past-${p.id}`} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.22)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.35)" }}>
+                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(143,175,150,0.4)" }} />
+                        <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.45)" }}>{t("intentions.past_label", { defaultValue: "Past prayer" })}</p>
+                            <p className="text-sm leading-snug line-clamp-2" style={{ color: "rgba(240,237,230,0.8)", wordBreak: "break-word" }}>{p.body}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => renewReleasedMutation.mutate(p.id)}
+                            disabled={renewReleasedMutation.isPending}
+                            className="flex-shrink-0 rounded-full transition-opacity hover:opacity-90"
+                            style={{ padding: "8px 16px", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#F0EDE6", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", cursor: renewReleasedMutation.isPending ? "wait" : "pointer" }}
+                          >
+                            {t("intentions.renew", { defaultValue: "Renew" })}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}
@@ -1815,7 +1888,7 @@ export default function PrayerListPage() {
 
       {/* Released-prayer closing popup (unchanged) */}
       <AnimatePresence>
-        {currentReleased && (
+        {currentReleased && !releasedDismissed && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1841,6 +1914,7 @@ export default function PrayerListPage() {
               exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
               style={{
+                position: "relative",
                 background: "#0F2818",
                 border: "1px solid rgba(46,107,64,0.4)",
                 borderRadius: 20,
@@ -1853,6 +1927,15 @@ export default function PrayerListPage() {
                 color: "#F0EDE6",
               }}
             >
+              {/* Close without deciding — resurfaces next visit if still unacknowledged. */}
+              <button
+                type="button"
+                onClick={() => setReleasedDismissed(true)}
+                aria-label="Close"
+                style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(240,237,230,0.6)", fontSize: 20, lineHeight: 1, cursor: "pointer" }}
+              >
+                ×
+              </button>
               <p style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(143,175,150,0.7)", marginBottom: 10 }}>
                 Your prayer has been released
               </p>
@@ -1886,30 +1969,44 @@ export default function PrayerListPage() {
                   {currentReleased.amenCount === 1 ? "time prayed" : "times prayed"} by your community
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  acknowledgeReleaseMutation.mutate(currentReleased.id);
-                  if (releasedIndex + 1 < released.length) {
-                    setReleasedIndex((i) => i + 1);
-                  } else {
-                    setReleasedIndex(0);
-                  }
-                }}
-                className="rounded-full transition-opacity hover:opacity-90"
-                style={{
-                  background: "#2D5E3F",
-                  color: "#F0EDE6",
-                  padding: "10px 32px",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  border: "none",
-                  cursor: acknowledgeReleaseMutation.isPending ? "wait" : "pointer",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                Amen 🙏🏽
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "stretch", maxWidth: 280, margin: "0 auto" }}>
+                {/* Amen — let it rest (acknowledge the release). */}
+                <button
+                  type="button"
+                  onClick={() => { acknowledgeReleaseMutation.mutate(currentReleased.id); advanceReleased(); }}
+                  className="rounded-full transition-opacity hover:opacity-90"
+                  style={{
+                    background: "#2D5E3F",
+                    color: "#F0EDE6",
+                    padding: "11px 32px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: acknowledgeReleaseMutation.isPending ? "wait" : "pointer",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  Amen 🙏🏽
+                </button>
+                {/* Keep praying — renew it for another 7 days instead of letting it go. */}
+                <button
+                  type="button"
+                  onClick={() => { renewReleasedMutation.mutate(currentReleased.id); advanceReleased(); }}
+                  className="rounded-full transition-opacity hover:opacity-80"
+                  style={{
+                    background: "rgba(200,212,192,0.06)",
+                    color: "#8FAF96",
+                    padding: "11px 32px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    cursor: renewReleasedMutation.isPending ? "wait" : "pointer",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  Renew for 7 days
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

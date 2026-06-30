@@ -498,7 +498,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               return (
                 <button
                   type="button"
-                  onClick={() => { cfg.mark(); openExternal(cfg.url); }}
+                  onClick={() => { cfg.mark(); openExternal(cfg.url, { reader: true }); }}
                   style={{
                     background: cfg.bg,
                     color: isEvening ? EP_TEXT : CREAM,

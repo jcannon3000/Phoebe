@@ -27,16 +27,18 @@ function todayYmd(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// The day's four citations, parsed from the cached feed (cheap). Empty if the
-// feed can't be reached — never throws, so it can't break the timestamps read.
-async function readingsForToday(): Promise<ReturnType<typeof parseScriptureReadings>> {
+// Today's episode from the cached feed (cheap): the four parsed citations PLUS
+// the episode guid, so the read can tell whether a stored alignment is actually
+// for the CURRENT episode. Never throws — can't break the timestamps read.
+async function todayEpisode(): Promise<{ readings: ReturnType<typeof parseScriptureReadings>; guid: string | null }> {
   try {
     const showMeta = SHOWS[SCRIPTURE_SOURCE];
-    if (!showMeta) return [];
+    if (!showMeta) return { readings: [], guid: null };
     const feed = await loadFeed(showMeta, 1);
-    return parseScriptureReadings(feed.episodes[0]?.description);
+    const ep = feed.episodes[0];
+    return { readings: parseScriptureReadings(ep?.description), guid: ep?.id ?? ep?.audioUrl ?? null };
   } catch {
-    return [];
+    return { readings: [], guid: null };
   }
 }
 
@@ -58,7 +60,8 @@ router.get("/podcast/scripture/timestamps", async (req: Request, res: Response):
 
   // Citations are useful even before the timeline exists; only spend the feed
   // read for today (past days just serve whatever was stored).
-  const readings = isToday ? await readingsForToday() : [];
+  const today = isToday ? await todayEpisode() : { readings: [], guid: null };
+  const readings = today.readings;
 
   // Self-heal: if today's stored timeline predates the deterministic
   // announcement matcher (an old "openai"/"heuristic" aligner), re-run it once
@@ -66,6 +69,18 @@ router.get("/podcast/scripture/timestamps", async (req: Request, res: Response):
   // so the client polls for the new one.
   if (isToday && row?.status === "done" && !String(row.aligner ?? "").startsWith("announce")) {
     triggerOnce(`scripture-realign:${episodeDate}`, () => buildScriptureAlignment({ force: true }));
+    res.json({ episodeDate, status: "building", readings, sections: [] });
+    return;
+  }
+
+  // Self-heal: the stored alignment is for a DIFFERENT episode than the feed's
+  // current one. This happens when the align job ran before today's episode
+  // published (~06:30 UTC) and transcribed YESTERDAY's audio, then saved it under
+  // today's date — so the freshly-parsed `readings` above (today's) never match
+  // the stale stored `sections` (yesterday's), and no Listen pill appears. Re-align
+  // against the current episode; serve "building" until it's redone.
+  if (isToday && row?.status === "done" && today.guid && row.episodeGuid && row.episodeGuid !== today.guid) {
+    triggerOnce(`scripture-realign:${episodeDate}:${today.guid}`, () => buildScriptureAlignment({ force: true }));
     res.json({ episodeDate, status: "building", readings, sections: [] });
     return;
   }

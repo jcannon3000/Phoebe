@@ -289,7 +289,7 @@ export default function CommunityReflectionPage() {
           type="button"
           onClick={() => {
             meta.markRead();
-            void openExternal(meta.url);
+            void openExternal(meta.url, { reader: true });
           }}
           className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99] mb-3"
           style={{

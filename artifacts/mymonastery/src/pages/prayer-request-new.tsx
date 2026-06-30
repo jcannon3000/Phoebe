@@ -110,17 +110,23 @@ export default function PrayerRequestNew() {
   // private — life-events / justice are inherently community asks. A private
   // item can also be "a person" (name + optional note), like the prayer list.
   const [dest, setDest] = useState<"share" | "list">(() => {
-    try { return new URLSearchParams(search).get("dest") === "list" ? "list" : "share"; }
-    catch { return "share"; }
+    // Default to keeping it private ("Keep on my list"): a plain request opens
+    // with private pre-selected. Life-events / justice are inherently community
+    // asks, so they default to sharing. ?dest=share|list can still override.
+    try {
+      const p = new URLSearchParams(search).get("dest");
+      if (p === "share") return "share";
+      if (p === "list") return "list";
+    } catch {}
+    return kind === "request" ? "list" : "share";
   });
-  const [listKind, setListKind] = useState<"text" | "person">("text");
-  const [personName, setPersonName] = useState("");
   // One calm landscape behind the page, picked once and faded gently up under a
   // dark wash (matching the office/Co-Breathe slides).
   const bgPhoto = useMemo(
     () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
   );
+  // How long the garden carries it — a 1–7 day dropdown, default 3.
   // Share cadence, encoded in `days`: -1 = one time (surfaces first, leaves a
   // person's list once they've prayed it, 7-day expiry), 0 = ongoing. Default
   // one-time.
@@ -150,6 +156,8 @@ export default function PrayerRequestNew() {
       apiRequest("POST", "/api/prayer-requests", {
         body: body.trim(),
         isAnonymous: false,
+        // "Ongoing" (days === 0) skips the day-clock — the server gives it a
+        // far-future expiry; otherwise carry it for the chosen number of days.
         ...(days === 0 ? { ongoing: true } : days === -1 ? { oneTime: true } : { durationDays: days }),
         kind,
         // Life-event only: a title + the date (sent as LOCAL noon so the
@@ -173,12 +181,10 @@ export default function PrayerRequestNew() {
     },
   });
 
-  // Private list: add to prayer_intentions instead of sharing. Text or a person.
+  // Private list: add to prayer_intentions instead of sharing — just the text.
   const addToListMutation = useMutation({
     mutationFn: () =>
-      apiRequest("POST", "/api/prayer-intentions", listKind === "person"
-        ? { kind: "person", personName: personName.trim(), body: body.trim() }
-        : { kind: "text", body: body.trim() }),
+      apiRequest("POST", "/api/prayer-intentions", { kind: "text", body: body.trim() }),
     onSuccess: () => {
       triggerSubmitFeedback();
       qc.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
@@ -216,19 +222,14 @@ export default function PrayerRequestNew() {
     },
   });
 
-  // Private-list submit needs either a name (person) or body text (intention);
-  // sharing always needs body text.
-  const canSubmit = dest === "list" && listKind === "person"
-    ? personName.trim().length > 0
-    : body.trim().length > 0;
+  // Always just needs the prayer text — whether kept private or shared.
+  const canSubmit = body.trim().length > 0;
   const submitting = createMutation.isPending || addToListMutation.isPending;
 
   // One slide now: validate, then submit. (Life events also carry a title + date.)
   function handleSubmit() {
     if (dest === "list") {
-      if (listKind === "person" ? personName.trim().length === 0 : body.trim().length === 0) {
-        setError(t("prayer_request.write_request_first")); return;
-      }
+      if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
       setError("");
       addToListMutation.mutate();
       return;
@@ -303,8 +304,8 @@ export default function PrayerRequestNew() {
           {!isLifeEvent && kind === "request" && (
             <div className="w-full flex gap-2">
               {([
-                ["share", t("prayer_request.dest_share", { defaultValue: "Share with community" })],
                 ["list", t("prayer_request.dest_list", { defaultValue: "Keep on my list" })],
+                ["share", t("prayer_request.dest_share", { defaultValue: "Share with community" })],
               ] as const).map(([val, label]) => {
                 const on = dest === val;
                 return (
@@ -316,35 +317,6 @@ export default function PrayerRequestNew() {
                 );
               })}
             </div>
-          )}
-
-          {/* Private list can be a free intention OR a person (name + note). */}
-          {dest === "list" && (
-            <div className="w-full flex gap-2">
-              {([
-                ["text", t("intentions.an_intention", { defaultValue: "An intention" })],
-                ["person", t("intentions.a_person", { defaultValue: "A person" })],
-              ] as const).map(([val, label]) => {
-                const on = listKind === val;
-                return (
-                  <button key={val} type="button" onClick={() => { setListKind(val); setError(""); }}
-                    className="flex-1 rounded-full text-[12.5px] font-semibold py-2 transition-opacity active:scale-[0.98]"
-                    style={{ fontFamily: SPACE, color: on ? CREAM : SAGE, background: on ? "rgba(96,140,180,0.32)" : GLASS, border: `1px solid ${on ? "rgba(96,140,180,0.5)" : GLASS_BORDER}` }}>
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {dest === "list" && listKind === "person" && (
-            <input
-              type="text"
-              value={personName}
-              onChange={(e) => { setPersonName(e.target.value.slice(0, 80)); setError(""); }}
-              placeholder={t("intentions.name_ph", { defaultValue: "Their name" })}
-              className="w-full px-5 py-3.5 text-[15px]"
-              style={{ ...glassField, fontFamily: SPACE }}
-            />
           )}
 
           {/* Life-event: a short title + the date it happens. */}
@@ -380,9 +352,7 @@ export default function PrayerRequestNew() {
             onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
             rows={4}
             placeholder={dest === "list"
-              ? (listKind === "person"
-                  ? t("intentions.note_ph", { defaultValue: "What are you praying for them? (optional)" })
-                  : t("intentions.text_ph", { defaultValue: "What are you praying for?" }))
+              ? t("intentions.text_ph", { defaultValue: "What are you praying for?" })
               : copy.placeholder}
             className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
             style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}

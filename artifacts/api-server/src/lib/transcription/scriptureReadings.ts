@@ -75,12 +75,15 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// A scripture reference: a known book name, an optional trailing period, then
-// at least one number, then an optional run of chapter/verse punctuation that
-// must END on a digit — so a trailing ", " before the next reader name is left
-// out, while a multi-part psalm ("Psalm 107:33-43, 108") is captured whole.
+// A scripture reference: a known book name, an optional trailing period, then a
+// chapter[:verse][-range] spec, then any number of comma-separated extra parts
+// (a multi-part psalm — "Psalm 107:33-43, 108" / "Psalms 97, 99, 100"). The
+// negative lookahead `(?!\s+[A-Za-z])` stops a continuation from swallowing the
+// number of a FOLLOWING book: in "Psalm 33, 1 Peter 1:3-9" the ", 1" is left
+// alone (it's "1 Peter"), so the epistle reading isn't lost.
+const VERSE_SPEC = "\\d+(?:[:.]\\d+)?(?:[-–—]\\d+(?:[:.]\\d+)?)?";
 const CITATION_RE = new RegExp(
-  `\\b(?:${BOOK_NAMES.map(escapeRe).join("|")})\\.?\\s+\\d+(?:[\\s,:;\\-–—\\d]*\\d)?`,
+  `\\b(?:${BOOK_NAMES.map(escapeRe).join("|")})\\.?\\s+${VERSE_SPEC}(?:\\s*,\\s*${VERSE_SPEC}(?!\\s+[A-Za-z]))*`,
   "gi",
 );
 

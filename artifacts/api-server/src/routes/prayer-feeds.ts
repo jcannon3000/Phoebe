@@ -1,5 +1,5 @@
 import { Router, type IRouter, type RequestHandler } from "express";
-import { and, asc, desc, eq, gte, lte, sql, or, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql, or, isNull, isNotNull } from "drizzle-orm";
 import {
   db,
   prayerFeedsTable,
@@ -618,18 +618,31 @@ router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> =>
 // to userId), so opening it up doesn't leak anyone else's data.
 router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
-  const subs = await db
-    .select({
-      feed: prayerFeedsTable,
-    })
-    .from(prayerFeedSubscriptionsTable)
-    .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
-    .where(and(
-      eq(prayerFeedSubscriptionsTable.userId, user.id),
-      // Feeds turned "off" (paused) leave the dashboard card list for
-      // existing subscribers; only live feeds surface here.
-      eq(prayerFeedsTable.state, "live"),
-    ));
+  // The home feed list = feeds the user personally subscribes to UNION feeds
+  // bound to any community they've joined — so a member who joined AFTER a feed
+  // was attached (and so was never caught by the bind-time auto-subscribe) still
+  // sees it on home, not only those auto-subscribed at attach time.
+  const [subRows, groupFeedRows] = await Promise.all([
+    db.select({ feedId: prayerFeedSubscriptionsTable.feedId })
+      .from(prayerFeedSubscriptionsTable)
+      .where(eq(prayerFeedSubscriptionsTable.userId, user.id)),
+    db.select({ feedId: prayerFeedGroupsTable.feedId })
+      .from(prayerFeedGroupsTable)
+      .innerJoin(groupMembersTable, and(
+        eq(groupMembersTable.groupId, prayerFeedGroupsTable.groupId),
+        eq(groupMembersTable.userId, user.id),
+        isNotNull(groupMembersTable.joinedAt),
+      )),
+  ]);
+  const feedIds = Array.from(new Set([
+    ...subRows.map((r) => r.feedId),
+    ...groupFeedRows.map((r) => r.feedId),
+  ]));
+  // Feeds turned "off" (paused) leave the dashboard card list; only live feeds surface here.
+  const subs = feedIds.length === 0 ? [] : await db
+    .select({ feed: prayerFeedsTable })
+    .from(prayerFeedsTable)
+    .where(and(inArray(prayerFeedsTable.id, feedIds), eq(prayerFeedsTable.state, "live")));
 
   const viewerEmail = await viewerEmailFor(user.id);
   const byFeed = await loadFeedIntercessions(

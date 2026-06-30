@@ -58,9 +58,19 @@ export default function DailyProgressPage() {
             <Sliders size={14} /> {t("daily_progress.customize", { defaultValue: "Shape your rhythm" })}
           </Link>
         </div>
-        <p className="text-sm mb-5" style={{ color: SAGE }}>
+        <p className="text-sm mb-3" style={{ color: SAGE }}>
           {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
         </p>
+
+        {/* Paper version — print / save the weekly rhythm as a PDF, for anyone
+            who'd rather keep it off the screen. */}
+        <Link
+          href="/routine-print"
+          className="inline-flex items-center gap-1.5 mb-5 transition-opacity hover:opacity-80"
+          style={{ color: SAGE, fontFamily: FONT, fontSize: 13, fontWeight: 600 }}
+        >
+          🖨️ {t("daily_progress.print_weekly", { defaultValue: "Print a weekly version (PDF)" })} →
+        </Link>
 
         <DailyProgressBody />
       </div>

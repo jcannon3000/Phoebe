@@ -10,9 +10,9 @@ import {
 // return page. We still mark the source read so the Daily-progress "Reflect"
 // anchor + home cards update. Select sound handled centrally by MenuHub.
 export default function MenuReflectionsPage() {
-  const openFdd = () => { markFddRead(); openExternal(FDD_TODAY_URL); };
-  const openSsje = () => { markSsjeRead(); openExternal(SSJE_TODAY_URL); };
-  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL); };
+  const openFdd = () => { markFddRead(); openExternal(FDD_TODAY_URL, { reader: true }); };
+  const openSsje = () => { markSsjeRead(); openExternal(SSJE_TODAY_URL, { reader: true }); };
+  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL, { reader: true }); };
 
   return (
     <MenuHub

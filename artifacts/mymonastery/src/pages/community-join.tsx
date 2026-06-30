@@ -311,7 +311,12 @@ export default function CommunityJoinPage() {
   // signup slides; those start from autoJoinStatus="idle" because
   // `user` is null.
   useEffect(() => {
-    if (autoJoinStatus === "success" || autoJoinStatus === "already") {
+    // A fresh join lands on the home screen — the group's content already
+    // surfaces there, so there's no need to drop them on the group page.
+    // A returning member who re-opens an invite still goes to the group.
+    if (autoJoinStatus === "success") {
+      setLocation("/dashboard");
+    } else if (autoJoinStatus === "already") {
       setLocation(`/communities/${slug}`);
     }
   }, [autoJoinStatus, slug, setLocation]);

@@ -506,6 +506,8 @@ export default function WayOfLoveRuleFlow({
   // from the saved choice; persisted on tap (localStorage, per-device).
   const [journalingSlot, setJournalingSlotState] = useState<CustomSlot>(() => getJournalingSlot());
   const chooseJournalingSlot = (s: CustomSlot) => { touchedRef.current = true; setJournalingSlotState(s); setJournalingSlot(s); };
+  const [readingSlot, setReadingSlotState] = useState<CustomSlot>(() => getPracticeSlot("reading"));
+  const chooseReadingSlot = (s: CustomSlot) => { touchedRef.current = true; setReadingSlotState(s); setPracticeSlot("reading", s); };
   // Reading ritual toggle — when on, the new practice is logged by an amount
   // (chapter / page / time) instead of a plain check, with an optional daily goal.
   const [customIsReading, setCustomIsReading] = useState(false);
@@ -1434,6 +1436,38 @@ export default function WayOfLoveRuleFlow({
                       key={s}
                       type="button"
                       onClick={() => chooseJournalingSlot(s)}
+                      style={{
+                        ...FROST_BLUR,
+                        background: on ? CARD_ACTIVE : CARD,
+                        border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                        color: on ? CREAM : SAGE,
+                        borderRadius: 10, padding: "9px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
+                        fontFamily: FONT, cursor: "pointer", textAlign: "center",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* When they read — so the Reading card slots into the rhythm at that
+              time of day (mirrors journaling above). */}
+          {extras.reading && (
+            <div style={{ margin: "-4px 0 4px", padding: "0 2px" }}>
+              <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
+                {t("wol_rule.reading_when", { defaultValue: "When do you read?" })}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
+                {CUSTOM_SLOTS.map((s) => {
+                  const on = readingSlot === s;
+                  const label = SLOT_LABEL[s];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => chooseReadingSlot(s)}
                       style={{
                         ...FROST_BLUR,
                         background: on ? CARD_ACTIVE : CARD,

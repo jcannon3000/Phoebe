@@ -11,7 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, HandHeart, ChevronRight } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, ChevronRight } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { MomentCard, type Moment } from "@/pages/dashboard";
@@ -389,95 +389,6 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
   );
 }
 
-// ─── Service-time pill row ────────────────────────────────────────────────
-// One pill per service time, rendered on a single line. When the row
-// overflows the container width (narrow phone + many times) we switch to
-// Admin-only "Ask your community: how can I pray for you?" card.
-// Sends a push + email to every joined member (per-user dedup on the
-// email side), rate-limited server-side to once per 7 days. Card body
-// state mirrors the cooldown:
-//   • Available → primary action button is live
-//   • Cooldown → button disabled, subtitle shows "Available in N days"
-function PrayerInviteCard({ slug }: { slug: string }) {
-  const { t } = useTranslation();
-  const [, setLocation] = useLocation();
-  const search = useSearch();
-  // The /ask page redirects back here with ?invited=1 right after a
-  // successful send — surface a one-time "Sent" confirmation.
-  const justSent = new URLSearchParams(search).get("invited") === "1";
-
-  const { data: status, isLoading } = useQuery<{
-    available: boolean;
-    lastSentAt: string | null;
-    nextEligibleAt: string | null;
-  }>({
-    queryKey: [`/api/groups/${slug}/prayer-invite-status`],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-invite-status`),
-    enabled: !!slug,
-  });
-
-  const daysLeft = (() => {
-    if (!status?.nextEligibleAt) return 0;
-    const ms = new Date(status.nextEligibleAt).getTime() - Date.now();
-    if (ms <= 0) return 0;
-    return Math.ceil(ms / (24 * 60 * 60 * 1000));
-  })();
-
-  const available = status?.available ?? false;
-
-  return (
-    <>
-      <div
-        className="rounded-xl px-4 py-3.5 mb-4"
-        style={{
-          background: "rgba(46,107,64,0.08)",
-          border: "1px solid rgba(46,107,64,0.22)",
-        }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-1"
-              style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
-            >
-              {t("community_detail.ask_your_community")}
-            </p>
-            <p
-              className="text-base font-semibold"
-              style={{ color: "#F0EDE6", fontFamily: FONT, margin: 0 }}
-            >
-              {t("community_detail.how_can_i_pray")}
-            </p>
-            <p
-              className="text-[12px] mt-1 leading-relaxed"
-              style={{ color: "rgba(168,197,160,0.7)", fontFamily: FONT }}
-            >
-              {justSent
-                ? t("community_detail.invite_sent")
-                : isLoading
-                  ? "…"
-                  : available
-                    ? t("community_detail.invite_available")
-                    : t("community_detail.invite_available_in", { count: daysLeft })}
-            </p>
-          </div>
-          <button
-            onClick={() => setLocation(`/communities/${slug}/ask`)}
-            disabled={!available || justSent}
-            className="shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-opacity disabled:opacity-40"
-            style={{
-              background: "#2D5E3F",
-              color: "#F0EDE6",
-              fontFamily: FONT,
-            }}
-          >
-            <HandHeart size={13} className="inline mr-1" /> {t("community_detail.send")}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
 
 // Daily-reflection entry card — beta-only. Surfaces today's source
 // (CAC Daily Reflection or Forward Day by Day) + how many community
@@ -1505,10 +1416,13 @@ export default function CommunityDetailPage() {
   const search = useSearch();
   const initialTab = (() => {
     const tabParam = new URLSearchParams(search).get("tab");
-    return (["home", "prayer", "practices", "gatherings", "announcements", "members"] as const)
-      .find((k) => k === tabParam) ?? "home";
+    // General groups land on a simple "hub" of tiles (Members · Events ·
+    // Practices) rather than a home-screen clone. Only the surviving sections
+    // are deep-linkable; any other ?tab= value falls back to the hub.
+    return (["hub", "practices", "gatherings", "members"] as const)
+      .find((k) => k === tabParam) ?? "hub";
   })();
-  const [activeTab, setActiveTab] = useState<"home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
+  const [activeTab, setActiveTab] = useState<"hub" | "home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
 
   // Strip the legacy `?welcome=1` query param if it's still in the URL
   // (older links). The dedicated post-signup community welcome overlay
@@ -1919,7 +1833,10 @@ export default function CommunityDetailPage() {
                 })()}
               </p>
             </div>
-            {isAdmin && (
+            {/* On the general-group hub the admin tools live as tiles, so the
+                header icons would be redundant there — keep them only inside a
+                section, and always for El Jardín (which has no hub). */}
+            {isAdmin && (isJardinGroup || activeTab !== "hub") && (
               <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setLocation(`/communities/${slug}/settings`)}
@@ -1942,11 +1859,6 @@ export default function CommunityDetailPage() {
         </div>
 
         {/* Group chat removed from communities per request. */}
-
-        {/* Admin-only — "How can I pray for you?" community prompt.
-            Sends a push + email to every joined member; rate-limited
-            to once per 7 days server-side. Hidden for non-admins. */}
-        {!isJardinGroup && isAdmin && <PrayerInviteCard slug={slug} />}
 
         {/* Beta — rule-of-life: members ask their community's leaders for help
             building a daily prayer routine; leaders see + respond. The app is
@@ -2193,7 +2105,9 @@ export default function CommunityDetailPage() {
                   {newPrayers.length > 0 && (
                     <button
                       onClick={() => {
-                        setActiveTab("prayer");
+                        // The group Prayer Wall moved off this page — new
+                        // prayer requests surface on the home screen now.
+                        setLocation("/dashboard");
                         dismiss();
                       }}
                       className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
@@ -2339,8 +2253,13 @@ export default function CommunityDetailPage() {
           );
         })()}
 
-        {/* Tabs — user-scrollable horizontal strip */}
-        <ScrollStrip className="mb-5" contentStyle={{ gap: 8 }}>
+        {/* Navigation. El Jardín keeps its tab strip; general groups get a
+            simple hub of tiles — Members · Events · Practices, plus admin
+            tools — and tapping one opens that section with a back arrow. The
+            old home-style dashboard is gone (that content lives on the home
+            screen). */}
+        {isJardinGroup ? (
+          <ScrollStrip className="mb-5" contentStyle={{ gap: 8 }}>
             {tabs.map((tab, i) => (
               <button
                 key={i}
@@ -2355,574 +2274,66 @@ export default function CommunityDetailPage() {
                 <span>{tab.emoji}</span> {tab.label}
               </button>
             ))}
-        </ScrollStrip>
-
-        {/* ─── Home ─── Dashboard-style feed filtered to this community.
-             A moment counts as "this community's" if either:
-               - its primary group matches the slug, OR
-               - it was attached post-creation via moment_groups and
-                 that junction row points here (surfaced in the
-                 /api/moments payload as `additionalGroups`).
-             Before this filter was widened, adding a second community
-             to an intercession silently failed to show up on that
-             community's home tab. */}
-        {effectiveTab === "home" && (() => {
-          // Contemplation communities render a dedicated Home: a shared
-          // contemplation goal + the CAC meditation the community reflects
-          // on together — not the office/practice feed below.
-          if (group.focus === "contemplation") {
-            return <ContemplationCommunityHome slug={slug} group={group} />;
-          }
-          const communityMoments = (momentsData?.moments ?? []).filter(
-            (m) => m.group?.slug === slug
-              || (m.additionalGroups ?? []).some(g => g.slug === slug),
-          );
-          const intercessions = communityMoments.filter((m) => m.templateType === "intercession");
-          const otherPractices = communityMoments.filter((m) => m.templateType !== "intercession");
-          // Show every active prayer request on the home tab — no slice.
-          // Previously clamped to 3 with a "See all →" to the Prayer Wall
-          // tab, but users kept missing requests because the list was
-          // buried between announcements and the nothingYet empty-state.
-          const recentPrayers = homePrayerData?.requests ?? [];
-          const recentAnnouncements = (announcementsData?.announcements ?? []).slice(0, 2);
-
-          const stripEmoji = (s: string) =>
-            // eslint-disable-next-line no-misleading-character-class
-            s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
-
-          const renderMomentCard = (m: CommunityMoment, emoji: string) => {
-            // Lectio AND fasting cards mirror the home dashboard exactly —
-            // same shared MomentCard component, same flap lines, same
-            // pulse pills. The /api/moments payload already carries the
-            // template-specific enrichment fields (lectio stage labels,
-            // fasting day / type / gallons-saved), so a direct cast is
-            // safe here. The simpler inline card below stays in place
-            // for intercessions, where the community page wants the
-            // tighter row layout (status pill + "Also shared with").
-            if (m.templateType === "lectio-divina" || m.templateType === "fasting") {
-              return (
-                <MomentCard
-                  key={`comm-${m.templateType}-${m.id}`}
-                  m={m as unknown as Moment}
-                  userEmail={user.email}
-                  keyPrefix="comm"
-                />
-              );
-            }
-            // Intercessions are now group-scoped, not people-scoped —
-            // show which communities this practice is shared with
-            // instead of listing individual members. We're already on
-            // this community's page, so skip our own group in the list
-            // and only surface OTHER groups it's also in (if any).
-            const allGroups = [
-              ...(m.group ? [m.group] : []),
-              ...(m.additionalGroups ?? []),
-            ];
-            const otherGroups = allGroups
-              .filter((g) => g.slug !== slug)
-              .map((g) => `${g.emoji ?? "🏘️"} ${g.name}`);
-            const alsoSharedLabel =
-              otherGroups.length === 0
-                ? null
-                : otherGroups.length === 1
-                  ? t("community_detail.also_shared_with", { groups: otherGroups[0] })
-                  : t("community_detail.also_shared_with", { groups: `${otherGroups.slice(0, 2).join(", ")}${otherGroups.length > 2 ? ` +${otherGroups.length - 2}` : ""}` });
-            const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
-            const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
-            const progressLabel = goal ? t("community_detail.progress_days", { logged, goal }) : null;
-            // Always land on the deep detail page — /moments/:id — which now
-            // carries the full prayer + community ritual. Earlier we routed
-            // window-open intercessions to the tiny /moment/:token/:userToken
-            // Amen page, but that flattens the experience and contradicts the
-            // home dashboard + prayer-list behaviour. The detail page already
-            // surfaces a "Pray now" affordance when the window is open.
-            const href = `/moments/${m.id}`;
-            const prayedToday = m.todayPostCount > 0;
-            const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
-
-            return (
-              <Link key={m.id} href={href} className="block">
-                <div
-                  className="relative flex rounded-xl overflow-hidden"
-                  style={{
-                    background: "rgba(46,107,64,0.15)",
-                    border: `1px solid ${m.windowOpen && !prayedToday ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.25)"}`,
-                  }}
+          </ScrollStrip>
+        ) : activeTab === "hub" ? (
+          <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
+            <div className="flex flex-col" style={{ gap: 10 }}>
+              {([
+                { emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") },
+                { emoji: "🤝🏽", label: t("community_detail.tab_gatherings"), go: () => setActiveTab("gatherings") },
+                { emoji: "🕯️", label: t("community_detail.tab_practices", { defaultValue: "Practices" }), go: () => setActiveTab("practices") },
+              ]).map((tile, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={tile.go}
+                  className="w-full transition-opacity hover:opacity-90"
+                  style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: "rgba(9,26,16,0.297)", border: "1px solid rgba(46,107,64,0.38)", borderRadius: 16, padding: "16px 18px" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: m.windowOpen ? "#2E6B40" : "rgba(46,107,64,0.3)" }} />
-                  <div className="flex-1 px-4 py-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                        {emoji} {cardTitle}
-                      </span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {progressLabel && (
-                          <span className="text-[10px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-                            {progressLabel}
-                          </span>
-                        )}
-                        {/* Prayed-today affirmation only. The earlier
-                            "Not today" label was removed per user
-                            direction — surfacing inactivity as its
-                            own pill made the list read like a
-                            scoreboard rather than an invitation. */}
-                        {prayedToday && (
-                          <span className="text-[10px]" style={{ color: "#8FAF96" }}>{t("community_detail.prayed_today")} 🌿</span>
-                        )}
-                      </div>
-                    </div>
-                    {alsoSharedLabel && (
-                      <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>{alsoSharedLabel}</p>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            );
-          };
-
-          const nothingYet =
-            intercessions.length === 0 &&
-            otherPractices.length === 0 &&
-            recentPrayers.length === 0 &&
-            recentAnnouncements.length === 0 &&
-            // Bound prayer feeds also count as "something here" — a
-            // community with a feed attached has visible content even
-            // if no in-group intercessions exist.
-            boundFeeds.length === 0 &&
-            // A visible Sunday Service card is plenty to fill the page —
-            // earlier we printed "nothing here yet" right under it, which
-            // the user flagged as wrong ("cause there is something there").
-            !hasServiceSchedule &&
-            // On circle groups, a populated "Praying today" list also counts
-            // as "something here" so the dead-end empty-state doesn't shout
-            // over the intention + focus the member just came to see.
-            !(group.isPrayerCircle && (focusData?.focus.length ?? 0) > 0);
-
-          const focusEntries = focusData?.focus ?? [];
-          const currentUserEmail = user.email;
-
-          return (
-            <div className="space-y-6">
-              {/* ── Praying today — only rendered for circle groups ────────
-                  Lists every focus added for today (in the viewer's tz).
-                  Members can add via the "+ Add" button; entries are
-                  removable by the adder or any admin. We keep this above
-                  intercessions/practices so it reads as the heartbeat of a
-                  prayer circle. */}
-              {group.isPrayerCircle && (
-                <div>
-                  <div className="flex items-baseline justify-between mb-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      {t("community_detail.praying_today")}
-                    </p>
-                    {!showFocusForm && (
-                      <button
-                        onClick={() => setShowFocusForm(true)}
-                        className="text-[11px] font-semibold flex items-center gap-1 transition-opacity hover:opacity-80"
-                        style={{ color: "#A8C5A0" }}
-                      >
-                        <Plus size={12} /> {t("community_detail.add")}
-                      </button>
-                    )}
-                  </div>
-
-                  {showFocusForm && (
-                    <div
-                      className="rounded-xl p-3 mb-3"
-                      style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.28)" }}
-                    >
-                      <div className="flex gap-1.5 mb-2">
-                        {(["situation", "cause", "custom"] as const).map(ft => (
-                          <button
-                            key={ft}
-                            type="button"
-                            onClick={() => setFocusType(ft)}
-                            className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full transition-all"
-                            style={{
-                              background: focusType === ft ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                              color: focusType === ft ? "#F0EDE6" : "#8FAF96",
-                              border: `1px solid ${focusType === ft ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
-                            }}
-                          >
-                            {ft === "situation" ? t("community_detail.focus_situation") : ft === "cause" ? t("community_detail.focus_cause") : t("community_detail.focus_other")}
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        type="text"
-                        value={focusSubject}
-                        onChange={e => setFocusSubject(e.target.value)}
-                        placeholder={
-                          focusType === "situation"
-                            ? t("community_detail.focus_placeholder_situation")
-                            : focusType === "cause"
-                              ? t("community_detail.focus_placeholder_cause")
-                              : t("community_detail.focus_placeholder_custom")
-                        }
-                        maxLength={280}
-                        className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-                        style={{ color: "#F0EDE6", fontFamily: FONT }}
-                        onKeyDown={e => {
-                          if (e.key === "Enter" && focusSubject.trim()) addFocusMutation.mutate();
-                        }}
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => { setShowFocusForm(false); setFocusSubject(""); }}
-                          className="text-[11px] px-3 py-1.5 rounded-lg"
-                          style={{ color: "#8FAF96" }}
-                        >
-                          {t("community_detail.cancel")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => addFocusMutation.mutate()}
-                          disabled={!focusSubject.trim() || addFocusMutation.isPending}
-                          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-40"
-                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                        >
-                          {addFocusMutation.isPending ? t("community_detail.adding") : t("community_detail.add")}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {focusEntries.length === 0 ? (
-                    <p className="text-[12px] italic text-center py-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      {t("community_detail.nothing_named_today")}
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {focusEntries.map(f => {
-                        const isAdder = f.addedBy?.email === currentUserEmail;
-                        const canDelete = isAdder || isAdmin;
-                        const label = f.focusType === "situation"
-                          ? t("community_detail.focus_situation")
-                          : f.focusType === "cause"
-                            ? t("community_detail.focus_cause")
-                            : f.focusType === "person"
-                              ? t("community_detail.focus_person")
-                              : null;
-                        const subjectLine = f.subject
-                          ? (f.subject.name || t("community_detail.a_friend"))
-                          : (f.subjectText || "");
-                        return (
-                          <div
-                            key={f.id}
-                            className="flex rounded-xl overflow-hidden"
-                            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
-                          >
-                            <div className="w-1 shrink-0" style={{ background: "#E8B872" }} />
-                            <div className="flex-1 flex items-center gap-3 px-4 py-3 min-w-0">
-                              {f.subject?.avatarUrl ? (
-                                <img
-                                  src={f.subject.avatarUrl}
-                                  alt={f.subject.name ?? ""}
-                                  className="w-8 h-8 rounded-full object-cover shrink-0"
-                                  style={{ border: "1px solid rgba(46,107,64,0.4)" }}
-                                />
-                              ) : f.focusType === "person" ? (
-                                <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                                  style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                                >
-                                  {(f.subject?.name ?? f.subjectText ?? "?").charAt(0).toUpperCase()}
-                                </div>
-                              ) : (
-                                <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                                  style={{ background: "rgba(232,184,114,0.15)", border: "1px solid rgba(232,184,114,0.3)" }}
-                                >
-                                  <Heart size={14} style={{ color: "#E8B872" }} />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                {label && (
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                                    {label}
-                                  </p>
-                                )}
-                                <p className="text-sm leading-snug truncate" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                                  {subjectLine}
-                                </p>
-                                {f.addedBy && (
-                                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                                    {t("community_detail.added_by", { who: isAdder ? t("community_detail.you") : (f.addedBy.name || f.addedBy.email.split("@")[0]) })}
-                                  </p>
-                                )}
-                              </div>
-                              {canDelete && (
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm(t("community_detail.remove_from_prayer_confirm"))) {
-                                      removeFocusMutation.mutate(f.id);
-                                    }
-                                  }}
-                                  disabled={removeFocusMutation.isPending}
-                                  className="shrink-0 p-1 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"
-                                  title={t("community_detail.remove")}
-                                >
-                                  <X size={14} style={{ color: "rgba(143,175,150,0.55)" }} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Who-prayed-this-week ticker — scrolls through every
-                  community member who has prayed an intercession or amened
-                  a prayer request in the last 7 days. Kept just below the
-                  optional "Praying Today" list (circle groups) and above
-                  Intercessions so it reads as "here's the pulse of the
-                  community." Dormant (nothing rendered) when no one has
-                  prayed this week yet. */}
-              {/* PrayedThisWeekTicker intentionally not rendered right
-                  now — user asked to take the section out while we
-                  work through the dedupe + motion behaviour. The
-                  component is still defined above so re-enabling is a
-                  one-line change. */}
-              {null}
-
-              {/* Gatherings — one unified block under a single eyebrow.
-                  Stacks the community's weekly service card (if any) with
-                  the first few scoped rituals, all rendered in the same
-                  Sunday Service visual. Tap a card to open it; tap "See
-                  all" to jump to the full Gatherings tab. The whole block
-                  stays silent if the community has neither a service
-                  schedule nor any scoped gatherings yet, so new
-                  communities don't see empty chrome. */}
-              {((serviceScheduleData?.schedule?.times.length ?? 0) > 0 ||
-                (gatheringsData?.gatherings ?? []).length > 0) && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      {t("community_detail.gatherings")}
-                    </p>
-                    {(gatheringsData?.gatherings ?? []).length > 3 && (
-                      <button
-                        onClick={() => setActiveTab("gatherings")}
-                        className="text-[11px] font-semibold transition-opacity hover:opacity-70"
-                        style={{ color: "#8FAF96" }}
-                      >
-                        {t("community_detail.see_all")}
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <CommunityServiceHomeCard
-                      slug={slug!}
-                      groupName={group.name}
-                      groupEmoji={group.emoji}
-                      onOpen={() => setActiveTab("gatherings")}
-                    />
-                    {(gatheringsData?.gatherings ?? []).slice(0, 3).map(g => (
-                      <CommunityGatheringCard key={g.id} g={g} onOpen={() => setOpenGatheringModal(g)} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Intercessions — the most prayed-through surface, shown first.
-                  Section now also renders one card per prayer feed bound
-                  to this community, so a community admin's Phoebe Climate
-                  feed appears next to the group-attached intercessions. */}
-              {(intercessions.length > 0 || boundFeeds.length > 0) && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-                    {t("community_detail.intercessions")}
-                  </p>
-                  <div className="space-y-2">
-                    {/* Bound prayer feeds — collapsed to one card per
-                        feed so the section stays calm even when a feed
-                        has 3-7 slots filled today. Tap routes to the
-                        feed detail page where every slot is its own
-                        card. */}
-                    {boundFeeds.map((f) => {
-                      const cover = f.feedCoverEmoji ?? "🕊️";
-                      const count = f.todayEntries.length;
-                      const subtitle = count === 0
-                        ? t("community_detail.nothing_yet_today")
-                        : count === 1
-                          ? f.todayEntries[0].title
-                          : t("community_detail.intercessions_today", { count });
-                      return (
-                        <Link key={`feed-${f.feedId}`} href={`/prayer-feeds/${f.feedSlug}`} className="block">
-                          <div
-                            className="rounded-xl px-4 py-3 transition-colors hover:bg-[rgba(46,107,64,0.18)] relative pr-16"
-                            style={{
-                              background: "rgba(46,107,64,0.12)",
-                              border: "1px solid rgba(46,107,64,0.25)",
-                            }}
-                          >
-                            <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
-                              {cover} {f.feedTitle}
-                            </span>
-                            <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>
-                              {subtitle}
-                            </p>
-                            <span
-                              className="absolute top-1/2 -translate-y-1/2 right-3 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
-                              style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
-                            >
-                              {t("community_detail.view")}
-                            </span>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                    {intercessions.map((m) => renderMomentCard(m, "🙏🏽"))}
-                  </div>
-                </div>
-              )}
-
-              {/* Other practices — fasts, lectio, morning prayer, etc. */}
-              {otherPractices.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-                    {t("community_detail.practices")}
-                  </p>
-                  <div className="space-y-2">
-                    {otherPractices.map((m) => renderMomentCard(m, "🌿"))}
-                  </div>
-                </div>
-              )}
-
-              {/* Prayer Requests — unified section combining the compose
-                  bar + the full list of active requests from any member
-                  of this community. Always visible for members so a
-                  drop-by can post without hunting for a tab, and the
-                  list appears right next to the composer so new posts
-                  show up in context. */}
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                    {t("community_detail.prayer_requests")}
-                  </h2>
-                  <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-                </div>
-                <CommunityPrayerComposeBar slug={slug!} groupName={group.name} />
-                {recentPrayers.length > 0 && (
-                  <div className="space-y-2 mt-4">
-                    {recentPrayers.map((r) => {
-                      // Author display — own request shows viewer's avatar,
-                      // others show the owner's avatar, anonymous shows an
-                      // initials bubble with "Anonymous".
-                      const displayName = r.isAnonymous
-                        ? t("community_detail.anonymous")
-                        : (r.isOwnRequest ? (user.name ?? t("community_detail.you_name")) : (r.ownerName ?? t("community_detail.someone")));
-                      const displayAvatar = r.isAnonymous
-                        ? null
-                        : (r.isOwnRequest ? (user.avatarUrl ?? null) : r.ownerAvatarUrl);
-                      const initials = displayName
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((w) => w[0]?.toUpperCase() ?? "")
-                        .join("");
-                      // Whole card is now tappable — routes to the prayer-
-                      // request detail page (same destination as the
-                      // manage list cards), so the community surface and
-                      // the manage list feel like siblings. The word
-                      // count icon mirrors RequestCard's affordance so
-                      // the viewer can see at a glance how many words
-                      // of comfort have already been left.
-                      return (
-                        <Link key={r.id} href={`/prayer-requests/${r.id}`} className="block">
-                          <div className="flex rounded-xl overflow-hidden transition-colors hover:bg-[rgba(46,107,64,0.18)]" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                            <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
-                            <div className="flex-1 px-4 py-3 flex items-start gap-3">
-                              {displayAvatar ? (
-                                <img
-                                  src={displayAvatar}
-                                  alt={displayName}
-                                  className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                                  style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                                />
-                              ) : (
-                                <div
-                                  className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
-                                  style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                                >
-                                  {initials}
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                                  {r.isOwnRequest ? t("community_detail.your_request") : t("community_detail.from_name", { name: displayName })}
-                                </p>
-                                <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                                  {r.body}
-                                </p>
-                              </div>
-                              {r.wordCount > 0 && (
-                                <span
-                                  className="flex items-center gap-1 shrink-0 mt-1"
-                                  style={{ color: "rgba(143,175,150,0.55)" }}
-                                  aria-label={t("community_detail.words_of_comfort", { count: r.wordCount })}
-                                >
-                                  <span className="text-[10px] tabular-nums">{r.wordCount}</span>
-                                  <MessageCircle size={14} />
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Announcements — a small pinned section */}
-              {recentAnnouncements.length > 0 && (
-                <div>
-                  <div className="flex items-baseline justify-between mb-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      {t("community_detail.announcements")}
-                    </p>
-                    <button
-                      onClick={() => setActiveTab("announcements")}
-                      className="text-[11px] font-medium transition-opacity hover:opacity-80"
-                      style={{ color: "#A8C5A0" }}
-                    >
-                      {t("community_detail.see_all")}
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {recentAnnouncements.map((a) => (
-                      <div key={a.id} className="rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                        {a.title && (
-                          <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>{a.title}</p>
-                        )}
-                        <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#C8D4C0" }}>
-                          {a.content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {nothingYet && (
-                <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.5)" }}>
-                  {t("community_detail.nothing_here_yet")}{isAdmin ? ` ${t("community_detail.nothing_here_admin")}` : ""}
-                </p>
-              )}
-              {/* Compose + list now live in the unified Prayer Requests
-                  section above, next to the intercession cards. The
-                  old bottom-of-home compose was removed once they
-                  merged. */}
+                  <span aria-hidden style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }}>{tile.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, color: "#F0EDE6" }}>{tile.label}</span>
+                  <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
+                </button>
+              ))}
             </div>
-          );
-        })()}
+            {isAdmin && (
+              <div className="flex flex-col" style={{ gap: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(143,175,150,0.55)", margin: 0 }}>
+                  {t("community_detail.admin_tools", { defaultValue: "Admin tools" })}
+                </p>
+                {([
+                  { emoji: "⚙️", label: t("community_detail.community_settings", { defaultValue: "Settings" }), go: () => setLocation(`/communities/${slug}/settings`) },
+                  { emoji: "✉️", label: t("community_detail.invite_members", { defaultValue: "Invite members" }), go: () => setShowInvite(true) },
+                ]).map((tile, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={tile.go}
+                    className="w-full transition-opacity hover:opacity-90"
+                    style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: "rgba(9,26,16,0.297)", border: "1px solid rgba(46,107,64,0.38)", borderRadius: 16, padding: "16px 18px" }}
+                  >
+                    <span aria-hidden style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }}>{tile.emoji}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, color: "#F0EDE6" }}>{tile.label}</span>
+                    <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveTab("hub")}
+            className="mb-5 flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ background: "none", border: "none", color: "#8FAF96", cursor: "pointer", padding: 0 }}
+          >
+            ← {group.name}
+          </button>
+        )}
+
 
         {/* ─── Prayer Wall ─── */}
-        {effectiveTab === "prayer" && (
+        {isJardinGroup && effectiveTab === "prayer" && (
           <div>
             {/* New prayer input */}
             <div className="flex gap-2 mb-5">
@@ -3059,129 +2470,6 @@ export default function CommunityDetailPage() {
               <div className="space-y-2">
                 {gatheringsData!.gatherings.map(g => (
                   <CommunityGatheringCard key={g.id} g={g} onOpen={() => setOpenGatheringModal(g)} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── Announcements ─── */}
-        {effectiveTab === "announcements" && (
-          <div>
-            {isAdmin && !showAnnouncementForm && (
-              <button
-                onClick={() => setShowAnnouncementForm(true)}
-                className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm mb-4"
-                style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}
-              >
-                <Plus size={16} /> {t("community_detail.post_announcement")}
-              </button>
-            )}
-            {isAdmin && showAnnouncementForm && (
-              <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                    {newAnnouncementKind === "prayer_walk" ? t("community_detail.new_prayer_walk") : t("community_detail.new_announcement")}
-                  </p>
-                  <button onClick={() => setShowAnnouncementForm(false)}><X size={16} style={{ color: "#8FAF96" }} /></button>
-                </div>
-
-                {/* Kind toggle — prayer walks surface in the Phoebe Climate
-                    feed across all groups. */}
-                <div className="flex gap-1.5 mb-3">
-                  <button
-                    onClick={() => setNewAnnouncementKind("announcement")}
-                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{
-                      background: newAnnouncementKind === "announcement" ? "rgba(46,107,64,0.4)" : "rgba(46,107,64,0.12)",
-                      color: newAnnouncementKind === "announcement" ? "#F0EDE6" : "#8FAF96",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                    }}
-                  >
-                    {t("community_detail.announcement")}
-                  </button>
-                  <button
-                    onClick={() => setNewAnnouncementKind("prayer_walk")}
-                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{
-                      background: newAnnouncementKind === "prayer_walk" ? "rgba(46,107,64,0.4)" : "rgba(46,107,64,0.12)",
-                      color: newAnnouncementKind === "prayer_walk" ? "#F0EDE6" : "#8FAF96",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                    }}
-                  >
-                    🚶🏽 {t("community_detail.prayer_walk")}
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  value={newAnnouncementTitle}
-                  onChange={e => setNewAnnouncementTitle(e.target.value)}
-                  placeholder={newAnnouncementKind === "prayer_walk" ? t("community_detail.walk_title_placeholder") : t("community_detail.title_optional_placeholder")}
-                  className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-                  style={{ color: "#F0EDE6" }}
-                />
-
-                {newAnnouncementKind === "prayer_walk" && (
-                  <>
-                    <input
-                      type="datetime-local"
-                      value={newAnnouncementEventAt}
-                      onChange={e => setNewAnnouncementEventAt(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-                      style={{ color: "#F0EDE6", colorScheme: "dark" }}
-                    />
-                    <input
-                      type="text"
-                      value={newAnnouncementLocation}
-                      onChange={e => setNewAnnouncementLocation(e.target.value)}
-                      placeholder={t("community_detail.walk_location_placeholder")}
-                      className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-                      style={{ color: "#F0EDE6" }}
-                    />
-                  </>
-                )}
-
-                <textarea
-                  value={newAnnouncementContent}
-                  onChange={e => setNewAnnouncementContent(e.target.value)}
-                  placeholder={newAnnouncementKind === "prayer_walk" ? t("community_detail.walk_content_placeholder") : t("community_detail.announcement_content_placeholder")}
-                  rows={4}
-                  className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm resize-none mb-2"
-                  style={{ color: "#F0EDE6" }}
-                />
-                <button
-                  onClick={() => announcementMutation.mutate()}
-                  disabled={
-                    !newAnnouncementContent.trim() ||
-                    announcementMutation.isPending ||
-                    (newAnnouncementKind === "prayer_walk" && !newAnnouncementEventAt)
-                  }
-                  className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  {announcementMutation.isPending ? t("community_detail.posting") : t("community_detail.post")}
-                </button>
-              </div>
-            )}
-            {(announcementsData?.announcements ?? []).length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                {t("community_detail.no_announcements")}
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {announcementsData!.announcements.map(a => (
-                  <div key={a.id} className="rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                    {a.title && (
-                      <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>{a.title}</p>
-                    )}
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#C8D4C0" }}>
-                      {a.content}
-                    </p>
-                    <p className="text-[10px] mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>
-                      {a.authorName} · {new Date(a.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
                 ))}
               </div>
             )}

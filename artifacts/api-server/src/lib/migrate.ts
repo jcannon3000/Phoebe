@@ -2625,6 +2625,19 @@ export async function migrate() {
       logger.error({ err }, "Diocese of NY intercession seed failed (non-fatal — server still starts)");
     }
 
+    // ── Anglican Cycle of Prayer — worldwide Communion intercession ──────────
+    // A platform-owned, public Prayer Feed: one Communion diocese/province to
+    // pray for each calendar day, from the Anglican Communion's own freely-
+    // shareable Cycle of Prayer. Idempotent — upserts the feed + 365 daily
+    // entries on every boot. Sibling to the Diocese of NY feed.
+    try {
+      const { seedAnglicanCycleOfPrayer } = await import("../seeds/anglicanCycleOfPrayer");
+      const n = await seedAnglicanCycleOfPrayer();
+      logger.info(`Anglican Cycle of Prayer feed seeded (${n} entries)`);
+    } catch (err) {
+      logger.error({ err }, "Anglican Cycle of Prayer seed failed (non-fatal — server still starts)");
+    }
+
     // ── Newsletters ────────────────────────────────────────────────────────
     // Admin-composed newsletter emails. One row per send for audit history.
     // recipient_scope is "all" (every user) or "groups" (members of the

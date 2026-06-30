@@ -44,6 +44,7 @@ import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { getPracticeSlot, SLOT_RANK, type CustomSlot } from "@/lib/customAnchors";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
@@ -2203,19 +2204,33 @@ function PrayerCompletedSlide({
   // rhythm (the first still-undone anchor, in day order). When nothing's left we
   // just send them off with the blessing line — no community tally either way.
   const showReflCard = !!refl && !alreadyReadRef.current;
+  // Point at the next thing in the day's RHYTHM — the earliest-slotted practice
+  // that's still active + undone (morning → midday → afternoon → evening), NOT
+  // always Evening Prayer. (Before, evening was checked first, so a 10 AM morning
+  // close suggested Evening Prayer even with earlier practices still to come.)
+  // Each candidate carries its time-of-day slot; we sort by it and take the first
+  // (insertion order breaks ties within a slot — office leads its slot).
   const nextUp = (() => {
     if (showReflCard) return null;
-    if (rhythm.eveningActive && !rhythm.eveningDone)
-      return { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" };
-    if (rhythm.silenceActive && !rhythm.silenceDone)
-      return { emoji: "🕯️", title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }), blurb: t("rhythm.blurb_silence", { defaultValue: "A few minutes of stillness" }), href: "/contemplation" };
-    if (rhythm.examenActive && !rhythm.examenDone)
-      return { emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), href: "/examen" };
-    if (rhythm.gratitudeActive && !rhythm.gratitudeDone)
-      return { emoji: "🌾", title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }), blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name today's gifts" }), href: "/gratitude" };
-    if (rhythm.listeningActive && !rhythm.listeningDone)
-      return { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), href: "/listening" };
-    return null;
+    type Cand = { emoji: string; title: string; blurb: string; href: string; slot: CustomSlot };
+    const cands: Cand[] = [];
+    const add = (active: boolean, done: boolean, slot: CustomSlot, c: Omit<Cand, "slot">) => {
+      if (active && !done) cands.push({ ...c, slot });
+    };
+    add(rhythm.silenceActive, rhythm.silenceDone, "morning", { emoji: "🕯️", title: t("rhythm.card_silence", { defaultValue: "Silence" }), blurb: t("rhythm.blurb_silence", { defaultValue: "A few minutes of stillness" }), href: "/contemplation?begin=1" });
+    add(rhythm.scriptureActive, rhythm.scriptureDone, getPracticeSlot("scripture"), { emoji: "📖", title: t("rhythm.card_scripture", { defaultValue: "Listen to Scripture" }), blurb: t("rhythm.blurb_scripture", { defaultValue: "The day's readings, heard aloud" }), href: "/scripture/readings" });
+    add(rhythm.lectioActive, rhythm.lectioDone, getPracticeSlot("lectio"), { emoji: "📖", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), blurb: t("rhythm.blurb_lectio", { defaultValue: "Sacred reading" }), href: "/lectio-divina" });
+    add(rhythm.cobreatheActive, rhythm.cobreatheDone, getPracticeSlot("cobreathe"), { emoji: "🌍", title: t("rhythm.card_cobreathe", { defaultValue: "Co-Breathe" }), blurb: t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths as a prayer for climate justice" }), href: "/cobreathe?start=1" });
+    add(rhythm.listeningActive, rhythm.listeningDone, getPracticeSlot("listening"), { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), href: "/listening" });
+    add(rhythm.readingActive, rhythm.readingDone, getPracticeSlot("reading"), { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading", { defaultValue: "Log what you read" }), href: "/reading-log" });
+    add(rhythm.walkActive, rhythm.walkDone, getPracticeSlot("walk"), { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }), href: "/walk-log" });
+    add(rhythm.podcastsActive, rhythm.podcastsDone, "afternoon", { emoji: "🎙️", title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }), blurb: t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }), href: "/podcast-log" });
+    add(rhythm.prayerListActive, rhythm.prayerListDone, "anytime", { emoji: "🕊️", title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }), blurb: t("rhythm.blurb_prayer_list", { defaultValue: "Pray through your list" }), href: "/intentions?pray=1" });
+    add(rhythm.eveningActive, rhythm.eveningDone, "evening", { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" });
+    add(rhythm.examenActive, rhythm.examenDone, "evening", { emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), href: "/examen" });
+    add(rhythm.gratitudeActive, rhythm.gratitudeDone, "evening", { emoji: "🌾", title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }), blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name today's gifts" }), href: "/gratitude" });
+    if (cands.length === 0) return null;
+    return [...cands].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
   })();
 
   return (

@@ -17,17 +17,25 @@ type PhoebeNative = {
   preloadInAppBrowser?: (url: string) => Promise<void>;
 };
 
-export function openExternal(url: string): void {
+export function openExternal(url: string, opts?: { reader?: boolean }): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
+  // Newsletters / reflections pass reader:true → open in Safari Reader view
+  // (clean article text). Falls back to the normal in-app browser if the shell
+  // doesn't expose a reader view, then to a web tab. Don't await — keeps the
+  // call within the user-gesture context.
+  if (opts?.reader && native?.openReaderView) {
+    void native.openReaderView(url);
+    return;
+  }
   if (native?.openInAppBrowser) {
-    // Don't await — keeps the call within the user-gesture context.
     void native.openInAppBrowser(url);
     return;
   }
   // Web fallback. noopener for security; noreferrer to keep the
-  // outbound URL out of the destination's referrer logs.
+  // outbound URL out of the destination's referrer logs. (Reader mode is a
+  // native SFSafari affordance — a plain web tab can't be forced into it.)
   window.open(url, "_blank", "noopener,noreferrer");
 }
 

@@ -64,6 +64,20 @@ export async function buildScriptureAlignment(opts: {
   const guid = ep?.id ?? audioUrl ?? null;
   const readings = parseScriptureReadings(ep?.description);
 
+  // Don't file a STALE episode under today's date. The feed's newest episode is
+  // "today's" only after it publishes (~06:30 each morning); before that, the
+  // newest is YESTERDAY's. Aligning then would store yesterday's segments under
+  // today's date — and because the read re-parses readings fresh from the feed,
+  // they'd never match the stored segments, so no Listen pill ever shows. When
+  // running for the current day, wait until today's episode is actually up.
+  // (A backfill for a past date — opts.date — is exempt; it intentionally aligns
+  // whatever the feed currently carries.)
+  const actualToday = new Date().toISOString().slice(0, 10);
+  const epDate = ep?.publishedAt ? new Date(ep.publishedAt).toISOString().slice(0, 10) : null;
+  if (episodeDate === actualToday && epDate && epDate < episodeDate) {
+    return { episodeDate, status: "skipped", reason: `today's episode hasn't published yet (newest is dated ${epDate})`, readings };
+  }
+
   // Already aligned this exact episode → reuse.
   if (existing && existing.status === "done" && existing.episodeGuid === guid && !opts.force) {
     return {

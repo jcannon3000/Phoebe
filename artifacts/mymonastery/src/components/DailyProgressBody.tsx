@@ -781,7 +781,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         title: PUBLICATION_NAME[r.source],
         blurb: (r.source === "cac" && cacTitle) ? cacTitle : (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
         blurbCycle: undefined,
-        onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic); },
+        onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic, { reader: true }); },
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
@@ -805,7 +805,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(journalingActive ? [{ ...journalingCard, slot: journalingSlot }] : []),
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{
-      key: "reading", slot: "afternoon" as CustomSlot, emoji: "📚", rgb: "150,140,110", done: readingDone, href: "/reading-log",
+      key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "150,140,110", done: readingDone, href: "/reading-log",
       title: t("rhythm.card_reading", { defaultValue: "Reading" }),
       blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,

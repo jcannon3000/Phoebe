@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -78,6 +79,16 @@ function refLabel(p: Psalm): string {
   return p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`;
 }
 
+// Psalm NUMBERS in a citation ("Psalm 107:33-43, 108" → [107, 108]) — used to
+// match today's appointed psalm(s) to the Scripture Day by Day psalm segment.
+// The podcast reads specific verses, so we match on number, not verse.
+function psalmNumbersFromCitation(s: string): number[] {
+  return s.replace(/.*?psalms?\s*/i, "").split(/[,&]/).map((p) => {
+    const m = p.trim().match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : NaN;
+  }).filter((n) => Number.isFinite(n) && n >= 1 && n <= 150);
+}
+
 // Build the office-shaped slide list: ONE combined title slide, then 4-verse
 // chunks across every appointed psalm (eyebrow per psalm), then a Gloria.
 function buildSlides(psalms: Psalm[]): PsalmSlide[] {
@@ -119,7 +130,7 @@ export default function PsalmsPage() {
     const c = params.get("cycle");
     return c === "office" || c === "monthly" ? c : getPsalmCycle();
   });
-  const [format, setFormat] = useState<"screen" | "book">(() => (params.get("book") === "1" ? "book" : "screen"));
+  const [format, setFormat] = useState<"screen" | "book" | "listen">(() => (params.get("book") === "1" ? "book" : "screen"));
   // Coming from the Daily Prayer chooser (?begin=1) the user already picked their
   // lectionary + format there, so skip the "before you begin" intro and drop
   // straight into the reading (or the physical-book guide). Only the home Psalms
@@ -136,6 +147,30 @@ export default function PsalmsPage() {
     queryFn: () => apiRequest("GET", `/api/psalms/today?cycle=${cycle}&office=${office}&date=${today}`),
     staleTime: 30 * 60_000,
   });
+
+  // Scripture Day by Day reads the day's psalm aloud — offer "Listen" when its
+  // psalm segment matches today's appointed psalm(s).
+  const player = usePodcastPlayer();
+  const scriptureEpisodeQ = useQuery<{ audioUrl: string | null; durationSeconds: number | null; title: string | null; imageUrl: string | null }>({
+    queryKey: ["/api/podcast/scripture-day-by-day/today"],
+    queryFn: () => apiRequest("GET", "/api/podcast/scripture-day-by-day/today"),
+    staleTime: 30 * 60_000,
+  });
+  const scriptureAlignQ = useQuery<{ status: string; sections: Array<{ id: string; title: string | null; startSeconds: number; endSeconds: number | null }> }>({
+    queryKey: ["/api/podcast/scripture/timestamps"],
+    queryFn: () => apiRequest("GET", "/api/podcast/scripture/timestamps"),
+    staleTime: 5 * 60_000,
+    refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 8000; },
+  });
+  // The podcast psalm segment, but only when it matches a psalm appointed today.
+  const psalmSeg = useMemo(() => {
+    const seg = (scriptureAlignQ.data?.sections ?? []).find((s) => s.id === "psalm");
+    if (!seg || !scriptureEpisodeQ.data?.audioUrl) return null;
+    const podcastNums = psalmNumbersFromCitation(seg.title ?? "");
+    const dayNums = (data?.psalms ?? []).map((p) => p.number);
+    return dayNums.some((n) => podcastNums.includes(n)) ? seg : null;
+  }, [scriptureAlignQ.data, scriptureEpisodeQ.data, data]);
+  const canListen = !!psalmSeg;
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
   const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
@@ -154,6 +189,27 @@ export default function PsalmsPage() {
   };
   const beginFromIntro = () => {
     setPsalmCycle(cycle); // remember the chosen lectionary
+    if (format === "listen" && psalmSeg && scriptureEpisodeQ.data?.audioUrl) {
+      const ep = scriptureEpisodeQ.data;
+      const audioUrl = ep.audioUrl as string; // guarded above
+      player.play({
+        showSlug: "scripture-day-by-day",
+        episodeId: audioUrl,
+        title: ep.title ?? "Scripture Day by Day",
+        audioUrl,
+        imageUrl: ep.imageUrl ?? null,
+        showTitle: "Scripture Day by Day",
+        showArtwork: ep.imageUrl ?? null,
+        durationSeconds: ep.durationSeconds ?? null,
+        sessionSurface: "scripture-audio",
+        showHref: "/podcasts/show/scripture-day-by-day",
+        startAtSeconds: psalmSeg.startSeconds,
+        stopAtSeconds: psalmSeg.endSeconds ?? undefined,
+        collapseOnStop: true,
+      });
+      markPsalmsPrayed(office); // hearing the day's psalm counts as praying it
+      return;
+    }
     if (format === "book") setStep("guide");
     else { setIndex(0); setStep("read"); }
   };
@@ -239,7 +295,8 @@ export default function PsalmsPage() {
             {pill("Format", format, [
               { value: "screen", label: "On screen" },
               { value: "book", label: "Physical BCP" },
-            ], (v) => setFormat(v as "screen" | "book"))}
+              ...(canListen ? [{ value: "listen", label: "Listen" }] : []),
+            ], (v) => setFormat(v as "screen" | "book" | "listen"))}
           </div>
         </div>
         <div style={{ flexShrink: 0, padding: "10px 28px max(1.25rem, env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>

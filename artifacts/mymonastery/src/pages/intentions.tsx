@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { BCP_PRAYERS } from "@/lib/bcp-prayers";
 
 // ── Personal prayer list ("intentions") ───────────────────────────────────
 // A private list of the people / things you're holding in prayer. Add free
@@ -42,6 +43,26 @@ function headline(it: Intention): string {
 }
 function subline(it: Intention): string {
   return it.kind === "person" ? it.body : "";
+}
+// BCP prayers kept on the list are standard prayers, not personal intentions —
+// they can't be shared with the community. We tag them by matching the stored
+// body against the BCP intercession titles (English + Spanish).
+const BCP_TITLES: Set<string> = (() => {
+  const s = new Set<string>();
+  for (const p of BCP_PRAYERS) { s.add(p.title); if (p.titleEs) s.add(p.titleEs); }
+  return s;
+})();
+function isBcpIntention(it: Intention): boolean {
+  return it.kind === "text" && BCP_TITLES.has((it.body ?? "").trim());
+}
+// "Added today" / "1 day on your list" / "N days on your list".
+function daysOnList(createdAt: string): string {
+  const then = new Date(createdAt).getTime();
+  if (!Number.isFinite(then)) return "";
+  const days = Math.floor((Date.now() - then) / 86_400_000);
+  if (days <= 0) return "Added today";
+  if (days === 1) return "1 day on your list";
+  return `${days} days on your list`;
 }
 function shareBody(it: Intention): string {
   if (it.kind === "person") {
