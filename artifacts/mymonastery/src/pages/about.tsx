@@ -38,6 +38,10 @@ export default function AboutPage() {
             You can shape your own rhythm — from simply praying the Psalms to the full Daily Office — and pray it however meets you that day: from your own Book of Common Prayer, on the app, by audio, or alongside a cathedral broadcast. Whatever pieces your practice already has — the offices, a daily reflection, a few minutes of silence — Phoebe gathers them into one place. It keeps the depth of the tradition intact and simply changes how it reaches you, meeting you in the busy, dispersed life you actually live. It takes its name from the deacon Phoebe, who carried Paul’s letter to the Romans — entrusted to bring the word to where it needed to go.
           </p>
         </div>
+
+        <p style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.6, color: "#8FAF96", margin: "36px 0 0", paddingTop: 18, borderTop: "1px solid rgba(143,175,150,0.16)" }}>
+          Phoebe is a project by Episcopal seminarians Anabelle Helsell and Jeremy Cannon, backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.
+        </p>
       </div>
     </Layout>
   );
