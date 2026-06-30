@@ -38,6 +38,7 @@ interface Feed {
   state: FeedState;
   visibility: "public" | "private";
   subscriberCount: number;
+  kind?: string | null;
 }
 
 interface FeedResponse {
@@ -373,6 +374,11 @@ function FeedHeaderSection({
           {feed.coverEmoji ?? "🕊️"}
         </div>
         <div className="flex-1 min-w-0">
+          {feed.kind === "parish" && (
+            <p className="text-[9px] uppercase font-semibold mb-0.5" style={{ color: "rgba(143,175,150,0.65)", letterSpacing: "0.16em", fontFamily: "'Space Grotesk', sans-serif" }}>
+              ⛪ Parish feed
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <h1
               className="text-xl font-bold leading-tight"

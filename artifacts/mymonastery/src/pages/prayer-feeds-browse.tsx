@@ -17,6 +17,7 @@ interface BrowseFeed {
   coverEmoji: string | null;
   subscriberCount: number;
   isSubscribed: boolean;
+  kind?: string | null;
 }
 
 export default function PrayerFeedsBrowsePage() {
@@ -87,6 +88,9 @@ export default function PrayerFeedsBrowsePage() {
                   {f.coverEmoji ?? "🕊️"}
                 </div>
                 <div className="flex-1 min-w-0">
+                  {f.kind === "parish" && (
+                    <p className="text-[9px] uppercase font-semibold mb-0.5" style={{ color: "rgba(143,175,150,0.6)", letterSpacing: "0.16em" }}>⛪ Parish</p>
+                  )}
                   <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{f.title}</p>
                   {f.tagline && (
                     <p className="text-xs mt-0.5 truncate" style={{ color: "#8FAF96" }}>{f.tagline}</p>

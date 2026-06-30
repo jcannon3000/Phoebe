@@ -4211,18 +4211,28 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             no avatars, no eyebrow, no subtitle. Smaller than the
             PrayerOfficeCard title so the feed cards read as quieter
             secondary anchors. */}
-        <p
-          className="font-semibold min-w-0 truncate"
-          style={{
-            color: "#F0EDE6",
-            fontFamily: "'Space Grotesk', sans-serif",
-            margin: 0,
-            lineHeight: 1.2,
-            fontSize: 16,
-          }}
-        >
-          {feed.title} {feed.coverEmoji ?? "🌿"}
-        </p>
+        <div className="min-w-0">
+          {feed.kind === "parish" && (
+            <p
+              className="uppercase font-semibold"
+              style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginBottom: 2, fontSize: 9, letterSpacing: "0.16em" }}
+            >
+              ⛪ Parish
+            </p>
+          )}
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              margin: 0,
+              lineHeight: 1.2,
+              fontSize: 16,
+            }}
+          >
+            {feed.title} {feed.coverEmoji ?? "🌿"}
+          </p>
+        </div>
 
         {/* Single CTA per state — keeps the card readable on narrow
             mobile widths where the previous "Completed ✓ | Pray again"
