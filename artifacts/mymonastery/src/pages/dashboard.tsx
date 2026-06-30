@@ -77,10 +77,11 @@ export type Moment = {
   memberCount: number;
   members: Array<{ name: string; email: string; joined?: boolean }>;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
-  // Set when the intercession is scoped to a prayer feed (Phoebe Climate)
-  // instead of a group. Drives the dashboard's surfacing rule:
-  // feed-scoped intercessions appear as cards, group-scoped ones don't.
+  // Set when the intercession is scoped to a prayer feed (e.g. the Anglican
+  // Cycle of Prayer / Diocese calendars) instead of a group. The feed object
+  // carries its title for the home prayer-list row's eyebrow.
   prayerFeedId?: number | null;
+  feed?: { id: number; title: string; slug: string } | null;
   todayPostCount: number;
   // Whether THIS user has prayed/checked-in on this moment today (any
   // moment_post of theirs, incl. a check-in). Unlike todayPostCount — which is
@@ -5920,13 +5921,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         myAmenedToday: r.myAmenedToday,
       }));
     const intercessionRows: PrayerListCarouselRow[] = (momentsData?.moments ?? [])
-      .filter((m) => m.templateType === "intercession" && !m.prayerFeedId && m.state !== "archived" && !!m.group)
+      // Community (group) intercessions AND subscribed prayer-feed intercessions
+      // (e.g. the Anglican Cycle of Prayer / Diocese calendars) — both belong in
+      // the home prayer list. Feed ones were previously excluded here (they only
+      // had the quieter feed anchor card), so a subscribed feed's daily
+      // intercession never showed in the list.
+      .filter((m) => m.templateType === "intercession" && m.state !== "archived" && (!!m.group || !!m.prayerFeedId))
       .map((m) => ({
         id: m.id,
         body: (m.intercessionFullText?.trim() || m.intercessionTopic?.trim() || m.intention?.trim() || m.name || ""),
         isOwnRequest: false,
         isAnonymous: false,
-        ownerName: m.group?.name ?? null,
+        ownerName: m.group?.name ?? m.feed?.title ?? null,
         ownerAvatarUrl: null,
         myAmenedToday: m.myPrayedToday === true,
         kind: "intercession" as const,
