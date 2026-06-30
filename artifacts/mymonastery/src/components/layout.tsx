@@ -417,7 +417,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => navigate(user?.parishFeedId ? "/parish" : "/parish/onboarding")}
                 />
               )}
-              <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/church-deck")} />
+              <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/about")} />
             </div>
 
             {/* ── Sign out ── */}

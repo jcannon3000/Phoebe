@@ -115,7 +115,7 @@ export default function MenuPage() {
   if (rawIsBeta) {
     account.items.push({ emoji: "🏛️", label: t("menu.phoebe_parish"), badge: t("menu.beta_badge"), onClick: () => go(user?.parishFeedId ? "/parish" : "/parish/onboarding") });
   }
-  account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/church-deck") });
+  account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/about") });
   account.items.push({ emoji: "🚪", label: t("menu.sign_out"), onClick: () => logout() });
   groups.push(account);
 
