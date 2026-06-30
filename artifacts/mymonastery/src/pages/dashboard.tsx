@@ -4435,12 +4435,12 @@ function PrayerListCarousel({
   // one-tap amen on the home.
   if (requests.length === 0) return null;
 
-  // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
-  // gap; 280px lands around 3 full + half-row peek. Fade gradient
-  // sits on top so the partial card reads as "more below" instead of
-  // a hard cutoff.
-  const CLAMP = 280;
-  const overflowing = requests.length > 3;
+  // ~7 card rows before the fade. Each card is roughly 72-80px tall with
+  // vertical gap (~80px effective); 600px lands around 7 full rows + a half-row
+  // peek. Fade gradient sits on top so the partial card reads as "more below"
+  // instead of a hard cutoff.
+  const CLAMP = 600;
+  const overflowing = requests.length > 7;
 
   const initials = (name: string) =>
     name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
