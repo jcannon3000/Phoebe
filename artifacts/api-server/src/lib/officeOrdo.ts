@@ -29,7 +29,7 @@ import {
 } from "./assembleMorningPrayer";
 
 export type OrdoLesson = { label: string; ref: string };
-export type OrdoCanticle = { label: string; name: string };
+export type OrdoCanticle = { label: string; name: string; number: number | null };
 export type OrdoSide = {
   /** "Venite (Ps. 95)" / "Jubilate (Ps. 100)" / "Pascha Nostrum" at MP;
    *  "Phos hilaron (O Gracious Light)" at EP. */
@@ -73,6 +73,11 @@ const CANTICLE_NAMES: Record<string, string> = {
   canticle_21: "Te Deum",
 };
 const canticleName = (key: string): string => CANTICLE_NAMES[key] ?? key.replace(/_/g, " ");
+// The BCP canticle number (1–21) from the canticle_NN key, for "21 · Te Deum".
+const canticleNumber = (key: string): number | null => {
+  const m = key.match(/canticle_(\d+)/);
+  return m ? Number(m[1]) : null;
+};
 
 const INVITATORY_DISPLAY: Record<InvitatoryKey, string> = {
   venite: "Venite (Ps. 95)",
@@ -133,8 +138,8 @@ export function buildOfficeOrdoDay(date: Date): OrdoDay {
     psalms: mr.psalms,
     lessons: morningLessons,
     canticles: [
-      { label: "After the Old Testament", name: canticleName(mc.afterOT) },
-      { label: "After the New Testament", name: canticleName(mc.afterNT) },
+      { label: "After the Old Testament", name: canticleName(mc.afterOT), number: canticleNumber(mc.afterOT) },
+      { label: "After the New Testament", name: canticleName(mc.afterNT), number: canticleNumber(mc.afterNT) },
     ],
     suffrages,
     collect: ld.sundayLabel,
@@ -144,7 +149,7 @@ export function buildOfficeOrdoDay(date: Date): OrdoDay {
     invitatory: "Phos hilaron (O Gracious Light)",
     psalms: er.psalms,
     lessons: eveningLessons,
-    canticles: [{ label: "After the Gospel", name: canticleName(ec.afterNT) }],
+    canticles: [{ label: "After the Gospel", name: canticleName(ec.afterNT), number: canticleNumber(ec.afterNT) }],
     suffrages,
     collect: ld.sundayLabel,
     prayerForMission,
