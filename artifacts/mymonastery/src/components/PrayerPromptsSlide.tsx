@@ -13,14 +13,15 @@ const RGB = "96,140,180"; // the prayer-list dove blue
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
 
+// Ordered widest → most personal: "the world" sits on top, "yourself" last.
 const PROMPTS: Array<{ emoji: string; key: string; label: string }> = [
-  { emoji: "🙏", key: "self", label: "For yourself" },
-  { emoji: "💞", key: "friends_family", label: "For your friends or family" },
-  { emoji: "⚖️", key: "justice", label: "For a justice concern" },
-  { emoji: "🌱", key: "hopeful", label: "For something you're hopeful for" },
-  { emoji: "💔", key: "heartbreak", label: "For something that breaks your heart" },
-  { emoji: "📅", key: "event", label: "For an event coming up" },
   { emoji: "🌍", key: "world", label: "For the world" },
+  { emoji: "📅", key: "event", label: "For an event coming up" },
+  { emoji: "💔", key: "heartbreak", label: "For something that breaks your heart" },
+  { emoji: "🌱", key: "hopeful", label: "For something you're hopeful for" },
+  { emoji: "⚖️", key: "justice", label: "For a justice concern" },
+  { emoji: "💞", key: "friends_family", label: "For your friends or family" },
+  { emoji: "🙏", key: "self", label: "For yourself" },
 ];
 
 export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
@@ -136,9 +137,9 @@ export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
       <button
         onClick={onContinue}
         className="mt-1 w-full rounded-full py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT }}
+        style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
       >
-        {t("prayer_prompts.continue", { defaultValue: "Continue" })}
+        {t("prayer_prompts.skip", { defaultValue: "Skip" })}
       </button>
     </div>
   );

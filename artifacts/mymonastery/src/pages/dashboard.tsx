@@ -2770,7 +2770,10 @@ function GratitudeHomeCard() {
 function PrayerListHomeCard() {
   return (
     <PracticeHomeCard
-      href="/intentions?pray=1"
+      // Pray through the MAIN community prayer slideshow — which now folds in
+      // your own private prayers (isOwnPrayer "Your Prayer" slides) — rather
+      // than the separate /intentions pray-through UI.
+      href="/prayer-mode?reset=1"
       label="My Prayer List 🕊️"
       cta="Pray"
       tintBg="rgba(96,140,180,0.12)"
