@@ -399,6 +399,36 @@ router.get("/office/psalter", (_req, res) => {
   return res.json({ psalms });
 });
 
+// GET /office/readings-week — public. The Daily Office Lectionary readings
+// (psalms + lessons) for Morning + Evening Prayer across a span of days — feeds
+// the printable weekly-routine guide so someone praying from paper has each
+// day's appointed readings. ?start=YYYY-MM-DD (default today), ?days=N (1–14, default 7).
+router.get("/office/readings-week", (req, res) => {
+  const startRaw = typeof req.query.start === "string" ? new Date(req.query.start) : new Date();
+  const base = isNaN(startRaw.getTime()) ? new Date() : startRaw;
+  const days = Math.min(14, Math.max(1, Number(req.query.days) || 7));
+  type SideR = { psalms: string[]; lessons: string[]; cyclePsalms: string[] };
+  const out: Array<{ date: string; morning: SideR; evening: SideR }> = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+    const officeDay = getOfficeDay(d);
+    const m = getLectionaryReadings(officeDay, "morning");
+    const e = getLectionaryReadings(officeDay, "evening");
+    const lessons = (x: typeof m) => [x.lesson1, x.lesson2, x.lesson3].filter((s) => !!s && s.trim().length > 0);
+    // The 30-day Coverdale psalter portion for this day — for the "Praying the
+    // Psalms" guide (a different cycle than the daily-office lectionary psalms).
+    const dom = Math.min(Math.max(d.getDate(), 1), 30);
+    const cyc = MONTHLY_PSALTER[dom];
+    out.push({
+      date: d.toISOString().slice(0, 10),
+      morning: { psalms: m.psalms, lessons: lessons(m), cyclePsalms: cyc?.morning ?? [] },
+      evening: { psalms: e.psalms, lessons: lessons(e), cyclePsalms: cyc?.evening ?? [] },
+    });
+  }
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  return res.json({ days: out });
+});
+
 // ── Praying the Psalms ──────────────────────────────────────────────────────
 // The traditional BCP "30-day" Psalter — the Coverdale monthly cycle (1979 BCP
 // pp. 934–935 option). Each day of the month has a morning + evening portion;
