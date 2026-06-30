@@ -24,7 +24,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
-import { pushRoutineConfig } from "@/lib/routineSync";
+import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout } from "@/lib/homeLayoutCache";
 import {
   setSideLevel,
@@ -186,12 +186,39 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
 ];
 
+// A captured routine, identical to what commit() would write — used by the
+// "prescribe a routine for someone" flow. Mirrors PrescribedRoutineSpec server-side.
+export type RoutineSpec = {
+  v: 1;
+  officePrefs: {
+    defaultPrayerLevel: string;
+    contemplationGoalMinutes: number;
+    contemplationReminderEnabled: boolean;
+    morning: "office" | "devotion" | "none";
+    evening: "office" | "devotion" | "none";
+    morningTime: string | null;
+    eveningTime: string | null;
+  };
+  silenceLadderEnabled: boolean;
+  homeLayout: { order: string[]; hidden: string[]; v?: number };
+  ruleConfig: Record<string, string>;
+};
+
 export default function WayOfLoveRuleFlow({
   onBack,
   onDone,
+  // When set, the flow is being used to DESIGN a routine for someone else, not
+  // to edit the current user's own account. commit() then captures the routine
+  // and hands it to onPrescribe instead of writing any of it to the server. The
+  // prescribe PAGE snapshots + restores the admin's own device routine keys so
+  // designing here never disturbs the admin's own rhythm.
+  prescribe = false,
+  onPrescribe,
 }: {
   onBack: () => void;
   onDone: () => void;
+  prescribe?: boolean;
+  onPrescribe?: (spec: RoutineSpec) => void;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -579,7 +606,90 @@ export default function WayOfLoveRuleFlow({
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
 
+  // Capture the designed routine as a portable spec WITHOUT writing it to any
+  // account. Mirrors the payloads commit() computes (office-prefs body, the
+  // home-layout order/hidden, the silence flag) and snapshots the routineSync
+  // localStorage values. It DOES write the per-side office localStorage keys
+  // (level/entry/reflection/minutes) — exactly as commit() step A — so
+  // collectRoutineValues() picks them up; the prescribe page snapshots+restores
+  // those so the admin's own device is left untouched.
+  const buildPrescribeSpec = (): RoutineSpec => {
+    const primary: ReflectionSource = newsletters[0] ?? "none";
+    const anySideSilentContemplation =
+      (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation") &&
+      contemplationStyle === "silent";
+    const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
+    for (const side of SIDES) {
+      if (sides[side]) {
+        setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
+        setSideEntry(side, methodBySide[side]);
+        setSideReflection(side, primary);
+        if (effGoalMin > 0) setSideMinutes(side, effGoalMin);
+      } else {
+        setSideLevel(side, "ask");
+      }
+    }
+    setReflectionSource(primary);
+    const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
+    const wantLadder = silenceMode === "grow";
+    const officePrefs = {
+      defaultPrayerLevel: (() => {
+        const lvl = PRAY_LEVEL[prayBySide[primarySide]];
+        return (lvl === "fdd" || lvl === "psalms" || lvl === "examen") ? "devotion" : lvl;
+      })(),
+      contemplationGoalMinutes: effGoalMin,
+      contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
+      morning: (sides.morning && reminderOnBySide.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none") as "office" | "devotion" | "none",
+      evening: (sides.evening && reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none") as "office" | "devotion" | "none",
+      morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
+      eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
+    };
+    const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
+    const wantCobreathe =
+      contemplative.cobreathe ||
+      (contemplationStyle === "cobreathe" &&
+        (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation"));
+    const onKeys = [
+      ...(extras.gratitude ? ["gratitude"] : []),
+      ...(extras.prayerList ? ["prayer-list"] : []),
+      ...(extras.journaling ? ["journaling"] : []),
+      ...(extras.reading ? ["reading"] : []),
+      ...(extras.podcasts ? ["podcasts"] : []),
+      ...(contemplative.examen ? ["examen"] : []),
+      ...(contemplative.audio ? ["listening"] : []),
+      ...(contemplative.lectio ? ["lectio"] : []),
+      ...(contemplative.scripture ? ["scripture"] : []),
+      ...(contemplative.walk ? ["walk"] : []),
+      ...(wantCobreathe ? ["cobreathe"] : []),
+    ];
+    const offKeys = [
+      ...(extras.gratitude ? [] : ["gratitude"]),
+      ...(extras.prayerList ? [] : ["prayer-list"]),
+      ...(extras.journaling ? [] : ["journaling"]),
+      ...(extras.reading ? [] : ["reading"]),
+      ...(extras.podcasts ? [] : ["podcasts"]),
+      ...(contemplative.examen ? [] : ["examen"]),
+      ...(contemplative.audio ? [] : ["listening"]),
+      ...(contemplative.lectio ? [] : ["lectio"]),
+      ...(contemplative.scripture ? [] : ["scripture"]),
+      ...(contemplative.walk ? [] : ["walk"]),
+      ...(wantCobreathe ? [] : ["cobreathe"]),
+    ];
+    const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
+    const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
+    return {
+      v: 1,
+      officePrefs,
+      silenceLadderEnabled: wantLadder,
+      homeLayout: { order, hidden, v: HOME_LAYOUT_VERSION },
+      ruleConfig: collectRoutineValues(),
+    };
+  };
+
   const commit = () => {
+    // Prescribe mode: capture the routine and hand it back, writing NOTHING to
+    // the (admin) user's own account. The prescribe page takes it from here.
+    if (prescribe && onPrescribe) { onPrescribe(buildPrescribeSpec()); return; }
     // "none" reflection → no newsletter card; otherwise the first picked source
     // is the per-side close-slide reflection.
     const primary: ReflectionSource = newsletters[0] ?? "none";

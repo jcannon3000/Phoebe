@@ -2422,6 +2422,30 @@ export async function migrate() {
       ON group_message_reads (group_id, user_id)
     `);
 
+    // ── Prescribed routines — a community admin / clergy designs a daily
+    //    rhythm for someone and shares it as a token link; the recipient opens
+    //    /routine/:token and (on accept) has it applied to their account.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prescribed_routines (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        label TEXT,
+        spec JSONB NOT NULL,
+        accept_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS prescribed_routines_by_group
+      ON prescribed_routines (group_id)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS prescribed_routines_by_creator
+      ON prescribed_routines (created_by_user_id)
+    `);
+
     // ── Home-load perf indexes (prayer-streak hot path) ──────────────────
     // Amen "prayed with me today" scan is bounded to the last 48h per request.
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_prayed ON prayer_request_amens (request_id, prayed_at)`);

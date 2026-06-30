@@ -106,6 +106,16 @@ export default function CommunityRuleOfLifePage() {
           </p>
         </div>
 
+        {/* Design a routine FOR someone and share it as a link (clergy → member). */}
+        <button
+          type="button"
+          onClick={() => setLocation(`/communities/${slug}/prescribe`)}
+          className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 15, padding: "14px 20px", border: "1px solid rgba(46,107,64,0.6)" }}
+        >
+          🧭 Design a routine to share →
+        </button>
+
         {isError ? (
           <p className="text-[13px]" style={{ color: "#C47A65", fontFamily: FONT }}>You need to be a leader of this community to see this.</p>
         ) : isLoading ? (

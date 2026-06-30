@@ -68,6 +68,7 @@ import practiceLogRouter from "./practice-log";
 import reflectionsRouter from "./reflections";
 import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
+import prescribedRoutinesRouter from "./prescribed-routines";
 
 const router: IRouter = Router();
 
@@ -212,6 +213,7 @@ router.use(practiceLogRouter);
 router.use(reflectionsRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
+router.use(prescribedRoutinesRouter);
 router.use(jardinRouter);
 
 export default router;

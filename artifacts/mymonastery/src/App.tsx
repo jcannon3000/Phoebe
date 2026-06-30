@@ -388,6 +388,8 @@ const GroupLeaderboardPage = lazy(() => import("./pages/group-leaderboard"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
+const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
+const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
@@ -948,6 +950,7 @@ function Router() {
       <Route path="/schedule/:token" component={GuestSchedule} />
       <Route path="/invite/:token" component={InvitePage} />
       <Route path="/fellow/:token" component={FellowInvitePage} />
+      <Route path="/routine/:token" component={RoutineInvitePage} />
       <Route path="/letter/:id" component={LetterSplash} />
       <Route path="/letters" component={LettersPage} />
       <Route path="/letters/new" component={LetterNew} />
@@ -1071,6 +1074,7 @@ function Router() {
       <Route path="/welcome">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
       <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
+      <Route path="/communities/:slug/prescribe" component={PrescribeRoutinePage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
