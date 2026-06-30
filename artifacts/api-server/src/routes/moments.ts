@@ -2232,9 +2232,19 @@ router.get("/moments", async (req, res): Promise<void> => {
           return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
         })();
         const weekUserTokens = new Set<string>();
-        for (const [date, tokens] of postsByWindow.entries()) {
-          if (date >= weekCutoff && date <= todayDate) {
-            for (const t of tokens) weekUserTokens.add(t);
+        if (m.prayerFeedId != null) {
+          // Feed intercessions reuse ONE evergreen moment whose CONTENT is
+          // swapped each day (see feedDailyPromotion). A rolling-week count
+          // would lump together people who prayed DIFFERENT days' intercessions
+          // — i.e. "prayed the feed", not "prayed TODAY's intercession". Scope a
+          // feed's count (and the who-prayed faces) to today's window only.
+          const todayTokens = postsByWindow.get(todayDate);
+          if (todayTokens) for (const t of todayTokens) weekUserTokens.add(t);
+        } else {
+          for (const [date, tokens] of postsByWindow.entries()) {
+            if (date >= weekCutoff && date <= todayDate) {
+              for (const t of tokens) weekUserTokens.add(t);
+            }
           }
         }
         const weekPostCount = weekUserTokens.size;

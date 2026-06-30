@@ -1133,9 +1133,15 @@ function SlideContent({
             style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
           >
             {slide.weekPrayCount && slide.weekPrayCount > 0
-              ? slide.weekPrayCount === 1
-                ? "1 person has prayed this this week."
-                : `${slide.weekPrayCount} people have prayed this this week.`
+              ? slide.feedTag
+                // Feed intercessions change daily, so the count is scoped to
+                // people who prayed TODAY's intercession (not the whole feed).
+                ? slide.weekPrayCount === 1
+                  ? "1 person has prayed this today."
+                  : `${slide.weekPrayCount} people have prayed this today.`
+                : slide.weekPrayCount === 1
+                  ? "1 person has prayed this this week."
+                  : `${slide.weekPrayCount} people have prayed this this week.`
               : "Your community is holding this."}
           </p>
         </>

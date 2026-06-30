@@ -1381,7 +1381,12 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
   // same fact.
   let countById = new Map<number, number>();
   if (rows.length > 0) {
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    // Count people who prayed TODAY's intercession, scoped to today's window
+    // date (in the feed's timezone). A feed's intercession lives on an evergreen
+    // moment whose content is swapped daily (feedDailyPromotion), so a rolling
+    // 7-day count would lump together people who prayed DIFFERENT days'
+    // intercessions ("prayed the feed") rather than today's specific one.
+    const today = todayInZone(feed.timezone || "UTC");
     const grouped = await db
       .select({
         momentId: momentPostsTable.momentId,
@@ -1391,7 +1396,7 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
       .where(and(
         inArray(momentPostsTable.momentId, rows.map((r) => r.id)),
         eq(momentPostsTable.isCheckin, 1),
-        gte(momentPostsTable.createdAt, since),
+        eq(momentPostsTable.windowDate, today),
       ))
       .groupBy(momentPostsTable.momentId);
     countById = new Map(grouped.map((g) => [g.momentId, Number(g.n) || 0]));
