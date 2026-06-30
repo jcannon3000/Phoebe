@@ -437,6 +437,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const playScriptureReading = (seg: { startSeconds: number; endSeconds: number | null }) => {
     const ep = scriptureEpisodeQ.data;
     if (!ep?.audioUrl) return;
+    // Play ONLY this reading — never run on into the next one. Trust an explicit
+    // end (when it's actually after the start); otherwise stop at the NEXT
+    // section's start, falling back to the episode end. Without this a reading
+    // whose alignment left the end open would play through to the end of the day.
+    let stopAt: number | undefined;
+    if (seg.endSeconds != null && seg.endSeconds > seg.startSeconds) {
+      stopAt = seg.endSeconds;
+    } else {
+      const next = (scriptureAlignQ.data?.sections ?? [])
+        .filter((s) => s.startSeconds > seg.startSeconds + 0.5)
+        .sort((a, b) => a.startSeconds - b.startSeconds)[0];
+      stopAt = next ? next.startSeconds : (ep.durationSeconds ?? undefined);
+    }
     player.play({
       showSlug: "scripture-day-by-day",
       episodeId: ep.audioUrl,
@@ -449,7 +462,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       sessionSurface: "scripture-audio",
       showHref: "/podcasts/show/scripture-day-by-day",
       startAtSeconds: seg.startSeconds,
-      stopAtSeconds: seg.endSeconds ?? undefined,
+      stopAtSeconds: stopAt,
       collapseOnStop: true, // return to the slideshow when the reading ends
     });
   };
