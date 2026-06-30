@@ -154,7 +154,7 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-from" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention" | "pause";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-from" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention" | "prompts" | "pause";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -637,6 +637,12 @@ function SlideContent({
         )}
       </div>
     );
+  }
+
+  // ── Prayer prompts — seven topics to lift up, written in place. Sits right
+  // before the pause slide (was a closing intercept). Continue → the pause.
+  if (slide.kind === "prompts") {
+    return <PrayerPromptsSlide onContinue={onAdvance} />;
   }
 
   // ── Open pause — invitation to bring anything else to prayer.
@@ -2169,9 +2175,9 @@ function PrayerCompletedSlide({
   const refl = reflectionSource;
   const reflName = refl === "fdd" ? "Forward Day by Day" : refl === "ssje" ? "Brother, Give Us a Word" : "CAC Daily Meditation";
   const openReflection = () => {
-    if (refl === "fdd") { markFddRead(); openExternal(FDD_TODAY_URL); }
-    else if (refl === "ssje") { markSsjeRead(); openExternal(SSJE_TODAY_URL); }
-    else { markCacRead(); openExternal(CAC_TODAY_URL); }
+    if (refl === "fdd") { markFddRead(); openExternal(FDD_TODAY_URL, { reader: true }); }
+    else if (refl === "ssje") { markSsjeRead(); openExternal(SSJE_TODAY_URL, { reader: true }); }
+    else { markCacRead(); openExternal(CAC_TODAY_URL, { reader: true }); }
   };
   // Has today's reflection been read? When so the card flips to a DONE state —
   // a ✓ and a pulsing green border, the same freshly-completed cue the home
@@ -2754,6 +2760,16 @@ export default function PrayerModePage() {
   });
   const circleIntentionsData = circleIntentionsQuery.data;
 
+  // The viewer's PRIVATE prayer list (prayer_intentions). These ride the office
+  // slideshow as "Your Prayer" slides — exactly like the viewer's own requests —
+  // so a prayer kept on your list shows up in the walk just the same, only
+  // private to you. (See the own-intentions map in the slides array below.)
+  const prayerIntentionsQuery = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean; shared: boolean; sharedRequestId: number | null }> }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
+    enabled: !!user && !officesOnly,
+  });
+
   // (The legacy /api/prayer-feeds/today query lived here. Prayer feeds
   // are now a flat, ongoing list of intercessions — sharedMomentsTable
   // rows with prayer_feed_id set — which reach the slideshow through
@@ -3335,6 +3351,21 @@ export default function PrayerModePage() {
         adoptCount: r.adoptCount ?? 0,
         alreadyPrayedToday: r.myAmenedToday === true,
       })),
+    // The viewer's OWN private prayer-list items (prayer_intentions) ride the
+    // deck as "Your Prayer" slides too — same treatment as their own requests
+    // (no amen / pray-along controls; advance() skips the amen POST because
+    // there's no requestId). Only purely-private items: a shared intention
+    // already appears via its linked prayer_request above, so exclude those.
+    ...((prayerIntentionsQuery.data?.intentions ?? [])
+      .filter((it) => !it.answered && !it.shared && it.sharedRequestId == null)
+      .map((it): PrayerSlide => ({
+        kind: "request",
+        text: it.kind === "person" ? (it.personName || "Someone") : it.body,
+        intention: it.kind === "person" && it.body ? it.body : null,
+        attribution: "",
+        isOwnPrayer: true,
+        alreadyPrayedToday: false,
+      }))),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
       // this morning rather than still "Day 1".
@@ -3415,14 +3446,22 @@ export default function PrayerModePage() {
     // button. The viewer's OWN active prayers render INLINE in the request block
     // above (as "Your prayer" slides), so they still appear in the slideshow.
 
-    // Pause slide — the final slide before the closing summary. A
-    // meditative breath: the user is invited to bring anything else
-    // on their heart to prayer that the slideshow couldn't know
-    // about. Keeping it inside the slides array (rather than as its
+    // Pause slide — a meditative breath: the user is invited to bring
+    // anything else on their heart to prayer that the slideshow couldn't
+    // know about. Keeping it inside the slides array (rather than as its
     // own phase) means it inherits the same swipe/Amen advance and
     // persists in slideshow-progress for partial-completion math.
     slides.push({
       kind: "pause",
+      text: "",
+      attribution: "",
+    });
+    // Seven prayer-topic prompts ("anything to lift up?"), written in place.
+    // This is the LAST slide — it comes AFTER the pause, right before the walk
+    // ends (heads into the closing summary / next practice). Its Skip/Continue
+    // advances out of the slideshow.
+    slides.push({
+      kind: "prompts",
       text: "",
       attribution: "",
     });
@@ -3469,6 +3508,7 @@ export default function PrayerModePage() {
       prayerRequestsQuery.isSuccess &&
       myPrayersForQuery.isSuccess &&
       circleIntentionsQuery.isSuccess &&
+      (officesOnly || prayerIntentionsQuery.isSuccess) &&
       (queueMode !== "parish-weekly" || parishWeeklyQuery.isSuccess)
     );
   })();
@@ -3615,7 +3655,7 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit" | "blessing" | "prompts">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit" | "blessing">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
   // A real prayer close ends on the blessing send-off (the universal final
   // beat). Only "just viewing my rhythm" (?progressOnly=1) skips it and goes
   // straight home.
@@ -3825,7 +3865,7 @@ export default function PrayerModePage() {
   // the warmer #11291C, every other phase is #0C1F12 — so the top of the
   // screen never reads as a different color than the slide under it.
   useEffect(() => {
-    const phaseBg = phase === "closing" || phase === "blessing" || phase === "prompts" ? "#11291C" : "#0C1F12";
+    const phaseBg = phase === "closing" || phase === "blessing" ? "#11291C" : "#0C1F12";
     document.body.style.backgroundColor = phaseBg;
     document.documentElement.style.backgroundColor = phaseBg;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", phaseBg);
@@ -3847,20 +3887,10 @@ export default function PrayerModePage() {
       setTimeout(() => setLocation(finishHref), 500);
     }, 300);
   };
-  // Every close path funnels through exitToFinish. The FIRST time, intercept it
-  // to show the "anything to lift up?" prompts slide (the extra closing slide,
-  // shown once); its Continue then calls reallyExit. So office / devotion /
-  // community closes all end on the prompts before heading home.
-  const promptsShownRef = useRef(false);
-  const exitToFinish = () => {
-    if (!promptsShownRef.current) {
-      promptsShownRef.current = true;
-      setSlideVisible(false);
-      setTimeout(() => { setPhase("prompts"); setSlideVisible(true); }, 240);
-      return;
-    }
-    reallyExit();
-  };
+  // The "anything to lift up?" prompts slide now lives INSIDE the intercession
+  // walk (a {kind:"prompts"} slide right before the pause), not as a closing
+  // intercept — so every close path exits straight home.
+  const exitToFinish = reallyExit;
 
   // Morning close with no daily reflection ("newsletter"): skip the community
   // recap entirely and fade smoothly back to the home screen. Fires once when
@@ -4518,13 +4548,6 @@ export default function PrayerModePage() {
         )}
         {phase === "blessing" && (
           <PrayerCompletedSlide onDone={exitToFinish} visible={slideVisible} />
-        )}
-        {/* Extra closing slide — seven prompts to write a prayer, each opening
-            an input screen in place. Shown once at the very end of the close. */}
-        {phase === "prompts" && (
-          <div className="w-full" style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.4s ease" }}>
-            <PrayerPromptsSlide onContinue={reallyExit} />
-          </div>
         )}
       </div>
 

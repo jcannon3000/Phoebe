@@ -204,10 +204,10 @@ function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean;
 
 // How many prayers the user will pray THROUGH in their slideshow right now —
 // the exact set the office's intercession handoff reads (community
-// intercessions + others' open requests + active prayers-for-others). Reuses
-// the same query keys, so it shares React Query's cache (no extra fetches). The
-// office card shows this so its "N prayers" matches the slideshow, not just the
-// others'-requests subset.
+// intercessions + open requests INCLUDING the user's own — the main slideshow
+// walks those as "Your prayer" — + active prayers-for-others). Reuses the same
+// query keys, so it shares React Query's cache (no extra fetches). The office
+// card shows this so its "N prayers" matches the slideshow.
 function useSlideshowPrayerCount(): number {
   const { data: moments } = useQuery<{ moments: Array<{ templateType?: string | null; group?: { id?: number } | null }> }>({
     queryKey: ["/api/moments"], queryFn: () => apiRequest("GET", "/api/moments"), staleTime: 60_000,
@@ -215,7 +215,7 @@ function useSlideshowPrayerCount(): number {
   const { data: circle } = useQuery<{ intentions: Array<{ groupId: number }> }>({
     queryKey: ["/api/groups/me/circle-intentions"], queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"), staleTime: 60_000,
   });
-  const { data: reqs } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null }>>({
+  const { data: reqs } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; kind?: string | null; expiresAt?: string | null }>>({
     queryKey: ["/api/prayer-requests"], queryFn: () => apiRequest("GET", "/api/prayer-requests"), staleTime: 60_000,
   });
   const { data: prayersFor } = useQuery<Array<{ id: number; expired: boolean; expiresAt: string }>>({
@@ -231,8 +231,17 @@ function useSlideshowPrayerCount(): number {
       const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
       activeIntercessions += intentions > 0 ? intentions : 1;
     }
-    const othersRequests = (reqs ?? []).filter((r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt).length;
-    return activeIntercessions + othersRequests + countActivePrayersFor(prayersFor);
+    // Include the user's OWN requests — the office's main slideshow walks them
+    // as "Your prayer", so leaving them out under-reported the count (showing
+    // "3" when the walk-through actually covers all 5).
+    const requestsInWalk = (reqs ?? []).filter((r) =>
+      !r.isAnswered && !r.closedAt &&
+      // Match the office slideshow exactly: it drops the viewer's OWN non-request
+      // kinds (life-events, justice) and any expired request, so the count must too.
+      !(r.isOwnRequest && r.kind != null && r.kind !== "request") &&
+      (!r.expiresAt || new Date(r.expiresAt) > new Date())
+    ).length;
+    return activeIntercessions + requestsInWalk + countActivePrayersFor(prayersFor);
   }, [moments, circle, reqs, prayersFor]);
 }
 
@@ -4336,6 +4345,11 @@ type PrayerListCarouselRow = {
   id: number;
   body: string;
   isOwnRequest?: boolean;
+  // A purely-private prayer from the viewer's own list (prayer_intentions) —
+  // never shared with the community. Renders with a "Private to you" eyebrow
+  // and no Amen pill, and taps into the main slideshow (where it rides as a
+  // "Your Prayer" slide), not a request detail page.
+  isOwnPrayer?: boolean;
   isAnonymous?: boolean;
   ownerName?: string | null;
   ownerAvatarUrl?: string | null;
@@ -4478,9 +4492,11 @@ function PrayerListCarousel({
             // community's shared prayer, not a "from {person}" request).
             const eyebrow = req.kind === "intercession"
               ? t("prayer_list_carousel.community_intercession", { defaultValue: "Community Intercession" })
-              : req.isOwnRequest
-                ? t("prayer_list_carousel.your_request")
-                : t("prayer_list_carousel.from_name", { name: displayName });
+              : req.isOwnPrayer
+                ? t("prayer_list_carousel.private_to_you", { defaultValue: "Private to you" })
+                : req.isOwnRequest
+                  ? t("prayer_list_carousel.your_request")
+                  : t("prayer_list_carousel.from_name", { name: displayName });
             const amened = !!req.myAmenedToday;
             // Tapping an UN-prayed card opens the prayer slideshow (walk through
             // the undone requests, praying each). A PRAYED card isn't in that
@@ -4490,9 +4506,13 @@ function PrayerListCarousel({
             // circle on the right is a quick one-tap "pray".
             return (
               <Link
-                key={req.kind === "intercession" ? `m-${req.id}` : `r-${req.id}`}
+                key={req.isOwnPrayer ? `p-${req.id}` : req.kind === "intercession" ? `m-${req.id}` : `r-${req.id}`}
                 href={
-                  req.kind === "intercession"
+                  req.isOwnPrayer
+                    // A private prayer has no community request to focus — open
+                    // the main slideshow, where it rides as a "Your Prayer" slide.
+                    ? `/prayer-mode?reset=1`
+                    : req.kind === "intercession"
                     // A community intercession ALWAYS opens the slideshow (led by
                     // it), prayed or not — never a detail page.
                     ? `/prayer-mode?focusMoment=${encodeURIComponent(req.momentToken ?? "")}`
@@ -4573,7 +4593,7 @@ function PrayerListCarousel({
                           queues the rest of your prayer list) to pray it there,
                           rather than a silent one-tap amen. Shown on your own
                           request too, so you can see whether you've prayed it. */}
-                      {(
+                      {!req.isOwnPrayer && (
                         amened ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })}
@@ -5865,6 +5885,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       if (raw.length <= 300_000) localStorage.setItem("phoebe:prayer-list-snapshot", raw);
     } catch { /* ignore (quota / private mode) */ }
   }, [user, dashPrayerRequests]);
+  // The viewer's OWN private prayer list (prayer_intentions). These ride the
+  // home carousel too — as "Private to you" cards — so a prayer you keep on your
+  // own list shows up on the home prayer list just like the community ones, only
+  // private. Purely-private items only: a shared intention already appears via
+  // its linked community request, so it's excluded below.
+  const { data: dashPrayerIntentions } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean; shared: boolean; sharedRequestId: number | null }> }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
+    enabled: !!user,
+  });
   // The home prayer-list carousel rows — the viewer's OWN + others' open prayer
   // requests AND group community intercessions, in one sorted list. Computed
   // ONCE here so the carousel render and the events' cascade base both use the
@@ -5903,10 +5933,24 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         momentToken: m.momentToken,
         avatarEmoji: m.group?.emoji ?? "🙏🏽",
       }));
+    // The viewer's purely-private prayers (prayer_intentions) — shown as their
+    // own cards ("Private to you"), no Amen, tap → main slideshow. Exclude any
+    // already shared / answered (those surface via their linked request above).
+    const ownPrayerRows: PrayerListCarouselRow[] = (dashPrayerIntentions?.intentions ?? [])
+      .filter((it) => !it.answered && !it.shared && it.sharedRequestId == null)
+      .map((it) => ({
+        id: it.id,
+        body: it.kind === "person" ? (it.personName || "Someone") : it.body,
+        isOwnRequest: true,
+        isOwnPrayer: true,
+        ownerName: null,
+        ownerAvatarUrl: null,
+        myAmenedToday: false,
+      }));
     // Unprayed float to the top; prayed sink (stable within a group).
-    return [...requestRows, ...intercessionRows]
+    return [...ownPrayerRows, ...requestRows, ...intercessionRows]
       .sort((a, b) => (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0));
-  }, [dashPrayerRequests, momentsData]);
+  }, [dashPrayerRequests, momentsData, dashPrayerIntentions]);
   // (The own-request card's "who prayed for THIS request" faces now come per-
   // request from /api/prayer-requests (req.amenFaces), so the global
   // prayed-for-me-month query that used to back it here was removed.)
