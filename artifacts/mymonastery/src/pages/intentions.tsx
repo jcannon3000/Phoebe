@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
@@ -131,23 +131,18 @@ export default function IntentionsPage() {
   // ── Share sheet ──────────────────────────────────────────────────────────
   const [shareFor, setShareFor] = useState<Intention | null>(null);
 
-  // ── Pray-through slideshow ───────────────────────────────────────────────
+  // ── Pray-through → the MAIN slideshow ────────────────────────────────────
+  // "Pray through your list" no longer uses a separate UI. Every entry point
+  // (this page's button, the daily-progress prayer-list card, the prayer-list
+  // page, the home card) flows into the main community prayer slideshow, which
+  // now folds in the viewer's own private prayers as "Your Prayer" slides. The
+  // ?pray=1 deep-link redirects there too.
   const startedPraying = (() => {
     try { return new URLSearchParams(window.location.search).get("pray") === "1"; } catch { return false; }
   })();
-  const [praying, setPraying] = useState(startedPraying);
-  // Only show the slideshow when there's something to pray through — opening
-  // ?pray=1 on an empty list just lands on the manage view to add items.
-  if (praying && active.length > 0) {
-    return (
-      <PrayThrough
-        intentions={active}
-        bgPhoto={bgPhoto}
-        onClose={() => { setPraying(false); setLocation("/intentions"); }}
-        onFinish={() => { markPracticeDoneToday("prayer-list"); setPraying(false); setLocation("/dashboard"); }}
-      />
-    );
-  }
+  useEffect(() => {
+    if (startedPraying) setLocation("/prayer-mode?reset=1");
+  }, [startedPraying, setLocation]);
 
   const seg = (label: string, on: boolean, onClick: () => void) => (
     <button type="button" onClick={onClick} className="flex-1 rounded-full text-[13px] font-semibold py-2 transition-opacity active:scale-[0.98]"
@@ -168,7 +163,7 @@ export default function IntentionsPage() {
         </div>
 
         {active.length > 0 && (
-          <button type="button" onClick={() => setPraying(true)}
+          <button type="button" onClick={() => setLocation("/prayer-mode?reset=1")}
             className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{ background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 16, padding: "15px 24px" }}>
             {t("intentions.pray_through", { defaultValue: "Pray through your list" })} <span aria-hidden>→</span>
@@ -236,7 +231,6 @@ export default function IntentionsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                       <RowBtn label={t("intentions.share", { defaultValue: "Share" })} emoji="📣" onClick={() => setShareFor(it)} />
-                      <RowBtn label={t("intentions.answered", { defaultValue: "Answered" })} emoji="✓" onClick={() => patchMut.mutate({ id: it.id, answered: true })} />
                       <RowBtn label={t("common.edit", { defaultValue: "Edit" })} emoji="✎" onClick={() => startEdit(it)} />
                       <RowBtn label={t("common.delete", { defaultValue: "Delete" })} emoji="🗑" onClick={() => delMut.mutate(it.id)} />
                     </div>
