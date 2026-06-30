@@ -47,6 +47,9 @@ type OrdoSide = {
 };
 type OrdoDay = { date: string; weekdayLabel: string; sundayLabel: string; season: string; morning: OrdoSide; evening: OrdoSide };
 type OrdoCommonText = { label: string; ref: string | null; text: string };
+// A private prayer intention — the "mine" tab on the prayer-list page. Mirrors
+// the PrayerIntention shape in pages/prayer-list.tsx.
+type PrayerIntention = { id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean; shared: boolean };
 
 // Which office methods get a printed guide page, and how it's titled. The full
 // office and a devotion both show the appointed psalms + lessons; "Praying the
@@ -79,6 +82,18 @@ export default function RoutinePrintPage() {
   });
   const weekDays = ordoData?.days ?? [];
   const common = ordoData?.common ?? [];
+
+  // The user's current prayer list — their PRIVATE intentions (the "mine" tab on
+  // the prayer-list page; only they ever see these). Printed as its own page so
+  // they can pray it on paper. Active = not yet marked answered.
+  const { data: intentionsData } = useQuery<{ intentions: PrayerIntention[]; encrypted?: boolean }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+  const activeIntentions = (intentionsData?.intentions ?? []).filter((i) => !i.answered);
+  const intentionsEncrypted = !!intentionsData?.encrypted;
 
   // Which office method each side uses → its guide page. Full office, devotion,
   // and Praying-the-Psalms each get one (with the right title + readings); other
@@ -226,6 +241,9 @@ export default function RoutinePrintPage() {
         ) : (
           <OfficeWeekGrid title={eveningGuide.title} office="evening" days={weekDays} devotion={eveningGuide.mode === "devotion"} />
         )
+      )}
+      {activeIntentions.length > 0 && (
+        <MyPrayerListPage intentions={activeIntentions} encrypted={intentionsEncrypted} />
       )}
       {showCommonPrayers && common.length > 0 && weekDays.length > 0 && (
         <DailyPrayersBlock common={common} />
@@ -385,6 +403,43 @@ function PsalmCycleWeek({ title, office, days, psalmCycle }: { title: string; of
           })}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+// The user's current prayer list — their private intentions, printed so they
+// can pray through them on paper. Person-intentions lead with the name; text
+// intentions print the prayer. A small box lets them mark each as prayed.
+function MyPrayerListPage({ intentions, encrypted }: { intentions: PrayerIntention[]; encrypted: boolean }) {
+  return (
+    <section className="rp-office-page" style={{ maxWidth: 680, margin: "0 auto", padding: "24px 16px 0", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>My Prayer List</h2>
+      <p style={{ fontSize: 13, color: "#55665C", fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 18px" }}>
+        The prayers you're holding — carry them through the week in your own words.
+      </p>
+      {encrypted ? (
+        <p style={{ fontSize: 13, color: "#55665C" }}>
+          Your prayers are encrypted on your device — open Phoebe to read them.
+        </p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {intentions.map((it) => {
+            const name = it.kind === "person" ? (it.personName ?? "").trim() : "";
+            const body = (it.body ?? "").trim();
+            const showBody = !!body && !(name && body === name);
+            return (
+              <li key={it.id} className="rp-row" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid #ECEFEA" }}>
+                <span aria-hidden style={{ display: "inline-block", width: 15, height: 15, marginTop: 2, border: "1.5px solid #B6C2B4", borderRadius: 4, flexShrink: 0 }} />
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#1F3326" }}>
+                  {name ? <span style={{ fontWeight: 700 }}>{name}{showBody ? " — " : ""}</span> : null}
+                  {showBody ? <span style={{ color: "#33473B" }}>{body}</span> : null}
+                  {!name && !showBody ? <span style={{ color: "#90A096" }}>(untitled prayer)</span> : null}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
