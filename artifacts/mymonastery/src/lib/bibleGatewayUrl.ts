@@ -126,6 +126,29 @@ function lookupUsfm(raw: string): string | null {
   return null;
 }
 
+/**
+ * A coarse identity for a reference — the book's USFM code + its starting
+ * chapter ("Matt. 13:31-35" and "Matthew 13:31-35" both → "MAT.13") — used to
+ * tell whether two differently-formatted citations name the same reading
+ * (e.g. an office lesson's abbreviated ref vs. the podcast's full-name ref).
+ * Returns null when the book or chapter can't be parsed.
+ */
+export function referenceBookChapter(reference: string): string | null {
+  if (!reference) return null;
+  const cleaned = reference
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d+)(?::(\d+))?/);
+  if (!m) return null;
+  const usfm = lookupUsfm(m[1].trim());
+  if (!usfm) return null;
+  // Include the starting verse when present so two different readings in the
+  // same chapter ("Matt. 13:1-23" vs "Matt. 13:31-35") don't false-match.
+  return m[3] ? `${usfm}.${parseInt(m[2], 10)}.${parseInt(m[3], 10)}` : `${usfm}.${parseInt(m[2], 10)}`;
+}
+
 export const bibleGatewayUrl = bibleUrl;
 
 export type BibleSegment = { url: string; label: string };

@@ -8,7 +8,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
-import { bibleUrl } from "@/lib/bibleGatewayUrl";
+import { bibleUrl, referenceBookChapter } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -403,6 +403,56 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
   const player = usePodcastPlayer();
+
+  // Scripture Day by Day audio — each lesson slide can offer a "Listen" button
+  // that brings the episode up at just that reading and returns to the slides
+  // when it ends. The reading is matched to the slide's reference by book +
+  // chapter (so the office's abbreviated ref lines up with the podcast's).
+  const scriptureEpisodeQ = useQuery<{ audioUrl: string | null; durationSeconds: number | null; title: string | null; imageUrl: string | null }>({
+    queryKey: ["/api/podcast/scripture-day-by-day/today"],
+    queryFn: () => apiRequest("GET", "/api/podcast/scripture-day-by-day/today"),
+    // Only the morning/evening offices carry the OT/Psalm/NT/Gospel lessons the
+    // scripture podcast reads — so don't fetch (and don't risk kicking off the
+    // on-demand transcription) when opening Compline, Noonday, etc.
+    enabled: resolvedMode === "morning" || resolvedMode === "evening",
+    staleTime: 30 * 60_000,
+  });
+  const scriptureAlignQ = useQuery<{ status: string; sections: Array<{ id: string; title: string | null; startSeconds: number; endSeconds: number | null }> }>({
+    queryKey: ["/api/podcast/scripture/timestamps"],
+    queryFn: () => apiRequest("GET", "/api/podcast/scripture/timestamps"),
+    enabled: resolvedMode === "morning" || resolvedMode === "evening",
+    staleTime: 5 * 60_000,
+    refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 8000; },
+  });
+  // refKey(citation) → segment, for the four scripture readings (id = kind).
+  const scriptureByRef = useMemo(() => {
+    const m = new Map<string, { startSeconds: number; endSeconds: number | null }>();
+    for (const s of scriptureAlignQ.data?.sections ?? []) {
+      if (!["ot", "psalm", "nt", "gospel"].includes(s.id)) continue;
+      const key = s.title ? referenceBookChapter(s.title) : null;
+      if (key) m.set(key, { startSeconds: s.startSeconds, endSeconds: s.endSeconds });
+    }
+    return m;
+  }, [scriptureAlignQ.data]);
+  const playScriptureReading = (seg: { startSeconds: number; endSeconds: number | null }) => {
+    const ep = scriptureEpisodeQ.data;
+    if (!ep?.audioUrl) return;
+    player.play({
+      showSlug: "scripture-day-by-day",
+      episodeId: ep.audioUrl,
+      title: ep.title ?? "Scripture Day by Day",
+      audioUrl: ep.audioUrl,
+      imageUrl: ep.imageUrl ?? null,
+      showTitle: "Scripture Day by Day",
+      showArtwork: ep.imageUrl ?? null,
+      durationSeconds: ep.durationSeconds ?? null,
+      sessionSurface: "scripture-audio",
+      showHref: "/podcasts/show/scripture-day-by-day",
+      startAtSeconds: seg.startSeconds,
+      stopAtSeconds: seg.endSeconds ?? undefined,
+      collapseOnStop: true, // return to the slideshow when the reading ends
+    });
+  };
   // Which half of the day this office belongs to. Threaded onto the
   // closing redirect (?side=) so the prayer-rhythm habit slide can
   // show an evening-only "Pray the Examen" pill. Compline counts as
@@ -2725,6 +2775,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               ? meta.readUrl
               : (currentSlide.title ? bibleUrl(currentSlide.title) : null);
             if (!readHref) return null;
+            // A matching Scripture Day by Day reading (same book + chapter) →
+            // offer a "Listen" that plays just that passage, then returns here.
+            const segKey = referenceBookChapter(currentSlide.title ?? "");
+            const listenSeg = segKey ? scriptureByRef.get(segKey) : null;
             return (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 4 }}>
                 {/* Invite a physical Bible first; the pill is the online option. */}
@@ -2762,6 +2816,67 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 >
                   Read online →
                 </a>
+                {listenSeg && scriptureEpisodeQ.data?.audioUrl && (
+                  <button
+                    type="button"
+                    onClick={() => playScriptureReading(listenSeg)}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 999,
+                      background: "#2D5E3F",
+                      border: "1px solid rgba(168,197,160,0.4)",
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    🎧 Listen to this reading
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+          {/* Daily psalm → "Listen to this psalm". Scripture Day by Day reads
+              the day's psalm too; the podcast reads specific verses (and can
+              span several psalms, e.g. "97, 99, 100"), so match the office
+              psalm NUMBER against the podcast psalm segment — not the verse —
+              and play just that part, returning to the slides when it ends. */}
+          {currentSlide.type === "psalm_title" && scriptureEpisodeQ.data?.audioUrl && (() => {
+            const psalmSeg = (scriptureAlignQ.data?.sections ?? []).find((s) => s.id === "psalm");
+            if (!psalmSeg) return null;
+            // Skip the invitatory (Venite/Jubilate) — its number can coincide
+            // with the day's appointed psalm, but it's a different moment, and
+            // the podcast reads the appointed psalm, not the invitatory.
+            if ((currentSlide.metadata as { invitatory?: unknown } | undefined)?.invitatory) return null;
+            const psalmNumbers = (s: string): number[] =>
+              s.replace(/.*?psalms?\s*/i, "").split(/[,&]/).map((p) => {
+                const m = p.trim().match(/^(\d+)/);
+                return m ? parseInt(m[1], 10) : NaN;
+              }).filter((n) => Number.isFinite(n) && n >= 1 && n <= 150);
+            const officeNums = psalmNumbers(currentSlide.eyebrow ?? currentSlide.title ?? "");
+            const podcastNums = psalmNumbers(psalmSeg.title ?? "");
+            if (officeNums.length === 0 || !officeNums.some((n) => podcastNums.includes(n))) return null;
+            return (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => playScriptureReading(psalmSeg)}
+                  style={{
+                    padding: "10px 18px",
+                    borderRadius: 999,
+                    background: "#2D5E3F",
+                    border: "1px solid rgba(168,197,160,0.4)",
+                    color: WARM_TEXT,
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  🎧 Listen to this psalm
+                </button>
               </div>
             );
           })()}
