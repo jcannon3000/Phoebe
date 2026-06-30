@@ -435,6 +435,7 @@ const LearnPage = lazy(() => import("./pages/learn"));
 const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
+const AboutDeck = lazy(() => import("./pages/about-deck"));
 const UserOnboarding = lazy(() => import("./pages/user-onboarding"));
 const FeedbackPage = lazy(() => import("./pages/feedback"));
 const MutedUsersPage = lazy(() => import("./pages/muted-users"));
@@ -1121,6 +1122,7 @@ function Router() {
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/vision-deck" component={VisionDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
+      <Route path="/about-deck" component={AboutDeck} />
       <Route path="/feedback" component={FeedbackPage} />
       <Route path="/settings/muted" component={MutedUsersPage} />
       <Route path="/people/:email" component={PersonProfile} />

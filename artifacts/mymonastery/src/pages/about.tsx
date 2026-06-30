@@ -28,6 +28,12 @@ export default function AboutPage() {
           <h1 className="mt-1.5" style={{ fontFamily: FONT, fontSize: 28, fontWeight: 700, letterSpacing: "-0.01em", color: "#F0EDE6" }}>
             Phoebe
           </h1>
+          <button
+            onClick={() => setLocation("/about-deck")}
+            style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: "#A8C5A0", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            View as a slideshow →
+          </button>
         </header>
 
         <div className="space-y-4">
