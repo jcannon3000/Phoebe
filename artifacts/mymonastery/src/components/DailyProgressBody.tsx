@@ -805,7 +805,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(journalingActive ? [{ ...journalingCard, slot: journalingSlot }] : []),
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{
-      key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "150,140,110", done: readingDone, href: "/reading-log",
+      key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180", done: readingDone, href: "/reading-log",
       title: t("rhythm.card_reading", { defaultValue: "Reading" }),
       blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,

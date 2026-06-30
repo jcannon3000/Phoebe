@@ -985,7 +985,7 @@ function OpeningSplash() {
     { active: rhythm.walkActive, done: rhythm.walkDone, slot: getPracticeSlot("walk"), emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" },
     { active: rhythm.journalingActive, done: rhythm.journalingDone, slot: getJournalingSlot(), emoji: "📓", label: "Journaling", blurb: "Kept however you like — tap to log", rgb: "120,150,170", logOnly: true },
     ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150", logOnly: true })),
-    { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "150,140,110", logOnly: true },
+    { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "108,140,180", logOnly: true },
     { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
     // The Examen + Gratitude are end-of-day reflections — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
