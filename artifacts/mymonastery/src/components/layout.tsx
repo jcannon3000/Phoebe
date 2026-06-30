@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { X, LogOut, ChevronRight, ChevronDown, Plus } from "lucide-react";
+import { X, LogOut, ChevronRight, ChevronDown, Plus, Sliders } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
@@ -1612,6 +1612,10 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
 
       {/* Create "+" FAB, bottom-right (Menu lives top-right in the header). */}
       {user && <CreateFab />}
+      {/* "Change your daily rhythm" — bottom-center on the home only, into the
+          customizer. Rendered here (outside the animated <main>) so it stays
+          truly viewport-fixed, same as the FAB. */}
+      {user && <HomeRhythmFab />}
     </div>
   );
 }
@@ -1725,6 +1729,26 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
 // The bottom-right "+" circle, frosted with an outline, on every page. Opens the
 // create options (prayer request / — for admins — intercession + event). The
 // Menu pill lives top-right in the header.
+// Floating bottom-center pill on the home — a quick path into the customizer
+// for anyone who doesn't like their current rhythm. Rendered alongside CreateFab
+// (outside the animated content wrapper), so it's reliably viewport-fixed.
+function HomeRhythmFab() {
+  const [loc, navigate] = useLocation();
+  // Home only — Dashboard renders at /dashboard (and "/" for signed-in users).
+  if (loc !== "/dashboard" && loc !== "/") return null;
+  return (
+    <button
+      type="button"
+      onClick={() => navigate("/rule-of-life")}
+      aria-label="Change your daily rhythm"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 rounded-full px-5 py-3 transition-transform hover:scale-[1.03] active:scale-95"
+      style={{ zIndex: 30, ...FROST, border: "1px solid rgba(46,107,64,0.55)", color: "#CDE3C6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13.5, fontWeight: 600, boxShadow: "0 6px 18px rgba(0,0,0,0.45)", cursor: "pointer" }}
+    >
+      <Sliders size={15} /> Change your daily rhythm
+    </button>
+  );
+}
+
 function CreateFab() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);

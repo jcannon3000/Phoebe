@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
 import { Link, useLocation } from "wouter";
-import { createPortal } from "react-dom";
-import { Plus, X, Camera, Sliders } from "lucide-react";
+import { Plus, X, Camera } from "lucide-react";
 import { LEAF_PHOTOS, HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FROST } from "@/lib/frost";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7701,31 +7700,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         {/* The home "+" FAB moved into the global bottom nav bar (People · ＋ ·
             Menu) in Layout, so the create entry points now live there. */}
       </div>
-
-      {/* Floating "change your rhythm" button — hovers at the bottom of the
-          home so anyone who doesn't like what they see can jump straight to the
-          customizer. Portaled to <body> so it escapes the Layout's animated
-          (transformed) content wrapper and stays truly viewport-fixed. */}
-      {!eventsOnly && user && typeof document !== "undefined" && createPortal(
-        <Link
-          href="/rule-of-life"
-          aria-label="Change your daily rhythm"
-          className="fixed left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 rounded-full px-5 py-3 transition active:scale-[0.98] hover:opacity-90"
-          style={{
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
-            ...FROST,
-            border: "1px solid rgba(46,107,64,0.5)",
-            color: "#CDE3C6",
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: 13.5,
-            fontWeight: 600,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          }}
-        >
-          <Sliders size={15} /> Change your daily rhythm
-        </Link>,
-        document.body,
-      )}
 
       {/* New-prayer chooser (admins) — request for yourself vs. a community
           intercession. */}
