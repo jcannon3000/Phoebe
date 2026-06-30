@@ -1524,6 +1524,17 @@ export default function PrayerListPage() {
           </p>
         </div>
 
+        {/* Pray through your list — the primary action, ABOVE the tab toggle.
+            Routes to the main slideshow (community + your own "Your Prayer"
+            slides). Shown whenever the viewer has anything on their list. */}
+        {myIntentions.length > 0 && (
+          <Link href="/prayer-mode?reset=1" className="block mb-3">
+            <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
+              🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
+            </div>
+          </Link>
+        )}
+
         {/* Toggle — your private list vs the shared community list. */}
         <div className="flex gap-2 mb-5">
           {([
@@ -1563,13 +1574,6 @@ export default function PrayerListPage() {
             </Link>
             {(myIntentions.length > 0 || mySharedRequests.length > 0) ? (
               <>
-                {myIntentions.length > 0 && (
-                <Link href="/intentions?pray=1" className="block mb-3">
-                  <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
-                    🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
-                  </div>
-                </Link>
-                )}
                 <div className="flex flex-col gap-2">
                   {myIntentions.map((it) => {
                     const head = it.kind === "person" ? (it.personName || "Someone") : it.body;
