@@ -9,7 +9,7 @@ import { ArrowLeft, Printer, Sliders } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, getJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
-import { getSideLevel, getPsalmCycle, type OfficeLevel } from "@/lib/officePrefs";
+import { getExplicitSideLevel, getPsalmCycle, type OfficeLevel } from "@/lib/officePrefs";
 import { Fragment, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -57,11 +57,26 @@ type PrayerIntention = { id: number; kind: "text" | "person"; personName: string
 // appointed readings to print, so they get no guide page.
 type GuideMode = "office" | "devotion" | "psalms";
 type Guide = { title: string; mode: GuideMode };
-function sideGuide(side: "morning" | "evening", level: OfficeLevel | null): Guide | null {
+// Resolve the side's guide. The EXPLICIT per-device level wins (office /
+// devotion / psalms each get a guide; intercessions / reflect-sit / journaling /
+// examen / FDD have no appointed readings, so none). When there's no explicit
+// per-device choice — the office is on via the synced server pref, or was set on
+// another device — fall back to the resolved prayerKind so a cross-device office
+// still prints its guide instead of silently dropping it.
+function sideGuide(
+  side: "morning" | "evening",
+  explicit: OfficeLevel | null,
+  prayerKind: "office" | "devotion" | "community",
+): Guide | null {
   const cap = side === "morning" ? "Morning" : "Evening";
-  if (level === "office") return { title: `${cap} Prayer`, mode: "office" };
-  if (level === "devotion") return { title: `${cap} Devotion`, mode: "devotion" };
-  if (level === "psalms") return { title: `Praying the Psalms · ${cap}`, mode: "psalms" };
+  if (explicit === "office") return { title: `${cap} Prayer`, mode: "office" };
+  if (explicit === "devotion") return { title: `${cap} Devotion`, mode: "devotion" };
+  if (explicit === "psalms") return { title: `Praying the Psalms · ${cap}`, mode: "psalms" };
+  // An explicit non-office method — nothing appointed to print.
+  if (explicit != null) return null;
+  // No explicit per-device level: use what the app actually prays.
+  if (prayerKind === "office") return { title: `${cap} Prayer`, mode: "office" };
+  if (prayerKind === "devotion") return { title: `${cap} Devotion`, mode: "devotion" };
   return null;
 }
 
@@ -95,10 +110,11 @@ export default function RoutinePrintPage() {
 
   // Which office method each side uses → its guide page. Full office, devotion,
   // and Praying-the-Psalms each get one (with the right title + readings); other
-  // methods get none. Mirrors how the app renders the office (getSideLevel), so
-  // the printout matches the user's actual rhythm.
-  const morningGuide = r.morningActive ? sideGuide("morning", getSideLevel("morning")) : null;
-  const eveningGuide = r.eveningActive ? sideGuide("evening", getSideLevel("evening")) : null;
+  // methods get none. Uses the explicit per-device level, falling back to the
+  // resolved prayerKind so an office that's on via the server pref (or set on
+  // another device) still prints — the office is active here, after all.
+  const morningGuide = r.morningActive ? sideGuide("morning", getExplicitSideLevel("morning"), r.prayerKind) : null;
+  const eveningGuide = r.eveningActive ? sideGuide("evening", getExplicitSideLevel("evening"), r.prayerKind) : null;
   const psalmCycle = getPsalmCycle();
   // Enumerate the active rhythm in time-of-day order — same ordering as the
   // home Daily-progress list (offices anchor morning/evening; optional
