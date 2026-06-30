@@ -201,6 +201,12 @@ export default function AdminToolsPage() {
             {isAdmin && (
               <>
                 <LinkRow
+                  emoji="⛪"
+                  label="Phoebe Parish"
+                  description="Create & manage parish feeds (events + prayer list)"
+                  onClick={() => setLocation("/admin/parishes")}
+                />
+                <LinkRow
                   emoji="📊"
                   label="App Metrics"
                   description="Today / This week / All time, across every user"

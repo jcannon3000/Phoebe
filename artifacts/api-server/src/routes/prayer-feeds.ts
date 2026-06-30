@@ -74,6 +74,16 @@ async function isBetaUser(userId: number): Promise<boolean> {
   return !!beta;
 }
 
+// Phoebe STAFF admin — a beta_users row with is_admin = true. These are the
+// people who provision parish feeds centrally (the "super-admin" tier). Takes
+// the caller's email (already on the session user) to avoid a users lookup.
+async function isStaffAdmin(email: string | null | undefined): Promise<boolean> {
+  if (!email) return false;
+  const [beta] = await db.select({ isAdmin: betaUsersTable.isAdmin })
+    .from(betaUsersTable).where(eq(betaUsersTable.email, email.toLowerCase()));
+  return !!beta?.isAdmin;
+}
+
 // Can this user view a feed's detail + intercession list? Creators
 // always can. Draft feeds are hidden from everyone else. A live
 // public feed is open to any signed-in user; a live private feed is
@@ -316,6 +326,11 @@ const createFeedSchema = z.object({
   // feed creator (which is the same person here, since the caller is
   // creating the feed).
   initialGroupSlug: z.string().trim().min(1).max(80).optional(),
+  // Staff-admin only: provision a parish feed (a one-way parish channel of
+  // events + a prayer list) and/or open it to discovery at creation. Ignored
+  // (treated as a normal private general feed) for non-staff callers.
+  kind: z.enum(["general", "parish"]).optional(),
+  visibility: z.enum(["public", "private"]).optional(),
 });
 
 const updateFeedSchema = z.object({
@@ -802,7 +817,13 @@ router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
     return;
   }
-  const { title, tagline, coverEmoji, coverImageUrl, timezone, initialGroupSlug } = parsed.data;
+  const { title, tagline, coverEmoji, coverImageUrl, timezone, initialGroupSlug, kind, visibility } = parsed.data;
+  // Marking a feed as a parish, or opening its discovery at creation, is a
+  // staff-admin action (parishes are provisioned centrally). Non-staff callers
+  // always get a normal private general feed regardless of what they pass.
+  const staff = (kind === "parish" || visibility) ? await isStaffAdmin(user.email) : false;
+  const resolvedKind: "general" | "parish" = staff && kind === "parish" ? "parish" : "general";
+  const resolvedVisibility: "public" | "private" = staff && visibility ? visibility : "private";
   const slug = await uniqueSlug(title);
   const [row] = await db.insert(prayerFeedsTable).values({
     slug,
@@ -813,6 +834,8 @@ router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
     creatorUserId: user.id,
     timezone: timezone || "America/New_York",
     state: "draft",
+    kind: resolvedKind,
+    visibility: resolvedVisibility,
   }).returning();
 
   if (initialGroupSlug) {
@@ -827,6 +850,31 @@ router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
   }
 
   res.status(201).json({ feed: row });
+});
+
+// GET /api/prayer-feeds/admin/parishes — staff-admin only. Lists every parish
+// feed for the admin-tools provisioning surface (create · list · open manage).
+router.get("/prayer-feeds/admin/parishes", requireAuth, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  if (!(await isStaffAdmin(user.email))) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const rows = await db
+    .select({
+      id: prayerFeedsTable.id,
+      slug: prayerFeedsTable.slug,
+      title: prayerFeedsTable.title,
+      coverEmoji: prayerFeedsTable.coverEmoji,
+      state: prayerFeedsTable.state,
+      visibility: prayerFeedsTable.visibility,
+      subscriberCount: prayerFeedsTable.subscriberCount,
+      createdAt: prayerFeedsTable.createdAt,
+    })
+    .from(prayerFeedsTable)
+    .where(eq(prayerFeedsTable.kind, "parish"))
+    .orderBy(desc(prayerFeedsTable.createdAt));
+  res.json({ parishes: rows });
 });
 
 // Binds a feed to a group. Auth: caller must be the feed's creator
