@@ -5,7 +5,7 @@
 // checkbox grid, and goes to PDF via the system print dialog — Save as PDF on
 // web, the Share/Print sheet on iOS. No server PDF tooling.
 import { useLocation } from "wouter";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Sliders } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, getJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
@@ -255,9 +255,21 @@ export default function RoutinePrintPage() {
         <MyPrayerListPage intentions={activeIntentions} encrypted={intentionsEncrypted} />
       )}
 
-      <p style={{ marginTop: 28, marginBottom: 40, fontSize: 11, color: "#90A096", textAlign: "center", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <p style={{ marginTop: 28, marginBottom: 96, fontSize: 11, color: "#90A096", textAlign: "center", fontFamily: "'Space Grotesk', sans-serif" }}>
         withphoebe.app
       </p>
+
+      {/* Screen-only floating button (hidden when printing) — if the previewed
+          rhythm isn't right, jump straight to the customizer to change it. */}
+      <button
+        type="button"
+        className="routine-print-toolbar"
+        onClick={() => setLocation("/rule-of-life")}
+        aria-label="Change your daily rhythm"
+        style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)", zIndex: 40, display: "inline-flex", alignItems: "center", gap: 8, background: "#2D5E3F", color: "#F0EDE6", border: "none", borderRadius: 999, padding: "11px 22px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+      >
+        <Sliders size={16} /> Change your daily rhythm
+      </button>
     </div>
   );
 }
