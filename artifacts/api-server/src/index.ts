@@ -6,6 +6,7 @@ import { attachWebSocketServer } from "./lib/ws";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
 import { startMinistrySyncScheduler } from "./lib/ministryScraper";
+import { startOfficeAlignmentScheduler } from "./lib/officeAlignmentScheduler";
 import { captureError } from "./lib/sentry";
 // Bell system uses calendar events, not email cron — no scheduler needed
 
@@ -61,6 +62,14 @@ migrate()
       startPrayerHeldScanner();
       // Daily: re-scrape enabled ministry websites into draft events.
       startMinistrySyncScheduler();
+      // Hourly (morning/evening windows): transcribe + align the day's office,
+      // FDD, and Scripture Day by Day audio so the per-reading markers are
+      // BUILT IN THE MORNING and ready the moment someone opens Listen to
+      // Scripture — rather than being computed on-demand on first open ("◌
+      // Preparing the audio markers…"). Lived only in the (undeployed) worker
+      // before, so it never ran in this web-only deploy. Idempotent on the
+      // episode guid: a real Whisper pass happens once per new episode.
+      startOfficeAlignmentScheduler();
     }
   })
   .catch((err) => {
