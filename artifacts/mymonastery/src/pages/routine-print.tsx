@@ -131,6 +131,20 @@ export default function RoutinePrintPage() {
   const firstName = (user?.name ?? "").trim().split(/\s+/)[0] || "";
   const title = firstName ? `${firstName}'s Weekly Rhythm` : "My Weekly Rhythm";
 
+  // Saved-PDF filename — browsers default the file name to document.title, so we
+  // swap in "<name> — Daily Practice — Week of <date>" just for the print and
+  // restore the tab title afterward.
+  const fullName = (user?.name ?? "").trim();
+  const weekLabel = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const pdfFileName = `${fullName ? `${fullName} — ` : ""}Daily Practice — Week of ${weekLabel}`;
+  const handlePrint = () => {
+    const prev = document.title;
+    document.title = pdfFileName;
+    const restore = () => { document.title = prev; window.removeEventListener("afterprint", restore); };
+    window.addEventListener("afterprint", restore);
+    window.print();
+  };
+
   return (
     <div className="routine-print-root" style={{ minHeight: "100dvh", background: "#FFFFFF", color: "#14241A" }}>
       <style>{`
@@ -160,7 +174,7 @@ export default function RoutinePrintPage() {
         <button onClick={() => setLocation("/daily-progress")} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#3A6B40", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif" }}>
           <ArrowLeft size={18} /> Back
         </button>
-        <button onClick={() => window.print()} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2D5E3F", color: "#F0EDE6", border: "none", borderRadius: 999, padding: "9px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif" }}>
+        <button onClick={handlePrint} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2D5E3F", color: "#F0EDE6", border: "none", borderRadius: 999, padding: "9px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif" }}>
           <Printer size={16} /> Save as PDF
         </button>
       </div>
@@ -415,8 +429,8 @@ function MyPrayerListPage({ intentions, encrypted }: { intentions: PrayerIntenti
             const body = (it.body ?? "").trim();
             const showBody = !!body && !(name && body === name);
             return (
-              <li key={it.id} className="rp-row" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid #ECEFEA" }}>
-                <span aria-hidden style={{ display: "inline-block", width: 15, height: 15, marginTop: 2, border: "1.5px solid #B6C2B4", borderRadius: 4, flexShrink: 0 }} />
+              <li key={it.id} className="rp-row" style={{ display: "flex", gap: 9, alignItems: "baseline", padding: "8px 0", borderBottom: "1px solid #ECEFEA" }}>
+                <span aria-hidden style={{ color: "#8FAF96", flexShrink: 0 }}>•</span>
                 <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#1F3326" }}>
                   {name ? <span style={{ fontWeight: 700 }}>{name}{showBody ? " — " : ""}</span> : null}
                   {showBody ? <span style={{ color: "#33473B" }}>{body}</span> : null}
