@@ -29,8 +29,24 @@ const REFLECTION_NAME: Record<"cac" | "fdd" | "ssje", string> = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Item = { emoji: string; label: string; slot: CustomSlot };
-type OfficeReadings = { psalms: string[]; lessons: string[]; cyclePsalms: string[] };
-type DayReadings = { date: string; morning: OfficeReadings; evening: OfficeReadings };
+
+// The per-day ordo from /api/office/ordo-week — mirrors lib/officeOrdo on the
+// server (built from the same selectors + pickers the office assemblers use, so
+// the printout matches exactly what's prayed).
+type OrdoLesson = { label: string; ref: string };
+type OrdoCanticle = { label: string; name: string };
+type OrdoSide = {
+  invitatory: string;
+  psalms: string[];
+  cyclePsalms: string[];
+  lessons: OrdoLesson[];
+  canticles: OrdoCanticle[];
+  suffrages: "A" | "B";
+  collect: string;
+  prayerForMission: string;
+};
+type OrdoDay = { date: string; weekdayLabel: string; sundayLabel: string; season: string; morning: OrdoSide; evening: OrdoSide };
+type OrdoCommonText = { label: string; ref: string | null; text: string };
 
 // Which office methods get a printed guide page, and how it's titled. The full
 // office and a devotion both show the appointed psalms + lessons; "Praying the
@@ -52,16 +68,17 @@ export default function RoutinePrintPage() {
   const { user } = useAuth();
   const r = useRhythmState();
 
-  // The week's Daily Office Lectionary readings — only fetched when an office is
-  // part of the rhythm; feeds the per-office guide pages below.
+  // The week's office ordo — only fetched when an office is part of the rhythm;
+  // feeds the per-office weekly-grid guide pages below.
   const officeActive = r.morningActive || r.eveningActive;
-  const { data: readingsData } = useQuery<{ days: DayReadings[] }>({
-    queryKey: ["/api/office/readings-week"],
-    queryFn: () => apiRequest("GET", "/api/office/readings-week"),
+  const { data: ordoData } = useQuery<{ days: OrdoDay[]; common: OrdoCommonText[] }>({
+    queryKey: ["/api/office/ordo-week"],
+    queryFn: () => apiRequest("GET", "/api/office/ordo-week"),
     enabled: officeActive,
     staleTime: 6 * 60 * 60_000,
   });
-  const weekDays = readingsData?.days ?? [];
+  const weekDays = ordoData?.days ?? [];
+  const common = ordoData?.common ?? [];
 
   // Which office method each side uses → its guide page. Full office, devotion,
   // and Praying-the-Psalms each get one (with the right title + readings); other
@@ -70,6 +87,11 @@ export default function RoutinePrintPage() {
   const morningGuide = r.morningActive ? sideGuide("morning", getSideLevel("morning")) : null;
   const eveningGuide = r.eveningActive ? sideGuide("evening", getSideLevel("evening")) : null;
   const psalmCycle = getPsalmCycle();
+  // Print the office's fixed prayers once when any FULL office / devotion grid
+  // is shown (the psalms-only guide doesn't need them).
+  const showCommonPrayers =
+    (morningGuide != null && morningGuide.mode !== "psalms") ||
+    (eveningGuide != null && eveningGuide.mode !== "psalms");
 
   // Enumerate the active rhythm in time-of-day order — same ordering as the
   // home Daily-progress list (offices anchor morning/evening; optional
@@ -111,8 +133,15 @@ export default function RoutinePrintPage() {
           .routine-print-toolbar { display: none !important; }
           .routine-print-root { background: #fff !important; }
           @page { margin: 14mm; }
+          /* The weekly-office grids need the width — print them landscape. The
+             checklist + prayer-text pages stay on the default portrait page. */
+          @page office { size: landscape; margin: 12mm; }
+          .rp-office-grid { page: office; }
         }
         .rp-row { break-inside: avoid; }
+        .rp-office-grid, .rp-office-page { break-before: page; }
+        .rp-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .rp-grid-cell { padding: 6px 5px; font-size: 10.5px; border-bottom: 1px solid #ECEFEA; vertical-align: top; overflow-wrap: anywhere; }
       `}</style>
 
       {/* Screen-only toolbar (hidden in print): back to Daily progress. The
@@ -126,8 +155,8 @@ export default function RoutinePrintPage() {
         </button>
       </div>
 
-      {/* The sheet. */}
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 24px 48px" }}>
+      {/* Checklist sheet — portrait. */}
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 24px 8px" }}>
         <header style={{ textAlign: "center", marginBottom: 24 }}>
           <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#7E9A85", margin: "0 0 6px", fontFamily: "'Space Grotesk', sans-serif" }}>Phoebe · Weekly Rhythm</p>
           <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.01em", margin: "0 0 8px", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</h1>
@@ -176,84 +205,209 @@ export default function RoutinePrintPage() {
             </tbody>
           </table>
         )}
-
-        {/* Office-guide pages — one per office in the rhythm, each on its own
-            printed page, with the week's appointed psalms + lessons so the office
-            can be prayed from a paper Book of Common Prayer. */}
-        {morningGuide && weekDays.length > 0 && (
-          <OfficeReadingsPage title={morningGuide.title} office="morning" mode={morningGuide.mode} psalmCycle={psalmCycle} days={weekDays} />
-        )}
-        {eveningGuide && weekDays.length > 0 && (
-          <OfficeReadingsPage title={eveningGuide.title} office="evening" mode={eveningGuide.mode} psalmCycle={psalmCycle} days={weekDays} />
-        )}
-
-        {/* Print / Save-as-PDF — at the bottom, screen-only (hidden in print). */}
-        <div className="routine-print-toolbar" style={{ display: "flex", justifyContent: "center", marginTop: 36 }}>
-          <button onClick={() => window.print()} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2D5E3F", color: "#F0EDE6", border: "none", borderRadius: 999, padding: "13px 26px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif" }}>
-            <Printer size={18} /> Print / Save as PDF
-          </button>
-        </div>
-
-        <p style={{ marginTop: 28, fontSize: 11, color: "#90A096", textAlign: "center", fontFamily: "'Space Grotesk', sans-serif" }}>
-          withphoebe.app
-        </p>
       </div>
+
+      {/* Office-guide pages — the weekly office grid for each office in the
+          rhythm (full office / devotion), Praying-the-Psalms as a psalm list,
+          then the office's fixed prayers in full, once. Each starts on a new
+          printed page; the grids print landscape so the seven day-columns have
+          room. Rendered outside the 760px sheet so the landscape grids can use
+          the full page width. */}
+      {morningGuide && weekDays.length > 0 && (
+        morningGuide.mode === "psalms" ? (
+          <PsalmCycleWeek title={morningGuide.title} office="morning" days={weekDays} psalmCycle={psalmCycle} />
+        ) : (
+          <OfficeWeekGrid title={morningGuide.title} office="morning" days={weekDays} devotion={morningGuide.mode === "devotion"} />
+        )
+      )}
+      {eveningGuide && weekDays.length > 0 && (
+        eveningGuide.mode === "psalms" ? (
+          <PsalmCycleWeek title={eveningGuide.title} office="evening" days={weekDays} psalmCycle={psalmCycle} />
+        ) : (
+          <OfficeWeekGrid title={eveningGuide.title} office="evening" days={weekDays} devotion={eveningGuide.mode === "devotion"} />
+        )
+      )}
+      {showCommonPrayers && common.length > 0 && weekDays.length > 0 && (
+        <DailyPrayersBlock common={common} />
+      )}
+
+      {/* Print / Save-as-PDF — at the bottom, screen-only (hidden in print). */}
+      <div className="routine-print-toolbar" style={{ display: "flex", justifyContent: "center", marginTop: 36 }}>
+        <button onClick={() => window.print()} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#2D5E3F", color: "#F0EDE6", border: "none", borderRadius: 999, padding: "13px 26px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <Printer size={18} /> Print / Save as PDF
+        </button>
+      </div>
+
+      <p style={{ marginTop: 20, marginBottom: 40, fontSize: 11, color: "#90A096", textAlign: "center", fontFamily: "'Space Grotesk', sans-serif" }}>
+        withphoebe.app
+      </p>
     </div>
   );
 }
 
-// One office's guide page: a note to pray it from the BCP + a table of the
-// week's appointed psalms + lessons for that office, one row per day. Starts on
-// a fresh printed page.
-function OfficeReadingsPage({ title, office, mode, psalmCycle, days }: { title: string; office: "morning" | "evening"; mode: GuideMode; psalmCycle: "office" | "monthly"; days: DayReadings[] }) {
-  const fmtDay = (iso: string) => {
-    const d = new Date(`${iso}T00:00:00`);
-    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-  };
-  const th: CSSProperties = { textAlign: "left", padding: "8px 6px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7E9A85", borderBottom: "2px solid #D8E0D4" };
-  const td: CSSProperties = { padding: "10px 6px", fontSize: 13, borderBottom: "1px solid #ECEFEA", verticalAlign: "top" };
-  // Praying-the-Psalms is psalms-only; the office + devotion guides also list
-  // the day's lessons.
-  const showLessons = mode !== "psalms";
-  // For Praying-the-Psalms the psalms come from the chosen cycle — the monthly
-  // 30-day Coverdale portion, or (in step with the office) the lectionary
-  // psalms. Office/devotion guides always use the office lectionary psalms.
-  const psalmsFor = (rd: OfficeReadings): string[] =>
-    mode === "psalms" && psalmCycle === "monthly" ? rd.cyclePsalms : rd.psalms;
-  const intro =
-    mode === "psalms"
-      ? `Pray through the Psalter — the psalms appointed for each day (${psalmCycle === "monthly" ? "the 30-day cycle" : "in step with the daily office"}) are below.`
-      : mode === "devotion"
-        ? `Pray ${title} from your Book of Common Prayer (Daily Devotions for Individuals and Families) — the appointed psalms and readings for each day are below.`
-        : `Pray ${title} from your Book of Common Prayer — the appointed psalms and lessons for each day are below.`;
+// ── Weekly office grid ───────────────────────────────────────────────────────
+// The office prayed down each day's column: the order of service on the left,
+// one column per day, with the appointed psalms, lessons, canticles, suffrages,
+// and collect filled in (the fixed prayers are marked "said daily" and printed
+// in full by DailyPrayersBlock). Morning Prayer reads OT + Epistle with two
+// canticles; Evening Prayer reads the Gospel with one canticle (Phos hilaron in
+// place of an invitatory psalm) — so the two offices have different rows.
+type GridRow = {
+  label: string;
+  kind: "fixed" | "day";
+  note?: string;                       // shown across the days for fixed rows
+  highlight?: boolean;                 // tint the per-day cells (the propers)
+  cell?: (s: OrdoSide) => string;      // per-day value
+};
+
+const fmtPsalms = (ps: string[]): string => (ps.length ? ps.join(", ") : "—");
+
+const MORNING_ROWS: GridRow[] = [
+  { label: "Opening sentence", kind: "fixed", note: "Seasonal" },
+  { label: "Confession + absolution", kind: "fixed", note: "Said daily" },
+  { label: "Invitatory", kind: "day", cell: (s) => s.invitatory },
+  { label: "The Psalms", kind: "day", highlight: true, cell: (s) => fmtPsalms(s.psalms) },
+  { label: "First lesson · OT", kind: "day", highlight: true, cell: (s) => s.lessons[0]?.ref ?? "—" },
+  { label: "Canticle", kind: "day", cell: (s) => s.canticles[0]?.name ?? "—" },
+  { label: "Second lesson · Epistle", kind: "day", highlight: true, cell: (s) => s.lessons[1]?.ref ?? "—" },
+  { label: "Canticle", kind: "day", cell: (s) => s.canticles[1]?.name ?? "—" },
+  { label: "Apostles' Creed", kind: "fixed", note: "Said daily" },
+  { label: "The Lord's Prayer", kind: "fixed", note: "Said daily" },
+  { label: "The Suffrages", kind: "day", cell: (s) => s.suffrages },
+  { label: "Collect of the day", kind: "day", highlight: true, cell: (s) => s.collect || "—" },
+  { label: "Prayer for mission", kind: "day", cell: (s) => s.prayerForMission },
+  { label: "General thanksgiving", kind: "fixed", note: "Said daily" },
+  { label: "Dismissal + blessing", kind: "fixed", note: "Rotates — texts below" },
+];
+
+const EVENING_ROWS: GridRow[] = [
+  { label: "Opening sentence", kind: "fixed", note: "Seasonal" },
+  { label: "Confession + absolution", kind: "fixed", note: "Said daily" },
+  { label: "Phos hilaron", kind: "fixed", note: "O Gracious Light — said daily" },
+  { label: "The Psalms", kind: "day", highlight: true, cell: (s) => fmtPsalms(s.psalms) },
+  { label: "The Gospel", kind: "day", highlight: true, cell: (s) => s.lessons[0]?.ref ?? "—" },
+  { label: "Canticle", kind: "day", cell: (s) => s.canticles[0]?.name ?? "—" },
+  { label: "Apostles' Creed", kind: "fixed", note: "Said daily" },
+  { label: "The Lord's Prayer", kind: "fixed", note: "Said daily" },
+  { label: "The Suffrages", kind: "day", cell: (s) => s.suffrages },
+  { label: "Collect of the day", kind: "day", highlight: true, cell: (s) => s.collect || "—" },
+  { label: "Prayer for mission", kind: "day", cell: (s) => s.prayerForMission },
+  { label: "General thanksgiving", kind: "fixed", note: "Said daily" },
+  { label: "Dismissal + blessing", kind: "fixed", note: "Rotates — texts below" },
+];
+
+function dayHeader(d: OrdoDay): { wd: string; dom: string } {
+  const wd = (d.weekdayLabel || "").slice(0, 3) || d.date.slice(5);
+  const dom = d.date.slice(8, 10).replace(/^0/, "");
+  return { wd, dom };
+}
+
+function OfficeWeekGrid({ title, office, days, devotion }: { title: string; office: "morning" | "evening"; days: OrdoDay[]; devotion: boolean }) {
+  const rows = office === "morning" ? MORNING_ROWS : EVENING_ROWS;
+  const side = (d: OrdoDay): OrdoSide => (office === "morning" ? d.morning : d.evening);
+  const labelCell: CSSProperties = { padding: "6px 8px 6px 5px", fontSize: 11, fontWeight: 600, borderBottom: "1px solid #ECEFEA", color: "#1F3326", overflowWrap: "anywhere" };
   return (
-    <section className="rp-office-page" style={{ breakBefore: "page", paddingTop: 24, fontFamily: "'Space Grotesk', sans-serif" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>{title} · this week's readings</h2>
-      <p style={{ fontSize: 13, color: "#55665C", fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 16px" }}>
-        {intro}
+    <section className="rp-office-grid" style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px 0", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 2px" }}>{title} · this week</h2>
+      <p style={{ fontSize: 12.5, color: "#55665C", fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 12px" }}>
+        {devotion
+          ? "A devotion is a shorter form — a psalm or portion, a reading, the Lord's Prayer, and the collect. Each day's full appointments are below; pray the parts that fit."
+          : "Pray the office down each day's column — the appointed psalms, lessons, canticles, suffrages, and collect are filled in. The fixed prayers (marked “said daily”) are printed in full after the grids."}
       </p>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className="rp-grid-table">
+        <colgroup>
+          <col style={{ width: 118 }} />
+          {days.map((d) => <col key={d.date} />)}
+        </colgroup>
         <thead>
           <tr>
-            <th style={th}>Day</th>
-            <th style={th}>Psalms</th>
-            {showLessons && <th style={th}>Lessons</th>}
+            <th style={{ textAlign: "left", padding: "6px 5px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "#7E9A85", borderBottom: "2px solid #D8E0D4" }}>Order</th>
+            {days.map((d) => {
+              const h = dayHeader(d);
+              return (
+                <th key={d.date} style={{ padding: "6px 4px", fontSize: 11, color: "#14241A", fontWeight: 700, borderBottom: "2px solid #D8E0D4", textAlign: "center" }}>
+                  {h.wd}<span style={{ display: "block", fontSize: 9.5, color: "#7E9A85", fontWeight: 500 }}>{h.dom}</span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} className="rp-row">
+              <td style={labelCell}>{row.label}</td>
+              {row.kind === "fixed" ? (
+                <td colSpan={days.length} style={{ padding: "6px 6px", fontSize: 10.5, color: "#90A096", fontStyle: "italic", borderBottom: "1px solid #ECEFEA" }}>{row.note}</td>
+              ) : (
+                days.map((d) => (
+                  <td key={d.date} className="rp-grid-cell" style={{ textAlign: "center", background: row.highlight ? "#F3F7F0" : undefined, color: "#33473B" }}>
+                    {row.cell ? row.cell(side(d)) : "—"}
+                  </td>
+                ))
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+// Praying-the-Psalms guide — a psalm-only weekly list (the office grid would
+// overstate it). Uses the monthly 30-day Coverdale portion or the office-cycle
+// psalms, per the user's chosen cycle.
+function PsalmCycleWeek({ title, office, days, psalmCycle }: { title: string; office: "morning" | "evening"; days: OrdoDay[]; psalmCycle: "office" | "monthly" }) {
+  const fmtDay = (d: OrdoDay) => {
+    const dt = new Date(`${d.date}T00:00:00`);
+    const md = Number.isNaN(dt.getTime()) ? d.date : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `${d.weekdayLabel ? `${d.weekdayLabel.slice(0, 3)} · ` : ""}${md}`;
+  };
+  const psalmsFor = (s: OrdoSide) => (psalmCycle === "monthly" ? s.cyclePsalms : s.psalms);
+  const th: CSSProperties = { textAlign: "left", padding: "8px 6px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7E9A85", borderBottom: "2px solid #D8E0D4" };
+  const td: CSSProperties = { padding: "10px 6px", fontSize: 13, borderBottom: "1px solid #ECEFEA", verticalAlign: "top" };
+  return (
+    <section className="rp-office-page" style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 0", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>{title} · this week</h2>
+      <p style={{ fontSize: 13, color: "#55665C", fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 16px" }}>
+        Pray through the Psalter — the psalms appointed for each day ({psalmCycle === "monthly" ? "the 30-day cycle" : "in step with the daily office"}) are below.
+      </p>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead><tr><th style={th}>Day</th><th style={th}>Psalms</th></tr></thead>
+        <tbody>
           {days.map((d) => {
-            const rd = office === "morning" ? d.morning : d.evening;
-            const psalms = psalmsFor(rd);
+            const ps = psalmsFor(office === "morning" ? d.morning : d.evening);
             return (
               <tr key={d.date} className="rp-row">
-                <td style={{ ...td, fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDay(d.date)}</td>
-                <td style={{ ...td, color: "#55665C" }}>{psalms.length ? psalms.map((p) => `Ps. ${p}`).join(", ") : "—"}</td>
-                {showLessons && <td style={td}>{rd.lessons.length ? rd.lessons.join("; ") : "—"}</td>}
+                <td style={{ ...td, fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDay(d)}</td>
+                <td style={{ ...td, color: "#55665C" }}>{ps.length ? ps.map((p) => `Ps. ${p}`).join(", ") : "—"}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+// The office's fixed prayers, printed once in full beneath the grids — so the
+// sheet stands on its own without the physical book. Texts come from the server
+// (the same bcp_texts the app reads).
+function DailyPrayersBlock({ common }: { common: OrdoCommonText[] }) {
+  return (
+    <section className="rp-office-page" style={{ maxWidth: 680, margin: "0 auto", padding: "24px 16px 0", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>The daily prayers</h2>
+      <p style={{ fontSize: 13, color: "#55665C", fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 18px" }}>
+        Said the same way at every office — pray each in its place in the order above.
+      </p>
+      {common.map((c, i) => (
+        <div key={i} className="rp-row" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 3 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1F3326" }}>{c.label}</span>
+            {c.ref ? <span style={{ fontSize: 10.5, color: "#90A096", whiteSpace: "nowrap" }}>{c.ref}</span> : null}
+          </div>
+          <p style={{ fontSize: 12.5, lineHeight: 1.5, color: "#33473B", margin: 0, whiteSpace: "pre-line", fontFamily: "Georgia, 'Times New Roman', serif" }}>{c.text}</p>
+        </div>
+      ))}
     </section>
   );
 }

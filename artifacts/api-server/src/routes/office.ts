@@ -12,6 +12,7 @@ import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
+import { buildOfficeOrdoDay, getOrdoCommonTexts } from "../lib/officeOrdo";
 import { parsePsalmRef, sliceVersesByRange } from "../lib/psalmRange";
 import { isUserBeta } from "../lib/parishGate";
 import { resolveLocale } from "../lib/officeI18n";
@@ -399,34 +400,41 @@ router.get("/office/psalter", (_req, res) => {
   return res.json({ psalms });
 });
 
-// GET /office/readings-week — public. The Daily Office Lectionary readings
-// (psalms + lessons) for Morning + Evening Prayer across a span of days — feeds
-// the printable weekly-routine guide so someone praying from paper has each
-// day's appointed readings. ?start=YYYY-MM-DD (default today), ?days=N (1–14, default 7).
-router.get("/office/readings-week", (req, res) => {
-  const startRaw = typeof req.query.start === "string" ? new Date(req.query.start) : new Date();
-  const base = isNaN(startRaw.getTime()) ? new Date() : startRaw;
-  const days = Math.min(14, Math.max(1, Number(req.query.days) || 7));
-  type SideR = { psalms: string[]; lessons: string[]; cyclePsalms: string[] };
-  const out: Array<{ date: string; morning: SideR; evening: SideR }> = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
-    const officeDay = getOfficeDay(d);
-    const m = getLectionaryReadings(officeDay, "morning");
-    const e = getLectionaryReadings(officeDay, "evening");
-    const lessons = (x: typeof m) => [x.lesson1, x.lesson2, x.lesson3].filter((s) => !!s && s.trim().length > 0);
-    // The 30-day Coverdale psalter portion for this day — for the "Praying the
-    // Psalms" guide (a different cycle than the daily-office lectionary psalms).
-    const dom = Math.min(Math.max(d.getDate(), 1), 30);
-    const cyc = MONTHLY_PSALTER[dom];
-    out.push({
-      date: d.toISOString().slice(0, 10),
-      morning: { psalms: m.psalms, lessons: lessons(m), cyclePsalms: cyc?.morning ?? [] },
-      evening: { psalms: e.psalms, lessons: lessons(e), cyclePsalms: cyc?.evening ?? [] },
-    });
+// GET /office/ordo-week — public. The per-day ordo (order of service + the
+// day's appointments) for Morning + Evening Prayer across a span of days, built
+// from the SAME selectors/pickers the office assemblers use — so the printable
+// weekly-office grid matches exactly what's prayed in the app or from a physical
+// BCP. Returns the office's fixed prayers once (`common`) to print beneath the
+// grid, and the 30-day Coverdale psalter portion per side (`cyclePsalms`) for
+// the Praying-the-Psalms guide. ?start=YYYY-MM-DD (default today), ?days=N (1–14).
+router.get("/office/ordo-week", async (req, res) => {
+  try {
+    const startRaw = typeof req.query.start === "string" ? new Date(req.query.start) : new Date();
+    const base = isNaN(startRaw.getTime()) ? new Date() : startRaw;
+    const days = Math.min(14, Math.max(1, Number(req.query.days) || 7));
+    const out = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      const day = buildOfficeOrdoDay(d);
+      // The 30-day Coverdale psalter portion for this day — for the
+      // Praying-the-Psalms guide (a different cycle than the office psalms).
+      const dom = Math.min(Math.max(d.getDate(), 1), 30);
+      const cyc = MONTHLY_PSALTER[dom];
+      out.push({
+        ...day,
+        morning: { ...day.morning, cyclePsalms: cyc?.morning ?? [] },
+        evening: { ...day.evening, cyclePsalms: cyc?.evening ?? [] },
+      });
+    }
+    const common = await getOrdoCommonTexts();
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.json({ days: out, common });
+  } catch (err) {
+    console.error("ordo-week assembly failed:", err);
+    // Degrade to an empty week rather than 500 — the printout just omits the
+    // office-guide pages if this can't be built.
+    return res.json({ days: [], common: [] });
   }
-  res.setHeader("Cache-Control", "public, max-age=3600");
-  return res.json({ days: out });
 });
 
 // ── Praying the Psalms ──────────────────────────────────────────────────────

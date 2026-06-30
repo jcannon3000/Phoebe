@@ -336,7 +336,7 @@ function pickOpeningSentenceKey(
 }
 
 /** Pick which suffrages set to use (A or B, alternate by week) */
-function pickSuffragesKey(weekInSeason: number): string {
+export function pickSuffragesKey(weekInSeason: number): string {
   return weekInSeason % 2 === 1 ? "suffrages_a" : "suffrages_b";
 }
 
@@ -357,7 +357,7 @@ function pickSuffragesKey(weekInSeason: number): string {
 // uses "us" (matching the BCP text on p. 102 — these blessings are
 // already in first-person plural).
 
-const CONCLUDING_BLESSINGS: Array<{ ref: string; text: string }> = [
+export const CONCLUDING_BLESSINGS: Array<{ ref: string; text: string }> = [
   {
     ref: "2 Corinthians 13:14",
     text: "The grace of our Lord Jesus Christ, and the love of God, and the fellowship of the Holy Spirit, be with us all evermore. Amen.",
@@ -384,7 +384,7 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
 // Phoebe rotates between them by day-of-year so a daily reader hears all
 // three across a typical week (same cadence as the concluding blessing).
 const MP_PRAYER_FOR_MISSION_KEYS = ["prayer_mission_1", "prayer_mission_2", "prayer_mission_3"];
-function pickPrayerForMissionKey(date: Date): string {
+export function pickPrayerForMissionKey(date: Date): string {
   const start = Date.UTC(date.getUTCFullYear(), 0, 0);
   const day = Math.floor((date.getTime() - start) / 86_400_000);
   return MP_PRAYER_FOR_MISSION_KEYS[day % MP_PRAYER_FOR_MISSION_KEYS.length];
@@ -416,9 +416,9 @@ function pickPrayerForMissionKey(date: Date): string {
 // If the day's own appointed psalm already IS Psalm 95 (Venite) or 100
 // (Jubilate), that option drops out so the office never prays the same
 // psalm twice in one sitting.
-type InvitatoryKey = "venite" | "jubilate" | "pascha_nostrum";
+export type InvitatoryKey = "venite" | "jubilate" | "pascha_nostrum";
 
-function pickInvitatoryKey(
+export function pickInvitatoryKey(
   liturgicalDay: { season: string },
   date: Date,
   appointedPsalmNumbers: number[],
