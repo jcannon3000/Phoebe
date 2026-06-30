@@ -2771,78 +2771,55 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) {
               return null;
             }
-            // The WEB passage is shown inline on the verse slides that follow
-            // this title, so the "read in NRSV" link is redundant here — hide it
-            // on the title slide when the text is inline. (Still shown on the
-            // reference-only fallback title, where there's no inline text.)
-            if (currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb) {
-              return null;
-            }
-            // ONE pill that opens the whole reading EXTERNALLY on oremus — it
-            // renders the NRSV and resolves the entire passage (cross-chapter
-            // and multi-range included) in a single page, so no splitting. Use
-            // the server-built oremus URL on the slide; fall back to building it
-            // from the reference if it's missing.
-            const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
-            const readHref = (typeof meta?.readUrl === "string" && meta.readUrl)
-              ? meta.readUrl
-              : (currentSlide.title ? bibleUrl(currentSlide.title) : null);
-            if (!readHref) return null;
             // A matching Scripture Day by Day reading (same book + chapter) →
             // offer a "Listen" that plays just that passage, then returns here.
             const segKey = referenceBookChapter(currentSlide.title ?? "");
             const listenSeg = segKey ? scriptureByRef.get(segKey) : null;
+            const canListen = !!(listenSeg && scriptureEpisodeQ.data?.audioUrl);
+            // The WEB passage is shown inline on the verse slides that follow an
+            // inline-WEB title, so the "read online" link is redundant THERE —
+            // but the Listen pill is NOT, so keep it. Otherwise (reference-only
+            // fallback title, or a plain lesson) offer the oremus read link too.
+            const inlineWeb = currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb === true;
+            const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
+            const readHref = inlineWeb
+              ? null
+              : ((typeof meta?.readUrl === "string" && meta.readUrl)
+                  ? meta.readUrl
+                  : (currentSlide.title ? bibleUrl(currentSlide.title) : null));
+            if (!readHref && !canListen) return null;
             return (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 4 }}>
-                {/* Invite a physical Bible first; the pill is the online option. */}
-                <p
-                  style={{
-                    fontSize: 15,
-                    fontFamily: SPACE_GROTESK,
-                    color: "rgba(143,175,150,0.9)",
-                    margin: 0,
-                    textAlign: "center",
-                  }}
-                >
-                  Open your Bible, or read online
-                </p>
-                <a
-                  href={readHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    openExternal(readHref);
-                  }}
-                  style={{
-                    padding: "10px 18px",
-                    borderRadius: 999,
-                    background: "rgba(46,107,64,0.18)",
-                    border: "1px solid rgba(46,107,64,0.45)",
-                    color: WARM_TEXT,
-                    fontFamily: SPACE_GROTESK,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    display: "inline-block",
-                  }}
-                >
-                  Read online →
-                </a>
-                {listenSeg && scriptureEpisodeQ.data?.audioUrl && (
+                {readHref && (
+                  <>
+                    {/* Invite a physical Bible first; the pill is the online option. */}
+                    <p style={{ fontSize: 15, fontFamily: SPACE_GROTESK, color: "rgba(143,175,150,0.9)", margin: 0, textAlign: "center" }}>
+                      Open your Bible, or read online
+                    </p>
+                    <a
+                      href={readHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => { e.preventDefault(); openExternal(readHref); }}
+                      style={{
+                        padding: "10px 18px", borderRadius: 999,
+                        background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
+                        color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+                        textDecoration: "none", display: "inline-block",
+                      }}
+                    >
+                      Read online →
+                    </a>
+                  </>
+                )}
+                {canListen && (
                   <button
                     type="button"
-                    onClick={() => playScriptureReading(listenSeg)}
+                    onClick={() => playScriptureReading(listenSeg!)}
                     style={{
-                      padding: "10px 18px",
-                      borderRadius: 999,
-                      background: "#2D5E3F",
-                      border: "1px solid rgba(168,197,160,0.4)",
-                      color: WARM_TEXT,
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
+                      padding: "10px 18px", borderRadius: 999,
+                      background: "#2D5E3F", border: "1px solid rgba(168,197,160,0.4)",
+                      color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 700, cursor: "pointer",
                     }}
                   >
                     🎧 Listen to this reading
