@@ -2845,6 +2845,57 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
   );
 }
 
+// Creation Prayer home card — replaces the office card for a side set to
+// Creation Prayer. Labels "Morning/Evening Creation Prayer" when BOTH sides are
+// Creation Prayer (so the two cards are distinguishable); just "Creation Prayer"
+// when it's the only side.
+function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
+  const bothCreation = getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation";
+  const label = bothCreation ? (side === "morning" ? "Morning Creation Prayer" : "Evening Creation Prayer") : "Creation Prayer";
+  const href = `/creation-devotion?mode=creation-${side}&picked=1`;
+  const rgb = "76,124,91";
+  if (hero) {
+    return (
+      <Link href={href} className="block">
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        >
+          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+          <div className="flex-1 px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <span className="text-[34px] leading-none flex-shrink-0">🌱</span>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
+                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Co-Breathe</p>
+              </div>
+              <div className="flex-shrink-0">
+                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Begin <span aria-hidden className="ml-1">→</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+  return (
+    <PracticeHomeCard
+      href={href}
+      label={`${label} 🌱`}
+      cta="Begin"
+      tintBg={`rgba(${rgb},0.12)`}
+      tintBorder={`rgba(${rgb},0.35)`}
+      pillBg={`rgba(${rgb},0.28)`}
+      pillBorder={`rgba(${rgb},0.45)`}
+      accentBar={`rgba(${rgb},0.85)`}
+    />
+  );
+}
+
 // CAC Daily Reflection home card. Same visual language as the other
 // practice cards but opens externally (SFSafariViewController on iOS)
 // instead of navigating to an in-app route. The pill label flips
@@ -3627,6 +3678,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   }
   if (getSideLevel(isMorning ? "morning" : "evening") === "examen") {
     return <ExamenHomeCard hero={!compact && !!forceSide} />;
+  }
+  // Per-user: Creation Prayer IS this side's prayer → its card replaces the
+  // office card. Labels Morning/Evening Creation Prayer when both sides use it.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "creation") {
+    return <CreationHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
 
   const prayedTodayHalf = (() => {
