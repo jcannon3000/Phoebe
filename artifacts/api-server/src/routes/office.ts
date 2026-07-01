@@ -9,6 +9,7 @@ import { Router } from "express";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
+import { assembleCreationDevotion } from "../lib/assembleCreationDevotion";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
@@ -356,13 +357,6 @@ router.post("/office/seed", async (req, res) => {
 // lookup + the per-user intercessions queries).
 router.get("/devotion/:kind", async (req, res) => {
   const kindParam = String(req.params.kind ?? "");
-  const kind: DevotionKind | null =
-    kindParam === "morning" ? "morning"
-      : kindParam === "early-evening" ? "early-evening"
-      : null;
-  if (!kind) {
-    return res.status(400).json({ error: "Unknown devotion. Use 'morning' or 'early-evening'." });
-  }
 
   let date: Date;
   try {
@@ -370,6 +364,33 @@ router.get("/devotion/:kind", async (req, res) => {
     if (isNaN(date.getTime())) throw new Error("Invalid date");
   } catch {
     date = new Date();
+  }
+
+  // Season of Creation devotion — the two-week creation Psalter + the guide's
+  // creation-themed office texts (see assembleCreationDevotion). Not the BCP
+  // Daily Devotions form, so it's dispatched separately here.
+  if (kindParam === "creation-morning" || kindParam === "creation-evening") {
+    const side = kindParam === "creation-morning" ? "morning" : "evening";
+    try {
+      const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+      const { slides, officeDay } = await assembleCreationDevotion(date, userId, side);
+      return res.json({
+        slides,
+        officeDay: { ...officeDay, totalSlides: slides.length },
+        cacheDate: date.toISOString().slice(0, 10),
+      });
+    } catch (err) {
+      console.error(`Creation devotion assembly failed (${side}):`, err);
+      return res.status(500).json({ error: "Failed to assemble creation devotion" });
+    }
+  }
+
+  const kind: DevotionKind | null =
+    kindParam === "morning" ? "morning"
+      : kindParam === "early-evening" ? "early-evening"
+      : null;
+  if (!kind) {
+    return res.status(400).json({ error: "Unknown devotion. Use 'morning' or 'early-evening'." });
   }
 
   try {

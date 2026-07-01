@@ -51,7 +51,9 @@ export type LiturgyMode =
   | "evening"
   | "compline"
   | "morning-devotion"
-  | "early-evening-devotion";
+  | "early-evening-devotion"
+  | "creation-morning"
+  | "creation-evening";
 
 // ── Per-day localStorage progress ───────────────────────────────────────────
 // Mirrors prayer-mode's resume-where-you-left-off pattern. The home-screen
@@ -398,6 +400,8 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   compline: { endpoint: "/api/office/compline", title: "Compline" },
   "morning-devotion": { endpoint: "/api/devotion/morning", title: "Morning Devotion" },
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
+  "creation-morning": { endpoint: "/api/devotion/creation-morning", title: "Season of Creation · Morning" },
+  "creation-evening": { endpoint: "/api/devotion/creation-evening", title: "Season of Creation · Evening" },
 };
 
 export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook, initialSlide }: OfficeViewerProps) {
@@ -474,7 +478,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const officeSide: "morning" | "evening" =
     resolvedMode === "evening" ||
     resolvedMode === "compline" ||
-    resolvedMode === "early-evening-devotion"
+    resolvedMode === "early-evening-devotion" ||
+    resolvedMode === "creation-evening"
       ? "evening"
       : "morning";
   // The National Cathedral broadcasts Morning Prayer Mon–Fri only, so the
@@ -548,6 +553,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const officeSurface: PrayerSurface =
     resolvedMode === "morning" ? "morning-prayer"
     : resolvedMode === "evening" ? "evening-prayer"
+    // The creation devotion counts as that half-day's office.
+    : resolvedMode === "creation-morning" ? "morning-prayer"
+    : resolvedMode === "creation-evening" ? "evening-prayer"
     : (resolvedMode as PrayerSurface);
   usePrayerSession(officeSurface, slidesReachedRef, suppressSessionPostRef, completedRef);
   // The Daily Devotions are explicitly the personal short forms
@@ -558,7 +566,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // rather than a corporate liturgy.
   const isDevotion =
     resolvedMode === "morning-devotion" ||
-    resolvedMode === "early-evening-devotion";
+    resolvedMode === "early-evening-devotion" ||
+    resolvedMode === "creation-morning" ||
+    resolvedMode === "creation-evening";
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
@@ -942,7 +952,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // flashing spinner. Stays until BOTH the slides have loaded and the minimum
     // ~2.8s has passed, then the office fades up over it.
     const opening =
-      (resolvedMode === "evening" || resolvedMode === "early-evening-devotion")
+      (resolvedMode === "evening" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening")
         ? { text: "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice.", cite: "Psalm 141:2" }
         : resolvedMode === "compline"
           ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
@@ -3185,6 +3195,8 @@ const MODE_START_PAGE: Record<LiturgyMode, string> = {
   compline: "p. 127",
   "morning-devotion": "p. 137",
   "early-evening-devotion": "p. 139",
+  "creation-morning": "Season of Creation",
+  "creation-evening": "Season of Creation",
 };
 
 type BookSection = {
