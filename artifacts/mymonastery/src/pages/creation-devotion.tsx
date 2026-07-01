@@ -3,42 +3,65 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { OfficeViewer, type LiturgyMode } from "./bcp-daily-office";
+import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 
-// ── Season of Creation — a creation-focused Daily Devotion ───────────────────
+// ── Creation Prayer — a creation-focused Daily Devotion ──────────────────────
 //
-// A short office built on the two-week creation Psalter and the creation-themed
-// prayers of *Season of Creation: A Celebration Guide for Episcopal Parishes*
-// (2025). Reuses the Daily Office slide viewer (OfficeViewer) via the
-// "creation-morning" / "creation-evening" modes. Offered as an optional
-// enrichment for personal prayer — especially Sep 1 (World Day of Prayer for
-// the Care of Creation) → Oct 4 (St. Francis).
+// A short office built on the two-week creation Psalter and the creation prayers
+// of *Season of Creation: A Celebration Guide for Episcopal Parishes* (2025).
+// It OPENS WITH CO-BREATHE — the shared climate breath — then hands into the
+// office (the collect, psalms, reading, suffrages, blessing) via the Daily
+// Office viewer (the "creation-morning"/"creation-evening" modes). Offered as an
+// optional enrichment for personal prayer; especially Sep 1 → Oct 4.
 
 export default function CreationDevotionPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [showMode, setShowMode] = useState<LiturgyMode | null>(null);
   const [cameFromPicker, setCameFromPicker] = useState(false);
+  // Co-Breathe opens the devotion — once its breath finishes (or is backed
+  // out of), we move on to the office. Reset whenever a fresh mode is chosen.
+  const [breathDone, setBreathDone] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
-  // Deep-link resume from /prayer-mode (?mode=creation-morning|creation-evening).
+  // Deep-link resume from /prayer-mode or begin-prayer
+  // (?mode=creation-morning|creation-evening).
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");
     if (mode === "creation-morning" || mode === "creation-evening") {
       setShowMode(mode);
+      setBreathDone(false);
       if (search.get("picked") === "1") setCameFromPicker(true);
     }
   }, []);
 
-  const pick = (m: LiturgyMode) => { setCameFromPicker(true); setShowMode(m); };
+  const pick = (m: LiturgyMode) => { setCameFromPicker(true); setBreathDone(false); setShowMode(m); };
 
   if (isLoading || !user) return null;
 
   if (showMode === "creation-morning" || showMode === "creation-evening") {
-    return <OfficeViewer mode={showMode} cameFromPicker={cameFromPicker} onBack={() => { setShowMode(null); setLocation("/dashboard"); }} />;
+    // 1. The breath — Co-Breathe as the opening movement of Creation Prayer.
+    if (!breathDone) {
+      return (
+        <CobreatheOverlay
+          open
+          immediateClose
+          onClose={() => setBreathDone(true)}
+        />
+      );
+    }
+    // 2. The office — the creation Psalter + prayers.
+    return (
+      <OfficeViewer
+        mode={showMode}
+        cameFromPicker={cameFromPicker}
+        onBack={() => { setShowMode(null); setBreathDone(false); setLocation("/dashboard"); }}
+      />
+    );
   }
 
   const hour = new Date().getHours();
@@ -58,7 +81,7 @@ export default function CreationDevotionPage() {
         <span className="text-3xl">{emoji}</span>
         <div className="flex-1">
           <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
-          <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>The creation Psalter + prayers with creation</p>
+          <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>Co-Breathe, then the creation Psalter &amp; prayers</p>
           {active && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
         </div>
         <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
@@ -74,10 +97,10 @@ export default function CreationDevotionPage() {
             ← Book of Common Prayer
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Season of Creation 🌿
+            Creation Prayer 🌱
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            A creation-focused devotion — a two-week cycle of the Psalms with prayers with creation
+            A creation-focused devotion — it opens with the Co-Breathe breath, then a two-week cycle of the Psalms with prayers for creation
           </p>
         </div>
 

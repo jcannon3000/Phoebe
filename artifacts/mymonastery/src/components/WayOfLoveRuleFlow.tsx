@@ -77,7 +77,7 @@ const SIDES = ["morning", "evening"] as const;
 // "none" = no office anchor for this side (e.g. contemplation-only). The
 // contemplation/fdd/examen values remain only so an OLD saved level still reads
 // back (prayFromLevel) and migrates forward on the next save.
-type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen";
+type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen" | "creation";
 type Step =
   | "when"
   | "morning-way" | "morning-bcp" | "morning-config"
@@ -114,7 +114,7 @@ const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen"> = {
+const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen" | "creation"> = {
   // No office anchor on this side — its level clears to "ask" (no office card).
   // Any Contemplative / Examen the user picked surface as their OWN cards.
   none: "ask",
@@ -133,6 +133,10 @@ const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "off
   // The Ignatian Examen IS the prayer for this side (usually evening) — the
   // home Examen card replaces the office card for whoever picks it.
   examen: "examen",
+  // Creation Prayer IS the prayer for this side — a creation-focused devotion
+  // (the creation Psalter + prayers, opening with Co-Breathe). begin-prayer
+  // routes the "creation" level to /creation-devotion.
+  creation: "creation",
 };
 // Inverse of PRAY_LEVEL — read an existing office level back into a Pray
 // choice so Customize opens with the user's current pick selected.
@@ -144,6 +148,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "fdd") return "fdd";
   if (level === "psalms") return "psalms";
   if (level === "examen") return "examen";
+  if (level === "creation") return "creation";
   return null;
 }
 // Read a saved office level back into a side's OFFICE ANCHOR only. Contemplation
@@ -153,7 +158,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
 // key). This is what lets a BCP office coexist with a silent sit.
 function anchorFromLevel(level: string | null | undefined): PrayChoice {
   const p = prayFromLevel(level);
-  return p === "offices" || p === "devotion" || p === "psalms" || p === "community" ? p : "none";
+  return p === "offices" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" ? p : "none";
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).
@@ -166,6 +171,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   fdd: "pray-fdd",
   psalms: "pray-psalms",
   examen: "pray-examen",
+  creation: "pray-creation",
 };
 // Each Pray choice → the morning reminder pref the office-reminder cron reads
 // (parish_office_morning_pref). "office" deep-links the nudge to Morning
@@ -186,6 +192,8 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   psalms: "devotion",
   // The Examen gets the lighter nudge that just opens the practice.
   examen: "devotion",
+  // Creation Prayer gets the lighter nudge that opens the devotion.
+  creation: "devotion",
 };
 const DEFAULT_REMINDER_TIME = "07:30";
 
@@ -1265,9 +1273,12 @@ export default function WayOfLoveRuleFlow({
           {/* Contemplative Prayer — a silent sit. An add-on (its own Silence
               card), so it rides alongside a BCP office rather than replacing it. */}
           {choiceRow(contemplative.prayer, `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { toggleContemplative("prayer"); chooseContemplationStyle("silent"); })}
-          {/* Co-Breathe — an add-on card alongside your prayer (feeds the
-              contemplative-practices step's toggle). */}
-          {!pilot && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => toggleContemplative("cobreathe"))}
+          {/* Creation Prayer — a creation-focused devotion (the creation Psalter
+              + prayers, opening with the Co-Breathe breath). IS this side's
+              prayer, like the office; mutually exclusive with the BCP office.
+              (Co-Breathe is no longer a separate option here — it's part of
+              Creation Prayer.) */}
+          {!pilot && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, opening with Co-Breathe." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
           {/* Forward Day by Day — an add-on reflection; the next step picks read
               vs. listen (feeds the reflection/newsletter set). */}
           {choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}
@@ -1345,7 +1356,7 @@ export default function WayOfLoveRuleFlow({
     // has no method either, so this slide shows ONLY the reminder time, not the
     // read/listen/watch dropdown. (Silent-sit length is set on the dedicated
     // contemplation-goal step, not here — contemplation is no longer a side anchor.)
-    const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms";
+    const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms" || prayBySide[side] === "creation";
     return shell(
       <>
         {backRow(goPrev)}

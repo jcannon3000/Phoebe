@@ -101,6 +101,12 @@ export default function BeginPrayerPage() {
       setLocation("/dashboard", { replace: true });
       return;
     }
+    // Creation Prayer IS this side's prayer → the creation-focused devotion
+    // (opens with Co-Breathe, then the creation Psalter + prayers).
+    if (defaultPrayerLevel === "creation") {
+      setLocation(`/creation-devotion?mode=creation-${side}&picked=1`, { replace: true });
+      return;
+    }
 
     // "ask" (the out-of-box default) → show the prayer chooser, the
     // options screen with the last-prayed depth pinned on top. Only an

@@ -400,8 +400,8 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   compline: { endpoint: "/api/office/compline", title: "Compline" },
   "morning-devotion": { endpoint: "/api/devotion/morning", title: "Morning Devotion" },
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
-  "creation-morning": { endpoint: "/api/devotion/creation-morning", title: "Season of Creation · Morning" },
-  "creation-evening": { endpoint: "/api/devotion/creation-evening", title: "Season of Creation · Evening" },
+  "creation-morning": { endpoint: "/api/devotion/creation-morning", title: "Creation Prayer · Morning" },
+  "creation-evening": { endpoint: "/api/devotion/creation-evening", title: "Creation Prayer · Evening" },
 };
 
 export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook, initialSlide }: OfficeViewerProps) {
@@ -3195,8 +3195,8 @@ const MODE_START_PAGE: Record<LiturgyMode, string> = {
   compline: "p. 127",
   "morning-devotion": "p. 137",
   "early-evening-devotion": "p. 139",
-  "creation-morning": "Season of Creation",
-  "creation-evening": "Season of Creation",
+  "creation-morning": "Creation Prayer",
+  "creation-evening": "Creation Prayer",
 };
 
 type BookSection = {

@@ -108,9 +108,9 @@ export async function assembleCreationDevotion(
 
   // 0. Intro — names the practice + its source.
   slides.push(
-    slide(id(), "office_intro", "🌿", "A creation-focused devotion",
-      "Prayer with creation for the Season of Creation — the psalms and prayers drawn from the Episcopal Season of Creation guide.",
-      { title: isMorning ? "Season of Creation · Morning" : "Season of Creation · Evening" }),
+    slide(id(), "office_intro", "🌱", "A creation-focused devotion",
+      "Prayer with creation — the psalms and prayers drawn from the Episcopal Season of Creation guide, opening with the Co-Breathe breath.",
+      { title: isMorning ? "Creation Prayer · Morning" : "Creation Prayer · Evening" }),
   );
 
   // 0b. The Collect — the devotion opens with the day's collect from the creation
