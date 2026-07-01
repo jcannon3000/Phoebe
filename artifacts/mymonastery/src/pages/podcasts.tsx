@@ -7,6 +7,7 @@ import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlaye
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { usePilotMode } from "@/hooks/usePilotMode";
 
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
@@ -386,6 +387,7 @@ export default function PodcastsPage() {
   const player = usePodcastPlayer();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const { isPilot } = usePilotMode();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -449,7 +451,9 @@ export default function PodcastsPage() {
 
   if (authLoading || !user) return null;
 
-  const publishers = data?.publishers ?? [];
+  // Pilot drops the CAC (Center for Action & Contemplation) publisher; the rest
+  // of the podcast library stays.
+  const publishers = (data?.publishers ?? []).filter((p) => !isPilot || p.slug !== "cac");
   const showHits = searchData?.shows ?? [];
   const episodeHits = searchData?.episodes ?? [];
   const openEpisode = (ep: EpisodeHit) =>
