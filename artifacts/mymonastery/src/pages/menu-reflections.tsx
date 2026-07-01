@@ -1,5 +1,6 @@
 import { MenuHub } from "@/components/MenuHub";
 import { openExternal } from "@/lib/openExternal";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import {
   CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL,
   markCacRead, markFddRead, markSsjeRead,
@@ -10,9 +11,17 @@ import {
 // return page. We still mark the source read so the Daily-progress "Reflect"
 // anchor + home cards update. Select sound handled centrally by MenuHub.
 export default function MenuReflectionsPage() {
+  const { isPilot } = usePilotMode();
   const openFdd = () => { markFddRead(); openExternal(FDD_TODAY_URL, { reader: true }); };
   const openSsje = () => { markSsjeRead(); openExternal(SSJE_TODAY_URL, { reader: true }); };
   const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL, { reader: true }); };
+
+  const items = [
+    { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: openFdd },
+    { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
+    // CAC is trimmed in pilot.
+    ...(!isPilot ? [{ emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac }] : []),
+  ];
 
   return (
     <MenuHub
@@ -21,15 +30,7 @@ export default function MenuReflectionsPage() {
       subtitle="Today's reflections from across the church."
       backLabel="Menu"
       backHref="/menu"
-      groups={[
-        {
-          items: [
-            { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: openFdd },
-            { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
-            { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac },
-          ],
-        },
-      ]}
+      groups={[{ items }]}
     />
   );
 }

@@ -1489,6 +1489,9 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
   const officesOnly = user?.accessTier === "offices-only";
+  // Pilot has no /daily-progress dashboard (replaced by /pilot/home) — the
+  // header pill would dead-end, so hide it for pilot.
+  const { isPilot: headerIsPilot } = usePilotMode();
   // Jardín shell — hide Phoebe's daily-progress pill (the office/reflect/
   // silence rhythm) for portal accounts; it's not part of the Jardín day.
   const headerJardinShell = isJardinSealed(user);
@@ -1570,7 +1573,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
             {/* Daily-progress pill — the four dots reflect today's rhythm;
                 tapping opens /daily-progress. Hidden for the offices-only tier
                 to match the prior pill. */}
-            {!officesOnly && !headerJardinShell && <DailyProgressPill />}
+            {!officesOnly && !headerJardinShell && !headerIsPilot && <DailyProgressPill />}
             {/* Menu pill — opens the side drawer. */}
             {(
               <button

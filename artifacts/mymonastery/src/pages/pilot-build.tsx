@@ -26,7 +26,8 @@ export default function PilotBuildPage() {
       return;
     }
     // Guest: the rhythm is already saved on this device — sign up to keep it.
-    setLocation("/signin?mode=signup&next=%2Fpilot%2Fhome");
+    // onboarding.tsx honors `redirect` (any /-prefixed path), not `next`.
+    setLocation("/signin?mode=signup&redirect=%2Fpilot%2Fhome");
   };
 
   if (isLoading) return null;

@@ -745,13 +745,15 @@ function JardinEntry() {
 const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/intentions", "/pray-request/new",
-  "/menu", "/menu/practices", "/menu/reflections",
-  "/scripture/readings", "/contemplation", "/podcasts",
+  "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
+  "/scripture/readings", "/contemplation", "/cobreathe",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
-  "/pray", "/cobreathe",
+  "/pray",
   "/about", "/privacy", "/terms",
 ]);
-const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/scripture", "/settings/"];
+// Podcasts is an intended pilot feature — allow its show/publisher/episode
+// subpaths, not just the index. Same for /cobreathe (intro → breath).
+const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/scripture", "/settings/", "/podcasts", "/cobreathe"];
 
 function PilotGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();

@@ -2,6 +2,7 @@ import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { usePilotMode } from "@/hooks/usePilotMode";
 
 // ── Today's Rhythm ──────────────────────────────────────────────────────────
 //
@@ -34,13 +35,17 @@ type Anchor = {
 export function TodaysRhythm() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const { isPilot } = usePilotMode();
   const hour = new Date().getHours();
 
   const {
     morningDone, reflectDone, silenceDone, eveningDone,
-    gardenCount, cobreatheCount, prayerKind,
+    gardenCount, cobreatheCount, prayerKind: rawPrayerKind,
     gratitudeActive, examenActive, gratitudeDone, examenDone,
   } = useRhythmState();
+  // Pilot is personal-only: never render the community "pray together" voice or
+  // the garden social-proof line (a converted account could still carry them).
+  const prayerKind = (isPilot && rawPrayerKind === "community") ? "devotion" : rawPrayerKind;
 
   // The office word matches what the user prays: "Prayer" (office),
   // "Devotion", or — for community — a "pray together" phrasing.
@@ -200,8 +205,8 @@ export function TodaysRhythm() {
         ) : null}
       </div>
 
-      {/* Garden social-proof line — our common life */}
-      {gardenCount > 0 && (
+      {/* Garden social-proof line — our common life. Hidden in pilot. */}
+      {!isPilot && gardenCount > 0 && (
         <Link href="/prayer-list">
           <p className="text-[11.5px] text-center mt-3 cursor-pointer" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
             {t("rhythm.garden_line", { count: gardenCount, defaultValue: `${gardenCount} ${gardenCount === 1 ? "person" : "people"} in your garden ${gardenCount === 1 ? "has" : "have"} prayed today` })}

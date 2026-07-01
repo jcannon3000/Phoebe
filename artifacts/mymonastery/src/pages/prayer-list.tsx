@@ -1432,6 +1432,9 @@ export default function PrayerListPage() {
   // listen to popstate ourselves and read the live search each time.
   useEffect(() => {
     const openFromSearch = (qs: string) => {
+      // Pilot is personal-only — never auto-open a community request/prayer-for
+      // detail (another user's body) from a ?detail= deep-link.
+      if (isPilot) return;
       const raw = new URLSearchParams(qs).get("detail");
       if (!raw) return;
       const [kind, idStr] = raw.split(":");
@@ -1640,8 +1643,10 @@ export default function PrayerListPage() {
                     );
                   })}
                   {/* Your OWN shared/public prayers also live here, tagged
-                      "Shared" — tap through to the community request detail. */}
-                  {mySharedRequests.map((req) => (
+                      "Shared" — tap through to the community request detail.
+                      Hidden in pilot: they link to a blocked /prayer-requests/:id
+                      and carry a community label (only a converted account has any). */}
+                  {!isPilot && mySharedRequests.map((req) => (
                     <Link key={`req-${req.id}`} href={`/prayer-requests/${req.id}`} className="block">
                       <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
                         <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />

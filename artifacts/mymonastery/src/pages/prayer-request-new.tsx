@@ -147,7 +147,11 @@ export default function PrayerRequestNew() {
 
   // Life-event extras — a short title + the date it happens. Drives the
   // "how did it go?" follow-up. The body still holds the prayer focus.
-  const isLifeEvent = kind === "life-event";
+  // Life-event / justice are community asks whose extra fields (title/date) only
+  // travel through the community submit path — which pilot never takes (dest is
+  // forced to "list"). So in pilot, treat it as a plain personal request rather
+  // than render fields that would be silently dropped on save.
+  const isLifeEvent = kind === "life-event" && !isPilot;
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState(""); // YYYY-MM-DD from <input type=date>
   const todayStr = new Date().toLocaleDateString("en-CA");

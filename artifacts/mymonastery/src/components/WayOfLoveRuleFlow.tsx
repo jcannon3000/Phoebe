@@ -1168,9 +1168,11 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {/* Prayer List — your community's intercessions, prayed on screen as a
-              slideshow. The FIRST option on both morning and evening. */}
-          {choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's prayer requests, on screen." }), () => choosePrayBySide(side, "community"))}
-          {choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
+              slideshow. The FIRST option on both morning and evening. Pilot is
+              personal-only + text-office-only, so this + Psalms (whose office
+              routes to non-pilot surfaces) are hidden there. */}
+          {!pilot && choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's prayer requests, on screen." }), () => choosePrayBySide(side, "community"))}
+          {!pilot && choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, devotionSub, () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
           {/* Forward Day by Day was removed as a morning/evening prayer option
@@ -1184,7 +1186,7 @@ export default function WayOfLoveRuleFlow({
           {/* The Examen IS this side's prayer (usually evening) — replaces the
               office card with the Examen hero. (Distinct from the add-on Examen
               toggle in the contemplative-practices step, which sits alongside.) */}
-          {side === "evening" && choiceRow(prayBySide[side] === "examen", `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => choosePrayBySide(side, "examen"))}
+          {side === "evening" && !pilot && choiceRow(prayBySide[side] === "examen", `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => choosePrayBySide(side, "examen"))}
         </div>
 
         {/* Add your own practice for this part of the day — logged like a custom
@@ -1286,8 +1288,10 @@ export default function WayOfLoveRuleFlow({
                   <>
                     <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
                     <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
-                    <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
-                    {side === "morning" && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
+                    {/* Listen/Watch route the office CTA to /podcast/* and
+                        /ncmp/watch, which aren't pilot-reachable — text office only. */}
+                    {!pilot && <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>}
+                    {side === "morning" && !pilot && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
                   </>
                 )}
               </select>

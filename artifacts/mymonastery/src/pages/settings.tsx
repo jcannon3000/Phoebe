@@ -3,6 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -606,14 +607,19 @@ function EmailSettings() {
 // page just links there with a single pill so there's one home for all the
 // office knobs rather than two diverging copies.
 function DefaultPrayerLevelSettings() {
+  // Pilot's rhythm builder is /pilot/build (the full /rule-of-life customizer
+  // isn't pilot-reachable and exposes trimmed controls).
+  const { isPilot } = usePilotMode();
   return (
     <>
       <SectionHeader label="Your daily prayer habit" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        Choose what "Begin prayer" opens, how the office reads, the confession, the closing reflection, and more.
+        {isPilot
+          ? "Shape your morning and evening prayer, your reflections, and your daily silence."
+          : "Choose what \"Begin prayer\" opens, how the office reads, the confession, the closing reflection, and more."}
       </p>
       <Link
-        href="/rule-of-life"
+        href={isPilot ? "/pilot/build" : "/rule-of-life"}
         className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold transition-opacity hover:opacity-90"
         style={{
           background: "rgba(46,107,64,0.22)",
@@ -1845,6 +1851,7 @@ function NewsActionsSettings() {
 
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
+  const { isPilot } = usePilotMode();
   const { t } = useTranslation();
   const logout = useLogout();
   const queryClient = useQueryClient();
@@ -1922,15 +1929,20 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* ── Phone number — quieter, optional account detail. ── */}
+        {/* ── Phone number — contact discovery; a community feature, hidden in
+              pilot (personal-only, no people-matching). ── */}
+        {!isPilot && (
         <div className="mb-8">
           <PhoneSection />
         </div>
+        )}
 
-        {/* ── Muted People ── */}
+        {/* ── Muted People — social-graph feature, hidden in pilot. ── */}
+        {!isPilot && (
         <div className="mb-8">
           <MutedPeople />
         </div>
+        )}
 
         {/* ── Notifications master switch ── */}
         <div className="mb-8">

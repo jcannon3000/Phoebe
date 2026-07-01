@@ -1473,6 +1473,7 @@ function HabitSlide({
   // The Examen is pilot-only, so the pill only shows for pilot users
   // with pilot view on — same gate as the menu entry.
   const { isBeta } = useBetaStatus();
+  const { isPilot } = usePilotMode();
   // End-of-office gratitude beat — a gentle "name one thing you're
   // grateful for" the close offers before you leave.
   const [thanksOpen, setThanksOpen] = useState(false);
@@ -1596,6 +1597,8 @@ function HabitSlide({
           Examen is evening-only (end-of-day prayer) and pilot-only; gratitude
           is open to everyone. */}
       <div className="flex items-center justify-center flex-wrap" style={{ gap: 10 }}>
+        {/* Gratitude is trimmed in pilot (removed from Practices, /gratitude blocked). */}
+        {!isPilot && (
         <button
           type="button"
           onClick={() => setThanksOpen(true)}
@@ -1610,6 +1613,7 @@ function HabitSlide({
         >
           🌾 Give thanks
         </button>
+        )}
         {isEvening && isBeta && (
           <Link href="/examen">
             <button
@@ -3717,7 +3721,10 @@ export default function PrayerModePage() {
   // If they keep no reflection, we don't park them on the recap either —
   // the close just fades smoothly back to the home screen (see the effect
   // below). Evening closes are unaffected and still show the recap.
-  const reflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
+  const rawReflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
+  // Pilot removes CAC — a pilot user who never set a reflection would otherwise
+  // get the CAC fallback at the office close. Coerce it to FDD.
+  const reflectionSource = (isPilot && rawReflectionSource === "cac") ? "fdd" : rawReflectionSource;
   const isMorningClose = (closingOnly || afterOffice) && !closingIsEvening;
   const endOnReflection = isMorningClose && reflectionSource !== "none";
   // The "Add prayer / Done" closing card (ClosingSlide) is REMOVED for the plain

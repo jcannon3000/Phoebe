@@ -468,7 +468,7 @@ export default function PodcastsPage() {
 
         {/* Discover ↔ Listen List ↔ Community tabs. */}
         <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-          {(["discover", "listen-list", "community"] as const).map((k) => {
+          {((isPilot ? ["discover", "listen-list"] : ["discover", "listen-list", "community"]) as ("discover" | "listen-list" | "community")[]).map((k) => {
             const active = tab === k;
             const label = k === "discover" ? t("podcasts.tab_discover") : k === "listen-list" ? t("podcasts.tab_listen_list") : t("podcasts.tab_community");
             return (

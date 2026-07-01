@@ -740,7 +740,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
-        const fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data.slides ?? []);
+        let fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data.slides ?? []);
+        // Pilot has no community intercessions — the server may still inject an
+        // "intercessions_portal" slide for accounts with pre-existing community
+        // data. The handoff is already gated for pilot, but the slide would then
+        // sit as an orphan transition card, so drop it from the deck entirely.
+        if (isPilot) fetched = fetched.filter((s) => s.type !== "intercessions_portal");
         if (fetched.length === 0) throw new Error("No slides returned");
         // The daily reflection (FDD / SSJE / CAC) is no longer
         // appended as an in-office slide. It's surfaced instead as a
