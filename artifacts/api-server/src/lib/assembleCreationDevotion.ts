@@ -23,7 +23,7 @@ import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMornin
 import {
   creationCyclePosition,
   creationPsalmRefsFor,
-  creationDayIndex,
+  creationScheduleSeq,
   CREATION_ATTRIBUTION,
   CREATION_OPENING_SENTENCES,
   CREATION_INVITATORY,
@@ -42,7 +42,6 @@ import {
   creationCanticleFor,
   creationAffirmationFor,
   creationLitanyFor,
-  creationOfficeSeq,
 } from "./creationLibrary";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -101,10 +100,13 @@ export async function assembleCreationDevotion(
   const { week, weekday } = creationCyclePosition(date);
   const refs = creationPsalmRefsFor(date, side, single).map(parseRef);
   const isMorning = side === "morning";
-  // Rotating index for reading / canticle / affirmation / litany / quote / blessing.
-  const seq = single ? creationDayIndex(date) : creationOfficeSeq(date, side);
-  // A steadier index for the opening sentence + antiphon (per weekday + side).
-  const pick = (len: number) => (weekday * 2 + (isMorning ? 0 : 1)) % len;
+  // ONE fixed schedule drives every rotation (opening sentence, antiphon, reading,
+  // quote, canticle/affirmation, litany, blessing) — the same for everyone praying
+  // this office on this date, whether they pray once or twice a day. It advances by
+  // one each day so a given office visits every option in a pool; morning/evening
+  // differ by a week's offset. (Psalms keep their own two-/four-week cycle; the
+  // Collect uses its own 14-day lectionary — both also fixed by the calendar.)
+  const seq = creationScheduleSeq(date, side);
 
   // One query for every psalm body this office needs.
   const psalmKeys = Array.from(new Set(refs.map((r) => `psalm_${r.number}`)));
@@ -127,7 +129,7 @@ export async function assembleCreationDevotion(
   );
 
   // 2. Opening Sentence (Scripture).
-  const os = CREATION_OPENING_SENTENCES[pick(CREATION_OPENING_SENTENCES.length)];
+  const os = CREATION_OPENING_SENTENCES[seq % CREATION_OPENING_SENTENCES.length];
   slides.push(slide(id(), "opening_sentence", isMorning ? "🌅" : "🌆", "OPENING SENTENCE", os.text, { bcpReference: os.ref }));
 
   // 3. Invitatory — versicle + the Creation Gloria.
@@ -144,7 +146,7 @@ export async function assembleCreationDevotion(
   );
 
   // 4. Antiphon — before the psalmody.
-  const antiphon = CREATION_ANTIPHONS[pick(CREATION_ANTIPHONS.length)];
+  const antiphon = CREATION_ANTIPHONS[(seq + 2) % CREATION_ANTIPHONS.length];
   slides.push(slide(id(), "antiphon", "🌿", "ANTIPHON", antiphon, { bcpReference: CREATION_ATTRIBUTION, metadata: src }));
 
   // 5. The Psalms.

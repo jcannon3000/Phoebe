@@ -103,6 +103,16 @@ export function creationDayIndex(date: Date): number {
   return ((creationDaysSinceEpoch(date) % 28) + 28) % 28;
 }
 
+/** A fixed per-office SCHEDULE index — the SAME for everyone praying this office
+ *  on this date, independent of how often they pray. It advances by one each day
+ *  (so a given office cycles through every option in a pool), and morning vs
+ *  evening differ by a week's offset. Drives the reading / antiphon / opening
+ *  sentence / canticle / affirmation / litany / quote / blessing rotations, so
+ *  they read like an appointed lectionary rather than anything per-user. */
+export function creationScheduleSeq(date: Date, side: CreationSide): number {
+  return creationDaysSinceEpoch(date) + (side === "evening" ? 7 : 0);
+}
+
 /** Psalms for a single-daily pray-er (the four-week combined cycle). */
 export function creationPsalmRefsSingle(date: Date): string[] {
   return CREATION_PSALTER_FLAT[creationDayIndex(date)];
