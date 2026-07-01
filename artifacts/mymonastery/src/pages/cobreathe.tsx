@@ -8,6 +8,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
+import { CobreathePrayerIntro } from "@/components/CobreathePrayerIntro";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
@@ -165,14 +166,13 @@ export default function CobreathePage() {
   const focus = WEEKLY_FOCI[weekOfYear(new Date()) % WEEKLY_FOCI.length];
 
   const [, setLocation] = useLocation();
-  // Opened with ?start=1 → go straight into the breath, BUT only once the user
-  // has been through the intro slideshow. First-timers are sent through the
-  // slideshow first (the effect below), which begins the breath at its end.
-  // Landing on /cobreathe shows the intro slide (the practice + the why, plus a
-  // "Learn more" link to the full slideshow); a ?start=1 quick-launch goes
-  // straight into the breath. The full slideshow is no longer forced on anyone.
-  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
-    wantsStart() ? "breathing" : "intro",
+  // Landing on /cobreathe opens the prayer slideshow — Laurel Kearns' "Prayer of
+  // Con-Spiring", the source the whole practice is drawn from — which hands into
+  // the "before you begin" screen (settings + Start Breathing) and then the
+  // breath. A ?start=1 quick-launch (e.g. the home card) skips both and goes
+  // straight into the synced breath.
+  const [mode, setMode] = useState<"prayer" | "intro" | "breathing" | "done">(() =>
+    wantsStart() ? "breathing" : "prayer",
   );
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
@@ -398,6 +398,20 @@ export default function CobreathePage() {
   // "N other people" — subtract the caller once they're in the count.
   const others = Math.max(0, (state?.count ?? 0) - (state?.done ? 1 : 0));
   const withLine = state ? companionLine(state.companions, state.companionCount) : "";
+
+  // The prayer slideshow is the intro to the practice — a full-screen immersive
+  // overlay (no Layout chrome), rendered before the "before you begin" screen.
+  // Its final slide's "Begin breathing" hands to the intro (Skip does too), so
+  // the reader still lands on the length/settings screen before the breath.
+  if (mode === "prayer") {
+    return (
+      <CobreathePrayerIntro
+        bgPhoto={introBgPhoto}
+        onDone={() => setMode("intro")}
+        onSkip={() => setMode("intro")}
+      />
+    );
+  }
 
   // Breathing is a full-screen portal — render it WITHOUT the Layout chrome
   // (app header + page background) so navigating in doesn't flash the page
