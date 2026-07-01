@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { primeAudio } from "@/lib/amenFeedback";
@@ -43,6 +44,7 @@ function isMorningNow(): boolean {
 
 export default function WelcomePublicPage() {
   const { user, isLoading } = useAuth();
+  const { isPilot } = usePilotMode();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   // One stable leaf backdrop for the welcome chooser, matching the app.
@@ -130,10 +132,21 @@ export default function WelcomePublicPage() {
             primary
           />
 
+          {/* Pilot: "Create your daily habit of prayer" → the simplified rhythm
+              builder. A guest can build it and is only asked to sign up to SAVE. */}
+          {isPilot && (
+            <ChoiceCard
+              href="/pilot/build"
+              emoji="🌿"
+              title={t("welcome_public.build_title", { defaultValue: "Create your daily habit of prayer" })}
+              blurb={t("welcome_public.build_blurb", { defaultValue: "Shape a simple rhythm you can keep." })}
+              delay={0.09}
+            />
+          )}
+
           {/* Card 1b — Cobreathe: anyone can try the shared breath without an
-              account, the way the climate feed used to be reachable here. Lands
-              on the intro screen first (the "before you begin" why + Start
-              Breathing) rather than dropping straight into the breath. */}
+              account. Hidden in the pilot funnel to keep the two choices clean. */}
+          {!isPilot && (
           <ChoiceCard
             href="/cobreathe"
             emoji={<CobreatheGlobe size={28} />}
@@ -142,6 +155,7 @@ export default function WelcomePublicPage() {
             delay={0.09}
             onClick={() => primeAudio()}
           />
+          )}
 
           {/* Card 2 — sign up / sign in (the same form does both) */}
           <ChoiceCard
@@ -155,7 +169,9 @@ export default function WelcomePublicPage() {
         </div>
 
         {/* Separated group — about Phoebe + get the app. A hairline divider
-            sets these apart from the options above. */}
+            sets these apart from the options above. Hidden in the pilot funnel
+            to keep the first screen to the two core choices. */}
+        {!isPilot && (
         <div
           className="mt-6 pt-6 flex flex-col gap-3"
           style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
@@ -184,6 +200,7 @@ export default function WelcomePublicPage() {
             />
           )}
         </div>
+        )}
 
         <p
           className="text-[12px] text-center mt-8"
