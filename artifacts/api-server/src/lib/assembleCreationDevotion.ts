@@ -114,7 +114,7 @@ export async function assembleCreationDevotion(
   // 1. Intro.
   slides.push(
     slide(id(), "office_intro", "🌱", "A creation-focused devotion",
-      "Prayer with creation — the psalms and prayers of the Episcopal Season of Creation guide. It opens with the Co-Breathe breath.",
+      "Prayer with creation — the psalms and prayers of the Episcopal Season of Creation guide.",
       { title: isMorning ? "Creation Prayer · Morning" : "Creation Prayer · Evening" }),
   );
 
@@ -227,12 +227,12 @@ export async function assembleCreationDevotion(
   // 12. The Lord's Prayer.
   slides.push(slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", CREATION_LORDS_PRAYER, { bcpReference: "BCP p. 97" }));
 
-  // 13. Intercession — prayers for creation, held in the breath we shared.
-  //     (metadata.cobreathe marks the point where Co-Breathe belongs; the
-  //     breath currently opens the whole devotion.)
+  // 13. Intercession — the Co-Breathe breath IS the intercession (the client
+  //     opens it inline on this slide, on metadata.cobreathe): we breathe our
+  //     prayers for creation.
   slides.push(
     slide(id(), "collect", "🌍", "INTERCESSION",
-      "Pray for the earth and all its creatures; for those on the front lines of the climate crisis; and for the will to act — held in the breath we share.",
+      "We breathe our prayers for creation — for the earth and all its creatures, for those on the front lines of the climate crisis, and for the will to act.",
       { metadata: { ...src, cobreathe: true } }),
   );
 

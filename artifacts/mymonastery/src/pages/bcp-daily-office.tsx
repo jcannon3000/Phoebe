@@ -24,6 +24,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -608,6 +609,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // mode again — once we've handed off, we treat the portal as a
   // transparent slide for the rest of the session.
   const portalHandedOffRef = useRef(false);
+  // Creation Prayer: the intercession slide (metadata.cobreathe) opens the
+  // Co-Breathe breath inline — the shared climate breath IS the intercession.
+  // Breathed once per office session; closing the breath advances the office.
+  const breathedRef = useRef(false);
+  const [showCreationBreath, setShowCreationBreath] = useState(false);
   // Warmed promise for the community-intercession data, so /prayer-mode can open
   // straight onto the first intercession instead of its "Gathering…" loader.
   const intercessionPrefetchRef = useRef<Promise<unknown> | null>(null);
@@ -941,6 +947,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides, slideIdx, resolvedMode, isDevotion]);
+
+  // Creation Prayer intercession → open the Co-Breathe breath inline (once).
+  useEffect(() => {
+    const s = slides[slideIdx];
+    if (!s || breathedRef.current) return;
+    if (!(s.metadata && (s.metadata as Record<string, unknown>).cobreathe)) return;
+    breathedRef.current = true;
+    setShowCreationBreath(true);
+  }, [slides, slideIdx]);
 
   if (loading || !minLoadDone) {
     // Re-entry (already opened today — e.g. back from the intercessions): show a
@@ -1536,6 +1551,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
+      {/* Creation Prayer: the intercession's Co-Breathe breath (fixed overlay,
+          on top). Closing it advances the office to the collect. */}
+      {showCreationBreath && (
+        <CobreatheOverlay open immediateClose onClose={() => { setShowCreationBreath(false); next(); }} />
+      )}
       {/* Landscape behind the slideshow that CHANGES per section, cross-fading
           down then up as each new title slide arrives, under a multi-stop dark
           wash for legibility. */}

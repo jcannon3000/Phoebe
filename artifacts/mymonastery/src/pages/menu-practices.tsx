@@ -15,6 +15,7 @@ export default function MenuPracticesPage() {
       backHref="/menu"
       groups={[{
         items: [
+          { emoji: "🌱", label: "Creation Prayer", sub: "A creation-focused devotion, with Co-Breathe", onClick: () => go("/creation-devotion") },
           { emoji: "📖", label: "Listen to Scripture", sub: "Hear the day's OT, Psalm, NT & Gospel", onClick: () => go("/scripture/readings") },
           { emoji: "🕯️", label: "Contemplation", sub: "A timer for silent prayer", onClick: () => go("/contemplation") },
           { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
