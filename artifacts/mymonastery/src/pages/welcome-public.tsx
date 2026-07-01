@@ -153,26 +153,30 @@ export default function WelcomePublicPage() {
           />
         </div>
 
-        {/* About + get-the-app — small pills at the bottom, not full cards.
-            "About" opens the plain-text About page (readable signed-out), which
-            itself links on to the About slideshow. */}
-        <div className="mt-7 flex items-center justify-center flex-wrap gap-2.5">
+        {/* Learn more — a full card into the About slideshow deck. */}
+        <div className="mt-6 pt-6" style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}>
+          <ChoiceCard
+            href="/about-deck"
+            emoji="✨"
+            title={t("welcome_public.learn_more_title", { defaultValue: "Learn more" })}
+            blurb={t("welcome_public.learn_more_blurb", { defaultValue: "A short tour of how Phoebe works." })}
+            delay={0.17}
+            muted
+          />
+        </div>
+
+        {/* About + download — small pills. "About" opens the plain-text About
+            page (readable signed-out). */}
+        <div className="mt-5 flex items-center justify-center flex-wrap gap-2.5">
           <PillLink href="/about">{t("welcome_public.about_pill", { defaultValue: "About" })}</PillLink>
           {/* Web only: telling someone already inside the native app to
               "download the app" makes no sense. */}
           {!isNativeShell() && (
             <PillLink href={APP_STORE_URL} external>
-              {t("welcome_public.appstore_pill", { defaultValue: "Get the app" })}
+              {t("welcome_public.appstore_pill", { defaultValue: "Download the app" })}
             </PillLink>
           )}
         </div>
-
-        <p
-          className="text-[12px] text-center mt-8"
-          style={{ color: FAINT }}
-        >
-          {t("welcome_public.footer")}
-        </p>
       </main>
     </div>
   );

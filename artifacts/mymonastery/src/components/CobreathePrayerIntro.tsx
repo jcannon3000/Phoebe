@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 
 // The opening slideshow for Co-Breathe: Laurel Kearns' "Prayer of Con-Spiring"
 // read one stanza at a time, ending on the Hebrew name of God breathed in and
@@ -32,15 +33,18 @@ const SLIDES: Slide[] = [
 ];
 
 export function CobreathePrayerIntro({
-  bgPhoto,
   onDone,
   onSkip,
 }: {
-  bgPhoto: string | null;
   onDone: () => void;
   onSkip: () => void;
 }) {
   const [i, setI] = useState(0);
+  // A wide, calm LANDSCAPE behind the prayer (the curated earth library — no
+  // close-up leaves, no animals/farm), held stable for the whole reading.
+  const [bg] = useState<string | null>(() =>
+    EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null,
+  );
   const slide = SLIDES[i]!;
   const isLast = i === SLIDES.length - 1;
   const next = () => setI((n) => Math.min(SLIDES.length - 1, n + 1));
@@ -59,20 +63,19 @@ export function CobreathePrayerIntro({
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* One calm landscape behind the words, faded low under the dark wash. */}
-      {bgPhoto && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url(${bgPhoto})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.16,
-            zIndex: -1,
-          }}
-        />
+      {/* A calm landscape behind the words, with a dark overlay ON TOP so the
+          prayer stays legible over any image. */}
+      {bg && (
+        <>
+          <div
+            aria-hidden
+            style={{ position: "absolute", inset: 0, zIndex: -2, backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center", opacity: 0.5 }}
+          />
+          <div
+            aria-hidden
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.55) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.78) 100%)" }}
+          />
+        </>
       )}
 
       {/* Top bar — progress dots (Skip now lives under the Next button). */}
@@ -162,7 +165,7 @@ export function CobreathePrayerIntro({
                   className="rounded-2xl py-4 px-10 transition-opacity hover:opacity-90 active:scale-[0.99]"
                   style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
                 >
-                  Begin breathing
+                  Continue
                 </button>
               </>
             )}

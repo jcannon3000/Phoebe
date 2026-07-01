@@ -59,22 +59,34 @@ const SLIDES: Slide[] = [
     ],
     mock: "office-fdd",
   },
-  // Daily progress — a habit that fits the pace of modern life.
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: "A daily habit, at the pace of modern life",
-    body: [
-      "See where you are in today's rhythm and what's next — a gentle daily practice made for the busy, dispersed life you actually live. Never a streak to protect, just prayer, met each day.",
-    ],
-    mock: "prayer-rhythm",
-  },
   {
     kind: "statement",
     headline: "The depth, carried into your life",
     body: [
       "It keeps the depth of the tradition intact, and simply changes how it reaches you — meeting you in the busy, dispersed life you actually live.",
     ],
+  },
+  // Weekly progress — morning/evening held as a rhythm, the week at a glance.
+  // (Moved to the end, ahead of the "what's next" view below.)
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "A daily habit you can keep",
+    body: [
+      "Morning and evening, held as a gentle rhythm — with your week at a glance. Never a streak to protect, just prayer, met each day.",
+    ],
+    mock: "prayer-rhythm",
+  },
+  // What's next — today's daily-progress view (position over score, the current
+  // UI): where you are, and the next thing to pray.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "Always, what's next",
+    body: [
+      "Open Phoebe and see exactly where you are in today's rhythm — and the next thing to pray. Made for the pace of modern life: nothing to figure out, just the next step.",
+    ],
+    mock: "prayer-streak",
   },
   // The name.
   {

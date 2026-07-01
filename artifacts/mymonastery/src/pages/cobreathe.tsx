@@ -406,7 +406,6 @@ export default function CobreathePage() {
   if (mode === "prayer") {
     return (
       <CobreathePrayerIntro
-        bgPhoto={introBgPhoto}
         onDone={() => setMode("intro")}
         onSkip={() => setMode("intro")}
       />
