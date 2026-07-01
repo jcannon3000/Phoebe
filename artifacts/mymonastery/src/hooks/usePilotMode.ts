@@ -12,8 +12,8 @@ import { PHOEBE_PILOT_ENABLED, pilotPreviewEnabled } from "@/lib/pilotFlag";
  * override). When neither is on, `isPilot` is always false and nothing
  * changes.
  *
- * `isCommunityAdmin` comes from /api/auth/me (server-derived from
- * group_members roles); `rawIsBeta` from useBetaStatus.
+ * `isCommunityMember` comes from /api/auth/me (server-derived: member of any
+ * joined community); `rawIsBeta` from useBetaStatus.
  */
 export function usePilotMode(): { isPilot: boolean; isLoading: boolean } {
   const { user, isLoading: authLoading } = useAuth();
@@ -23,9 +23,10 @@ export function usePilotMode(): { isPilot: boolean; isLoading: boolean } {
   if (!enabled) return { isPilot: false, isLoading: false };
 
   const isLoading = authLoading || betaLoading;
-  // Full app for our testers + community admins; pilot for everyone else
-  // (including logged-out guests, where user is null → both false).
-  const isCommunityAdmin = user?.isCommunityAdmin ?? false;
-  const isPilot = !rawIsBeta && !isCommunityAdmin;
+  // Full app for our testers + ANYONE in a community (community features like
+  // shared prayer requests stay for them); pilot for everyone else — the public
+  // who aren't in a community yet, and logged-out guests (user null → false).
+  const isCommunityMember = user?.isCommunityMember ?? false;
+  const isPilot = !rawIsBeta && !isCommunityMember;
   return { isPilot, isLoading };
 }

@@ -297,22 +297,22 @@ router.get("/auth/me", async (req, res) => {
     ))
     .limit(1);
   const inJardinGroup = jardinGroupRows.length > 0;
-  // Is this user an ADMIN of any community? Community admins (+ beta testers,
-  // computed client-side) keep the FULL app; everyone else falls into the
-  // simplified pilot experience (see usePilotMode / PilotGate). Derived here so
-  // /api/auth/me is the single source of truth the client reads on every load.
-  const communityAdminRows = await db
+  // Is this user a MEMBER of any community (any joined group, any role)? Anyone
+  // in a community — plus beta testers, computed client-side — keeps the FULL
+  // app (community features like shared prayer requests); everyone else falls
+  // into the simplified pilot experience (see usePilotMode / PilotGate). Derived
+  // here so /api/auth/me is the single source of truth the client reads on load.
+  const communityMemberRows = await db
     .select({ id: groupMembersTable.id })
     .from(groupMembersTable)
     .where(and(
       eq(groupMembersTable.userId, u.id),
       sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-      sql`${groupMembersTable.role} IN ('admin', 'hidden_admin')`,
     ))
     .limit(1);
-  const isCommunityAdmin = communityAdminRows.length > 0;
+  const isCommunityMember = communityMemberRows.length > 0;
   res.json({
-    isCommunityAdmin,
+    isCommunityMember,
     id: u.id,
     name: u.name,
     email: u.email,
