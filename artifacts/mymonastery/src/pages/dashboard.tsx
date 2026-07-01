@@ -7284,11 +7284,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                    Contemplation. */}
                 <DailyProgressBody
                   showStreak={false}
+                  /* Show the Done section on the home too — the rhythm reads as
+                     Next + Done, per product direction. */
+                  showDone={true}
                   /* Cap the Next list at 7 cards on the home; the rest live on
                      /daily-progress. */
                   maxUpcoming={7}
-                  /* Done cards are NOT shown on the home — only what's still
-                     "Next". The full Done list lives on /daily-progress. */
                   /* The "N prayer requests waiting" lead card was removed — new
                      requests now announce themselves with a glowing border in
                      the prayer list below instead of a separate top card. */

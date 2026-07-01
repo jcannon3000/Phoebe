@@ -586,6 +586,8 @@ export const es: Translations = {
     title: "Progreso diario",
     subtitle: "Dónde estás en el ritmo de hoy — y qué sigue.",
     practices_heading: "Prácticas de hoy",
+    next_heading: "Siguiente",
+    done_heading: "Hecho",
   },
 
   // ── Celebración de ritmo completo (todas las prácticas) ──────────────────

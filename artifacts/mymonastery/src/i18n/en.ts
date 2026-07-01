@@ -591,6 +591,8 @@ export const en = {
     title: "Daily progress",
     subtitle: "Where you are in today's rhythm — and what's next.",
     practices_heading: "Today's practices",
+    next_heading: "Next",
+    done_heading: "Done",
   },
 
   // ── Daily-complete celebration (all practices kept) ──────────────────────

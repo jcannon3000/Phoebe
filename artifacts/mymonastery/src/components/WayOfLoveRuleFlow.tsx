@@ -276,6 +276,19 @@ export default function WayOfLoveRuleFlow({
     morning: prayFromLevel(getSideLevel("morning")) ?? "devotion",
     evening: prayFromLevel(getSideLevel("evening")) ?? "devotion",
   }));
+  // Which BCP form the "With the Book of Common Prayer" option commits to
+  // (Psalms / Devotion / Office). Seeded from the current per-side level so
+  // re-opening Customize keeps the chosen form.
+  const [bcpForm, setBcpForm] = useState<Record<OfficeSide, "offices" | "devotion" | "psalms">>(() => {
+    const form = (s: OfficeSide): "offices" | "devotion" | "psalms" => {
+      const p = prayFromLevel(getSideLevel(s));
+      return p === "offices" || p === "devotion" || p === "psalms" ? p : "offices";
+    };
+    return { morning: form("morning"), evening: form("evening") };
+  });
+  // The "check community + BCP" merge: community intercessions are prayed within
+  // the office (the office already hands off to them), so this is a UI note only.
+  const [communityWithOffice, setCommunityWithOffice] = useState<Record<OfficeSide, boolean>>({ morning: false, evening: false });
   const [methodBySide, setMethodBySide] = useState<Record<OfficeSide, DefaultOfficeEntry>>(() => ({
     morning: getSideEntry("morning"),
     evening: getSideEntry("evening"),
@@ -1166,27 +1179,66 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
         </p>
+        {/* Select as many as you want. Your "office" is one method (BCP form,
+            Prayer List, Contemplative, or the Examen); Co-Breathe and Forward
+            Day by Day ride alongside as their own cards. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Prayer List — your community's intercessions, prayed on screen as a
-              slideshow. The FIRST option on both morning and evening. Pilot is
-              personal-only + text-office-only, so this + Psalms (whose office
-              routes to non-pilot surfaces) are hidden there. */}
-          {!pilot && choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's prayer requests, on screen." }), () => choosePrayBySide(side, "community"))}
-          {!pilot && choiceRow(prayBySide[side] === "psalms", `📜 ${t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })}`, t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." }), () => choosePrayBySide(side, "psalms"))}
-          {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, devotionSub, () => choosePrayBySide(side, "devotion"))}
-          {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
-          {/* Forward Day by Day was removed as a morning/evening prayer option
-              per request. Existing FDD users still resolve via PRAY_LEVEL["fdd"];
-              it's just no longer offered here. (FDD remains a daily reflection
-              source in the Learn step.) */}
-          {/* Contemplative Prayer = silent sit. Co-Breathe was removed as a
-              morning/evening prayer option (it still lives in the contemplative
-              practices step). */}
-          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
-          {/* The Examen IS this side's prayer (usually evening) — replaces the
-              office card with the Examen hero. (Distinct from the add-on Examen
-              toggle in the contemplative-practices step, which sits alongside.) */}
-          {side === "evening" && !pilot && choiceRow(prayBySide[side] === "examen", `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => choosePrayBySide(side, "examen"))}
+          {(() => {
+            const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
+            const bcpSub = prayBySide[side] === "offices" ? officeSub
+              : prayBySide[side] === "devotion" ? devotionSub
+              : prayBySide[side] === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
+              : t("wol_rule.pray_bcp_sub", { defaultValue: "Pray the office — the psalms and lessons are filled in for you." });
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* With the Book of Common Prayer — one option; a sub-select
+                    picks Psalms / Devotion / Office. */}
+                {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => choosePrayBySide(side, bcpForm[side]))}
+                {bcpOn && (
+                  <div style={{ display: "flex", gap: 8, paddingLeft: 22 }}>
+                    {(!pilot ? (["psalms", "devotion", "offices"] as const) : (["devotion", "offices"] as const)).map((form) => {
+                      const label = form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
+                        : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
+                        : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
+                      const on = prayBySide[side] === form;
+                      return (
+                        <button key={form} type="button" onClick={() => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); }}
+                          style={{ flex: 1, ...FROST_BLUR, background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "9px 6px", fontSize: 12, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {bcpOn && communityWithOffice[side] && (
+                  <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, paddingLeft: 22, margin: 0 }}>
+                    {t("wol_rule.bcp_community_note", { defaultValue: "✓ Community intercessions are prayed within the office." })}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+          {/* Prayer List — the community's intercessions. Checked alongside BCP,
+              it folds into the office (a single card); on its own it IS the
+              office ("Pray Together"). */}
+          {!pilot && (() => {
+            const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
+            const on = prayBySide[side] === "community" || (bcpOn && communityWithOffice[side]);
+            return choiceRow(on, `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's intercessions." }), () => {
+              if (bcpOn) { touchedRef.current = true; setCommunityWithOffice((p) => ({ ...p, [side]: !p[side] })); }
+              else choosePrayBySide(side, "community");
+            });
+          })()}
+          {/* Contemplative Prayer — a silent sit. */}
+          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); setCommunityWithOffice((p) => ({ ...p, [side]: false })); chooseContemplationStyle("silent"); })}
+          {/* Co-Breathe — an add-on card alongside your prayer (feeds the
+              contemplative-practices step's toggle). */}
+          {!pilot && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => toggleContemplative("cobreathe"))}
+          {/* Forward Day by Day — an add-on reflection; the next step picks read
+              vs. listen (feeds the reflection/newsletter set). */}
+          {choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}
+          {/* The Examen IS this side's prayer (usually evening). */}
+          {side === "evening" && !pilot && choiceRow(prayBySide[side] === "examen", `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => { choosePrayBySide(side, "examen"); setCommunityWithOffice((p) => ({ ...p, [side]: false })); })}
         </div>
 
         {/* Add your own practice for this part of the day — logged like a custom
@@ -1199,7 +1251,7 @@ export default function WayOfLoveRuleFlow({
             value={sideCustomDraft}
             onChange={(e) => setSideCustomDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && sideCustomDraft.trim()) { touchedRef.current = true; addCustomAnchor(sideCustomDraft.trim(), "🌿", side); setSideCustomDraft(""); setCustomList(getCustomAnchors()); } }}
-            placeholder={t("wol_rule.side_custom_placeholder", { side: cap.toLowerCase(), defaultValue: `e.g. a ${cap.toLowerCase()} walk` })}
+            placeholder={t("wol_rule.side_custom_placeholder", { defaultValue: "e.g. the Rosary" })}
             style={{ flex: 1, minWidth: 0, ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
           />
           <button
