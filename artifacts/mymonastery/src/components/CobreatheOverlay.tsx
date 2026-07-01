@@ -86,28 +86,12 @@ export function CobreatheOverlay({
     if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); talliedRef.current = false; setBreathVisible(true); setBreathsTaken(DEFAULT_TOTAL_BREATHS); breathsTakenRef.current = DEFAULT_TOTAL_BREATHS; }
   }, [open]);
 
-  // Log the breathed time as a contemplation sit — exactly once per open — so a
-  // cobreathe from the prayer-mode pause lands in history/stats/Health whether
-  // they complete the set or end early (>=30s).
-  const logSit = useCallback((secondsKept: number) => {
-    if (sitLoggedRef.current || secondsKept < 30) return;
-    sitLoggedRef.current = true;
-    const endedAt = new Date();
-    const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-    void apiRequest("POST", "/api/prayer-sessions", {
-      surface: "contemplation",
-      source: "cobreathe",
-      durationSeconds: secondsKept,
-      startedAt: startedAt.toISOString(),
-      endedAt: endedAt.toISOString(),
-      isPrivate: false,
-    })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
-      })
-      .catch(() => { /* best-effort */ });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Co-Breathe does NOT count toward the daily silence / contemplation goal —
+  // even when breathed from the prayer-mode pause. So we no longer log a
+  // "contemplation" prayer-session here. (No-op kept so the callers below are
+  // unchanged; the breath itself is still recorded via /api/breath/today.)
+  const logSit = useCallback((_secondsKept: number) => {
+    /* intentionally not a contemplation sit */
   }, []);
 
   // Today's count, so "N breathing with you today" can show during the breath
