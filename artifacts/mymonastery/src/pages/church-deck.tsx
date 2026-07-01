@@ -17,7 +17,7 @@ const C = {
 } as const;
 
 // ─── Slide types ────────────────────────────────────────────────────────────
-type Slide =
+export type Slide =
   | { kind: "title"; headline: string; sub?: string; muted?: boolean; mock?: "dashboard" }
   | { kind: "statement"; headline: string; body: string[] }
   | { kind: "feature-text"; label: string; headline: string; body: string[] }
@@ -1773,18 +1773,15 @@ function renderSlide(slide: Slide) {
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
-export default function ChurchDeck() {
+// ─── Reusable deck shell ─────────────────────────────────────────────────────
+// The nav chrome + animated slide stage, parameterized by the slide list and
+// where "Close" / "Done" lands. Rendered by both the church deck and the about
+// deck so they share the exact same look, mocks, and navigation.
+export function DeckShell({ slides, exitTo = "/" }: { slides: Slide[]; exitTo?: string }) {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
   const { t } = useTranslation();
-  // Where "Close" / "Done" lands. A signed-in reader returns to their
-  // dashboard; a signed-out visitor (who reached the deck via the
-  // "Learn about Phoebe" card on the welcome chooser) returns to that
-  // chooser at "/" rather than bouncing through /dashboard's guard.
-  const exitTo = user ? "/dashboard" : "/";
   const [index, setIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const slides = buildSlides(t);
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
@@ -1814,12 +1811,12 @@ export default function ChurchDeck() {
         e.preventDefault();
         prev();
       } else if (e.key === "Escape") {
-        setLocation("/");
+        setLocation(exitTo);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next, prev, setLocation]);
+  }, [next, prev, setLocation, exitTo]);
 
   // Touch/swipe support
   const touchStartX = useRef<number | null>(null);
@@ -1986,4 +1983,11 @@ export default function ChurchDeck() {
       </div>
     </div>
   );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+export default function ChurchDeck() {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  return <DeckShell slides={buildSlides(t)} exitTo={user ? "/dashboard" : "/"} />;
 }
