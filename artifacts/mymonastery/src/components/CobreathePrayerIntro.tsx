@@ -6,8 +6,10 @@ import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 // read one stanza at a time, ending on the Hebrew name of God breathed in and
 // out — which hands straight into the practice. This IS the intro to
 // Co-Breathe; the prayer is the same source the whole practice is drawn from
-// (see the note atop pages/cobreathe.tsx). Rendered as a full-screen immersive
-// overlay (no app chrome), matching the breath + summary screens.
+// (see the note atop pages/cobreathe.tsx). Styled to match the OFFICE slideshow
+// (pages/prayer-mode.tsx): a per-slide landscape under a dark wash, centered
+// serif text, an exit ✕ top-right, and an "X of Y" counter at the bottom — tap
+// to advance, tap the left edge to step back.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -32,6 +34,22 @@ const SLIDES: Slide[] = [
   { kind: "breath" },
 ];
 
+// Per-slide backdrop photo — matches OfficeBackdropPhoto in prayer-mode.tsx: a
+// landscape that fades in to 0.22 once loaded, so each slide gets its own image
+// under the dark wash (the office look), rather than one static landscape.
+function IntroBackdropPhoto({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      onLoad={() => setLoaded(true)}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? 0.22 : 0, transition: "opacity 0.6s ease", zIndex: -1 }}
+    />
+  );
+}
+
 export function CobreathePrayerIntro({
   onDone,
   onSkip,
@@ -40,13 +58,11 @@ export function CobreathePrayerIntro({
   onSkip: () => void;
 }) {
   const [i, setI] = useState(0);
-  // A wide, calm LANDSCAPE behind the prayer (the curated earth library — no
-  // close-up leaves, no animals/farm), held stable for the whole reading.
-  const [bg] = useState<string | null>(() =>
-    EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null,
-  );
   const slide = SLIDES[i]!;
   const isLast = i === SLIDES.length - 1;
+  // A wide, calm LANDSCAPE per slide (the curated earth library — no close-up
+  // leaves, no animals/farm), a different one each slide like the office.
+  const photo = EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[i % EARTH_PHOTOS.length]! : null;
   const next = () => setI((n) => Math.min(SLIDES.length - 1, n + 1));
   const prev = () => setI((n) => Math.max(0, n - 1));
 
@@ -56,58 +72,57 @@ export function CobreathePrayerIntro({
         position: "fixed",
         inset: 0,
         zIndex: 80,
-        background: "radial-gradient(125% 85% at 50% 28%, #122E20 0%, #0A1C14 68%)",
-        display: "flex",
-        flexDirection: "column",
-        paddingTop: "var(--safe-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        background: "#0C1F12",
+        isolation: "isolate",
       }}
     >
-      {/* A calm landscape behind the words, with a dark overlay ON TOP so the
-          prayer stays legible over any image. */}
-      {bg && (
+      {/* Office-style backdrop: a per-slide landscape at 0.22 under a strong dark
+          wash, so the prayer stays legible over any image. */}
+      {photo && (
         <>
+          <IntroBackdropPhoto key={photo} src={photo} />
           <div
             aria-hidden
-            style={{ position: "absolute", inset: 0, zIndex: -2, backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center", opacity: 0.5 }}
-          />
-          <div
-            aria-hidden
-            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.55) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.78) 100%)" }}
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }}
           />
         </>
       )}
 
-      {/* Top bar — progress dots (Skip now lives under the Next button). */}
-      <div className="flex items-center px-5 pt-4" style={{ minHeight: 44 }}>
-        <div className="flex items-center gap-1.5">
-          {SLIDES.map((_, n) => (
-            <span
-              key={n}
-              style={{
-                width: n === i ? 16 : 6,
-                height: 6,
-                borderRadius: 999,
-                background: n === i ? "rgba(240,237,230,0.85)" : "rgba(143,175,150,0.35)",
-                transition: "width 0.25s ease, background 0.25s ease",
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Exit ✕ — top-right, safe-area aware (matches the office). Skips the
+          prayer and hands straight into the breathing. */}
+      <button
+        onClick={onSkip}
+        aria-label="Skip the prayer"
+        className="absolute right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
+        style={{ top: "calc(var(--safe-top) + 12px)", color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+      >
+        ×
+      </button>
 
-      {/* Body — tap anywhere to advance (except the final slide, which waits for
-          the Begin button). A left-edge tap steps back. */}
+      {/* Content — vertically centered in the viewport, same wrapper the office
+          uses (max-width 560, asymmetric padding reserving the bottom band for
+          the slide counter). Tap anywhere to advance (except the final slide,
+          which waits for the Continue button); a left-edge tap steps back. */}
       <div
         onClick={isLast ? undefined : next}
-        style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "18px 28px", cursor: isLast ? "default" : "pointer", position: "relative", overflowY: "auto" }}
+        className="flex flex-col items-center text-center px-6 w-full"
+        style={{
+          maxWidth: 560,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          justifyContent: "center",
+          paddingTop: "clamp(24px, 6dvh, 72px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 120px)",
+          cursor: isLast ? "default" : "pointer",
+          position: "relative",
+        }}
       >
         {i > 0 && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); prev(); }}
             aria-label="Previous"
-            style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 64, background: "transparent", border: "none", cursor: "pointer", color: "rgba(200,212,192,0.0)" }}
+            style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 64, background: "transparent", border: "none", cursor: "pointer", color: "rgba(200,212,192,0)" }}
           />
         )}
 
@@ -161,7 +176,7 @@ export function CobreathePrayerIntro({
                 </p>
                 <button
                   type="button"
-                  onClick={onDone}
+                  onClick={(e) => { e.stopPropagation(); onDone(); }}
                   className="rounded-2xl py-4 px-10 transition-opacity hover:opacity-90 active:scale-[0.99]"
                   style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
                 >
@@ -173,28 +188,14 @@ export function CobreathePrayerIntro({
         </AnimatePresence>
       </div>
 
-      {/* Controls — a Next pill with Skip text under it (the final slide uses its
-          own "Begin breathing" button inside the slide, so no controls here). */}
-      <div className="flex flex-col items-center gap-2.5 pb-7" style={{ minHeight: 80 }}>
-        {!isLast && (
-          <>
-            <button
-              type="button"
-              onClick={next}
-              className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 700, cursor: "pointer" }}
-            >
-              Next
-            </button>
-            <button
-              type="button"
-              onClick={onSkip}
-              style={{ color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, background: "transparent", border: "none", cursor: "pointer", padding: "2px 8px" }}
-            >
-              Skip
-            </button>
-          </>
-        )}
+      {/* Slide counter — the office's "X of Y" footer mark, same position. */}
+      <div
+        className="absolute left-0 right-0 flex justify-center pointer-events-none"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+      >
+        <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em", fontFamily: SPACE_GROTESK }}>
+          {i + 1} of {SLIDES.length}
+        </p>
       </div>
     </div>
   );
