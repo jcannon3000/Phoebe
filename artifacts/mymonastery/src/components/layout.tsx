@@ -9,6 +9,7 @@ import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -110,6 +111,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const logout = useLogout();
   const [, setLocation] = useLocation();
   const { rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isPilot } = usePilotMode();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -317,14 +319,18 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     communities you're in, all on one page. Communities no longer
                     have their own menu section; they live inside /people, which
                     is now the Community page. */}
+                {/* Community + Fellows — hidden entirely in pilot (personal-only). */}
+                {!isPilot && (
                 <MenuRow
                   emoji={hasGroup ? "🏘️" : "👥"}
                   label={hasGroup ? t("menu.community", { defaultValue: "Community" }) : t("menu.fellows", { defaultValue: "Fellows" })}
                   onClick={() => navigate("/people")}
                 />
+                )}
                 {/* Prayer list — others' requests to pray through. Hidden until
-                    you have a fellow or a community (a solo new user has none). */}
-                {(hasFellows || hasGroup) && (
+                    you have a fellow or a community (a solo new user has none).
+                    Pilot always gets it — it's their personal list. */}
+                {(hasFellows || hasGroup || isPilot) && (
                 <MenuRow
                   emoji="🙏"
                   label={t("menu.prayer_list", { defaultValue: "Prayer list" })}
@@ -332,8 +338,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 />
                 )}
                 {/* Events — the upcoming schedule. Hidden until you're in a
-                    community (events come from your groups). */}
-                {hasGroup && (
+                    community (events come from your groups). Never in pilot. */}
+                {hasGroup && !isPilot && (
                 <MenuRow
                   emoji="📅"
                   label={t("menu.events", { defaultValue: "Events" })}

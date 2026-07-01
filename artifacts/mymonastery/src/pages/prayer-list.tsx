@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X as CloseIcon, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FROST } from "@/lib/frost";
@@ -1409,6 +1410,9 @@ export default function PrayerListPage() {
   // (prayer_intentions, only you see it); "community" = the shared list (others'
   // prayers + your shared requests + intercessions). Default to your own list.
   const [tab, setTab] = useState<"mine" | "community">("mine");
+  // Pilot is personal-only — hide the Community tab; `tab` then stays "mine"
+  // (the toggle is the only way to reach "community").
+  const { isPilot } = usePilotMode();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -1561,7 +1565,9 @@ export default function PrayerListPage() {
           </Link>
         )}
 
-        {/* Toggle — your private list vs the shared community list. */}
+        {/* Toggle — your private list vs the shared community list. Hidden in
+            pilot (personal-only), which keeps the view on "My list". */}
+        {!isPilot && (
         <div className="flex gap-2 mb-5">
           {([
             ["mine", t("prayer_list.tab_mine", { defaultValue: "My list" })],
@@ -1583,6 +1589,7 @@ export default function PrayerListPage() {
             );
           })}
         </div>
+        )}
 
         {/* ── My list (private intentions) ─────────────────────────────── */}
         {tab === "mine" && (

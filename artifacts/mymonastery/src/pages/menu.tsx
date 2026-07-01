@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { useTranslation } from "react-i18next";
 
@@ -20,6 +21,7 @@ export default function MenuPage() {
   const { user } = useAuth();
   const logout = useLogout();
   const { rawIsBeta, rawIsAdmin } = useBetaStatus();
+  const { isPilot } = usePilotMode();
   const officesOnly = user?.accessTier === "offices-only";
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
@@ -93,7 +95,8 @@ export default function MenuPage() {
 
   // Explore — community + reference content.
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
-  if (!officesOnly) {
+  // Community + Events — hidden in pilot (personal-only, no community).
+  if (!officesOnly && !isPilot) {
     explore.items.push({ emoji: "🏘️", label: t("menu.communities"), sub: t("menu.communities_sub"), onClick: () => go("/communities") });
     explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
   }
@@ -101,7 +104,7 @@ export default function MenuPage() {
   // Prayer Feeds — discover + subscribe to daily intercession feeds (e.g. the
   // Diocese of New York's Calendar of Intercession). Public feeds are open to
   // every tier, including offices-only, so this is unconditional.
-  explore.items.push({ emoji: "🌍", label: t("menu.prayer_feeds", { defaultValue: "Prayer Feeds" }), sub: t("menu.prayer_feeds_sub", { defaultValue: "Pray for the world, one day at a time" }), onClick: () => go("/prayer-feeds") });
+  if (!isPilot) explore.items.push({ emoji: "🌍", label: t("menu.prayer_feeds", { defaultValue: "Prayer Feeds" }), sub: t("menu.prayer_feeds_sub", { defaultValue: "Pray for the world, one day at a time" }), onClick: () => go("/prayer-feeds") });
   if (showLetters) explore.items.push({ emoji: "📮", label: t("menu.letters"), badge: t("menu.beta_badge"), onClick: () => go("/letters") });
   if (rawIsBeta) explore.items.push({ emoji: "✉️", label: t("menu.messages"), badge: t("menu.beta_badge"), onClick: () => go("/messages") });
   groups.push(explore);
