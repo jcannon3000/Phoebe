@@ -219,13 +219,13 @@ export async function assembleCreationDevotion(
     }),
   );
 
-  // 11. Suffrages with Creation.
+  // 11. The Lord's Prayer — first in "The Prayers" (BCP/guide order).
+  slides.push(slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", CREATION_LORDS_PRAYER, { bcpReference: "BCP p. 97" }));
+
+  // 12. Suffrages with Creation — after the Lord's Prayer.
   const suffLines: CallAndResponseLine[] = [];
   for (const s of CREATION_SUFFRAGES) { suffLines.push({ speaker: "officiant", text: s.v }); suffLines.push({ speaker: "people", text: s.r }); }
   slides.push(slide(id(), "suffrages", "🙏🏽", "SUFFRAGES", "", { isCallAndResponse: true, callAndResponseLines: suffLines, bcpReference: CREATION_ATTRIBUTION, metadata: src }));
-
-  // 12. The Lord's Prayer.
-  slides.push(slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", CREATION_LORDS_PRAYER, { bcpReference: "BCP p. 97" }));
 
   // 13. Intercession — the Co-Breathe breath IS the intercession (the client
   //     opens it inline on this slide, on metadata.cobreathe): we breathe our
