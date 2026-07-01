@@ -15,7 +15,6 @@ import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -181,12 +180,12 @@ export default function CobreathePage() {
   // Co-Breathe is the global synchronized breath only. Held as const false so
   // the sync hook never acquires or broadcasts any geographic signal.
   const locationOn = false;
-  // One calm landscape behind the intro slide, picked once and faded gently up
-  // under a dark wash (the good top-level set, not the bad/animal Co-Breathe-only
-  // shots). Falls back to the full pool if the top set is somehow empty.
+  // One calm LANDSCAPE behind the "before you begin" screen (the top-level
+  // curated set — wide landscapes, no leaf close-ups / animals / farm), picked
+  // once and faded up under a dark wash. Matches the prayer-intro slides so the
+  // whole Co-Breathe flow rests on the same landscape imagery.
   const introBgPhoto = useMemo(() => {
-    const pool = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS : COBREATHE_PHOTOS;
-    return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)]! : null;
+    return COBREATHE_PHOTOS.length > 0 ? COBREATHE_PHOTOS[Math.floor(Math.random() * COBREATHE_PHOTOS.length)]! : null;
   }, []);
   // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
   // location. Kept as a const false so the synchronized (global, location-free)

@@ -125,8 +125,8 @@ export function CobreathePrayerIntro({
                 <p style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 22 }}>
                   A prayer to begin
                 </p>
-                <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(34px, 9vw, 46px)", lineHeight: 1.08, letterSpacing: "-0.02em", marginBottom: 18 }}>
-                  {/* Non-breaking hyphen so "Con-Spiring" never splits across lines. */}
+                <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(22px, 6.2vw, 40px)", lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 18, whiteSpace: "nowrap" }}>
+                  {/* One line: nowrap + a non-breaking hyphen so nothing splits. */}
                   A Prayer of Con‑Spiring
                 </h1>
                 <p style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", fontSize: 17 }}>
