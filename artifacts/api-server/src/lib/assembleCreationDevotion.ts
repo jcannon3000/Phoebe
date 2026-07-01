@@ -16,7 +16,7 @@
 
 import { inArray } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
-import { sliceVersesByRange, splitPsalmIntoChunks } from "./psalmRange";
+import { sliceVersesByRange, splitPsalmIntoChunks, splitCanticleIntoChunks } from "./psalmRange";
 import { getSeason } from "./liturgicalCalendar";
 import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
@@ -80,6 +80,14 @@ function parseRef(ref: string): { number: number; ranges: Array<[number, number]
 }
 
 const eyebrowFor = (ref: string) => `PSALM ${ref}`.toUpperCase();
+
+// Break a long call-and-response set (a litany, the suffrages) into slide-sized
+// chunks so nothing runs past a screen — ~4 versicle/response pairs per slide.
+function crChunks(lines: CallAndResponseLine[], perSlide = 8): CallAndResponseLine[][] {
+  const out: CallAndResponseLine[][] = [];
+  for (let i = 0; i < lines.length; i += perSlide) out.push(lines.slice(i, i + perSlide));
+  return out.length ? out : [lines];
+}
 
 export async function assembleCreationDevotion(
   date: Date,
@@ -185,23 +193,17 @@ export async function assembleCreationDevotion(
     }),
   );
 
-  // 9. Canticle (Morning) / Affirmation of Faith (Evening) — both rotate.
+  // 9. Canticle (Morning) / Affirmation of Faith (Evening) — both rotate, and
+  //    both paginate across slides when longer than a screen (like the psalms).
   if (isMorning) {
     const canticle = creationCanticleFor(seq);
-    slides.push(
-      slide(id(), "canticle", "🎶", "CANTICLE", canticle.text, {
-        title: canticle.title, bcpReference: canticle.attribution ?? CREATION_ATTRIBUTION,
-        isScrollable: true, metadata: src,
-      }),
-    );
+    const chunks = splitCanticleIntoChunks(canticle.text, 4).chunks;
+    slides.push(slide(id(), "canticle_title", "🎶", "CANTICLE", "", { title: canticle.title, bcpReference: canticle.attribution ?? CREATION_ATTRIBUTION, metadata: src }));
+    chunks.forEach((c) => slides.push(slide(id(), "canticle", "🎶", "CANTICLE", c, { title: canticle.title, bcpReference: canticle.attribution ?? CREATION_ATTRIBUTION, metadata: src })));
   } else {
     const aff = creationAffirmationFor(seq);
-    slides.push(
-      slide(id(), "creed", "✝️", "AFFIRMATION OF FAITH", aff.text, {
-        title: aff.title, bcpReference: aff.attribution ?? CREATION_ATTRIBUTION,
-        isScrollable: true, metadata: src,
-      }),
-    );
+    const chunks = splitCanticleIntoChunks(aff.text, 4).chunks;
+    chunks.forEach((c, i) => slides.push(slide(id(), "creed", "✝️", "AFFIRMATION OF FAITH", c, { title: i === 0 ? aff.title : null, bcpReference: aff.attribution ?? CREATION_ATTRIBUTION, metadata: src })));
   }
 
   // 10. A Litany — rotating; concludes (with the Collect below) per the guide's rubric.
@@ -212,20 +214,20 @@ export async function assembleCreationDevotion(
     litanyLines.push({ speaker: "officiant", text: l.v });
     litanyLines.push({ speaker: "people", text: l.r });
   }
-  slides.push(
-    slide(id(), "suffrages", "🙏🏽", "A LITANY", "", {
-      title: litany.title, isCallAndResponse: true, callAndResponseLines: litanyLines,
-      isScrollable: true, bcpReference: CREATION_ATTRIBUTION, metadata: src,
-    }),
+  crChunks(litanyLines).forEach((chunk, i) =>
+    slides.push(slide(id(), "suffrages", "🙏🏽", "A LITANY", "", {
+      title: i === 0 ? litany.title : null, isCallAndResponse: true, callAndResponseLines: chunk,
+      bcpReference: CREATION_ATTRIBUTION, metadata: src,
+    })),
   );
 
   // 11. The Lord's Prayer — first in "The Prayers" (BCP/guide order).
   slides.push(slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", CREATION_LORDS_PRAYER, { bcpReference: "BCP p. 97" }));
 
-  // 12. Suffrages with Creation — after the Lord's Prayer.
+  // 12. Suffrages with Creation — after the Lord's Prayer (paginated).
   const suffLines: CallAndResponseLine[] = [];
   for (const s of CREATION_SUFFRAGES) { suffLines.push({ speaker: "officiant", text: s.v }); suffLines.push({ speaker: "people", text: s.r }); }
-  slides.push(slide(id(), "suffrages", "🙏🏽", "SUFFRAGES", "", { isCallAndResponse: true, callAndResponseLines: suffLines, bcpReference: CREATION_ATTRIBUTION, metadata: src }));
+  crChunks(suffLines).forEach((chunk) => slides.push(slide(id(), "suffrages", "🙏🏽", "SUFFRAGES", "", { isCallAndResponse: true, callAndResponseLines: chunk, bcpReference: CREATION_ATTRIBUTION, metadata: src })));
 
   // 13. Intercession — the Co-Breathe breath IS the intercession (the client
   //     opens it inline on this slide, on metadata.cobreathe): we breathe our
