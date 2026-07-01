@@ -59,10 +59,9 @@ function cameFromContemplation(): boolean {
 // green world, and "I can't breathe" as the cry that binds Earth justice to
 // social justice.
 //
-// Co-Breathe is its OWN practice and does NOT count toward the daily silence /
-// contemplation goal: a finished breath is recorded via /api/breath/today (the
-// count + the Co-Breathe card + the weekly tally), and is NOT logged as a
-// contemplation prayer_session.
+// A finished cobreath is also logged as a contemplation prayer_session (and
+// mirrored to Apple Health), so the two minutes count toward the daily
+// contemplation goal like any other silence.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -322,10 +321,31 @@ export default function CobreathePage() {
     },
   });
 
-  // Co-Breathe does NOT count toward the daily silence / contemplation goal:
-  // a finished breath is its own practice (recorded via /api/breath/today + the
-  // Co-Breathe card + the weekly breath tally), not a contemplation sit — so no
-  // "contemplation" prayer-session is logged here anymore.
+  // Log the breathed time as a contemplation sit — exactly once — so it lands
+  // in history, stats, the daily goal, and Apple Health. Called both when the
+  // set completes (so a finished Cobreathe counts even if they never tap
+  // Finish) and on an early end (>=30s). Guarded so the two paths don't double.
+  const sitLoggedRef = useRef(false);
+  const logSit = useCallback((secondsKept: number) => {
+    if (sitLoggedRef.current || secondsKept < 2) return;
+    sitLoggedRef.current = true;
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
+    void apiRequest("POST", "/api/prayer-sessions", {
+      surface: "contemplation",
+      source: "cobreathe",
+      durationSeconds: secondsKept,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      isPrivate: false,
+    })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      })
+      .catch(() => { /* best-effort */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reaching the 12th breath records the day's communal breath (the count +
   // who's breathing). We do NOT log the contemplation sit here — the breath
@@ -352,7 +372,8 @@ export default function CobreathePage() {
     const breaths = Math.max(0, Math.floor(secondsKept / (CYCLE_MS / 1000)));
     if (breaths < 1) { setLocation("/dashboard"); return; }
     if (reached) {
-      record.mutate(secondsKept);   // count you in today's communal breath + mark the Co-Breathe card done (NOT a silence sit)
+      logSit(secondsKept);          // credit the contemplation sit (full set only)
+      record.mutate(secondsKept);   // count you in today's communal breath + mark done
     }
     // Heart to Heart is OFF — cobreathing with a fellow no longer starts a 1:1
     // prayer exchange (no Heart to Heart features are turned on).

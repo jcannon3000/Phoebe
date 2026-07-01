@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -123,13 +123,32 @@ export default function PrayBreathPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The breath does NOT count toward the daily silence / contemplation goal —
-  // it's its own practice, recorded via /api/breath/today. No "contemplation"
-  // prayer-session is logged.
+  const sitLoggedRef = useRef(false);
+  const logSit = useCallback((secondsKept: number) => {
+    if (sitLoggedRef.current || secondsKept < 2) return;
+    sitLoggedRef.current = true;
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
+    void apiRequest("POST", "/api/prayer-sessions", {
+      surface: "contemplation",
+      source: "cobreathe",
+      durationSeconds: secondsKept,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      isPrivate: false,
+    })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      })
+      .catch(() => { /* best-effort */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     const breaths = Math.max(0, Math.floor(secondsKept / (CYCLE_MS / 1000)));
     if (reached && breaths >= 1) {
+      logSit(secondsKept);
       record.mutate(secondsKept);
     }
     setLocation("/dashboard");
