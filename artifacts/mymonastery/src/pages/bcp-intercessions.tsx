@@ -49,15 +49,16 @@ export default function BcpIntercessionsPage() {
   const [addedTitles, setAddedTitles] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
 
-  // Keep a BCP intercession on your prayer list (prayer_intentions). We store
-  // the localized title — short + recognisable in the list and when praying
-  // through it — and the full prayer stays here to read any time.
+  // Keep a BCP intercession on your prayer list (prayer_intentions). Store the
+  // full localized prayer — the title as a heading, then the whole text — so the
+  // actual words ride the list + slideshow, not just the label.
   const addToList = async (prayer: BcpPrayer) => {
     if (adding || addedTitles.has(prayer.title)) return;
     const loc = localizeBcpPrayer(prayer, i18n.language);
     setAdding(true);
     try {
-      await apiRequest("POST", "/api/prayer-intentions", { kind: "text", body: loc.title });
+      const body = loc.text?.trim() ? `${loc.title}\n\n${loc.text.trim()}` : loc.title;
+      await apiRequest("POST", "/api/prayer-intentions", { kind: "text", body });
       setAddedTitles((s) => { const n = new Set(s); n.add(prayer.title); return n; });
     } catch { /* leave un-added so they can retry */ }
     finally { setAdding(false); }
