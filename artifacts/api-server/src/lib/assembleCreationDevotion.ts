@@ -16,6 +16,7 @@ import { inArray } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { sliceVersesByRange, splitPsalmIntoChunks } from "./psalmRange";
 import { getSeason } from "./liturgicalCalendar";
+import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 import {
   creationCyclePosition,
@@ -28,12 +29,17 @@ import {
   CREATION_GLORIA,
   CREATION_ANTIPHONS,
   CREATION_SUFFRAGES,
-  CREATION_COLLECT,
-  CREATION_CONCLUDING,
   GLORIA_PATRI,
   CREATION_LORDS_PRAYER,
   type CreationSide,
 } from "./seasonOfCreation";
+import {
+  creationCollectFor,
+  creationReadingFor,
+  creationBlessingFor,
+  creationQuoteFor,
+  creationOfficeSeq,
+} from "./creationLibrary";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -98,12 +104,25 @@ export async function assembleCreationDevotion(
   const isMorning = side === "morning";
   // Deterministic per-office variety for the rotating (Scripture) texts.
   const pick = (len: number) => (weekday * 2 + (isMorning ? 0 : 1)) % len;
+  const seq = creationOfficeSeq(date, side);
 
   // 0. Intro — names the practice + its source.
   slides.push(
     slide(id(), "office_intro", "🌿", "A creation-focused devotion",
       "Prayer with creation for the Season of Creation — the psalms and prayers drawn from the Episcopal Season of Creation guide.",
       { title: isMorning ? "Season of Creation · Morning" : "Season of Creation · Evening" }),
+  );
+
+  // 0b. The Collect — the devotion opens with the day's collect from the creation
+  //     care lectionary (rotates through the fortnight; paired to the psalms).
+  const collect = creationCollectFor(date);
+  slides.push(
+    slide(id(), "collect", "🌿", "THE COLLECT", collect.text, {
+      title: collect.title,
+      bcpReference: collect.attribution ?? CREATION_ATTRIBUTION,
+      isScrollable: true,
+      metadata: { source: "season_of_creation_guide", collectTitle: collect.title },
+    }),
   );
 
   // 1. Opening Sentence (Scripture).
@@ -189,6 +208,13 @@ export async function assembleCreationDevotion(
     slide(id(), "psalm_gloria", "📖", combinedEyebrow, GLORIA_PATRI, { title: combinedTitle }),
   );
 
+  // 5b. The Reading — in place of the Gospel/NT reading, a creation Scripture
+  //     from the guide's Readings for Creation (rotates through the fortnight).
+  const reading = creationReadingFor(seq);
+  for (const s of buildLessonSlides(reading.ref, isMorning ? "devotion_morning" : "devotion_evening", id)) {
+    slides.push(s);
+  }
+
   // 6. Suffrages with Creation (guide composition).
   const suffLines: CallAndResponseLine[] = [];
   for (const s of CREATION_SUFFRAGES) {
@@ -207,15 +233,26 @@ export async function assembleCreationDevotion(
     slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", CREATION_LORDS_PRAYER, { bcpReference: "BCP p. 97" }),
   );
 
-  // 8. Collect — "For Joy in God's Creation" (BCP, public domain).
+  // 8. Words on Creation — a rotating quote from the tradition (the guide offers
+  //    these as short readings).
+  const quote = creationQuoteFor(seq);
   slides.push(
-    slide(id(), "collect", "🌿", "THE COLLECT", CREATION_COLLECT.text, { bcpReference: CREATION_COLLECT.ref }),
+    slide(id(), "collect", "🍃", "WORDS ON CREATION", quote.text, {
+      bcpReference: quote.source ? `${quote.author} · ${quote.source}` : quote.author,
+      isScrollable: true,
+      metadata: { source: "season_of_creation_guide", quoteAuthor: quote.author },
+    }),
   );
 
-  // 9. Concluding Sentence (Scripture).
-  const cs = CREATION_CONCLUDING[pick(CREATION_CONCLUDING.length)];
+  // 9. Closing Prayer & Blessing — rotates through the guide's closing
+  //    blessings (pp. 59–60).
+  const blessing = creationBlessingFor(seq);
   slides.push(
-    slide(id(), "closing", "🍃", "CONCLUDING SENTENCE", cs.text, { bcpReference: cs.ref }),
+    slide(id(), "closing", "🍃", "A BLESSING", blessing.text, {
+      bcpReference: blessing.attribution ?? CREATION_ATTRIBUTION,
+      isScrollable: true,
+      metadata: { source: "season_of_creation_guide" },
+    }),
   );
 
   const officeDay: OfficeDayInfo = {

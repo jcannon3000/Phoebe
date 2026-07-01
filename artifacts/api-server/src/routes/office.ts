@@ -10,6 +10,7 @@ import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCreationDevotion } from "../lib/assembleCreationDevotion";
+import { CREATION_COLLECTS, CREATION_PRAYERS, CREATION_BLESSINGS, CREATION_READINGS, CREATION_QUOTES } from "../lib/creationLibrary";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
@@ -347,6 +348,19 @@ router.post("/office/seed", async (req, res) => {
     console.error("BCP seed failed:", err);
     return res.status(500).json({ error: "Seed failed", detail: String(err) });
   }
+});
+
+// GET /creation/library — the Season of Creation prayer library (collects,
+// prayers, blessings, readings, quotes) for the "Prayers for the Climate" page.
+// Static, public-domain / gift-licensed text; no per-user data.
+router.get("/creation/library", (_req, res) => {
+  res.json({
+    collects: CREATION_COLLECTS,
+    prayers: CREATION_PRAYERS,
+    blessings: CREATION_BLESSINGS,
+    readings: CREATION_READINGS,
+    quotes: CREATION_QUOTES,
+  });
 });
 
 // GET /devotion/:kind — Daily Devotions for Individuals and Families

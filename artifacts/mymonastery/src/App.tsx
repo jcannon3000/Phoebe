@@ -395,6 +395,7 @@ const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
 const BcpDailyDevotionPage = lazy(() => import("./pages/bcp-daily-devotion"));
 const CreationDevotionPage = lazy(() => import("./pages/creation-devotion"));
+const CreationPrayersPage = lazy(() => import("./pages/creation-prayers"));
 const OfficeSettingsPage = lazy(() => import("./pages/office-settings"));
 const BcpPsalterPage = lazy(() => import("./pages/bcp-psalter"));
 const BcpCollectsPage = lazy(() => import("./pages/bcp-collects"));
@@ -749,7 +750,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/scripture/readings", "/contemplation", "/cobreathe",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
-  "/creation-devotion",
+  "/creation-devotion", "/creation-prayers",
   "/about", "/about-deck", "/privacy", "/terms",
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
@@ -1121,6 +1122,7 @@ function Router() {
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
       <Route path="/bcp/daily-devotions" component={BcpDailyDevotionPage} />
       <Route path="/creation-devotion" component={CreationDevotionPage} />
+      <Route path="/creation-prayers" component={CreationPrayersPage} />
       <Route path="/bcp/psalter" component={BcpPsalterPage} />
       <Route path="/bcp/collects" component={BcpCollectsPage} />
       {/* /pray — public, no login. Choose the Daily Office or Daily
