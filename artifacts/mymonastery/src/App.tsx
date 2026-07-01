@@ -454,6 +454,7 @@ const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { isJardinPath, isJardinSealed } from "@/lib/jardinMode";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
@@ -731,6 +732,41 @@ function JardinEntry() {
     setLocation(user ? "/menu/jardin" : "/jardin/signup");
   }, [user, isLoading, setLocation]);
   return null;
+}
+
+// PilotGate — the simplified public "pilot" shell. Modeled on ParishGate.
+// When a session is in pilot mode (see usePilotMode: pilot is the default for
+// everyone EXCEPT community admins + beta testers, gated by PHOEBE_PILOT_ENABLED
+// / the phoebe:pilot-preview override), we keep them within a small allowlist
+// of surfaces and bounce everything else (community, events, people, letters,
+// messages) to the pilot home. No-op entirely when pilot isn't active.
+const PILOT_ALLOWED_EXACT = new Set<string>([
+  "/", "/pilot/home", "/pilot/build",
+  "/prayer-list", "/intentions", "/pray-request/new",
+  "/menu", "/menu/practices", "/menu/reflections",
+  "/scripture/readings", "/contemplation", "/podcasts",
+  "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
+  "/pray", "/cobreathe",
+  "/about", "/privacy", "/terms",
+]);
+const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/scripture", "/settings/"];
+
+function PilotGate({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useLocation();
+  const { isPilot, isLoading } = usePilotMode();
+
+  useEffect(() => {
+    if (isLoading || !isPilot) return;
+    // The full dashboard is never shown to pilot users — send them to the
+    // calm pilot home instead.
+    if (location === "/dashboard") { setLocation("/pilot/home"); return; }
+    const allowed =
+      PILOT_ALLOWED_EXACT.has(location) ||
+      PILOT_ALLOWED_PREFIX.some((p) => location.startsWith(p));
+    if (!allowed) setLocation("/pilot/home");
+  }, [location, isPilot, isLoading, setLocation]);
+
+  return <>{children}</>;
 }
 
 function ParishGate({ children }: { children: ReactNode }) {
@@ -1325,9 +1361,11 @@ function App() {
                 persistent <audio> + mini-player bar. */}
             <JardinHostGate />
             <PodcastPlayerProvider>
-              <ParishGate>
-                <Router />
-              </ParishGate>
+              <PilotGate>
+                <ParishGate>
+                  <Router />
+                </ParishGate>
+              </PilotGate>
             </PodcastPlayerProvider>
           </WouterRouter>
           <Toaster />

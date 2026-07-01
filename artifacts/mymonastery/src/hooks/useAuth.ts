@@ -53,6 +53,10 @@ export interface AuthUser {
   inJardinGroup?: boolean;
   parishId: number | null;
   bellEnabled: boolean;
+  // Server-derived: is an admin (role admin / hidden_admin) of at least one
+  // community. Community admins + beta testers keep the FULL app; everyone
+  // else falls into the simplified pilot experience (see usePilotMode).
+  isCommunityAdmin?: boolean;
   // Phoebe Parish — see AccessTier comment above.
   accessTier: AccessTier;
   parishFeedId: number | null;
