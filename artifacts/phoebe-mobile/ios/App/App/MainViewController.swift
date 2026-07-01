@@ -42,6 +42,11 @@ class MainViewController: CAPBridgeViewController {
         // (a string of taps) instead of the single continuous CHHaptic swell.
         // Register it explicitly so the native smooth swell + bells run.
         bridge?.registerPluginInstance(PhoebeAudioPlugin())
+        // PhoebePrint — WKWebView has no window.print(), so the routine printout's
+        // "Save as PDF" did nothing on iOS. This plugin presents the iOS print
+        // sheet for the web view (Save to Files as PDF / AirPrint / share).
+        // Referenced only in its own file, so register it explicitly like the rest.
+        bridge?.registerPluginInstance(PhoebePrintPlugin())
     }
 
     // Edge-to-edge: render the WebView UNDER a transparent status bar

@@ -428,6 +428,7 @@ const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
 const AdminParishesPage = lazy(() => import("./pages/admin-parishes"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
+const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
@@ -963,6 +964,7 @@ function Router() {
       <Route path="/podcasts/:publisher" component={PodcastPublisherPage} />
       <Route path="/dashboard"><Dashboard /></Route>
       <Route path="/pilot/home" component={PilotHomePage} />
+      <Route path="/pilot/build" component={PilotBuildPage} />
       <Route path="/events" component={EventsPage} />
       {/* BETA: Way of Love. The DAILY half folded back into /dashboard (Turn
           streak + the existing office / Contemplation / reflection cards); the

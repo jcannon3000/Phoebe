@@ -214,11 +214,16 @@ export default function WayOfLoveRuleFlow({
   // designing here never disturbs the admin's own rhythm.
   prescribe = false,
   onPrescribe,
+  // Pilot: a trimmed rhythm builder (morning/evening → reflections → silence →
+  // one custom anchor). Drops the contemplative multi-select, per-practice
+  // time-of-day slides, "add to your day" extras, the weekly rhythm, and CAC.
+  pilot = false,
 }: {
   onBack: () => void;
   onDone: () => void;
   prescribe?: boolean;
   onPrescribe?: (spec: RoutineSpec) => void;
+  pilot?: boolean;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -878,7 +883,19 @@ export default function WayOfLoveRuleFlow({
     (sides.morning && prayBySide.morning === "fdd") ||
     (sides.evening && prayBySide.evening === "fdd") ||
     newsletters.includes("fdd");
-  const orderedSteps: Step[] = [
+  const orderedSteps: Step[] = pilot
+    // Pilot: morning/evening → reflections → silence → one custom anchor. No
+    // contemplative multi-select, no per-practice slots, no extras, no weekly.
+    ? [
+        "when",
+        ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
+        ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
+        "learn",
+        ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
+        "contemplation-goal",
+        "custom",
+      ]
+    : [
     "when",
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
@@ -1393,7 +1410,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.learn_multi_note", { defaultValue: "Pick as many as you like — each gets its own card on your home." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {NEWSLETTERS.map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
+          {NEWSLETTERS.filter((n) => !pilot || n.id !== "cac").map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
