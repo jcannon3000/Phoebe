@@ -182,6 +182,11 @@ export const usersTable = pgTable("users", {
   // we only push once per local day. NULL = never sent.
   parishOfficeMorningSentDate: text("parish_office_morning_sent_date"),
   parishOfficeEveningSentDate: text("parish_office_evening_sent_date"),
+  // YYYY-MM-DD (parish TZ) of the last evening FOLLOW-UP reminder — a second
+  // nudge sent ~2h after the initial evening reminder if evening prayer still
+  // isn't done and it's before 10pm local. Separate idempotency key so it fires
+  // at most once per day, independent of the initial reminder. NULL = never sent.
+  parishOfficeEveningFollowupSentDate: text("parish_office_evening_followup_sent_date"),
   // Daily contemplation goal, in minutes. 0 = off (no goal set → no nudge).
   // When > 0 the user gets a gentle ~7pm reminder on days they haven't yet
   // reached this many minutes of silent prayer.

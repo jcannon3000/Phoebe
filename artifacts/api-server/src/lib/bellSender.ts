@@ -1040,6 +1040,95 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
   }
 }
 
+// ─── Evening office FOLLOW-UP reminder ──────────────────────────────────────
+// A single SECOND nudge ~2h after the initial evening reminder, only if evening
+// prayer still isn't done and it's before 10pm local. Deduped per local day via
+// parish_office_evening_followup_sent_date, independent of the initial reminder.
+const EVENING_FOLLOWUP_HOURS_AFTER = 2;
+const EVENING_FOLLOWUP_CUTOFF_HOUR = 22; // 10pm local — never nudge later
+
+// Add whole hours to a HH:MM string, clamped to 23:59 (a follow-up that would
+// roll past the cutoff simply never fires — the hour>=22 gate catches it).
+function addHoursToHHMM(hhmm: string, hours: number): string {
+  const [hStr, mStr] = hhmm.split(":");
+  const h = parseInt(hStr, 10) + hours;
+  const hh = String(Math.min(23, Math.max(0, h))).padStart(2, "0");
+  return `${hh}:${(mStr ?? "00").padStart(2, "0")}`;
+}
+
+export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        eveningPref: usersTable.parishOfficeEveningPref,
+        eveningTime: usersTable.parishOfficeEveningTime,
+        eveningSentDate: usersTable.parishOfficeEveningSentDate,
+        followupSentDate: usersTable.parishOfficeEveningFollowupSentDate,
+        parishFeedId: usersTable.parishFeedId,
+        parishTitle: prayerFeedsTable.title,
+        parishTimezone: prayerFeedsTable.timezone,
+      })
+      .from(usersTable)
+      .leftJoin(prayerFeedsTable, and(
+        eq(prayerFeedsTable.id, usersTable.parishFeedId),
+        eq(prayerFeedsTable.kind, "parish"),
+      ))
+      .where(sql`${usersTable.parishOfficeEveningPref} != 'none'`);
+
+    for (const r of rows) {
+      try {
+        const tz = r.parishTimezone || r.userTimezone || "America/New_York";
+        const today = todayInZone(tz);
+        // At most one follow-up per local day; and only after the INITIAL evening
+        // reminder has been evaluated today (so we truly follow up on a sent nudge).
+        if (r.followupSentDate === today) continue;
+        if (r.eveningSentDate !== today) continue;
+        // Before 10pm local only.
+        const { hour } = getCurrentTimeInTz(tz);
+        if (hour >= EVENING_FOLLOWUP_CUTOFF_HOUR) continue;
+        // ~2h after the (per-user) evening target time.
+        const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
+        const followupTarget = addHoursToHHMM(eveningTarget, EVENING_FOLLOWUP_HOURS_AFTER);
+        if (!opts.forceNow && !isWithinTickWindow(tz, followupTarget)) continue;
+
+        // Still not prayed? (approximate UTC start of today in user-tz; covers UTC-14)
+        const sinceUtc = new Date(`${today}T00:00:00Z`);
+        sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+        const eveningSessions = await db
+          .select({ endedAt: prayerSessionsTable.endedAt })
+          .from(prayerSessionsTable)
+          .where(and(
+            eq(prayerSessionsTable.userId, r.userId),
+            inArray(prayerSessionsTable.surface, ["evening-prayer", "early-evening-devotion"]),
+            gte(prayerSessionsTable.endedAt, sinceUtc),
+          ));
+        const prayedEveningToday = eveningSessions.some(s => {
+          if (!s.endedAt) return false;
+          return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
+        });
+        if (prayedEveningToday) {
+          // Already prayed — stamp so we don't re-evaluate this user today.
+          await db.update(usersTable).set({ parishOfficeEveningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
+          continue;
+        }
+        try {
+          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle });
+          logger.info({ userId: r.userId }, "[office-reminder] evening FOLLOW-UP push sent");
+          await db.update(usersTable).set({ parishOfficeEveningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
+        } catch (err) {
+          logger.warn({ err, userId: r.userId }, "[office-reminder] evening follow-up push failed");
+        }
+      } catch (err) {
+        logger.error({ err, userId: r.userId }, "[office-reminder] evening follow-up processing failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[office-reminder] evening follow-up sender failed");
+  }
+}
+
 // ─── Daily contemplation goal — ~7pm "haven't hit your goal" nudge ──────────
 // Fires for any user with contemplation_goal_minutes > 0. At ~19:00 in their
 // timezone, if today's logged contemplation minutes are still below the goal,
@@ -1876,6 +1965,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // fires on the cron.)
   // { name: "life-event-followup",   run: runLifeEventFollowUpSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
+  { name: "parish-office-followup", run: runParishOfficeEveningFollowUpSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.

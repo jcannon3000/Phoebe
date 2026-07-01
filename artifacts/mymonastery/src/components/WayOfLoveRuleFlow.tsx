@@ -80,10 +80,10 @@ const SIDES = ["morning", "evening"] as const;
 type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen";
 type Step =
   | "when"
-  | "morning-way" | "morning-config"
+  | "morning-way" | "morning-bcp" | "morning-config"
   | "fdd-mode"
   | "psalms-cycle"
-  | "evening-way" | "evening-config"
+  | "evening-way" | "evening-bcp" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "lectio-when" | "walk-when" | "scripture-when"
   | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
@@ -937,13 +937,16 @@ export default function WayOfLoveRuleFlow({
   // now always an add-on reflection (in `newsletters`), never a side office
   // anchor. The Psalms CYCLE is folded into each side's config slide.
   const needsFddMode = newsletters.includes("fdd");
+  // A side that picked "With the Book of Common Prayer" gets a dedicated slide
+  // (morning-bcp / evening-bcp) to choose the form — Psalms / Devotion / Office.
+  const bcpOnSide = (s: OfficeSide) => prayBySide[s] === "offices" || prayBySide[s] === "devotion" || prayBySide[s] === "psalms";
   const orderedSteps: Step[] = pilot
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
     // contemplative multi-select, no per-practice slots, no extras, no weekly.
     ? [
         "when",
-        ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
-        ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
+        ...(sides.morning ? (["morning-way", ...(bcpOnSide("morning") ? ["morning-bcp"] : []), "morning-config"] as Step[]) : []),
+        ...(sides.evening ? (["evening-way", ...(bcpOnSide("evening") ? ["evening-bcp"] : []), "evening-config"] as Step[]) : []),
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
@@ -951,8 +954,8 @@ export default function WayOfLoveRuleFlow({
       ]
     : [
     "when",
-    ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
-    ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
+    ...(sides.morning ? (["morning-way", ...(bcpOnSide("morning") ? ["morning-bcp"] : []), "morning-config"] as Step[]) : []),
+    ...(sides.evening ? (["evening-way", ...(bcpOnSide("evening") ? ["evening-bcp"] : []), "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
@@ -1232,26 +1235,11 @@ export default function WayOfLoveRuleFlow({
               : t("wol_rule.pray_bcp_sub", { defaultValue: "Pray the office — the psalms and lessons are filled in for you." });
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* With the Book of Common Prayer — one option; a sub-select
-                    picks Psalms / Devotion / Office. Tapping again clears the
-                    office anchor (multi-select: each row toggles independently). */}
+                {/* With the Book of Common Prayer — one option. The form (Psalms /
+                    Devotion / Office) is chosen on the NEXT slide (morning-bcp /
+                    evening-bcp). The sub-line shows the current choice. Tapping
+                    again clears the office anchor (each row toggles independently). */}
                 {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => choosePrayBySide(side, bcpOn ? "none" : bcpForm[side]))}
-                {bcpOn && (
-                  <div style={{ display: "flex", gap: 8, paddingLeft: 22 }}>
-                    {(!pilot ? (["psalms", "devotion", "offices"] as const) : (["devotion", "offices"] as const)).map((form) => {
-                      const label = form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
-                        : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
-                        : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
-                      const on = prayBySide[side] === form;
-                      return (
-                        <button key={form} type="button" onClick={() => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); }}
-                          style={{ flex: 1, ...FROST_BLUR, background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "9px 6px", fontSize: 12, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
                 {bcpOn && communityWithOffice[side] && (
                   <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, paddingLeft: 22, margin: 0 }}>
                     {t("wol_rule.bcp_community_note", { defaultValue: "✓ Community intercessions are prayed within the office." })}
@@ -1309,6 +1297,37 @@ export default function WayOfLoveRuleFlow({
           >
             {t("common.add", { defaultValue: "Add" })}
           </button>
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── Per-side BCP FORM slide — pick Psalms / Devotion / Office ─────────────
+  // Shown right after a side picks "With the Book of Common Prayer": the form
+  // choice lives on its own slide (not inline pills on the way step).
+  if (step === "morning-bcp" || step === "evening-bcp") {
+    const side: OfficeSide = step === "morning-bcp" ? "morning" : "evening";
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const forms = (!pilot ? (["psalms", "devotion", "offices"] as const) : (["devotion", "offices"] as const));
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(cap, t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.bcp_form_body", { side: cap.toLowerCase(), defaultValue: `How would you like to pray it in the ${cap.toLowerCase()}?` })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {forms.map((form) => {
+            const label = form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
+              : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
+              : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
+            const sub = form === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
+              : form === "devotion" ? (side === "morning" ? t("wol_rule.pray_devotion_sub_morning", { defaultValue: "A short form of Morning Prayer." }) : t("wol_rule.pray_devotion_sub_evening", { defaultValue: "A short form of Evening Prayer." }))
+              : (side === "morning" ? t("wol_rule.pray_offices_sub_morning", { defaultValue: "The full Morning Prayer office." }) : t("wol_rule.pray_offices_sub_evening", { defaultValue: "The full Evening Prayer office." }));
+            const emoji = form === "psalms" ? "📜" : "📖";
+            return choiceRow(prayBySide[side] === form, `${emoji} ${label}`, sub, () => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); });
+          })}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
