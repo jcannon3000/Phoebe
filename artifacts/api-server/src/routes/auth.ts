@@ -5,7 +5,7 @@ import passport from "passport";
 import { loginFreshSession } from "../lib/session";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
-import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
+import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, fellowsTable, fellowInvitesTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
 import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
@@ -311,8 +311,27 @@ router.get("/auth/me", async (req, res) => {
     ))
     .limit(1);
   const isCommunityMember = communityMemberRows.length > 0;
+  // Does this user have a fellow connection — an accepted 1:1 fellow, OR a
+  // pending fellow invite waiting for them? If so they keep the FULL app (so
+  // they can still see + reach Fellows), even in the simplified pilot
+  // experience. Same single-source-of-truth pattern as isCommunityMember.
+  const fellowRows = await db
+    .select({ id: fellowsTable.id })
+    .from(fellowsTable)
+    .where(eq(fellowsTable.userId, u.id))
+    .limit(1);
+  const fellowInviteRows = await db
+    .select({ id: fellowInvitesTable.id })
+    .from(fellowInvitesTable)
+    .where(and(
+      eq(fellowInvitesTable.recipientId, u.id),
+      eq(fellowInvitesTable.status, "pending"),
+    ))
+    .limit(1);
+  const hasFellowConnection = fellowRows.length > 0 || fellowInviteRows.length > 0;
   res.json({
     isCommunityMember,
+    hasFellowConnection,
     id: u.id,
     name: u.name,
     email: u.email,

@@ -57,6 +57,10 @@ export interface AuthUser {
   // any role). Anyone in a community + beta testers keep the FULL app (community
   // features stay); everyone else falls into the simplified pilot experience.
   isCommunityMember?: boolean;
+  // Server-derived: has an accepted 1:1 fellow OR a pending fellow invite
+  // waiting. Anyone with a fellow connection keeps the FULL app (so they can
+  // still see + reach Fellows), even in the simplified pilot experience.
+  hasFellowConnection?: boolean;
   // Phoebe Parish — see AccessTier comment above.
   accessTier: AccessTier;
   parishFeedId: number | null;

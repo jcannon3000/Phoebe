@@ -23,10 +23,13 @@ export function usePilotMode(): { isPilot: boolean; isLoading: boolean } {
   if (!enabled) return { isPilot: false, isLoading: false };
 
   const isLoading = authLoading || betaLoading;
-  // Full app for our testers + ANYONE in a community (community features like
-  // shared prayer requests stay for them); pilot for everyone else — the public
-  // who aren't in a community yet, and logged-out guests (user null → false).
+  // Full app for our testers, ANYONE in a community (community features like
+  // shared prayer requests stay), AND anyone with a fellow connection — an
+  // accepted 1:1 fellow or a pending fellow invite waiting for them (so they can
+  // still see + reach Fellows). Pilot is for everyone else — the public who
+  // aren't connected to anyone yet, and logged-out guests (user null → false).
   const isCommunityMember = user?.isCommunityMember ?? false;
-  const isPilot = !rawIsBeta && !isCommunityMember;
+  const hasFellowConnection = user?.hasFellowConnection ?? false;
+  const isPilot = !rawIsBeta && !isCommunityMember && !hasFellowConnection;
   return { isPilot, isLoading };
 }
