@@ -3721,10 +3721,7 @@ export default function PrayerModePage() {
   // If they keep no reflection, we don't park them on the recap either —
   // the close just fades smoothly back to the home screen (see the effect
   // below). Evening closes are unaffected and still show the recap.
-  const rawReflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
-  // Pilot removes CAC — a pilot user who never set a reflection would otherwise
-  // get the CAC fallback at the office close. Coerce it to FDD.
-  const reflectionSource = (isPilot && rawReflectionSource === "cac") ? "fdd" : rawReflectionSource;
+  const reflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
   const isMorningClose = (closingOnly || afterOffice) && !closingIsEvening;
   const endOnReflection = isMorningClose && reflectionSource !== "none";
   // The "Add prayer / Done" closing card (ClosingSlide) is REMOVED for the plain
