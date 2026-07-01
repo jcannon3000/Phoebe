@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
@@ -120,6 +121,9 @@ export default function PrayerRequestNew() {
     } catch {}
     return kind === "request" ? "list" : "share";
   });
+  const { isPilot } = usePilotMode();
+  // Pilot is personal-only: always keep it on the private list, never share.
+  useEffect(() => { if (isPilot) setDest("list"); }, [isPilot]);
   // One calm landscape behind the page, picked once and faded gently up under a
   // dark wash (matching the office/Co-Breathe slides).
   const bgPhoto = useMemo(
@@ -301,7 +305,7 @@ export default function PrayerRequestNew() {
 
           {/* Destination — keep it on your private list, or share it with the
               community. Only the default "request" kind offers privacy. */}
-          {!isLifeEvent && kind === "request" && (
+          {!isLifeEvent && kind === "request" && !isPilot && (
             <div className="w-full flex gap-2">
               {([
                 ["list", t("prayer_request.dest_list", { defaultValue: "Keep on my list" })],

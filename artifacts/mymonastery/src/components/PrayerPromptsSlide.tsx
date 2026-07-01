@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { usePilotMode } from "@/hooks/usePilotMode";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -27,6 +28,7 @@ const PROMPTS: Array<{ emoji: string; key: string; label: string }> = [
 
 export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
   const { t } = useTranslation();
+  const { isPilot } = usePilotMode();
   const [, setLocation] = useLocation();
   // null = the pill grid; otherwise the input screen for the chosen prompt.
   const [picked, setPicked] = useState<{ key: string; label: string } | null>(null);
@@ -91,11 +93,14 @@ export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
               style={{ background: `rgba(${RGB},0.9)`, color: "#0C1F12", fontFamily: FONT, cursor: text.trim() ? "pointer" : "default" }}>
               {saving ? t("common.saving", { defaultValue: "Saving…" }) : t("prayer_prompts.add_to_list", { defaultValue: "Add to my list" })}
             </button>
+            {/* Pilot is personal-only — no community share. */}
+            {!isPilot && (
             <button onClick={() => save(true)} disabled={!text.trim() || saving}
               className="w-full rounded-full py-3 text-[14px] font-semibold active:scale-[0.99] disabled:opacity-40"
               style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", color: WARM, border: `1px solid rgba(${RGB},0.4)`, fontFamily: FONT }}>
               {t("prayer_prompts.share_community", { defaultValue: "Share with the community" })}
             </button>
+            )}
             <button onClick={back} className="w-full py-2 text-[13px] font-semibold" style={{ background: "transparent", color: SAGE, fontFamily: FONT }}>
               {t("common.back", { defaultValue: "← Back" })}
             </button>

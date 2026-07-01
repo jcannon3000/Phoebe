@@ -7,6 +7,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { BCP_PRAYERS } from "@/lib/bcp-prayers";
+import { usePilotMode } from "@/hooks/usePilotMode";
 
 // ── Personal prayer list ("intentions") ───────────────────────────────────
 // A private list of the people / things you're holding in prayer. Add free
@@ -92,6 +93,7 @@ export default function IntentionsPage() {
   // One field. Private by default; "Sharing" also posts a prayer request to
   // your circle so others can pray along, and "Ongoing" shares it without the
   // 7-day expiry. Existing person items still display and edit.
+  const { isPilot } = usePilotMode();
   const [text, setText] = useState("");
   const [audience, setAudience] = useState<"private" | "shared">("private");
   // Community cadence: "one-time" surfaces first on others' lists and leaves a
@@ -198,10 +200,14 @@ export default function IntentionsPage() {
             rows={3}
             className="w-full rounded-xl px-3.5 py-2.5 text-[15px] outline-none resize-none"
             style={{ background: "rgba(0,0,0,0.25)", color: WARM, fontFamily: FONT, border: `1px solid rgba(${RGB},0.25)` }} />
+          {/* Pilot is personal-only: no "share with the community" — the list
+              stays private, so the audience toggle is hidden entirely. */}
+          {!isPilot && (
           <div className="flex gap-2 mt-3">
             {seg(t("intentions.private", { defaultValue: "On my list" }), !sharing, () => setAudience("private"))}
             {seg(t("intentions.sharing", { defaultValue: "With the community" }), sharing, () => setAudience("shared"))}
           </div>
+          )}
           {sharing && (
             <>
               <div className="flex gap-2 mt-2">
@@ -269,7 +275,7 @@ export default function IntentionsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                      {!bcp && <RowBtn label={t("intentions.share", { defaultValue: "Share" })} emoji="📣" onClick={() => setShareFor(it)} />}
+                      {!bcp && !isPilot && <RowBtn label={t("intentions.share", { defaultValue: "Share" })} emoji="📣" onClick={() => setShareFor(it)} />}
                       <RowBtn label={t("common.edit", { defaultValue: "Edit" })} emoji="✎" onClick={() => startEdit(it)} />
                       <RowBtn label={t("common.delete", { defaultValue: "Delete" })} emoji="🗑" onClick={() => delMut.mutate(it.id)} />
                     </div>

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { amenWithLocation } from "@/lib/prayLocation";
@@ -2441,6 +2442,7 @@ function BlessingSlide({
 
 export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { isPilot } = usePilotMode();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -3486,6 +3488,26 @@ export default function PrayerModePage() {
       text: "",
       attribution: "",
     });
+  }
+
+  // Pilot is personal-only: strip every COMMUNITY slide from the walk (group /
+  // feed intercessions, circle intentions, others' requests, prayers-for /
+  // -from, nudges), leaving only the viewer's OWN prayers (isOwnPrayer) plus the
+  // personal pause + prompts. Done in-place before the snapshot is frozen below.
+  if (isPilot) {
+    for (let i = slides.length - 1; i >= 0; i--) {
+      const s = slides[i];
+      const isCommunity =
+        s.kind === "intercession" ||
+        s.kind === "circle-intention" ||
+        s.kind === "prayer-for" ||
+        s.kind === "prayer-from" ||
+        s.kind === "prayer-for-expired" ||
+        s.kind === "ask-request" ||
+        s.kind === "pray-for-suggest" ||
+        (s.kind === "request" && !s.isOwnPrayer);
+      if (isCommunity) slides.splice(i, 1);
+    }
   }
 
   // All four data queries finished resolving. The slideshow waits for

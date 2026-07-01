@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
@@ -528,6 +529,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // off this; otherwise the historical exit path is unchanged for
   // beta + community users.
   const { user: viewerUser } = useAuth();
+  const { isPilot } = usePilotMode();
   const parishOnly = viewerUser?.accessTier === "parish-only";
   // Offices-only accounts (public /pray sign-ups) have no parish
   // celebration and no /prayer-mode access — they finish back on
@@ -908,6 +910,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (!slide) return;
     if (slide.type !== "intercessions_portal") return;
     if (portalHandedOffRef.current) return;
+    // Pilot is personal-only — never hand the office off into the community
+    // intercessions slideshow.
+    if (isPilot) return;
     const t = window.setTimeout(() => handIntoPrayerMode(), 4000);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1108,7 +1113,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // branch the slideIdx change cancels the 4s auto-fire timeout
     // (cleanup → clearTimeout) and the user lands on the slide AFTER
     // the portal (e.g. Lord's Prayer) without ever seeing prayer-mode.
-    if (currentSlide.type === "intercessions_portal" && !portalHandedOffRef.current) {
+    if (currentSlide.type === "intercessions_portal" && !portalHandedOffRef.current && !isPilot) {
       handIntoPrayerMode();
       return;
     }
