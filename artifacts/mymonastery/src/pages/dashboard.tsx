@@ -5972,9 +5972,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         ownerAvatarUrl: null,
         myAmenedToday: false,
       }));
-    // Unprayed float to the top; prayed sink (stable within a group).
-    return [...ownPrayerRows, ...requestRows, ...intercessionRows]
-      .sort((a, b) => (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0));
+    // Other people's prayers first: community + prayer-feed intercessions at the
+    // top (a feed's daily prayer reads as today's), then other people's requests,
+    // then your own (requests + private intentions). Unprayed before prayed
+    // within each group (a stable sort keeps the source order otherwise).
+    const groupRank = (r: PrayerListCarouselRow): number =>
+      (r.isOwnRequest || r.isOwnPrayer) ? 2 : (r.kind === "intercession" ? 0 : 1);
+    return [...ownPrayerRows, ...requestRows, ...intercessionRows].sort((a, b) => {
+      const g = groupRank(a) - groupRank(b);
+      if (g !== 0) return g;
+      return (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0);
+    });
   }, [dashPrayerRequests, momentsData, dashPrayerIntentions]);
   // (The own-request card's "who prayed for THIS request" faces now come per-
   // request from /api/prayer-requests (req.amenFaces), so the global
