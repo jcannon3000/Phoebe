@@ -117,7 +117,7 @@ export default function WelcomePublicPage() {
               phone widths. No `nowrap`: a longer translation (e.g. Spanish) then
               wraps gracefully instead of clipping/overflowing. */}
           <p className="leading-relaxed" style={{ color: SAGE, fontSize: "clamp(9px, 2.6vw, 12px)" }}>
-            {t("welcome_public.tagline", { defaultValue: "A relational app that cultivates connections between Sundays." })}
+            {t("welcome_public.tagline_daily", { defaultValue: "A daily practice of prayer, held through the rhythm of your days." })}
           </p>
         </motion.div>
 

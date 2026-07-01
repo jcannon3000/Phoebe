@@ -43,7 +43,7 @@ export type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings";
+      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -915,8 +915,9 @@ function DailyOfficeMock() {
         {t("church_deck.mock_office_psalm_ref")}
       </p>
 
-      {/* Verses */}
-      <div className="mb-4">
+      {/* Verses — always left-aligned, like the real office (never inherit a
+          centered parent from a stacked slide layout). */}
+      <div className="mb-4 text-left">
         {verses.map((v) => (
           <div key={v.n} className="mb-2.5">
             <div className="flex gap-2">
@@ -1554,6 +1555,106 @@ function DailyProgressMock() {
   );
 }
 
+/* ── Customizer — "Shape your rhythm" builder (mirrors WayOfLoveRuleFlow) ── */
+// The rule-of-life builder: pick the pieces of your own practice — the offices,
+// a reflection, a few minutes of silence — each a selectable row, held in one
+// place and easily changed. English-only (About deck marketing copy).
+function CustomizerMock() {
+  const rows = [
+    { emoji: "🌅", label: "Morning Prayer", sub: "The full office, or a short devotion", on: true },
+    { emoji: "🌙", label: "Evening Prayer", sub: "Close the day in prayer", on: true },
+    { emoji: "📖", label: "A daily reflection", sub: "Forward Day by Day", on: true },
+    { emoji: "🕯️", label: "A few minutes of silence", sub: "10 minutes a day", on: false },
+  ];
+  return (
+    <MockPhone>
+      <p className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-1" style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}>
+        Shape your rhythm
+      </p>
+      <h2 className="text-[15px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>
+        What do you want to pray?
+      </h2>
+      <div className="space-y-1.5">
+        {rows.map((r, i) => (
+          <div
+            key={i}
+            className="rounded-xl px-3 py-2.5 flex items-center gap-2.5"
+            style={{ background: r.on ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.06)", border: `1px solid ${r.on ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.15)"}` }}
+          >
+            <span className="text-[16px]">{r.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{r.label}</p>
+              <p className="text-[9px] mt-0.5" style={{ color: C.sage, fontFamily: C.font }}>{r.sub}</p>
+            </div>
+            <div
+              className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: r.on ? "#4A7A5B" : "transparent", border: r.on ? "none" : "1px solid rgba(143,175,150,0.4)" }}
+            >
+              {r.on && <span className="text-[9px]" style={{ color: C.text }}>✓</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end mt-3">
+        <div className="px-4 py-1.5 rounded-full text-[11px] font-semibold" style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}>
+          Continue →
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
+/* ── Office → Forward Day by Day — the reflection handed to you as the office ends ── */
+// The seam the app closes: the office finishes, and the day's Forward Day by Day
+// reading is right there — no searching, no second app. FDD keeps its Forward
+// Movement blue identity color here, as everywhere in the app.
+function OfficeFddMock() {
+  const serif = "Georgia, 'Times New Roman', serif";
+  const FDD_BLUE = "96,141,209";
+  return (
+    <MockPhone>
+      {/* The tail of the office — the closing Grace, dimming as it ends */}
+      <p className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-2 text-center" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
+        The office is ending
+      </p>
+      <p className="text-[10.5px] leading-[1.6] italic text-center mb-3 px-1" style={{ color: "rgba(240,237,230,0.7)", fontFamily: serif }}>
+        The grace of our Lord Jesus Christ, and the love of God, and the fellowship of the Holy Spirit, be with us all evermore. <span style={{ color: C.sage }}>Amen.</span>
+      </p>
+
+      {/* The seam — flows straight on, without leaving */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+        <span className="text-[8px] uppercase tracking-[0.16em]" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
+          then, without leaving
+        </span>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+      </div>
+
+      {/* The reflection, right there — Forward Movement blue */}
+      <div className="rounded-xl overflow-hidden flex" style={{ background: `rgba(${FDD_BLUE},0.10)`, border: `1px solid rgba(${FDD_BLUE},0.4)` }}>
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${FDD_BLUE},0.9)` }} />
+        <div className="flex-1 px-3 py-2.5">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.16em]" style={{ color: `rgba(${FDD_BLUE},0.9)`, fontFamily: C.font }}>
+            Today’s reflection
+          </p>
+          <p className="text-[13px] font-semibold mt-0.5" style={{ color: C.text, fontFamily: C.font }}>Forward Day by Day 📖</p>
+          <p className="text-[9px] mt-1 italic" style={{ color: C.sage, fontFamily: serif }}>
+            Psalm 34:8 — Taste and see that the Lord is good.
+          </p>
+          <p className="text-[10px] leading-[1.55] mt-1.5 italic" style={{ color: "rgba(240,237,230,0.85)", fontFamily: serif }}>
+            To taste is to risk knowing. We are invited not to conclusions about God, but to the slow, daily practice of tasting mercy…
+          </p>
+          <div className="flex justify-end mt-2">
+            <div className="px-3 py-1 rounded-full text-[10px] font-semibold" style={{ background: `rgba(${FDD_BLUE},0.28)`, color: C.text, border: `1px solid rgba(${FDD_BLUE},0.5)`, fontFamily: C.font }}>
+              Read →
+            </div>
+          </div>
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
 const MOCK_MAP: Record<string, () => ReactElement> = {
   "prayer-requests": PrayerRequestsMock,
   "prayer-notification": PrayerNotificationMock,
@@ -1568,6 +1669,8 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   gatherings: GatheringsMock,
+  customizer: CustomizerMock,
+  "office-fdd": OfficeFddMock,
 };
 
 function FeatureDemoSlide({

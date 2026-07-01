@@ -18,7 +18,8 @@ const SLIDES: Slide[] = [
       "Phoebe brings together resources from across the Episcopal Church and beyond — with the modern tools to help you build a daily practice, and hold it.",
     ],
   },
-  // The Daily Office — the real Evening Prayer psalm mock.
+  // The Daily Office — the real Evening Prayer psalm mock. Copy to the side,
+  // mock on the right (the psalms render left-aligned, like the real office).
   {
     kind: "feature-combo",
     label: "",
@@ -27,7 +28,6 @@ const SLIDES: Slide[] = [
       "Pray Morning and Evening Prayer with the psalms and lessons already filled in for you.",
     ],
     mock: "daily-office",
-    stacked: true,
   },
   // One office, prayed your way — the ways-to-pray mock.
   {
@@ -38,18 +38,36 @@ const SLIDES: Slide[] = [
       "From your own Book of Common Prayer, on the app, by audio, or alongside a cathedral broadcast — the same prayer, met however it meets you that day.",
     ],
     mock: "office-formats",
-    stacked: true,
   },
-  // Your whole practice, held together — the rhythm mock.
+  // Shape your own rhythm — the customizer / rule-of-life builder.
   {
     kind: "feature-combo",
     label: "",
-    headline: "Held together",
+    headline: "Shape your own rhythm",
     body: [
-      "Shape your own rhythm, from simply praying the Psalms to the full Daily Office. Whatever pieces your practice already has — the offices, a reflection, a few minutes of silence — held in one place.",
+      "Build the practice that's yours — the offices, a reflection, a few minutes of silence. Keep whatever you already pray, add only what you want, and it's all held in one place — and easily changed as your life does.",
+    ],
+    mock: "customizer",
+  },
+  // The reflection, right where the office ends — the seamless FDD handoff.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "A seamless practice",
+    body: [
+      "When the office ends, the day's Forward Day by Day reflection is right there — no searching, no second app. One unbroken movement from prayer into reflection.",
+    ],
+    mock: "office-fdd",
+  },
+  // Daily progress — a habit that fits the pace of modern life.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "A daily habit that fits your life",
+    body: [
+      "See where you are in today's rhythm and what's next. A gentle daily practice that fits the pace of modern life — never a streak to protect, just prayer, met each day.",
     ],
     mock: "prayer-rhythm",
-    stacked: true,
   },
   {
     kind: "statement",
