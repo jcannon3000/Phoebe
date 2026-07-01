@@ -68,11 +68,51 @@ export function creationCyclePosition(date: Date): { week: CreationWeek; weekday
   return { week, weekday };
 }
 
-/** The appointed psalm references for a given date + office. */
+/** The appointed psalm references for a given date + office (two-week cycle). */
 export function creationPsalmRefs(date: Date, side: CreationSide): string[] {
   const { week, weekday } = creationCyclePosition(date);
   const day = CREATION_PSALTER[week][weekday];
   return side === "morning" ? day.morning : day.evening;
+}
+
+// Days since the cycle epoch (local midnights; round absorbs DST).
+function creationDaysSinceEpoch(date: Date): number {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.round((d.getTime() - CYCLE_EPOCH.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+// The 28-office "once a day" cycle — every morning AND evening selection of the
+// two-week cycle, laid out one per day (Week A then B; each day's morning then
+// evening). For someone who prays Creation Prayer ONCE a day this stretches the
+// Psalter to FOUR WEEKS so that, across the fortnight-of-days, every psalm is
+// still prayed (rather than only ever seeing the morning — or only the evening —
+// halves).
+export const CREATION_PSALTER_FLAT: string[][] = (() => {
+  const flat: string[][] = [];
+  (["A", "B"] as CreationWeek[]).forEach((week) => {
+    for (let wd = 0; wd < 7; wd++) {
+      flat.push(CREATION_PSALTER[week][wd].morning);
+      flat.push(CREATION_PSALTER[week][wd].evening);
+    }
+  });
+  return flat; // 28 entries
+})();
+
+/** 0–27 position in the four-week single-daily cycle. */
+export function creationDayIndex(date: Date): number {
+  return ((creationDaysSinceEpoch(date) % 28) + 28) % 28;
+}
+
+/** Psalms for a single-daily pray-er (the four-week combined cycle). */
+export function creationPsalmRefsSingle(date: Date): string[] {
+  return CREATION_PSALTER_FLAT[creationDayIndex(date)];
+}
+
+/** Psalms for the office. `single` = the user prays Creation Prayer only once a
+ *  day → the four-week combined cycle; otherwise the two-week side-split (so a
+ *  morning + evening pray-er covers everything in two weeks). */
+export function creationPsalmRefsFor(date: Date, side: CreationSide, single: boolean): string[] {
+  return single ? creationPsalmRefsSingle(date) : creationPsalmRefs(date, side);
 }
 
 // ── The Season of Creation is Sep 1 → Oct 4 (World Day of Prayer for the Care

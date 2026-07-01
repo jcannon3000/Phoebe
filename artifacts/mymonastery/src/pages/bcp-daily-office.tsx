@@ -746,7 +746,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         const confParam = (resolvedMode === "morning" || resolvedMode === "evening")
           ? (() => { const c = getSideConfession(officeSide); return c === null ? "" : `&confession=${c ? "1" : "0"}`; })()
           : "";
-        const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}`);
+        // Creation Prayer: if the user prays it only ONCE a day (not both
+        // morning AND evening set to "creation"), ask the server for the
+        // four-week combined Psalter so a once-a-day pray-er still covers every
+        // psalm. Both-sides pray-ers keep the two-week side-split.
+        const creationSingleParam =
+          (resolvedMode === "creation-morning" || resolvedMode === "creation-evening")
+            && !(getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation")
+            ? "&single=1"
+            : "";
+        const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;

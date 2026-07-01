@@ -20,7 +20,8 @@ import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 import {
   creationCyclePosition,
-  creationPsalmRefs,
+  creationPsalmRefsFor,
+  creationDayIndex,
   CREATION_ATTRIBUTION,
   CREATION_OPENING_SENTENCES,
   CREATION_CONFESSION_INVITE,
@@ -85,9 +86,13 @@ export async function assembleCreationDevotion(
   date: Date,
   _userId: number,
   side: CreationSide,
+  // `single` = the user prays Creation Prayer only ONCE a day → the four-week
+  // combined Psalter (every morning + evening selection, one per day) so nothing
+  // is missed. Two-a-day pray-ers (both sides) keep the two-week side-split.
+  single: boolean = false,
 ): Promise<{ slides: Slide[]; officeDay: OfficeDayInfo }> {
   const { week, weekday } = creationCyclePosition(date);
-  const refs = creationPsalmRefs(date, side).map(parseRef);
+  const refs = creationPsalmRefsFor(date, side, single).map(parseRef);
 
   // One query for every psalm body this office needs.
   const psalmKeys = Array.from(new Set(refs.map((r) => `psalm_${r.number}`)));
@@ -104,7 +109,9 @@ export async function assembleCreationDevotion(
   const isMorning = side === "morning";
   // Deterministic per-office variety for the rotating (Scripture) texts.
   const pick = (len: number) => (weekday * 2 + (isMorning ? 0 : 1)) % len;
-  const seq = creationOfficeSeq(date, side);
+  // Reading / blessing / quote rotation. Single-daily → rotate daily across the
+  // 28-day cycle; two-a-day → the per-office sequence (varies morning vs evening).
+  const seq = single ? creationDayIndex(date) : creationOfficeSeq(date, side);
 
   // 0. Intro — names the practice + its source.
   slides.push(

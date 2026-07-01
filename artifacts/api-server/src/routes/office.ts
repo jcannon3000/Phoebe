@@ -385,9 +385,13 @@ router.get("/devotion/:kind", async (req, res) => {
   // Daily Devotions form, so it's dispatched separately here.
   if (kindParam === "creation-morning" || kindParam === "creation-evening") {
     const side = kindParam === "creation-morning" ? "morning" : "evening";
+    // ?single=1 when the user prays Creation Prayer only once a day → the
+    // four-week combined Psalter (so a once-a-day pray-er still covers every
+    // psalm). The client passes it based on the user's morning/evening prefs.
+    const single = req.query.single === "1";
     try {
       const userId = (req.user as { id: number } | undefined)?.id ?? 0;
-      const { slides, officeDay } = await assembleCreationDevotion(date, userId, side);
+      const { slides, officeDay } = await assembleCreationDevotion(date, userId, side, single);
       return res.json({
         slides,
         officeDay: { ...officeDay, totalSlides: slides.length },
