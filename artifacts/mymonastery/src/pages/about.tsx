@@ -1,9 +1,12 @@
 import { Layout } from "@/components/layout";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
 
 // The About page — a short description of Phoebe. English only by design.
+// Public: a logged-out visitor (from the welcome screen's "About" pill) can
+// read it too, so it renders in a lightweight standalone shell when there's no
+// user, and inside the app Layout when signed in.
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -12,15 +15,10 @@ export default function AboutPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
-  }, [user, isLoading, setLocation]);
+  if (isLoading) return null;
 
-  if (isLoading || !user) return null;
-
-  return (
-    <Layout>
-      <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
+  const body = (
+    <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <header className="mb-7">
           <p style={{ fontFamily: FONT, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#7E9A85", margin: 0 }}>
             About
@@ -49,6 +47,22 @@ export default function AboutPage() {
           Phoebe is a project by Episcopal seminarians Anabelle Helsell and Jeremy Cannon, backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.
         </p>
       </div>
-    </Layout>
+  );
+
+  // Signed in → the full app shell. Signed out → a clean public page with a
+  // simple way back to the welcome screen.
+  if (user) return <Layout>{body}</Layout>;
+  return (
+    <div
+      className="min-h-screen"
+      style={{ background: "#091A10", paddingTop: "var(--safe-top)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      <header className="px-6 pt-6 pb-2 max-w-2xl mx-auto">
+        <Link href="/" className="text-sm font-medium" style={{ fontFamily: FONT, color: "#8FAF96" }}>
+          ← Phoebe
+        </Link>
+      </header>
+      <div className="px-6 pt-4">{body}</div>
+    </div>
   );
 }

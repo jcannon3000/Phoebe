@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
+import { usePilotMode } from "@/hooks/usePilotMode";
 import WayOfLoveRuleFlow from "@/components/WayOfLoveRuleFlow";
 
 // ── Pilot rhythm builder ────────────────────────────────────────────────────
@@ -16,18 +17,24 @@ import WayOfLoveRuleFlow from "@/components/WayOfLoveRuleFlow";
 //     signup is only ever asked FOR SAVING — exactly the intended funnel.
 export default function PilotBuildPage() {
   const { user, isLoading } = useAuth();
+  const { isPilot } = usePilotMode();
   const [, setLocation] = useLocation();
 
-  const backHref = user ? "/pilot/home" : "/";
+  // Where a finished rhythm lands. In the pilot experience (flag on) that's the
+  // stripped pilot home; on the public site with the flag off, this same builder
+  // is the "Create a daily practice of prayer" funnel, so a new account should
+  // land on the real dashboard.
+  const home = isPilot ? "/pilot/home" : "/dashboard";
+  const backHref = user ? home : "/";
 
   const handleDone = () => {
     if (user) {
-      setLocation("/pilot/home");
+      setLocation(home);
       return;
     }
     // Guest: the rhythm is already saved on this device — sign up to keep it.
     // onboarding.tsx honors `redirect` (any /-prefixed path), not `next`.
-    setLocation("/signin?mode=signup&redirect=%2Fpilot%2Fhome");
+    setLocation(`/signin?mode=signup&redirect=${encodeURIComponent(home)}`);
   };
 
   if (isLoading) return null;

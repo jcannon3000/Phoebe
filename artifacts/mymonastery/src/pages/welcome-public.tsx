@@ -4,7 +4,6 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
-import { usePilotMode } from "@/hooks/usePilotMode";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { primeAudio } from "@/lib/amenFeedback";
@@ -44,7 +43,6 @@ function isMorningNow(): boolean {
 
 export default function WelcomePublicPage() {
   const { user, isLoading } = useAuth();
-  const { isPilot } = usePilotMode();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   // One stable leaf backdrop for the welcome chooser, matching the app.
@@ -122,7 +120,8 @@ export default function WelcomePublicPage() {
         </motion.div>
 
         <div className="flex flex-col gap-3">
-          {/* Card 1 — the time-appropriate office */}
+          {/* 1 — the time-appropriate office. Praying it as a guest ends in an
+              invitation to sign up (PublicPrayerPage). */}
           <ChoiceCard
             href="/pray?start=office"
             emoji={officeEmoji}
@@ -132,75 +131,41 @@ export default function WelcomePublicPage() {
             primary
           />
 
-          {/* Pilot: "Create your daily habit of prayer" → the simplified rhythm
-              builder. A guest can build it and is only asked to sign up to SAVE. */}
-          {isPilot && (
-            <ChoiceCard
-              href="/pilot/build"
-              emoji="🌿"
-              title={t("welcome_public.build_title", { defaultValue: "Create your daily habit of prayer" })}
-              blurb={t("welcome_public.build_blurb", { defaultValue: "Shape a simple rhythm you can keep." })}
-              delay={0.09}
-            />
-          )}
+          {/* 2 — create a daily practice of prayer → the customizer. A guest
+              builds it locally and is only asked to sign up at the END, to save
+              it (see pilot-build.tsx). This is the other path into signing up. */}
+          <ChoiceCard
+            href="/pilot/build"
+            emoji="🌿"
+            title={t("welcome_public.create_practice_title", { defaultValue: "Create a daily practice of prayer" })}
+            blurb={t("welcome_public.create_practice_blurb", { defaultValue: "Build your own rhythm — sign up at the end to keep it." })}
+            delay={0.09}
+          />
 
-          {/* Card 1b — Cobreathe: anyone can try the shared breath without an
-              account. Hidden in the pilot funnel to keep the two choices clean. */}
-          {!isPilot && (
+          {/* 3 — Co-Breathe: anyone can try the shared breath without an account. */}
           <ChoiceCard
             href="/cobreathe"
             emoji={<CobreatheGlobe size={28} />}
             title={t("welcome_public.cobreathe_title", { defaultValue: "Co-Breathe" })}
             blurb={t("welcome_public.cobreathe_blurb", { defaultValue: "12 breaths as a prayer for climate justice." })}
-            delay={0.09}
+            delay={0.13}
             onClick={() => primeAudio()}
           />
-          )}
-
-          {/* Card 2 — sign up / sign in (the same form does both) */}
-          <ChoiceCard
-            href="/signin?mode=signup"
-            emoji="🔑"
-            title={t("welcome_public.sign_up_in", { defaultValue: "Sign up / Sign in" })}
-            blurb={t("welcome_public.sign_up_in_blurb", { defaultValue: "Create an account, or sign in." })}
-            delay={0.12}
-            muted
-          />
         </div>
 
-        {/* Separated group — about Phoebe + get the app. A hairline divider
-            sets these apart from the options above. Hidden in the pilot funnel
-            to keep the first screen to the two core choices. */}
-        {!isPilot && (
-        <div
-          className="mt-6 pt-6 flex flex-col gap-3"
-          style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
-        >
-          {/* Card 3 — learn about Phoebe → the church deck slideshow */}
-          <ChoiceCard
-            href="/church-deck"
-            emoji="✨"
-            title={t("welcome_public.learn_title")}
-            blurb={t("welcome_public.learn_blurb")}
-            delay={0.19}
-            muted
-          />
-
-          {/* Card 4 — download on the App Store. Web only: telling someone
-              already inside the native app to "download the app" makes no
-              sense, mirroring the install-banner gating elsewhere. */}
+        {/* About + get-the-app — small pills at the bottom, not full cards.
+            "About" opens the plain-text About page (readable signed-out), which
+            itself links on to the About slideshow. */}
+        <div className="mt-7 flex items-center justify-center flex-wrap gap-2.5">
+          <PillLink href="/about">{t("welcome_public.about_pill", { defaultValue: "About" })}</PillLink>
+          {/* Web only: telling someone already inside the native app to
+              "download the app" makes no sense. */}
           {!isNativeShell() && (
-            <ChoiceCard
-              href={APP_STORE_URL}
-              emoji="📲"
-              title={t("welcome_public.appstore_title")}
-              blurb={t("welcome_public.appstore_blurb")}
-              delay={0.26}
-              muted
-            />
+            <PillLink href={APP_STORE_URL} external>
+              {t("welcome_public.appstore_pill", { defaultValue: "Get the app" })}
+            </PillLink>
           )}
         </div>
-        )}
 
         <p
           className="text-[12px] text-center mt-8"
@@ -282,6 +247,29 @@ function ChoiceCard({
         </Link>
       )}
     </motion.div>
+  );
+}
+
+// A small frosted pill link — used for the low-emphasis footer actions
+// (About, get the app) so they read as secondary, not full choice cards.
+function PillLink({ href, external, children }: { href: string; external?: boolean; children: ReactNode }) {
+  const cls = "rounded-full px-4 py-2 text-[13px] font-medium transition-opacity hover:opacity-90 active:scale-[0.99]";
+  const style = {
+    background: "rgba(9,26,16, 0.297)",
+    backdropFilter: "blur(11.34px)",
+    WebkitBackdropFilter: "blur(11.34px)",
+    border: "1px solid rgba(46,107,64,0.25)",
+    color: SAGE,
+    fontFamily: SPACE_GROTESK,
+  } as const;
+  return external ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={cls} style={style}>
+      {children}
+    </a>
+  ) : (
+    <Link href={href} className={cls} style={style}>
+      {children}
+    </Link>
   );
 }
 

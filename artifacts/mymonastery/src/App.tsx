@@ -749,7 +749,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/scripture/readings", "/contemplation", "/cobreathe",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
-  "/about", "/privacy", "/terms",
+  "/about", "/about-deck", "/privacy", "/terms",
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
 // subpaths, not just the index. Same for /cobreathe (intro → breath).
