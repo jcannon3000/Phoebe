@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { isMorningNow } from "@/pages/welcome-public";
+import { getExplicitSideLevel, getSideLevel } from "@/lib/officePrefs";
 
 // ── Pilot home ────────────────────────────────────────────────────────────
 // The calm home a signed-in PILOT user lands on (PilotGate points /dashboard
@@ -31,6 +32,18 @@ export default function PilotHomePage() {
   const morning = isMorningNow();
   const officeLabel = morning ? "Pray Morning Prayer" : "Pray Evening Prayer";
   const officeEmoji = morning ? "🌅" : "🌙";
+  // Route the office CTA to the office the user actually BUILT (so "Create your
+  // daily habit" is honored), and to a pilot-ALLOWED route. Pilot builds only
+  // devotion / office / contemplation; a converted account with any other level
+  // (psalms/examen/fdd → all blocked) falls safely to Devotion. All three
+  // targets ( /bcp/*, /contemplation ) are on the pilot allowlist, and the
+  // BCP office hands off to the personalized reflection + silence close.
+  const officeSide = morning ? "morning" : "evening";
+  const officeLevel = getExplicitSideLevel(officeSide) ?? getSideLevel(officeSide);
+  const officeHref =
+    officeLevel === "office" ? `/bcp/daily-office?mode=${officeSide}`
+    : officeLevel === "reflect-sit" ? "/contemplation?begin=1"
+    : `/bcp/daily-devotions?mode=${morning ? "morning-devotion" : "early-evening-devotion"}`;
   // Has the user already shaped a rhythm? Drives the second card's copy.
   const hasRhythm = !!(user?.ruleConfig || user?.homeLayout);
   const firstName = (user?.name ?? "").trim().split(" ")[0] || "";
@@ -54,7 +67,7 @@ export default function PilotHomePage() {
 
         <div className="flex flex-col gap-3">
           <HomeCard
-            href="/pray?start=office"
+            href={officeHref}
             emoji={officeEmoji}
             title={officeLabel}
             blurb="The day's office from the Book of Common Prayer."

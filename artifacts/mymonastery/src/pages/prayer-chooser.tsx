@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 import { useTranslation } from "react-i18next";
+import { usePilotMode } from "@/hooks/usePilotMode";
 
 // Remembers which depth the user prayed last so the chooser can float
 // it to the top on the next visit. Plain localStorage — a soft UX hint,
@@ -38,6 +39,7 @@ const FONT = "'Space Grotesk', sans-serif";
 
 export default function PrayerChooserPage() {
   const [, setLocation] = useLocation();
+  const { isPilot } = usePilotMode();
   const { t } = useTranslation();
 
   // Time-of-day split — same threshold the dashboard card uses (noon).
@@ -233,7 +235,7 @@ export default function PrayerChooserPage() {
       >
         <button
           type="button"
-          onClick={() => setLocation("/dashboard")}
+          onClick={() => setLocation(isPilot ? "/pilot/home" : "/dashboard")}
           className="text-sm"
           style={{
             color: "rgba(143,175,150,0.8)",
