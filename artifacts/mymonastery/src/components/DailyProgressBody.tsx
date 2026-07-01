@@ -1012,7 +1012,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         <>
           {/* The section title fades up with the cascade too (visual only — the
               haptic ticks are scheduled per CARD, so titles never buzz). */}
-          <motion.div {...enterUp(0)}>{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Today" }))}</motion.div>
+          <motion.div {...enterUp(0)}>{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {/* The office hero leads the Next list — above Contemplation. */}
             {officeHero && <motion.div {...enterUp(0)}>{officeHero}</motion.div>}
@@ -1033,7 +1033,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           home (showDone). */}
       {showDoneSection && (
         <div className={doneGapCls}>
-          <motion.div {...enterUp(upcomingDisplay.length)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Earlier today" }))}</motion.div>
+          <motion.div {...enterUp(upcomingDisplay.length)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(upcomingDisplay.length + i)}>

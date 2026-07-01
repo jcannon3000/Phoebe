@@ -4374,6 +4374,10 @@ export const en = {
     contemplation_complete: "Contemplation complete",
     of_contemplative_prayer: "{{time}} of contemplative prayer",
     carry_the_quiet: "Carry the quiet with you.",
+    // The summary's button advances to the closing "what's next" card when the
+    // caller passed one; otherwise it reads "Done" and just closes.
+    continue: "Continue",
+    whats_next: "What's next",
     amen: "Amen →",
     // Summary-screen "who sat with you" section. `with_you` is the
     // eyebrow above the avatar row; `someone` fills in when a garden
@@ -4743,6 +4747,9 @@ export const en = {
   // Contemplation page (pages/contemplation.tsx).
   contemplation: {
     remove_entry: "Remove entry",
+    // The closing "what's next" card shown after a sit's summary.
+    whats_next_reflection_sub: "Today's reflection",
+    whats_next_read: "Read it",
     day_one_sit: "1 sit",
     day_n_sits: "{{count}} sits",
     goal_progress: "{{done}} of {{goal}} min today",

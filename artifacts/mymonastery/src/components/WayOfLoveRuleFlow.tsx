@@ -41,6 +41,8 @@ import {
   type FddMode,
   getPsalmCycle,
   setPsalmCycle,
+  getCommunityWithOffice,
+  setCommunityWithOffice as persistCommunityWithOffice,
   type PsalmCycle,
   type ReflectionSource,
   type OfficeSide,
@@ -68,7 +70,14 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
-type PrayChoice = "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen";
+// The OFFICE ANCHOR a side commits to. Contemplative Prayer and the Examen are
+// NOT anchors — they're independent add-on cards (silence goal / examen home
+// card), the same way Co-Breathe and Forward Day by Day ride alongside — so a
+// side can hold a BCP office AND a silent sit AND the Examen, each its own card.
+// "none" = no office anchor for this side (e.g. contemplation-only). The
+// contemplation/fdd/examen values remain only so an OLD saved level still reads
+// back (prayFromLevel) and migrates forward on the next save.
+type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen";
 type Step =
   | "when"
   | "morning-way" | "morning-config"
@@ -105,7 +114,10 @@ const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen"> = {
+const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen"> = {
+  // No office anchor on this side — its level clears to "ask" (no office card).
+  // Any Contemplative / Examen the user picked surface as their OWN cards.
+  none: "ask",
   community: "intercessions",
   devotion: "devotion",
   offices: "office",
@@ -134,9 +146,19 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "examen") return "examen";
   return null;
 }
+// Read a saved office level back into a side's OFFICE ANCHOR only. Contemplation
+// and the Examen are no longer anchors (they're independent add-on cards), so a
+// reflect-sit / examen level maps to "none" here — the anchor is empty and the
+// silence / examen card is seeded separately (from the goal + the examen home
+// key). This is what lets a BCP office coexist with a silent sit.
+function anchorFromLevel(level: string | null | undefined): PrayChoice {
+  const p = prayFromLevel(level);
+  return p === "offices" || p === "devotion" || p === "psalms" || p === "community" ? p : "none";
+}
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).
 const PRAY_OPTION_ID: Record<PrayChoice, string> = {
+  none: "pray-devotion",
   community: "pray-intercessions",
   devotion: "pray-devotion",
   offices: "pray-office",
@@ -152,6 +174,8 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
 // default prayer level set above. A non-"none" value is what makes the daily
 // 7am push fire at all (see runParishOfficeReminderSender on the server).
 const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
+  // A no-office side (contemplation/examen only) still gets the light nudge.
+  none: "devotion",
   community: "devotion",
   devotion: "devotion",
   offices: "office",
@@ -269,12 +293,13 @@ export default function WayOfLoveRuleFlow({
   // Per-side configuration — each chosen side gets its own way + method + time.
   // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
   // no saved level defaults to "devotion", not the more involved "community".
+  // The OFFICE ANCHOR per side (BCP form / community / none). Contemplative
+  // Prayer + the Examen are NOT stored here — they're independent add-ons — so a
+  // saved reflect-sit/examen level seeds "none" here and is picked up by the
+  // contemplative state below. Each side reads only its OWN level.
   const [prayBySide, setPrayBySide] = useState<Record<OfficeSide, PrayChoice>>(() => ({
-    // Morning has a real default now (Psalms — getSideLevel returns it when
-    // unset), so the cross-mirror fallbacks below would leak that default onto
-    // evening. Each side reads only its OWN level; unset evening stays Devotion.
-    morning: prayFromLevel(getSideLevel("morning")) ?? "devotion",
-    evening: prayFromLevel(getSideLevel("evening")) ?? "devotion",
+    morning: anchorFromLevel(getSideLevel("morning")),
+    evening: anchorFromLevel(getSideLevel("evening")),
   }));
   // Which BCP form the "With the Book of Common Prayer" option commits to
   // (Psalms / Devotion / Office). Seeded from the current per-side level so
@@ -287,8 +312,13 @@ export default function WayOfLoveRuleFlow({
     return { morning: form("morning"), evening: form("evening") };
   });
   // The "check community + BCP" merge: community intercessions are prayed within
-  // the office (the office already hands off to them), so this is a UI note only.
-  const [communityWithOffice, setCommunityWithOffice] = useState<Record<OfficeSide, boolean>>({ morning: false, evening: false });
+  // the office (the office already hands off to them). Remembered per side so the
+  // Prayer List row stays checked + the merge note shows on re-open (persisted in
+  // commit() via officePrefs; seeded here so it round-trips).
+  const [communityWithOffice, setCommunityWithOffice] = useState<Record<OfficeSide, boolean>>(() => ({
+    morning: getCommunityWithOffice("morning"),
+    evening: getCommunityWithOffice("evening"),
+  }));
   const [methodBySide, setMethodBySide] = useState<Record<OfficeSide, DefaultOfficeEntry>>(() => ({
     morning: getSideEntry("morning"),
     evening: getSideEntry("evening"),
@@ -432,11 +462,16 @@ export default function WayOfLoveRuleFlow({
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
     const fromLayout = (["cac", "fdd", "ssje"] as const).filter((s) => homeCardOn(user.homeLayout, s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
+    // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
+    // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
+    // examen home card — rather than from prayBySide.
+    const silentSeed = getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit";
+    const examenSeed = homeCardOn(user.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen";
     setContemplative((c) => touchedRef.current ? c : {
-      prayer: prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation",
-      cobreathe: homeCardOn(user.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation")),
+      prayer: silentSeed,
+      cobreathe: homeCardOn(user.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && silentSeed),
       audio: homeCardOn(user.homeLayout, "listening"),
-      examen: homeCardOn(user.homeLayout, "examen"),
+      examen: examenSeed,
       lectio: homeCardOn(user.homeLayout, "lectio"),
       walk: homeCardOn(user.homeLayout, "walk"),
       scripture: homeCardOn(user.homeLayout, "scripture"),
@@ -456,10 +491,12 @@ export default function WayOfLoveRuleFlow({
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
   const [contemplative, setContemplative] = useState<{ prayer: boolean; cobreathe: boolean; audio: boolean; examen: boolean; lectio: boolean; walk: boolean; scripture: boolean }>(() => ({
-    prayer: prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation",
-    cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation")),
+    // Contemplative Prayer + Examen are add-ons, seeded from the saved level
+    // (reflect-sit / examen) + the examen home card — not from prayBySide.
+    prayer: getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit",
+    cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit")),
     audio: homeCardOn(user?.homeLayout, "listening"),
-    examen: homeCardOn(user?.homeLayout, "examen"),
+    examen: homeCardOn(user?.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
     lectio: homeCardOn(user?.homeLayout, "lectio"),
     walk: homeCardOn(user?.homeLayout, "walk"),
     scripture: homeCardOn(user?.homeLayout, "scripture"),
@@ -493,12 +530,11 @@ export default function WayOfLoveRuleFlow({
   // scripture-when slide alongside the time of day.
   const [scriptureScope, setScriptureScopeState] = useState<ScriptureScope>(() => getScriptureScope());
   const chooseScriptureScope = (s: ScriptureScope) => { touchedRef.current = true; setScriptureScopeState(s); setScriptureScope(s); };
-  // Co-Breathe is already placed if a chosen side prays it as its contemplation
-  // STYLE — then we don't ask for a separate time-of-day or add a standalone card.
-  const cobreatheIsSideStyle = contemplationStyle === "cobreathe" && (
-    (sides.morning && prayBySide.morning === "contemplation") ||
-    (sides.evening && prayBySide.evening === "contemplation")
-  );
+  // Co-Breathe is already placed if the contemplative sit is Co-Breathe rather
+  // than silence — then we don't ask for a separate time-of-day or add a
+  // standalone card. Contemplative Prayer is now an add-on (contemplative.prayer),
+  // not a side office, so read it from there.
+  const cobreatheIsSideStyle = contemplationStyle === "cobreathe" && contemplative.prayer;
   const SLOT_LABEL: Record<CustomSlot, string> = {
     morning: t("wol_rule.slot_morning", { defaultValue: "Morning" }),
     anytime: t("wol_rule.slot_anytime", { defaultValue: "Anytime" }),
@@ -589,10 +625,10 @@ export default function WayOfLoveRuleFlow({
     // defaulted the pray-choice to "community" and saved that as the global
     // defaultPrayerLevel ("intercessions"), so re-seeding from it would keep
     // re-presetting Customize to Community for users who never chose it.
-    setPrayBySide((prev) => ({
-      morning: prayFromLevel(getSideLevel("morning")) ?? prev.morning,
-      evening: prayFromLevel(getSideLevel("evening")) ?? prev.evening,
-    }));
+    setPrayBySide({
+      morning: anchorFromLevel(getSideLevel("morning")),
+      evening: anchorFromLevel(getSideLevel("evening")),
+    });
     // The server's contemplationGoalMinutes is the authoritative current goal —
     // prefill from it so Customize opens on what they actually have set (a stale
     // local per-side minutes value must not win, which is why it showed 15 when
@@ -635,27 +671,34 @@ export default function WayOfLoveRuleFlow({
   // those so the admin's own device is left untouched.
   const buildPrescribeSpec = (): RoutineSpec => {
     const primary: ReflectionSource = newsletters[0] ?? "none";
-    const anySideSilentContemplation =
-      (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation") &&
-      contemplationStyle === "silent";
+    // Contemplative Prayer is an add-on now — its own silence card regardless of
+    // the office anchor — so a silent sit is wanted whenever it's checked.
+    const anySideSilentContemplation = contemplative.prayer && contemplationStyle === "silent";
     const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
         setSideEntry(side, methodBySide[side]);
         setSideReflection(side, primary);
+        persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         if (effGoalMin > 0) setSideMinutes(side, effGoalMin);
       } else {
         setSideLevel(side, "ask");
+        persistCommunityWithOffice(side, false);
       }
     }
     setReflectionSource(primary);
-    const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
+    // The office reminder pref / default level mirror a side that actually has an
+    // office anchor (morning first); fall back to the first chosen side otherwise.
+    const officeSides = SIDES.filter((s) => sides[s] && prayBySide[s] !== "none");
+    const primarySide: OfficeSide = officeSides[0] ?? (sides.morning ? "morning" : "evening");
     const wantLadder = silenceMode === "grow";
     const officePrefs = {
       defaultPrayerLevel: (() => {
         const lvl = PRAY_LEVEL[prayBySide[primarySide]];
-        return (lvl === "fdd" || lvl === "psalms" || lvl === "examen") ? "devotion" : lvl;
+        // Only office/devotion/intercessions are valid server default levels;
+        // everything else (ask/reflect-sit/fdd/psalms/examen) folds to devotion.
+        return lvl === "office" || lvl === "devotion" || lvl === "intercessions" ? lvl : "devotion";
       })(),
       contemplationGoalMinutes: effGoalMin,
       contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
@@ -667,8 +710,7 @@ export default function WayOfLoveRuleFlow({
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
     const wantCobreathe =
       contemplative.cobreathe ||
-      (contemplationStyle === "cobreathe" &&
-        (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation"));
+      (contemplationStyle === "cobreathe" && contemplative.prayer);
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
@@ -714,39 +756,44 @@ export default function WayOfLoveRuleFlow({
     // is the per-side close-slide reflection.
     const primary: ReflectionSource = newsletters[0] ?? "none";
     // Silence is its own step now (a daily-minutes goal) — the chosen value IS the
-    // goal (0 = None). A side whose prayer form is silent contemplation still
-    // implies some daily silence, so fall back to a 10-min goal in that case.
-    const anySideSilentContemplation =
-      (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation") &&
-      contemplationStyle === "silent";
+    // goal (0 = None). Contemplative Prayer is an add-on (its own silence card),
+    // so a silent sit is wanted whenever it's checked — fall back to 10 min then.
+    const anySideSilentContemplation = contemplative.prayer && contemplationStyle === "silent";
     const effGoalMin = goalMin > 0 ? goalMin : (anySideSilentContemplation ? 10 : 0);
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
         setSideEntry(side, methodBySide[side]);
         setSideReflection(side, primary);
+        // Remember the Prayer List + BCP merge so the row stays checked on
+        // re-open (only meaningful when the office anchor isn't community itself).
+        persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         if (effGoalMin > 0) setSideMinutes(side, effGoalMin);
       } else {
         // Not part of their chosen rhythm — clear the level so it isn't a
         // programmed office for that side.
         setSideLevel(side, "ask");
+        persistCommunityWithOffice(side, false);
       }
     }
     setReflectionSource(primary);
-    // The global default mirrors whichever side they configured (morning first).
-    const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
+    // The global default / reminder pref mirror a side that actually has an office
+    // anchor (morning first); fall back to the first chosen side otherwise.
+    const officeSides = SIDES.filter((s) => sides[s] && prayBySide[s] !== "none");
+    const primarySide: OfficeSide = officeSides[0] ?? (sides.morning ? "morning" : "evening");
     // "Grow my silence" ladder is on whenever they chose the guided mode on the
     // Silence slide — the same standalone treatment the fixed dropdown gets (the
     // goal is written regardless of the later multi-select). Otherwise we
     // explicitly disable it so a previously-enabled ladder stops driving the goal.
     const wantLadder = silenceMode === "grow";
     apiRequest("PUT", "/api/me/office-prefs", {
-      // "fdd" / "psalms" / "examen" aren't server-side default-prayer levels —
-      // the per-side LOCAL level set above drives the home FDD / Psalms / Examen
-      // card. Send a safe server default so this PUT never carries an unknown value.
+      // Only office/devotion/intercessions are server-side default-prayer levels;
+      // the per-side LOCAL level set above drives the home Psalms card etc. Fold
+      // anything else (ask/reflect-sit/fdd/psalms/examen) to devotion so this PUT
+      // never carries an unknown value.
       defaultPrayerLevel: (() => {
         const lvl = PRAY_LEVEL[prayBySide[primarySide]];
-        return (lvl === "fdd" || lvl === "psalms" || lvl === "examen") ? "devotion" : lvl;
+        return lvl === "office" || lvl === "devotion" || lvl === "intercessions" ? lvl : "devotion";
       })(),
       contemplationGoalMinutes: effGoalMin,
       contemplationReminderEnabled: effGoalMin > 0 || wantLadder,
@@ -790,17 +837,13 @@ export default function WayOfLoveRuleFlow({
     // ones go to the hidden tail like the other opt-in modules.
     // Gratitude + journaling come from the "Add to your day" step; Examen, Audio
     // Divina (listening), and Co-Breathe come from the contemplative step. Every
-    // selected Co-Breathe now gets its own home card — it's no longer suppressed
-    // when a side also prays it as its contemplation style (that dropped the card).
-    // Co-Breathe earns a home card from EITHER path: the Contemplation-practices
-    // toggle (contemplative.cobreathe) OR picking Co-Breathe as a side's prayer
-    // style (contemplationStyle === "cobreathe" on a contemplation side). The
-    // side path never flips contemplative.cobreathe, so without this OR a sit
-    // chosen that way produced no card. Mirrors the hydration logic above.
+    // selected Co-Breathe gets its own home card. Co-Breathe earns a card from
+    // EITHER path: the Contemplation-practices toggle (contemplative.cobreathe) OR
+    // choosing Co-Breathe as the contemplative sit's STYLE (contemplationStyle ===
+    // "cobreathe" with Contemplative Prayer on). Mirrors the hydration logic above.
     const wantCobreathe =
       contemplative.cobreathe ||
-      (contemplationStyle === "cobreathe" &&
-        (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation"));
+      (contemplationStyle === "cobreathe" && contemplative.prayer);
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
@@ -849,6 +892,7 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setSides(preset.sides);
     setPrayBySide({ morning: preset.pray, evening: preset.pray });
+    setCommunityWithOffice({ morning: false, evening: false });
     setContemplationStyle("silent");
     setContemplative({ prayer: preset.silence, cobreathe: false, audio: false, examen: false, lectio: false, walk: false, scripture: false });
     // Starter rules carry a fixed minutes goal — adopt the fixed sizing, not the ladder.
@@ -889,13 +933,10 @@ export default function WayOfLoveRuleFlow({
 
   // The ordered input steps depend on which sides they chose — so the progress
   // bar and the "N/M" both adjust to the options picked.
-  // Forward Day by Day asks a written/audio MEDIUM whenever it's chosen — as a
-  // side prayer OR as the daily reflection (the default). The Psalms CYCLE is
-  // now folded into each side's config slide (no standalone step).
-  const needsFddMode =
-    (sides.morning && prayBySide.morning === "fdd") ||
-    (sides.evening && prayBySide.evening === "fdd") ||
-    newsletters.includes("fdd");
+  // Forward Day by Day asks a written/audio MEDIUM whenever it's chosen. FDD is
+  // now always an add-on reflection (in `newsletters`), never a side office
+  // anchor. The Psalms CYCLE is folded into each side's config slide.
+  const needsFddMode = newsletters.includes("fdd");
   const orderedSteps: Step[] = pilot
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
     // contemplative multi-select, no per-practice slots, no extras, no weekly.
@@ -1192,8 +1233,9 @@ export default function WayOfLoveRuleFlow({
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {/* With the Book of Common Prayer — one option; a sub-select
-                    picks Psalms / Devotion / Office. */}
-                {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => choosePrayBySide(side, bcpForm[side]))}
+                    picks Psalms / Devotion / Office. Tapping again clears the
+                    office anchor (multi-select: each row toggles independently). */}
+                {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => choosePrayBySide(side, bcpOn ? "none" : bcpForm[side]))}
                 {bcpOn && (
                   <div style={{ display: "flex", gap: 8, paddingLeft: 22 }}>
                     {(!pilot ? (["psalms", "devotion", "offices"] as const) : (["devotion", "offices"] as const)).map((form) => {
@@ -1225,20 +1267,25 @@ export default function WayOfLoveRuleFlow({
             const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
             const on = prayBySide[side] === "community" || (bcpOn && communityWithOffice[side]);
             return choiceRow(on, `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's intercessions." }), () => {
+              // With a BCP office selected, this folds the community intercessions
+              // into that office (one card). On its own it IS the office; tapping
+              // again clears it.
               if (bcpOn) { touchedRef.current = true; setCommunityWithOffice((p) => ({ ...p, [side]: !p[side] })); }
-              else choosePrayBySide(side, "community");
+              else choosePrayBySide(side, prayBySide[side] === "community" ? "none" : "community");
             });
           })()}
-          {/* Contemplative Prayer — a silent sit. */}
-          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); setCommunityWithOffice((p) => ({ ...p, [side]: false })); chooseContemplationStyle("silent"); })}
+          {/* Contemplative Prayer — a silent sit. An add-on (its own Silence
+              card), so it rides alongside a BCP office rather than replacing it. */}
+          {choiceRow(contemplative.prayer, `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { toggleContemplative("prayer"); chooseContemplationStyle("silent"); })}
           {/* Co-Breathe — an add-on card alongside your prayer (feeds the
               contemplative-practices step's toggle). */}
           {!pilot && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => toggleContemplative("cobreathe"))}
           {/* Forward Day by Day — an add-on reflection; the next step picks read
               vs. listen (feeds the reflection/newsletter set). */}
           {choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}
-          {/* The Examen IS this side's prayer (usually evening). */}
-          {side === "evening" && !pilot && choiceRow(prayBySide[side] === "examen", `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => { choosePrayBySide(side, "examen"); setCommunityWithOffice((p) => ({ ...p, [side]: false })); })}
+          {/* The Examen — an add-on evening card (shares one source of truth with
+              the contemplative-step Examen toggle, so it can't double-add). */}
+          {side === "evening" && !pilot && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => toggleContemplative("examen"))}
         </div>
 
         {/* Add your own practice for this part of the day — logged like a custom
@@ -1273,51 +1320,24 @@ export default function WayOfLoveRuleFlow({
     const side: OfficeSide = step === "morning-config" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
     const isIntercessions = prayBySide[side] === "community";
-    const isContemplation = prayBySide[side] === "contemplation";
     const method = isIntercessions ? "read" : methodBySide[side];
-    // FDD / Psalms (like contemplation) have no office "way to pray" method —
-    // they open their own card — so this config slide shows ONLY the reminder
-    // time, not the read/listen/watch dropdown.
-    const noMethod = isContemplation || prayBySide[side] === "fdd" || prayBySide[side] === "psalms";
+    // FDD / Psalms have no office "way to pray" method — they open their own
+    // card — and a side with NO office anchor ("none": contemplation/examen only)
+    // has no method either, so this slide shows ONLY the reminder time, not the
+    // read/listen/watch dropdown. (Silent-sit length is set on the dedicated
+    // contemplation-goal step, not here — contemplation is no longer a side anchor.)
+    const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms";
     return shell(
       <>
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {isContemplation
-            ? t("wol_rule.side_config_contemplation_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder to sit in the ${cap.toLowerCase()}?` })
-            : prayBySide[side] === "psalms"
-              ? t("wol_rule.side_config_psalms_body", { side: cap.toLowerCase(), defaultValue: `Choose how the Psalter unfolds, and when you'd like a reminder in the ${cap.toLowerCase()}.` })
-              : noMethod
-                ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
-                : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
+          {prayBySide[side] === "psalms"
+            ? t("wol_rule.side_config_psalms_body", { side: cap.toLowerCase(), defaultValue: `Choose how the Psalter unfolds, and when you'd like a reminder in the ${cap.toLowerCase()}.` })
+            : noMethod
+              ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
+              : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
-        {/* For a silent contemplation sit, ask HOW MUCH to sit a day — the daily
-            goal (the silent-vs-Co-Breathe choice is made on the prayer-form list
-            above). Wired to the same goal the Contemplative-Prayer step sets. */}
-        {isContemplation && contemplationStyle === "silent" && (
-          <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplation_length_label", { defaultValue: "How long would you like to sit each session?" })}
-            </p>
-            <div style={{ position: "relative" }}>
-              <select
-                value={String(goalMin)}
-                onChange={(e) => chooseGoal(e.target.value)}
-                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long would you like to sit each session?" })}
-                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-              >
-                {[5, 10, 15, 20, 30, 45, 60].map((m) => (
-                  <option key={m} value={String(m)}>{t("wol_rule.minutes_each", { mins: m, defaultValue: `${m} minutes` })}</option>
-                ))}
-              </select>
-              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-            </div>
-            <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-              {t("wol_rule.contemplation_length_note", { defaultValue: "How long each sit lasts — Phoebe times it for you, at your own pace, never measured against you." })}
-            </p>
-          </>
-        )}
         {/* Contemplation / FDD / Psalms have no on-screen/listen/book method,
             so the "Default way to pray" picker is hidden for them — only the
             reminder time below is shown. */}
@@ -1731,21 +1751,24 @@ export default function WayOfLoveRuleFlow({
     : m === "book" ? `📕 ${t("wol_rule.method_book", { defaultValue: "Physical BCP" })}`
     : m === "watch" ? "📺 Watch"
     : `📖 ${t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}`;
+  // Labels the office ANCHOR only (community / BCP form). Contemplation, FDD and
+  // the Examen are add-ons now — never anchors — so they don't appear here; a
+  // "none" side has no office row (reviewRows filters it out before calling this).
   const sideWayLabel = (side: OfficeSide): string => {
     const cap = side === "morning" ? "Morning" : "Evening";
     return prayBySide[side] === "community" ? "Community Intercessions"
       : prayBySide[side] === "offices" ? `${cap} Prayer`
-      : prayBySide[side] === "contemplation" ? `${cap} Contemplation`
-      : prayBySide[side] === "fdd" ? "Forward Day by Day"
       : prayBySide[side] === "psalms" ? "Praying the Psalms"
-      : prayBySide[side] === "examen" ? "The Examen"
       : `${cap} Devotion`;
   };
   const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [
-    ...SIDES.filter((s) => sides[s]).map((s) => ({
+    // One row per side that has an OFFICE ANCHOR. A side with only add-ons
+    // (contemplation/examen) has no office card — those surface as their own
+    // rows below (Silence / The Examen), so it isn't listed here as an office.
+    ...SIDES.filter((s) => sides[s] && prayBySide[s] !== "none").map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? (contemplationStyle === "silent" && goalMin > 0 ? `${goalMin} min a day` : "Silent sit") : prayBySide[s] === "fdd" ? (fddMode === "audio" ? "Listen" : "Read") : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     ...(silenceMode === "grow"

@@ -21,6 +21,8 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:office:level:morning", "phoebe:office:level:evening",
   "phoebe:office:entry:morning", "phoebe:office:entry:evening",
   "phoebe:office:reflection:morning", "phoebe:office:reflection:evening",
+  // Prayer List + BCP merge (community intercessions prayed within the office).
+  "phoebe:office:community-within:morning", "phoebe:office:community-within:evening",
   // Global office/reflection settings.
   "phoebe:office:reflection-source", "phoebe:office:audio-source",
   "phoebe:office:default-entry", "phoebe:office:include-gratitude-slide",

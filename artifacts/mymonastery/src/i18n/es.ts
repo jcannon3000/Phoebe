@@ -4279,6 +4279,8 @@ export const es: Translations = {
     contemplation_complete: "Contemplación completa",
     of_contemplative_prayer: "{{time}} de oración contemplativa",
     carry_the_quiet: "Lleva el silencio contigo.",
+    continue: "Continuar",
+    whats_next: "Lo que sigue",
     amen: "Amén →",
     with_you: "Contigo",
     someone: "Alguien",
@@ -4616,6 +4618,8 @@ export const es: Translations = {
   },
   contemplation: {
     remove_entry: "Eliminar entrada",
+    whats_next_reflection_sub: "La reflexión de hoy",
+    whats_next_read: "Léela",
     day_one_sit: "1 sesión",
     day_n_sits: "{{count}} sesiones",
     goal_progress: "{{done}} de {{goal}} min hoy",

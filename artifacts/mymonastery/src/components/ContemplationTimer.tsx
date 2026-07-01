@@ -64,7 +64,23 @@ function formatDone(totalSeconds: number): string {
 // aloud). It plays FIRST and is deliberately NOT counted as
 // contemplative time — only the "running" silence that follows it logs
 // as prayer. Plain sits skip "reflection" and go picker → running.
-type Phase = "picker" | "reflection" | "running" | "complete";
+type Phase = "picker" | "reflection" | "running" | "complete" | "whats-next";
+
+// An optional "what's next" closing card shown AFTER the completion summary — a
+// gentle handoff into the next thing in the day's rhythm (e.g. today's
+// reflection / newsletter). Only passed when the timer is launched standalone
+// (the /contemplation page); the office slideshow has its own next-up, so it
+// leaves this unset and the summary's button just closes.
+export type ContemplationWhatsNext = {
+  eyebrow?: string;
+  emoji: string;
+  title: string;
+  sub?: string;
+  cta: string;
+  // Invoked when the user taps the CTA. The timer closes first, then this runs
+  // (so the caller can navigate). Runs in place of the plain "Done" close.
+  onGo: () => void;
+};
 
 // Format a reflection/audio duration as a short human-readable string.
 // "5 min" for even minutes, "5 min 45 sec" when seconds remain.
@@ -96,6 +112,7 @@ export function ContemplationTimer({
   audioDurationSeconds,
   audioStartSec,
   audioEndSec,
+  whatsNext,
 }: {
   open: boolean;
   // `completed` is true when the user actually sat (reached the closing
@@ -119,6 +136,8 @@ export function ContemplationTimer({
   // appeal. Either may be null/absent — then the full episode plays.
   audioStartSec?: number | null;
   audioEndSec?: number | null;
+  // Optional closing "what's next" card shown after the completion summary.
+  whatsNext?: ContemplationWhatsNext | null;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -647,10 +666,10 @@ export function ContemplationTimer({
     releaseWakeLock();
     cancelEndBell();
     stopAudio();
-    // "completed" when the user actually sat (reached the closing
-    // screen); false when they backed out of the picker. The pause-slide
-    // caller advances the slideshow only on a completed sit.
-    onClose({ completed: phase === "complete" });
+    // "completed" when the user actually sat (reached the closing summary or the
+    // what's-next card that follows it); false when they backed out of the
+    // picker. The pause-slide caller advances the slideshow only on a completed sit.
+    onClose({ completed: phase === "complete" || phase === "whats-next" });
   }
 
   // Toggle the just-finished sit's public/private flag. Updates local
@@ -691,7 +710,7 @@ export function ContemplationTimer({
         {/* A still landscape behind the sit — the world held quiet while you
             rest in it. Heavily washed in the home green so the timer + text stay
             legible. Shown during the silence + the closing summary. */}
-        {(phase === "running" || phase === "complete") && (
+        {(phase === "running" || phase === "complete" || phase === "whats-next") && (
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
             <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16, 0.550) 0%, rgba(9,26,16, 0.792) 55%, rgba(9,26,16, 0.946) 100%)" }} />
@@ -1368,9 +1387,50 @@ export function ContemplationTimer({
 
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={() => { if (whatsNext) setPhase("whats-next"); else handleClose(); }}
                 className="rounded-full px-10 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+              >
+                {whatsNext
+                  ? t("contemplation_timer.continue", { defaultValue: "Continue" })
+                  : t("contemplation_timer.done", { defaultValue: "Done" })}
+              </button>
+            </>
+          )}
+
+          {/* The closing "what's next" card — a quiet handoff into the next thing
+              in the day (usually today's reflection / newsletter). Shown only when
+              the caller passed one (the standalone Contemplation page), so a
+              contemplation-only rhythm still ends on somewhere to go. */}
+          {phase === "whats-next" && whatsNext && (
+            <>
+              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+                {whatsNext.eyebrow ?? t("contemplation_timer.whats_next", { defaultValue: "What's next" })}
+              </p>
+              <button
+                type="button"
+                onClick={() => { const go = whatsNext.onGo; handleClose(); go(); }}
+                className="w-full rounded-2xl px-5 py-4 mb-5 text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", cursor: "pointer", maxWidth: 340 }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-[26px] leading-none" aria-hidden>{whatsNext.emoji}</span>
+                  <div className="min-w-0">
+                    <p className="text-[16px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{whatsNext.title}</p>
+                    {whatsNext.sub && (
+                      <p className="text-[12.5px] mt-0.5" style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK }}>{whatsNext.sub}</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-3" style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}>
+                  {whatsNext.cta} →
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-full px-10 py-3 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "transparent", color: "rgba(200,212,192,0.75)", border: "1px solid rgba(46,107,64,0.35)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
               >
                 {t("contemplation_timer.done", { defaultValue: "Done" })}
               </button>

@@ -435,6 +435,23 @@ export function setSideMinutes(side: OfficeSide, minutes: number): void {
   } catch { /* non-fatal */ }
 }
 
+// "Community intercessions prayed WITHIN the office" per side — the customizer's
+// Prayer List + Book of Common Prayer merge. The full office already surfaces the
+// community intercessions, so this is a remembered UI intent (keeps the Prayer
+// List row checked + the merge note on re-open), not a behavioral toggle.
+export function getCommunityWithOffice(side: OfficeSide): boolean {
+  try {
+    return localStorage.getItem(`phoebe:office:community-within:${side}`) === "1";
+  } catch { /* private mode */ }
+  return false;
+}
+export function setCommunityWithOffice(side: OfficeSide, v: boolean): void {
+  try {
+    localStorage.setItem(`phoebe:office:community-within:${side}`, v ? "1" : "0");
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
 // ── React hook ─────────────────────────────────────────────────────
 // Snapshot the prefs into state and refresh on any change. Use this
 // instead of calling the getters in render — otherwise the component
