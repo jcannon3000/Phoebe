@@ -17,7 +17,7 @@
 //      and skip native-only code paths, so this same file would work
 //      even if it somehow got loaded in a browser.
 
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
@@ -449,6 +449,23 @@ function wireNativeShare() {
       });
     } catch {
       // User cancelled or share unavailable — no action needed.
+    }
+  });
+}
+
+// ─── Print (native) ────────────────────────────────────────────────────────
+// WKWebView doesn't implement window.print(), so the web app dispatches
+// `phoebe:print` (with an optional { jobName }) and we route it to the native
+// PhoebePrint plugin, which presents the iOS print sheet — AirPrint, Save to
+// Files as a PDF, or share. Warns and no-ops if the plugin isn't registered.
+const PhoebePrint = registerPlugin<{ printPage(options: { jobName?: string }): Promise<{ completed?: boolean }> }>("PhoebePrint");
+function wireNativePrint() {
+  window.addEventListener("phoebe:print", async e => {
+    const detail = (e as CustomEvent).detail as { jobName?: string } | undefined;
+    try {
+      await PhoebePrint.printPage({ jobName: detail?.jobName });
+    } catch (err) {
+      console.warn("[PhoebeNative] print failed:", err);
     }
   });
 }
@@ -1644,6 +1661,7 @@ function exposePublicApi() {
   wireStepsNotificationExpiry();
   wirePrayerBellExpiry();
   wireNativeShare();
+  wireNativePrint();
   wireNativeOpenUrl();
   wireHaptics();
   wireContacts();

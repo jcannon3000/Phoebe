@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, getJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
 import { getExplicitSideLevel, getPsalmCycle, type OfficeLevel } from "@/lib/officePrefs";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { Fragment, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -154,6 +155,13 @@ export default function RoutinePrintPage() {
   const weekLabel = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   const pdfFileName = `${fullName ? `${fullName} — ` : ""}Daily Practice — Week of ${weekLabel}`;
   const handlePrint = () => {
+    // The native iOS app (WKWebView) has no window.print(); route to the native
+    // iOS print sheet (Save to Files as PDF / AirPrint / share) via the shell.
+    if (isNativeShell()) {
+      window.dispatchEvent(new CustomEvent("phoebe:print", { detail: { jobName: pdfFileName } }));
+      return;
+    }
+    // Web: the browser print dialog. document.title becomes the default PDF name.
     const prev = document.title;
     document.title = pdfFileName;
     const restore = () => { document.title = prev; window.removeEventListener("afterprint", restore); };
