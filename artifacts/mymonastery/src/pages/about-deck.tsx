@@ -63,9 +63,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "A daily habit that fits your life",
+    headline: "A daily habit, at the pace of modern life",
     body: [
-      "See where you are in today's rhythm and what's next. A gentle daily practice that fits the pace of modern life — never a streak to protect, just prayer, met each day.",
+      "See where you are in today's rhythm and what's next — a gentle daily practice made for the busy, dispersed life you actually live. Never a streak to protect, just prayer, met each day.",
     ],
     mock: "prayer-rhythm",
   },
@@ -89,5 +89,7 @@ const SLIDES: Slide[] = [
 ];
 
 export default function AboutDeckPage() {
-  return <DeckShell slides={SLIDES} exitTo="/about" />;
+  // No quick auto-advance slide (that's a church-deck-only thing), and hold each
+  // slide 2s longer than the default.
+  return <DeckShell slides={SLIDES} exitTo="/about" autoAdvanceMs={12000} quickIndex={-1} />;
 }

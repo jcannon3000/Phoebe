@@ -75,8 +75,8 @@ export function CobreathePrayerIntro({
         />
       )}
 
-      {/* Top bar — progress on the left, Skip on the right. */}
-      <div className="flex items-center justify-between px-5 pt-4" style={{ minHeight: 44 }}>
+      {/* Top bar — progress dots (Skip now lives under the Next button). */}
+      <div className="flex items-center px-5 pt-4" style={{ minHeight: 44 }}>
         <div className="flex items-center gap-1.5">
           {SLIDES.map((_, n) => (
             <span
@@ -91,13 +91,6 @@ export function CobreathePrayerIntro({
             />
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, background: "transparent", border: "none", cursor: "pointer", padding: "6px 4px" }}
-        >
-          Skip
-        </button>
       </div>
 
       {/* Body — tap anywhere to advance (except the final slide, which waits for
@@ -130,7 +123,8 @@ export function CobreathePrayerIntro({
                   A prayer to begin
                 </p>
                 <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(34px, 9vw, 46px)", lineHeight: 1.08, letterSpacing: "-0.02em", marginBottom: 18 }}>
-                  A Prayer of Con-Spiring
+                  {/* Non-breaking hyphen so "Con-Spiring" never splits across lines. */}
+                  A Prayer of Con‑Spiring
                 </h1>
                 <p style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", fontSize: 17 }}>
                   Laurel Kearns
@@ -176,12 +170,27 @@ export function CobreathePrayerIntro({
         </AnimatePresence>
       </div>
 
-      {/* Advance hint (not on the final slide). */}
-      <div className="text-center pb-6" style={{ minHeight: 30 }}>
+      {/* Controls — a Next pill with Skip text under it (the final slide uses its
+          own "Begin breathing" button inside the slide, so no controls here). */}
+      <div className="flex flex-col items-center gap-2.5 pb-7" style={{ minHeight: 80 }}>
         {!isLast && (
-          <p style={{ color: "rgba(200,212,192,0.5)", fontFamily: SPACE_GROTESK, fontSize: 12.5 }}>
-            Tap to continue
-          </p>
+          <>
+            <button
+              type="button"
+              onClick={next}
+              className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 700, cursor: "pointer" }}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              onClick={onSkip}
+              style={{ color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, background: "transparent", border: "none", cursor: "pointer", padding: "2px 8px" }}
+            >
+              Skip
+            </button>
+          </>
         )}
       </div>
     </div>

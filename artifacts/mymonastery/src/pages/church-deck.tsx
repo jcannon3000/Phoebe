@@ -1880,7 +1880,21 @@ function renderSlide(slide: Slide) {
 // The nav chrome + animated slide stage, parameterized by the slide list and
 // where "Close" / "Done" lands. Rendered by both the church deck and the about
 // deck so they share the exact same look, mocks, and navigation.
-export function DeckShell({ slides, exitTo = "/" }: { slides: Slide[]; exitTo?: string }) {
+export function DeckShell({
+  slides,
+  exitTo = "/",
+  autoAdvanceMs = 10000,
+  // The church deck's slide index 2 is a brief "The week" title that auto-
+  // advances fast; other decks (e.g. About) pass quickIndex={-1} to disable it.
+  quickIndex = 2,
+  quickMs = 3000,
+}: {
+  slides: Slide[];
+  exitTo?: string;
+  autoAdvanceMs?: number;
+  quickIndex?: number;
+  quickMs?: number;
+}) {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
   const [index, setIndex] = useState(0);
@@ -1899,10 +1913,10 @@ export function DeckShell({ slides, exitTo = "/" }: { slides: Slide[]; exitTo?: 
   useEffect(() => {
     if (!autoPlay) return;
     if (index >= slides.length - 1) return; // don't auto-advance past last slide
-    const delay = index === 2 ? 3000 : 10000;
+    const delay = index === quickIndex ? quickMs : autoAdvanceMs;
     const timer = setTimeout(() => next(), delay);
     return () => clearTimeout(timer);
-  }, [index, autoPlay, slides.length, next]);
+  }, [index, autoPlay, slides.length, next, autoAdvanceMs, quickIndex, quickMs]);
 
   // Keyboard navigation
   useEffect(() => {
