@@ -12,13 +12,17 @@
  */
 
 import type { CreationWeek, CreationSide } from "./seasonOfCreation";
-import { creationCyclePosition } from "./seasonOfCreation";
+import { creationCyclePosition, CREATION_ATTRIBUTION } from "./seasonOfCreation";
 
 export interface CreationCollect { title: string; attribution?: string; text: string; }
 export interface CreationPrayer { title: string; attribution?: string; note?: string; text: string; }
 export interface CreationBlessing { text: string; attribution?: string; }
 export interface CreationReading { ref: string; note: string; }
 export interface CreationQuote { author: string; source?: string; text: string; }
+export interface CreationCanticle { title: string; attribution?: string; text: string; }
+export interface CreationAffirmation { title: string; attribution?: string; text: string; }
+export interface CreationLitanyLine { v: string; r: string; }
+export interface CreationLitany { title: string; intro?: string; lines: CreationLitanyLine[]; }
 
 // ── Collects (Season of Creation guide, pp. 78–86) ───────────────────────────
 export const CREATION_COLLECTS: CreationCollect[] = [
@@ -218,3 +222,168 @@ export const CREATION_QUOTES: CreationQuote[] = [
   { author: "Helen Keller", source: "The Story of My Life", text: "Everything in nature has its wonders, even darkness and silence, and I learn, whatever state I may be in, therein to be content." },
   { author: "Robin Wall Kimmerer", source: "Braiding Sweetgrass", text: "Restoration is imperative for healing the earth, but reciprocity is imperative for long-lasting, successful restoration." },
 ];
+
+// ── Canticles (guide, Songs of Praise & Canticles, pp. 107–109) — Morning
+//    rotates through the creation canticles + BCP Canticle 12 (all public
+//    domain: St. Francis 13th c., Hopkins 1877, BCP; the Greeting is a
+//    gift-licensed guide composition). NO EOW canticles (© Church Publishing).
+export const CREATION_CANTICLES: CreationCanticle[] = [
+  {
+    title: "A Song of Creation",
+    attribution: "Canticle 12, BCP (Benedicite, omnia opera Domini)",
+    text:
+      "Glorify the Lord, all you works of the Lord, *\n   praise him and highly exalt him for ever.\n" +
+      "In the firmament of his power, glorify the Lord, *\n   praise him and highly exalt him for ever.\n" +
+      "Glorify the Lord, O sun and moon and stars of the sky, *\n   praise him and highly exalt him for ever.\n" +
+      "Glorify the Lord, every shower of rain and fall of dew, *\n   all winds and fire and heat.\n" +
+      "Glorify the Lord, O mountains and hills, and all that grows upon the earth, *\n   praise him and highly exalt him for ever.\n" +
+      "Glorify the Lord, O springs of water, seas, and streams, *\n   O whales and all that move in the waters.\n" +
+      "All birds of the air, glorify the Lord, *\n   praise him and highly exalt him for ever.\n" +
+      "Glorify the Lord, O beasts of the wild, *\n   and all you flocks and herds.\n" +
+      "O men and women everywhere, glorify the Lord, *\n   praise him and highly exalt him for ever.\n" +
+      "Let us glorify the Lord: Father, Son, and Holy Spirit; *\n   praise him and highly exalt him for ever.",
+  },
+  {
+    title: "The Canticle of Brother Sun and Sister Moon",
+    attribution: "St. Francis of Assisi",
+    text:
+      "Most High, all-powerful, all-good Lord, all praise is Yours, all glory, all honor and all blessings.\n\n" +
+      "Praised be You, my Lord, with all Your creatures, especially Sir Brother Sun, who is the day and through whom You give us light; and he is beautiful and radiant with great splendor: of You, Most High, he bears the likeness.\n\n" +
+      "Praised be You, my Lord, through Sister Moon and the stars; in the heavens You have made them bright, precious and fair.\n\n" +
+      "Praised be You, my Lord, through Brothers Wind and Air, and fair and stormy, all weather's moods, by which You cherish all that You have made.\n\n" +
+      "Praised be You, my Lord, through Sister Water, so useful, humble, precious and pure.\n\n" +
+      "Praised be You, my Lord, through Brother Fire, through whom You light the night, and he is beautiful and playful and robust and strong.\n\n" +
+      "Praised be You, my Lord, through our Sister, Mother Earth, who sustains and governs us, producing varied fruits with colored flowers and herbs.\n\n" +
+      "Praise and bless my Lord, and give Him thanks, and serve Him with great humility.",
+  },
+  {
+    title: "God's Grandeur",
+    attribution: "Gerard Manley Hopkins",
+    text:
+      "The world is charged with the grandeur of God.\n" +
+      "   It will flame out, like shining from shook foil;\n" +
+      "   It gathers to a greatness, like the ooze of oil\n" +
+      "Crushed. Why do men then now not reck his rod?\n" +
+      "Generations have trod, have trod, have trod;\n" +
+      "   And all is seared with trade; bleared, smeared with toil;\n" +
+      "   And wears man's smudge and shares man's smell: the soil\n" +
+      "Is bare now, nor can foot feel, being shod.\n\n" +
+      "And for all this, nature is never spent;\n" +
+      "   There lives the dearest freshness deep down things;\n" +
+      "And though the last lights off the black West went\n" +
+      "   Oh, morning, at the brown brink eastward, springs —\n" +
+      "Because the Holy Ghost over the bent\n" +
+      "   World broods with warm breast and with ah! bright wings.",
+  },
+  {
+    title: "A Greeting for Creation",
+    attribution: CREATION_ATTRIBUTION,
+    text:
+      "Greetings in the name of our God who is good: *\n   whose love endures forever.\n" +
+      "Greetings to you, sun and moon, you stars of the sky: *\n   give to our God your thanks and praise.\n" +
+      "Sunrise and sunset, night and day: *\n   give to our God your thanks and praise.\n" +
+      "Greetings to you, hills and valleys, rivers and ponds, sea and rain: *\n   give to our God your thanks and praise.\n" +
+      "Greetings to you, oak and pine, hemlock and birch: *\n   give to our God your thanks and praise.\n" +
+      "Greetings to you, hawks and sparrows, ravens and crows: *\n   give to our God your thanks and praise.\n" +
+      "Greetings to you, bears and deer, chipmunks and squirrels: *\n   give to our God your thanks and praise.\n" +
+      "Greetings to you, people of all genders, elders and children, the diverse cultures of this rainbow land, all who care and love and pray: *\n   give to our God your thanks and praise. Amen.",
+  },
+];
+
+// ── Affirmations of Faith (guide, pp. 111–113) — Evening rotates through these
+//    three + the Nicene Creed. Colossians is Scripture (PD); St. Patrick is
+//    ancient (PD); the Nicene Creed is BCP (PD); the South Indian profession is
+//    a gift-licensed guide composition.
+export const CREATION_AFFIRMATIONS: CreationAffirmation[] = [
+  {
+    title: "A Profession of Faith",
+    attribution: "South Indian",
+    text:
+      "We believe in God, who creates all things, who embraces all things, who celebrates all things, who is present in every part of the fabric of creation.\n\n" +
+      "We believe in God as the source of all life, who baptizes this planet with living water.\n\n" +
+      "We believe in Jesus Christ, the suffering one, the poor one, the malnourished one, the climate refugee, who loves and cares for this world and who suffers with it. And we believe in Jesus Christ, the seed of life, who came to reconcile and renew this world and everything in it.\n\n" +
+      "We believe in the Holy Spirit, the breath of God, who moves with God and who moves among and with us today.\n\n" +
+      "We believe in everlasting life in God. And we believe in the hope that one day God will put an end to death and all destructive forces.",
+  },
+  {
+    title: "An Affirmation of Faith",
+    attribution: "Colossians 1:15-20",
+    text:
+      "Jesus Christ is the image of the invisible God, the firstborn of all creation.\n" +
+      "For in him all things in heaven and on earth were created: things visible and invisible, whether thrones or dominions or rulers or powers; all things have been created through him and for him.\n" +
+      "He himself is before all things, and in him all things hold together.\n" +
+      "And he is the head of the body, the church; he is the beginning, the firstborn from among the dead, so that he might come to have first place in everything.\n" +
+      "For in him all the fullness of God was pleased to dwell, and through him God was pleased to reconcile to himself all things, whether on earth or in heaven, by making peace through the blood of his cross.",
+  },
+  {
+    title: "A Confession of St. Patrick",
+    attribution: "attributed to St. Patrick, 5th c.",
+    text:
+      "Our God, God of all people, God of heaven and earth, sea and rivers, God of sun and moon, of all stars, God of highest mountain, of deepest valleys, God over heaven and in heaven and under heaven.\n\n" +
+      "He has his dwelling in heaven and earth and sea and all that is in them. He inspires all, he gives life to all, he surpasses all, he upholds all.\n\n" +
+      "He ignites the light of the sun. He surrounds the stars and tells them to shine. He makes fountains in dry lands, and dry islands in the sea, and stars to serve the greater lights.\n\n" +
+      "He has a Son, coeternal with him and like him. The Son is not younger than the Father, neither is the Father older than the Son. And the Holy Spirit breathes in them. Not separate are the Father and Son and Holy Spirit.",
+  },
+  {
+    title: "The Nicene Creed",
+    attribution: "BCP p. 358",
+    text:
+      "We believe in one God, the Father, the Almighty, maker of heaven and earth, of all that is, seen and unseen.\n\n" +
+      "We believe in one Lord, Jesus Christ, the only Son of God, eternally begotten of the Father, God from God, Light from Light, true God from true God, begotten, not made, of one Being with the Father. Through him all things were made.\n\n" +
+      "For us and for our salvation he came down from heaven: by the power of the Holy Spirit he became incarnate from the Virgin Mary, and was made man.\n\n" +
+      "For our sake he was crucified under Pontius Pilate; he suffered death and was buried. On the third day he rose again in accordance with the Scriptures; he ascended into heaven and is seated at the right hand of the Father. He will come again in glory to judge the living and the dead, and his kingdom will have no end.\n\n" +
+      "We believe in the Holy Spirit, the Lord, the giver of life, who proceeds from the Father and the Son. With the Father and the Son he is worshiped and glorified. He has spoken through the Prophets. We believe in one holy catholic and apostolic Church. We acknowledge one baptism for the forgiveness of sins. We look for the resurrection of the dead, and the life of the world to come. Amen.",
+  },
+];
+
+// ── Litanies for Creation (guide, pp. 93–105). The guide's rubric: "One of the
+//    following may be said according to the instructions for the Great Litany in
+//    the BCP (pp. 148–155), and may be concluded with one of the Collects" —
+//    which is why a rotating litany here flows straight into the closing collect.
+export const CREATION_LITANIES: CreationLitany[] = [
+  {
+    title: "A Litany for Creation and All Creatures",
+    intro: "For all creatures, named and unnamed, whose lives have blessed our own, we give you thanks. Silence is kept.",
+    lines: [
+      { v: "Holy God, Creator of heaven and earth,", r: "Have mercy on us." },
+      { v: "Holy and Mighty, Redeemer of the world,", r: "Have mercy on us." },
+      { v: "Holy Immortal One, Sanctifier of the faithful,", r: "Have mercy on us." },
+      { v: "Grant that all your creatures may thank and serve you;", r: "Shower your blessing on earth, O God." },
+      { v: "Grant favorable weather, temperate rain, and fruitful seasons, providing food and drink for all your creatures;", r: "Shower your blessing on earth, O God." },
+      { v: "Open our eyes to the joy and beauty of creation, that we may see your presence in all your works;", r: "Shower your blessing on earth, O God." },
+      { v: "Make us faithful stewards of creation, wisely caring for the earth, the air, the seas, and all the life they bear;", r: "Shower your blessing on earth, O God." },
+      { v: "Forgive us our waste and pollution of creation, and strengthen us to heal the wounds we have inflicted;", r: "Shower your blessing on earth, O God." },
+    ],
+  },
+  {
+    title: "A Litany of Lament and Repentance",
+    lines: [
+      { v: "O God of the whole of creation, you have created land and trees, animals and all living creatures; yet we destroy the forests, and the voices of the birds and forest dwellers are silenced. We turn to you in sorrow and repentance.", r: "Lord in your mercy, hear our prayer." },
+      { v: "You created the wonders of the ocean; yet the seas are warming and drown in plastic, and their voices are being stilled. Please help us to care for the oceans, the land, and the forest, and open our eyes to their blessing.", r: "Lord in your mercy, hear our prayer." },
+      { v: "Mothering Earth, our Sister, you sustain and govern us; yet we have silenced the voices of your people, especially the protectors of the Earth. May we learn to treasure and protect the web of life.", r: "Lord in your mercy, hear our prayer." },
+      { v: "Forgive us for the human activities which have overpowered the weather and caused destruction of our environment. We turn to you in sorrow and repentance.", r: "Lord in your mercy, hear our prayer." },
+    ],
+  },
+  {
+    title: "The Great Litany of Creation",
+    intro: "We come before you in this time of deepening social and climate crisis to confess our complicity, to pray for those most affected, and to ask for courage to act.",
+    lines: [
+      { v: "God the Creator of all,", r: "Have mercy upon us." },
+      { v: "God the Incarnate Word, present in Creation from the beginning,", r: "Have mercy upon us." },
+      { v: "God the Spirit of truth and forgiveness,", r: "Have mercy upon us." },
+      { v: "We confess that we have not valued your air, which sustains every breath, and have instead polluted it, causing catastrophic climate change;", r: "Have mercy on us, merciful God." },
+      { v: "We confess that we have wasted and polluted water, the drink of life, choking the seas with plastic and poison;", r: "Have mercy on us, merciful God." },
+      { v: "We confess that we have abused the soil, the Earth mother who provides food for all land creatures;", r: "Have mercy on us, merciful God." },
+      { v: "We confess that we have caused the deaths of countless creatures and wiped out whole species, through loss of habitat, overfishing, and pollution;", r: "Have mercy on us, merciful God." },
+      { v: "Free us from the gods of greed, and from the lie that what we own is ours to abuse;", r: "Gracious God, deliver us." },
+      { v: "Free us from despair and paralyzing fear, and from caring only for our own well-being while others suffer;", r: "Gracious God, deliver us." },
+      { v: "That we may have a renewed and restored relationship to all of Creation, we pray,", r: "Hear us, O God of life." },
+      { v: "That we may be filled with the courage to change and the commitment to act, we pray,", r: "Hear us, O God of life." },
+    ],
+  },
+];
+
+const wrap = (n: number, len: number) => ((n % len) + len) % len;
+export function creationCanticleFor(seq: number): CreationCanticle { return CREATION_CANTICLES[wrap(seq, CREATION_CANTICLES.length)]; }
+export function creationAffirmationFor(seq: number): CreationAffirmation { return CREATION_AFFIRMATIONS[wrap(seq, CREATION_AFFIRMATIONS.length)]; }
+export function creationLitanyFor(seq: number): CreationLitany { return CREATION_LITANIES[wrap(seq, CREATION_LITANIES.length)]; }

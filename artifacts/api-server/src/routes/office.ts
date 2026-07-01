@@ -10,7 +10,7 @@ import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCreationDevotion } from "../lib/assembleCreationDevotion";
-import { CREATION_COLLECTS, CREATION_PRAYERS, CREATION_BLESSINGS, CREATION_READINGS, CREATION_QUOTES } from "../lib/creationLibrary";
+import { CREATION_COLLECTS, CREATION_PRAYERS, CREATION_BLESSINGS, CREATION_READINGS, CREATION_QUOTES, CREATION_CANTICLES, CREATION_AFFIRMATIONS, CREATION_LITANIES } from "../lib/creationLibrary";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { getLectionaryReadings } from "../lib/lectionary";
@@ -356,6 +356,9 @@ router.post("/office/seed", async (req, res) => {
 router.get("/creation/library", (_req, res) => {
   res.json({
     collects: CREATION_COLLECTS,
+    canticles: CREATION_CANTICLES,
+    affirmations: CREATION_AFFIRMATIONS,
+    litanies: CREATION_LITANIES,
     prayers: CREATION_PRAYERS,
     blessings: CREATION_BLESSINGS,
     readings: CREATION_READINGS,

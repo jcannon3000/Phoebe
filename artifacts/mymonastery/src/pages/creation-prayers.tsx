@@ -20,7 +20,10 @@ interface Prayer { title: string; attribution?: string; note?: string; text: str
 interface Blessing { text: string; attribution?: string; }
 interface Reading { ref: string; note: string; }
 interface Quote { author: string; source?: string; text: string; }
-interface Library { collects: Collect[]; prayers: Prayer[]; blessings: Blessing[]; readings: Reading[]; quotes: Quote[]; }
+interface Canticle { title: string; attribution?: string; text: string; }
+interface Affirmation { title: string; attribution?: string; text: string; }
+interface Litany { title: string; intro?: string; lines: Array<{ v: string; r: string }>; }
+interface Library { collects: Collect[]; canticles: Canticle[]; affirmations: Affirmation[]; litanies: Litany[]; prayers: Prayer[]; blessings: Blessing[]; readings: Reading[]; quotes: Quote[]; }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -76,6 +79,30 @@ export default function CreationPrayersPage() {
             <SectionHeader>Collects</SectionHeader>
             {data.collects.map((c, i) => (
               <PrayerCard key={`c${i}`} title={c.title} attribution={c.attribution} text={c.text} />
+            ))}
+
+            <SectionHeader>Canticles</SectionHeader>
+            {data.canticles.map((c, i) => (
+              <PrayerCard key={`ca${i}`} title={c.title} attribution={c.attribution} text={c.text} />
+            ))}
+
+            <SectionHeader>Affirmations of Faith</SectionHeader>
+            {data.affirmations.map((a, i) => (
+              <PrayerCard key={`af${i}`} title={a.title} attribution={a.attribution} text={a.text} />
+            ))}
+
+            <SectionHeader>Litanies</SectionHeader>
+            {data.litanies.map((lit, i) => (
+              <div key={`li${i}`} className="rounded-2xl px-5 py-4 mb-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                <p style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: "#F0EDE6", marginBottom: 6 }}>{lit.title}</p>
+                {lit.intro && <p style={{ fontFamily: SERIF, fontSize: 14, lineHeight: 1.55, color: "rgba(228,234,221,0.85)", fontStyle: "italic", marginBottom: 8 }}>{lit.intro}</p>}
+                {lit.lines.map((ln, j) => (
+                  <div key={j} style={{ marginBottom: 8 }}>
+                    <p style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.55, color: "#E4EADD" }}>{ln.v}</p>
+                    <p style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.55, color: "#8FAF96", fontWeight: 600 }}>{ln.r}</p>
+                  </div>
+                ))}
+              </div>
             ))}
 
             <SectionHeader>Prayers</SectionHeader>
