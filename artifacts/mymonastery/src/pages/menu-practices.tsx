@@ -14,8 +14,8 @@ export default function MenuPracticesPage() {
     { emoji: "🌾", label: "Gratitude", sub: "A daily thanksgiving journal", onClick: () => go("/gratitude") },
     { emoji: "🤔", label: "Examen", sub: "End-of-day reflective prayer", onClick: () => go("/examen") },
   ];
-  // Pilot keeps only the two contemplative practices it ships with.
-  const PILOT_LABELS = new Set(["Listen to Scripture", "Contemplation"]);
+  // Pilot keeps the contemplative practices it ships with.
+  const PILOT_LABELS = new Set(["Listen to Scripture", "Contemplation", "Co-Breathe"]);
   const shown = isPilot ? items.filter((i) => PILOT_LABELS.has(i.label)) : items;
   return (
     <MenuHub

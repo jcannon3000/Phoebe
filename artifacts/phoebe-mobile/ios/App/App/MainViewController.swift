@@ -17,6 +17,7 @@
 
 import UIKit
 import Capacitor
+import WebKit
 
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
@@ -72,6 +73,44 @@ class MainViewController: CAPBridgeViewController {
             // No extra safe-area on top of the system's — the web reads
             // env(safe-area-inset-*) directly and pads itself.
             additionalSafeAreaInsets = .zero
+        }
+    }
+}
+
+// PhoebePrint — WKWebView has no window.print(), so the routine printout's
+// "Save as PDF" button did nothing on iOS. This plugin presents the iOS print
+// sheet for the web view (Save to Files as a PDF / AirPrint / share), rendering
+// the page's @media print layout. The web app dispatches `phoebe:print` and
+// native-shell.ts routes it here (see wireNativePrint). Kept in this file —
+// already in the App target — so it compiles without a new target membership.
+@objc(PhoebePrintPlugin)
+public class PhoebePrintPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "PhoebePrintPlugin"
+    public let jsName = "PhoebePrint"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "printPage", returnType: CAPPluginReturnPromise),
+    ]
+
+    @objc func printPage(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let webView = self?.bridge?.webView else {
+                call.reject("No web view available")
+                return
+            }
+            let info = UIPrintInfo(dictionary: nil)
+            info.outputType = .general
+            info.jobName = call.getString("jobName") ?? "Phoebe"
+
+            let controller = UIPrintInteractionController.shared
+            controller.printInfo = info
+            controller.printFormatter = webView.viewPrintFormatter()
+            controller.present(animated: true) { _, completed, error in
+                if let error = error {
+                    call.reject("Print failed: \(error.localizedDescription)")
+                } else {
+                    call.resolve(["completed": completed])
+                }
+            }
         }
     }
 }
