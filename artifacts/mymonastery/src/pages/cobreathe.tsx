@@ -511,7 +511,7 @@ export default function CobreathePage() {
             {t("cobreathe.title", { defaultValue: "Co-Breathe" })}
           </h1>
           <p style={{ color: "rgba(240,237,230,0.9)", fontFamily: SPACE_GROTESK, fontSize: 17, lineHeight: 1.55, maxWidth: 440, marginBottom: 26 }}>
-            {t("cobreathe.intro_blurb", { defaultValue: "To “conspire” is, at root, to breathe together. We breathe with one another, with the trees, with a planet whose own breath — carbon in, oxygen out — has been thrown out of balance. This is a small, bodily prayer for one another and for climate justice. The timer is paced by the same clock for everyone, so anyone breathing in that moment is breathing with you." })}
+            {t("cobreathe.intro_blurb", { defaultValue: "We pause to breathe with all life, in gratitude and in recognition of our need to work together to protect our common home." })}
           </p>
 
           <div className="w-full" style={{ maxWidth: 440 }}>

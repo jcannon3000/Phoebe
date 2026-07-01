@@ -124,8 +124,8 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
 // The sync-screen quotes — one chosen per sit (see shortQuoteRef). Text + author
 // live in the render (they go through t()); this just fixes the set + order.
-type QuoteKind = "weil" | "merton" | "mlk" | "teresa";
-const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa"];
+type QuoteKind = "weil" | "merton" | "mlk" | "teresa" | "theophilus";
+const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa", "theophilus"];
 // Frosted-glass rings — back to the ORIGINAL warm-white tones. Two tones: the
 // inhale fills with the light warm-white and HOLDS; the much-darker base sweeps
 // over it on the exhale, settling the ring back to its dark resting tone (a
@@ -804,6 +804,10 @@ export function CobreatheBreath({
     teresa: {
       text: t("cobreathe.sync_quote_teresa", { defaultValue: "If we have no peace, it is because we have forgotten that we belong to each other." }),
       author: t("cobreathe.sync_quote_teresa_author", { defaultValue: "Mother Teresa" }),
+    },
+    theophilus: {
+      text: t("cobreathe.sync_quote_theophilus", { defaultValue: "God has given to the earth the breath which feeds it. It is God’s breath that gives life to all things. And if God were to withhold it, everything would be annihilated. God’s breath vibrates in your breath, in your voice. It is the breath of God that you breathe." }),
+      author: t("cobreathe.sync_quote_theophilus_author", { defaultValue: "Theophilus of Antioch, 2nd century" }),
     },
   };
   const syncQuote = SYNC_QUOTES[quoteKind];

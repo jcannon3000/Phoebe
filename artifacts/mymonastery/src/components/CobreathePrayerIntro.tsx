@@ -18,19 +18,16 @@ type Slide =
   | { kind: "verse"; body: string }
   | { kind: "breath" };
 
-// The prayer, split into breathable stanzas. Wording is faithful to the
-// original (Kearns' spelling + punctuation kept); only the line breaks are ours,
-// to pace the reading one thought per slide.
+// The prayer, one paragraph per slide (faithful to the original — Kearns'
+// spelling + punctuation kept). Each of the prayer's five paragraphs stands as
+// its own slide, then the closing breath (the name of God, in and out).
 const SLIDES: Slide[] = [
   { kind: "title" },
-  { kind: "verse", body: "O God who is above us and below us, around us and inside us with each breath we take, we thank you for the Breath of Life." },
-  { kind: "verse", body: "From the very beginning we are told, your Breath, your ruach, your presence enlivens the world and brings all of creation to life." },
-  { kind: "verse", body: "All creatures exchange your Breath with the trees and plants, thousands of times each day — con-spiring together, breathing together, participating in an interspecies ritual of communion with you, reminding us of the sacred gift of life." },
-  { kind: "verse", body: "We have been taught to recognise the body and blood of Christ in the everyday world of grains and grapes." },
-  { kind: "verse", body: "May we now learn to sense your presence in every breath we take, so that we understand that when we dirty the air, when our actions make it so others cannot breathe, when we make the creation warm too much — we stifle your presence, we defile the Breath." },
+  { kind: "verse", body: "O God who is above us and below us, around us and inside us with each breath we take, we thank you for the Breath of Life. From the very beginning we are told, your Breath, your ruach, your presence enlivens the world and brings all of creation to life." },
+  { kind: "verse", body: "All creatures exchange your Breath with the trees and plants, thousands of times each day, con-spiring together, breathing together, participating in an interspecies ritual of communion with you, reminding us of the sacred gift of life." },
+  { kind: "verse", body: "We have been taught to recognise the body and blood of Christ in the everyday world of grains and grapes. May we now learn to sense your presence in every breath we take so that we understand that when we dirty the air, when our actions make it so others cannot breathe, when we make the creation warm too much, we stifle your presence, we defile the Breath." },
   { kind: "verse", body: "Let us vow that in our life’s limit of breaths, we make it so no one has to say, “I can’t breathe.” Let us vow that in our life’s limit of breaths our breathmates, the trees, can live and thrive." },
-  { kind: "verse", body: "O God of Breath, may each breath we take together — our con-spiring with each other and the forest — may it clear our minds and hearts. May it enliven our vision with justice and compassion." },
-  { kind: "verse", body: "May it reconnect us with the creation so that we strive to truly live in communion with all living beings on this one earth." },
+  { kind: "verse", body: "O God of Breath, may each breath we take together — our con-spiring with each other and the forest — may it clear our minds and hearts. May it enliven our vision with justice and compassion. May it reconnect us with the creation so that we strive to truly live in communion with all living beings on this one earth." },
   { kind: "breath" },
 ];
 
@@ -107,7 +104,7 @@ export function CobreathePrayerIntro({
           the Begin button). A left-edge tap steps back. */}
       <div
         onClick={isLast ? undefined : next}
-        style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", cursor: isLast ? "default" : "pointer", position: "relative" }}
+        style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "18px 28px", cursor: isLast ? "default" : "pointer", position: "relative", overflowY: "auto" }}
       >
         {i > 0 && (
           <button
@@ -142,7 +139,7 @@ export function CobreathePrayerIntro({
             )}
 
             {slide.kind === "verse" && (
-              <p style={{ color: "rgba(240,237,230,0.94)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(20px, 5.4vw, 25px)", lineHeight: 1.6 }}>
+              <p style={{ color: "rgba(240,237,230,0.94)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(18px, 4.8vw, 23px)", lineHeight: 1.55 }}>
                 {slide.body}
               </p>
             )}
