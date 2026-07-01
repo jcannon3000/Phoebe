@@ -371,7 +371,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
                   <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
                   <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-                  <MenuRow emoji="🎙️" label={t("menu.podcasts", { defaultValue: "Podcasts" })} onClick={() => goCategory("/podcasts")} />
                 </>
               )}
               {/* El Jardín. For a SEALED Jardín account the drawer IS the El

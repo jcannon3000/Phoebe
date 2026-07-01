@@ -328,7 +328,6 @@ const GatherRespondPage = lazy(() => import("./pages/gather-respond"));
 const GatherManagePage = lazy(() => import("./pages/gather-manage"));
 const WayOfLoveJourneyPage = lazy(() => import("./pages/way-of-love-journey"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
-const PodcastsPage = lazy(() => import("./pages/podcasts"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
 const NewsPage = lazy(() => import("./pages/news"));
 const PodcastPublisherPage = lazy(() => import("./pages/podcast-publisher"));
@@ -953,10 +952,12 @@ function Router() {
       <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />
       <Route path="/office/forward" component={OfficeFmPage} />
-      {/* Podcast content browser. Exact /podcasts is the Discover
-          index; /show/:slug must precede /:publisher so "show" isn't
-          captured as a publisher slug. */}
-      <Route path="/podcasts" component={PodcastsPage} />
+      {/* The standalone Podcasts browse hub is removed — podcasts stay
+          integrated where they belong (the office "Listen" audio, the Forward
+          Day by Day card, the Scripture readings, the Jardín Morning Prayer
+          podcast). The show/publisher routes below remain for those direct
+          links; /show/:slug precedes /:publisher so "show" isn't captured as a
+          publisher slug. */}
       <Route path="/reflect/fdd" component={FddSitPage} />
       <Route path="/reflect/cac" component={ReflectCacPage} />
       <Route path="/journal" component={JournalPage} />

@@ -74,7 +74,6 @@ export default function MenuPage() {
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
-      { emoji: "🎧", label: t("menu.podcasts", { defaultValue: "Podcasts" }), sub: t("menu.podcasts_sub", { defaultValue: "The full library" }), onClick: () => go("/podcasts") },
       // (The personal "prayer list" now lives inside the community Prayer list
       // page — reachable via Community → Prayer list — and the Add-prayer
       // composer's "Keep on my list" option; no separate menu entry.)
