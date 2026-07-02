@@ -357,6 +357,10 @@ if (fs.existsSync(frontendDist)) {
       title: "How Phoebe Cultivates Connection",
       description: "A place set apart for connection. Every day. Between Sundays.",
     },
+    "/cobreathe": {
+      title: "Co-Breathe — a prayer for climate justice",
+      description: "Twelve breaths, prayed together for the earth. Breathe with others around the world, wherever you are — on Phoebe.",
+    },
   };
 
   // Minimal HTML escape for values we inject into <meta content="..."> and
