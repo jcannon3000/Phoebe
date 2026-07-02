@@ -12,6 +12,8 @@ const CONTEMPLATION_LEAF = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer, type ContemplationWhatsNext } from "@/components/ContemplationTimer";
+import { PracticeIntro } from "@/components/PracticeIntro";
+import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { getSideMinutes, getReflectionSource, getSideContemplationExplicit } from "@/lib/officePrefs";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { useAuth } from "@/hooks/useAuth";
@@ -480,6 +482,9 @@ export default function ContemplationPage() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [timerOpen, setTimerOpen] = useState(false);
+  // First-ever silent sit gets a one-card intro (what silence is, where it comes
+  // from, what to do) so a beginner isn't dropped into a blank timer unguided.
+  const [silenceIntroDismissed, setSilenceIntroDismissed] = useState(false);
 
   // Apple Health is OPT-IN: we no longer auto-prompt for Mindful access when the
   // Contemplation page opens. Per request, don't ask for health data unless the
@@ -870,6 +875,11 @@ export default function ContemplationPage() {
   // chrome, content centred. Reads like the office slideshow's contemplation
   // slide. The timer overlay still opens on Start.
   if (beginMode) {
+    // First time in — teach the practice before the blank timer.
+    if (!silenceIntroDismissed && !hasSeenIntro("silence")) {
+      const dismiss = () => { markIntroSeen("silence"); setSilenceIntroDismissed(true); };
+      return <PracticeIntro intro="silence" beginLabel={t("practice_intro.begin_silence", { defaultValue: "Settle into silence" })} onBegin={dismiss} onSkip={dismiss} />;
+    }
     return (
       <>
         <div

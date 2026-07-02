@@ -119,7 +119,7 @@ const RULE_PRESETS: RulePreset[] = [
   { id: "psalms-daily",   emoji: "📜", sides: { morning: true, evening: true },  pray: "psalms",   silence: true,  goalMin: 5,  reflections: ["fdd"] },
   // CENTERING PRAYER — two daily sits of silence in the school of Thomas Keating,
   // with the Center for Action & Contemplation's daily meditation.
-  { id: "centering",      emoji: "📿", sides: { morning: true, evening: true },  pray: "contemplation", silence: true, goalMin: 15, reflections: ["cac"] },
+  { id: "centering",      emoji: "🕯️", sides: { morning: true, evening: true },  pray: "contemplation", silence: true, goalMin: 15, reflections: ["cac"] },
   // THE DAILY OFFICE — full Morning & Evening Prayer from the Book of Common Prayer.
   { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"] },
 ];

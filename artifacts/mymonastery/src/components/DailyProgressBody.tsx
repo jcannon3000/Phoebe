@@ -24,7 +24,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
-import { commitmentDay, COMMITMENT_DAYS } from "@/lib/commitment";
+import { commitmentDay, COMMITMENT_DAYS, clearCommitment } from "@/lib/commitment";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -148,6 +148,10 @@ function CardSubtitleCycle({ values, className, style }: { values: string[]; cla
 // rail. Same /api/me/prayer-days the rhythm hook reads (React Query dedupes).
 function StreakCard() {
   const { t } = useTranslation();
+  // When the 30-day trial completes, a one-time review moment shows here until
+  // the pray-er acts (keep / tend) — which clears the commitment and returns the
+  // ordinary streak. Local flag re-renders the card the moment they choose.
+  const [reviewDismissed, setReviewDismissed] = useState(false);
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
@@ -176,6 +180,50 @@ function StreakCard() {
   const trialDay = Math.min(cDay ?? 0, COMMITMENT_DAYS);
   const keptInWindow = days.filter((d) => d.kept).length;
   const yesterdayMissed = days.length >= 2 && !days[days.length - 2].kept;
+
+  // ── Day 30+ — the rule-review moment (a genuine spiritual-direction practice,
+  // not a trophy). Persists until the pray-er keeps or tends the rule. ────────
+  const complete = !reviewDismissed && cDay !== null && cDay > COMMITMENT_DAYS;
+  if (complete) {
+    const keep = () => { clearCommitment(); setReviewDismissed(true); };
+    return (
+      <div
+        className="relative flex rounded-2xl overflow-hidden mt-6"
+        style={{ background: "rgba(22,46,32, 0.40)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${GREEN_BRIGHT},0.4)` }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.85)` }} />
+        <div className="flex-1 px-4 py-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl flex-shrink-0">🌿</span>
+            <p className="flex-1 min-w-0" style={{ color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 700, lineHeight: 1.2 }}>
+              {t("rhythm.review_title", { defaultValue: "A month of days" })}
+            </p>
+          </div>
+          <p className="text-[13px] mt-2" style={{ color: SAGE, fontFamily: FONT, lineHeight: 1.5 }}>
+            {t("rhythm.review_body", { defaultValue: "What began as something you were holding has begun to hold you. Keep this rhythm as it is, or tend it — deepen the silence, add a practice, reshape a day." })}
+          </p>
+          <div className="flex items-center gap-2.5 mt-3.5">
+            <button
+              onClick={keep}
+              className="flex-1 rounded-xl text-center"
+              style={{ background: `rgba(${GREEN},0.72)`, border: `1px solid rgba(${GREEN_BRIGHT},0.6)`, color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 700, padding: "12px 0", cursor: "pointer" }}
+            >
+              {t("rhythm.review_keep", { defaultValue: "Keep this rhythm" })}
+            </button>
+            <Link
+              href="/rule-of-life"
+              onClick={keep}
+              className="flex-1 rounded-xl text-center"
+              style={{ background: "rgba(143,175,150,0.14)", border: "1px solid rgba(143,175,150,0.3)", color: SAGE, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "12px 0", cursor: "pointer" }}
+            >
+              {t("rhythm.review_tend", { defaultValue: "Tend my rule" })}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
