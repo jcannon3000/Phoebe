@@ -593,6 +593,7 @@ export const en = {
     practices_heading: "Today's practices",
     next_heading: "Next",
     done_heading: "Done",
+    tomorrow_heading: "Tomorrow",
   },
 
   // ── Daily-complete celebration (all practices kept) ──────────────────────

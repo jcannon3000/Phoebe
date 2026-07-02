@@ -40,6 +40,22 @@ export function isSlotOpen(slot: CustomSlot, now: Date = new Date()): boolean {
   return now.getHours() >= (SLOT_OPEN_HOUR[slot] ?? 0);
 }
 
+// The local hour (0–23) after which a daytime slot has clearly PASSED for today
+// — morning is behind you by noon, midday by 2 PM, afternoon by 5 PM (each rolls
+// forward when the next block begins). "evening" is the last slot (never rolls
+// to tomorrow), and "anytime" is flexible all day, so both are null (never past).
+export const SLOT_CLOSE_HOUR: Record<CustomSlot, number | null> = {
+  morning: 12, anytime: null, midday: 14, afternoon: 17, evening: null,
+};
+
+// Is this slot's window in the PAST for today? Used to route an undone practice
+// to the "Tomorrow" section instead of nagging catch-up in Next — e.g. morning
+// practices when you set up in the evening. null-close slots are never past.
+export function isSlotPast(slot: CustomSlot, now: Date = new Date()): boolean {
+  const close = SLOT_CLOSE_HOUR[slot];
+  return close != null && now.getHours() >= close;
+}
+
 // A short "opens at" label for a gated slot (e.g. "10 AM"), or null when the
 // slot is never gated (morning / anytime).
 export function slotOpensLabel(slot: CustomSlot): string | null {

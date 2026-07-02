@@ -588,6 +588,7 @@ export const es: Translations = {
     practices_heading: "Prácticas de hoy",
     next_heading: "Siguiente",
     done_heading: "Hecho",
+    tomorrow_heading: "Mañana",
   },
 
   // ── Celebración de ritmo completo (todas las prácticas) ──────────────────

@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, getSideLevel, type ReflectionSource } fro
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, SLOT_RANK, isSlotOpen, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -730,9 +730,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // the Examen + Gratitude are end-of-day, so they sit in the evening.
   const rawCards = [
     // Morning drops off Daily progress once the morning is past (afternoon) and
-    // it wasn't prayed — we don't nag about a missed morning or pretend it's
-    // done; it simply isn't shown. If they DID pray it, it stays (kept).
-    ...(morningActive && (morningDone || hour < 12) ? [{
+    // it wasn't prayed — we don't nag about a missed morning in Next; past noon
+    // an undone morning drops to the "Tomorrow" section (the partition below), so
+    // it's included here regardless of the hour rather than silently omitted.
+    ...(morningActive ? [{
       key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
@@ -863,12 +864,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ? coloredCards.filter((c) => c.key !== heroSide)
     : coloredCards;
 
-  // Split into Next (to-do) and Done, then fade each card up in a gentle
-  // stagger on mount. (The earlier "fly the card from Next into Done" replay —
-  // built on framer-motion layout + popLayout — glitched, so it's gone: on
-  // return the finished card simply renders in Done with the same clean fade.)
+  // An undone practice whose time-of-day has already PASSED (e.g. morning
+  // practices when you set up in the evening) belongs to TOMORROW, not Next —
+  // we don't make you play catch-up. It drops to a quiet "Tomorrow" section at
+  // the bottom (still tappable if you do want to do it now), so Next always
+  // starts where you are in today's rhythm.
+  const tomorrowDisplay = visibleCards.filter((c) => !c.done && isSlotPast(c.slot));
+  // Split the rest into Next (to-do today) and Done, then fade each card up in a
+  // gentle stagger on mount.
   const upcomingDisplay = (() => {
-    const all = visibleCards.filter((c) => !c.done);
+    const all = visibleCards.filter((c) => !c.done && !isSlotPast(c.slot));
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
@@ -876,10 +881,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   })();
   // Everything kept today stays in the Done section all day — until the whole
   // day's rhythm is complete — so the home always reflects what's been prayed.
-  // (We used to drop Morning Prayer + the reflection after noon; that made the
-  // Done section quietly empty out as the day went on.)
   const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
+  const showTomorrowSection = tomorrowDisplay.length > 0;
 
   // On the native first app-open the splash covers the home; hold the card
   // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN
@@ -913,7 +917,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // it gets the first tick and every card below cascades a haptic IN the same
     // top-to-bottom (time-of-day) order they rise in. Without the hero in the
     // count it cascaded in silently and the ticks lagged the cards by one.
-    const count = (officeHero ? 1 : 0) + upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
+    const count = (officeHero ? 1 : 0) + upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + (showTomorrowSection ? tomorrowDisplay.length : 0);
     const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
     const PEAK = 0.42;         // every tick's strength (uniform)
@@ -925,7 +929,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       }, START_DELAY + i * STEP));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection, officeHero]);
+  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection, tomorrowDisplay.length, showTomorrowSection, officeHero]);
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
   // divider line trailing off to the right.
@@ -949,9 +953,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : true
   );
 
-  // A subtle lightness ramp across the WHOLE routine stack (Next then Done) —
-  // the top card sits a touch lighter, easing a touch darker toward the bottom.
-  const stackCount = upcomingDisplay.length + completedDisplay.length;
+  // A subtle lightness ramp across the WHOLE routine stack (Next → Done →
+  // Tomorrow) — the top card sits a touch lighter, easing darker toward the bottom.
+  const stackCount = upcomingDisplay.length + completedDisplay.length + tomorrowDisplay.length;
   const tintFor = (globalIdx: number) => (stackCount <= 1 ? 0.4 : globalIdx / (stackCount - 1));
 
   const renderCard = (c: (typeof cards)[number], pulse = false, tint = 0.4, blurDelay?: number) => (
@@ -1038,6 +1042,27 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           </div>
         </div>
       )}
+      {/* "Tomorrow" — undone practices whose time-of-day has passed (e.g. morning
+          practices when you set up in the evening). At the bottom, so Next stays
+          focused on what's left today. Still tappable if you want to do one now. */}
+      {showTomorrowSection && (
+        <div className={(upcomingDisplay.length > 0 || officeHero || showDoneSection) ? "mt-8" : ""}>
+          <motion.div {...enterUp(upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0))}>
+            {sectionHeader(t("daily_progress.tomorrow_heading", { defaultValue: "Tomorrow" }))}
+          </motion.div>
+          <div className="flex flex-col gap-2">
+            {tomorrowDisplay.map((c, i) => {
+              const idx = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + i;
+              return (
+                <motion.div key={c.key} {...enterUp(idx)}>
+                  {renderCard(c, false, tintFor(idx), blurLand(idx))}
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Weekly progress grid removed — the rhythm is a fresh start each day
           ("every day we begin again"), so no week-at-a-glance accumulation. */}
 
