@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 
 // ── Prayers for the Climate ──────────────────────────────────────────────────
 //
@@ -49,6 +50,8 @@ export default function CreationPrayersPage() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
+    // Creation Prayer is hidden for now — bounce any direct navigation home.
+    if (!CREATION_PRAYER_ENABLED) { setLocation("/"); return; }
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
@@ -56,9 +59,10 @@ export default function CreationPrayersPage() {
     queryKey: ["/api/creation/library"],
     queryFn: () => apiRequest("GET", "/api/creation/library"),
     staleTime: 60 * 60 * 1000,
-    enabled: !!user,
+    enabled: !!user && CREATION_PRAYER_ENABLED,
   });
 
+  if (!CREATION_PRAYER_ENABLED) return null;
   if (isLoading || !user) return null;
 
   return (

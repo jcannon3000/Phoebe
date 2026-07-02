@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { OfficeViewer, type LiturgyMode } from "./bcp-daily-office";
+import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 
 // ── Creation Prayer — a creation-focused Daily Devotion ──────────────────────
 //
@@ -20,6 +21,8 @@ export default function CreationDevotionPage() {
   const [cameFromPicker, setCameFromPicker] = useState(false);
 
   useEffect(() => {
+    // Creation Prayer is hidden for now — bounce any direct navigation home.
+    if (!CREATION_PRAYER_ENABLED) { setLocation("/"); return; }
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
@@ -36,6 +39,7 @@ export default function CreationDevotionPage() {
 
   const pick = (m: LiturgyMode) => { setCameFromPicker(true); setShowMode(m); };
 
+  if (!CREATION_PRAYER_ENABLED) return null;
   if (isLoading || !user) return null;
 
   if (showMode === "creation-morning" || showMode === "creation-evening") {

@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout } from "@/lib/homeLayoutCache";
+import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import {
   setSideLevel,
   setSideReflection,
@@ -1276,9 +1277,8 @@ export default function WayOfLoveRuleFlow({
           {/* Creation Prayer — a creation-focused devotion (the creation Psalter
               + prayers, opening with the Co-Breathe breath). IS this side's
               prayer, like the office; mutually exclusive with the BCP office.
-              (Co-Breathe is no longer a separate option here — it's part of
-              Creation Prayer.) */}
-          {!pilot && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, opening with Co-Breathe." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
+              Hidden for now behind CREATION_PRAYER_ENABLED. */}
+          {!pilot && CREATION_PRAYER_ENABLED && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, opening with Co-Breathe." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
           {/* Forward Day by Day — an add-on reflection; the next step picks read
               vs. listen (feeds the reflection/newsletter set). */}
           {choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}

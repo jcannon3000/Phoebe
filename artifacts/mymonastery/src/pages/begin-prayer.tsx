@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getSideLevel, getSideEntry, type OfficeSide } from "@/lib/officePrefs";
+import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 
 // /begin-prayer — landing page for the iOS "Begin prayer" home-screen
 // shortcut. iOS quick actions are static (configured in Info.plist),
@@ -102,8 +103,9 @@ export default function BeginPrayerPage() {
       return;
     }
     // Creation Prayer IS this side's prayer → the creation-focused devotion
-    // (opens with Co-Breathe, then the creation Psalter + prayers).
-    if (defaultPrayerLevel === "creation") {
+    // (opens with Co-Breathe, then the creation Psalter + prayers). Hidden for
+    // now — when off, a stale "creation" pref falls through to the office below.
+    if (CREATION_PRAYER_ENABLED && defaultPrayerLevel === "creation") {
       setLocation(`/creation-devotion?mode=creation-${side}&picked=1`, { replace: true });
       return;
     }

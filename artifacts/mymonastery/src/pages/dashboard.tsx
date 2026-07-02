@@ -18,6 +18,7 @@ import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -3681,7 +3682,9 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   }
   // Per-user: Creation Prayer IS this side's prayer → its card replaces the
   // office card. Labels Morning/Evening Creation Prayer when both sides use it.
-  if (getSideLevel(isMorning ? "morning" : "evening") === "creation") {
+  // Hidden behind CREATION_PRAYER_ENABLED — when off, a stale "creation" pref
+  // falls through to the normal office card.
+  if (CREATION_PRAYER_ENABLED && getSideLevel(isMorning ? "morning" : "evening") === "creation") {
     return <CreationHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
 
