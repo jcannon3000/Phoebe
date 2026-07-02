@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useRef, type ReactNode, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
@@ -101,16 +102,24 @@ type RulePreset = {
   silence: boolean; goalMin: number;
   reflections: ReflectionSource[];
 };
+// Ordered by ascending commitment (least → most time), so a beginner reads down
+// from the gentlest rule. Each maps to real schools of prayer: the catechumen's
+// first anchor, the Benedictine psalter, the Keating/Centering stream, and
+// prayer-book Anglicanism.
 const RULE_PRESETS: RulePreset[] = [
-  // FIRST = the shape a brand-new user already has on their home (Morning +
-  // Evening Psalms + Forward Day by Day + a 5-minute silence). Keep this in sync
-  // with the new-user defaults: getSideLevel→"psalms", the FDD reflection
-  // fallback, and the 5-minute starter goal in useRhythmState. So the customizer
-  // opens reflecting what's on the home, not a different rule.
-  { id: "psalms-daily",   emoji: "📜", sides: { morning: true, evening: true },  pray: "psalms",   silence: true,  goalMin: 5,  reflections: ["fdd"] },
+  // A GENTLE START — the smallest rule: one short morning prayer. For beginning.
   { id: "morning-anchor", emoji: "🌅", sides: { morning: true, evening: false }, pray: "devotion", silence: false, goalMin: 0, reflections: ["fdd"] },
+  // THE PSALMS — the shape a brand-new user already has on their home (Morning +
+  // Evening Psalms + Forward Day by Day + a 5-minute silence). Keep in sync with
+  // the new-user defaults: getSideLevel→"psalms", the FDD reflection fallback,
+  // and the 5-minute starter goal in useRhythmState — so Customize opens
+  // reflecting what's on the home, not a different rule.
+  { id: "psalms-daily",   emoji: "📜", sides: { morning: true, evening: true },  pray: "psalms",   silence: true,  goalMin: 5,  reflections: ["fdd"] },
+  // CENTERING PRAYER — two daily sits of silence in the school of Thomas Keating,
+  // with the Center for Action & Contemplation's daily meditation.
+  { id: "centering",      emoji: "📿", sides: { morning: true, evening: true },  pray: "contemplation", silence: true, goalMin: 15, reflections: ["cac"] },
+  // THE DAILY OFFICE — full Morning & Evening Prayer from the Book of Common Prayer.
   { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"] },
-  { id: "contemplative",  emoji: "🕯️", sides: { morning: true, evening: true },  pray: "devotion", silence: true,  goalMin: 10, reflections: ["fdd"] },
 ];
 
 // Contemplation goal options — a single dropdown in 5-minute increments.
@@ -264,11 +273,17 @@ export default function WayOfLoveRuleFlow({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
-  // Everyone — new or returning — opens straight into the shaping flow at
-  // "when". The first-run "starter" suggestions screen was removed: a new user
-  // just starts (their defaults already match the home), they aren't handed a
-  // menu of preset rules first.
-  const [step, setStep] = useState<Step>("when");
+  const [, setLocation] = useLocation();
+  // A brand-new author — nobody has chosen a side level yet — is offered the
+  // preset picker ("automatic mode"): four whole rules to adopt and tune, so
+  // they don't have to know how to "drive stick" to begin. Anyone with an
+  // existing rule (or the trimmed pilot flow) opens straight into the manual
+  // shaping flow at "when", as before. "Or build my own →" drops into it too.
+  const [step, setStep] = useState<Step>(() => {
+    if (pilot) return "when";
+    const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
+    return hasRule ? "when" : "starter";
+  });
   // When a named starter rule is adopted, its id parks here until the next render
   // (after the state setters have applied) so the commit effect writes the rule.
   const [adoptId, setAdoptId] = useState<string | null>(null);
@@ -1856,11 +1871,13 @@ export default function WayOfLoveRuleFlow({
   // ── Starter — a first author receives a named rule (adopt whole, tune later),
   // or chooses to build their own. Adopting commits the preset, then beholds it.
   if (step === "starter") {
+    // Each card carries a plain-English line + a TIME COST — people commit to a
+    // time budget, not a liturgy, so the cost is what makes the choice legible.
     const meta = (id: string) =>
-      id === "psalms-daily" ? { label: t("wol_rule.preset_psalms", { defaultValue: "Praying the Psalms" }), who: t("wol_rule.preset_psalms_who", { defaultValue: "The day's psalms, morning and evening, with a few minutes of silence." }) }
-      : id === "morning-anchor" ? { label: t("wol_rule.preset_morning_anchor", { defaultValue: "A simple morning anchor" }), who: t("wol_rule.preset_morning_anchor_who", { defaultValue: "For beginning a daily habit of prayer." }) }
-      : id === "offices" ? { label: t("wol_rule.preset_offices", { defaultValue: "Morning & evening with the offices" }), who: t("wol_rule.preset_offices_who", { defaultValue: "For praying the daily office, morning and night." }) }
-      : { label: t("wol_rule.preset_contemplative", { defaultValue: "The contemplative path" }), who: t("wol_rule.preset_contemplative_who", { defaultValue: "For someone drawn to daily silence." }) };
+      id === "morning-anchor" ? { label: t("wol_rule.preset_morning_anchor", { defaultValue: "A gentle start" }), who: t("wol_rule.preset_morning_anchor_who", { defaultValue: "One short prayer to anchor the morning — the rule you keep beats the rule you break." }), cost: t("wol_rule.preset_morning_anchor_cost", { defaultValue: "~5 min a day" }) }
+      : id === "psalms-daily" ? { label: t("wol_rule.preset_psalms", { defaultValue: "Praying the Psalms" }), who: t("wol_rule.preset_psalms_who", { defaultValue: "The day's psalms, morning and evening — the way monastics have prayed for 1,500 years." }), cost: t("wol_rule.preset_psalms_cost", { defaultValue: "~10 min · twice a day" }) }
+      : id === "centering" ? { label: t("wol_rule.preset_centering", { defaultValue: "Centering Prayer" }), who: t("wol_rule.preset_centering_who", { defaultValue: "Two daily sits in silence, in the school of Thomas Keating, with the CAC's daily meditation." }), cost: t("wol_rule.preset_centering_cost", { defaultValue: "15 min · twice a day" }) }
+      : { label: t("wol_rule.preset_offices", { defaultValue: "The Daily Office" }), who: t("wol_rule.preset_offices_who", { defaultValue: "The church's ancient morning and evening prayer, from the Book of Common Prayer." }), cost: t("wol_rule.preset_offices_cost", { defaultValue: "~20 min · twice a day" }) };
     return shell(
       <>
         <div style={{ textAlign: "center", marginTop: 8 }}>
@@ -1869,10 +1886,10 @@ export default function WayOfLoveRuleFlow({
             {t("wol_rule.starter_eyebrow", { defaultValue: "Your rule of life" })}
           </p>
           <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
-            {t("wol_rule.starter_title", { defaultValue: "Begin with a shape" })}
+            {t("wol_rule.starter_title", { defaultValue: "Choose a rhythm" })}
           </h1>
           <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
-            {t("wol_rule.starter_sub", { defaultValue: "Receive a simple rule and grow into it — you can change anything after." })}
+            {t("wol_rule.starter_sub", { defaultValue: "Each one is a complete daily practice — pick the one that fits your life. You can change anything later." })}
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
@@ -1883,16 +1900,22 @@ export default function WayOfLoveRuleFlow({
                 <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{pr.emoji}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{m.label}</span>
-                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{m.who}</span>
+                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2, lineHeight: 1.45 }}>{m.who}</span>
+                  <span style={{ display: "block", color: SAGE_DIM, fontSize: 11, fontWeight: 700, fontFamily: FONT, letterSpacing: "0.3px", marginTop: 5 }}>{m.cost}</span>
                 </span>
                 <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 18, flexShrink: 0 }} aria-hidden>›</span>
               </button>
             );
           })}
         </div>
-        <button onClick={() => { touchedRef.current = true; setStep("when"); }} style={{ marginTop: 18, background: "none", border: "none", color: SAGE, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
-          {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18, alignItems: "center" }}>
+          <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
+          </button>
+          <button onClick={() => { touchedRef.current = true; setStep("when"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
+            {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
+          </button>
+        </div>
       </>,
     );
   }
