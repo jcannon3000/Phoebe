@@ -2392,6 +2392,35 @@ export async function migrate() {
       ON rule_of_life_requests (user_id)
     `);
 
+    // rhythm_parties — "keeping a rhythm together": 2–3 people sharing one
+    // 30-day commitment. The invite token CARRIES the rule (preset_id), so
+    // accepting applies the same rhythm and aligns everyone to one Day-N count.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS rhythm_parties (
+        id SERIAL PRIMARY KEY,
+        created_by_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL,
+        preset_id TEXT NOT NULL,
+        days INTEGER NOT NULL DEFAULT 30,
+        start_ymd TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ended_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS rhythm_parties_token ON rhythm_parties (token)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS rhythm_parties_by_creator ON rhythm_parties (created_by_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS rhythm_party_members (
+        id SERIAL PRIMARY KEY,
+        party_id INTEGER NOT NULL REFERENCES rhythm_parties(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS rhythm_party_members_once ON rhythm_party_members (party_id, user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS rhythm_party_members_by_user ON rhythm_party_members (user_id)`);
+
     // ── Group chat — a message stream scoped to a community (group) ───────
     await run(client, `
       CREATE TABLE IF NOT EXISTS group_messages (
