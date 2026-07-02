@@ -119,12 +119,20 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     // today isn't prayed yet. Walk backward over the kept SET, not the N-day
     // display window, so the count is NOT capped at the window size. Bounded at
     // the session lookback (~400 days) so the loop always terminates.
+    //
+    // GRACE BUFFER: one missed day per rolling week is silently bridged — the
+    // streak doesn't break on a single slip (a rhythm isn't a chain). Two
+    // misses within seven days end it. The forgiven day itself doesn't add to
+    // the count; it just doesn't sever what came before. No "streak freeze"
+    // inventory, no UI — it simply doesn't break.
     let streak = 0;
+    let lastForgivenI: number | null = null;
     for (let i = keptToday ? 0 : 1; i < 400; i++) {
       const ymd = ymdMinus(i);
       if (ymd < createdYmd) break; // don't count days before the account/routine existed
-      if (kept.has(ymd)) streak++;
-      else break;
+      if (kept.has(ymd)) { streak++; continue; }
+      if (lastForgivenI === null || i - lastForgivenI >= 7) { lastForgivenI = i; continue; }
+      break;
     }
 
     res.json({ days, streak, last7, keptToday });

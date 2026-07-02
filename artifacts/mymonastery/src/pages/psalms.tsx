@@ -6,6 +6,8 @@ import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/l
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { PracticeIntro } from "@/components/PracticeIntro";
+import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -176,6 +178,10 @@ export default function PsalmsPage() {
   const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
   const total = slides.length;
   const [index, setIndex] = useState(0);
+  // First-ever visit gets a one-card intro to what the Psalms ARE (what it is /
+  // where it comes from / what to do), so a beginner isn't dropped into a
+  // lectionary chooser unguided.
+  const [introDismissed, setIntroDismissed] = useState(false);
 
   // A still leaf backdrop, picked once — matching the office slideshow.
   const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -228,6 +234,12 @@ export default function PsalmsPage() {
 
   const eyebrowLabel = office === "evening" ? "The Psalm Appointed For This Evening" : "The Psalm Appointed For This Morning";
   const sourceLabel = cycle === "monthly" ? "From the Monthly Psalter" : "From the Daily Office Lectionary";
+
+  // ── First-run intro — teach the practice before the chooser. ─────────────
+  if (!introDismissed && !hasSeenIntro("psalms")) {
+    const dismiss = () => { markIntroSeen("psalms"); setIntroDismissed(true); };
+    return <PracticeIntro intro="psalms" onBegin={dismiss} onSkip={dismiss} />;
+  }
 
   // ── Loading / empty ──────────────────────────────────────────────────────
   if (isLoading) {

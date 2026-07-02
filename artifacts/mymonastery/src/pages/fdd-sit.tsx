@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,8 @@ import { Layout } from "@/components/layout";
 import ReflectionThoughts from "@/components/ReflectionThoughts";
 import { openExternal } from "@/lib/openExternal";
 import { FDD_TODAY_URL, recordFddOpened } from "@/lib/cacReadState";
+import { PracticeIntro } from "@/components/PracticeIntro";
+import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 
 // ── /reflect/fdd — Forward Day by Day companion ─────────────────────────────
 //
@@ -46,8 +48,16 @@ export default function FddSitPage() {
     enabled: !!user,
     staleTime: 30 * 60_000,
   });
+  // First-ever visit gets a one-card intro to what Forward Day by Day IS, so a
+  // beginner isn't handed a bare reflection link unguided.
+  const [introDismissed, setIntroDismissed] = useState(false);
 
   if (authLoading || !user) return null;
+
+  if (!introDismissed && !hasSeenIntro("fdd")) {
+    const dismiss = () => { markIntroSeen("fdd"); setIntroDismissed(true); };
+    return <PracticeIntro intro="fdd" onBegin={dismiss} onSkip={dismiss} />;
+  }
 
   const eyebrow = { color: SAGE_DIM, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: "0.12em", fontWeight: 700, fontFamily: FONT };
   const label = t("fdd_sit.eyebrow", { defaultValue: "Forward Day by Day" });
