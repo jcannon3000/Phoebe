@@ -566,11 +566,16 @@ export function useRhythmState(): RhythmState {
     fromLayout.length > 0 ? [...fromLayout] : reflectFallback;
   const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
   const reflectActive = reflections.length > 0;
+  // Count contemplation PER SIDE (Morning + Evening Contemplation), matching the
+  // two per-side cards the home renders — not the single `silenceActive`
+  // aggregate, which under-counted the dots (2 dots for 3 cards). silenceActive/
+  // silenceDone stay as aggregates for the splash/widget/what's-next consumers.
   const coreFlags = [
     ...(morningActive ? [morningDone] : []),
+    ...(morningContemplationActive ? [morningContemplationDone] : []),
     ...reflections.map((r) => r.done),
-    ...(silenceActive ? [silenceDone] : []),
     ...(eveningActive ? [eveningDone] : []),
+    ...(eveningContemplationActive ? [eveningContemplationDone] : []),
   ];
   const extraFlags = [
     ...(cobreatheActive ? [cobreatheDone] : []),

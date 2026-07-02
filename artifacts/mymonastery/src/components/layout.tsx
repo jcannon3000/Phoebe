@@ -673,7 +673,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -703,7 +703,10 @@ function DailyProgressPill() {
     // custom morning practice — unless the user reorders their rhythm.
     ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
     ...cDots("morning"),
-    ...(silenceActive ? [{ key: "silence", done: silenceDone }] : []),
+    // Contemplation is PER SIDE (a Morning + an Evening sit) — one dot each,
+    // matching the two home cards, not a single aggregate "silence" dot (that
+    // under-counted: 2 dots for 3 cards). Morning sits here; evening near Evening.
+    ...(morningContemplationActive ? [{ key: "contemplation-morning", done: morningContemplationDone }] : []),
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
@@ -717,6 +720,7 @@ function DailyProgressPill() {
     ...(journalingActive ? [{ key: "journaling", done: journalingDone }] : []),
     ...cDots("afternoon"),
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
+    ...(eveningContemplationActive ? [{ key: "contemplation-evening", done: eveningContemplationDone }] : []),
     ...cDots("evening"),
   ];
   // Fellows are turned off for now — we no longer ping fellows when three dots
