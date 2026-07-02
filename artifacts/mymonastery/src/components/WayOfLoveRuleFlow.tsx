@@ -1320,12 +1320,7 @@ export default function WayOfLoveRuleFlow({
                     Devotion / Office) is chosen on the NEXT slide (morning-bcp /
                     evening-bcp). The sub-line shows the current choice. Tapping
                     again clears the office anchor (each row toggles independently). */}
-                {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => {
-                  if (bcpOn) { choosePrayBySide(side, "none"); }
-                  // Selecting the office clears a contemplation-only anchor —
-                  // the office is your prayer, or contemplation is, not both.
-                  else { choosePrayBySide(side, bcpForm[side]); setContemplationBySide((p) => ({ ...p, [side]: false })); }
-                })}
+                {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => choosePrayBySide(side, bcpOn ? "none" : bcpForm[side]))}
                 {bcpOn && communityWithOffice[side] && (
                   <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, paddingLeft: 22, margin: 0 }}>
                     {t("wol_rule.bcp_community_note", { defaultValue: "✓ Community intercessions are prayed within the office." })}
@@ -1345,24 +1340,16 @@ export default function WayOfLoveRuleFlow({
               // into that office (one card). On its own it IS the office; tapping
               // again clears it.
               if (bcpOn) { touchedRef.current = true; setCommunityWithOffice((p) => ({ ...p, [side]: !p[side] })); }
-              else {
-                const wasCommunity = prayBySide[side] === "community";
-                choosePrayBySide(side, wasCommunity ? "none" : "community");
-                // Choosing the Prayer List AS the office clears a contemplation anchor.
-                if (!wasCommunity) setContemplationBySide((p) => ({ ...p, [side]: false }));
-              }
+              else choosePrayBySide(side, prayBySide[side] === "community" ? "none" : "community");
             });
           })()}
-          {/* Contemplation — silent prayer AS this side's prayer. Mutually
-              exclusive with the office: choosing it clears the BCP office /
-              community so silence stands on its own (one Contemplation card, no
-              office beside it). Choosing an office clears it in turn. */}
-          {choiceRow(contemplationBySide[side], `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer, on its own — no office alongside." }), () => {
-            const turningOn = !contemplationBySide[side];
-            toggleContemplationSide(side);
-            chooseContemplationStyle("silent");
-            if (turningOn) { choosePrayBySide(side, "none"); setCommunityWithOffice((p) => ({ ...p, [side]: false })); }
-          })}
+          {/* Contemplative Prayer — a silent sit. An add-on (its own Silence
+              card), so it rides alongside a BCP office rather than replacing it.
+              INVARIANT (reference_customizer_addon_model): NEVER call
+              choosePrayBySide here — it's an add-on, not the office anchor.
+              Contemplation-only = leave the office rows off (prayBySide "none")
+              and turn this on. */}
+          {choiceRow(contemplationBySide[side], `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "A silent sit — its own card for this part of the day." }), () => { toggleContemplationSide(side); chooseContemplationStyle("silent"); })}
           {/* Creation Prayer — a creation-focused devotion (the creation Psalter
               + prayers, opening with the Co-Breathe breath). IS this side's
               prayer, like the office; mutually exclusive with the BCP office.
