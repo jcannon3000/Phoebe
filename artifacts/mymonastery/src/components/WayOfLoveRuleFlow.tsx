@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { RhythmWhyIntro } from "@/components/RhythmWhyIntro";
 import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
@@ -283,6 +284,16 @@ export default function WayOfLoveRuleFlow({
     if (pilot) return "when";
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
     return hasRule ? "when" : "starter";
+  });
+  // Show the "technology of holding" prelude ONCE, before the very first author
+  // reaches the preset picker — it names why a daily practice matters and where
+  // it leads, so the customizer isn't a stick shift you must already know how to
+  // drive. Gated on a localStorage flag + first-author (same signal as `step`).
+  const [showWhy, setShowWhy] = useState<boolean>(() => {
+    if (pilot) return false;
+    const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
+    if (hasRule) return false;
+    try { return !localStorage.getItem("phoebe:rhythm-why-seen"); } catch { return false; }
   });
   // When a named starter rule is adopted, its id parks here until the next render
   // (after the state setters have applied) so the commit effect writes the rule.
@@ -1109,6 +1120,19 @@ export default function WayOfLoveRuleFlow({
       </span>
     </button>
   );
+
+  // ── The "technology of holding" prelude — shown once before the first author
+  // reaches the preset picker (all hooks above have already run). ────────────
+  if (showWhy) {
+    return (
+      <RhythmWhyIntro
+        onDone={() => {
+          try { localStorage.setItem("phoebe:rhythm-why-seen", "1"); } catch { /* ignore */ }
+          setShowWhy(false);
+        }}
+      />
+    );
+  }
 
   // ── Contemplative practices — multi-select (pick any) ─────────────────────
   if (step === "contemplative") {
