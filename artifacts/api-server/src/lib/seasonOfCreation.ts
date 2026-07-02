@@ -125,6 +125,58 @@ export function creationPsalmRefsFor(date: Date, side: CreationSide, single: boo
   return single ? creationPsalmRefsSingle(date) : creationPsalmRefs(date, side);
 }
 
+// ── Daily Office Readings — "A Two-Week Office for the Season of Creation."
+//    Every Daily Office creation reading in the guide, appointed across the
+//    fortnight and PAIRED with each office's psalms. The readings move as an arc
+//    — creation · the wisdom and praise of creation · lament over its harm · its
+//    redemption in Christ — with three touchstones (John 1, Romans 8, Colossians
+//    1) recurring to fill fourteen days. Scripture = public domain (rendered via
+//    oremus/NRSV in the office). ───────────────────────────────────────────────
+export const CREATION_READING_CYCLE: Record<CreationWeek, Record<number, { morning: string; evening: string }>> = {
+  A: {
+    0: { morning: "Genesis 1:1-2:4a", evening: "John 1:1-14" },                 // Sunday
+    1: { morning: "Genesis 9:8-17", evening: "Colossians 1:15-20" },            // Monday
+    2: { morning: "Job 38:1-11", evening: "Romans 8:18-25" },                   // Tuesday
+    3: { morning: "Job 38-39", evening: "Acts 17:22-31" },                      // Wednesday
+    4: { morning: "Proverbs 8:22-31", evening: "1 Corinthians 15:35-49" },      // Thursday
+    5: { morning: "Hosea 4:1-3", evening: "Romans 1:18-23" },                   // Friday (lament)
+    6: { morning: "Ecclesiastes 1:1-11", evening: "Matthew 6:25-34" },          // Saturday
+  },
+  B: {
+    0: { morning: "Isaiah 40:21-31", evening: "Revelation 21:1-22:5" },         // Sunday
+    1: { morning: "Isaiah 11:1-9", evening: "Colossians 1:15-20" },             // Monday
+    2: { morning: "Isaiah 35:1-10", evening: "Romans 8:18-25" },                // Tuesday
+    3: { morning: "Isaiah 55:1-13", evening: "John 1:1-14" },                   // Wednesday
+    4: { morning: "Ezekiel 34:17-31", evening: "Wisdom of Solomon 7:15-22" },   // Thursday
+    5: { morning: "Jeremiah 2:7-8", evening: "Wisdom of Solomon 13:1-9" },      // Friday (lament)
+    6: { morning: "Joel 2:21-27", evening: "Job 12:7-10" },                     // Saturday
+  },
+};
+
+// The 28-office flat cycle (morning then evening per day, Week A then B) — laid
+// out in the SAME order as CREATION_PSALTER_FLAT, so a once-a-day pray-er's
+// reading stays paired with their psalms across the four-week stretch.
+export const CREATION_READING_FLAT: string[] = (() => {
+  const flat: string[] = [];
+  (["A", "B"] as CreationWeek[]).forEach((week) => {
+    for (let wd = 0; wd < 7; wd++) {
+      flat.push(CREATION_READING_CYCLE[week][wd].morning);
+      flat.push(CREATION_READING_CYCLE[week][wd].evening);
+    }
+  });
+  return flat; // 28 entries
+})();
+
+/** The appointed creation reading for a date + office. `single` (prays Creation
+ *  Prayer once a day) follows the 28-day flat cycle so it pairs with the four-week
+ *  Psalter; two-a-day pray-ers get the paired two-week reading. Fixed by the
+ *  calendar — the same for everyone praying this office on this date. */
+export function creationReadingRefFor(date: Date, side: CreationSide, single: boolean): string {
+  if (single) return CREATION_READING_FLAT[creationDayIndex(date)];
+  const { week, weekday } = creationCyclePosition(date);
+  return CREATION_READING_CYCLE[week][weekday][side];
+}
+
 // ── The Season of Creation is Sep 1 → Oct 4 (World Day of Prayer for the Care
 //    of Creation → the Feast of St. Francis). The devotion can be prayed any
 //    day, but we use this to gently surface it in-season. ──────────────────────

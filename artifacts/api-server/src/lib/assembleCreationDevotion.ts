@@ -23,6 +23,7 @@ import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMornin
 import {
   creationCyclePosition,
   creationPsalmRefsFor,
+  creationReadingRefFor,
   creationScheduleSeq,
   CREATION_ATTRIBUTION,
   CREATION_OPENING_SENTENCES,
@@ -36,13 +37,14 @@ import {
 } from "./seasonOfCreation";
 import {
   creationCollectFor,
-  creationReadingFor,
   creationBlessingFor,
   creationQuoteFor,
   creationCanticleFor,
   creationAffirmationFor,
   creationLitanyFor,
 } from "./creationLibrary";
+// NB: the office READING now comes from the appointed two-week lectionary paired
+// with the psalms (creationReadingRefFor), not the standalone reading pool.
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -139,7 +141,10 @@ export async function assembleCreationDevotion(
       callAndResponseLines: [
         { speaker: "officiant", text: CREATION_INVITATORY.officiant },
         { speaker: "people", text: CREATION_INVITATORY.people },
-        { speaker: "both", text: CREATION_GLORIA },
+        // Split the Creation Gloria on its line break so the doxology's second
+        // line ("as it was in the beginning…") sits on its own line — the CR
+        // renderer draws one <p> per entry and collapses embedded newlines.
+        ...CREATION_GLORIA.split("\n").map((t) => ({ speaker: "both" as const, text: t.trim() })),
       ],
       bcpReference: CREATION_ATTRIBUTION, metadata: src,
     }),
@@ -182,9 +187,12 @@ export async function assembleCreationDevotion(
   // 6. Antiphon — repeated after the psalmody.
   slides.push(slide(id(), "antiphon", "🌿", "ANTIPHON", antiphon, { bcpReference: CREATION_ATTRIBUTION, metadata: src }));
 
-  // 7. The Reading — a creation Scripture (in place of the Gospel/NT reading).
-  const reading = creationReadingFor(seq);
-  for (const s of buildLessonSlides(reading.ref, isMorning ? "devotion_morning" : "devotion_evening", id)) slides.push(s);
+  // 7. The Reading — the appointed creation Scripture for this office, PAIRED
+  //    with today's psalms (the guide's two-week Daily Office lectionary; John 1,
+  //    Romans 8, and Colossians 1 recur as the season's touchstones). `single`
+  //    (once-a-day) follows the four-week flat cycle so it stays paired.
+  const readingRef = creationReadingRefFor(date, side, single);
+  for (const s of buildLessonSlides(readingRef, isMorning ? "devotion_morning" : "devotion_evening", id)) slides.push(s);
 
   // 8. Words on Creation — a rotating quote (the guide offers these as short readings).
   const quote = creationQuoteFor(seq);
