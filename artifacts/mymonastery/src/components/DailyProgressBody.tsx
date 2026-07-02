@@ -853,7 +853,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // the morning sit met the daily minutes goal.
     ...(morningContemplationActive ? [{
       key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: morningContemplationDone,
-      href: "/contemplation?begin=1&side=morning",
+      // With a set sit length, Begin opens straight into a timer at that length
+      // (?sit=N), skipping the length picker.
+      href: `/contemplation?begin=1&side=morning${contemplationGoalMin > 0 ? `&sit=${contemplationGoalMin}` : ""}`,
       title: t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
       blurb: contemplationBlurbFor(morningContemplationDone),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
@@ -861,7 +863,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }] : []),
     ...(eveningContemplationActive ? [{
       key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
-      href: "/contemplation?begin=1&side=evening",
+      href: `/contemplation?begin=1&side=evening${contemplationGoalMin > 0 ? `&sit=${contemplationGoalMin}` : ""}`,
       title: t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
       blurb: contemplationBlurbFor(eveningContemplationDone),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
@@ -960,7 +962,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // day's rhythm is complete — so the home always reflects what's been prayed.
   const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
-  const showTomorrowSection = tomorrowDisplay.length > 0;
+  // The "Tomorrow" preview only makes sense on a fresh, nothing-kept-yet open —
+  // e.g. you set up your rule in the evening, so the morning practices roll to
+  // tomorrow. Once you've kept ANYTHING today, a past-slot practice is simply
+  // missed for today: it drops off quietly rather than showing a confusing
+  // "Tomorrow · Morning …" beside your Done list.
+  const showTomorrowSection = tomorrowDisplay.length > 0 && completedDisplay.length === 0;
 
   // On the native first app-open the splash covers the home; hold the card
   // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN

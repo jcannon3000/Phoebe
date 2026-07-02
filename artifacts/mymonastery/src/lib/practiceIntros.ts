@@ -22,9 +22,9 @@ export type PracticeIntroContent = {
 export const PRACTICE_INTROS: Record<PracticeIntroKey, PracticeIntroContent> = {
   silence: {
     emoji: "🕯️", eyebrow: "Silence", title: "Resting in silence",
-    what: "A few minutes of stillness, doing nothing — not emptying your mind, just letting thoughts pass and gently returning to rest in God's presence.",
+    what: "A few minutes of stillness, simply resting in the presence of God. Thoughts drift in and out like clouds, and you let them pass.",
     from: "The Christian contemplative tradition — the Desert mothers and fathers, and in our own day Thomas Keating's Centering Prayer.",
-    how: "Sit comfortably, close your eyes. When you notice you've drifted into thinking, simply return — as many times as it takes. That returning is the prayer.",
+    how: "Sit comfortably and close your eyes. Each time you notice you've drifted into thinking, gently return to that quiet resting — as many times as it takes. The returning itself is the prayer.",
   },
   office: {
     emoji: "📖", eyebrow: "The Daily Office", title: "Morning & Evening Prayer",
@@ -40,7 +40,7 @@ export const PRACTICE_INTROS: Record<PracticeIntroKey, PracticeIntroContent> = {
   },
   examen: {
     emoji: "🌙", eyebrow: "The Examen", title: "The Daily Examen",
-    what: "A gentle look back over your day with God — noticing where you felt life and love, and where you didn't.",
+    what: "A gentle look back over your day with God — noticing where you felt most alive and loved, and where that was harder to find.",
     from: "St. Ignatius of Loyola, who thought it the one practice never to skip.",
     how: "Recall the day with thanks, notice the moments that drew you toward or away from God, and carry one into tomorrow.",
   },

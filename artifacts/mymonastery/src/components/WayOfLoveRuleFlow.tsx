@@ -1349,7 +1349,14 @@ export default function WayOfLoveRuleFlow({
               choosePrayBySide here — it's an add-on, not the office anchor.
               Contemplation-only = leave the office rows off (prayBySide "none")
               and turn this on. */}
-          {choiceRow(contemplationBySide[side], `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "A silent sit — its own card for this part of the day." }), () => { toggleContemplationSide(side); chooseContemplationStyle("silent"); })}
+          {choiceRow(contemplationBySide[side], `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "A silent sit — its own card for this part of the day." }), () => {
+            const turningOn = !contemplationBySide[side];
+            toggleContemplationSide(side);
+            chooseContemplationStyle("silent");
+            // A silent sit needs a length — default to 5 minutes if none is set
+            // yet, so the config step + the home "Begin" have a duration to use.
+            if (turningOn && goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
+          })}
           {/* Creation Prayer — a creation-focused devotion (the creation Psalter
               + prayers, opening with the Co-Breathe breath). IS this side's
               prayer, like the office; mutually exclusive with the BCP office.
@@ -1488,6 +1495,30 @@ export default function WayOfLoveRuleFlow({
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 4 }}>
               {choiceRow(psalmCycle === "office", `📖 ${t("wol_rule.psalms_office_label", { defaultValue: "In step with the office" })}`, t("wol_rule.psalms_office_sub", { defaultValue: "The psalms appointed in the daily office — about 2–3 a day." }), () => choosePsalmCycle("office"))}
               {choiceRow(psalmCycle === "monthly", `📜 ${t("wol_rule.psalms_monthly_label", { defaultValue: "The whole Psalter, monthly" })}`, t("wol_rule.psalms_monthly_sub", { defaultValue: "All 150 psalms across a month — fuller, more psalms a day (about 5)." }), () => choosePsalmCycle("monthly"))}
+            </div>
+          </>
+        )}
+        {/* Contemplation is this side's prayer → also ask HOW LONG the sit is
+            (the default the home "Begin" opens straight into). Sets the shared
+            silence goal / timer length. */}
+        {contemplationBySide[side] && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
+            </p>
+            <div style={{ position: "relative", marginBottom: 4 }}>
+              <select
+                value={String(goalMin > 0 ? goalMin : 5)}
+                onChange={(e) => { chooseGoal(e.target.value); chooseSilenceMode("fixed"); }}
+                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
+                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+              >
+                {goalMin > 0 && ![5, 10, 15, 20, 30].includes(goalMin) && (
+                  <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
+                )}
+                {[5, 10, 15, 20, 30].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
           </>
         )}
