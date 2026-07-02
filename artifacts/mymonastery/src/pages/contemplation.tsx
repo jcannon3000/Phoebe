@@ -12,7 +12,8 @@ const CONTEMPLATION_LEAF = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer, type ContemplationWhatsNext } from "@/components/ContemplationTimer";
-import { getSideMinutes, getReflectionSource } from "@/lib/officePrefs";
+import { getSideMinutes, getReflectionSource, getSideContemplationExplicit } from "@/lib/officePrefs";
+import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { useAuth } from "@/hooks/useAuth";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -544,6 +545,28 @@ export default function ContemplationPage() {
   // contemplation-only rhythm still ends on somewhere to go (the day's word).
   // Falls back to the single effective reflection source when no home layout is
   // saved yet. Null → the summary's button just closes (no extra slide).
+  // Attribute a finished sit to a side so the right per-side card ("Morning" /
+  // "Evening Contemplation") flips to kept. An explicit ?side= (the side card
+  // that launched this) wins; otherwise the sit clears the first still-undone
+  // active side (order: morning then evening).
+  const attributeSit = () => {
+    let explicitSide: "morning" | "evening" | null = null;
+    try {
+      const s = new URLSearchParams(window.location.search).get("side");
+      if (s === "morning" || s === "evening") explicitSide = s;
+    } catch { /* ignore */ }
+    const mSet = getSideContemplationExplicit("morning");
+    const eSet = getSideContemplationExplicit("evening");
+    const anyExplicit = mSet !== null || eSet !== null;
+    const activeSides = {
+      // With an explicit per-side pick, honor it; otherwise (legacy global goal)
+      // both sides carry a card, so either can receive the sit.
+      morning: anyExplicit ? mSet === true : true,
+      evening: anyExplicit ? eSet === true : true,
+    };
+    attributeContemplationSit({ explicitSide, activeSides });
+  };
+
   const whatsNext: ContemplationWhatsNext | null = (() => {
     const order = user?.homeLayout?.order ?? [];
     const hidden = new Set(user?.homeLayout?.hidden ?? []);
@@ -894,7 +917,7 @@ export default function ContemplationPage() {
           open={timerOpen}
           startMinutes={startMinutes}
           whatsNext={whatsNext}
-          onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) setLocation("/dashboard"); }}
+          onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) { attributeSit(); setLocation("/dashboard"); } }}
         />
       </>
     );
@@ -1201,7 +1224,7 @@ export default function ContemplationPage() {
         open={timerOpen}
         startMinutes={startMinutes}
         whatsNext={whatsNext}
-        onClose={() => { setTimerOpen(false); setStartMinutes(undefined); }}
+        onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) attributeSit(); }}
       />
     </Layout>
   );

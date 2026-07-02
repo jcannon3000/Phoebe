@@ -9,7 +9,8 @@ import {
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
-import { getSideLevel, getExplicitSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -62,6 +63,13 @@ export type RhythmState = {
    *  chosen). A user who turns one off drops its card + dot + weekly row. */
   morningActive: boolean;
   silenceActive: boolean;
+  /** Per-side Contemplative Prayer — the Morning / Evening Contemplation cards.
+   *  Each is its own card, kept independently (a sit from one side's card clears
+   *  that side; evening stays visible after the morning sit meets the goal). */
+  morningContemplationActive: boolean;
+  eveningContemplationActive: boolean;
+  morningContemplationDone: boolean;
+  eveningContemplationDone: boolean;
   reflectActive: boolean;
   /** Each reflection newsletter the user follows (cac/fdd/ssje) — one per chosen
    *  source, each its OWN card + dot + done-state. Empty when none chosen. */
@@ -286,6 +294,32 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
+  // Per-side contemplation completion (which side's silent sit is kept today) —
+  // its own day-flag so an undone evening sit stays in Next even after the
+  // morning sit met the daily minutes goal.
+  const [contemplationSideDone, setContemplationSideDone] = useState(() => ({
+    morning: hasContemplationSideDoneToday("morning"),
+    evening: hasContemplationSideDoneToday("evening"),
+  }));
+  useEffect(() => {
+    const recheck = () => setContemplationSideDone({
+      morning: hasContemplationSideDoneToday("morning"),
+      evening: hasContemplationSideDoneToday("evening"),
+    });
+    window.addEventListener(CONTEMPLATION_SIDE_DONE_EVENT, recheck);
+    window.addEventListener("focus", recheck);
+    window.addEventListener("pageshow", recheck);
+    window.addEventListener("storage", recheck);
+    window.addEventListener("phoebe:appactive", recheck);
+    return () => {
+      window.removeEventListener(CONTEMPLATION_SIDE_DONE_EVENT, recheck);
+      window.removeEventListener("focus", recheck);
+      window.removeEventListener("pageshow", recheck);
+      window.removeEventListener("storage", recheck);
+      window.removeEventListener("phoebe:appactive", recheck);
+    };
+  }, []);
+
   const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
     queryKey: ["/api/me/office-history-week"],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
@@ -431,10 +465,6 @@ export function useRhythmState(): RhythmState {
   // re-evaluated it). Otherwise a saved goal, or the 5-minute starter default.
   const ladderLevel = ladderEnabled && typeof ladderData?.level === "number" ? ladderData.level : null;
   const contemplationGoalMin = ladderLevel != null ? ladderLevel : ((!user?.homeLayout && rawGoalMin === 0) ? 5 : rawGoalMin);
-  // Silence is a daily-MINUTES goal: the dot lights (and the Silence card shows
-  // ✓) once today's contemplation minutes reach the chosen goal, the card's
-  // progress bar filling on the way there. If no goal is set, any silence counts.
-  const silenceDone = contemplationGoalMin > 0 ? contemplationMin >= contemplationGoalMin : contemplationMin > 0;
 
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
@@ -490,7 +520,30 @@ export function useRhythmState(): RhythmState {
   const eveningActive = customized
     ? (elExplicit != null ? isActiveLevel(elExplicit) : ((officePrefs?.evening ?? null) != null && officePrefs?.evening !== "none"))
     : (isActiveLevel(el) || (officePrefs?.evening ?? "devotion") !== "none");
-  const silenceActive = contemplationGoalMin > 0;
+  // Per-side Contemplative Prayer → the home's Morning / Evening Contemplation
+  // cards. Explicit per-side flags win; a customized user with a legacy single
+  // silence goal (no per-side pick yet) migrates to BOTH sides; an un-set-up user
+  // falls back to the reflect-sit default (evening only for a fresh rhythm).
+  // "Has the user made an EXPLICIT per-side pick?" — a written 0 or 1 for either
+  // side. Only then do we read the per-side flags; otherwise a legacy single goal
+  // migrates to both sides. (Checking `=== true` here would wrongly re-migrate a
+  // user who deliberately turned BOTH sides off.)
+  const perSideContemplationSet = getSideContemplationExplicit("morning") !== null || getSideContemplationExplicit("evening") !== null;
+  const morningContemplationActive = customized
+    ? (perSideContemplationSet ? getSideContemplation("morning") : contemplationGoalMin > 0)
+    : (getSideLevel("morning") === "reflect-sit");
+  const eveningContemplationActive = customized
+    ? (perSideContemplationSet ? getSideContemplation("evening") : contemplationGoalMin > 0)
+    : (getSideLevel("evening") === "reflect-sit");
+  const morningContemplationDone = contemplationSideDone.morning;
+  const eveningContemplationDone = contemplationSideDone.evening;
+  // Aggregate, for the single-silence consumers (splash / widget / prayer-mode /
+  // routine-print / TodaysRhythm): active if either side is; done when every
+  // active side is kept. silenceGoalMet stays available for minutes displays.
+  const silenceActive = morningContemplationActive || eveningContemplationActive;
+  const silenceDone = silenceActive
+    && (!morningContemplationActive || morningContemplationDone)
+    && (!eveningContemplationActive || eveningContemplationDone);
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
@@ -565,6 +618,10 @@ export function useRhythmState(): RhythmState {
     eveningActive,
     morningActive,
     silenceActive,
+    morningContemplationActive,
+    eveningContemplationActive,
+    morningContemplationDone,
+    eveningContemplationDone,
     reflectActive,
     reflections,
     gratitudeActive,

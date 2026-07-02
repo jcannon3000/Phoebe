@@ -566,7 +566,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, silenceLadder, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -605,31 +605,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
     t("rhythm.with_community", { defaultValue: "with community prayers" }),
   ];
-  // With a daily goal set, the card reads as goal PROGRESS — "12 of 60 min
-  // today", or "Reached today 🌿" once met — matching the home Contemplation
-  // card. Gentle, never a deficit: a short sit still keeps the dot (silenceDone
-  // = any sit). With no goal set, it falls back to "You rested in silence today".
-  // Days still needed to reach the next rung. This branch only renders when
-  // the goal is MET today, so today already counts toward the climb — subtract
-  // it from the server's daysToNext (which scores completed days up to
-  // yesterday). 0 left = today was the last day; the rung grows tomorrow.
-  const ladderDaysLeft = silenceLadder ? Math.max(0, silenceLadder.daysToNext - 1) : 0;
-  const contemplationBlurb = silenceLadder
-    // "Grow my silence" ladder: the blurb carries the climb toward 30 min.
-    ? (contemplationMin >= contemplationGoalMin
-        ? (silenceLadder.atMax
-            ? t("rhythm.silence_summit", { defaultValue: "Reached 30 min — your summit 🌿" })
-            : ladderDaysLeft <= 0
-              ? t("rhythm.silence_grows_tomorrow", { next: silenceLadder.nextLevel, defaultValue: `Kept today · grows to ${silenceLadder.nextLevel} min tomorrow 🌿` })
-              : t("rhythm.silence_met_grow", { count: ladderDaysLeft, next: silenceLadder.nextLevel, defaultValue: `Kept today · ${ladderDaysLeft} ${ladderDaysLeft === 1 ? "day" : "days"} to ${silenceLadder.nextLevel} min` }))
-        : t("rhythm.silence_progress_grow", { done: contemplationMin, goal: contemplationGoalMin, next: silenceLadder.nextLevel, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min · growing to ${silenceLadder.nextLevel}` }))
+  // Per-side Contemplative Prayer blurb — a silent sit is binary (kept this side
+  // or not), so the card reads "kept" when done, else the sit length. The daily
+  // minutes goal + ladder still set the timer length; they no longer gate the
+  // per-side card (so evening stays inviting after the morning sit met the goal).
+  const contemplationBlurbFor = (done: boolean) => done
+    ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
     : contemplationGoalMin > 0
-      ? (contemplationMin >= contemplationGoalMin
-          ? t("rhythm.contemplation_goal_met", { defaultValue: "Reached today 🌿" })
-          : t("rhythm.contemplation_goal_progress", { done: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }))
-      : silenceDone
-        ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
-        : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
+      ? t("rhythm.contemplation_side_len", { mins: contemplationGoalMin, defaultValue: `${contemplationGoalMin} min of stillness` })
+      : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   const officeTitle = (side: "Morning" | "Evening") => {
     // Praying the Psalms IS this side's prayer → the card reads "Morning Psalms"
@@ -785,15 +769,24 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
-    ...(silenceActive ? [{
-      key: "silence", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
-      href: "/contemplation?begin=1",
-      title: t("rhythm.card_silence", { defaultValue: "Silence" }),
-      blurb: contemplationBlurb,
+    // Per-side Contemplative Prayer — Morning / Evening Contemplation, each its
+    // own card at its slot, completed independently (a sit from this card clears
+    // THIS side; ?side= tells the timer which). Evening stays in Next even after
+    // the morning sit met the daily minutes goal.
+    ...(morningContemplationActive ? [{
+      key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: morningContemplationDone,
+      href: "/contemplation?begin=1&side=morning",
+      title: t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
+      blurb: contemplationBlurbFor(morningContemplationDone),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      // Goal progress bar fills as today's contemplation minutes accrue; once the
-      // goal is met the card keeps inviting more ("Sit again").
-      progress: { current: contemplationMin, goal: contemplationGoalMin },
+      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+    }] : []),
+    ...(eveningContemplationActive ? [{
+      key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
+      href: "/contemplation?begin=1&side=evening",
+      title: t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
+      blurb: contemplationBlurbFor(eveningContemplationDone),
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     // Optional practices ride at the time of day the user chose for each.
@@ -950,7 +943,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const lead = upcomingDisplay[0] as (undefined | (typeof cards)[number] & { later?: boolean });
   const leadPulse = !!lead && !lead.done && !lead.later && (
     lead.key === "evening" ? hour >= 17
-    : lead.key === "silence" ? !(contemplationGoalMin > 0 && contemplationMin > contemplationGoalMin * 0.5 && hour < 15)
+    // Don't nag a contemplation card early if today's sit already covered
+    // >50% of the goal before 3pm (matches the old single-silence behaviour).
+    : (lead.key === "contemplation-morning" || lead.key === "contemplation-evening") ? !(contemplationGoalMin > 0 && contemplationMin > contemplationGoalMin * 0.5 && hour < 15)
     : true
   );
 

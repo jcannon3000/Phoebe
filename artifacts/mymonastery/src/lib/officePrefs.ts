@@ -452,6 +452,29 @@ export function setCommunityWithOffice(side: OfficeSide, v: boolean): void {
   } catch { /* non-fatal */ }
 }
 
+// Per-side Contemplative Prayer — is a silent sit part of the rhythm for THIS
+// side? Drives the home's per-side "Morning/Evening Contemplation" cards (each
+// its own card, completed independently). A never-set key returns null so
+// callers can distinguish "not chosen per-side yet" (fall back to the legacy
+// single silence goal) from an explicit on/off.
+export function getSideContemplationExplicit(side: OfficeSide): boolean | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:contemplation:${side}`);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch { /* private mode */ }
+  return null;
+}
+export function getSideContemplation(side: OfficeSide): boolean {
+  return getSideContemplationExplicit(side) === true;
+}
+export function setSideContemplation(side: OfficeSide, v: boolean): void {
+  try {
+    localStorage.setItem(`phoebe:office:contemplation:${side}`, v ? "1" : "0");
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
 // ── React hook ─────────────────────────────────────────────────────
 // Snapshot the prefs into state and refresh on any change. Use this
 // instead of calling the getters in render — otherwise the component
