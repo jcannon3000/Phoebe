@@ -88,17 +88,6 @@ export function CobreathePrayerIntro({
         </>
       )}
 
-      {/* Exit ✕ — top-right, safe-area aware (matches the office). Skips the
-          prayer and hands straight into the breathing. */}
-      <button
-        onClick={onSkip}
-        aria-label="Skip the prayer"
-        className="absolute right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
-        style={{ top: "calc(var(--safe-top) + 12px)", color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
-      >
-        ×
-      </button>
-
       {/* Content — vertically centered in the viewport, same wrapper the office
           uses (max-width 560, asymmetric padding reserving the bottom band for
           the slide counter). Tap anywhere to advance (except the final slide,
@@ -112,7 +101,7 @@ export function CobreathePrayerIntro({
           minHeight: "100dvh",
           justifyContent: "center",
           paddingTop: "clamp(24px, 6dvh, 72px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 120px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
           cursor: isLast ? "default" : "pointer",
           position: "relative",
         }}
@@ -188,14 +177,35 @@ export function CobreathePrayerIntro({
         </AnimatePresence>
       </div>
 
-      {/* Slide counter — the office's "X of Y" footer mark, same position. */}
+      {/* Bottom controls — the office's "X of Y" counter, with a Next pill and a
+          Skip beneath it. The final "breath" slide hides the pill + Skip (it
+          advances via its own inline Continue) and shows just the counter. */}
       <div
-        className="absolute left-0 right-0 flex justify-center pointer-events-none"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+        className="absolute left-0 right-0 flex flex-col items-center"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)" }}
       >
-        <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em", fontFamily: SPACE_GROTESK }}>
+        <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em", fontFamily: SPACE_GROTESK, marginBottom: 16 }}>
           {i + 1} of {SLIDES.length}
         </p>
+        {!isLast && (
+          <>
+            <button
+              type="button"
+              onClick={next}
+              className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.5)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 8 }}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              onClick={onSkip}
+              style={{ color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, background: "transparent", border: "none", cursor: "pointer", padding: "2px 8px" }}
+            >
+              Skip
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
