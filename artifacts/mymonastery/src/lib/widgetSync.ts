@@ -1,239 +1,184 @@
 /**
- * Feeds the iOS Home Screen widget (PhoebeWidget) the SAME dynamic
- * "what's next" hero the home screen shows: Morning Prayer → the primary
- * reflection → Evening Prayer, then a "day is kept" community summary once
- * everything's done. The resolver below mirrors `homeHero` in dashboard.tsx
- * so the widget and the home never disagree.
+ * Feeds the iOS Home/Lock-Screen widget (PhoebeWidget) the SAME "what's next"
+ * the home screen shows. Rather than re-deriving the rhythm (which drifted as new
+ * practices were added), it reads the SINGLE source of truth — useRhythmState —
+ * and orders every ACTIVE practice by its time-of-day slot exactly the way
+ * DailyProgressBody does, then pushes the first still-to-do one (skipping
+ * practices whose slot has already passed — those are "tomorrow", not "next").
  *
- * Native only: on web `PhoebeNative` is undefined and every fetch is gated
- * off, so this is a true no-op. Mount <WidgetSync /> once where the app
- * lands; react-query keeps the small fetches shared with the rest of the app.
+ * Native only: on web `PhoebeNative` is undefined and the push is a no-op. Mount
+ * <WidgetSync /> once where the app lands. The payload FIELD SET is unchanged, so
+ * the Swift widget needs no rebuild — only the values it renders improve.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useEffectiveReflectionSource, getSideLevel } from "@/lib/officePrefs";
-import {
-  hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
-  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
-} from "@/lib/cacReadState";
+import { getSideLevel } from "@/lib/officePrefs";
+import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
+import { useRhythmState } from "@/hooks/useRhythmState";
 
 type WidgetState = {
-  // Dynamic "what's next" hero — the medium widget's headline card.
   heroKind: "office" | "reflect" | "summary";
-  // The small eyebrow above the title — mirrors the home hero card ("Book of
-  // Common Prayer" for the office, the publication for the reflection).
   heroEyebrow: string;
   heroTitle: string;
   heroSubtitle: string;
   heroCta: string;        // "" → no button (summary state)
-  heroDeepLink: string;   // universal link the widget tap opens
-  // Rhythm stats — kept for the lock-screen / small accessory families.
+  heroDeepLink: string;
   streakDays: number;
   prayedToday: boolean;
   nextOffice: string;
-  // New prayer requests waiting for the viewer — the lock-screen rectangular
-  // widget leads with "N prayer requests waiting" when this is > 0.
   newPrayersCount: number;
-  // Daily rhythm progress — how many of today's core anchors (Morning office,
-  // the day's reflection, Evening office) are done, so the widget reflects how
-  // far through the rhythm the day is. reflectAvailable is false when the user
-  // has no reflection source, so the widget skips that anchor.
   doneCount: number;
   totalAnchors: number;
-  // One 1/0 per ACTIVE rhythm anchor today, in home-pill order (Morning ·
-  // Reflection · Silence · Evening · Steps) — drives the widget's dots.
   dots: number[];
   morningDone: boolean;
   reflectDone: boolean;
   eveningDone: boolean;
   reflectAvailable: boolean;
-  // Today's contemplation minutes + the daily goal (0 = no goal) — the
-  // lock-screen "Today" widget shows the minutes/goal + a progress ring.
   contemplationMin: number;
   contemplationGoalMin: number;
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
 
-// The reflection card's headline name, by effective source. Mirrors the
-// CacHomeCard / FddHomeCard / SsjeHomeCard titles on home.
+// The reflection card's headline name, by source — mirrors the home reflection cards.
 const REFLECTION_NAME: Record<string, string> = {
   cac: "CAC Daily Reflection",
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
 };
 
-// Tapping the widget opens the app on home, where the identical hero (with
-// its Begin/Read action) is the first thing — so the widget and its tap
-// target always agree. The appUrlOpen router (native-shell) handles it.
 const HOME_URL = "https://withphoebe.app/";
 
-function ymd(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
+// One entry per practice that can be "next". `kind` only tunes the widget's
+// accent colour (office green / reflect teal); `slot` drives the ordering.
+type NextItem = {
+  active: boolean;
+  done: boolean;
+  slot: CustomSlot;
+  title: string;
+  eyebrow: string;
+  subtitle: string;
+  cta: string;
+  kind: "office" | "reflect";
+};
 
 export function useWidgetSync(): void {
   const { user } = useAuth();
   const native = isNativeShell();
   const enabled = !!user && native;
 
-  // Effective reflection source is derived synchronously from prefs —
-  // cheap, no fetch, safe to call on web.
-  const reflectionSource = useEffectiveReflectionSource();
+  // The single source of truth for the rhythm — same flags the home renders.
+  const r = useRhythmState();
 
-  const officeQ = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
-    queryKey: ["/api/me/office-history-week"],
-    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
-    enabled,
-    staleTime: 60_000,
-  });
-  const streakQ = useQuery<{ streak: number }>({
-    queryKey: ["/api/prayer-streak"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
-    enabled,
-    staleTime: 60_000,
-  });
-  const readQ = useQuery<{ cac?: boolean; fdd?: boolean; ssje?: boolean }>({
-    queryKey: ["/api/me/reflections-read"],
-    queryFn: () => apiRequest("GET", "/api/me/reflections-read"),
-    enabled,
-    staleTime: 60_000,
-  });
-  // Today's CAC headline for the reflect hero's subtitle (the only source
-  // with a per-day title endpoint; fdd/ssje fall back to a generic line).
-  const cacMetaQ = useQuery<{ title?: string }>({
-    queryKey: ["/api/cac/today-meta"],
-    queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
-    enabled: enabled && reflectionSource === "cac",
-    staleTime: 30 * 60_000,
-  });
-  // Community summary counts for the "day is kept" hero.
+  // Community summary counts (for the "day is kept" hero) + new prayer requests
+  // (the lock-screen rectangular leads with these) — not part of useRhythmState.
   const prayedWithQ = useQuery<{ people?: unknown[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
-    enabled,
-    staleTime: 5 * 60_000,
+    enabled, staleTime: 5 * 60_000,
   });
   const coPrayersQ = useQuery<{ people?: unknown[] }>({
     queryKey: ["/api/prayer-streak/co-prayers-week"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
-    enabled,
-    staleTime: 5 * 60_000,
+    enabled, staleTime: 5 * 60_000,
   });
-  // New prayer requests waiting — same source + filter the dashboard's
-  // "N prayer requests waiting" card uses (requests only, not own, not yet
-  // amened/answered/closed). React Query dedupes with the dashboard fetch.
   const prayerReqsQ = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; myAmenedEver?: boolean }>>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
-    enabled,
-    staleTime: 60_000,
+    enabled, staleTime: 60_000,
   });
-  // Prayer level → so the office hero reads "Devotion"/"Prayer" exactly like the
-  // home PrayerOfficeCard (the user prefers a Devotion, so the widget should
-  // say "Evening Devotion", not "Evening Prayer").
-  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; morning?: string; evening?: string; dailyStepGoal?: number; dailyStepReachedDate?: string | null }>({
-    queryKey: ["/api/me/office-prefs"],
-    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
-    enabled,
-    staleTime: 60_000,
-  });
-  // Today's contemplation minutes (Phoebe sits + Apple Health mindful minutes,
-  // the same combination useRhythmState uses) — for the lock-screen "Today"
-  // widget's "N of M min" + progress ring. The goal comes from office-prefs.
-  const widgetStartOfDay = new Date();
-  widgetStartOfDay.setHours(0, 0, 0, 0);
-  const widgetTodaySince = widgetStartOfDay.toISOString();
-  const widgetTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
-  const contStatsQ = useQuery<{ todaySeconds?: number; healthMinutesToday?: number }>({
-    queryKey: ["/api/me/contemplation-stats", widgetTodaySince.slice(0, 10), widgetTz],
-    queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(widgetTodaySince)}&tz=${encodeURIComponent(widgetTz)}`),
-    enabled,
-    staleTime: 30_000,
+  // Today's CAC headline for the reflect hero's subtitle (only source with a
+  // per-day title endpoint; fdd/ssje fall back to a generic line).
+  const cacSource = r.reflections.some((x) => x.source === "cac");
+  const cacMetaQ = useQuery<{ title?: string }>({
+    queryKey: ["/api/cac/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
+    enabled: enabled && cacSource, staleTime: 30 * 60_000,
   });
 
-  // A reflection is read on another surface (often the in-app browser): it
-  // stamps localStorage + fires a read-event, but the server read-state query
-  // may still be stale. Bump on those signals (and office-pref changes) so the
-  // push effect re-runs and the widget drops the reflection from "what's next"
-  // the moment it's actually read.
-  const [readBump, setReadBump] = useState(0);
-  useEffect(() => {
-    const bump = () => setReadBump((n) => n + 1);
-    const evs = [CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, "phoebe:appactive", "phoebe:browserfinished", "phoebe:office-prefs"];
-    evs.forEach((e) => window.addEventListener(e, bump));
-    return () => evs.forEach((e) => window.removeEventListener(e, bump));
-  }, []);
+  // Stable signatures for the array-valued rhythm state, so the push effect
+  // re-runs only when the reflections / custom anchors actually change (their
+  // refs are fresh every render).
+  const reflSig = r.reflections.map((x) => `${x.source}:${x.done ? 1 : 0}`).join(",");
+  const customSig = r.customAnchors.map((a) => `${a.id}:${a.done ? 1 : 0}:${a.slot}:${a.skipped ? 1 : 0}`).join(",");
 
   useEffect(() => {
     if (!enabled) return;
-    // Push even before office-history lands (or if it's empty) so the widget
-    // always gets the full hero payload instead of being stuck on the bare
-    // "Time to pray" no-data fallback. With no days yet, both offices read as
-    // undone → the hero resolves to the morning office, which the next data
-    // tick corrects.
-    const days = officeQ.data?.days ?? [];
-
-    const today = days.find((d) => d.ymd === ymd(new Date())) ?? days[days.length - 1];
-    const morningDone = !!today?.morning;
-    const eveningDone = !!today?.evening;
-    const read = readQ.data ?? {};
-    // Server read-state OR this device's localStorage — a reflection read in the
-    // in-app browser stamps localStorage instantly while the server query can
-    // lag, which is what left the widget showing a reflection already done as
-    // "next up". Mirrors useRhythmState so the widget agrees with the home.
-    const reflectDone = !!read.cac || !!read.fdd || !!read.ssje
-      || hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
-    const reflectAvailable = reflectionSource !== "none";
-    // An office is part of the rhythm only when its pref isn't "none" (defaults:
-    // morning "devotion", evening off) — the same gate as the home hero, so the
-    // widget never offers a turned-off office as "what's next".
-    const morningActive = (officePrefsQ.data?.morning ?? "devotion") !== "none";
-    const eveningActive = (officePrefsQ.data?.evening ?? "none") !== "none";
-    const afternoon = new Date().getHours() >= 15;
-
-    // ── Mirror dashboard.tsx homeHero resolver (active-gated) ───────────────
-    type Hero =
-      | { kind: "office"; side: "morning" | "evening" }
-      | { kind: "reflect" }
-      | { kind: "summary" };
-    const hero: Hero = (() => {
-      const morningPending = morningActive && !morningDone;
-      const eveningPending = eveningActive && !eveningDone;
-      const reflectPending = reflectAvailable && !reflectDone;
-      if (!morningPending && !eveningPending && !reflectPending) return { kind: "summary" };
-      if (!afternoon) {
-        if (morningPending) return { kind: "office", side: "morning" };
-        if (reflectPending) return { kind: "reflect" };
-        if (eveningPending) return { kind: "office", side: "evening" };
-        return { kind: "summary" };
-      }
-      if (eveningPending) return { kind: "office", side: "evening" };
-      if (reflectPending) return { kind: "reflect" };
-      if (morningPending) return { kind: "office", side: "morning" };
-      return { kind: "summary" };
-    })();
-
+    const now = new Date();
     const withYou = prayedWithQ.data?.total ?? prayedWithQ.data?.people?.length ?? 0;
     const youFor = coPrayersQ.data?.people?.length ?? 0;
     const newPrayersCount = (prayerReqsQ.data ?? []).filter(
-      (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
+      (x) => !x.isAnswered && !x.isOwnRequest && !x.closedAt && !x.myAmenedEver,
     ).length;
 
-    // Whether the user prays a Devotion (vs the full Office) — global default
-    // OR either per-side level, same resolution the home card + useRhythmState
-    // use. Drives "Evening Devotion" vs "Evening Prayer" so the widget reads
-    // identically to the in-app hero.
-    const dpl = officePrefsQ.data?.defaultPrayerLevel;
-    const isDevotion = dpl === "devotion"
-      || getSideLevel("morning") === "devotion"
-      || getSideLevel("evening") === "devotion"
-      || (dpl !== "office" && getSideLevel("morning") !== "office" && getSideLevel("evening") !== "office");
+    // Office title, matching DailyProgressBody.officeTitle (Psalms / Devotion /
+    // Prayer / Pray together, per the side's level + the effective prayer kind).
+    const officeTitle = (side: "Morning" | "Evening"): string => {
+      const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
+      if (lvl === "psalms") return `${side} Psalms`;
+      if (r.prayerKind === "community") return "Pray together";
+      if (r.prayerKind === "devotion") return `${side} Devotion`;
+      return `${side} Prayer`;
+    };
+    const officeSubtitle = (isMorning: boolean): string =>
+      withYou > 0
+        ? `${withYou} ${withYou === 1 ? "person" : "people"} prayed with you this week`
+        : isMorning ? "Begin the day with the office" : "Mark the day's end with the office";
+
+    // Every active practice, in DailyProgressBody's base order. A stable sort by
+    // slot rank then reproduces the home's time-of-day ordering; within a slot
+    // the base order below is preserved.
+    const items: NextItem[] = [
+      { active: r.morningActive, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: "Book of Common Prayer", subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office" },
+      ...r.reflections.map((rf) => ({
+        active: true, done: rf.done, slot: "morning" as CustomSlot,
+        title: REFLECTION_NAME[rf.source] ?? "Today's reflection",
+        eyebrow: REFLECTION_NAME[rf.source] ?? "Today's reflection",
+        subtitle: (rf.source === "cac" && cacMetaQ.data?.title) ? cacMetaQ.data.title : "A few minutes with the day's word",
+        cta: "Read", kind: "reflect" as const,
+      })),
+      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "A few minutes of stillness", cta: "Begin", kind: "office" },
+      { active: r.cobreatheActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Co-Breathe", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
+      { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
+      { active: r.scriptureActive, done: r.scriptureDone, slot: getPracticeSlot("scripture"), title: "Listen to Scripture", eyebrow: "The day's readings", subtitle: "Hear today's word", cta: "Listen", kind: "reflect" },
+      { active: r.lectioActive, done: r.lectioDone, slot: getPracticeSlot("lectio"), title: "Lectio Divina", eyebrow: "Praying with scripture", subtitle: "Sit with a passage", cta: "Begin", kind: "reflect" },
+      { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
+      { active: r.journalingActive, done: r.journalingDone, slot: getJournalingSlot(), title: "Journaling", eyebrow: "Keep a journal", subtitle: "Log the day", cta: "Log", kind: "office" },
+      { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
+      { active: r.prayerListActive, done: r.prayerListDone, slot: "anytime", title: "My Prayer List", eyebrow: "Your intentions", subtitle: "Pray through your list", cta: "Pray", kind: "office" },
+      { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
+      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "A few minutes of stillness", cta: "Begin", kind: "office" },
+      { active: r.gratitudeActive, done: r.gratitudeDone, slot: "evening", title: "Gratitude", eyebrow: "Name a gift", subtitle: "One gift from the day", cta: "Write", kind: "office" },
+      { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: "Book of Common Prayer", subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
+      ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
+        active: true, done: !!a.done, slot: a.slot,
+        title: a.title, eyebrow: "Your practice", subtitle: "A daily practice", cta: "Log", kind: "office" as const,
+      })),
+    ];
+
+    const active = items.filter((i) => i.active);
+    // Stable sort by time-of-day slot (Array.prototype.sort is stable) — the same
+    // ordering DailyProgressBody applies to its cards.
+    const ordered = [...active].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
+    // "Next" = the first not-done practice whose slot HASN'T already passed
+    // today (a passed slot is "tomorrow", not next). Falls back to summary.
+    const next = ordered.find((i) => !i.done && !isSlotPast(i.slot, now)) ?? null;
+
+    // The CORE anchor dots (Morning · Reflection · Silence · Evening) — kept as
+    // the compact home-pill set the widget already renders, driven by
+    // useRhythmState's aggregates so they can't drift.
+    const dots: number[] = [
+      ...(r.morningActive ? [r.morningDone ? 1 : 0] : []),
+      ...r.reflections.map((rf) => (rf.done ? 1 : 0)),
+      ...(r.silenceActive ? [r.silenceDone ? 1 : 0] : []),
+      ...(r.eveningActive ? [r.eveningDone ? 1 : 0] : []),
+    ];
+    const totalAnchors = dots.length;
+    const doneCount = dots.filter((d) => d === 1).length;
 
     let heroKind: WidgetState["heroKind"];
     let heroEyebrow: string;
@@ -241,24 +186,15 @@ export function useWidgetSync(): void {
     let heroSubtitle: string;
     let heroCta: string;
     let nextOffice = "";
-
-    if (hero.kind === "office") {
-      const isMorning = hero.side === "morning";
-      heroKind = "office";
-      heroEyebrow = "Book of Common Prayer";
-      const word = isDevotion ? "Devotion" : "Prayer";
-      heroTitle = `${isMorning ? "Morning" : "Evening"} ${word}`;
-      nextOffice = heroTitle;
-      heroSubtitle = withYou > 0
-        ? `${withYou} ${withYou === 1 ? "person" : "people"} prayed with you this week`
-        : isMorning ? "Begin the day with the office" : "Mark the day's end with the office";
-      heroCta = "Begin prayer";
-    } else if (hero.kind === "reflect") {
-      heroKind = "reflect";
-      heroEyebrow = REFLECTION_NAME[reflectionSource] ?? "Today's reflection";
-      heroTitle = (reflectionSource === "cac" ? cacMetaQ.data?.title : "") || REFLECTION_NAME[reflectionSource] || "Today's reflection";
-      heroSubtitle = "A few minutes with the day's word";
-      heroCta = "Read";
+    if (next) {
+      heroKind = next.kind === "reflect" ? "reflect" : "office";
+      heroEyebrow = next.eyebrow;
+      heroTitle = next.title;
+      heroSubtitle = next.subtitle;
+      heroCta = next.cta;
+      // nextOffice keeps the accessory families' "NEXT UP" line working for an
+      // older widget build that only read this field.
+      nextOffice = next.title;
     } else {
       heroKind = "summary";
       heroEyebrow = "The day is kept";
@@ -266,25 +202,6 @@ export function useWidgetSync(): void {
       heroSubtitle = `${withYou} prayed with you · you prayed for ${youFor}`;
       heroCta = "";
     }
-
-    // Today's contemplation minutes + goal (also a rhythm anchor when a goal's set).
-    const contemplationMin = Math.floor((contStatsQ.data?.todaySeconds ?? 0) / 60) + (contStatsQ.data?.healthMinutesToday ?? 0);
-    const contemplationGoalMin = officePrefsQ.data?.contemplationGoalMinutes ?? 0;
-
-    // Daily-progress anchors — the FULL active set, in the same order + with the
-    // same done-rules as the home header pill: Morning · Reflection · Silence ·
-    // Evening. `dots` (1/0 per active anchor) drives the widget dots so
-    // they always match the home; doneCount/totalAnchors summarise it.
-    const silenceActive = contemplationGoalMin > 0;
-    const silenceDone = contemplationMin >= contemplationGoalMin;
-    const dots: number[] = [
-      ...(morningActive ? [morningDone ? 1 : 0] : []),
-      ...(reflectAvailable ? [reflectDone ? 1 : 0] : []),
-      ...(silenceActive ? [silenceDone ? 1 : 0] : []),
-      ...(eveningActive ? [eveningDone ? 1 : 0] : []),
-    ];
-    const totalAnchors = dots.length;
-    const doneCount = dots.filter((d) => d === 1).length;
 
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
@@ -294,34 +211,35 @@ export function useWidgetSync(): void {
       heroSubtitle,
       heroCta,
       heroDeepLink: HOME_URL,
-      streakDays: streakQ.data?.streak ?? 0,
-      prayedToday: morningDone || eveningDone,
+      streakDays: r.streak,
+      prayedToday: r.morningDone || r.eveningDone,
       nextOffice,
       newPrayersCount,
       doneCount,
       totalAnchors,
       dots,
-      morningDone,
-      reflectDone,
-      eveningDone,
-      reflectAvailable,
-      contemplationMin,
-      contemplationGoalMin,
+      morningDone: r.morningDone,
+      reflectDone: r.reflectDone,
+      eveningDone: r.eveningDone,
+      reflectAvailable: r.reflectActive,
+      contemplationMin: r.contemplationMin,
+      contemplationGoalMin: r.contemplationGoalMin,
       updatedAt: new Date().toISOString(),
     });
   }, [
     enabled,
-    reflectionSource,
-    officeQ.data,
-    streakQ.data,
-    readQ.data,
-    cacMetaQ.data,
-    prayedWithQ.data,
-    coPrayersQ.data,
-    prayerReqsQ.data,
-    officePrefsQ.data,
-    contStatsQ.data,
-    readBump,
+    r.ready,
+    r.morningActive, r.morningDone, r.eveningActive, r.eveningDone,
+    r.morningContemplationActive, r.morningContemplationDone,
+    r.eveningContemplationActive, r.eveningContemplationDone,
+    r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
+    r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
+    r.scriptureActive, r.scriptureDone, r.lectioActive, r.lectioDone,
+    r.walkActive, r.walkDone, r.journalingActive, r.journalingDone,
+    r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
+    r.examenActive, r.examenDone, r.gratitudeActive, r.gratitudeDone,
+    customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
+    prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
   ]);
 }
 
