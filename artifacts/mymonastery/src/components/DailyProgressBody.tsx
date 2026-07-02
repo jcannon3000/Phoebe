@@ -943,16 +943,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ? coloredCards.filter((c) => c.key !== heroSide)
     : coloredCards;
 
-  // An undone practice whose time-of-day has already PASSED (e.g. morning
-  // practices when you set up in the evening) belongs to TOMORROW, not Next —
-  // we don't make you play catch-up. It drops to a quiet "Tomorrow" section at
-  // the bottom (still tappable if you do want to do it now), so Next always
-  // starts where you are in today's rhythm.
-  const tomorrowDisplay = visibleCards.filter((c) => !c.done && isSlotPast(c.slot));
-  // Split the rest into Next (to-do today) and Done, then fade each card up in a
-  // gentle stagger on mount.
+  // Every undone practice stays in Next (never vanishes, never rolls to a
+  // separate "Tomorrow" section — both read as confusing / data-loss). A card
+  // whose slot hasn't opened yet is still shown, quietly, as a "Later" card
+  // (handled above), so Next is simply "what's left of your rhythm today".
+  const tomorrowDisplay: typeof visibleCards = [];
   const upcomingDisplay = (() => {
-    const all = visibleCards.filter((c) => !c.done && !isSlotPast(c.slot));
+    const all = visibleCards.filter((c) => !c.done);
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
@@ -962,12 +959,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // day's rhythm is complete — so the home always reflects what's been prayed.
   const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
-  // The "Tomorrow" preview only makes sense on a fresh, nothing-kept-yet open —
-  // e.g. you set up your rule in the evening, so the morning practices roll to
-  // tomorrow. Once you've kept ANYTHING today, a past-slot practice is simply
-  // missed for today: it drops off quietly rather than showing a confusing
-  // "Tomorrow · Morning …" beside your Done list.
-  const showTomorrowSection = tomorrowDisplay.length > 0 && completedDisplay.length === 0;
+  const showTomorrowSection = false;
 
   // On the native first app-open the splash covers the home; hold the card
   // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN
