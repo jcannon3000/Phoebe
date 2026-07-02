@@ -181,7 +181,9 @@ function MomentCard({ moment, userEmail }: { moment: MomentData; userEmail: stri
             <div className="min-w-0 flex-1">
               <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
             </div>
-            {moment.currentStreak > 0 && (
+            {/* Intercessions carry no streak badge — praying for someone isn't a
+                streak to chase. */}
+            {!isIntercession && moment.currentStreak > 0 && (
               <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
                 {moment.currentStreak} day streak
               </span>

@@ -1307,7 +1307,11 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
   // commitmentSessionsLogged crosses the goal, which is the correct check.
   const sessionsGoalForCard = m.commitmentSessionsGoal ?? m.goalDays ?? null;
   const goalReachedForMe = !isLectio && !!m.commitmentGoalReachedAt;
-  const showRenewPill = goalReachedForMe && !!m.isCreator;
+  // Praying for someone isn't a goal to hit — an intercession shows no
+  // goal-reached decoration (the "Goal reached" badge, the "Renew" pill, the
+  // "N sessions prayed" flap). The creator still gets a gentle keep-praying
+  // prompt via GoalReachedModal, which is worded without streak/goal language.
+  const showRenewPill = goalReachedForMe && !!m.isCreator && m.templateType !== "intercession";
   const shouldPulse = isLectio
     ? !isLectioCaughtUp
     : showRenewPill
@@ -1387,7 +1391,9 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
   const effectiveGroupStreak = m.groupStreak ?? m.currentStreak;
   const progressLabel = isLectio
     ? (m.lectioCurrentStageLabel ?? null)
-    : (isIntercession || m.templateType === "fasting")
+    // Intercessions carry no streak badge — praying for someone isn't a streak.
+    // Fasting keeps its group-streak fire.
+    : (m.templateType === "fasting")
       ? (effectiveGroupStreak > 0 ? `🔥 ${effectiveGroupStreak}` : null)
       : null;
 
@@ -5503,20 +5509,33 @@ function GoalReachedModal({
     || (moment.templateType === "intercession" ? "🙏🏽"
     : moment.templateType === "fasting" ? "🌿"
     : "🌸");
+  // Praying for someone isn't a streak/goal to complete — an intercession keeps
+  // no "N sessions / try again / streak" framing; it just asks whether to keep
+  // holding the person in prayer.
+  const isIntercession = moment.templateType === "intercession";
 
   const slides = [
     // Slide 0: Celebration — group focused
     <div key="celebrate" className="flex flex-col items-center text-center gap-5">
       <p className="text-4xl">{emoji}</p>
       <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-        Your group kept the rhythm.
+        {isIntercession ? "You've held them in prayer." : "Your group kept the rhythm."}
       </h2>
       <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-        You set a goal of {goal} {goal === 1 ? "session" : "sessions"} for{" "}
-        <span style={{ color: "#C8D4C0" }}>{moment.name}</span>.
-        {gStreak > 0
-          ? ` Your group built a ${gStreak}-day streak together.`
-          : " The commitment is fulfilled."}
+        {isIntercession ? (
+          <>
+            You and your group have carried{" "}
+            <span style={{ color: "#C8D4C0" }}>{moment.name}</span> in prayer together.
+          </>
+        ) : (
+          <>
+            You set a goal of {goal} {goal === 1 ? "session" : "sessions"} for{" "}
+            <span style={{ color: "#C8D4C0" }}>{moment.name}</span>.
+            {gStreak > 0
+              ? ` Your group built a ${gStreak}-day streak together.`
+              : " The commitment is fulfilled."}
+          </>
+        )}
       </p>
       {memberNames.length > 0 && (
         <div className="flex flex-wrap justify-center gap-2 mt-1">
@@ -5539,7 +5558,21 @@ function GoalReachedModal({
         What would you like to do?
       </h2>
 
-      {gStreak > 0 ? (
+      {isIntercession ? (
+        <>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            Would you like to keep praying?
+          </p>
+          <button
+            onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
+            disabled={updateGoalMutation.isPending}
+            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Keep praying {emoji}
+          </button>
+        </>
+      ) : gStreak > 0 ? (
         <>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
             Your group has a {gStreak}-day streak. Keep it going?
@@ -5569,18 +5602,22 @@ function GoalReachedModal({
         </>
       )}
 
-      <button
-        onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
-        disabled={updateGoalMutation.isPending}
-        className="w-full py-3 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
-        style={{
-          background: "rgba(46,107,64,0.15)",
-          color: "#A8C5A0",
-          border: "1px solid rgba(46,107,64,0.3)",
-        }}
-      >
-        Continue without a goal
-      </button>
+      {/* "Continue without a goal" is redundant for an intercession — "Keep
+          praying" already tends it freely, with no goal. */}
+      {!isIntercession && (
+        <button
+          onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
+          disabled={updateGoalMutation.isPending}
+          className="w-full py-3 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+          style={{
+            background: "rgba(46,107,64,0.15)",
+            color: "#A8C5A0",
+            border: "1px solid rgba(46,107,64,0.3)",
+          }}
+        >
+          Continue without a goal
+        </button>
+      )}
 
       <button
         onClick={() => setDeleting(true)}

@@ -1279,12 +1279,11 @@ export default function MomentDetail() {
           // field commitmentSessionsLogged may be inflated by double-bloom bugs.
           const sessionsLogged = data?.computedSessionsLogged ?? (moment.commitmentSessionsLogged ?? 0);
           const tendFreely = moment.commitmentTendFreely ?? false;
-          const goalReached = !!sessionsGoal && sessionsLogged >= sessionsGoal;
-          // Intercessions skip every branch except the celebration / renew
-          // block — that's the only state where the creator needs this
-          // surface, and rendering progress bars here would double up with
-          // the daily prayer card.
-          if (isIntercession && !goalReached) return null;
+          // Intercessions show NO goal/streak surface at all — praying for
+          // someone isn't a streak or a goal to hit. (The "prayed this week" row
+          // above already carries the community's engagement; the creator's
+          // gentle keep-praying prompt lives in the home GoalReachedModal.)
+          if (isIntercession) return null;
           const freq = moment.frequency;
           const daysPerWeek = moment.frequencyDaysPerWeek ?? null;
           const ladder = getGoalLadder(freq, daysPerWeek);
