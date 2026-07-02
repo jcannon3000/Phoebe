@@ -21,6 +21,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { RhythmWhyIntro } from "@/components/RhythmWhyIntro";
+import { isCommitmentActive, startCommitment } from "@/lib/commitment";
 import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
@@ -2015,9 +2016,27 @@ export default function WayOfLoveRuleFlow({
       <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
         {t("wol_rule.done_edit_hint", { defaultValue: "Tap any practice to adjust it." })}
       </p>
-      <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-        {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
-      </button>
+      {/* First-time authors are invited to commit to a month — the trial that
+          carries a practice through its fragile early stretch. Grace is built in:
+          the day count never resets on a miss. Anyone already mid-trial just
+          keeps their rhythm. */}
+      {isCommitmentActive() ? (
+        <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+          {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
+        </button>
+      ) : (
+        <>
+          <p style={{ textAlign: "center", color: SAGE, fontSize: 13, fontFamily: FONT, lineHeight: 1.55, margin: "18px auto 0", maxWidth: 320 }}>
+            {t("wol_rule.commit_blurb", { defaultValue: "A practice takes about thirty days to stop being something you hold and start being something that holds you." })}
+          </p>
+          <button onClick={() => { startCommitment(); onDone(); }} style={{ marginTop: 12, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+            {t("wol_rule.commit_cta", { defaultValue: "Keep this rhythm for 30 days" })}
+          </button>
+          <button onClick={onDone} style={{ marginTop: 10, background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
+            {t("wol_rule.commit_skip", { defaultValue: "or just begin quietly" })}
+          </button>
+        </>
+      )}
     </>,
   );
 }

@@ -24,6 +24,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
+import { commitmentDay, COMMITMENT_DAYS } from "@/lib/commitment";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -167,6 +168,14 @@ function StreakCard() {
   const { days, streak, last7 } = data;
   const GREEN = "46,107,64";
   const GREEN_BRIGHT = "110,180,130";
+  // During the 30-day commitment, the flame streak is replaced by a
+  // non-resetting "Day N of 30" — position, not a streak you feel guilty about
+  // breaking. Grace is architectural: the day count never resets on a miss.
+  const cDay = commitmentDay();
+  const inTrial = cDay !== null && cDay <= COMMITMENT_DAYS;
+  const trialDay = Math.min(cDay ?? 0, COMMITMENT_DAYS);
+  const keptInWindow = days.filter((d) => d.kept).length;
+  const yesterdayMissed = days.length >= 2 && !days[days.length - 2].kept;
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
@@ -174,18 +183,30 @@ function StreakCard() {
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.7)` }} />
       <div className="flex-1 px-4 py-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl flex-shrink-0">🔥</span>
-          <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
-            {streak}
-            <span className="text-[13px] font-semibold ml-2" style={{ color: SAGE }}>
-              {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
-            </span>
-          </p>
-          <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
-            {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
-          </p>
-        </div>
+        {inTrial ? (
+          <div className="flex items-center gap-3">
+            <span className="text-2xl flex-shrink-0">🌱</span>
+            <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 24, fontWeight: 700 }}>
+              {t("rhythm.trial_day", { day: trialDay, total: COMMITMENT_DAYS, defaultValue: `Day ${trialDay} of ${COMMITMENT_DAYS}` })}
+            </p>
+            <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
+              {t("rhythm.trial_kept", { kept: keptInWindow, total: days.length, defaultValue: `kept ${keptInWindow} of ${days.length}` })}
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-2xl flex-shrink-0">🔥</span>
+            <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
+              {streak}
+              <span className="text-[13px] font-semibold ml-2" style={{ color: SAGE }}>
+                {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
+              </span>
+            </p>
+            <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
+              {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 mt-3.5">
           {days.map((d, i) => {
             const isToday = i === days.length - 1;
@@ -204,9 +225,17 @@ function StreakCard() {
             );
           })}
         </div>
-        <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
-          {t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
-        </p>
+        {inTrial && yesterdayMissed ? (
+          <p className="text-[11.5px] mt-2 italic" style={{ color: SAGE, fontFamily: FONT }}>
+            {t("rhythm.grace_line", { defaultValue: "Yesterday slipped. Rules bend — that's how they survive. Begin again this morning." })}
+          </p>
+        ) : (
+          <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
+            {inTrial
+              ? t("rhythm.trial_hint", { defaultValue: "A month of days — let it hold you." })
+              : t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
+          </p>
+        )}
         {gardenWeekCount > 0 && (
           <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
             {gardenFaces.length > 0 && (
