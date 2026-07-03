@@ -25,6 +25,8 @@ import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useAuth } from "@/hooks/useAuth";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import {
   setSideLevel,
   setSideEntry,
@@ -323,6 +325,12 @@ export default function RuleOfLifePage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
+  // PUBLIC no-login version: a signed-out visitor (flag on) gets the GUEST
+  // customizer — trimmed ways, one merged BCP slide, fixed silence goal, and a
+  // commit that writes only device-local prefs (see WayOfLoveRuleFlow's guest
+  // prop). Flag off / signed in → unchanged.
+  const { user: authUser, isLoading: authLoading } = useAuth();
+  const guestFlow = PHOEBE_GUEST_ENABLED && !authLoading && !authUser;
 
   // Public — the Rule of Life / customizer is open to all users. The beta gate
   // that redirected non-beta users to /dashboard was removed per request, so
@@ -845,6 +853,7 @@ export default function RuleOfLifePage() {
         onClose={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
       >
         <WayOfLoveRuleFlow
+          guest={guestFlow}
           onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
           onDone={() => setLocation("/daily-progress")}
         />

@@ -61,6 +61,16 @@ export function saveHomeLayout(layout: HomeLayout): Promise<unknown> {
   }).then((r) => { markSynced(); return r; });
 }
 
+// PUBLIC no-login version: a guest's layout is device-local TRUTH, not a
+// pending sync — cache it WITHOUT the dirty flag (there's no account to flush
+// to; a dirty flag would make flushHomeLayout 401-retry forever). The guest
+// rhythm reads it back via readCachedHomeLayout (see useRhythmState).
+export function cacheHomeLayoutLocalOnly(layout: HomeLayout): void {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ order: layout.order, hidden: layout.hidden, v: layout.v ?? HOME_LAYOUT_VERSION }));
+  } catch { /* private mode */ }
+}
+
 // Re-send a layout whose save never reached the server (dropped to WebView
 // suspension / offline). No-op when nothing is pending. Best-effort; on success
 // it clears the flag and runs the optional invalidate so the UI re-reads.

@@ -28,8 +28,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
-import { saveHomeLayout } from "@/lib/homeLayoutCache";
+import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
+import { setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import {
   setSideLevel,
   setSideReflection,
@@ -266,12 +267,21 @@ export default function WayOfLoveRuleFlow({
   // one custom anchor). Drops the contemplative multi-select, per-practice
   // time-of-day slides, "add to your day" extras, the weekly rhythm, and CAC.
   pilot = false,
+  // Guest (the PUBLIC no-login version): a signed-out customizer that writes
+  // ONLY device-local prefs. Per-side ways trim to BCP · Contemplative Prayer ·
+  // Co-Breathe; the BCP form + medium + reminder merge onto ONE per-side slide;
+  // the silence step keeps its minutes goal but drops the "grow toward 30"
+  // ladder; contemplative multi-select / extras / weekly are dropped (the
+  // custom step stays). commit() skips every server PUT and mirrors the goal
+  // into the guest silence key. See memory "project_public_no_login".
+  guest = false,
 }: {
   onBack: () => void;
   onDone: () => void;
   prescribe?: boolean;
   onPrescribe?: (spec: RoutineSpec) => void;
   pilot?: boolean;
+  guest?: boolean;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -283,7 +293,9 @@ export default function WayOfLoveRuleFlow({
   // existing rule (or the trimmed pilot flow) opens straight into the manual
   // shaping flow at "when", as before. "Or build my own →" drops into it too.
   const [step, setStep] = useState<Step>(() => {
-    if (pilot) return "when";
+    // Guests always open the manual flow: their rule is already running (the
+    // first-open seed), so the preset picker would re-adopt over it.
+    if (pilot || guest) return "when";
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
     return hasRule ? "when" : "starter";
   });
@@ -292,7 +304,7 @@ export default function WayOfLoveRuleFlow({
   // it leads, so the customizer isn't a stick shift you must already know how to
   // drive. Gated on a localStorage flag + first-author (same signal as `step`).
   const [showWhy, setShowWhy] = useState<boolean>(() => {
-    if (pilot) return false;
+    if (pilot || guest) return false;
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
     if (hasRule) return false;
     try { return !localStorage.getItem("phoebe:rhythm-why-seen"); } catch { return false; }
@@ -654,6 +666,9 @@ export default function WayOfLoveRuleFlow({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
+    // Guests have no server prefs — the local officePrefs initializers above
+    // already seeded the flow from the device.
+    enabled: !guest,
   });
   const hydrated = useRef(false);
   // Set once the user touches any control — so a slow office-prefs response
@@ -852,7 +867,12 @@ export default function WayOfLoveRuleFlow({
     // goal is written regardless of the later multi-select). Otherwise we
     // explicitly disable it so a previously-enabled ladder stops driving the goal.
     const wantLadder = silenceMode === "grow";
-    apiRequest("PUT", "/api/me/office-prefs", {
+    // PUBLIC no-login version: with no user, this commit writes ONLY the
+    // device-local prefs — the officePrefs setters above, the local home-layout
+    // cache below, and the guest silence goal (the home's single "Silence"
+    // progress-bar card reads it). Every server PUT is skipped.
+    if (!user) setGuestSilenceGoalMin(effGoalMin);
+    if (user) apiRequest("PUT", "/api/me/office-prefs", {
       // Only office/devotion/intercessions are server-side default-prayer levels;
       // the per-side LOCAL level set above drives the home Psalms card etc. Fold
       // anything else (ask/reflect-sit/fdd/psalms/examen) to devotion so this PUT
@@ -894,7 +914,7 @@ export default function WayOfLoveRuleFlow({
       pray: { optionIds: [PRAY_OPTION_ID[prayBySide[primarySide]], "pray-silence"], custom: "" },
       learn: { optionIds: ["learn-devotional"], custom: "" },
     };
-    apiRequest("PUT", "/api/rule-of-life/wol", { selections }).catch(() => {/* ignore */});
+    if (user) apiRequest("PUT", "/api/rule-of-life/wol", { selections }).catch(() => {/* ignore */});
     // Rewrite the home to match the rule (the rule is the source of truth):
     // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
     // chosen reflections. Unselected reflections + secondary panels hidden.
@@ -942,13 +962,20 @@ export default function WayOfLoveRuleFlow({
     // Cache the layout locally + PUT through the durable helper, so finishing
     // the customizer and immediately leaving the app on iOS can't drop the
     // save (the in-flight PUT would otherwise die with the suspended WebView).
-    saveHomeLayout({ order, hidden, v: HOME_LAYOUT_VERSION })
-      .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
-      .catch(() => {/* stays cached + dirty; re-pushed next app-active */});
+    // A GUEST'S layout is device-local truth: local cache only, no dirty flag
+    // (saveHomeLayout's PUT would 401 and leave flushHomeLayout retrying).
+    if (user) {
+      saveHomeLayout({ order, hidden, v: HOME_LAYOUT_VERSION })
+        .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
+        .catch(() => {/* stays cached + dirty; re-pushed next app-active */});
+    } else {
+      cacheHomeLayoutLocalOnly({ order, hidden, v: HOME_LAYOUT_VERSION });
+    }
     // Sync the per-device routine settings (office levels, slots, reflection
     // source, fdd mode, psalm cycle, etc.) up so the rhythm matches across
     // devices — every setSide*/setPracticeSlot write is in localStorage by now.
-    pushRoutineConfig();
+    // (Signed-in only: a guest has no server rule_config to sync to.)
+    if (user) pushRoutineConfig();
     setStep("done");
   };
   // Adopting a named starter rule presets the flow state, then parks its id so
@@ -1008,7 +1035,22 @@ export default function WayOfLoveRuleFlow({
   // A side that picked "With the Book of Common Prayer" gets a dedicated slide
   // (morning-bcp / evening-bcp) to choose the form — Psalms / Devotion / Office.
   const bcpOnSide = (s: OfficeSide) => prayBySide[s] === "offices" || prayBySide[s] === "devotion" || prayBySide[s] === "psalms";
-  const orderedSteps: Step[] = pilot
+  const orderedSteps: Step[] = guest
+    // GUEST (public no-login): when → per-side way + ONE merged config slide
+    // (the BCP form + medium + reminder all live on side-config — no separate
+    // side-bcp slide: "there doesn't need to be more than one slide") → learn →
+    // silence goal (fixed only) → custom. No contemplative multi-select, no
+    // extras, no weekly.
+    ? [
+        "when",
+        ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
+        ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
+        "learn",
+        ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
+        "contemplation-goal",
+        "custom",
+      ]
+    : pilot
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
     // contemplative multi-select, no per-practice slots, no extras, no weekly.
     ? [
@@ -1220,24 +1262,31 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 13, fontFamily: FONT, margin: "8px 0 0" }}>
           {t("wol_rule.silence_quote_attr", { defaultValue: "— Blaise Pascal" })}
         </p>
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "26px 0 10px" }}>
-          {t("wol_rule.silence_mode_label", { defaultValue: "How would you like to practice?" })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(
-            silenceMode === "grow",
-            `🌱 ${t("wol_rule.silence_grow_title", { defaultValue: "Grow toward 30 min" })}`,
-            t("wol_rule.silence_grow_sub", { defaultValue: "Start at 5 minutes a day and increase by five minutes each week — gently, all the way to 30." }),
-            () => chooseSilenceMode("grow"),
-          )}
-          {choiceRow(
-            silenceMode === "fixed",
-            `🕯️ ${t("wol_rule.silence_fixed_title", { defaultValue: "A fixed amount" })}`,
-            t("wol_rule.silence_fixed_sub", { defaultValue: "Set the same daily goal and keep it." }),
-            () => chooseSilenceMode("fixed"),
-          )}
-        </div>
-        {silenceMode === "fixed" ? (
+        {/* GUESTS keep the minutes goal but not the ladder — "grow toward 30"
+            is a server feature (users.silence_ladder), so the public no-login
+            version offers the fixed dropdown only (silenceMode stays "fixed"). */}
+        {!guest && (
+          <>
+            <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "26px 0 10px" }}>
+              {t("wol_rule.silence_mode_label", { defaultValue: "How would you like to practice?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {choiceRow(
+                silenceMode === "grow",
+                `🌱 ${t("wol_rule.silence_grow_title", { defaultValue: "Grow toward 30 min" })}`,
+                t("wol_rule.silence_grow_sub", { defaultValue: "Start at 5 minutes a day and increase by five minutes each week — gently, all the way to 30." }),
+                () => chooseSilenceMode("grow"),
+              )}
+              {choiceRow(
+                silenceMode === "fixed",
+                `🕯️ ${t("wol_rule.silence_fixed_title", { defaultValue: "A fixed amount" })}`,
+                t("wol_rule.silence_fixed_sub", { defaultValue: "Set the same daily goal and keep it." }),
+                () => chooseSilenceMode("fixed"),
+              )}
+            </div>
+          </>
+        )}
+        {(guest || silenceMode === "fixed") ? (
           <>
             <div style={{ position: "relative", marginTop: 16 }}>
               <select
@@ -1331,8 +1380,9 @@ export default function WayOfLoveRuleFlow({
           })()}
           {/* Prayer List — the community's intercessions. Checked alongside BCP,
               it folds into the office (a single card); on its own it IS the
-              office ("Pray Together"). */}
-          {!pilot && (() => {
+              office ("Pray Together"). Hidden for GUESTS — the public version
+              carries no community prayer list at all. */}
+          {!pilot && !guest && (() => {
             const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
             const on = prayBySide[side] === "community" || (bcpOn && communityWithOffice[side]);
             return choiceRow(on, `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's intercessions." }), () => {
@@ -1357,17 +1407,41 @@ export default function WayOfLoveRuleFlow({
             // yet, so the config step + the home "Begin" have a duration to use.
             if (turningOn && goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
           })}
+          {/* Co-Breathe — a GUEST way option ("selectable for morning or
+              evening"). It stays the same ADD-ON the contemplative step toggles
+              (contemplative.cobreathe — never choosePrayBySide, per the add-on
+              invariant); picking it here also slots its card to THIS side.
+              Checked on the side currently holding the slot; tapping the other
+              side moves it there. */}
+          {guest && choiceRow(
+            contemplative.cobreathe && slotByPractice.cobreathe === side,
+            `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`,
+            t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }),
+            () => {
+              const onHere = contemplative.cobreathe && slotByPractice.cobreathe === side;
+              touchedRef.current = true;
+              if (onHere) {
+                setContemplative((c) => ({ ...c, cobreathe: false }));
+              } else {
+                setContemplative((c) => ({ ...c, cobreathe: true }));
+                chooseSlot("cobreathe", side);
+              }
+            },
+          )}
           {/* Creation Prayer — a creation-focused devotion (the creation Psalter
               + prayers, opening with the Co-Breathe breath). IS this side's
               prayer, like the office; mutually exclusive with the BCP office.
               Hidden for now behind CREATION_PRAYER_ENABLED. */}
           {!pilot && CREATION_PRAYER_ENABLED && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, opening with Co-Breathe." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
           {/* Forward Day by Day — an add-on reflection; the next step picks read
-              vs. listen (feeds the reflection/newsletter set). */}
-          {choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}
+              vs. listen (feeds the reflection/newsletter set). Hidden for
+              GUESTS — FDD is chosen on the separate "learn" newsletter step,
+              not as a way of prayer. */}
+          {!guest && choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}
           {/* The Examen — an add-on evening card (shares one source of truth with
-              the contemplative-step Examen toggle, so it can't double-add). */}
-          {side === "evening" && !pilot && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => toggleContemplative("examen"))}
+              the contemplative-step Examen toggle, so it can't double-add).
+              Hidden for GUESTS (their ways = BCP · Contemplative · Co-Breathe). */}
+          {side === "evening" && !pilot && !guest && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => toggleContemplative("examen"))}
         </div>
 
         {/* Add your own practice for this part of the day — logged like a custom
@@ -1451,6 +1525,30 @@ export default function WayOfLoveRuleFlow({
               ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
               : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
+        {/* GUEST (public no-login): the BCP FORM choice is merged INTO this
+            slide — one slide per side holds the form (Office / Devotion /
+            Psalms) + the medium select + the reminder ("there doesn't need to
+            be more than one slide"); the separate morning/evening-bcp step is
+            skipped in the guest orderedSteps. Same rows the bcp slide renders. */}
+        {guest && bcpOnSide(side) && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.bcp_form_body_short", { defaultValue: "Which form?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+              {(["psalms", "devotion", "offices"] as const).map((form) => {
+                const label = form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
+                  : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
+                  : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
+                const sub = form === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
+                  : form === "devotion" ? (side === "morning" ? t("wol_rule.pray_devotion_sub_morning", { defaultValue: "A short form of Morning Prayer." }) : t("wol_rule.pray_devotion_sub_evening", { defaultValue: "A short form of Evening Prayer." }))
+                  : (side === "morning" ? t("wol_rule.pray_offices_sub_morning", { defaultValue: "The full Morning Prayer office." }) : t("wol_rule.pray_offices_sub_evening", { defaultValue: "The full Evening Prayer office." }));
+                const emoji = form === "psalms" ? "📜" : "📖";
+                return choiceRow(prayBySide[side] === form, `${emoji} ${label}`, sub, () => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); });
+              })}
+            </div>
+          </>
+        )}
         {/* Contemplation / FDD / Psalms have no on-screen/listen/book method,
             so the "Default way to pray" picker is hidden for them — only the
             reminder time below is shown. */}
@@ -1826,6 +1924,27 @@ export default function WayOfLoveRuleFlow({
                 );
               })}
             </div>
+          </>
+        )}
+
+        {/* GUEST bonus practice — Audio Divina rides on this same slide (owner
+            direction 2026-07-02, superseding the earlier "no Audio Divina in
+            the public version"): ONE toggle row reusing the existing listening
+            wiring (contemplative.audio → the "listening" home card at its saved
+            slot). No other bonus practices here, and no extra slides — the
+            guest orderedSteps carries no audio-when step. Hidden on the
+            add-form sub-slide so that stays focused. */}
+        {guest && !addingCustom && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+              {t("wol_rule.custom_bonus_label", { defaultValue: "A bonus practice" })}
+            </p>
+            {choiceRow(
+              contemplative.audio,
+              `🎧 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`,
+              t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }),
+              () => toggleContemplative("audio"),
+            )}
           </>
         )}
 
