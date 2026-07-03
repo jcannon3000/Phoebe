@@ -1232,6 +1232,9 @@ function wireContemplation() {
               smallIcon: "phoebe_bell",
               iconColor: "#2E6B40",
               sound: CONTEMPLATION_BELL_FILE,
+              // Same thread the AppDelegate force-presents in the foreground, so
+              // even this fallback shows a banner during a keep-awake sit.
+              threadIdentifier: "contemplation-bell",
             },
           ],
         });

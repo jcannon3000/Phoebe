@@ -22,6 +22,15 @@ final class PhoebeNotificationDelegate: NSObject, UNUserNotificationCenterDelega
             completionHandler([])
             return
         }
+        // The end-of-sit bell must ALWAYS show — even in the foreground, since a
+        // keep-awake sit holds the app active when the timer ends. Show the banner
+        // (and list it) without the notification's own sound: the in-app / native
+        // bell already plays it, so this avoids a double-ring. Backgrounded, this
+        // delegate isn't called and the system rings it (time-sensitive → breaks DND).
+        if notification.request.content.threadIdentifier == "contemplation-bell" {
+            completionHandler([.banner, .list])
+            return
+        }
         if let w = wrapped,
            w.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
             w.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)

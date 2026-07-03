@@ -132,6 +132,10 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         content.title = "Contemplation"
         content.body = "Your time is complete."
         content.sound = UNNotificationSound(named: UNNotificationSoundName(soundName))
+        // Distinct thread so the app's willPresent delegate force-shows this as a
+        // banner even in the foreground (a keep-awake sit holds the app active, so
+        // without this the wrapped Capacitor delegate would suppress it).
+        content.threadIdentifier = "contemplation-bell"
         if #available(iOS 15.0, *) {
             content.interruptionLevel = .timeSensitive
         }
