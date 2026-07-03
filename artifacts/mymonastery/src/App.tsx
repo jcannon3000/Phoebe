@@ -91,6 +91,16 @@ function PendingFellowInviteRedirect() {
     try { token = localStorage.getItem("phoebe:pending-fellow-invite"); } catch { /* ignore */ }
     if (token && /^[a-f0-9]{32}$/i.test(token)) {
       setLocation(`/fellow/${token}`);
+      return;
+    }
+    // Same round-trip for a rhythm-party invite (/companion/:token stashed the
+    // token before sending the visitor to sign in) — bring them back to accept.
+    if (location.startsWith("/companion/")) return;
+    let companion: string | null = null;
+    try { companion = sessionStorage.getItem("phoebe:companion-token"); } catch { /* ignore */ }
+    if (companion && /^[a-f0-9]{32}$/i.test(companion)) {
+      try { sessionStorage.removeItem("phoebe:companion-token"); } catch { /* ignore */ }
+      setLocation(`/companion/${companion}`);
     }
   }, [user, isLoading, location, setLocation]);
   return null;
@@ -417,6 +427,7 @@ const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
 const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
+const CompanionInvitePage = lazy(() => import("./pages/companion-invite"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
@@ -435,6 +446,7 @@ const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
 const LearnPage = lazy(() => import("./pages/learn"));
+const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
 const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
@@ -1067,6 +1079,7 @@ function Router() {
       <Route path="/invite/:token" component={InvitePage} />
       <Route path="/fellow/:token" component={FellowInvitePage} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
+      <Route path="/companion/:token" component={CompanionInvitePage} />
       <Route path="/letter/:id" component={LetterSplash} />
       <Route path="/letters" component={LettersPage} />
       <Route path="/letters/new" component={LetterNew} />
@@ -1208,6 +1221,7 @@ function Router() {
       <Route path="/waitlist" component={WaitlistAdminPage} />
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
+      <Route path="/journey" component={SpiritualJourneyPage} />
       <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/vision-deck" component={VisionDeck} />
