@@ -53,6 +53,11 @@ async function main() {
   // the references in index.html keep working.
   await cp(WEB_DIST, WWW, { recursive: true });
 
+  // Web-only assets: the /wide landscape backdrops are served on the web but
+  // deliberately NOT bundled into the iOS app (keeps the binary slim — the app
+  // uses its own bundled Cobreathe photos). Drop them from www/ after the copy.
+  await rm(path.join(WWW, "wide"), { recursive: true, force: true });
+
   // 2. Copy the native shell JS + source map.
   await cp(SHELL_DIST, path.join(WWW, "native-shell.js"));
   if (existsSync(SHELL_MAP)) {

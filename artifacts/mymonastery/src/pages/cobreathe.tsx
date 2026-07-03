@@ -16,6 +16,7 @@ import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -194,7 +195,9 @@ export default function CobreathePage() {
   // once and faded up under a dark wash. Matches the prayer-intro slides so the
   // whole Co-Breathe flow rests on the same landscape imagery.
   const introBgPhoto = useMemo(() => {
-    return COBREATHE_PHOTOS.length > 0 ? COBREATHE_PHOTOS[Math.floor(Math.random() * COBREATHE_PHOTOS.length)]! : null;
+    // Wide landscape backdrop on the web; the bundled Co-Breathe photo on native.
+    return pickWideBackground()
+      ?? (COBREATHE_PHOTOS.length > 0 ? COBREATHE_PHOTOS[Math.floor(Math.random() * COBREATHE_PHOTOS.length)]! : null);
   }, []);
   // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
   // location. Kept as a const false so the synchronized (global, location-free)

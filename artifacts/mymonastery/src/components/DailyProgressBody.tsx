@@ -1026,10 +1026,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // When the rhythm has NO office at all, the morning Contemplation card leads
   // the day as the hero — a big anchor card ABOVE the reflection — so a
   // contemplation-only rhythm still has a clear "start here". Only where heroes
-  // render (renderOfficeHero present), in the morning window, while it's undone.
+  // render (renderOfficeHero present), while a contemplation sit is still undone.
+  // It leads all day (not just the morning) so a contemplation-only rhythm
+  // always has a clear anchor — morning first, then evening once morning's kept.
   const noOffice = !morningActive && !eveningActive;
-  const contemplationHero = (!!renderOfficeHero && noOffice && hour < 12)
-    ? coloredCards.find((c) => c.key === "contemplation-morning" && !c.done)
+  const contemplationHero = (!!renderOfficeHero && noOffice)
+    ? coloredCards.find((c) => (c.key === "contemplation-morning" || c.key === "contemplation-evening") && !c.done)
     : undefined;
   // Whether SOME card leads the Next list as a hero (office or contemplation).
   const heroLeads = !!officeHero || !!contemplationHero;

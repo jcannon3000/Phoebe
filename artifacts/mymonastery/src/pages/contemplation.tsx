@@ -7,8 +7,9 @@ import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
 
-const CONTEMPLATION_LEAF = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null;
+const CONTEMPLATION_LEAF = pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null);
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer, CONTEMPLATION_PRESENCE_ENABLED, type ContemplationWhatsNext } from "@/components/ContemplationTimer";

@@ -1045,39 +1045,6 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     [current],
   );
 
-  // ── Recommend (♡) for the now-playing episode ───────────────────────────
-  // Shares the episode to the community feed. Lives on the player (the
-  // full-screen listener) rather than the show list. Only fetches the
-  // engagement state while something is playing.
-  const { data: engagement } = useQuery<{ recommendedKeys: string[] }>({
-    queryKey: ["/api/podcasts/me"],
-    queryFn: () => apiRequest("GET", "/api/podcasts/me"),
-    enabled: !!user && !!current,
-    staleTime: 60_000,
-  });
-  const isRecommended =
-    !!current && new Set(engagement?.recommendedKeys ?? []).has(`${current.showSlug}:${current.episodeId}`);
-  const recommendMut = useMutation({
-    mutationFn: (rec: boolean) => {
-      const c = current!;
-      return rec
-        ? apiRequest("POST", "/api/podcasts/recommendations", {
-            showSlug: c.showSlug, episodeId: c.episodeId,
-            episodeTitle: c.title ?? undefined, episodeAudioUrl: c.audioUrl,
-            episodeImageUrl: c.imageUrl ?? c.showArtwork ?? undefined,
-            durationSeconds: c.durationSeconds ?? undefined,
-            publishedAt: c.publishedAt ?? undefined,
-            showTitle: c.showTitle ?? undefined, showArtwork: c.showArtwork ?? undefined,
-          })
-        : apiRequest("DELETE", "/api/podcasts/recommendations", { showSlug: c.showSlug, episodeId: c.episodeId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/recommendations"] });
-    },
-  });
-  const toggleRecommend = () => { if (current) recommendMut.mutate(!isRecommended); };
-
   // Drag-to-seek (scrub) — Pointer Events cover mouse + touch in one path. A
   // plain tap is a down+up at one spot, so this also replaces the old
   // click-to-seek. While dragging we only move the local preview (scrubFrac);
@@ -1516,24 +1483,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                   })}
                 </div>
               ) : (
-                /* Podcast actions: playback speed + Recommend (♡), light-on-photo. */
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "16px 0 0" }}>
+                /* Podcast actions: playback speed. */
+                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0 0" }}>
                   <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
                     style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", color: "#F6F0E6", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: FONT }}>
                     {rate}×
                   </button>
-                  {!current.hideRecommend && (
-                    <button type="button" onClick={toggleRecommend}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 16px",
-                        fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
-                        background: isRecommended ? "rgba(240,220,168,0.20)" : "rgba(255,255,255,0.10)",
-                        color: isRecommended ? "#F0DCA8" : "#F6F0E6",
-                        border: `1px solid ${isRecommended ? "rgba(240,220,168,0.5)" : "rgba(255,255,255,0.18)"}`,
-                      }}>
-                      {isRecommended ? `♥ ${t("podcasts.recommended")}` : `♡ ${t("podcasts.recommend")}`}
-                    </button>
-                  )}
                 </div>
               )}
             </div>
