@@ -6,6 +6,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
@@ -536,6 +537,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // beta + community users.
   const { user: viewerUser } = useAuth();
   const { isPilot } = usePilotMode();
+  // PUBLIC no-login version — HARD REQUIREMENT: the office must NEVER enter
+  // the community intercession slideshow in guest mode. Guests get the same
+  // no-community-handoff treatment as pilot (portal slide dropped from the
+  // deck + the auto-fire and tap handoffs dead), folded into one flag below.
+  const { isGuest } = useGuestMode();
+  const noCommunityHandoff = isPilot || isGuest;
   const parishOnly = viewerUser?.accessTier === "parish-only";
   // Offices-only accounts (public /pray sign-ups) have no parish
   // celebration and no /prayer-mode access — they finish back on
@@ -766,11 +773,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         const data = await res.json();
         if (cancelled) return;
         let fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data.slides ?? []);
-        // Pilot has no community intercessions — the server may still inject an
-        // "intercessions_portal" slide for accounts with pre-existing community
-        // data. The handoff is already gated for pilot, but the slide would then
+        // Pilot + GUEST have no community intercessions — the server may still
+        // inject an "intercessions_portal" slide (guest office endpoints are
+        // public; an account with pre-existing community data can hit this
+        // too). The handoff is already gated below, but the slide would then
         // sit as an orphan transition card, so drop it from the deck entirely.
-        if (isPilot) fetched = fetched.filter((s) => s.type !== "intercessions_portal");
+        if (noCommunityHandoff) fetched = fetched.filter((s) => s.type !== "intercessions_portal");
         if (fetched.length === 0) throw new Error("No slides returned");
         // The daily reflection (FDD / SSJE / CAC) is no longer
         // appended as an in-office slide. It's surfaced instead as a
@@ -940,9 +948,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (!slide) return;
     if (slide.type !== "intercessions_portal") return;
     if (portalHandedOffRef.current) return;
-    // Pilot is personal-only — never hand the office off into the community
-    // intercessions slideshow.
-    if (isPilot) return;
+    // Pilot + guest are personal-only — never hand the office off into the
+    // community intercessions slideshow (guest = HARD requirement; the portal
+    // slide is also filtered from their deck above, this is the second lock).
+    if (noCommunityHandoff) return;
     const t = window.setTimeout(() => handIntoPrayerMode(), 4000);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1152,7 +1161,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // branch the slideIdx change cancels the 4s auto-fire timeout
     // (cleanup → clearTimeout) and the user lands on the slide AFTER
     // the portal (e.g. Lord's Prayer) without ever seeing prayer-mode.
-    if (currentSlide.type === "intercessions_portal" && !portalHandedOffRef.current && !isPilot) {
+    if (currentSlide.type === "intercessions_portal" && !portalHandedOffRef.current && !noCommunityHandoff) {
       handIntoPrayerMode();
       return;
     }
