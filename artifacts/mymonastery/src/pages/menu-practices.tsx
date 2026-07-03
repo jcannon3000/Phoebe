@@ -2,7 +2,6 @@ import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
-import { isNativeShell } from "@/lib/isNativeShell";
 
 // The core contemplative practices. (Gratitude + Examen are still reachable via
 // their own surfaces; they're just not listed here.)
@@ -23,25 +22,19 @@ export default function MenuPracticesPage() {
       backHref="/menu"
       groups={[{
         items: [
-          // Creation Prayer + its prayer library live HERE (owner: not in the
-          // BCP menu), both behind CREATION_PRAYER_ENABLED.
-          ...(CREATION_PRAYER_ENABLED && !isGuest ? [
-            { emoji: "🌱", label: "Creation Prayer", sub: "A creation-focused devotion, with Co-Breathe", onClick: () => go("/creation-devotion") },
-            { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
-          ] : []),
-          { emoji: "📖", label: "Listen to Scripture", sub: "Hear the day's OT, Psalm, NT & Gospel", onClick: () => go("/scripture/readings") },
+          // Contemplation leads the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
+          { emoji: "📖", label: "Listen to Scripture", sub: "Hear the day's OT, Psalm, NT & Gospel", onClick: () => go("/scripture/readings") },
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
-          // Guided courses (web only) — watched/listened like a class with units
-          // + progress. Keating's Spiritual Journey (video) + Bishop Budde's Way
-          // of Love (the podcast already in Phoebe).
-          ...(!isGuest && !isNativeShell() ? [
-            { emoji: "🎓", label: "The Spiritual Journey", sub: "A guided course on Centering Prayer", onClick: () => go("/journey") },
-            { emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde's course on a rule of life", onClick: () => go("/way-of-love-course") },
-          ] : []),
+          // Guided courses now live in their own "Learn" menu tab.
           { emoji: "🌍", label: "Co-Breathe", sub: "12 breaths as a prayer for climate justice", onClick: () => go("/cobreathe") },
+          // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
+          // The standalone "Creation Prayer" devotion was removed per owner.
+          ...(CREATION_PRAYER_ENABLED && !isGuest ? [
+            { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
+          ] : []),
         ],
       }]}
     />

@@ -6,6 +6,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { useTranslation } from "react-i18next";
 
 // ── /menu — the top-level navigation page (replaces the drawer) ─────────────
@@ -88,6 +89,22 @@ export default function MenuPage() {
       ...(rawIsBeta ? [{ emoji: "🙏", label: t("menu.gratitude", { defaultValue: "Gratitude" }), sub: t("menu.gratitude_sub", { defaultValue: "Give thanks · see your community's" }), badge: t("menu.beta_badge"), dot: hasNewGratitude, onClick: () => go("/gratitude") }] : []),
     ],
   });
+
+  // Learn — guided courses. Centering Prayer (public, no sign-in) and the deeper
+  // Spiritual Journey are YouTube video courses → WEB ONLY. The Way of Love
+  // (Bishop Budde) rides the podcast library, so it's the ONE course that also
+  // works on iOS. So: three courses on the web, only one (Way of Love) on iOS.
+  const learn: MenuHubGroup = { header: "Learn", items: [] };
+  if (!isNativeShell()) {
+    learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
+    if (!isGuest) {
+      learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
+    }
+  }
+  if (!isGuest) {
+    learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
+  }
+  if (learn.items.length) groups.push(learn);
 
   // El Jardín — study + formation tools (beta only).
   if (rawIsBeta) {

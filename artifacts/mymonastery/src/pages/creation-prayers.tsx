@@ -61,11 +61,9 @@ function buildSections(lib: Library): Section[] {
   return [
     { heading: "Collects", entries: lib.collects.map((c, i) => ({ id: `col${i}`, title: c.title, subtitle: c.attribution, text: c.text })) },
     { heading: "Canticles", entries: lib.canticles.map((c, i) => ({ id: `can${i}`, title: c.title, subtitle: c.attribution, text: c.text })) },
-    { heading: "Affirmations of Faith", entries: lib.affirmations.map((a, i) => ({ id: `aff${i}`, title: a.title, subtitle: a.attribution, text: a.text })) },
     { heading: "Litanies", entries: lib.litanies.map((l, i) => ({ id: `lit${i}`, title: l.title, lines: l.lines, intro: l.intro })) },
     { heading: "Prayers", entries: lib.prayers.map((p, i) => ({ id: `pra${i}`, title: p.title, subtitle: p.attribution, note: p.note, text: p.text })) },
     { heading: "Closing Prayers & Blessings", entries: lib.blessings.map((b, i) => ({ id: `ble${i}`, title: blessingTitle(b.text), subtitle: b.attribution, text: b.text })) },
-    { heading: "Readings for Creation", entries: lib.readings.map((r, i) => ({ id: `rea${i}`, title: r.ref, text: r.note })) },
     { heading: "Words on Creation", entries: lib.quotes.map((q, i) => ({ id: `quo${i}`, title: q.author, subtitle: q.source, text: q.text })) },
   ];
 }

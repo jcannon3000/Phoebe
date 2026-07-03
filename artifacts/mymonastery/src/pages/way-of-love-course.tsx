@@ -94,29 +94,6 @@ export default function WayOfLoveCoursePage() {
   const firstIncomplete = WOL_LESSONS.find((l) => !isComplete(l.key)) ?? null;
   const pct = Math.round((completedCount / WOL_TOTAL) * 100);
 
-  // ── Web-only gate ──────────────────────────────────────────────────────────
-  if (isNativeShell()) {
-    return (
-      <Layout bgPhoto={leafBg}>
-        <div className="mx-auto w-full max-w-md px-2 py-16 text-center">
-          <p className="text-4xl">❤️</p>
-          <h1 className="mt-4 text-xl font-bold" style={{ color: C.text, fontFamily: C.font }}>
-            The Way of Love
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed" style={{ color: C.sage }}>
-            This guided course is on the web. Open{" "}
-            <span style={{ color: C.dim }}>withphoebe.app/way-of-love-course</span> in your browser to
-            walk Bishop Mariann's series and track your progress. You can still find the talks under
-            Podcasts here.
-          </p>
-          <Link href="/menu/practices" className="mt-6 inline-flex items-center gap-1 text-sm" style={{ color: C.sage }}>
-            <ArrowLeft size={14} /> Back to Practices
-          </Link>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout bgPhoto={leafBg}>
       <div className="mx-auto w-full max-w-2xl">
