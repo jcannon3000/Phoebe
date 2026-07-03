@@ -29,6 +29,9 @@ export interface AuthUser {
   // the FULL app once the guest flag flips (super admins designate pilot
   // groups from the group's settings). Server-derived on /api/auth/me.
   inPilotGroup?: boolean;
+  // App super admin (beta_users.is_admin) — always keeps the full app, and
+  // sees the pilot-group toggle in community settings.
+  isSuperAdmin?: boolean;
   googleId: string | null;
   showPresence: boolean;
   // Opt-in coarse "same air" location for Cobreathe (default false).

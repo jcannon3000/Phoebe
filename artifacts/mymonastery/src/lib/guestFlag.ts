@@ -11,4 +11,8 @@
 //
 // See memory "project_public_no_login" for the full spec + build order.
 // Typed as `boolean` (not the literal) so gated branches aren't dead code.
-export const PHOEBE_GUEST_ENABLED: boolean = false;
+// LIVE (owner, 2026-07-03): the public no-login experience is ON — visiting
+// the site or opening the app lands straight on the daily-progress home with
+// the seeded default rule; no welcome chooser, no sign-in required. The full
+// app belongs to pilot-group members + app super admins.
+export const PHOEBE_GUEST_ENABLED: boolean = true;

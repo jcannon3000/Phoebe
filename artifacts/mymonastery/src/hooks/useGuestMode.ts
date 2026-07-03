@@ -34,5 +34,8 @@ export function useGuestMode(): { isGuest: boolean; isLoading: boolean } {
   if (!PHOEBE_GUEST_ENABLED) return { isGuest: false, isLoading: false };
   if (authLoading) return { isGuest: false, isLoading: true };
   if (!user) return { isGuest: true, isLoading: false };
-  return { isGuest: !user.inPilotGroup, isLoading: false };
+  // Pilot-group members keep the full app; so do app SUPER ADMINS (the
+  // operator must reach the pilot-group toggle even before any group is
+  // marked — otherwise flipping the flag locks everyone out of marking one).
+  return { isGuest: !user.inPilotGroup && !user.isSuperAdmin, isLoading: false };
 }

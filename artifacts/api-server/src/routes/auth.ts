@@ -326,6 +326,17 @@ router.get("/auth/me", async (req, res) => {
     ))
     .limit(1);
   const inPilotGroup = pilotGroupRows.length > 0;
+  // App SUPER ADMIN (beta_users.is_admin) — always keeps the FULL app (an
+  // operator must be able to reach the pilot-group toggle even before any
+  // pilot group exists; without this the flip would lock everyone out).
+  let isSuperAdmin = false;
+  try {
+    const [beta] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    isSuperAdmin = beta?.isAdmin === true;
+  } catch { /* table missing in a fresh env — not super admin */ }
   // Does this user have a fellow connection — an accepted 1:1 fellow, OR a
   // pending fellow invite waiting for them? If so they keep the FULL app (so
   // they can still see + reach Fellows), even in the simplified pilot
@@ -347,6 +358,7 @@ router.get("/auth/me", async (req, res) => {
   res.json({
     isCommunityMember,
     inPilotGroup,
+    isSuperAdmin,
     hasFellowConnection,
     id: u.id,
     name: u.name,
