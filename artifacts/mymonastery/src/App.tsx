@@ -447,6 +447,7 @@ const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
 const LearnPage = lazy(() => import("./pages/learn"));
 const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
+const WayOfLoveCoursePage = lazy(() => import("./pages/way-of-love-course"));
 const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
@@ -1222,6 +1223,7 @@ function Router() {
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/journey" component={SpiritualJourneyPage} />
+      <Route path="/way-of-love-course" component={WayOfLoveCoursePage} />
       <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/vision-deck" component={VisionDeck} />

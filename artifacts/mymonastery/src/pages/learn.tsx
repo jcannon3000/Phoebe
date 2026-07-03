@@ -8,6 +8,10 @@ import ImprintSlideshow, {
   useGatheringSlides,
   type ImprintSlide,
 } from "@/components/ImprintSlideshow";
+import { isNativeShell } from "@/lib/isNativeShell";
+import { SPIRITUAL_JOURNEY, JOURNEY_TOTAL } from "@/lib/spiritualJourney";
+import { WAY_OF_LOVE, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
+import { useCourseProgress } from "@/lib/courseProgress";
 
 interface LearnTopic {
   id: string;
@@ -25,6 +29,9 @@ export default function LearnPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [activeTopic, setActiveTopic] = useState<LearnTopic | null>(null);
+  // Live progress for the guided courses (web-only) surfaced below.
+  const { completedCount } = useCourseProgress(SPIRITUAL_JOURNEY.id);
+  const { completedCount: wolDone } = useCourseProgress(WAY_OF_LOVE.id);
   // Slides are read through hooks now so they react to the live
   // language. Keep them outside the topic array so the array itself
   // can carry the resolved arrays without re-running hooks on render.
@@ -114,6 +121,62 @@ export default function LearnPage() {
             </button>
           ))}
         </div>
+
+        {/* Guided courses — web only (in-app player + progress tracking). */}
+        {!isNativeShell() && (
+          <div className="mt-8">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+              Courses
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => setLocation("/journey")}
+                className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.32)" }}
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-2xl leading-none mt-0.5">🎓</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {SPIRITUAL_JOURNEY.title}
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
+                      {SPIRITUAL_JOURNEY.tagline}
+                    </p>
+                    <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#5FBF7F" }}>
+                      {completedCount > 0
+                        ? `Continue · ${completedCount} of ${JOURNEY_TOTAL} complete`
+                        : `Video course · ${JOURNEY_TOTAL} lessons`}
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setLocation("/way-of-love-course")}
+                className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.32)" }}
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-2xl leading-none mt-0.5">❤️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {WAY_OF_LOVE.title}
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
+                      {WAY_OF_LOVE.tagline}
+                    </p>
+                    <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#5FBF7F" }}>
+                      {wolDone > 0
+                        ? `Continue · ${wolDone} of ${WOL_TOTAL} complete`
+                        : `Audio course · ${WOL_TOTAL} talks`}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
 
         <p className="text-xs italic text-center mt-8" style={{ color: "rgba(143,175,150,0.5)" }}>
           {t("learn.more_to_come")}
