@@ -559,14 +559,16 @@ function PracticeCard({
   // Hero layout — a bigger, more prominent card for the next anchor, whatever
   // practice it happens to be.
   if (hero) {
+    // The CTA spans the FULL width of the card (matching the width of the cards
+    // below), sitting under the title rather than as a right-aligned pill.
     const heroCta = waiting ? (
-      <span className="inline-flex rounded-full text-[13px] font-medium px-5 py-2.5" style={{ background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}>
+      <div className="mt-4 w-full text-center rounded-full text-[14px] font-medium py-3" style={{ background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)", fontFamily: FONT }}>
         {laterLabel}
-      </span>
+      </div>
     ) : (
-      <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
+      <div className="mt-4 w-full text-center rounded-full text-[15px] font-semibold py-3" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
         {cta} <span aria-hidden className="ml-1">→</span>
-      </span>
+      </div>
     );
     const heroRow = (
       <div
@@ -583,9 +585,6 @@ function PracticeCard({
                 ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
                 : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
             </div>
-            {/* CTA on the top-right, aligned with the title — same placement as
-                the compact cards. */}
-            <div className="flex-shrink-0">{heroCta}</div>
           </div>
           {progress && progress.goal > 0 && !done && (
             <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
@@ -595,6 +594,7 @@ function PracticeCard({
               />
             </div>
           )}
+          {heroCta}
         </div>
       </div>
     );
@@ -754,7 +754,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const contemplationBlurbFor = (done: boolean) => done
     ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
     : contemplationGoalMin > 0
-      ? t("rhythm.contemplation_side_len", { mins: contemplationGoalMin, defaultValue: `${contemplationGoalMin} min of stillness` })
+      ? t("rhythm.contemplation_side_len", { mins: contemplationGoalMin, defaultValue: `${contemplationGoalMin} minutes of loving God in silence` })
       : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   const officeTitle = (side: "Morning" | "Evening") => {

@@ -89,9 +89,10 @@ export function HomeLearnSection() {
     });
   }
 
-  const started = cards.filter((c) => c.started && c.done < c.total);
-  // Nothing in flight → offer ONE starter (the platform's flagship), quietly.
-  const show = started.length > 0 ? started : cards.slice(0, 1);
+  // Show every course so both video courses (Centering Prayer + The Spiritual
+  // Journey) are always reachable from the home — "Continue" once started,
+  // "Start course" if not. (iOS shows only the Way of Love audio course.)
+  const show = cards;
   if (show.length === 0) return null;
 
   return (
