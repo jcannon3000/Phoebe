@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 // ≥2 minutes of actual listening to a (non-office) podcast counts the
@@ -1111,17 +1112,19 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   }, [reverbOn]);
   const officeBg = useMemo(() => {
     if (!current) return null;
-    // The daily office can have a hand-picked background for its side
-    // (e.g. fm-morning.jpg); otherwise — and for every other kind of audio —
-    // use a stable LANDSCAPE photo from the Cobreathe library. We deliberately
-    // do NOT fall back to a show's square artwork: every listen gets the same
-    // full-bleed landscape backdrop.
+    // A stable, full-bleed LANDSCAPE backdrop for every listen (offices +
+    // podcasts). We deliberately do NOT fall back to a show's square artwork.
+    // On the WEB use a Wide photo (not bundled into iOS); on native fall back to
+    // a dedicated office photo, else the bundled Cobreathe library.
+    const seed = current?.episodeId || current?.showSlug || "audio";
+    if (!isNativeShell() && WIDE_PHOTOS.length > 0) {
+      return WIDE_PHOTOS[hashStr(seed) % WIDE_PHOTOS.length];
+    }
     if (officeSide) {
       const dedicated = dedicatedOfficeBg(officeSide);
       if (dedicated) return dedicated;
     }
     if (OFFICE_BG_PHOTOS.length === 0) return null;
-    const seed = current?.episodeId || current?.showSlug || "audio";
     return OFFICE_BG_PHOTOS[hashStr(seed) % OFFICE_BG_PHOTOS.length];
   }, [current, officeSide, current?.episodeId, current?.showSlug]);
   const [officeRgb, setOfficeRgb] = useState<{ r: number; g: number; b: number }>({ r: 18, g: 30, b: 22 });
