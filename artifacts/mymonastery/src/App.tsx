@@ -447,6 +447,7 @@ const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
 const LearnPage = lazy(() => import("./pages/learn"));
 const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
+const CenteringPrayerCoursePage = lazy(() => import("./pages/centering-prayer"));
 const WayOfLoveCoursePage = lazy(() => import("./pages/way-of-love-course"));
 const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
@@ -806,6 +807,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/reflections", "/menu/resources",
   "/psalms", "/contemplation", "/reflect/fdd",
+  "/journey", "/centering-prayer",
   "/begin-prayer", "/prayer-chooser",
   "/signin", "/login", "/onboarding",
   "/about", "/privacy", "/terms",
@@ -1223,6 +1225,7 @@ function Router() {
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/journey" component={SpiritualJourneyPage} />
+      <Route path="/centering-prayer" component={CenteringPrayerCoursePage} />
       <Route path="/way-of-love-course" component={WayOfLoveCoursePage} />
       <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />

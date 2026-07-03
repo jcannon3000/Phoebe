@@ -44,16 +44,26 @@ export interface JourneyCourse {
   tagline: string;
   playlistUrl: string;
   units: JourneyUnit[];
+  /** Show the "put it into practice" bridge (sit now / make it daily) —
+   *  the Centering Prayer course teaches a PRACTICE, so learning flows
+   *  straight into praying. */
+  practiceBridge?: boolean;
 }
 
-export const SPIRITUAL_JOURNEY: JourneyCourse = {
-  id: "spiritual-journey",
-  title: "The Spiritual Journey",
+// ─── Centering Prayer — the short PRACTICE course ────────────────────────────
+// The method itself (five videos): how to sit, and what happens inside when
+// you do. Split out of the long series (owner, 2026-07-03) so someone can
+// learn the practice in an evening — and go straight from learning it to
+// PRAYING it (the practice bridge: a sit now, or a daily rhythm).
+export const CENTERING_PRAYER: JourneyCourse = {
+  id: "centering-prayer",
+  title: "Centering Prayer",
   author: "Fr. Thomas Keating",
   tagline:
-    "A contemplative course on Centering Prayer and the healing of the whole person — walked one talk at a time.",
+    "Learn the method at the heart of the contemplative life — five short talks, then the prayer itself: twenty minutes of consenting to God's presence and action within.",
   playlistUrl:
     "https://www.youtube.com/playlist?list=PLBE6fmRmYU8g6CAOwq4-IEvpSnbBxKfRO",
+  practiceBridge: true,
   units: [
     {
       id: "method",
@@ -86,6 +96,21 @@ export const SPIRITUAL_JOURNEY: JourneyCourse = {
         },
       ],
     },
+  ],
+};
+
+// ─── The Spiritual Journey — the DEEPER course ───────────────────────────────
+// Keating's full teaching series (the 29 talks), for after the method is
+// learned: the healing of the whole person, one talk at a time.
+export const SPIRITUAL_JOURNEY: JourneyCourse = {
+  id: "spiritual-journey",
+  title: "The Spiritual Journey",
+  author: "Fr. Thomas Keating",
+  tagline:
+    "The deeper course — Fr. Keating's full series on the contemplative path and the healing of the whole person, walked one talk at a time. Begin with the Centering Prayer course, then continue here.",
+  playlistUrl:
+    "https://www.youtube.com/playlist?list=PLBE6fmRmYU8g6CAOwq4-IEvpSnbBxKfRO",
+  units: [
     {
       id: "foundations",
       title: "Foundations: Relating to God",
@@ -404,15 +429,26 @@ export interface FlatVideo {
   multiPart: boolean;
 }
 
-export const JOURNEY_VIDEOS: FlatVideo[] = (() => {
-  const out: FlatVideo[] = [];
+/** Everything a course page needs to navigate a course's videos — built once
+ *  per course (the two courses each get their own index). */
+export interface CourseIndex {
+  videos: FlatVideo[];
+  total: number;
+  firstId: string;
+  get: (id: string | null | undefined) => FlatVideo | undefined;
+  next: (id: string) => FlatVideo | undefined;
+  prev: (id: string) => FlatVideo | undefined;
+}
+
+export function buildCourseIndex(course: JourneyCourse): CourseIndex {
+  const videos: FlatVideo[] = [];
   let index = 0;
-  for (const unit of SPIRITUAL_JOURNEY.units) {
+  for (const unit of course.units) {
     for (const lesson of unit.lessons) {
       const multiPart = lesson.parts.length > 1;
       for (const part of lesson.parts) {
         index += 1;
-        out.push({
+        videos.push({
           id: part.id,
           lessonTitle: lesson.title,
           partLabel: part.label,
@@ -425,30 +461,29 @@ export const JOURNEY_VIDEOS: FlatVideo[] = (() => {
       }
     }
   }
-  return out;
-})();
-
-export const JOURNEY_TOTAL = JOURNEY_VIDEOS.length;
-
-const VIDEO_BY_ID = new Map(JOURNEY_VIDEOS.map((v) => [v.id, v]));
-
-export function getVideo(id: string | null | undefined): FlatVideo | undefined {
-  return id ? VIDEO_BY_ID.get(id) : undefined;
+  const byId = new Map(videos.map((v) => [v.id, v]));
+  return {
+    videos,
+    total: videos.length,
+    firstId: videos[0]?.id ?? "",
+    get: (id) => (id ? byId.get(id) : undefined),
+    next: (id) => {
+      const v = byId.get(id);
+      return v ? videos[v.index] : undefined; // 1-based → [index] is the next
+    },
+    prev: (id) => {
+      const v = byId.get(id);
+      return v && v.index > 1 ? videos[v.index - 2] : undefined;
+    },
+  };
 }
 
-export function nextVideo(id: string): FlatVideo | undefined {
-  const v = VIDEO_BY_ID.get(id);
-  if (!v) return undefined;
-  return JOURNEY_VIDEOS[v.index]; // index is 1-based → element at [index] is the next
-}
+export const CENTERING_INDEX = buildCourseIndex(CENTERING_PRAYER);
+export const JOURNEY_INDEX = buildCourseIndex(SPIRITUAL_JOURNEY);
 
-export function prevVideo(id: string): FlatVideo | undefined {
-  const v = VIDEO_BY_ID.get(id);
-  if (!v || v.index <= 1) return undefined;
-  return JOURNEY_VIDEOS[v.index - 2];
-}
-
-export const FIRST_VIDEO_ID = JOURNEY_VIDEOS[0]?.id ?? "";
+// Legacy aliases (learn.tsx tiles) — the Spiritual Journey course's own totals.
+export const JOURNEY_TOTAL = JOURNEY_INDEX.total;
+export const CENTERING_TOTAL = CENTERING_INDEX.total;
 
 /** A short display label for a video, e.g. "Prayer as Relating to God · Part 2". */
 export function videoLabel(v: FlatVideo): string {

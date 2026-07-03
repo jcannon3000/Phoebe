@@ -106,6 +106,20 @@ export function setLast(courseId: string, id: string) {
   commit(courseId, { ...s, lastId: id });
 }
 
+/** One-time progress migration when lessons MOVE between courses (e.g. the
+ *  five method videos splitting out of the Spiritual Journey into the
+ *  Centering Prayer course): copy any of `ids` completed under `fromId` into
+ *  `toId`, only while `toId` has no progress of its own. Non-destructive —
+ *  the source course keeps its marks. */
+export function migrateCourseProgress(fromId: string, toId: string, ids: string[]) {
+  const to = snap(toId);
+  if (to.completed.length > 0) return;
+  const from = snap(fromId);
+  const moved = ids.filter((id) => from.completed.includes(id));
+  if (moved.length === 0) return;
+  commit(toId, { ...to, completed: moved });
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export interface UseCourseProgress {

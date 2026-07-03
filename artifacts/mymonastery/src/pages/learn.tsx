@@ -9,7 +9,7 @@ import ImprintSlideshow, {
   type ImprintSlide,
 } from "@/components/ImprintSlideshow";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { SPIRITUAL_JOURNEY, JOURNEY_TOTAL } from "@/lib/spiritualJourney";
+import { SPIRITUAL_JOURNEY, JOURNEY_TOTAL, CENTERING_PRAYER, CENTERING_TOTAL } from "@/lib/spiritualJourney";
 import { WAY_OF_LOVE, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
 import { useCourseProgress } from "@/lib/courseProgress";
 
@@ -31,6 +31,7 @@ export default function LearnPage() {
   const [activeTopic, setActiveTopic] = useState<LearnTopic | null>(null);
   // Live progress for the guided courses (web-only) surfaced below.
   const { completedCount } = useCourseProgress(SPIRITUAL_JOURNEY.id);
+  const { completedCount: centeringDone } = useCourseProgress(CENTERING_PRAYER.id);
   const { completedCount: wolDone } = useCourseProgress(WAY_OF_LOVE.id);
   // Slides are read through hooks now so they react to the live
   // language. Keep them outside the topic array so the array itself
@@ -129,6 +130,31 @@ export default function LearnPage() {
               Courses
             </p>
             <div className="space-y-3">
+              {/* Centering Prayer first — the short PRACTICE course is the
+                  on-ramp; the Spiritual Journey is where it deepens. */}
+              <button
+                onClick={() => setLocation("/centering-prayer")}
+                className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.32)" }}
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-2xl leading-none mt-0.5">🕯️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {CENTERING_PRAYER.title}
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
+                      Learn the method with Fr. Thomas Keating — five short talks, then the prayer itself.
+                    </p>
+                    <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#5FBF7F" }}>
+                      {centeringDone > 0
+                        ? `Continue · ${centeringDone} of ${CENTERING_TOTAL} complete`
+                        : `Video course · ${CENTERING_TOTAL} lessons + the practice`}
+                    </p>
+                  </div>
+                </div>
+              </button>
+
               <button
                 onClick={() => setLocation("/journey")}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
