@@ -59,7 +59,7 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     // stored profile zone, so "today" agrees with what the client recorded.
     // Both fall back to UTC. todayDateInTz never throws on a bad zone.
     const [meTz] = await db
-      .select({ timezone: usersTable.timezone, createdAt: usersTable.createdAt })
+      .select({ timezone: usersTable.timezone, createdAt: usersTable.createdAt, restDays: usersTable.restDays })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     const tzParam = typeof req.query.tz === "string" && isValidTimeZone(req.query.tz) ? req.query.tz : null;
@@ -125,12 +125,21 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     // misses within seven days end it. The forgiven day itself doesn't add to
     // the count; it just doesn't sever what came before. No "streak freeze"
     // inventory, no UI — it simply doesn't break.
+    //
+    // REST DAYS: a weekday the user has set as a rest/sabbath day (users.
+    // rest_days, 0=Sun..6=Sat — the Walking Together phone-sabbath setting)
+    // never breaks the streak and never consumes the weekly grace — rest is
+    // part of the rule, not a miss.
+    const restDays = new Set(Array.isArray(meTz?.restDays) ? meTz.restDays : []);
+    const isRestDay = (ymd: string): boolean =>
+      restDays.size > 0 && restDays.has(new Date(`${ymd}T00:00:00Z`).getUTCDay());
     let streak = 0;
     let lastForgivenI: number | null = null;
     for (let i = keptToday ? 0 : 1; i < 400; i++) {
       const ymd = ymdMinus(i);
       if (ymd < createdYmd) break; // don't count days before the account/routine existed
       if (kept.has(ymd)) { streak++; continue; }
+      if (isRestDay(ymd)) continue; // rest is kept by definition — bridge for free
       if (lastForgivenI === null || i - lastForgivenI >= 7) { lastForgivenI = i; continue; }
       break;
     }

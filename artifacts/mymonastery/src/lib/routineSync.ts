@@ -36,6 +36,10 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:slot:lectio", "phoebe:slot:walk", "phoebe:slot:scripture", "phoebe:slot:reading", "phoebe:journaling-slot",
   // Listen-to-Scripture: which readings to play through.
   "phoebe:scripture-scope",
+  // The 30-day commitment's start date (lib/commitment.ts) — synced so
+  // "Day N of 30" agrees across the user's devices instead of each device
+  // starting its own trial.
+  "phoebe:commitment-start",
 ];
 
 const UPDATED_AT_KEY = "phoebe:routine:updated-at";

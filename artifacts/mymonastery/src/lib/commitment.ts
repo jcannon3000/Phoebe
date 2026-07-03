@@ -6,7 +6,9 @@
 // anything — day 14 is day 14 whether you prayed 14 times or 9. Stored locally
 // (a personal, device-local nicety); cross-device sync can come later.
 
-const KEY = "phoebe:commitment-start"; // the ymd the user committed
+import { pushRoutineConfig } from "@/lib/routineSync";
+
+const KEY = "phoebe:commitment-start"; // the ymd the user committed (in ROUTINE_KEYS — cross-device via rule_config)
 export const COMMITMENT_DAYS = 30;
 
 function todayYmd(): string {
@@ -22,13 +24,19 @@ export function getCommitmentStart(): string | null {
   try { return localStorage.getItem(KEY); } catch { return null; }
 }
 
-/** Begin a 30-day trial today. No-op if one is already running. */
+/** Begin a 30-day trial today. No-op if one is already running. The start date
+ *  rides routineSync (rule_config LWW) so "Day N of 30" agrees across devices. */
 export function startCommitment(): void {
-  try { if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, todayYmd()); } catch { /* ignore */ }
+  try {
+    if (!localStorage.getItem(KEY)) {
+      localStorage.setItem(KEY, todayYmd());
+      pushRoutineConfig();
+    }
+  } catch { /* ignore */ }
 }
 
 export function clearCommitment(): void {
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(KEY); pushRoutineConfig(); } catch { /* ignore */ }
 }
 
 /** Which day of the trial today is: 1 on the first day, counting up. null if no
