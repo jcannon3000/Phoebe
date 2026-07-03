@@ -11,6 +11,7 @@ import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { CobreathePrayerIntro } from "@/components/CobreathePrayerIntro";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useAuth } from "@/hooks/useAuth";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
@@ -173,6 +174,14 @@ export default function CobreathePage() {
   const [mode, setMode] = useState<"prayer" | "intro" | "breathing" | "done">(() =>
     wantsStart() ? "breathing" : "prayer",
   );
+  // PUBLIC no-login version: guests skip the Kearns prayer slideshow entirely —
+  // straight to the breath-selection ("before you begin") screen. An effect
+  // (not the initializer) because auth may still be resolving on first render;
+  // it only ever bumps "prayer" → "intro", never disturbs a running breath.
+  const { isGuest } = useGuestMode();
+  useEffect(() => {
+    if (isGuest) setMode((m) => (m === "prayer" ? "intro" : m));
+  }, [isGuest]);
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
   const [lengthBreaths, setLengthBreaths] = useState<number>(DEFAULT_TOTAL_BREATHS);

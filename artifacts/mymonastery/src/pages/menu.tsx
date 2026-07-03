@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { useTranslation } from "react-i18next";
 
@@ -22,6 +23,11 @@ export default function MenuPage() {
   const logout = useLogout();
   const { rawIsBeta, rawIsAdmin } = useBetaStatus();
   const { isPilot } = usePilotMode();
+  // PUBLIC no-login version: guests see Pray (BCP · Practices · Reflections ·
+  // Daily progress) + Resources + Settings/About, with a QUIET "Sign in" in
+  // place of Sign out — no community/events/feeds/letters/messages (the
+  // beta-gated rows are already off since guests aren't beta).
+  const { isGuest } = useGuestMode();
   const officesOnly = user?.accessTier === "offices-only";
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
@@ -95,16 +101,17 @@ export default function MenuPage() {
 
   // Explore — community + reference content.
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
-  // Community + Events — hidden in pilot (personal-only, no community).
-  if (!officesOnly && !isPilot) {
+  // Community + Events — hidden in pilot AND guest (personal-only, no community).
+  if (!officesOnly && !isPilot && !isGuest) {
     explore.items.push({ emoji: "🏘️", label: t("menu.communities"), sub: t("menu.communities_sub"), onClick: () => go("/communities") });
     explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
   }
   explore.items.push({ emoji: "📚", label: t("menu.resources"), sub: t("menu.resources_sub"), onClick: () => go("/menu/resources") });
   // Prayer Feeds — discover + subscribe to daily intercession feeds (e.g. the
   // Diocese of New York's Calendar of Intercession). Public feeds are open to
-  // every tier, including offices-only, so this is unconditional.
-  if (!isPilot) explore.items.push({ emoji: "🌍", label: t("menu.prayer_feeds", { defaultValue: "Prayer Feeds" }), sub: t("menu.prayer_feeds_sub", { defaultValue: "Pray for the world, one day at a time" }), onClick: () => go("/prayer-feeds") });
+  // every signed-in tier, including offices-only — but NOT the no-login guest
+  // (subscribing needs an account; the public version carries no feeds).
+  if (!isPilot && !isGuest) explore.items.push({ emoji: "🌍", label: t("menu.prayer_feeds", { defaultValue: "Prayer Feeds" }), sub: t("menu.prayer_feeds_sub", { defaultValue: "Pray for the world, one day at a time" }), onClick: () => go("/prayer-feeds") });
   if (showLetters) explore.items.push({ emoji: "📮", label: t("menu.letters"), badge: t("menu.beta_badge"), onClick: () => go("/letters") });
   if (rawIsBeta) explore.items.push({ emoji: "✉️", label: t("menu.messages"), badge: t("menu.beta_badge"), onClick: () => go("/messages") });
   groups.push(explore);
@@ -119,7 +126,13 @@ export default function MenuPage() {
     account.items.push({ emoji: "🏛️", label: t("menu.phoebe_parish"), badge: t("menu.beta_badge"), onClick: () => go(user?.parishFeedId ? "/parish" : "/parish/onboarding") });
   }
   account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/about") });
-  account.items.push({ emoji: "🚪", label: t("menu.sign_out"), onClick: () => logout() });
+  // Guests get the QUIET "Sign in" (the public version's only auth surface —
+  // beta testers' door into the full app) where Sign out normally sits.
+  if (isGuest) {
+    account.items.push({ emoji: "🚪", label: t("menu.sign_in", { defaultValue: "Sign in" }), onClick: () => go("/signin") });
+  } else {
+    account.items.push({ emoji: "🚪", label: t("menu.sign_out"), onClick: () => logout() });
+  }
   groups.push(account);
 
   return (

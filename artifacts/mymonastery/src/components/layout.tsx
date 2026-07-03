@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { X, LogOut, ChevronRight, ChevronDown, Plus } from "lucide-react";
+import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -112,6 +113,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [, setLocation] = useLocation();
   const { rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { isPilot } = usePilotMode();
+  // PUBLIC no-login version: the guest drawer is the calm shell — no profile
+  // block, no Community/Prayer-list/Events section (BCP · Practices ·
+  // Reflections · Settings · About stay), and the footer becomes the QUIET
+  // "Sign in" that is the public version's only auth surface (beta testers
+  // reach the full app through it). See memory "project_public_no_login".
+  const { isGuest } = useGuestMode();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -262,7 +269,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </button>
             </div>
 
-            {/* ── Profile ── */}
+            {/* ── Profile ── (signed-in only: a guest has no account row —
+                Settings stays reachable below) */}
+            {!isGuest && (
             <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Tapping the profile (avatar / name / email) opens
                   Settings — navigate() closes the drawer first. */}
@@ -299,6 +308,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
+            )}
 
             {/* ── Communities ── lists the user's communities.
                 Offices-only tier has none, so the whole block is
@@ -313,7 +323,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 straight to the requests panel when there are
                 pending joins waiting on them — same logic as the
                 multi-community case. */}
-            {!officesOnly && !jardinShell && (
+            {/* GUESTS have no social section at all — no Community/Fellows, no
+                Prayer list, no Events (the public version carries none). */}
+            {!officesOnly && !jardinShell && !isGuest && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 {/* Community — your fellows (1:1 prayer connections) AND the
                     communities you're in, all on one page. Communities no longer
@@ -425,18 +437,33 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/about")} />
             </div>
 
-            {/* ── Sign out ── */}
+            {/* ── Sign out / (guest) quiet Sign in ── the guest row is the
+                public version's ONLY auth surface — a beta tester's door into
+                the full app, styled exactly as quietly as Sign out. */}
             <div className="px-5 py-4 flex-1 flex flex-col justify-end">
-              <button
-                onClick={() => { onClose(); logout(); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
-                style={{ color: "#8FAF96" }}
-                onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-              >
-                <LogOut size={15} />
-                {t("menu.sign_out")}
-              </button>
+              {isGuest ? (
+                <button
+                  onClick={() => navigate("/signin")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
+                  style={{ color: "#8FAF96" }}
+                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                  onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                >
+                  <LogIn size={15} />
+                  {t("menu.sign_in", { defaultValue: "Sign in" })}
+                </button>
+              ) : (
+                <button
+                  onClick={() => { onClose(); logout(); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
+                  style={{ color: "#8FAF96" }}
+                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                  onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                >
+                  <LogOut size={15} />
+                  {t("menu.sign_out")}
+                </button>
+              )}
             </div>
           </motion.div>
         </>
