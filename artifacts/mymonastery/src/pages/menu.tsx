@@ -126,9 +126,10 @@ export default function MenuPage() {
     account.items.push({ emoji: "🏛️", label: t("menu.phoebe_parish"), badge: t("menu.beta_badge"), onClick: () => go(user?.parishFeedId ? "/parish" : "/parish/onboarding") });
   }
   account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/about") });
-  // Guests get the QUIET "Sign in" (the public version's only auth surface —
-  // beta testers' door into the full app) where Sign out normally sits.
-  if (isGuest) {
+  // Signed-out guests get the QUIET "Sign in" (the public version's only auth
+  // surface — beta testers' door into the full app) where Sign out normally
+  // sits. Keyed on `user` too, so a widened SIGNED-IN guest keeps Sign out.
+  if (isGuest && !user) {
     account.items.push({ emoji: "🚪", label: t("menu.sign_in", { defaultValue: "Sign in" }), onClick: () => go("/signin") });
   } else {
     account.items.push({ emoji: "🚪", label: t("menu.sign_out"), onClick: () => logout() });

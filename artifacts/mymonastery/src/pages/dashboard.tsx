@@ -21,6 +21,7 @@ import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OF
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { seedGuestRule } from "@/lib/guestSeed";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -5747,6 +5748,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   );
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  // Guest SHAPE (public close-off, slice 4): true for signed-out guests AND
+  // signed-in non-beta/non-admin users when the flag is on — the public home
+  // shows no prayer list / composer / events regardless of account data.
+  // (The signed-OUT storage branches elsewhere still key on !user.)
+  const { isGuest: isGuestShape } = useGuestMode();
   const [filter, setFilter] = useState<"practices" | null>(null);
   // Native vs. web detection. The iOS shell injects `window.PhoebeNative`
   // before the JS bundle runs, so reading it once at mount is safe and
@@ -7596,8 +7602,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 {/* Prayer List — the requests carousel (title + divider +
                     "View all", "Pray through the whole list" at its foot), then
                     a wide "New prayer request" CTA. Leads the home, above the
-                    events schedule. */}
-                {filter === null && !eventsOnly && (() => {
+                    events schedule. Hidden in guest SHAPE (public close-off):
+                    a widened signed-in guest may have request data, but the
+                    public home carries no prayer list. */}
+                {filter === null && !eventsOnly && !isGuestShape && (() => {
                   // One source of truth (see homeCarouselRows above) — own +
                   // others' requests AND community intercessions, already sorted.
                   const carouselRows = homeCarouselRows;
@@ -7622,9 +7630,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     overlapped stack of the people who've prayed for them lately on
                     the right, plus the "New prayer request" CTA. The header + cards
                     only show when you HAVE an open request; the CTA always shows so
-                    you can always start one. Signed-in only: a GUEST home carries
-                    no prayer-request composer and no community events. */}
-                {filter === null && !eventsOnly && !!user && (() => {
+                    you can always start one. Signed-in only, and never in guest
+                    SHAPE: the public home carries no prayer-request composer
+                    and no community events. */}
+                {filter === null && !eventsOnly && !!user && !isGuestShape && (() => {
                   // The upcoming EVENTS render below the prayer list. The "Add
                   // prayer" button always sits directly under the list (your own
                   // requests now live in that list too, with the 🙏/✓ pill), so

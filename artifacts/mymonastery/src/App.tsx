@@ -458,6 +458,7 @@ import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { isJardinPath, isJardinSealed } from "@/lib/jardinMode";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
@@ -771,6 +772,47 @@ function PilotGate({ children }: { children: ReactNode }) {
       PILOT_ALLOWED_PREFIX.some((p) => location.startsWith(p));
     if (!allowed) setLocation("/pilot/home");
   }, [location, isPilot, isLoading, setLocation]);
+
+  return <>{children}</>;
+}
+
+// GuestGate — the PUBLIC no-login version's route allowlist (PilotGate's
+// pattern; see memory "project_public_no_login"). While a session is in guest
+// mode (useGuestMode: flag on + signed out, or signed in without beta/
+// community-admin), only the personal prayer surfaces are reachable — home,
+// Daily progress, the customizer, the BCP offices (+ prayer-mode for the
+// office's closing slides; the intercession handoff is dead in guest mode),
+// Psalms, Contemplation, Co-Breathe, Listen to Scripture, the reflections
+// reader, menu/settings/legal, and the quiet /signin. Everything else
+// (communities, people/fellows, events, feeds, letters, messages, prayer
+// lists, moments, listening) bounces to the guest home. "/" stays allowed so
+// welcome-public can seed + forward; "/onboarding" stays allowed because the
+// dashboard bounces not-yet-onboarded signed-in users there (blocking it
+// would loop). No-op entirely when guest mode isn't active.
+const GUEST_ALLOWED_EXACT = new Set<string>([
+  "/", "/dashboard", "/daily-progress",
+  "/menu", "/menu/bcp", "/menu/practices", "/menu/reflections", "/menu/resources",
+  "/psalms", "/contemplation", "/reflect/fdd",
+  "/begin-prayer", "/prayer-chooser",
+  "/signin", "/login", "/onboarding",
+  "/about", "/privacy", "/terms",
+]);
+const GUEST_ALLOWED_PREFIX = [
+  "/bcp", "/prayer-mode", "/scripture", "/cobreathe",
+  "/rule-of-life", "/settings", "/menu/reflections/",
+];
+
+function GuestGate({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useLocation();
+  const { isGuest, isLoading } = useGuestMode();
+
+  useEffect(() => {
+    if (isLoading || !isGuest) return;
+    const allowed =
+      GUEST_ALLOWED_EXACT.has(location) ||
+      GUEST_ALLOWED_PREFIX.some((p) => location.startsWith(p));
+    if (!allowed) setLocation("/dashboard");
+  }, [location, isGuest, isLoading, setLocation]);
 
   return <>{children}</>;
 }
@@ -1373,11 +1415,13 @@ function App() {
                 persistent <audio> + mini-player bar. */}
             <JardinHostGate />
             <PodcastPlayerProvider>
-              <PilotGate>
-                <ParishGate>
-                  <Router />
-                </ParishGate>
-              </PilotGate>
+              <GuestGate>
+                <PilotGate>
+                  <ParishGate>
+                    <Router />
+                  </ParishGate>
+                </PilotGate>
+              </GuestGate>
             </PodcastPlayerProvider>
           </WouterRouter>
           <Toaster />

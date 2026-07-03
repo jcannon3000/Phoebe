@@ -269,9 +269,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </button>
             </div>
 
-            {/* ── Profile ── (signed-in only: a guest has no account row —
-                Settings stays reachable below) */}
-            {!isGuest && (
+            {/* ── Profile ── (signed-in only: a signed-OUT guest has no
+                account row — Settings stays reachable below. Keyed on `user`,
+                not isGuest: a widened signed-in guest still has an account.) */}
+            {!!user && (
             <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Tapping the profile (avatar / name / email) opens
                   Settings — navigate() closes the drawer first. */}
@@ -437,11 +438,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/about")} />
             </div>
 
-            {/* ── Sign out / (guest) quiet Sign in ── the guest row is the
-                public version's ONLY auth surface — a beta tester's door into
-                the full app, styled exactly as quietly as Sign out. */}
+            {/* ── Sign out / (signed-out guest) quiet Sign in ── the guest row
+                is the public version's ONLY auth surface — a beta tester's
+                door into the full app, styled exactly as quietly as Sign out.
+                Keyed on `user` too, so a widened SIGNED-IN guest keeps Sign
+                out. */}
             <div className="px-5 py-4 flex-1 flex flex-col justify-end">
-              {isGuest ? (
+              {isGuest && !user ? (
                 <button
                   onClick={() => navigate("/signin")}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
