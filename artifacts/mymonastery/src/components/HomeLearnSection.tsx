@@ -89,10 +89,10 @@ export function HomeLearnSection() {
     });
   }
 
-  // Show every course so both video courses (Centering Prayer + The Spiritual
-  // Journey) are always reachable from the home — "Continue" once started,
-  // "Start course" if not. (iOS shows only the Way of Love audio course.)
-  const show = cards;
+  // ONLY ACTIVE courses appear on the home (owner): started and not yet
+  // finished. Nothing in flight → no Learn section at all — starting a course
+  // happens from the Learn tab, not the home.
+  const show = cards.filter((c) => c.started && c.done < c.total);
   if (show.length === 0) return null;
 
   return (

@@ -103,7 +103,14 @@ type RulePreset = {
   id: string; emoji: string;
   sides: { morning: boolean; evening: boolean };
   pray: PrayChoice;
+  /** Evening's way when it differs from the morning (e.g. Morning Prayer +
+   *  Evening Devotion). Omitted = same as `pray`. */
+  evening?: PrayChoice;
   silence: boolean; goalMin: number;
+  /** Which side carries the silent sit. Omitted = every side the preset turns
+   *  on (the named rules); the time ladder pins ONE sit ("5 minutes of
+   *  silence" means five, not five per side). */
+  silenceSide?: "morning" | "evening";
   reflections: ReflectionSource[];
 };
 // Ordered by ascending commitment (least → most time), so a beginner reads down
@@ -126,6 +133,79 @@ const RULE_PRESETS: RulePreset[] = [
   // THE DAILY OFFICE — full Morning & Evening Prayer from the Book of Common Prayer.
   { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"] },
 ];
+
+// ── The TIME LADDER — the automatic transmission's dial (owner, 2026-07-03).
+// The first question isn't "which liturgy?" but "how much time will you give
+// each day?" Every 5-minute step maps to one coherent suggested rhythm; the
+// picker shows the routine live as the dial moves and adopts it whole.
+// Forward Day by Day rides every step (the daily word), silence enters at 15.
+type TimeStep = {
+  minutes: number;
+  /** What the rhythm contains, as display rows (emoji + label). */
+  rows: Array<{ emoji: string; label: string }>;
+  preset: RulePreset;
+};
+const TIME_LADDER: TimeStep[] = [
+  {
+    minutes: 5,
+    rows: [
+      { emoji: "📜", label: "The day's Psalms, once a day" },
+      { emoji: "📖", label: "Forward Day by Day" },
+    ],
+    preset: { id: "time-5", emoji: "📜", sides: { morning: true, evening: false }, pray: "psalms", silence: false, goalMin: 0, reflections: ["fdd"] },
+  },
+  {
+    minutes: 10,
+    rows: [
+      { emoji: "🌅", label: "Morning Psalms" },
+      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "🌆", label: "Evening Devotion" },
+    ],
+    preset: { id: "time-10", emoji: "🌅", sides: { morning: true, evening: true }, pray: "psalms", evening: "devotion", silence: false, goalMin: 0, reflections: ["fdd"] },
+  },
+  {
+    minutes: 15,
+    rows: [
+      { emoji: "🌅", label: "Morning Psalms" },
+      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "🌆", label: "Evening Devotion" },
+      { emoji: "🕯️", label: "5 minutes of silence" },
+    ],
+    preset: { id: "time-15", emoji: "🌅", sides: { morning: true, evening: true }, pray: "psalms", evening: "devotion", silence: true, goalMin: 5, silenceSide: "morning", reflections: ["fdd"] },
+  },
+  {
+    minutes: 20,
+    rows: [
+      { emoji: "🌅", label: "Morning Prayer" },
+      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "🕯️", label: "5 minutes of silence" },
+    ],
+    preset: { id: "time-20", emoji: "🌅", sides: { morning: true, evening: false }, pray: "offices", silence: true, goalMin: 5, silenceSide: "morning", reflections: ["fdd"] },
+  },
+  {
+    minutes: 25,
+    rows: [
+      { emoji: "🌅", label: "Morning Prayer" },
+      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "🌆", label: "Evening Devotion" },
+      { emoji: "🕯️", label: "5 minutes of silence" },
+    ],
+    preset: { id: "time-25", emoji: "🌅", sides: { morning: true, evening: true }, pray: "offices", evening: "devotion", silence: true, goalMin: 5, silenceSide: "morning", reflections: ["fdd"] },
+  },
+  {
+    minutes: 30,
+    rows: [
+      { emoji: "🌅", label: "Morning Prayer" },
+      { emoji: "🌆", label: "Evening Prayer" },
+      { emoji: "📖", label: "Forward Day by Day" },
+      { emoji: "🕯️", label: "5 minutes of silence" },
+    ],
+    preset: { id: "time-30", emoji: "📖", sides: { morning: true, evening: true }, pray: "offices", silence: true, goalMin: 5, silenceSide: "morning", reflections: ["fdd"] },
+  },
+];
+// The dial starts at 20 — Morning Prayer · Forward Day by Day · 5 minutes of
+// silence, with no evening prayer (the owner's chosen starting rule).
+const TIME_LADDER_DEFAULT = 3;
 
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…90
@@ -987,6 +1067,9 @@ export default function WayOfLoveRuleFlow({
   // skip it — companions should have a name to walk with).
   const lastAdoptedPresetRef = useRef<string | null>(null);
   const partyTokenRef = useRef<string | null>(null); // reuse across re-taps — one party per commit
+  // The time-ladder dial's position (index into TIME_LADDER; default = 20 min:
+  // Morning Prayer · FDD · 5 minutes of silence, no evening).
+  const [timeIdx, setTimeIdx] = useState(TIME_LADDER_DEFAULT);
   const [inviteStage, setInviteStage] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const shareRhythmParty = async () => {
@@ -1029,12 +1112,15 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     lastAdoptedPresetRef.current = preset.id;
     setSides(preset.sides);
-    setPrayBySide({ morning: preset.pray, evening: preset.pray });
+    setPrayBySide({ morning: preset.pray, evening: preset.evening ?? preset.pray });
     setCommunityWithOffice({ morning: false, evening: false });
     setContemplationStyle("silent");
     setContemplative({ cobreathe: false, audio: false, examen: false, lectio: false, walk: false, scripture: false });
     // A starter rule's silence applies to whichever sides it turns on.
-    setContemplationBySide({ morning: preset.silence && preset.sides.morning, evening: preset.silence && preset.sides.evening });
+    setContemplationBySide({
+      morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
+      evening: preset.silence && preset.sides.evening && preset.silenceSide !== "morning",
+    });
     // Starter rules carry a fixed minutes goal — adopt the fixed sizing, not the ladder.
     setSilenceMode("fixed");
     setGoal(String(preset.silence ? preset.goalMin : 0));
@@ -2079,13 +2165,10 @@ export default function WayOfLoveRuleFlow({
   // ── Starter — a first author receives a named rule (adopt whole, tune later),
   // or chooses to build their own. Adopting commits the preset, then beholds it.
   if (step === "starter") {
-    // Each card carries a plain-English line + a TIME COST — people commit to a
-    // time budget, not a liturgy, so the cost is what makes the choice legible.
-    const meta = (id: string) =>
-      id === "morning-anchor" ? { label: t("wol_rule.preset_morning_anchor", { defaultValue: "A gentle start" }), who: t("wol_rule.preset_morning_anchor_who", { defaultValue: "One short prayer to anchor the morning — the rule you keep beats the rule you break." }), cost: t("wol_rule.preset_morning_anchor_cost", { defaultValue: "~5 min a day" }) }
-      : id === "psalms-daily" ? { label: t("wol_rule.preset_psalms", { defaultValue: "Praying the Psalms" }), who: t("wol_rule.preset_psalms_who", { defaultValue: "The day's psalms, morning and evening — the way monastics have prayed for 1,500 years." }), cost: t("wol_rule.preset_psalms_cost", { defaultValue: "~10 min · twice a day" }) }
-      : id === "centering" ? { label: t("wol_rule.preset_centering", { defaultValue: "Centering Prayer" }), who: t("wol_rule.preset_centering_who", { defaultValue: "Two daily sits in silence, in the school of Thomas Keating, with the CAC's daily meditation." }), cost: t("wol_rule.preset_centering_cost", { defaultValue: "15 min · twice a day" }) }
-      : { label: t("wol_rule.preset_offices", { defaultValue: "The Daily Office" }), who: t("wol_rule.preset_offices_who", { defaultValue: "The church's ancient morning and evening prayer, from the Book of Common Prayer." }), cost: t("wol_rule.preset_offices_cost", { defaultValue: "~20 min · twice a day" }) };
+    // The TIME-FIRST automatic transmission: pick how many minutes a day, and
+    // the suggested rhythm for that amount renders live below the dial. One
+    // tap adopts it whole (the review screen follows, everything adjustable).
+    const stepDef = TIME_LADDER[timeIdx] ?? TIME_LADDER[TIME_LADDER_DEFAULT];
     return shell(
       <>
         <div style={{ textAlign: "center", marginTop: 8 }}>
@@ -2094,29 +2177,57 @@ export default function WayOfLoveRuleFlow({
             {t("wol_rule.starter_eyebrow", { defaultValue: "Your rule of life" })}
           </p>
           <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
-            {t("wol_rule.starter_title", { defaultValue: "Choose a rhythm" })}
+            {t("wol_rule.time_title", { defaultValue: "How much time will you give each day?" })}
           </h1>
           <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
-            {t("wol_rule.starter_sub", { defaultValue: "Each one is a complete daily practice — pick the one that fits your life. You can change anything later." })}
+            {t("wol_rule.time_sub", { defaultValue: "We'll shape a complete daily rhythm to fit it. You can change anything later." })}
           </p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
-          {RULE_PRESETS.map((pr) => {
-            const m = meta(pr.id);
-            return (
-              <button key={pr.id} onClick={() => adoptRule(pr)} style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "15px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
-                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{pr.emoji}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{m.label}</span>
-                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2, lineHeight: 1.45 }}>{m.who}</span>
-                  <span style={{ display: "block", color: SAGE_DIM, fontSize: 11, fontWeight: 700, fontFamily: FONT, letterSpacing: "0.3px", marginTop: 5 }}>{m.cost}</span>
-                </span>
-                <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 18, flexShrink: 0 }} aria-hidden>›</span>
-              </button>
-            );
-          })}
+
+        {/* The dial — minutes readout + a 5-minute-step slider. */}
+        <div style={{ textAlign: "center", marginTop: 26 }}>
+          <p style={{ color: CREAM, fontSize: 40, fontWeight: 700, fontFamily: FONT, margin: 0, lineHeight: 1 }}>
+            {stepDef.minutes}
+            <span style={{ fontSize: 15, fontWeight: 600, color: SAGE, marginLeft: 8 }}>
+              {t("wol_rule.time_unit", { defaultValue: "minutes a day" })}
+            </span>
+          </p>
+          <input
+            type="range"
+            min={0}
+            max={TIME_LADDER.length - 1}
+            step={1}
+            value={timeIdx}
+            onChange={(e) => { touchedRef.current = true; setTimeIdx(parseInt(e.target.value, 10)); }}
+            aria-label={t("wol_rule.time_title", { defaultValue: "How much time will you give each day?" })}
+            style={{ width: "100%", maxWidth: 340, marginTop: 18, accentColor: "#2D5E3F" }}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", maxWidth: 340, margin: "4px auto 0" }}>
+            <span style={{ color: SAGE_DIM, fontSize: 11, fontFamily: FONT }}>5 min</span>
+            <span style={{ color: SAGE_DIM, fontSize: 11, fontFamily: FONT }}>30 min</span>
+          </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 18, alignItems: "center" }}>
+
+        {/* The suggested rhythm for this amount — live as the dial moves. */}
+        <div style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", marginTop: 20 }}>
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1px", fontFamily: FONT, margin: "0 0 10px" }}>
+            {t("wol_rule.time_suggested", { defaultValue: "Your rhythm" })}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {stepDef.rows.map((r, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                <span style={{ color: CREAM, fontSize: 14.5, fontWeight: 500, fontFamily: FONT }}>{r.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button onClick={() => adoptRule(stepDef.preset)} style={{ marginTop: 16, width: "100%", background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+          {t("wol_rule.time_cta", { defaultValue: "Keep this rhythm" })}
+        </button>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16, alignItems: "center" }}>
           <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
           </button>
