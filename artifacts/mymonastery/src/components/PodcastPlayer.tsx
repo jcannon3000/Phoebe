@@ -113,6 +113,9 @@ type PlayerCtx = {
   playQueue: (eps: PlayingEpisode[]) => void;
   toggle: () => void;
   isCurrent: (showSlug: string, episodeId: string) => boolean;
+  // Dismiss the player (stops playback, slides the mini-bar down). Used e.g. when
+  // a psalm segment finishes and the office skips past the psalm slides.
+  close: () => void;
 };
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -1287,7 +1290,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <Ctx.Provider value={{ current, isPlaying, play, playQueue, toggle, isCurrent }}>
+    <Ctx.Provider value={{ current, isPlaying, play, playQueue, toggle, isCurrent, close: closePlayer }}>
       {children}
 
       {/* One persistent audio element for the whole app. */}

@@ -441,7 +441,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     return m;
   }, [scriptureAlignQ.data]);
-  const playScriptureReading = (seg: { startSeconds: number; endSeconds: number | null }) => {
+  const playScriptureReading = (
+    seg: { startSeconds: number; endSeconds: number | null },
+    opts?: { expand?: boolean; onSegmentEnd?: () => void },
+  ) => {
     const ep = scriptureEpisodeQ.data;
     if (!ep?.audioUrl) return;
     // Play ONLY this reading — never run on into the next one. Trust an explicit
@@ -471,7 +474,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       startAtSeconds: seg.startSeconds,
       stopAtSeconds: stopAt,
       collapseOnStop: true, // return to the slideshow when the reading ends
-    });
+      onSegmentEnd: opts?.onSegmentEnd,
+    }, opts?.expand === undefined ? undefined : { expand: opts.expand });
   };
   // Which half of the day this office belongs to. Threaded onto the
   // closing redirect (?side=) so the prayer-rhythm habit slide can
@@ -602,7 +606,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const officeBgPhoto = LEAF_PHOTOS.length > 0
     ? LEAF_PHOTOS[(leafOffset + sectionIndex) % LEAF_PHOTOS.length]!
     : null;
-  const officeBgOpacity = 0.70;
+  // Subtle landscape, held quiet under a heavy dark wash — matches the Laurel
+  // Kearns Co-Breathe intro / the prayer slideshow (photo at 0.22), so the office
+  // text stays fully legible over the scenery.
+  const officeBgOpacity = 0.22;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
@@ -1585,7 +1592,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
             />
           </AnimatePresence>
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.66) 26%, rgba(8,22,15,0.76) 50%, rgba(8,22,15,0.84) 74%, rgba(8,22,15,0.90) 100%)" }} />
+          {/* Dark wash matching the Laurel Kearns intro / prayer slideshow. */}
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
@@ -2912,7 +2920,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
                 <button
                   type="button"
-                  onClick={() => playScriptureReading(psalmSeg)}
+                  onClick={() => playScriptureReading(psalmSeg, {
+                    // Play in the bottom mini-bar (comes up / down) while the
+                    // verses stay on screen.
+                    expand: false,
+                    // Once the psalm audio finishes, they've heard it — skip past
+                    // the remaining psalm slides to the next part of the office,
+                    // and dismiss the player (it slides back down).
+                    onSegmentEnd: () => {
+                      const PSALM_SLIDE_TYPES = new Set(["psalm", "psalm_title", "psalm_gloria", "psalm_verses"]);
+                      setSlideIdx((idx) => {
+                        let j = idx + 1;
+                        while (j < slides.length && PSALM_SLIDE_TYPES.has(slides[j]?.type as string)) j++;
+                        return Math.min(j, Math.max(0, slides.length - 1));
+                      });
+                      player.close();
+                    },
+                  })}
                   style={{
                     padding: "10px 18px",
                     borderRadius: 999,
