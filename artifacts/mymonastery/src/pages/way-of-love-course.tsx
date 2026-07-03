@@ -12,7 +12,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Circle, ListMusic, Pause, Play } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useCourseProgress } from "@/lib/courseProgress";

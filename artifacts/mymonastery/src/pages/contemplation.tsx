@@ -166,13 +166,6 @@ function localDatetimeValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Average time per day sat within a window (sum / distinct days);
-// "—" when there are no days with a sit.
-function avgPerDay(seconds: number, days: number): string {
-  if (!days) return "—";
-  return humanMinutes(Math.round(seconds / days));
-}
-
 // Average per day INCLUDING Apple Health mindful minutes — so the average
 // matches the cumulative tile (which already adds health). Previously the
 // average used prayer-sit seconds only, so any health minutes (which stay
