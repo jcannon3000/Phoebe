@@ -2886,12 +2886,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               </div>
             );
           })()}
-          {/* Daily psalm → "Listen to this psalm". Scripture Day by Day reads
-              the day's psalm too; the podcast reads specific verses (and can
-              span several psalms, e.g. "97, 99, 100"), so match the office
-              psalm NUMBER against the podcast psalm segment — not the verse —
-              and play just that part, returning to the slides when it ends. */}
-          {currentSlide.type === "psalm_title" && scriptureEpisodeQ.data?.audioUrl && (() => {
+          {/* Daily psalm → "Listen to this psalm" on the VERSES slide (and the
+              title slide). Scripture Day by Day reads the day's psalm too; the
+              podcast reads specific verses (and can span several psalms, e.g.
+              "97, 99, 100"), so match the office psalm NUMBER against the podcast
+              psalm segment — not the verse — and play just that part, returning
+              to the slides when it ends. Type "psalm" is the appointed psalm's
+              verses; "invitatory_psalm" (the Venite) is excluded by type. */}
+          {(currentSlide.type === "psalm" || currentSlide.type === "psalm_title") && scriptureEpisodeQ.data?.audioUrl && (() => {
             const psalmSeg = (scriptureAlignQ.data?.sections ?? []).find((s) => s.id === "psalm");
             if (!psalmSeg) return null;
             // Skip the invitatory (Venite/Jubilate) — its number can coincide

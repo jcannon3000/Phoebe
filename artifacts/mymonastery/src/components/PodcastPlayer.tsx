@@ -371,6 +371,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  // Mini-bar slide up/down: it comes UP from the bottom when playback starts and
+  // slides DOWN when it stops (e.g. a psalm segment finishing and returning to
+  // the office). `barMounted` keeps it in the tree through the exit transition;
+  // `barUp` toggles the transform.
+  const [barMounted, setBarMounted] = useState(false);
+  const [barUp, setBarUp] = useState(false);
+  useEffect(() => {
+    if (current) {
+      setBarMounted(true);
+      const r = requestAnimationFrame(() => setBarUp(true));
+      return () => cancelAnimationFrame(r);
+    }
+    setBarUp(false);
+    const t = setTimeout(() => setBarMounted(false), 360);
+    return () => clearTimeout(t);
+  }, [current]);
   // Scrub (drag-to-seek): while dragging, scrubFrac (0..1) previews the position
   // so the bar + time labels follow the finger; the seek commits on release.
   // scrubbingRef gates the move handler so stray pointermoves don't jump it.
@@ -1285,13 +1301,16 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         preload="auto"
       />
 
-      {current && (
+      {barMounted && (
         <div
           style={{
             position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60,
             background: "#0A1A0F", borderTop: "1px solid rgba(168,197,160,0.18)",
             paddingBottom: "env(safe-area-inset-bottom)", fontFamily: FONT,
             boxShadow: "0 -6px 22px rgba(0,0,0,0.35)",
+            transform: barUp ? "translateY(0)" : "translateY(110%)",
+            transition: "transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)",
+            willChange: "transform",
           }}
         >
           {/* Tappable progress track. */}
@@ -1323,7 +1342,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                   {officeTitle}
                 </p>
                 <p style={{ fontSize: 10.5, color: "rgba(143,175,150,0.8)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
-                  {fmtClock(currentTime)}{duration > 0 ? ` / ${fmtClock(duration)}` : ""}{current.showTitle ? ` · ${current.showTitle}` : ""}
+                  {fmtClock(currentTime)}{duration > 0 ? ` / ${fmtClock(duration)}` : ""}{current?.showTitle ? ` · ${current.showTitle}` : ""}
                 </p>
               </div>
             </button>
