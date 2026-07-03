@@ -6,9 +6,24 @@ import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { playOfficeChime, primeAudio } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { useAuth } from "@/hooks/useAuth";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
+import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guestSilenceLog";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+
+// ALL CONTEMPLATION IS PRIVATE NOW (owner direction, 2026-07-02): a silent sit
+// neither broadcasts the sitter's live presence nor displays anyone else's —
+// no presence heartbeat POST, no who's-sitting poll, no live "praying with you
+// now" rail, no closing "who sat with you" faces/count, and no "praying
+// alongside" row in the Contemplation page history (which imports this flag).
+// OFF for EVERYONE — this is not a guest gate. The sit itself, minutes
+// logging, and goal progress are untouched, and the per-session
+// public/private toggle still governs what the server STORES (older installed
+// builds read that). Flip to restore the communal silence experience.
+export const CONTEMPLATION_PRESENCE_ENABLED = false;
 
 // A different calm landscape behind each silent sit (not the fixed polar bear).
 function pickLandscape(): string {
@@ -141,6 +156,7 @@ export function ContemplationTimer({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>("picker");
   // A landscape chosen once per mount — a different one each sit (not the bear).
@@ -186,8 +202,10 @@ export function ContemplationTimer({
   // While the sit is RUNNING: heartbeat presence (~20s) and poll who else is
   // sitting right now (~15s) so companions show live. Cleared when the sit
   // ends or the timer unmounts (the server expires a beat after ~60s anyway).
+  // DISABLED while contemplation is private (CONTEMPLATION_PRESENCE_ENABLED):
+  // no beat leaves the device, no poll asks who else is sitting.
   useEffect(() => {
-    if (phase !== "running") return;
+    if (phase !== "running" || !CONTEMPLATION_PRESENCE_ENABLED) return;
     liveSeenRef.current = [];
     let cancelled = false;
     const beat = () => { void apiRequest("POST", "/api/me/contemplation-presence").catch(() => { /* offline ok */ }); };
@@ -396,6 +414,17 @@ export function ContemplationTimer({
     const sat = Math.round(seconds);
     // Server floors non-office surfaces at 5s; skip the round trip below it.
     if (sat < 5) return;
+    // PUBLIC no-login version: a guest has no account to POST prayer_sessions
+    // to — the sit logs its whole minutes to the device-local tally the home
+    // "Silence" goal card's progress bar reads, and the closing summary's goal
+    // line comes from the guest keys. Everything below (the server log, the
+    // companions lookup) is signed-in only.
+    if (PHOEBE_GUEST_ENABLED && !user) {
+      addGuestSilenceMinutes(Math.floor(sat / 60));
+      setDailyTotalSeconds(getGuestSilenceMinutesToday() * 60);
+      setDailyGoalMin(getGuestSilenceGoalMin());
+      return;
+    }
     const startedAt = startedAtRef.current ?? new Date(Date.now() - sat * 1000);
     const endedAt = new Date();
     // (Phoebe no longer writes the sit to Apple Health as a Mindful Session —
@@ -447,21 +476,25 @@ export function ContemplationTimer({
     // this in parallel with the recordSession POST so the summary
     // screen surfaces companions as soon as the fetch returns. Failures
     // are silent — a missing row shouldn't break the closing screen.
-    apiRequest<{ companions: Companion[]; otherCount: number }>(
-      "GET",
-      `/api/me/contemplation-companions?startedAt=${encodeURIComponent(startedAt.toISOString())}&endedAt=${encodeURIComponent(endedAt.toISOString())}`,
-    )
-      .then((data) => {
-        // Union the finished-overlap result with everyone seen sitting LIVE
-        // during this sit, so the first finisher still sees companions who
-        // haven't recorded their own session yet.
-        setCompanions(mergeCompanions(data.companions ?? [], liveSeenRef.current));
-        setOtherCount(data.otherCount ?? 0);
-      })
-      .catch(() => {
-        // Network hiccup — fall back to whoever we saw live during the sit.
-        if (liveSeenRef.current.length) setCompanions(liveSeenRef.current);
-      });
+    // SKIPPED while contemplation is private — the closing screen shows
+    // no one else's presence.
+    if (CONTEMPLATION_PRESENCE_ENABLED) {
+      apiRequest<{ companions: Companion[]; otherCount: number }>(
+        "GET",
+        `/api/me/contemplation-companions?startedAt=${encodeURIComponent(startedAt.toISOString())}&endedAt=${encodeURIComponent(endedAt.toISOString())}`,
+      )
+        .then((data) => {
+          // Union the finished-overlap result with everyone seen sitting LIVE
+          // during this sit, so the first finisher still sees companions who
+          // haven't recorded their own session yet.
+          setCompanions(mergeCompanions(data.companions ?? [], liveSeenRef.current));
+          setOtherCount(data.otherCount ?? 0);
+        })
+        .catch(() => {
+          // Network hiccup — fall back to whoever we saw live during the sit.
+          if (liveSeenRef.current.length) setCompanions(liveSeenRef.current);
+        });
+    }
   }
 
   // Entry point from the picker / quick buttons. In audio (FDD) mode
@@ -1199,8 +1232,10 @@ export function ContemplationTimer({
                 </p>
               ) : null}
               {/* Live companions — garden members sitting at the same moment,
-                  refreshed every ~15s. "You're not alone in the silence." */}
-              {liveCompanions.length > 0 && (
+                  refreshed every ~15s. "You're not alone in the silence."
+                  Hidden while contemplation is private (the poll above is off,
+                  so the list stays empty anyway — this gate is the intent). */}
+              {CONTEMPLATION_PRESENCE_ENABLED && liveCompanions.length > 0 && (
                 <div style={{ marginTop: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
                   <div className="-space-x-2" style={{ display: "flex", alignItems: "center" }}>
                     {liveCompanions.slice(0, 5).map((c) => (
@@ -1320,8 +1355,9 @@ export function ContemplationTimer({
                   else on Phoebe is summed into a plain count line. The
                   whole block is hidden until the companions fetch
                   returns AND there's something to show, so the screen
-                  doesn't reflow on empty results. */}
-              {(companions.length > 0 || otherCount > 0) && (
+                  doesn't reflow on empty results. Hidden entirely while
+                  contemplation is private (the fetch is off too). */}
+              {CONTEMPLATION_PRESENCE_ENABLED && (companions.length > 0 || otherCount > 0) && (
                 <div className="flex flex-col items-center mb-8" style={{ maxWidth: 320 }}>
                   {companions.length > 0 && (
                     <>

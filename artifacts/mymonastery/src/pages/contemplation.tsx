@@ -11,7 +11,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 const CONTEMPLATION_LEAF = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null;
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
-import { ContemplationTimer, type ContemplationWhatsNext } from "@/components/ContemplationTimer";
+import { ContemplationTimer, CONTEMPLATION_PRESENCE_ENABLED, type ContemplationWhatsNext } from "@/components/ContemplationTimer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { getSideMinutes, getReflectionSource, getSideContemplationExplicit } from "@/lib/officePrefs";
@@ -404,8 +404,10 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {/* Garden members who were praying at the same moment — faces to
-            the left of the duration. A quiet "you weren't alone." */}
-        {s.companions && s.companions.length > 0 && (
+            the left of the duration. A quiet "you weren't alone." Hidden
+            while ALL contemplation is private (see the flag in
+            ContemplationTimer) — a sit shows no one else's presence. */}
+        {CONTEMPLATION_PRESENCE_ENABLED && s.companions && s.companions.length > 0 && (
           <div
             className="flex items-center -space-x-1.5"
             title={`Praying alongside ${s.companions.map((c) => c.name ?? "someone").join(", ")}`}
