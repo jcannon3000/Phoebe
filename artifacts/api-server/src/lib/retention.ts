@@ -78,6 +78,18 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
       db.delete(prayerFeedPrayersTable).where(lt(prayerFeedPrayersTable.createdAt, YEAR))],
     ["reflection_reads>1y", () =>
       db.delete(reflectionReadsTable).where(lt(reflectionReadsTable.createdAt, YEAR))],
+    // Anonymous DEVICE users (the public no-login version) whose device has
+    // been gone for a long time: created over a year ago AND no app-open on
+    // record (app_opens itself is pruned at 90 days, so "none on record"
+    // means idle at least that long). Cascades clean up their rows. Real
+    // accounts are never touched (is_anonymous only).
+    ["anonymous_users idle", () =>
+      db.execute(sql`
+        DELETE FROM users u
+        WHERE u.is_anonymous = TRUE
+          AND u.created_at < ${YEAR}
+          AND NOT EXISTS (SELECT 1 FROM app_opens a WHERE a.user_id = u.id)
+      `)],
     ["walk_nudges>1y", () =>
       db.delete(walkNudgesTable).where(lt(walkNudgesTable.createdAt, YEAR))],
   ];

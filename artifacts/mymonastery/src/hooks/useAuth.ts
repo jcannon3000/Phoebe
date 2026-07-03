@@ -22,6 +22,9 @@ export interface AuthUser {
   name: string;
   email: string;
   avatarUrl: string | null;
+  // PUBLIC no-login version: an anonymous device user (silently provisioned so
+  // push/reminders/prefs-sync work with no credentials). Always the light shape.
+  isAnonymous?: boolean;
   googleId: string | null;
   showPresence: boolean;
   // Opt-in coarse "same air" location for Cobreathe (default false).

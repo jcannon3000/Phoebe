@@ -3098,6 +3098,9 @@ export async function migrate() {
     // Opt-in (default OFF) to attach a coarse location when you tap Amen.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_pray_location BOOLEAN NOT NULL DEFAULT false`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_breath_location BOOLEAN NOT NULL DEFAULT false`);
+    // PUBLIC no-login version: anonymous device users (silently provisioned on
+    // first guest boot so push/reminders/prefs-sync work with no credentials).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL DEFAULT false`);
 
     // ── CAC daily reflection: read presence + shared journal ────────────────
     // cac_reads: one row per (user, local day) recording that they opened the

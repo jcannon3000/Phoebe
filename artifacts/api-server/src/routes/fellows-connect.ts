@@ -172,6 +172,9 @@ router.get("/fellows/search", perUserRateLimit("fellows_search", { max: 40, wind
   const matches = await db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
     .from(usersTable).where(and(
       sql`${usersTable.id} <> ${me}`,
+      // Anonymous device users (the public no-login version) are never
+      // discoverable — they aren't people who chose to be found.
+      eq(usersTable.isAnonymous, false),
       or(sql`${usersTable.name} ILIKE ${pattern}`, sql`${usersTable.email} ILIKE ${pattern}`),
     )).limit(8);
   if (matches.length === 0) { res.json({ users: [] }); return; }

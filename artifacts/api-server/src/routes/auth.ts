@@ -245,6 +245,7 @@ router.get("/auth/me", async (req, res) => {
   }
   const u = req.user as {
     id: number; name: string; email: string; avatarUrl: string | null;
+    isAnonymous: boolean;
     googleId: string | null; showPresence: boolean; shareBreathLocation: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
     onboardingCompleted: boolean; dailyBellTime: string | null;
@@ -336,6 +337,7 @@ router.get("/auth/me", async (req, res) => {
     name: u.name,
     email: u.email,
     avatarUrl: u.avatarUrl,
+    isAnonymous: u.isAnonymous ?? false,
     googleId: u.googleId,
     showPresence: u.showPresence,
     shareBreathLocation: u.shareBreathLocation ?? false,
@@ -1136,6 +1138,45 @@ router.post(
     req.session.save(() => res.json({ ok: true, joinedGroupSlug: inviteGroupSlug }));
   });
 });
+
+// ─── POST /api/auth/anonymous ─────────────────────────────────────────────────
+// PUBLIC no-login version: silently provision an ANONYMOUS DEVICE USER on first
+// guest boot — no credentials, a synthetic unique email, is_anonymous=true —
+// and issue the normal session cookie. This is what makes guest push tokens,
+// the daily-reminder bell, and prefs/routine sync work through the existing
+// user-keyed machinery while the UX stays completely login-free ("the device
+// inherently has a user id"). Anonymous users: never discoverable, always the
+// light app shape (useGuestMode), swept by retention when long idle. A later
+// real sign-in/sign-up simply replaces the session. Rate-limited per-IP —
+// device provisioning is once-ever per install, so 5/hour is ample.
+router.post(
+  "/auth/anonymous",
+  rateLimit({
+    name: "auth_anonymous",
+    max: 5,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many attempts from your network. Please try again in an hour.",
+  }),
+  async (req, res): Promise<void> => {
+    // Already signed in (anonymous or real) — this device is provisioned.
+    if (req.user) { res.json({ ok: true, already: true }); return; }
+    const [user] = await db
+      .insert(usersTable)
+      .values({
+        // "Friend" — the warm generic the app already uses for the unnamed.
+        name: "Friend",
+        // Synthetic, unique, and self-describing; satisfies the NOT NULL +
+        // UNIQUE email column while never colliding with a real address.
+        email: `anon-${randomBytes(16).toString("hex")}@device.withphoebe.app`,
+        isAnonymous: true,
+      })
+      .returning();
+    loginFreshSession(req, user as Express.User, (err) => {
+      if (err) { res.status(500).json({ error: "Could not start a session." }); return; }
+      req.session.save(() => res.json({ ok: true, id: user.id }));
+    });
+  },
+);
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
 // Rate-limited per-email to defend existing accounts against credential

@@ -22,6 +22,12 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
+  // PUBLIC no-login version: an anonymous DEVICE user, silently provisioned on
+  // first guest boot (no credentials, synthetic email) so push tokens, daily
+  // reminders, and prefs sync work through the existing machinery. Never
+  // discoverable (people search excludes), always the light app shape, swept
+  // by retention when long idle. See memory "project_public_no_login".
+  isAnonymous: boolean("is_anonymous").notNull().default(false),
   showPresence: boolean("show_presence").notNull().default(true),
   correspondenceImprintCompleted: boolean("correspondence_imprint_completed").notNull().default(false),
   gatheringImprintCompleted: boolean("gathering_imprint_completed").notNull().default(false),
