@@ -23,9 +23,11 @@ export default function MenuPracticesPage() {
       backHref="/menu"
       groups={[{
         items: [
-          // Creation Prayer is hidden behind CREATION_PRAYER_ENABLED.
+          // Creation Prayer + its prayer library live HERE (owner: not in the
+          // BCP menu), both behind CREATION_PRAYER_ENABLED.
           ...(CREATION_PRAYER_ENABLED && !isGuest ? [
             { emoji: "🌱", label: "Creation Prayer", sub: "A creation-focused devotion, with Co-Breathe", onClick: () => go("/creation-devotion") },
+            { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
           ] : []),
           { emoji: "📖", label: "Listen to Scripture", sub: "Hear the day's OT, Psalm, NT & Gospel", onClick: () => go("/scripture/readings") },
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },

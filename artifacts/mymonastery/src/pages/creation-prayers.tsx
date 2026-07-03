@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,13 +8,23 @@ import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 
 // ── Prayers for the Climate ──────────────────────────────────────────────────
 //
-// A reading library of the collects, prayers, closing blessings, and quotes on
-// creation gathered in *Season of Creation: A Celebration Guide for Episcopal
-// Parishes* (2025). Lives under the Book of Common Prayer. Data comes from
-// /api/creation/library (a single source of truth shared with the devotion).
+// A reading library of the collects, canticles, affirmations, litanies,
+// prayers, blessings, readings, and quotes gathered in *Season of Creation: A
+// Celebration Guide for Episcopal Parishes* (2025). Lives under PRACTICES.
+// Data comes from /api/creation/library (shared with the Creation Prayer
+// office).
+//
+// Shape (owner, 2026-07-03): a TITLE-FIRST list — every entry is a tappable
+// title row that expands to the full text (accordion), with a SEARCH field
+// filtering across titles, authors, and the prayer text itself. No more wall
+// of paragraphs.
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
+const CREAM = "#F0EDE6";
+const SAGE = "#8FAF96";
+const SAGE_DIM = "rgba(143,175,150,0.6)";
+const BODY = "#E4EADD";
 
 interface Collect { title: string; attribution?: string; text: string; }
 interface Prayer { title: string; attribution?: string; note?: string; text: string; }
@@ -26,31 +36,51 @@ interface Affirmation { title: string; attribution?: string; text: string; }
 interface Litany { title: string; intro?: string; lines: Array<{ v: string; r: string }>; }
 interface Library { collects: Collect[]; canticles: Canticle[]; affirmations: Affirmation[]; litanies: Litany[]; prayers: Prayer[]; blessings: Blessing[]; readings: Reading[]; quotes: Quote[]; }
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mt-9 mb-3" style={{ fontFamily: FONT, fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", color: "#7E9A85", fontWeight: 700 }}>
-      {children}
-    </h2>
-  );
+// One row of the library, whatever its genre: a title (+optional subtitle) that
+// expands to a body. Litanies carry call-and-response lines instead of text.
+type Entry = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  note?: string;
+  text?: string;
+  lines?: Array<{ v: string; r: string }>;
+  intro?: string;
+};
+type Section = { heading: string; entries: Entry[] };
+
+// A blessing has no title of its own — its first line IS its name.
+function blessingTitle(text: string): string {
+  const first = text.split("\n")[0].trim();
+  return first.length > 56 ? `${first.slice(0, 53)}…` : first;
 }
 
-function PrayerCard({ title, attribution, note, text }: { title?: string; attribution?: string; note?: string; text: string }) {
-  return (
-    <div className="rounded-2xl px-5 py-4 mb-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
-      {title && <p style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: "#F0EDE6", marginBottom: 6 }}>{title}</p>}
-      <p style={{ fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.62, color: "#E4EADD", whiteSpace: "pre-line" }}>{text}</p>
-      {note && <p style={{ fontFamily: FONT, fontSize: 12, lineHeight: 1.5, color: "rgba(143,175,150,0.7)", marginTop: 8, fontStyle: "italic" }}>{note}</p>}
-      {attribution && <p style={{ fontFamily: FONT, fontSize: 12, color: "rgba(143,175,150,0.6)", marginTop: 8 }}>— {attribution}</p>}
-    </div>
-  );
+function buildSections(lib: Library): Section[] {
+  return [
+    { heading: "Collects", entries: lib.collects.map((c, i) => ({ id: `col${i}`, title: c.title, subtitle: c.attribution, text: c.text })) },
+    { heading: "Canticles", entries: lib.canticles.map((c, i) => ({ id: `can${i}`, title: c.title, subtitle: c.attribution, text: c.text })) },
+    { heading: "Affirmations of Faith", entries: lib.affirmations.map((a, i) => ({ id: `aff${i}`, title: a.title, subtitle: a.attribution, text: a.text })) },
+    { heading: "Litanies", entries: lib.litanies.map((l, i) => ({ id: `lit${i}`, title: l.title, lines: l.lines, intro: l.intro })) },
+    { heading: "Prayers", entries: lib.prayers.map((p, i) => ({ id: `pra${i}`, title: p.title, subtitle: p.attribution, note: p.note, text: p.text })) },
+    { heading: "Closing Prayers & Blessings", entries: lib.blessings.map((b, i) => ({ id: `ble${i}`, title: blessingTitle(b.text), subtitle: b.attribution, text: b.text })) },
+    { heading: "Readings for Creation", entries: lib.readings.map((r, i) => ({ id: `rea${i}`, title: r.ref, text: r.note })) },
+    { heading: "Words on Creation", entries: lib.quotes.map((q, i) => ({ id: `quo${i}`, title: q.author, subtitle: q.source, text: q.text })) },
+  ];
+}
+
+function entryMatches(e: Entry, q: string): boolean {
+  const hay = [e.title, e.subtitle, e.note, e.text, e.intro, ...(e.lines ?? []).flatMap((l) => [l.v, l.r])]
+    .filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(q);
 }
 
 export default function CreationPrayersPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Creation Prayer is hidden for now — bounce any direct navigation home.
     if (!CREATION_PRAYER_ENABLED) { setLocation("/"); return; }
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
@@ -62,6 +92,21 @@ export default function CreationPrayersPage() {
     enabled: !!user && CREATION_PRAYER_ENABLED,
   });
 
+  const sections = useMemo(() => (data ? buildSections(data) : []), [data]);
+  const q = query.trim().toLowerCase();
+  const visible = useMemo(
+    () => sections
+      .map((s) => ({ ...s, entries: q ? s.entries.filter((e) => entryMatches(e, q)) : s.entries }))
+      .filter((s) => s.entries.length > 0),
+    [sections, q],
+  );
+
+  const toggle = (id: string) => setOpen((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   if (!CREATION_PRAYER_ENABLED) return null;
   if (isLoading || !user) return null;
 
@@ -69,76 +114,72 @@ export default function CreationPrayersPage() {
     <Layout>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <header className="mb-4">
-          <Link href="/menu/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>← Book of Common Prayer</Link>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: FONT }}>Prayers for the Climate 🌍</h1>
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Collects, prayers, blessings, and words on creation — gathered from the Episcopal Season of Creation guide
+          <Link href="/menu/practices" className="text-sm mb-3 inline-block" style={{ color: SAGE }}>← Practices</Link>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: CREAM, fontFamily: FONT }}>Prayers for the Climate 🌍</h1>
+          <p className="text-sm" style={{ color: SAGE }}>
+            Collects, prayers, blessings, and words on creation — gathered from the Episcopal Season of Creation guide. Tap a title to read it.
           </p>
         </header>
 
+        {/* Search — filters titles, authors, and the prayer text itself. */}
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search prayers, authors, phrases…"
+          aria-label="Search the prayer library"
+          className="w-full rounded-xl mb-2"
+          style={{ background: "rgba(9,26,16,0.35)", border: "1px solid rgba(46,107,64,0.35)", color: CREAM, fontFamily: FONT, fontSize: 15, padding: "12px 14px", outline: "none", colorScheme: "dark" }}
+        />
+
         {libLoading || !data ? (
-          <p className="text-sm mt-6" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>Loading…</p>
+          <p className="text-sm mt-6" style={{ color: SAGE_DIM, fontFamily: FONT }}>Loading…</p>
+        ) : visible.length === 0 ? (
+          <p className="text-sm mt-6" style={{ color: SAGE_DIM, fontFamily: FONT }}>Nothing matches “{query.trim()}” — try a different word.</p>
         ) : (
           <>
-            <SectionHeader>Collects</SectionHeader>
-            {data.collects.map((c, i) => (
-              <PrayerCard key={`c${i}`} title={c.title} attribution={c.attribution} text={c.text} />
-            ))}
-
-            <SectionHeader>Canticles</SectionHeader>
-            {data.canticles.map((c, i) => (
-              <PrayerCard key={`ca${i}`} title={c.title} attribution={c.attribution} text={c.text} />
-            ))}
-
-            <SectionHeader>Affirmations of Faith</SectionHeader>
-            {data.affirmations.map((a, i) => (
-              <PrayerCard key={`af${i}`} title={a.title} attribution={a.attribution} text={a.text} />
-            ))}
-
-            <SectionHeader>Litanies</SectionHeader>
-            {data.litanies.map((lit, i) => (
-              <div key={`li${i}`} className="rounded-2xl px-5 py-4 mb-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
-                <p style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: "#F0EDE6", marginBottom: 6 }}>{lit.title}</p>
-                {lit.intro && <p style={{ fontFamily: SERIF, fontSize: 14, lineHeight: 1.55, color: "rgba(228,234,221,0.85)", fontStyle: "italic", marginBottom: 8 }}>{lit.intro}</p>}
-                {lit.lines.map((ln, j) => (
-                  <div key={j} style={{ marginBottom: 8 }}>
-                    <p style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.55, color: "#E4EADD" }}>{ln.v}</p>
-                    <p style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.55, color: "#8FAF96", fontWeight: 600 }}>{ln.r}</p>
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            <SectionHeader>Prayers</SectionHeader>
-            {data.prayers.map((p, i) => (
-              <PrayerCard key={`p${i}`} title={p.title} attribution={p.attribution} note={p.note} text={p.text} />
-            ))}
-
-            <SectionHeader>Closing Prayers &amp; Blessings</SectionHeader>
-            {data.blessings.map((b, i) => (
-              <PrayerCard key={`b${i}`} attribution={b.attribution} text={b.text} />
-            ))}
-
-            <SectionHeader>Readings for Creation</SectionHeader>
-            <div className="rounded-2xl px-5 py-4 mb-3" style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.15)" }}>
-              {data.readings.map((r, i) => (
-                <div key={`r${i}`} className="py-1.5" style={{ borderBottom: i < data.readings.length - 1 ? "1px solid rgba(200,212,192,0.08)" : "none" }}>
-                  <p style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: "#F0EDE6" }}>{r.ref}</p>
-                  <p style={{ fontFamily: SERIF, fontSize: 13, color: "rgba(143,175,150,0.8)", fontStyle: "italic" }}>{r.note}</p>
+            {visible.map((s) => (
+              <div key={s.heading}>
+                <h2 className="mt-8 mb-2" style={{ fontFamily: FONT, fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", color: "#7E9A85", fontWeight: 700 }}>
+                  {s.heading}
+                </h2>
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(46,107,64,0.18)" }}>
+                  {s.entries.map((e, i) => {
+                    const isOpen = open.has(e.id);
+                    return (
+                      <div key={e.id} style={{ background: "rgba(46,107,64,0.08)", borderTop: i > 0 ? "1px solid rgba(46,107,64,0.15)" : "none" }}>
+                        <button
+                          onClick={() => toggle(e.id)}
+                          aria-expanded={isOpen}
+                          className="w-full text-left flex items-center gap-3"
+                          style={{ background: "none", border: "none", padding: "13px 16px", cursor: "pointer" }}
+                        >
+                          <span aria-hidden style={{ color: SAGE_DIM, fontSize: 11, flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 160ms ease" }}>▶</span>
+                          <span className="flex-1 min-w-0">
+                            <span style={{ display: "block", fontFamily: FONT, fontSize: 15, fontWeight: 600, color: CREAM }}>{e.title}</span>
+                            {e.subtitle && <span style={{ display: "block", fontFamily: FONT, fontSize: 12, color: SAGE_DIM, marginTop: 1 }}>{e.subtitle}</span>}
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div style={{ padding: "0 16px 15px 30px" }}>
+                            {e.intro && <p style={{ fontFamily: SERIF, fontSize: 14, lineHeight: 1.55, color: "rgba(228,234,221,0.85)", fontStyle: "italic", marginBottom: 8 }}>{e.intro}</p>}
+                            {e.lines
+                              ? e.lines.map((ln, j) => (
+                                <div key={j} style={{ marginBottom: 8 }}>
+                                  <p style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.55, color: BODY }}>{ln.v}</p>
+                                  <p style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.55, color: SAGE, fontWeight: 600 }}>{ln.r}</p>
+                                </div>
+                              ))
+                              : <p style={{ fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.62, color: BODY, whiteSpace: "pre-line" }}>{e.text}</p>}
+                            {e.note && <p style={{ fontFamily: FONT, fontSize: 12, lineHeight: 1.5, color: SAGE_DIM, marginTop: 8, fontStyle: "italic" }}>{e.note}</p>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-
-            <SectionHeader>Quotes on Creation</SectionHeader>
-            {data.quotes.map((q, i) => (
-              <div key={`q${i}`} className="mb-4 pl-4" style={{ borderLeft: "2px solid rgba(46,107,64,0.35)" }}>
-                <p style={{ fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.6, color: "#E4EADD", fontStyle: "italic" }}>“{q.text}”</p>
-                <p style={{ fontFamily: FONT, fontSize: 12.5, color: "rgba(143,175,150,0.7)", marginTop: 4 }}>
-                  — {q.author}{q.source ? `, ${q.source}` : ""}
-                </p>
               </div>
             ))}
-
             <p style={{ fontFamily: FONT, fontSize: 12, lineHeight: 1.6, color: "rgba(143,175,150,0.55)", marginTop: 28, paddingTop: 16, borderTop: "1px solid rgba(143,175,150,0.16)" }}>
               Gathered from <span style={{ fontStyle: "italic" }}>Season of Creation: A Celebration Guide for Episcopal Parishes</span> (2025), which draws prayers from across the Anglican Communion and beyond; each keeps its own attribution.
             </p>
