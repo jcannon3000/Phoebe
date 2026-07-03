@@ -8,6 +8,13 @@ import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 // the standalone /cobreathe page (reached from the contemplation card) or as the
 // prayer-mode / office slideshow overlay (CobreatheOverlay). Both render THIS
 // one component so the two closes can never drift apart again.
+//
+// UI mirrors the CONTEMPLATION closing slide (ContemplationTimer's end-of-sit
+// screen, owner direction 2026-07-02): the same tiny uppercase eyebrow → big
+// italic-serif headline → quiet italic sub-line → small stat line → rounded
+// pill CTA, adapted to Co-Breathe's content (the breath count, week tally,
+// companions). Only the presentation changed — props, fades, and the
+// logging/completion flow around it are untouched.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -86,18 +93,29 @@ export function CobreatheSummary({
         {(() => {
           const D = 52, r = D / 2, off = 0.618 * D, H = D + off; // H = 1.618·D
           return (
-            <svg width={D} height={H} viewBox={`0 0 ${D} ${H}`} className="mb-3" aria-hidden>
+            <svg width={D} height={H} viewBox={`0 0 ${D} ${H}`} className="mb-4" aria-hidden>
               <circle cx={r} cy={r} r={r - 1} fill="rgba(111,175,133,0.45)" stroke="rgba(140,205,160,0.9)" strokeWidth={1.5} />
               <circle cx={r} cy={r + off} r={r - 1} fill="rgba(150,135,200,0.45)" stroke="rgba(176,158,224,0.9)" strokeWidth={1.5} />
             </svg>
           );
         })()}
-        {/* Breaths this session — the headline number. */}
-        <h2 className="text-[2.1rem] font-bold leading-none mb-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+        {/* Eyebrow — same shape as the contemplation close's tiny uppercase line. */}
+        <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+          {t("cobreathe.summary_eyebrow", { defaultValue: "Co-Breathe complete" })}
+        </p>
+        {/* Breaths this session — the headline, in the contemplation close's big
+            italic serif (was a bold Space Grotesk number). */}
+        <p className="text-[26px] leading-[1.3] font-medium italic mb-2" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
           {breathsTaken} {t("cobreathe.breaths_word", { defaultValue: "breaths" })}
-        </h2>
-        {/* Breaths so far this week, and who you breathed with today. */}
-        <p className="text-[13px] tracking-wide mb-7" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+        </p>
+        {/* The climate-justice thanks — the quiet italic sub-line, where the
+            contemplation close carries "carry the quiet with you". */}
+        <p className="text-[13px] mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
+          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying for climate justice." })}
+        </p>
+        {/* Breaths so far this week, and who you breathed with today — the small
+            stat line, in the contemplation close's goal-progress slot. */}
+        <p className="text-[12px] mb-6" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
           {weekBreaths} {t("cobreathe.breaths_this_week", { defaultValue: "breaths this week" })}
           {others > 0 ? ` · ${t("cobreathe.summary_with_today", { defaultValue: `with ${others} ${others === 1 ? "other" : "others"} today` })}` : ""}
         </p>
@@ -111,7 +129,7 @@ export function CobreatheSummary({
             : extra > 0 ? `${shown.join(", ")}, and ${extra} other${extra === 1 ? "" : "s"}`
             : shown.join(" and ");
           return (
-            <div className="flex flex-col items-center mb-7 -mt-3">
+            <div className="flex flex-col items-center mb-6">
               <div className="flex items-center mb-2">
                 {companions.slice(0, 6).map((c, i) => (
                   <div
@@ -141,7 +159,7 @@ export function CobreatheSummary({
           const fellow = nearFellows[0];
           const strangers = Math.max(0, nearCount - nearFellows.length);
           return (
-            <div className="mb-7 -mt-3 flex flex-col items-center">
+            <div className="mb-6 flex flex-col items-center">
               {nearFellows.length > 0 && (
                 <div className="flex items-center mb-2">
                   {nearFellows.slice(0, 4).map((f, i) => (
@@ -167,18 +185,16 @@ export function CobreatheSummary({
           );
         })()}
 
-        {/* The climate-justice thanks. */}
-        <p className="text-[14px] leading-relaxed mb-9" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying for climate justice." })}
-        </p>
+        {/* CTA — the contemplation close's rounded pill (was a squarer button).
+            Same handler/label/disabled wiring as before. */}
         <button
           type="button"
           onClick={onContinue}
           disabled={continueDisabled}
-          className="rounded-xl py-3 px-8 active:scale-[0.98] transition-transform"
+          className="rounded-full px-10 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{
-            background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(140,195,160,0.5)",
-            fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
+            background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
+            fontFamily: SPACE_GROTESK, cursor: "pointer", opacity: continueDisabled ? 0.5 : 1,
           }}
         >
           {continueLabel ?? t("common.continue", { defaultValue: "Continue" })}
