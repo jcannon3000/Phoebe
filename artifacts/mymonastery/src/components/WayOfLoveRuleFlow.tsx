@@ -1927,26 +1927,9 @@ export default function WayOfLoveRuleFlow({
           </>
         )}
 
-        {/* GUEST bonus practice — Audio Divina rides on this same slide (owner
-            direction 2026-07-02, superseding the earlier "no Audio Divina in
-            the public version"): ONE toggle row reusing the existing listening
-            wiring (contemplative.audio → the "listening" home card at its saved
-            slot). No other bonus practices here, and no extra slides — the
-            guest orderedSteps carries no audio-when step. Hidden on the
-            add-form sub-slide so that stays focused. */}
-        {guest && !addingCustom && (
-          <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
-              {t("wol_rule.custom_bonus_label", { defaultValue: "A bonus practice" })}
-            </p>
-            {choiceRow(
-              contemplative.audio,
-              `🎧 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`,
-              t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }),
-              () => toggleContemplative("audio"),
-            )}
-          </>
-        )}
+        {/* (An Audio Divina "bonus practice" row briefly lived here for guests;
+            the owner re-reversed on 2026-07-02 — the PUBLIC version has NO
+            Audio Divina anywhere. Listen to Scripture stays.) */}
 
         {/* Bottom: the add sub-slide just returns to the list; otherwise Save. */}
         {addingCustom ? (
