@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1852,6 +1853,14 @@ function NewsActionsSettings() {
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
   const { isPilot } = usePilotMode();
+  // PUBLIC no-login version: the light settings page. `isGuest` (the shape —
+  // any non-pilot session) drops the community-facing rows: Language (the
+  // Spanish beta is a full-app rollout), phone discovery, Muted People, and
+  // Emails. `accountless` (signed in only as the anonymous device user)
+  // additionally drops every account affordance — profile editing, Sign out,
+  // Export, Delete — there's no account to manage: just the rhythm,
+  // reminders, and legal.
+  const { isGuest } = useGuestMode();
   const { t } = useTranslation();
   const logout = useLogout();
   const queryClient = useQueryClient();
@@ -1875,6 +1884,7 @@ export default function SettingsPage() {
   }, [user?.showPresence]);
 
   if (isLoading || !user) return null;
+  const accountless = !!user.isAnonymous;
 
   return (
     <Layout>
@@ -1896,11 +1906,14 @@ export default function SettingsPage() {
         {/* Each section is wrapped in a uniform mb-8 so the gaps between them
             are even — no ad-hoc trailing spacers. */}
 
-        {/* ── Account ── */}
+        {/* ── Account — hidden while the session has no real account (the
+              anonymous device user has nothing to edit here). ── */}
+        {!accountless && (
         <div className="mb-8">
           <SectionHeader label={t("settings.account")} />
           <AccountSection />
         </div>
+        )}
 
         {/* ── Default prayer depth — what the home "Begin prayer" CTA opens. ── */}
         <div className="mb-8">
@@ -1917,10 +1930,13 @@ export default function SettingsPage() {
           <OfficeReminderSettings />
         </div>
 
-        {/* ── Language ── */}
+        {/* ── Language — full app only; the public version is English-only
+              (no Spanish row). ── */}
+        {!isGuest && (
         <div className="mb-8">
           <LanguageSettings />
         </div>
+        )}
 
         {/* ── Offices-only extras (tier-gated) ── */}
         {user.accessTier === "offices-only" && (
@@ -1930,15 +1946,16 @@ export default function SettingsPage() {
         )}
 
         {/* ── Phone number — contact discovery; a community feature, hidden in
-              pilot (personal-only, no people-matching). ── */}
-        {!isPilot && (
+              pilot AND the public version (personal-only, no people-matching). ── */}
+        {!isPilot && !isGuest && (
         <div className="mb-8">
           <PhoneSection />
         </div>
         )}
 
-        {/* ── Muted People — social-graph feature, hidden in pilot. ── */}
-        {!isPilot && (
+        {/* ── Muted People — social-graph feature, hidden in pilot AND the
+              public version. ── */}
+        {!isPilot && !isGuest && (
         <div className="mb-8">
           <MutedPeople />
         </div>
@@ -1949,12 +1966,16 @@ export default function SettingsPage() {
           <NotificationsSettings />
         </div>
 
-        {/* ── Email opt-in/out ── */}
+        {/* ── Email opt-in/out — full app only; the public version sends the
+              light user no emails (the anonymous address isn't real anyway). ── */}
+        {!isGuest && (
         <div className="mb-8">
           <EmailSettings />
         </div>
+        )}
 
-        {/* ── Sign out ── */}
+        {/* ── Sign out — only when there's a real account to sign out of. ── */}
+        {!accountless && (
         <button
           onClick={() => { logout(); setLocation("/"); }}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80"
@@ -1963,23 +1984,28 @@ export default function SettingsPage() {
           <LogOut size={15} />
           {t("settings.sign_out")}
         </button>
+        )}
 
         {/* ── Export my data ──
             GDPR right-to-portability. Downloads a JSON blob of every row
             the database holds tied to this user. Auth material (password
             hash, OAuth tokens) is redacted server-side. */}
+        {!accountless && (
         <div className="mt-8">
           <ExportDataSection />
         </div>
+        )}
 
         {/* ── Delete account ──
             Required by Apple Guideline 5.1.1(v) for App Store distribution:
             any app that creates accounts must offer in-app deletion. Also
             a legitimate privacy affordance for web users. Gated behind a
             confirm step (type your email) to prevent accidents. */}
+        {!accountless && (
         <div className="mt-4">
           <DeleteAccountSection email={user.email} />
         </div>
+        )}
 
         <div className="mt-6 pb-4 text-center flex justify-center gap-5">
           <Link href="/terms">

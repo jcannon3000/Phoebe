@@ -90,9 +90,14 @@ export function HomeLearnSection() {
   }
 
   // ONLY ACTIVE courses appear on the home (owner): started and not yet
-  // finished. Nothing in flight → no Learn section at all — starting a course
-  // happens from the Learn tab, not the home.
-  const show = cards.filter((c) => c.started && c.done < c.total);
+  // finished. A FRESH home with nothing in flight (owner, for first opens)
+  // offers exactly one quiet "Start course" card — Bishop Budde's Way of Love,
+  // the flagship on every platform — instead of a menu of all. Once everything
+  // is finished, the section disappears; starting something else happens from
+  // the Learn tab.
+  const active = cards.filter((c) => c.started && c.done < c.total);
+  const wolCard = cards.find((c) => c.key === WAY_OF_LOVE.id);
+  const show = active.length > 0 ? active : wolCard && wolCard.done < wolCard.total ? [wolCard] : [];
   if (show.length === 0) return null;
 
   return (

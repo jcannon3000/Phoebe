@@ -13,7 +13,7 @@ import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContem
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
-import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
@@ -149,12 +149,15 @@ function homeCardActive(
 export function useRhythmState(): RhythmState {
   const day = localDay();
   const { user, isLoading: authLoading } = useAuth();
-  // PUBLIC no-login version: a guest (flag on, auth settled signed-out) runs
-  // the WHOLE rhythm on device-local state — every server query below is off,
-  // `ready` doesn't wait on them, the home layout comes from the local cache
-  // the guest customizer writes, and the silence goal/minutes come from the
-  // guest keys. With the flag off (or any signed-in user) nothing changes.
-  const guest = PHOEBE_GUEST_ENABLED && !authLoading && !user;
+  // PUBLIC no-login version: a guest (flag on, auth settled, signed out OR the
+  // anonymous device user) runs the WHOLE rhythm on device-local state — every
+  // server query below is off, `ready` doesn't wait on them, the home layout
+  // comes from the local cache the guest customizer writes, and the silence
+  // goal/minutes come from the guest keys. The anonymous user exists only for
+  // push — treating it as signed-in put fresh devices on empty server prefs
+  // (no Silence card, the legacy no-layout Co-Breathe default). Flag off, or
+  // any REAL signed-in account, and nothing changes.
+  const guest = !authLoading && isDeviceLocalGuest(user);
   // The layout that decides which optional cards are active: the signed-in
   // user's server layout, or — for a guest — the device-local cache.
   const hl = guest ? readCachedHomeLayout() : user?.homeLayout;

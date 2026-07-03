@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { playOfficeChime, primeAudio } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useAuth } from "@/hooks/useAuth";
-import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guestSilenceLog";
 import { resolveContemplationSideForSit } from "@/lib/contemplationSideDone";
@@ -415,12 +415,13 @@ export function ContemplationTimer({
     const sat = Math.round(seconds);
     // Server floors non-office surfaces at 5s; skip the round trip below it.
     if (sat < 5) return;
-    // PUBLIC no-login version: a guest has no account to POST prayer_sessions
-    // to — the sit logs its whole minutes to the device-local tally the home
-    // "Silence" goal card's progress bar reads, and the closing summary's goal
-    // line comes from the guest keys. Everything below (the server log, the
-    // companions lookup) is signed-in only.
-    if (PHOEBE_GUEST_ENABLED && !user) {
+    // PUBLIC no-login version: a guest's sit logs its whole minutes to the
+    // device-local tally the home "Silence" goal card's progress bar reads,
+    // and the closing summary's goal line comes from the guest keys. The
+    // anonymous device user counts as a guest here — one source of truth for
+    // the card — so everything below (the server log, the companions lookup)
+    // belongs to real signed-in accounts only.
+    if (isDeviceLocalGuest(user)) {
       addGuestSilenceMinutes(Math.floor(sat / 60));
       setDailyTotalSeconds(getGuestSilenceMinutesToday() * 60);
       setDailyGoalMin(getGuestSilenceGoalMin());

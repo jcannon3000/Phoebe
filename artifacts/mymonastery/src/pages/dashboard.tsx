@@ -13,6 +13,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
+import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
@@ -7071,13 +7072,19 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     if (!authLoading && !user && !PHOEBE_GUEST_ENABLED) setLocation("/");
     // A guest who lands here directly (deep link / restored session), without
     // passing the "/" chooser that normally seeds, still gets the precoded
-    // rule — seedGuestRule is a no-op when the device already has one.
-    if (!authLoading && !user && PHOEBE_GUEST_ENABLED) seedGuestRule();
+    // rule — seedGuestRule is a no-op when the device already has one. The
+    // ANONYMOUS DEVICE USER counts as a guest: it holds a session cookie, but
+    // its rhythm lives on the device.
+    if (!authLoading && PHOEBE_GUEST_ENABLED && (!user || user.isAnonymous)) seedGuestRule();
     // New users land on a coherent GIVEN rhythm (Morning Devotion · Forward Day
     // by Day · Evening Devotion) — not a config screen. Onboarding is just the
-    // intro + push + photo, then home; they grow into Customize later.
-    if (!authLoading && user && !user.onboardingCompleted) setLocation("/onboarding");
-  }, [user, authLoading, setLocation]);
+    // intro + push + photo, then home; they grow into Customize later. LIGHT
+    // sessions never take that tour: the public lands STRAIGHT on the seeded
+    // home, and the anonymous device user is created without the flag — so
+    // without this guard every fresh device would bounce into the account
+    // onboarding.
+    if (!authLoading && user && !user.onboardingCompleted && !isGuestShape) setLocation("/onboarding");
+  }, [user, authLoading, isGuestShape, setLocation]);
 
   // PUBLIC no-login version (slice 2): with the flag on, a signed-out GUEST
   // renders the home on device-local state — the rhythm cards + prefs are
@@ -7225,8 +7232,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             not the day-of-week, so we want the in-app date visible
             there too). Half the top spacing so "Next" sits higher. */}
         <div className="mb-2" style={{ paddingTop: 2 }}>
-          {/* The date + feast-day eyebrow is removed entirely. Only the Events
-              surface keeps a title. */}
+          {/* The liturgical day leads the home: calendar date with the feast /
+              season beneath (LiturgicalDateHeader's full mode — restored per
+              request). The Events surface keeps its own title instead. */}
+          {!eventsOnly && (
+            <div className="mb-2">
+              <LiturgicalDateHeader />
+            </div>
+          )}
+          {/* PUBLIC first-open welcome — a dismissible "begin here" note under
+              the date: names the given rhythm and promises the daily
+              walk-through. Guests only. */}
+          {!eventsOnly && isGuestShape && <GuestWelcomeCard />}
           {eventsOnly && (
             <p
               className="mb-1"
@@ -7352,6 +7369,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           contemplation card stands on its own, cascading in like
                           the rest of the home (splash-gated + a haptic tick). */}
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}>{contemplationAgainCard}</motion.div>
+                      {/* An in-flight course stays reachable after the day's
+                          rhythm is done — the Learn band renders on the
+                          finished-day view too. */}
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}><HomeLearnSection /></motion.div>
                     </div>
                   );
                 }
@@ -7389,6 +7410,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
+                    {/* Same finished-day Learn band as the no-events branch. */}
+                    <motion.div {...enterUp(2)}><HomeLearnSection /></motion.div>
                   </div>
                 );
               })() : (

@@ -20,7 +20,10 @@ import { swellHaptic } from "@/lib/swellHaptic";
 // evening office, etc.). Defaults to "afternoon" (a neutral middle) for anchors
 // created before this field existed.
 export type CustomSlot = "morning" | "anytime" | "midday" | "afternoon" | "evening";
-export const CUSTOM_SLOTS: CustomSlot[] = ["morning", "anytime", "midday", "afternoon", "evening"];
+// Picker/display order — Anytime leads (most custom practices aren't tied to a
+// time of day). The DAY order on the home is SLOT_RANK below, unchanged:
+// anytime cards still ride just after morning.
+export const CUSTOM_SLOTS: CustomSlot[] = ["anytime", "morning", "midday", "afternoon", "evening"];
 
 // Ordering of the slots in the daily rhythm. "anytime" sits right after the
 // morning cards but carries no time gate.

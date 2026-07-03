@@ -1196,6 +1196,10 @@ router.post(
         // UNIQUE email column while never colliding with a real address.
         email: `anon-${randomBytes(16).toString("hex")}@device.withphoebe.app`,
         isAnonymous: true,
+        // The device lands STRAIGHT on the seeded home — an anonymous user
+        // must never be bounced into the account onboarding tour (the
+        // dashboard redirects any signed-in user without this flag).
+        onboardingCompleted: true,
       })
       .returning();
     loginFreshSession(req, user as Express.User, (err) => {

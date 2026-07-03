@@ -26,8 +26,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { commitmentDay, COMMITMENT_DAYS, clearCommitment } from "@/lib/commitment";
 import { useAuth } from "@/hooks/useAuth";
-import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
-import { guestSeededAfterNoonToday } from "@/lib/guestSeed";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -703,12 +702,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const { t } = useTranslation();
   const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
-  // PUBLIC no-login version: a guest's rhythm is device-local. The per-side
+  // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
+  // the anonymous device user (which exists only for push). The per-side
   // contemplation cards give way to ONE "Silence" goal card with a live
   // progress bar (useRhythmState already turns the per-side flags off and
   // returns the guest goal/minutes as contemplationGoalMin/contemplationMin),
-  // and a first-open-after-noon seed parks the morning office under "Tomorrow".
-  const guest = PHOEBE_GUEST_ENABLED && !user;
+  // and past noon an un-prayed morning office parks under "Tomorrow".
+  const guest = isDeviceLocalGuest(user);
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -1051,14 +1051,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // (handled above), so Next is simply "what's left of your rhythm today".
   //
   // The ONE exception (the general Tomorrow section was removed in ff092ee6 and
-  // stays removed): a GUEST whose first-open seed ran after noon TODAY. Their
-  // unstarted morning office isn't "missed" — the day starts where they are —
-  // so while nothing is kept yet, the undone morning card waits under a small
-  // "Tomorrow" divider at the bottom instead of leading Next. The first thing
-  // they keep (or the next day) ends the case and the normal rule resumes.
+  // stays removed): a GUEST's morning office once noon has passed. An
+  // un-prayed morning isn't "missed", and it isn't really "next" either — it
+  // belongs to tomorrow morning — so from 12 PM on, the undone morning card
+  // waits under a small "Tomorrow" divider at the bottom instead of sitting in
+  // Next. It stays tappable (praying it anyway completes today's), and the new
+  // day restores it to Next. Signed-in full-app users keep the no-Tomorrow rule.
   const guestMorningTomorrow = guest
-    && guestSeededAfterNoonToday()
-    && cards.every((c) => !c.done)
+    && hour >= 12
     && visibleCards.some((c) => c.key === "morning" && !c.done);
   const tomorrowDisplay = guestMorningTomorrow
     ? visibleCards.filter((c) => c.key === "morning")

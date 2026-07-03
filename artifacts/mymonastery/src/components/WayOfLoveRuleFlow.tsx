@@ -31,7 +31,7 @@ import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlo
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
-import { setGuestSilenceGoalMin } from "@/lib/guestSeed";
+import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import {
   setSideLevel,
   setSideReflection,
@@ -422,7 +422,16 @@ export default function WayOfLoveRuleFlow({
   // Default to 5 minutes — a gentle starting goal. A saved goal hydrates from the
   // server pref below (contemplationGoalMinutes) when the user has one (any value
   // is kept, e.g. 144); clearing the field on the goal step sets "No goal" (0).
-  const [goal, setGoal] = useState("5");
+  // GUESTS have no server pref to hydrate from — their goal is the device-local
+  // guest key (the first-open seed writes 5 there; commit() writes it back), so
+  // seed the field from it and the Silence step opens on what the home shows.
+  const [goal, setGoal] = useState(() => {
+    if (guest) {
+      const g = getGuestSilenceGoalMinRaw();
+      if (g != null) return String(g);
+    }
+    return "5";
+  });
   // Per-side configuration — each chosen side gets its own way + method + time.
   // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
   // no saved level defaults to "devotion", not the more involved "community".
@@ -701,7 +710,7 @@ export default function WayOfLoveRuleFlow({
   // Which part of the day a new custom practice belongs to — slots its card
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
-  const [customSlot, setCustomSlot] = useState<CustomSlot>("morning");
+  const [customSlot, setCustomSlot] = useState<CustomSlot>("anytime");
   // Inline "add your own practice" field on the Morning/Evening prayer-way step.
   const [sideCustomDraft, setSideCustomDraft] = useState("");
   // Journaling's time-of-day slot — when they add Journaling we ask when in the
@@ -948,11 +957,13 @@ export default function WayOfLoveRuleFlow({
     // goal is written regardless of the later multi-select). Otherwise we
     // explicitly disable it so a previously-enabled ladder stops driving the goal.
     const wantLadder = silenceMode === "grow";
-    // PUBLIC no-login version: with no user, this commit writes ONLY the
-    // device-local prefs — the officePrefs setters above, the local home-layout
-    // cache below, and the guest silence goal (the home's single "Silence"
-    // progress-bar card reads it). Every server PUT is skipped.
-    if (!user) setGuestSilenceGoalMin(effGoalMin);
+    // PUBLIC no-login version: every guest commit writes the device-local
+    // silence goal — the home's single "Silence" progress-bar card reads this
+    // key, and the ANONYMOUS DEVICE USER is a guest too (keying on `!user`
+    // left its key stale, so the card and the customizer disagreed). Signed
+    // sessions (anonymous included) still PUT the server prefs below, which
+    // keeps the reminder bell accurate; signed-out guests skip every PUT.
+    if (guest) setGuestSilenceGoalMin(effGoalMin);
     if (user) apiRequest("PUT", "/api/me/office-prefs", {
       // Only office/devotion/intercessions are server-side default-prayer levels;
       // the per-side LOCAL level set above drives the home Psalms card etc. Fold

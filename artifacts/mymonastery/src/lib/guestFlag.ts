@@ -16,3 +16,17 @@
 // the seeded default rule; no welcome chooser, no sign-in required. The full
 // app belongs to pilot-group members + app super admins.
 export const PHOEBE_GUEST_ENABLED: boolean = true;
+
+// Device-local guest — the STORAGE question ("does this session keep its
+// rhythm on the device?"): signed OUT, or signed in as the ANONYMOUS DEVICE
+// USER that guest boot silently provisions for push. Anonymous users hold a
+// real session cookie, so `!user` alone misses them — that gap put anonymous
+// devices on the full signed-in pipeline: the customizer's server office-prefs
+// hydration clobbered the seeded Evening side, the home lost its Silence goal
+// card (the guest card keys on this), and the legacy "signed-in user with no
+// home layout" defaults surfaced a Co-Breathe card nobody chose. Distinct
+// from useGuestMode (the SHAPE question — any non-pilot session, including
+// ordinary signed-in accounts, which DO keep server-backed storage).
+export function isDeviceLocalGuest(user?: { isAnonymous?: boolean } | null): boolean {
+  return PHOEBE_GUEST_ENABLED && (!user || !!user.isAnonymous);
+}

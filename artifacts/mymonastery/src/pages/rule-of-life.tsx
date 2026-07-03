@@ -25,8 +25,7 @@ import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { useAuth } from "@/hooks/useAuth";
-import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { useGuestMode } from "@/hooks/useGuestMode";
 import {
   setSideLevel,
   setSideEntry,
@@ -325,12 +324,15 @@ export default function RuleOfLifePage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
-  // PUBLIC no-login version: a signed-out visitor (flag on) gets the GUEST
-  // customizer — trimmed ways, one merged BCP slide, fixed silence goal, and a
-  // commit that writes only device-local prefs (see WayOfLoveRuleFlow's guest
-  // prop). Flag off / signed in → unchanged.
-  const { user: authUser, isLoading: authLoading } = useAuth();
-  const guestFlow = PHOEBE_GUEST_ENABLED && !authLoading && !authUser;
+  // PUBLIC no-login version: every LIGHT-shape session gets the GUEST
+  // customizer — trimmed ways, one merged BCP slide, a fixed silence goal, no
+  // contemplative multi-select / extras / grow-toward-30 ladder. That's the
+  // SHAPE question, so it must come from useGuestMode: the earlier `!authUser`
+  // check missed the ANONYMOUS DEVICE USER (it holds a real session), which
+  // handed the public the FULL flow and let its empty server office-prefs
+  // hydration clobber the seeded Evening side. Pilot-group members and super
+  // admins keep the full flow; flag off → unchanged.
+  const { isGuest: guestFlow } = useGuestMode();
 
   // Public — the Rule of Life / customizer is open to all users. The beta gate
   // that redirected non-beta users to /dashboard was removed per request, so
