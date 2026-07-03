@@ -22,6 +22,7 @@ import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { RhythmWhyIntro } from "@/components/RhythmWhyIntro";
 import { isCommitmentActive, startCommitment } from "@/lib/commitment";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
@@ -2174,6 +2175,16 @@ export default function WayOfLoveRuleFlow({
             {t("wol_rule.commit_skip", { defaultValue: "or just begin quietly" })}
           </button>
         </>
+      )}
+      {/* WEB save = an account (owner, 2026-07-03): on the web, browser storage
+          is ephemeral — an account is what makes the rule durable. Offered to
+          guests (no user, or the anonymous device user) on web only; the rhythm
+          is already committed locally, and routineSync migrates it up to the
+          account after sign-in. The iOS app stays fully login-free. */}
+      {guest && !isNativeShell() && (!user || user.isAnonymous) && (
+        <button onClick={() => setLocation("/signin")} style={{ marginTop: 12, background: "none", border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center", width: "100%" }}>
+          {t("wol_rule.web_save_cta", { defaultValue: "Create an account to save this rhythm" })}
+        </button>
       )}
     </>,
   );
