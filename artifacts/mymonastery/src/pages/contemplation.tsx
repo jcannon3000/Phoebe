@@ -172,6 +172,20 @@ function avgPerDay(seconds: number, days: number): string {
   return humanMinutes(Math.round(seconds / days));
 }
 
+// Average per day INCLUDING Apple Health mindful minutes — so the average
+// matches the cumulative tile (which already adds health). Previously the
+// average used prayer-sit seconds only, so any health minutes (which stay
+// counted even after older days condense in the history view) silently
+// dropped out and the weekly average read too low. The day count is still
+// the prayer-sit day count from the server; when a window has only health
+// minutes we divide by at least one day so it isn't "—" while the total shows.
+function avgPerDayWithHealth(seconds: number, healthMinutes: number, days: number): string {
+  const total = seconds + healthMinutes * 60;
+  const d = Math.max(days, healthMinutes > 0 ? 1 : 0);
+  if (!d) return "—";
+  return humanMinutes(Math.round(total / d));
+}
+
 // Always plain minutes — "75 min", "<1 min", "—" for zero. (Per product
 // direction the contemplation times read in minutes, not h/m: 1h 15m → 75.)
 function humanMinutes(seconds: number): string {
@@ -531,7 +545,14 @@ export default function ContemplationPage() {
       const sit = params.get("sit");
       if (sit) {
         const m = parseInt(sit, 10);
-        if (Number.isFinite(m) && m >= 1 && m <= 120) { start(m); return; }
+        if (Number.isFinite(m) && m >= 1 && m <= 120) {
+          // From the home contemplation card (?begin=1): don't skip straight into
+          // the timer. Show the chooser slide FIRST (Length / Start / Co-Breathe)
+          // with their preset length already selected, so they choose how to sit.
+          // A bare ?sit deep-link (no ?begin) still opens the silent timer at once.
+          if (params.get("begin") === "1") { setChosenMin(m); }
+          else { start(m); return; }
+        }
       }
       // The contemplation card always opens the begin slide below (Length +
       // Start contemplation + a Cobreathe pill). It no longer auto-skips to
@@ -1022,9 +1043,9 @@ export default function ContemplationPage() {
             </div>
             <RowLabel>{t("contemplation.average_per_day")}</RowLabel>
             <div className="flex gap-3">
-              <StatTile label={t("contemplation.label_today")} value={avgPerDay(stats?.todaySeconds ?? 0, stats?.todayDays ?? 0)} />
-              <StatTile label={t("contemplation.label_this_week")} value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
-              <StatTile label={t("contemplation.label_all_time")} value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
+              <StatTile label={t("contemplation.label_today")} value={avgPerDayWithHealth(stats?.todaySeconds ?? 0, stats?.healthMinutesToday ?? 0, stats?.todayDays ?? 0)} />
+              <StatTile label={t("contemplation.label_this_week")} value={avgPerDayWithHealth(stats?.weekSeconds ?? 0, stats?.healthMinutesWeek ?? 0, stats?.weekDays ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={avgPerDayWithHealth(stats?.totalSeconds ?? 0, stats?.healthMinutesTotal ?? 0, stats?.totalDays ?? 0)} />
             </div>
           </div>
         )}

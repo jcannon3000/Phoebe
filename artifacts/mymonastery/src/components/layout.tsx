@@ -1016,7 +1016,7 @@ function OpeningSplash() {
   const nextCandidates: NextCand[] = [
     { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : "Morning prayer", blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : "Begin the day with the office", rgb: "46,107,64" },
     ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
-    { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "A few minutes of stillness", rgb: "62,124,122" },
+    { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "Loving God in silence", rgb: "62,124,122" },
     { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Co-Breathe", blurb: "12 breaths as a prayer", rgb: "62,124,122" },
     { active: rhythm.listeningActive, done: rhythm.listeningDone, slot: getPracticeSlot("listening"), emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" },
     { active: rhythm.lectioActive, done: rhythm.lectioDone, slot: getPracticeSlot("lectio"), emoji: "📖", label: "Lectio Divina", blurb: "Sacred reading", rgb: "120,150,170" },

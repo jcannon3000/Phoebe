@@ -141,7 +141,7 @@ export function useWidgetSync(): void {
         subtitle: (rf.source === "cac" && cacMetaQ.data?.title) ? cacMetaQ.data.title : "A few minutes with the day's word",
         cta: "Read", kind: "reflect" as const,
       })),
-      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "A few minutes of stillness", cta: "Begin", kind: "office" },
+      { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       { active: r.cobreatheActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Co-Breathe", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
       { active: r.scriptureActive, done: r.scriptureDone, slot: getPracticeSlot("scripture"), title: "Listen to Scripture", eyebrow: "The day's readings", subtitle: "Hear today's word", cta: "Listen", kind: "reflect" },
@@ -151,7 +151,7 @@ export function useWidgetSync(): void {
       { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
       { active: r.prayerListActive, done: r.prayerListDone, slot: "anytime", title: "My Prayer List", eyebrow: "Your intentions", subtitle: "Pray through your list", cta: "Pray", kind: "office" },
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
-      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "A few minutes of stillness", cta: "Begin", kind: "office" },
+      { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       { active: r.gratitudeActive, done: r.gratitudeDone, slot: "evening", title: "Gratitude", eyebrow: "Name a gift", subtitle: "One gift from the day", cta: "Write", kind: "office" },
       { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: "Book of Common Prayer", subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({

@@ -711,6 +711,23 @@ export function ContemplationTimer({
     onClose({ completed: phase === "complete" || phase === "whats-next" });
   }
 
+  // The top-right ×. Mid-sit it now behaves like the "End" pill ONCE the user
+  // has actually sat a moment: >= 15s of silence ends the sit, logs it, and
+  // shows the completion screen (rather than silently discarding it). A quick
+  // escape (< 15s), or backing out of the picker/reflection, just closes.
+  function onCloseTap() {
+    if (phaseRef.current === "running") {
+      const now = Date.now();
+      const elapsed = reachedRef.current
+        ? totalSeconds + Math.max(0, (now - endAtRef.current) / 1000)
+        : totalSeconds - Math.max(0, (endAtRef.current - now) / 1000);
+      if (elapsed >= 15) { endSit(); return; }
+      discardSit();
+      return;
+    }
+    handleClose();
+  }
+
   // Toggle the just-finished sit's public/private flag. Updates local
   // state instantly (no spinner — the toggle should feel immediate)
   // and fires a fire-and-forget PATCH. The choice is also written to
@@ -787,7 +804,7 @@ export function ContemplationTimer({
         {(
           <button
             type="button"
-            onClick={handleClose}
+            onClick={onCloseTap}
             aria-label="Close"
             className="absolute flex items-center justify-center rounded-full"
             style={{

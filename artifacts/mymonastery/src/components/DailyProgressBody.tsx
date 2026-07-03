@@ -945,7 +945,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       key: "silence", slot: "anytime" as CustomSlot, emoji: "🕯️", rgb: "62,124,122",
       done: contemplationMin >= contemplationGoalMin,
       href: `/contemplation?begin=1&sit=${contemplationGoalMin}`,
-      title: t("rhythm.card_silence", { defaultValue: "Silence" }),
+      title: t("rhythm.card_silence", { defaultValue: "Contemplation" }),
       blurb: contemplationMin >= contemplationGoalMin
         ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
         : t("rhythm.silence_of_goal", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }),
@@ -1023,9 +1023,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // order (so a card keeps its colour whether it's Next or Done, and the ramp
   // doesn't reshuffle as things get kept). The office hero keeps its own colour.
   const coloredCards = cards.map((c, i) => ({ ...c, rgb: rhythmGradientRgb(i, cards.length) }));
+  // When the rhythm has NO office at all, the morning Contemplation card leads
+  // the day as the hero — a big anchor card ABOVE the reflection — so a
+  // contemplation-only rhythm still has a clear "start here". Only where heroes
+  // render (renderOfficeHero present), in the morning window, while it's undone.
+  const noOffice = !morningActive && !eveningActive;
+  const contemplationHero = (!!renderOfficeHero && noOffice && hour < 12)
+    ? coloredCards.find((c) => c.key === "contemplation-morning" && !c.done)
+    : undefined;
+  // Whether SOME card leads the Next list as a hero (office or contemplation).
+  const heroLeads = !!officeHero || !!contemplationHero;
   const visibleCards = showOfficeHero
     ? coloredCards.filter((c) => c.key !== heroSide)
-    : coloredCards;
+    : contemplationHero
+      ? coloredCards.filter((c) => c.key !== contemplationHero.key)
+      : coloredCards;
 
   // Every undone practice stays in Next (never vanishes, never rolls to a
   // separate "Tomorrow" section — both read as confusing / data-loss). A card
@@ -1050,7 +1062,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
-    return all.slice(0, Math.max(0, maxUpcoming - (officeHero ? 1 : 0)));
+    return all.slice(0, Math.max(0, maxUpcoming - (heroLeads ? 1 : 0)));
   })();
   // Everything kept today stays in the Done section all day — until the whole
   // day's rhythm is complete — so the home always reflects what's been prayed.
@@ -1090,7 +1102,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // it gets the first tick and every card below cascades a haptic IN the same
     // top-to-bottom (time-of-day) order they rise in. Without the hero in the
     // count it cascaded in silently and the ticks lagged the cards by one.
-    const count = (officeHero ? 1 : 0) + upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + (showTomorrowSection ? tomorrowDisplay.length : 0);
+    const count = (heroLeads ? 1 : 0) + upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + (showTomorrowSection ? tomorrowDisplay.length : 0);
     const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
     const PEAK = 0.42;         // every tick's strength (uniform)
@@ -1102,7 +1114,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       }, START_DELAY + i * STEP));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection, tomorrowDisplay.length, showTomorrowSection, officeHero]);
+  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection, tomorrowDisplay.length, showTomorrowSection, heroLeads]);
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
   // divider line trailing off to the right.
@@ -1152,6 +1164,24 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurDelay={blurDelay}
     />
   );
+  // The card that LEADS the Next list as a hero: the office hero when there is
+  // one, otherwise the morning Contemplation card in the big hero layout.
+  const heroNode = officeHero ?? (contemplationHero ? (
+    <PracticeCard
+      href={contemplationHero.href}
+      emoji={contemplationHero.emoji}
+      title={contemplationHero.title}
+      blurb={contemplationHero.blurb}
+      cta={contemplationHero.cta}
+      done={contemplationHero.done}
+      rgb={contemplationHero.rgb}
+      hero
+      later={contemplationHero.later}
+      progress={(contemplationHero as { progress?: { current: number; goal: number } }).progress}
+      doneCta={(contemplationHero as { doneCta?: string }).doneCta}
+      pulseOnLoad={splashCleared}
+    />
+  ) : null);
   // The blur on a card starts as it LANDS — its cascade delay (enterUp) plus a
   // little, so the frosted backdrop ramps in just as the card settles. min()
   // caps it to the same ceiling enterUp uses so late cards don't lag too far.
@@ -1172,7 +1202,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
   // Gap above Done: when Next still has cards, a smaller gap reads right; when
   // the hero (or nothing) is the only thing in Next it needs more breathing room.
-  const doneGapCls = !(upcomingDisplay.length > 0 || officeHero) ? ""
+  const doneGapCls = !(upcomingDisplay.length > 0 || heroLeads) ? ""
     : upcomingDisplay.length > 0 ? "mt-4" : "mt-8";
 
   return (
@@ -1180,22 +1210,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       {/* A prayer-requests card leads the whole thing when there's something
           waiting. */}
       {leadCard && <motion.div {...enterUp(0)} className="mb-3">{leadCard}</motion.div>}
-      {(upcomingDisplay.length > 0 || officeHero) && (
+      {(upcomingDisplay.length > 0 || heroLeads) && (
         <>
           {/* The section title fades up with the cascade too (visual only — the
               haptic ticks are scheduled per CARD, so titles never buzz). */}
           <motion.div {...enterUp(0)}>{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
           <div className="flex flex-col gap-2">
-            {/* The office hero leads the Next list — above Contemplation. */}
-            {officeHero && <motion.div {...enterUp(0)}>{officeHero}</motion.div>}
+            {/* The hero leads the Next list — the office, or (with no office)
+                the morning Contemplation card, above the reflection. */}
+            {heroNode && <motion.div {...enterUp(0)}>{heroNode}</motion.div>}
             {/* Praying this office from the physical book? A one-tap log sits
                 right under the card — no need to open the page guide. */}
             {officeHero && heroSide && (
               <BookOfficeLogRow side={heroSide} done={heroSide === "morning" ? morningDone : eveningDone} />
             )}
             {upcomingDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
-                {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (officeHero ? 1 : 0)))}
+              <motion.div key={c.key} {...enterUp(i + (heroLeads ? 1 : 0))}>
+                {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (heroLeads ? 1 : 0)))}
               </motion.div>
             ))}
           </div>
@@ -1219,7 +1250,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           practices when you set up in the evening). At the bottom, so Next stays
           focused on what's left today. Still tappable if you want to do one now. */}
       {showTomorrowSection && (
-        <div className={(upcomingDisplay.length > 0 || officeHero || showDoneSection) ? "mt-8" : ""}>
+        <div className={(upcomingDisplay.length > 0 || heroLeads || showDoneSection) ? "mt-8" : ""}>
           <motion.div {...enterUp(upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0))}>
             {sectionHeader(t("daily_progress.tomorrow_heading", { defaultValue: "Tomorrow" }))}
           </motion.div>

@@ -2228,7 +2228,7 @@ function PrayerCompletedSlide({
     const add = (active: boolean, done: boolean, slot: CustomSlot, c: Omit<Cand, "slot">) => {
       if (active && !done) cands.push({ ...c, slot });
     };
-    add(rhythm.silenceActive, rhythm.silenceDone, "morning", { emoji: "🕯️", title: t("rhythm.card_silence", { defaultValue: "Silence" }), blurb: t("rhythm.blurb_silence", { defaultValue: "A few minutes of stillness" }), href: "/contemplation?begin=1" });
+    add(rhythm.silenceActive, rhythm.silenceDone, "morning", { emoji: "🕯️", title: t("rhythm.card_silence", { defaultValue: "Contemplation" }), blurb: t("rhythm.blurb_silence", { defaultValue: "Loving God in silence" }), href: "/contemplation?begin=1" });
     add(rhythm.scriptureActive, rhythm.scriptureDone, getPracticeSlot("scripture"), { emoji: "📖", title: t("rhythm.card_scripture", { defaultValue: "Listen to Scripture" }), blurb: t("rhythm.blurb_scripture", { defaultValue: "The day's readings, heard aloud" }), href: "/scripture/readings" });
     add(rhythm.lectioActive, rhythm.lectioDone, getPracticeSlot("lectio"), { emoji: "📖", title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }), blurb: t("rhythm.blurb_lectio", { defaultValue: "Sacred reading" }), href: "/lectio-divina" });
     add(rhythm.cobreatheActive, rhythm.cobreatheDone, getPracticeSlot("cobreathe"), { emoji: "🌍", title: t("rhythm.card_cobreathe", { defaultValue: "Co-Breathe" }), blurb: t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths as a prayer for climate justice" }), href: "/cobreathe?start=1" });
