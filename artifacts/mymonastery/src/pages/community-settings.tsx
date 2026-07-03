@@ -26,6 +26,10 @@ type Group = {
   // is null on standard communities, "contemplation" on the template.
   focus?: string | null;
   contemplationGoalMinutes?: number | null;
+  // ── Pilot group (public no-login version) — designated by APP SUPER ADMINS
+  // only; members of a pilot group are the only users who keep the full app
+  // once the guest flag flips.
+  isPilotGroup?: boolean;
 };
 
 type Intention = {
@@ -78,6 +82,23 @@ export default function CommunitySettingsPage() {
     queryKey: ["/api/groups", slug],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!user && !!slug,
+  });
+
+  // ── Pilot group (app super admins only) ─────────────────────────────
+  // Only super admins (beta_users.is_admin) ever see the toggle; the check
+  // is one cheap cached GET. The PATCH applies immediately.
+  const { data: amSuper } = useQuery<{ isSuperAdmin: boolean }>({
+    queryKey: ["/api/admin/am-super"],
+    queryFn: () => apiRequest("GET", "/api/admin/am-super"),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+  const pilotMutation = useMutation({
+    mutationFn: (on: boolean) => apiRequest("PATCH", `/api/admin/groups/${slug}/pilot`, { isPilotGroup: on }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
   });
 
   // Pending join-request count for this community — drives the badge
@@ -547,6 +568,38 @@ export default function CommunitySettingsPage() {
             </div>
           )}
         </div>
+
+        {/* ── Pilot group (app super admins only) ───────────────────────────
+            Members of a pilot group are the ONLY users who keep the FULL app
+            once the public no-login version ships — everyone else gets the
+            light shape. The toggle only renders for app super admins
+            (beta_users.is_admin, checked via /api/admin/am-super); saving is
+            immediate (its own PATCH, separate from the Save button). */}
+        {amSuper?.isSuperAdmin && (
+          <div
+            className="rounded-xl px-4 py-3.5 mb-4"
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(168,197,160,0.35)" }}
+          >
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={groupData?.group?.isPilotGroup === true}
+                disabled={pilotMutation.isPending}
+                onChange={(e) => pilotMutation.mutate(e.target.checked)}
+                className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+                style={{ accentColor: "#2D5E3F" }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                  {t("community_settings.pilot_group", { defaultValue: "Pilot group" })}
+                </p>
+                <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                  {t("community_settings.pilot_group_desc", { defaultValue: "Members of a pilot group get the full app. Everyone else uses the simplified public version. Visible to app administrators only." })}
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         {/* ── Add intention dialog ─────────────────────────────────────────
             Intercession-shaped: title (the prayer itself) plus an optional

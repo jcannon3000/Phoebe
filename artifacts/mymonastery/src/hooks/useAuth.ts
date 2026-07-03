@@ -25,6 +25,10 @@ export interface AuthUser {
   // PUBLIC no-login version: an anonymous device user (silently provisioned so
   // push/reminders/prefs-sync work with no credentials). Always the light shape.
   isAnonymous?: boolean;
+  // PUBLIC no-login version: member of a PILOT GROUP — the only users who keep
+  // the FULL app once the guest flag flips (super admins designate pilot
+  // groups from the group's settings). Server-derived on /api/auth/me.
+  inPilotGroup?: boolean;
   googleId: string | null;
   showPresence: boolean;
   // Opt-in coarse "same air" location for Cobreathe (default false).

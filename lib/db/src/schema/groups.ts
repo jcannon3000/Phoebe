@@ -30,6 +30,12 @@ export const groupsTable = pgTable("groups", {
   // Default true: every new community is browseable out of the gate.
   // Admins can flip it off later from settings to go private.
   isPublic: boolean("is_public").notNull().default(true),
+  // PUBLIC no-login version: a PILOT GROUP's members are the ONLY users who
+  // get the FULL app once PHOEBE_GUEST_ENABLED flips — everyone else (guests
+  // and ordinary signed-in accounts) gets the light shape. Designated by app
+  // super admins (beta_users.is_admin) from the group's settings. See memory
+  // "project_public_no_login".
+  isPilotGroup: boolean("is_pilot_group").notNull().default(false),
   createdByUserId: integer("created_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

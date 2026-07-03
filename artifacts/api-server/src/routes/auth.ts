@@ -312,6 +312,20 @@ router.get("/auth/me", async (req, res) => {
     ))
     .limit(1);
   const isCommunityMember = communityMemberRows.length > 0;
+  // PUBLIC no-login version: is this user a member of any PILOT GROUP? Pilot-
+  // group members are the ONLY users who keep the FULL app once the guest flag
+  // flips — computed here so useGuestMode reads one source of truth on load.
+  const pilotGroupRows = await db
+    .select({ id: groupMembersTable.id })
+    .from(groupMembersTable)
+    .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
+    .where(and(
+      eq(groupMembersTable.userId, u.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      eq(groupsTable.isPilotGroup, true),
+    ))
+    .limit(1);
+  const inPilotGroup = pilotGroupRows.length > 0;
   // Does this user have a fellow connection — an accepted 1:1 fellow, OR a
   // pending fellow invite waiting for them? If so they keep the FULL app (so
   // they can still see + reach Fellows), even in the simplified pilot
@@ -332,6 +346,7 @@ router.get("/auth/me", async (req, res) => {
   const hasFellowConnection = fellowRows.length > 0 || fellowInviteRows.length > 0;
   res.json({
     isCommunityMember,
+    inPilotGroup,
     hasFellowConnection,
     id: u.id,
     name: u.name,

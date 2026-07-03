@@ -506,4 +506,33 @@ router.post("/admin/feed-repair", async (req, res): Promise<void> => {
   }
 });
 
+// ─── Pilot groups (PUBLIC no-login version) ─────────────────────────────────
+// A PILOT GROUP's members are the only users who keep the FULL app once the
+// guest flag flips — everyone else gets the light shape. Designating a group
+// is an app-SUPER-ADMIN action (beta_users.is_admin), surfaced as a toggle in
+// the group's settings page. See memory "project_public_no_login".
+
+// GET /api/admin/am-super — lets the group-settings page decide whether to
+// show the pilot-group toggle at all. Cheap, cached client-side.
+router.get("/admin/am-super", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  res.json({ isSuperAdmin: await isBetaAdmin(session.id) });
+});
+
+// PATCH /api/admin/groups/:slug/pilot { isPilotGroup: boolean }
+router.patch("/admin/groups/:slug/pilot", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(session.id))) { res.status(403).json({ error: "Forbidden" }); return; }
+  const on = req.body?.isPilotGroup === true;
+  const [group] = await db
+    .update(groupsTable)
+    .set({ isPilotGroup: on })
+    .where(eq(groupsTable.slug, req.params.slug))
+    .returning({ id: groupsTable.id, slug: groupsTable.slug, isPilotGroup: groupsTable.isPilotGroup });
+  if (!group) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ok: true, group });
+});
+
 export default router;
