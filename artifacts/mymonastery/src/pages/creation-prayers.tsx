@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
+import { FROST, FROST_BLUR } from "@/lib/frost";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── Prayers for the Climate ──────────────────────────────────────────────────
 //
@@ -79,6 +81,9 @@ export default function CreationPrayersPage() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
+  // One still leaf backdrop, picked once — the frost-over-leaves treatment the
+  // rest of the app wears (cards blur the photo behind them).
+  const [bgPhoto] = useState<string | null>(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null));
 
   useEffect(() => {
     if (!CREATION_PRAYER_ENABLED) { setLocation("/"); return; }
@@ -112,6 +117,16 @@ export default function CreationPrayersPage() {
 
   return (
     <Layout>
+      {/* Leaf backdrop — the canonical in-Layout pattern: an isolated host with
+          an absolute, z-index:-1 photo layer (never position:fixed, which
+          flashes in the iOS WebView). The frosted cards below blur it. */}
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+        {bgPhoto && (
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1 }}>
+            <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.3 }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(12,31,18,0.55) 0%, rgba(12,31,18,0.4) 45%, rgba(12,31,18,0.9) 100%)" }} />
+          </div>
+        )}
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <header className="mb-4">
           <Link href="/menu/practices" className="text-sm mb-3 inline-block" style={{ color: SAGE }}>← Practices</Link>
@@ -129,7 +144,7 @@ export default function CreationPrayersPage() {
           placeholder="Search prayers, authors, phrases…"
           aria-label="Search the prayer library"
           className="w-full rounded-xl mb-2"
-          style={{ background: "rgba(9,26,16,0.35)", border: "1px solid rgba(46,107,64,0.35)", color: CREAM, fontFamily: FONT, fontSize: 15, padding: "12px 14px", outline: "none", colorScheme: "dark" }}
+          style={{ ...FROST, border: "1px solid rgba(46,107,64,0.4)", color: CREAM, fontFamily: FONT, fontSize: 15, padding: "12px 14px", outline: "none", colorScheme: "dark" }}
         />
 
         {libLoading || !data ? (
@@ -143,11 +158,11 @@ export default function CreationPrayersPage() {
                 <h2 className="mt-8 mb-2" style={{ fontFamily: FONT, fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", color: "#7E9A85", fontWeight: 700 }}>
                   {s.heading}
                 </h2>
-                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(46,107,64,0.18)" }}>
+                <div className="rounded-2xl overflow-hidden" style={{ ...FROST_BLUR, border: "1px solid rgba(46,107,64,0.4)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                   {s.entries.map((e, i) => {
                     const isOpen = open.has(e.id);
                     return (
-                      <div key={e.id} style={{ background: "rgba(46,107,64,0.08)", borderTop: i > 0 ? "1px solid rgba(46,107,64,0.15)" : "none" }}>
+                      <div key={e.id} style={{ background: "rgba(9,26,16, 0.297)", borderTop: i > 0 ? "1px solid rgba(46,107,64,0.22)" : "none" }}>
                         <button
                           onClick={() => toggle(e.id)}
                           aria-expanded={isOpen}
@@ -185,6 +200,7 @@ export default function CreationPrayersPage() {
             </p>
           </>
         )}
+      </div>
       </div>
     </Layout>
   );
