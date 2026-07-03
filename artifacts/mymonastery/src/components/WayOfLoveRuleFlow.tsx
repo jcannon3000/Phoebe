@@ -1477,7 +1477,7 @@ export default function WayOfLoveRuleFlow({
               + prayers, opening with the Co-Breathe breath). IS this side's
               prayer, like the office; mutually exclusive with the BCP office.
               Hidden for now behind CREATION_PRAYER_ENABLED. */}
-          {!pilot && CREATION_PRAYER_ENABLED && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, opening with Co-Breathe." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
+          {!pilot && !guest && CREATION_PRAYER_ENABLED && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, with Co-Breathe at the intercession." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
           {/* Forward Day by Day — an add-on reflection; the next step picks read
               vs. listen (feeds the reflection/newsletter set). Hidden for
               GUESTS — FDD is chosen on the separate "learn" newsletter step,

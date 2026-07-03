@@ -15,9 +15,9 @@ export default function MenuBcpPage() {
       groups={[{
         items: [
           { emoji: "🌅", label: "Daily Offices", sub: "Morning & Evening Prayer, devotions", onClick: () => go("/bcp/daily-office") },
-          // Creation Prayer + Prayers for the Climate are hidden behind CREATION_PRAYER_ENABLED.
+          // Creation Prayer itself lives under PRACTICES (owner: not in the BCP
+          // menu); its prayer LIBRARY stays here, flag-gated.
           ...(CREATION_PRAYER_ENABLED ? [
-            { emoji: "🌱", label: "Creation Prayer", sub: "A creation-focused devotion, opening with Co-Breathe", onClick: () => go("/creation-devotion") },
             { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
           ] : []),
           { emoji: "📖", label: "Prayers", sub: "Intercessions & thanksgivings", onClick: () => go("/bcp/intercessions") },
