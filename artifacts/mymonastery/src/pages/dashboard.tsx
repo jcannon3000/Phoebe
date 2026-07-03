@@ -20,6 +20,7 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { seedGuestRule } from "@/lib/guestSeed";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -7061,19 +7062,24 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // PUBLIC no-login version: guests LIVE here — no bounce to the welcome
     // chooser (which would loop, since it forwards guests to /dashboard).
     if (!authLoading && !user && !PHOEBE_GUEST_ENABLED) setLocation("/");
+    // A guest who lands here directly (deep link / restored session), without
+    // passing the "/" chooser that normally seeds, still gets the precoded
+    // rule — seedGuestRule is a no-op when the device already has one.
+    if (!authLoading && !user && PHOEBE_GUEST_ENABLED) seedGuestRule();
     // New users land on a coherent GIVEN rhythm (Morning Devotion · Forward Day
     // by Day · Evening Devotion) — not a config screen. Onboarding is just the
     // intro + push + photo, then home; they grow into Customize later.
     if (!authLoading && user && !user.onboardingCompleted) setLocation("/onboarding");
   }, [user, authLoading, setLocation]);
 
-  // Slice 2 (guest home) will let the dashboard render on device-local state
-  // with no user; until then guests get the effect-gate above (no bounce loop)
-  // but no render — the flag stays OFF.
-  if (authLoading || !user) return null;
+  // PUBLIC no-login version (slice 2): with the flag on, a signed-out GUEST
+  // renders the home on device-local state — the rhythm cards + prefs are
+  // already local-first, and every account surface below (prayer list, faces,
+  // events, letters) is gated on `user` / its `enabled: !!user` query.
+  if (authLoading || (!user && !PHOEBE_GUEST_ENABLED)) return null;
 
-  const userEmail = user.email;
-  const userName = user.name ?? "";
+  const userEmail = user?.email ?? "";
+  const userName = user?.name ?? "";
 
   return (
     <Layout bgPhoto={homeBgPhoto}>
@@ -7616,8 +7622,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     overlapped stack of the people who've prayed for them lately on
                     the right, plus the "New prayer request" CTA. The header + cards
                     only show when you HAVE an open request; the CTA always shows so
-                    you can always start one. */}
-                {filter === null && !eventsOnly && (() => {
+                    you can always start one. Signed-in only: a GUEST home carries
+                    no prayer-request composer and no community events. */}
+                {filter === null && !eventsOnly && !!user && (() => {
                   // The upcoming EVENTS render below the prayer list. The "Add
                   // prayer" button always sits directly under the list (your own
                   // requests now live in that list too, with the 🙏/✓ pill), so

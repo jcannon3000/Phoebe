@@ -13,6 +13,10 @@ import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContem
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
+import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
+import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
 
 // How the user has chosen to pray the daily office — drives whether the
 // Morning/Evening anchor reads "Prayer", "Devotion", or "Pray together".
@@ -144,7 +148,16 @@ function homeCardActive(
 
 export function useRhythmState(): RhythmState {
   const day = localDay();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  // PUBLIC no-login version: a guest (flag on, auth settled signed-out) runs
+  // the WHOLE rhythm on device-local state — every server query below is off,
+  // `ready` doesn't wait on them, the home layout comes from the local cache
+  // the guest customizer writes, and the silence goal/minutes come from the
+  // guest keys. With the flag off (or any signed-in user) nothing changes.
+  const guest = PHOEBE_GUEST_ENABLED && !authLoading && !user;
+  // The layout that decides which optional cards are active: the signed-in
+  // user's server layout, or — for a guest — the device-local cache.
+  const hl = guest ? readCachedHomeLayout() : user?.homeLayout;
 
   // Reflection read-state. localStorage is per-device and flips instantly, but
   // doesn't sync across devices (read CAC on mobile → web wouldn't know). CAC
@@ -233,12 +246,17 @@ export function useRhythmState(): RhythmState {
     window.addEventListener("pageshow", recheck);
     window.addEventListener("storage", recheck);
     window.addEventListener("phoebe:appactive", recheck);
+    // Guest silence log — a finished guest sit writes device-local minutes and
+    // fires this; the recheck's fresh state object re-renders the hook so the
+    // guest contemplationMin below re-reads the tally.
+    window.addEventListener(GUEST_SILENCE_EVENT, recheck);
     return () => {
       window.removeEventListener(PRACTICE_DONE_EVENT, recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
       window.removeEventListener("storage", recheck);
       window.removeEventListener("phoebe:appactive", recheck);
+      window.removeEventListener(GUEST_SILENCE_EVENT, recheck);
     };
   }, []);
 
@@ -324,39 +342,42 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/me/office-history-week"],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
     staleTime: 30_000,
+    enabled: !guest,
   });
 
   // Server-backed completion rows for the optional practices (cross-device).
   // Only fetched/used for the practices the user has actually added.
-  const gratitudeActive = homeCardActive(user?.homeLayout, "gratitude");
-  const examenActive = homeCardActive(user?.homeLayout, "examen");
+  const gratitudeActive = homeCardActive(hl, "gratitude");
+  const examenActive = homeCardActive(hl, "examen");
   // Audio Divina (listening as a way of prayer) is live as a logging-first
   // practice — it appears ONLY when the user selects it in the customizer
   // (homeCardActive reads the saved home layout).
-  const listeningActive = homeCardActive(user?.homeLayout, "listening");
-  const journalingActive = homeCardActive(user?.homeLayout, "journaling");
+  const listeningActive = homeCardActive(hl, "listening");
+  const journalingActive = homeCardActive(hl, "journaling");
   // Lectio Divina — sacred reading as a logging-first practice (same shape as
   // Audio Divina); appears only when selected in the customizer.
-  const lectioActive = homeCardActive(user?.homeLayout, "lectio");
+  const lectioActive = homeCardActive(hl, "lectio");
   // Reading + Podcasts — logging-first practices added from the "Add to your
   // day" step; each its own home card + dot.
-  const readingActive = homeCardActive(user?.homeLayout, "reading");
-  const podcastsActive = homeCardActive(user?.homeLayout, "podcasts");
+  const readingActive = homeCardActive(hl, "reading");
+  const podcastsActive = homeCardActive(hl, "podcasts");
   // Contemplative Walk — a slotted contemplative practice, logged like reading.
-  const walkActive = homeCardActive(user?.homeLayout, "walk");
+  const walkActive = homeCardActive(hl, "walk");
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.
   // On by default for an un-set-up user (no saved home layout) — Co-Breathe is
   // part of the starter rhythm (Prayer List · Contemplation · CAC · Silence ·
-  // Co-Breathe). Once the user customizes, the saved layout decides.
-  const cobreatheActive = homeCardActive(user?.homeLayout, "cobreathe") || !user?.homeLayout;
+  // Co-Breathe). Once the user customizes, the saved layout decides. GUESTS are
+  // the exception: their seeded rule (M/E Office · FDD · silence goal) has no
+  // Co-Breathe — it appears only if their customizer adds it to the layout.
+  const cobreatheActive = homeCardActive(hl, "cobreathe") || (!guest && !user?.homeLayout);
   // Personal prayer list — a logging-first practice (prayed through its
   // slideshow); appears only when selected in the customizer.
-  const prayerListActive = homeCardActive(user?.homeLayout, "prayer-list");
+  const prayerListActive = homeCardActive(hl, "prayer-list");
   // Listen to Scripture — the day's appointed readings, heard one passage at a
   // time (Scripture Day by Day); a slotted contemplative practice.
-  const scriptureActive = homeCardActive(user?.homeLayout, "scripture");
+  const scriptureActive = homeCardActive(hl, "scripture");
   const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive || walkActive || prayerListActive || scriptureActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
@@ -369,7 +390,7 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/practice-completion", weekStartDay],
     queryFn: () => apiRequest("GET", `/api/practice-completion?since=${weekStartDay}`),
     staleTime: 30_000,
-    enabled: anyExtraActive,
+    enabled: anyExtraActive && !guest,
   });
   const serverDone = (section: string) =>
     !!completions?.completions?.some((c) => c.section === section && c.localDate === day);
@@ -384,24 +405,28 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
     queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`),
     staleTime: 30_000,
+    enabled: !guest,
   });
 
   const { data: cobreathe } = useQuery<{ done: boolean; count: number }>({
     queryKey: ["/api/breath/today", day],
     queryFn: () => apiRequest("GET", `/api/breath/today?day=${day}`),
     staleTime: 60_000,
+    enabled: !guest,
   });
 
   const { data: rhythm } = useQuery<{ streak: number; last7: number; keptToday: boolean }>({
     queryKey: ["/api/me/prayer-days", tz],
     queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
+    enabled: !guest,
   });
 
   const { data: prayerStreak } = useQuery<{ gardenPrayedTodayCount?: number }>({
     queryKey: ["/api/prayer-streak"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak"),
     staleTime: 60_000,
+    enabled: !guest,
   });
 
   // Server-backed reflection reads (CAC + FDD + SSJE) for today — so the
@@ -411,6 +436,7 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/me/reflections-read", day],
     queryFn: () => apiRequest("GET", `/api/me/reflections-read?ymd=${day}`),
     staleTime: 60_000,
+    enabled: !guest,
   });
 
   const reflectDone = reflectLocal || !!reflRead?.cac || !!reflRead?.fdd || !!reflRead?.ssje;
@@ -422,6 +448,7 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
+    enabled: !guest,
   });
   // "Grow my silence" ladder — the GET also runs the server-side daily catch-up
   // eval (advancing / easing the rung) and returns the authoritative current
@@ -452,8 +479,11 @@ export function useRhythmState(): RhythmState {
   // Contemplation (was "Silence"): today's minutes = Phoebe sits + any external
   // Apple Health mindful minutes (a Cobreathe breath logs a contemplation sit,
   // so it's already counted here). It only counts as KEPT once the daily goal is
-  // met — if no goal is set, any silence counts.
-  const contemplationMin = Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
+  // met — if no goal is set, any silence counts. GUESTS can't post
+  // prayer_sessions — their minutes come from the device-local sit tally.
+  const contemplationMin = guest
+    ? getGuestSilenceMinutesToday()
+    : Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
   const rawGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
   // Starter rule: an un-set-up user (no saved home layout) gets a 5-minute
   // silence by default — alongside Morning/Evening Psalms + Forward Day by Day.
@@ -463,8 +493,12 @@ export function useRhythmState(): RhythmState {
   // "have they designed a rule yet?" signal (same as the reflection fallback).
   // When the ladder is on, the current rung IS the goal (the ladder GET just
   // re-evaluated it). Otherwise a saved goal, or the 5-minute starter default.
+  // GUESTS have no server pref or ladder — the goal is the device-local guest
+  // key (seeded at 5 min; the guest customizer's silence step rewrites it).
   const ladderLevel = ladderEnabled && typeof ladderData?.level === "number" ? ladderData.level : null;
-  const contemplationGoalMin = ladderLevel != null ? ladderLevel : ((!user?.homeLayout && rawGoalMin === 0) ? 5 : rawGoalMin);
+  const contemplationGoalMin = guest
+    ? getGuestSilenceGoalMin()
+    : ladderLevel != null ? ladderLevel : ((!hl && rawGoalMin === 0) ? 5 : rawGoalMin);
 
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
@@ -507,8 +541,9 @@ export function useRhythmState(): RhythmState {
   // force a side on even after the user turned it OFF in the customizer.
   const mlExplicit = getExplicitSideLevel("morning");
   const elExplicit = getExplicitSideLevel("evening");
-  // Has the user designed a rule yet? A saved home layout is the signal.
-  const customized = !!user?.homeLayout;
+  // Has the user designed a rule yet? A saved home layout is the signal (for a
+  // guest, the device-local cached layout their customizer writes).
+  const customized = !!hl;
   // A side a CUSTOMIZED user explicitly set on THIS device is authoritative —
   // "ask" means they turned it off, and that wins even over a stale server pref
   // (e.g. an office-prefs PUT that was dropped). With no explicit local level we
@@ -529,21 +564,31 @@ export function useRhythmState(): RhythmState {
   // migrates to both sides. (Checking `=== true` here would wrongly re-migrate a
   // user who deliberately turned BOTH sides off.)
   const perSideContemplationSet = getSideContemplationExplicit("morning") !== null || getSideContemplationExplicit("evening") !== null;
-  const morningContemplationActive = customized
+  // GUESTS never get the per-side cards — their silence is ONE goal card with a
+  // progress bar (DailyProgressBody), so both per-side flags stay off and the
+  // aggregate below carries the anchor instead.
+  const morningContemplationActive = !guest && (customized
     ? (perSideContemplationSet ? getSideContemplation("morning") : contemplationGoalMin > 0)
-    : (getSideLevel("morning") === "reflect-sit");
-  const eveningContemplationActive = customized
+    : (getSideLevel("morning") === "reflect-sit"));
+  const eveningContemplationActive = !guest && (customized
     ? (perSideContemplationSet ? getSideContemplation("evening") : contemplationGoalMin > 0)
-    : (getSideLevel("evening") === "reflect-sit");
+    : (getSideLevel("evening") === "reflect-sit"));
   const morningContemplationDone = contemplationSideDone.morning;
   const eveningContemplationDone = contemplationSideDone.evening;
   // Aggregate, for the single-silence consumers (splash / widget / prayer-mode /
   // routine-print / TodaysRhythm): active if either side is; done when every
   // active side is kept. silenceGoalMet stays available for minutes displays.
-  const silenceActive = morningContemplationActive || eveningContemplationActive;
-  const silenceDone = silenceActive
-    && (!morningContemplationActive || morningContemplationDone)
-    && (!eveningContemplationActive || eveningContemplationDone);
+  // For a GUEST the aggregate IS the single Silence goal: active when a daily
+  // goal is set, done when today's local minutes have reached it (goal-met
+  // semantics — the progress bar stays visible while under goal).
+  const silenceActive = guest
+    ? contemplationGoalMin > 0
+    : (morningContemplationActive || eveningContemplationActive);
+  const silenceDone = guest
+    ? (silenceActive && contemplationMin >= contemplationGoalMin)
+    : (silenceActive
+      && (!morningContemplationActive || morningContemplationDone)
+      && (!eveningContemplationActive || eveningContemplationDone));
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
@@ -552,14 +597,15 @@ export function useRhythmState(): RhythmState {
     s === "cac" ? (hasReadCacToday() || !!reflRead?.cac)
       : s === "fdd" ? (hasReadFddToday() || !!reflRead?.fdd)
         : (hasReadSsjeToday() || !!reflRead?.ssje);
-  const fromLayout = REFLECT_SOURCES.filter((s) => homeCardActive(user?.homeLayout, s));
+  const fromLayout = REFLECT_SOURCES.filter((s) => homeCardActive(hl, s));
   // New-user default rule includes a reflection (Forward Day by Day). When the
   // user has NO saved home layout (un-set-up), fall back to the single effective
   // reflection source — defaults to FDD, or "none" if they turned reflections
   // off. A user who HAS customized their layout keeps exactly the reflection
-  // cards they chose there (no auto-add).
+  // cards they chose there (no auto-add). (Guests: same rule against the local
+  // cached layout — the seeded guest rule reaches FDD via this fallback.)
   const reflectFallback: Array<"cac" | "fdd" | "ssje"> =
-    (!user?.homeLayout && (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje"))
+    (!hl && (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje"))
       ? [reflectionSource]
       : [];
   const selectedReflections: Array<"cac" | "fdd" | "ssje"> =
@@ -573,6 +619,10 @@ export function useRhythmState(): RhythmState {
   const coreFlags = [
     ...(morningActive ? [morningDone] : []),
     ...(morningContemplationActive ? [morningContemplationDone] : []),
+    // The guest single Silence goal anchor — guests keep ONE goal card (with a
+    // progress bar) in place of the per-side contemplation cards, so it counts
+    // exactly one dot here and the dots always match the cards.
+    ...(guest && silenceActive ? [silenceDone] : []),
     ...reflections.map((r) => r.done),
     ...(eveningActive ? [eveningDone] : []),
     ...(eveningContemplationActive ? [eveningContemplationDone] : []),
@@ -607,12 +657,14 @@ export function useRhythmState(): RhythmState {
   // structure still comes from the persisted office history / prefs / layout.
   // The extras just read "not done yet" until the connection returns.
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
-  const ready =
+  // A GUEST has no server queries to settle — the rhythm is device-local, so
+  // the first paint is ready immediately.
+  const ready = guest || (
     officeHistory !== undefined &&
     contStats !== undefined &&
     reflRead !== undefined &&
     officePrefs !== undefined &&
-    (!anyExtraActive || completions !== undefined || offline);
+    (!anyExtraActive || completions !== undefined || offline));
 
   return {
     ready,

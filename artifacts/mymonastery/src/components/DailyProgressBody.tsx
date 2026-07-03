@@ -25,6 +25,9 @@ import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { commitmentDay, COMMITMENT_DAYS, clearCommitment } from "@/lib/commitment";
+import { useAuth } from "@/hooks/useAuth";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { guestSeededAfterNoonToday } from "@/lib/guestSeed";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -644,6 +647,13 @@ function PracticeCard({
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
   const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, customAnchors } = useRhythmState();
+  const { user } = useAuth();
+  // PUBLIC no-login version: a guest's rhythm is device-local. The per-side
+  // contemplation cards give way to ONE "Silence" goal card with a live
+  // progress bar (useRhythmState already turns the per-side flags off and
+  // returns the guest goal/minutes as contemplationGoalMin/contemplationMin),
+  // and a first-open-after-noon seed parks the morning office under "Tomorrow".
+  const guest = PHOEBE_GUEST_ENABLED && !user;
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -869,6 +879,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
+    // GUEST "Silence" goal card — ONE card with a PROGRESS BAR of today's
+    // minutes toward the daily goal, in place of the per-side contemplation
+    // cards (useRhythmState keeps those off for guests). For guests the hook's
+    // contemplationGoalMin/contemplationMin ARE the device-local guest values
+    // (getGuestSilenceGoalMin + the guestSilenceLog sit tally, which a finished
+    // signed-out sit in ContemplationTimer feeds). Begin opens the timer
+    // straight at the goal length; past goal it stays tappable to sit again.
+    ...(guest && contemplationGoalMin > 0 ? [{
+      key: "silence", slot: "anytime" as CustomSlot, emoji: "🕯️", rgb: "62,124,122",
+      done: contemplationMin >= contemplationGoalMin,
+      href: `/contemplation?begin=1&sit=${contemplationGoalMin}`,
+      title: t("rhythm.card_silence", { defaultValue: "Silence" }),
+      blurb: contemplationMin >= contemplationGoalMin
+        ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
+        : t("rhythm.silence_of_goal", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }),
+      progress: { current: contemplationMin, goal: contemplationGoalMin },
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+    }] : []),
     // Optional practices ride at the time of day the user chose for each.
     ...(cobreatheActive ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
@@ -947,9 +976,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // separate "Tomorrow" section — both read as confusing / data-loss). A card
   // whose slot hasn't opened yet is still shown, quietly, as a "Later" card
   // (handled above), so Next is simply "what's left of your rhythm today".
-  const tomorrowDisplay: typeof visibleCards = [];
+  //
+  // The ONE exception (the general Tomorrow section was removed in ff092ee6 and
+  // stays removed): a GUEST whose first-open seed ran after noon TODAY. Their
+  // unstarted morning office isn't "missed" — the day starts where they are —
+  // so while nothing is kept yet, the undone morning card waits under a small
+  // "Tomorrow" divider at the bottom instead of leading Next. The first thing
+  // they keep (or the next day) ends the case and the normal rule resumes.
+  const guestMorningTomorrow = guest
+    && guestSeededAfterNoonToday()
+    && cards.every((c) => !c.done)
+    && visibleCards.some((c) => c.key === "morning" && !c.done);
+  const tomorrowDisplay = guestMorningTomorrow
+    ? visibleCards.filter((c) => c.key === "morning")
+    : [];
   const upcomingDisplay = (() => {
-    const all = visibleCards.filter((c) => !c.done);
+    const all = visibleCards.filter((c) => !c.done && !(guestMorningTomorrow && c.key === "morning"));
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
@@ -959,7 +1001,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // day's rhythm is complete — so the home always reflects what's been prayed.
   const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
-  const showTomorrowSection = false;
+  const showTomorrowSection = tomorrowDisplay.length > 0;
 
   // On the native first app-open the splash covers the home; hold the card
   // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN
