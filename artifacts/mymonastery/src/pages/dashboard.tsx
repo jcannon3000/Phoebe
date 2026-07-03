@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -7057,13 +7058,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly, hasGroup]);
 
   useEffect(() => {
-    if (!authLoading && !user) setLocation("/");
+    // PUBLIC no-login version: guests LIVE here — no bounce to the welcome
+    // chooser (which would loop, since it forwards guests to /dashboard).
+    if (!authLoading && !user && !PHOEBE_GUEST_ENABLED) setLocation("/");
     // New users land on a coherent GIVEN rhythm (Morning Devotion · Forward Day
     // by Day · Evening Devotion) — not a config screen. Onboarding is just the
     // intro + push + photo, then home; they grow into Customize later.
     if (!authLoading && user && !user.onboardingCompleted) setLocation("/onboarding");
   }, [user, authLoading, setLocation]);
 
+  // Slice 2 (guest home) will let the dashboard render on device-local state
+  // with no user; until then guests get the effect-gate above (no bounce loop)
+  // but no render — the flag stays OFF.
   if (authLoading || !user) return null;
 
   const userEmail = user.email;

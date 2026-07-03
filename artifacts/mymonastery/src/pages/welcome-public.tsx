@@ -4,6 +4,8 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { seedGuestRule } from "@/lib/guestSeed";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { primeAudio } from "@/lib/amenFeedback";
@@ -51,15 +53,20 @@ export default function WelcomePublicPage() {
   // Already-signed-in visitor goes straight to the dashboard. Same
   // pattern as the Onboarding page so a returning user with a valid
   // cookie doesn't see the chooser flash before the redirect.
+  //
+  // PUBLIC no-login version: with the guest flag on, a signed-OUT visitor
+  // skips this chooser entirely — the precoded rule is seeded on-device
+  // (Morning/Evening Office + FDD + a 5-min silence goal) and they land
+  // straight on the home, already going. No login anywhere.
   useEffect(() => {
-    if (!isLoading && user) {
-      setLocation("/dashboard");
-    }
+    if (isLoading) return;
+    if (user) { setLocation("/dashboard"); return; }
+    if (PHOEBE_GUEST_ENABLED) { seedGuestRule(); setLocation("/dashboard", { replace: true }); }
   }, [user, isLoading, setLocation]);
 
   // Don't paint the chooser while we're still resolving the auth
   // state — avoids a brief flash before the redirect above fires.
-  if (isLoading || user) return null;
+  if (isLoading || user || PHOEBE_GUEST_ENABLED) return null;
 
   const morning = isMorningNow();
   const officeLabel = morning ? t("offices.morning_prayer") : t("offices.evening_prayer");
