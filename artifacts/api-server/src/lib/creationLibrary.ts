@@ -138,9 +138,44 @@ export function creationCollectFor(date: Date): CreationCollect {
 // ── Closing Prayers & Blessings (guide, pp. 59–60) — rotated at the close. ───
 export const CREATION_BLESSINGS: CreationBlessing[] = [
   { text: "May God who established the dance of creation, who marveled at the lilies of the field, who transforms chaos to order, lead us to transform our lives and the Church to listen to the voice of all creatures that reflect God's glory in creation." },
-  { text: "Deep peace, pure white of the moon to you. Deep peace, pure green of the grass to you. Deep peace, pure brown of the earth to you. Deep peace, pure gray of the dew to you. Deep peace, pure blue of the sky to you. Deep peace of the Son of Peace to you.", attribution: "a Gaelic blessing" },
-  { text: "May God light in us a holy fire: Light a fire that is worthy of our ancestors. Light a fire that is worthy of our children. Light a fire that is worthy of our fathers. Light a fire that is worthy of our mothers. Light a fire that is worthy of God. Now let us go in peace, lighting a holy fire wherever we go." },
-  { text: "Let us join with the Earth and each other — to bring new life to the land, to restore the waters, to refresh the air, to protect the animals, to treasure the trees, to gaze at the stars, to cherish the human community, to heal the Earth, to remember the children. Let us go forth to put our words into action.", attribution: "U.N. Environmental Sabbath" },
+  // Poetic / anaphora blessings are set in LINES, as they're traditionally
+  // printed — the paragraph form buried their repetition.
+  {
+    text:
+      "Deep peace, pure white of the moon to you.\n" +
+      "Deep peace, pure green of the grass to you.\n" +
+      "Deep peace, pure brown of the earth to you.\n" +
+      "Deep peace, pure gray of the dew to you.\n" +
+      "Deep peace, pure blue of the sky to you.\n" +
+      "Deep peace of the Son of Peace to you.",
+    attribution: "a Gaelic blessing",
+  },
+  {
+    text:
+      "May God light in us a holy fire:\n" +
+      "Light a fire that is worthy of our ancestors.\n" +
+      "Light a fire that is worthy of our children.\n" +
+      "Light a fire that is worthy of our fathers.\n" +
+      "Light a fire that is worthy of our mothers.\n" +
+      "Light a fire that is worthy of God.\n" +
+      "Now let us go in peace,\n" +
+      "lighting a holy fire wherever we go.",
+  },
+  {
+    text:
+      "Let us join with the Earth and each other —\n" +
+      "to bring new life to the land,\n" +
+      "to restore the waters,\n" +
+      "to refresh the air,\n" +
+      "to protect the animals,\n" +
+      "to treasure the trees,\n" +
+      "to gaze at the stars,\n" +
+      "to cherish the human community,\n" +
+      "to heal the Earth,\n" +
+      "to remember the children.\n" +
+      "Let us go forth to put our words into action.",
+    attribution: "U.N. Environmental Sabbath",
+  },
   { text: "God of the galaxies, God of the starburst and sunlit morning, God of the forest and shining seas, God of the blooming desert and rolling grasslands — shine on us today and bless us with your presence." },
   { text: "Go forth now to care for God's world. Use resources wisely. Share your knowledge. Sacrifice where necessary. Live in harmony with all creation. Go out into all the world as prophets of a new way of living and preach the good news to all. And the blessing of the Creator God, the Risen Son, and the Promised Holy Spirit bless you that you might be a blessing to others today and always. Amen." },
 ];
@@ -150,10 +185,75 @@ export const CREATION_PRAYERS: CreationPrayer[] = [
   { title: "A Prayer of Hildegard of Bingen", attribution: "Hildegard of Bingen (1098–1179)", text: "Praise be to the Holy Trinity! God is sound and life, Creator of the Universe, Source of all life, whom the angels sing; wondrous Light of all mysteries known or unknown to humankind, and life that lives in all. Amen." },
   { title: "Thanksgiving for the Beauty of the Earth", attribution: "BCP p. 840", text: "We give you thanks, most gracious God, for the beauty of earth and sky and sea; for the richness of mountains, plains, and rivers; for the songs of birds and the loveliness of flowers. We praise you for these good gifts, and pray that we may safeguard them for our posterity. Grant that we may continue to grow in our grateful enjoyment of your abundant creation, to the honor and glory of your Name, now and for ever. Amen." },
   { title: "For This World", text: "Enlarge within us the sense of fellowship with all living things, our brothers and sisters the animals to whom you gave this earth as their home in common with us. We remember with shame that in the past we have exercised the high dominion of humans with ruthless cruelty, so that the voice of the Earth, which should have gone up to you in song, has been a groan of travail. May we realize that they live, not for us alone, but for themselves and for you, and that they love the sweetness of life even as we, and serve you in their place better than we in ours. We pray through our Savior Jesus Christ, who lifts up and redeems us all. Amen." },
-  { title: "A Prayer for Our Time and for the Earth", text: "Dear God, Creator of the earth, this sacred home we share: Give us new eyes to see the beauty all around and to protect the wonders of creation. Give us new arms to embrace the strangers among us and to know them as family. Give us new ears to hear and understand those who live off the land and sea, and to hear and understand those who extract its resources. Give us new hearts to recognize the brokenness in our communities and to heal the wounds we have inflicted. Give us new hands to serve the earth and its people and to shape beloved community. For you are the One who seeks the lost, binds our wounds and sets us free, and it is in the name of Jesus the Christ we pray. Amen." },
-  { title: "Prayer for the Harvest", attribution: "Koinonia (Lutheran)", text: "Bountiful God, we thank you for sending the rain, for making the land fertile, for filling the streams with water, for providing the earth with crops, for nurturing the young plants, for tending the cattle and sheep. With your Spirit inspire us to share your harvest with all the hungry world, through Jesus Christ, our Savior and Lord. Amen." },
-  { title: "Four Directions Prayer", attribution: "an Anglican priest of the Cree and Dene people, western Canada", note: "An indigenous prayer. The guide asks that its liturgical use be considered carefully and with respect, adapting the naming of geography for your area.", text: "Jesus Christ is the light of the world, a light no darkness can extinguish. We thank you Creator for the Medicine you send from the Four Sacred Directions, the Medicine you send in your son Jesus Christ. We thank you for the reminder that we are one with Mother Earth and with all of Creation. We ask you to remind us always to be humble, to walk gently on the back of Mother Earth. We pray today for the strengthening, the health and the wellbeing of the two-leggeds, the four-leggeds, those that creep, those that swim, those that fly, the male and female of all creation. All My Relations." },
-  { title: "A Call to Prayer", attribution: "the Iona Abbey", text: "Eternal God, maker of the skies above, lowly Christ, Lover of the earth and its people, unfettered Spirit, Giver of gracious gifts, you are present among us. O hidden mystery, sun behind all suns, soul within all souls, in all we touch, in all we meet, you are present among us. As bearers of your image, we come to be reshaped; dependent on your mercy, we ask to be made new." },
+  {
+    title: "A Prayer for Our Time and for the Earth",
+    // Anaphora ("Give us new…") is set one petition per line.
+    text:
+      "Dear God, Creator of the earth, this sacred home we share:\n" +
+      "Give us new eyes to see the beauty all around\n" +
+      "and to protect the wonders of creation.\n" +
+      "Give us new arms to embrace the strangers among us\n" +
+      "and to know them as family.\n" +
+      "Give us new ears to hear and understand those who live off the land and sea,\n" +
+      "and to hear and understand those who extract its resources.\n" +
+      "Give us new hearts to recognize the brokenness in our communities\n" +
+      "and to heal the wounds we have inflicted.\n" +
+      "Give us new hands to serve the earth and its people\n" +
+      "and to shape beloved community.\n" +
+      "For you are the One who seeks the lost,\n" +
+      "binds our wounds and sets us free,\n" +
+      "and it is in the name of Jesus the Christ we pray. Amen.",
+  },
+  {
+    title: "Prayer for the Harvest",
+    attribution: "Koinonia (Lutheran)",
+    text:
+      "Bountiful God, we thank you\n" +
+      "for sending the rain,\n" +
+      "for making the land fertile,\n" +
+      "for filling the streams with water,\n" +
+      "for providing the earth with crops,\n" +
+      "for nurturing the young plants,\n" +
+      "for tending the cattle and sheep.\n" +
+      "With your Spirit inspire us to share your harvest with all the hungry world,\n" +
+      "through Jesus Christ, our Savior and Lord. Amen.",
+  },
+  {
+    title: "Four Directions Prayer",
+    attribution: "an Anglican priest of the Cree and Dene people, western Canada",
+    note: "An indigenous prayer. The guide asks that its liturgical use be considered carefully and with respect, adapting the naming of geography for your area.",
+    text:
+      "Jesus Christ is the light of the world,\n" +
+      "a light no darkness can extinguish.\n\n" +
+      "We thank you Creator for the Medicine\n" +
+      "you send from the Four Sacred Directions,\n" +
+      "the Medicine you send in your son Jesus Christ.\n\n" +
+      "We thank you for the reminder\n" +
+      "that we are one with Mother Earth and with all of Creation.\n\n" +
+      "We ask you to remind us always to be humble,\n" +
+      "to walk gently on the back of Mother Earth.\n\n" +
+      "We pray today for the strengthening,\n" +
+      "the health and the wellbeing\n" +
+      "of the two-leggeds, the four-leggeds,\n" +
+      "those that creep, those that swim, those that fly,\n" +
+      "the male and female of all creation.\n\n" +
+      "All My Relations.",
+  },
+  {
+    title: "A Call to Prayer",
+    attribution: "the Iona Abbey",
+    text:
+      "Eternal God, maker of the skies above,\n" +
+      "lowly Christ, Lover of the earth and its people,\n" +
+      "unfettered Spirit, Giver of gracious gifts,\n" +
+      "you are present among us.\n\n" +
+      "O hidden mystery, sun behind all suns,\n" +
+      "soul within all souls,\n" +
+      "in all we touch, in all we meet,\n" +
+      "you are present among us.\n\n" +
+      "As bearers of your image, we come to be reshaped;\n" +
+      "dependent on your mercy, we ask to be made new.",
+  },
 ];
 
 // ── Scriptural Readings for Creation (guide, pp. 121, 144) — Scripture, public
@@ -246,15 +346,31 @@ export const CREATION_CANTICLES: CreationCanticle[] = [
   {
     title: "The Canticle of Brother Sun and Sister Moon",
     attribution: "St. Francis of Assisi",
+    // A canticle is sung/said in LINES — one breath-phrase per line within each
+    // stanza — not read as prose paragraphs.
     text:
-      "Most High, all-powerful, all-good Lord, all praise is Yours, all glory, all honor and all blessings.\n\n" +
-      "Praised be You, my Lord, with all Your creatures, especially Sir Brother Sun, who is the day and through whom You give us light; and he is beautiful and radiant with great splendor: of You, Most High, he bears the likeness.\n\n" +
-      "Praised be You, my Lord, through Sister Moon and the stars; in the heavens You have made them bright, precious and fair.\n\n" +
-      "Praised be You, my Lord, through Brothers Wind and Air, and fair and stormy, all weather's moods, by which You cherish all that You have made.\n\n" +
-      "Praised be You, my Lord, through Sister Water, so useful, humble, precious and pure.\n\n" +
-      "Praised be You, my Lord, through Brother Fire, through whom You light the night, and he is beautiful and playful and robust and strong.\n\n" +
-      "Praised be You, my Lord, through our Sister, Mother Earth, who sustains and governs us, producing varied fruits with colored flowers and herbs.\n\n" +
-      "Praise and bless my Lord, and give Him thanks, and serve Him with great humility.",
+      "Most High, all-powerful, all-good Lord,\n" +
+      "all praise is Yours, all glory, all honor and all blessings.\n\n" +
+      "Praised be You, my Lord, with all Your creatures,\n" +
+      "especially Sir Brother Sun,\n" +
+      "who is the day and through whom You give us light;\n" +
+      "and he is beautiful and radiant with great splendor:\n" +
+      "of You, Most High, he bears the likeness.\n\n" +
+      "Praised be You, my Lord, through Sister Moon and the stars;\n" +
+      "in the heavens You have made them bright, precious and fair.\n\n" +
+      "Praised be You, my Lord, through Brothers Wind and Air,\n" +
+      "and fair and stormy, all weather's moods,\n" +
+      "by which You cherish all that You have made.\n\n" +
+      "Praised be You, my Lord, through Sister Water,\n" +
+      "so useful, humble, precious and pure.\n\n" +
+      "Praised be You, my Lord, through Brother Fire,\n" +
+      "through whom You light the night,\n" +
+      "and he is beautiful and playful and robust and strong.\n\n" +
+      "Praised be You, my Lord, through our Sister, Mother Earth,\n" +
+      "who sustains and governs us,\n" +
+      "producing varied fruits with colored flowers and herbs.\n\n" +
+      "Praise and bless my Lord, and give Him thanks,\n" +
+      "and serve Him with great humility.",
   },
   {
     title: "God's Grandeur",
@@ -294,45 +410,116 @@ export const CREATION_CANTICLES: CreationCanticle[] = [
 //    three + the Nicene Creed. Colossians is Scripture (PD); St. Patrick is
 //    ancient (PD); the Nicene Creed is BCP (PD); the South Indian profession is
 //    a gift-licensed guide composition.
+// Spoken creedal texts are set in LITURGICAL LINES (one phrase per line,
+// grouped in stanzas) — the way the BCP sets the creeds — never in prose
+// paragraphs. The office renderer splits content on "\n".
 export const CREATION_AFFIRMATIONS: CreationAffirmation[] = [
   {
     title: "A Profession of Faith",
     attribution: "South Indian",
     text:
-      "We believe in God, who creates all things, who embraces all things, who celebrates all things, who is present in every part of the fabric of creation.\n\n" +
-      "We believe in God as the source of all life, who baptizes this planet with living water.\n\n" +
-      "We believe in Jesus Christ, the suffering one, the poor one, the malnourished one, the climate refugee, who loves and cares for this world and who suffers with it. And we believe in Jesus Christ, the seed of life, who came to reconcile and renew this world and everything in it.\n\n" +
-      "We believe in the Holy Spirit, the breath of God, who moves with God and who moves among and with us today.\n\n" +
-      "We believe in everlasting life in God. And we believe in the hope that one day God will put an end to death and all destructive forces.",
+      "We believe in God, who creates all things,\n" +
+      "who embraces all things,\n" +
+      "who celebrates all things,\n" +
+      "who is present in every part of the fabric of creation.\n\n" +
+      "We believe in God as the source of all life,\n" +
+      "who baptizes this planet with living water.\n\n" +
+      "We believe in Jesus Christ, the suffering one,\n" +
+      "the poor one, the malnourished one, the climate refugee,\n" +
+      "who loves and cares for this world\n" +
+      "and who suffers with it.\n" +
+      "And we believe in Jesus Christ, the seed of life,\n" +
+      "who came to reconcile and renew this world\n" +
+      "and everything in it.\n\n" +
+      "We believe in the Holy Spirit, the breath of God,\n" +
+      "who moves with God\n" +
+      "and who moves among and with us today.\n\n" +
+      "We believe in everlasting life in God.\n" +
+      "And we believe in the hope that one day\n" +
+      "God will put an end to death\n" +
+      "and all destructive forces.",
   },
   {
     title: "An Affirmation of Faith",
     attribution: "Colossians 1:15-20",
     text:
-      "Jesus Christ is the image of the invisible God, the firstborn of all creation.\n" +
-      "For in him all things in heaven and on earth were created: things visible and invisible, whether thrones or dominions or rulers or powers; all things have been created through him and for him.\n" +
-      "He himself is before all things, and in him all things hold together.\n" +
-      "And he is the head of the body, the church; he is the beginning, the firstborn from among the dead, so that he might come to have first place in everything.\n" +
-      "For in him all the fullness of God was pleased to dwell, and through him God was pleased to reconcile to himself all things, whether on earth or in heaven, by making peace through the blood of his cross.",
+      "Jesus Christ is the image of the invisible God,\n" +
+      "the firstborn of all creation.\n\n" +
+      "For in him all things in heaven and on earth were created:\n" +
+      "things visible and invisible,\n" +
+      "whether thrones or dominions or rulers or powers;\n" +
+      "all things have been created through him and for him.\n\n" +
+      "He himself is before all things,\n" +
+      "and in him all things hold together.\n\n" +
+      "And he is the head of the body, the church;\n" +
+      "he is the beginning, the firstborn from among the dead,\n" +
+      "so that he might come to have first place in everything.\n\n" +
+      "For in him all the fullness of God was pleased to dwell,\n" +
+      "and through him God was pleased to reconcile to himself all things,\n" +
+      "whether on earth or in heaven,\n" +
+      "by making peace through the blood of his cross.",
   },
   {
     title: "A Confession of St. Patrick",
     attribution: "attributed to St. Patrick, 5th c.",
     text:
-      "Our God, God of all people, God of heaven and earth, sea and rivers, God of sun and moon, of all stars, God of highest mountain, of deepest valleys, God over heaven and in heaven and under heaven.\n\n" +
-      "He has his dwelling in heaven and earth and sea and all that is in them. He inspires all, he gives life to all, he surpasses all, he upholds all.\n\n" +
-      "He ignites the light of the sun. He surrounds the stars and tells them to shine. He makes fountains in dry lands, and dry islands in the sea, and stars to serve the greater lights.\n\n" +
-      "He has a Son, coeternal with him and like him. The Son is not younger than the Father, neither is the Father older than the Son. And the Holy Spirit breathes in them. Not separate are the Father and Son and Holy Spirit.",
+      "Our God, God of all people,\n" +
+      "God of heaven and earth, sea and rivers,\n" +
+      "God of sun and moon, of all stars,\n" +
+      "God of highest mountain, of deepest valleys,\n" +
+      "God over heaven and in heaven and under heaven.\n\n" +
+      "He has his dwelling in heaven and earth and sea\n" +
+      "and all that is in them.\n" +
+      "He inspires all, he gives life to all,\n" +
+      "he surpasses all, he upholds all.\n\n" +
+      "He ignites the light of the sun.\n" +
+      "He surrounds the stars and tells them to shine.\n" +
+      "He makes fountains in dry lands,\n" +
+      "and dry islands in the sea,\n" +
+      "and stars to serve the greater lights.\n\n" +
+      "He has a Son, coeternal with him and like him.\n" +
+      "The Son is not younger than the Father,\n" +
+      "neither is the Father older than the Son.\n" +
+      "And the Holy Spirit breathes in them.\n" +
+      "Not separate are the Father and Son and Holy Spirit.",
   },
   {
     title: "The Nicene Creed",
     attribution: "BCP p. 358",
     text:
-      "We believe in one God, the Father, the Almighty, maker of heaven and earth, of all that is, seen and unseen.\n\n" +
-      "We believe in one Lord, Jesus Christ, the only Son of God, eternally begotten of the Father, God from God, Light from Light, true God from true God, begotten, not made, of one Being with the Father. Through him all things were made.\n\n" +
-      "For us and for our salvation he came down from heaven: by the power of the Holy Spirit he became incarnate from the Virgin Mary, and was made man.\n\n" +
-      "For our sake he was crucified under Pontius Pilate; he suffered death and was buried. On the third day he rose again in accordance with the Scriptures; he ascended into heaven and is seated at the right hand of the Father. He will come again in glory to judge the living and the dead, and his kingdom will have no end.\n\n" +
-      "We believe in the Holy Spirit, the Lord, the giver of life, who proceeds from the Father and the Son. With the Father and the Son he is worshiped and glorified. He has spoken through the Prophets. We believe in one holy catholic and apostolic Church. We acknowledge one baptism for the forgiveness of sins. We look for the resurrection of the dead, and the life of the world to come. Amen.",
+      "We believe in one God,\n" +
+      "the Father, the Almighty,\n" +
+      "maker of heaven and earth,\n" +
+      "of all that is, seen and unseen.\n\n" +
+      "We believe in one Lord, Jesus Christ,\n" +
+      "the only Son of God,\n" +
+      "eternally begotten of the Father,\n" +
+      "God from God, Light from Light,\n" +
+      "true God from true God,\n" +
+      "begotten, not made,\n" +
+      "of one Being with the Father.\n" +
+      "Through him all things were made.\n\n" +
+      "For us and for our salvation\n" +
+      "he came down from heaven:\n" +
+      "by the power of the Holy Spirit\n" +
+      "he became incarnate from the Virgin Mary,\n" +
+      "and was made man.\n\n" +
+      "For our sake he was crucified under Pontius Pilate;\n" +
+      "he suffered death and was buried.\n" +
+      "On the third day he rose again\n" +
+      "in accordance with the Scriptures;\n" +
+      "he ascended into heaven\n" +
+      "and is seated at the right hand of the Father.\n" +
+      "He will come again in glory to judge the living and the dead,\n" +
+      "and his kingdom will have no end.\n\n" +
+      "We believe in the Holy Spirit, the Lord, the giver of life,\n" +
+      "who proceeds from the Father and the Son.\n" +
+      "With the Father and the Son he is worshiped and glorified.\n" +
+      "He has spoken through the Prophets.\n" +
+      "We believe in one holy catholic and apostolic Church.\n" +
+      "We acknowledge one baptism for the forgiveness of sins.\n" +
+      "We look for the resurrection of the dead,\n" +
+      "and the life of the world to come. Amen.",
   },
 ];
 
