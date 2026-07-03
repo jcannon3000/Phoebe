@@ -14,6 +14,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
+import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -7412,6 +7413,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 />
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
+                {/* Learn — continue (or start) a course right after the daily
+                    spine: next episode + play + progress. Video courses are
+                    web-only; the iOS shell shows only the Way of Love (audio).
+                    See HomeLearnSection. */}
+                <HomeLearnSection />
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
                     private self-logs, a separate band below the daily spine.
                     Beta only for now. */}
