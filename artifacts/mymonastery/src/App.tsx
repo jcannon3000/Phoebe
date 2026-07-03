@@ -807,7 +807,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/reflections", "/menu/resources",
   "/psalms", "/contemplation", "/reflect/fdd",
-  "/journey", "/centering-prayer",
+  "/journey", "/centering-prayer", "/way-of-love-course",
   "/begin-prayer", "/prayer-chooser",
   "/signin", "/login", "/onboarding",
   "/about", "/privacy", "/terms",
