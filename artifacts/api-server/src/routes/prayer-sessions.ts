@@ -233,6 +233,10 @@ const schema = z.object({
   // distinct from `surface` which stays "contemplation" so the rollups still
   // count it. Omitted = a plain silent sit.
   source: z.string().max(40).optional(),
+  // Which per-side contemplation card this sit belongs to — the client resolves
+  // it at POST time (explicit ?side= wins, else the first undone active side)
+  // so /me/contemplation-sides-today can echo done-state across devices.
+  contemplationSide: z.enum(["morning", "evening"]).optional(),
 });
 
 router.post("/prayer-sessions", async (req, res): Promise<void> => {
@@ -303,12 +307,42 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     isPrivate: isPrivate === true,
     completed: completed === true,
     source: typeof source === "string" && source.trim() ? source.trim() : null,
+    contemplationSide: parsed.data.contemplationSide ?? null,
   }).returning({ id: prayerSessionsTable.id });
 
   // Return the new row id so the client can PATCH it later (e.g. the
   // contemplation summary toggle flipping public ↔ private after the
   // session has been recorded).
   res.json({ ok: true, recorded: true, durationSeconds: capped, id: inserted?.id ?? null });
+});
+
+// GET /api/me/contemplation-sides-today?tz= — which per-side contemplation
+// cards (Morning / Evening) the viewer has kept TODAY, from any device. The
+// localStorage flag is the instant local layer; this is the cross-device echo
+// (a sit done on the iPhone otherwise read undone on the web). Day boundaries
+// in the viewer's tz, like /me/prayer-days.
+router.get("/me/contemplation-sides-today", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const tzParam = typeof req.query.tz === "string" && isValidTimeZone(req.query.tz) ? req.query.tz : null;
+    const tz = tzParam ?? "UTC";
+    const today = todayDateInTz(tz);
+    const rows = await db.execute<{ side: string }>(sql`
+      SELECT DISTINCT contemplation_side AS side
+      FROM prayer_sessions
+      WHERE user_id = ${sessionUserId}
+        AND surface = 'contemplation'
+        AND contemplation_side IS NOT NULL
+        AND ended_at >= NOW() - INTERVAL '2 days'
+        AND to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') = ${today}
+    `);
+    const sides = new Set(rows.rows.map((r) => r.side));
+    res.json({ morning: sides.has("morning"), evening: sides.has("evening") });
+  } catch (err) {
+    console.error("[/me/contemplation-sides-today] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 // GET /api/me/contemplation-stats — the viewer's own contemplation
@@ -560,6 +594,9 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
 router.get("/me/contemplation-companions", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  // ALL CONTEMPLATION IS PRIVATE — see the presence gate below. Old frozen
+  // iOS builds still call this; give them an empty (graceful) answer.
+  if (!CONTEMPLATION_PRESENCE_ENABLED) { res.json({ companions: [], otherCount: 0 }); return; }
   const startedAtRaw = typeof req.query.startedAt === "string" ? req.query.startedAt : "";
   const endedAtRaw = typeof req.query.endedAt === "string" ? req.query.endedAt : "";
   const startedAt = new Date(startedAtRaw);
@@ -639,12 +676,20 @@ router.get("/me/contemplation-companions", async (req, res): Promise<void> => {
 // is transient, so a restart just clears it (faces reappear on the next beat).
 // Assumes a single server instance (true for our deploy); a shared store would
 // be needed to scale out.
+//
+// ALL CONTEMPLATION IS PRIVATE (owner, 2026-07-02): the sit shows no one else's
+// presence and broadcasts none. The client kill switch hides these surfaces in
+// current builds; this SERVER gate covers the old frozen iOS bundles that still
+// call them — heartbeats are dropped and reads return empty (never an error, so
+// old clients degrade gracefully to a solitary sit).
+const CONTEMPLATION_PRESENCE_ENABLED = false;
 const sittingNow = new Map<number, number>();
 const PRESENCE_TTL_MS = 60_000;
 
 router.post("/me/contemplation-presence", (req, res): void => {
   const uid = req.user ? (req.user as { id: number }).id : null;
   if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!CONTEMPLATION_PRESENCE_ENABLED) { res.json({ ok: true }); return; }
   sittingNow.set(uid, Date.now());
   res.json({ ok: true });
 });
@@ -652,6 +697,7 @@ router.post("/me/contemplation-presence", (req, res): void => {
 router.get("/me/contemplation-presence", async (req, res): Promise<void> => {
   const uid = req.user ? (req.user as { id: number }).id : null;
   if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!CONTEMPLATION_PRESENCE_ENABLED) { res.json({ companions: [], otherCount: 0 }); return; }
   try {
     const now = Date.now();
     // Prune stale beats while collecting the live set (excluding the viewer).

@@ -1735,6 +1735,9 @@ export async function migrate() {
     // Contemplation history can label a Cobreathe sit as such instead of an
     // anonymous timer sit. NULL = a plain silent sit.
     await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS source TEXT`);
+    // Per-side contemplation attribution ("morning"|"evening") — lets the
+    // server echo per-side done-state across the user's devices.
+    await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS contemplation_side TEXT`);
     // completed: true only when the user finished the office/devotion slideshow
     // (closing Amen/Done) or attested it from the book. The office-history /
     // "prayed today" rollups require this for the four office surfaces, so a

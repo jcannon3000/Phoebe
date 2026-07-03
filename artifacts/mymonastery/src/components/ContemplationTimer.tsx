@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guestSilenceLog";
+import { resolveContemplationSideForSit } from "@/lib/contemplationSideDone";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
@@ -439,10 +440,15 @@ export function ContemplationTimer({
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
       isPrivate: initialPrivate,
+      // Which per-side card this sit keeps — same resolution the local
+      // attribution applies, so the server can echo done-state to the
+      // user's OTHER devices (/me/contemplation-sides-today).
+      contemplationSide: resolveContemplationSideForSit() ?? undefined,
     })
       .then((data) => {
         if (data?.id) setRecordedSessionId(data.id);
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sides-today"] });
         // Refresh the History list so the just-finished sit appears.
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
         // Today's total INCLUDING this just-logged sit — drives the goal

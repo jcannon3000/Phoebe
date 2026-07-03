@@ -1,11 +1,19 @@
 // Per-side contemplation completion for today — which side (Morning / Evening)
-// the user has actually sat for. Client-only + per-device: attribution is
-// inherently local. A sit launched from a side's card ("/contemplation?begin=1
-// &side=morning") clears THAT side; a sit launched generically clears the first
-// still-undone side (order: morning then evening). The user's total contemplation
-// minutes still flow through /api/me/contemplation-stats; this only drives which
-// per-side card reads as "kept" today, so an undone evening sit stays visible
-// even after the morning sit met the daily minutes goal.
+// the user has actually sat for. A sit launched from a side's card
+// ("/contemplation?begin=1&side=morning") clears THAT side; a sit launched
+// generically clears the first still-undone side (order: morning then evening).
+// The user's total contemplation minutes still flow through
+// /api/me/contemplation-stats; this only drives which per-side card reads as
+// "kept" today, so an undone evening sit stays visible even after the morning
+// sit met the daily minutes goal.
+//
+// The localStorage flags here are the instant per-device layer. For SIGNED-IN
+// users the resolved side ALSO rides the sit's prayer_sessions POST
+// (contemplationSide) and comes back via /api/me/contemplation-sides-today, so
+// a sit done on the iPhone shows done on the web too — useRhythmState ORs the
+// two layers (same pattern as reflections' local-read + server reflection_reads).
+
+import { getSideContemplationExplicit } from "@/lib/officePrefs";
 
 export type ContemplationSide = "morning" | "evening";
 
@@ -56,4 +64,27 @@ export function attributeContemplationSit(opts: {
   const anyActive = order.find((s) => activeSides[s]);
   const target = undone ?? anyActive;
   if (target) markContemplationSideDone(target);
+}
+
+// Resolve which side a sit STARTING NOW would be attributed to — the same rule
+// attributeContemplationSit applies at completion (explicit ?side= wins, else
+// the first still-undone active side). The timer stamps this onto the sit's
+// prayer_sessions POST (contemplationSide) so the server can echo per-side
+// done-state to the user's OTHER devices.
+export function resolveContemplationSideForSit(): ContemplationSide | null {
+  try {
+    const s = new URLSearchParams(window.location.search).get("side");
+    if (s === "morning" || s === "evening") return s;
+  } catch { /* ignore */ }
+  const mSet = getSideContemplationExplicit("morning");
+  const eSet = getSideContemplationExplicit("evening");
+  const anyExplicit = mSet !== null || eSet !== null;
+  const active: Record<ContemplationSide, boolean> = {
+    morning: anyExplicit ? mSet === true : true,
+    evening: anyExplicit ? eSet === true : true,
+  };
+  const order: ContemplationSide[] = ["morning", "evening"];
+  return order.find((s) => active[s] && !hasContemplationSideDoneToday(s))
+    ?? order.find((s) => active[s])
+    ?? null;
 }

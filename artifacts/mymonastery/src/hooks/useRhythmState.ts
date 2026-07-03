@@ -422,6 +422,17 @@ export function useRhythmState(): RhythmState {
     enabled: !guest,
   });
 
+  // Cross-device per-side contemplation done — the server echo of the
+  // localStorage day-flags (a sit posts its resolved side with the session;
+  // this reads it back), so a sit done on the iPhone shows done on the web.
+  // ORed with the local flags below; signed-in only (guests are one-device).
+  const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
+    queryKey: ["/api/me/contemplation-sides-today", tz],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}`),
+    staleTime: 60_000,
+    enabled: !guest && !!user,
+  });
+
   const { data: prayerStreak } = useQuery<{ gardenPrayedTodayCount?: number }>({
     queryKey: ["/api/prayer-streak"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak"),
@@ -573,8 +584,10 @@ export function useRhythmState(): RhythmState {
   const eveningContemplationActive = !guest && (customized
     ? (perSideContemplationSet ? getSideContemplation("evening") : contemplationGoalMin > 0)
     : (getSideLevel("evening") === "reflect-sit"));
-  const morningContemplationDone = contemplationSideDone.morning;
-  const eveningContemplationDone = contemplationSideDone.evening;
+  // Local day-flag OR the server's cross-device echo — a sit done on another
+  // device (which POSTed its contemplationSide) reads done here too.
+  const morningContemplationDone = contemplationSideDone.morning || !!sidesToday?.morning;
+  const eveningContemplationDone = contemplationSideDone.evening || !!sidesToday?.evening;
   // Aggregate, for the single-silence consumers (splash / widget / prayer-mode /
   // routine-print / TodaysRhythm): active if either side is; done when every
   // active side is kept. silenceGoalMet stays available for minutes displays.

@@ -99,6 +99,14 @@ export const prayerSessionsTable = pgTable(
     // keep counting it). Today only "cobreathe" is set, so the Contemplation
     // history can label a Cobreathe sit. NULL = a plain silent sit.
     source: text("source"),
+    // Which per-side contemplation card ("morning" | "evening") this sit was
+    // attributed to — set by the client at POST time using the same rule the
+    // local attribution applies (explicit ?side= wins, else the first undone
+    // active side). Lets /api/me/contemplation-sides-today echo per-side
+    // done-state to the user's OTHER devices (the localStorage flag alone made
+    // a sit done on the iPhone read undone on the web). NULL = a sit that
+    // isn't a per-side card (offices, slideshow, older rows).
+    contemplationSide: text("contemplation_side"),
   },
   (t) => ({
     // Metrics queries filter by user + ended_at window. The composite
