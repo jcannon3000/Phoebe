@@ -518,7 +518,7 @@ export default function CobreathePage() {
             {t("cobreathe.before_begin", { defaultValue: "Before you begin" })}
           </p>
           <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 18 }}>
-            {t("cobreathe.title", { defaultValue: "Co-Breathe" })}
+            {t("cobreathe.title", { defaultValue: "Creation Prayer" })}
           </h1>
           <p style={{ color: "rgba(240,237,230,0.9)", fontFamily: SPACE_GROTESK, fontSize: 17, lineHeight: 1.55, maxWidth: 440, marginBottom: 26 }}>
             {t("cobreathe.intro_blurb", { defaultValue: "We pause to breathe with all life, in gratitude and in recognition of our need to work together to protect our common home." })}

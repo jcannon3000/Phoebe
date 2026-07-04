@@ -5505,6 +5505,111 @@ function GoalReachedModal({
   // holding the person in prayer.
   const isIntercession = moment.templateType === "intercession";
 
+  // An intercession is not a goal you hit or a streak you keep. You chose how
+  // long to hold someone in prayer; when that time comes to its end, it simply
+  // ends. So this is ONE calm screen — no celebration slide, no page dots, no
+  // "sessions / try again" — that says the season of prayer has run its course
+  // and asks: keep going, or set it down together?
+  if (isIntercession) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="w-full mx-6 rounded-3xl px-6 py-8 relative"
+          style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", maxWidth: 420 }}
+        >
+          <button
+            onClick={onDismiss}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full"
+            style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+          >
+            <X size={16} />
+          </button>
+
+          <div className="flex flex-col items-center text-center gap-5">
+            <p className="text-4xl">{emoji}</p>
+            <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              You've held them in prayer.
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+              You and your group have carried{" "}
+              <span style={{ color: "#C8D4C0" }}>{moment.name}</span> in prayer for the
+              time you set aside. Would you like to keep going, or set it down together?
+            </p>
+
+            {memberNames.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {memberNames.map((name, i) => (
+                  <span
+                    key={i}
+                    className="text-xs px-3 py-1.5 rounded-full"
+                    style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {!deleting ? (
+              <div className="w-full flex flex-col gap-2.5 mt-1">
+                <button
+                  onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
+                  disabled={updateGoalMutation.isPending}
+                  className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  Keep praying {emoji}
+                </button>
+                <button
+                  onClick={() => setDeleting(true)}
+                  disabled={deleteMutation.isPending}
+                  className="w-full py-3 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                  style={{
+                    background: "rgba(46,107,64,0.12)",
+                    color: "#A8C5A0",
+                    border: "1px solid rgba(46,107,64,0.28)",
+                  }}
+                >
+                  Set this prayer down
+                </button>
+              </div>
+            ) : (
+              <div className="w-full rounded-2xl px-4 py-4 mt-1" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.28)" }}>
+                <p className="text-sm mb-3 leading-relaxed" style={{ color: "#C8D4C0" }}>
+                  This closes the prayer and clears it from your group's list. You can always begin it again.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => deleteMutation.mutate()}
+                    disabled={deleteMutation.isPending}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                  >
+                    {deleteMutation.isPending ? "Setting down…" : "Yes, we're complete"}
+                  </button>
+                  <button
+                    onClick={() => setDeleting(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm"
+                    style={{ color: "#8FAF96" }}
+                  >
+                    Not yet
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   const slides = [
     // Slide 0: Celebration — group focused
     <div key="celebrate" className="flex flex-col items-center text-center gap-5">

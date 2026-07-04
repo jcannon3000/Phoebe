@@ -1031,7 +1031,7 @@ export function CobreatheBreath({
           sit left-aligned under it, as the design always intended). */}
       <div ref={titleRef} className="flex flex-col items-start" style={{ position: "relative", width: "100%", paddingLeft: 20, paddingRight: 96 }}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
-          {t("cobreathe.title", { defaultValue: "Co-Breathe" })} 🌍
+          {t("cobreathe.title", { defaultValue: "Creation Prayer" })} 🌍
         </p>
         {/* Live indicator — "Synced" + a pulsing red dot to its RIGHT, on its
             OWN line UNDER the title (left-aligned to it). Appears once the

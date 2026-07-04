@@ -283,7 +283,7 @@ export function WeeklyGridCard() {
     // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
-    ...(cobreatheActive ? [{ id: "cobreathe", emoji: "🌍", label: t("rhythm.row_cobreathe", { defaultValue: "Co-Breathe" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.cobreathe }] : []),
+    ...(cobreatheActive ? [{ id: "cobreathe", emoji: "🌍", label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.cobreathe }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
     ...(lectioActive ? [{ id: "lectio", emoji: "📖", label: t("rhythm.row_lectio", { defaultValue: "Lectio Divina" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.lectio }] : []),
     ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),
@@ -705,8 +705,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // the same way journaling + custom anchors do.
   const cobreatheCard = {
     key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone, href: "/cobreathe?start=1",
-    title: t("rhythm.card_cobreathe", { defaultValue: "Co-Breathe" }),
-    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths as a prayer for climate justice" }),
+    title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
+    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths, a prayer with all creation" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const listeningCard = {

@@ -25,7 +25,7 @@ export const COBREATHE_INTRO_SEEN_KEY = "phoebe:cobreathe-intro-seen";
 type Slide = { eyebrow: string; title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    eyebrow: "Co-Breathe",
+    eyebrow: "Creation Prayer",
     title: "To conspire is to breathe together",
     body: "“Conspire” comes from the Latin con-spirare — to breathe with. Before it ever meant a plot, it meant a shared breath. To pray together is to conspire in the oldest sense: to draw one breath as one body.",
   },

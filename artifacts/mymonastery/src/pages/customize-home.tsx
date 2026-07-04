@@ -67,7 +67,7 @@ function getContemplationStyle(): "silent" | "cobreathe" {
 // (cac/fdd/ssje) so the i18n coverage guard stays green.
 const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
   { id: "community", pill: "Community" },
-  { id: "cobreathe", pill: "Co-Breathe" },
+  { id: "cobreathe", pill: "Creation Prayer" },
   { id: "devotion", pill: "Devotions" },
   { id: "offices", pill: "Office" },
 ];
@@ -75,7 +75,7 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
   community: { emoji: "🙏🏽", label: "Pray Together", sub: "Pray with your community" },
-  cobreathe: { emoji: "🌍", label: "Co-Breathe", sub: "12 Breathes Together for Climate Justice" },
+  cobreathe: { emoji: "🌍", label: "Creation Prayer", sub: "12 breaths, a prayer with all creation" },
   devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };
@@ -118,7 +118,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
     listening:    { label: t("menu.listening", { defaultValue: "Audio Divina" }), emoji: "🎧", sub: t("customize_home.module_listening_sub", { defaultValue: "Music as a way of prayer" }) },
     journaling:   { label: t("menu.journaling", { defaultValue: "Journaling" }), emoji: "📓", sub: t("customize_home.module_journaling_sub", { defaultValue: "Keep a journal — just log the day" }) },
-    cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Co-Breathe" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathe together, in rhythm" }) },
+    cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathe together, in rhythm" }) },
     lectio:       { label: t("rhythm.row_lectio", { defaultValue: "Lectio Divina" }), emoji: "📖", sub: t("customize_home.module_lectio_sub", { defaultValue: "Pray slowly with a passage of scripture" }) },
     reading:      { label: t("rhythm.row_reading", { defaultValue: "Reading" }), emoji: "📚", sub: t("customize_home.module_reading_sub", { defaultValue: "Read by chapter, page, or time" }) },
     walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },

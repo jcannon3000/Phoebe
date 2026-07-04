@@ -142,7 +142,7 @@ export function useWidgetSync(): void {
         cta: "Read", kind: "reflect" as const,
       })),
       { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
-      { active: r.cobreatheActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Co-Breathe", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
+      { active: r.cobreatheActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
       { active: r.scriptureActive, done: r.scriptureDone, slot: getPracticeSlot("scripture"), title: "Listen to Scripture", eyebrow: "The day's readings", subtitle: "Hear today's word", cta: "Listen", kind: "reflect" },
       { active: r.lectioActive, done: r.lectioDone, slot: getPracticeSlot("lectio"), title: "Lectio Divina", eyebrow: "Praying with scripture", subtitle: "Sit with a passage", cta: "Begin", kind: "reflect" },

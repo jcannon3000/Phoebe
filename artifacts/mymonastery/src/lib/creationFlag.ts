@@ -11,4 +11,4 @@
 // no-login version) never see it (per-surface !guest gates).
 // See memory "reference_creation_prayer_lectionary" for the full design.
 // Typed as `boolean` (not the literal) so gated branches aren't dead code.
-export const CREATION_PRAYER_ENABLED: boolean = true;
+export const CREATION_PRAYER_ENABLED: boolean = false;

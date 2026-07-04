@@ -1372,7 +1372,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(contemplative.scripture, `📖 ${t("wol_rule.cp_scripture", { defaultValue: "Listen to Scripture" })}`, t("wol_rule.cp_scripture_sub", { defaultValue: "The day's appointed readings, heard aloud." }), () => toggleContemplative("scripture"))}
-          {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => toggleContemplative("cobreathe"))}
+          {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths, a prayer with all creation." }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {choiceRow(contemplative.lectio, `📖 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Sacred reading." }), () => toggleContemplative("lectio"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
@@ -1387,7 +1387,7 @@ export default function WayOfLoveRuleFlow({
   if (step === "cobreathe-when" || step === "audio-when" || step === "examen-when" || step === "lectio-when" || step === "walk-when" || step === "scripture-when") {
     const key = step === "cobreathe-when" ? "cobreathe" : step === "audio-when" ? "listening" : step === "lectio-when" ? "lectio" : step === "walk-when" ? "walk" : step === "scripture-when" ? "scripture" : "examen";
     const meta = step === "cobreathe-when"
-      ? { label: t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" }), body: t("wol_rule.when_cobreathe_body", { defaultValue: "When in the day would you like to breathe?" }) }
+      ? { label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }), body: t("wol_rule.when_cobreathe_body", { defaultValue: "When in the day would you like to breathe?" }) }
       : step === "audio-when"
         ? { label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }), body: t("wol_rule.when_audio_body", { defaultValue: "Take time to listen to music intentionally as a spiritual practice." }) }
         : step === "lectio-when"
@@ -1598,8 +1598,8 @@ export default function WayOfLoveRuleFlow({
               side moves it there. */}
           {guest && choiceRow(
             contemplative.cobreathe && slotByPractice.cobreathe === side,
-            `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`,
-            t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }),
+            `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`,
+            t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths, a prayer with all creation." }),
             () => {
               const onHere = contemplative.cobreathe && slotByPractice.cobreathe === side;
               touchedRef.current = true;
@@ -2212,7 +2212,7 @@ export default function WayOfLoveRuleFlow({
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
       step: "contemplation-goal" as Step,
     }] : []),
-    ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
+    ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Creation Prayer", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
     ...(contemplative.scripture ? [{ emoji: "📖", label: "Listen to Scripture", sub: SLOT_LABEL[slotByPractice.scripture], step: "contemplative" as Step }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "contemplative" as Step }] : []),

@@ -174,13 +174,13 @@ function PersonCard({
     if (!isFellow || !lastCobreathed) return "";
     const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const today = ymd(new Date());
-    if (lastCobreathed === today) return "🌍 Cobreathed together today";
+    if (lastCobreathed === today) return "🌍 Breathed together in prayer today";
     const d0 = new Date(`${lastCobreathed}T00:00:00`);
     const diff = Math.round((new Date(`${today}T00:00:00`).getTime() - d0.getTime()) / 86400000);
     const when = diff === 1 ? "yesterday"
       : diff > 1 && diff < 30 ? `${diff} days ago`
       : d0.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    return `🌍 Cobreathed together ${when}`;
+    return `🌍 Breathed together in prayer ${when}`;
   })();
   const baseLines = prayerLine
     ? [prayerLine]

@@ -222,7 +222,7 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   if (walking) reasons.push("You meet God in motion — a daily walk would sit beautifully in your rhythm (add it as your own practice in Customize).");
 
   const cobreatheInterest = has(a.meet, "breath");
-  if (cobreatheInterest) reasons.push("You meet God in breath — try Cobreathe from the contemplation screen, a breath prayed with others.");
+  if (cobreatheInterest) reasons.push("You meet God in breath — try Creation Prayer from the contemplation screen, a breath prayed with all creation.");
 
   // Make sure no one leaves with an empty rhythm — a gentle gratitude is the
   // easiest first practice if nothing else optional was chosen.
