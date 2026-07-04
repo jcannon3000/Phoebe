@@ -17,6 +17,11 @@ const keyFor = (courseId: string) => `phoebe:course:${courseId}:v1`;
 export interface CourseProgress {
   completed: string[];
   lastId?: string;
+  // Set ONLY by an explicit act — pressing play / opening an episode — never
+  // by merely visiting the course page (lastId still updates on visit, for
+  // resume). The home's Learn band keys "is this course active?" on this, so
+  // browsing the Learn tab doesn't fill the home with Continue cards.
+  started?: boolean;
   updatedAt?: number;
 }
 
@@ -28,6 +33,7 @@ function read(courseId: string): CourseProgress {
     return {
       completed: Array.isArray(parsed.completed) ? parsed.completed : [],
       lastId: typeof parsed.lastId === "string" ? parsed.lastId : undefined,
+      started: parsed.started === true ? true : undefined,
       updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : undefined,
     };
   } catch {
@@ -106,6 +112,13 @@ export function setLast(courseId: string, id: string) {
   commit(courseId, { ...s, lastId: id });
 }
 
+/** Explicit start — call from play/open actions only (never on page mount). */
+export function markStarted(courseId: string) {
+  const s = snap(courseId);
+  if (s.started) return;
+  commit(courseId, { ...s, started: true });
+}
+
 /** One-time progress migration when lessons MOVE between courses (e.g. the
  *  five method videos splitting out of the Spiritual Journey into the
  *  Centering Prayer course): copy any of `ids` completed under `fromId` into
@@ -126,11 +139,14 @@ export interface UseCourseProgress {
   completed: Set<string>;
   completedCount: number;
   lastId?: string;
+  /** True only after an explicit play/open — see markStarted. */
+  started: boolean;
   isComplete: (id: string) => boolean;
   markComplete: (id: string) => void;
   markIncomplete: (id: string) => void;
   toggleComplete: (id: string) => void;
   setLast: (id: string) => void;
+  markStarted: () => void;
 }
 
 export function useCourseProgress(courseId: string): UseCourseProgress {
@@ -145,10 +161,12 @@ export function useCourseProgress(courseId: string): UseCourseProgress {
     completed: completedSet,
     completedCount: completedSet.size,
     lastId: state.lastId,
+    started: state.started === true,
     isComplete,
     markComplete: useCallback((id: string) => markComplete(courseId, id), [courseId]),
     markIncomplete: useCallback((id: string) => markIncomplete(courseId, id), [courseId]),
     toggleComplete: useCallback((id: string) => toggleComplete(courseId, id), [courseId]),
     setLast: useCallback((id: string) => setLast(courseId, id), [courseId]),
+    markStarted: useCallback(() => markStarted(courseId), [courseId]),
   };
 }

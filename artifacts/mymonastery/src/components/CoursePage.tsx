@@ -85,10 +85,12 @@ function LessonPlayer({
   videoId,
   autoplay,
   onEnded,
+  onPlaying,
 }: {
   videoId: string;
   autoplay: boolean;
   onEnded: () => void;
+  onPlaying?: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -99,9 +101,11 @@ function LessonPlayer({
   const desiredRef = useRef(videoId);
   const autoplayRef = useRef(autoplay);
   const onEndedRef = useRef(onEnded);
+  const onPlayingRef = useRef(onPlaying);
   desiredRef.current = videoId;
   autoplayRef.current = autoplay;
   onEndedRef.current = onEnded;
+  onPlayingRef.current = onPlaying;
 
   // Create the player once.
   useEffect(() => {
@@ -128,6 +132,9 @@ function LessonPlayer({
             }
           },
           onStateChange: (e: any) => {
+            // 1 === YT.PlayerState.PLAYING — covers pressing play INSIDE the
+            // iframe on the initially-cued video (no openVideo call happens).
+            if (e.data === 1) onPlayingRef.current?.();
             // 0 === YT.PlayerState.ENDED
             if (e.data === 0 && !endedRef.current) {
               endedRef.current = true;
@@ -387,7 +394,7 @@ function UnitBlock({
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function CoursePage({ course, index }: { course: JourneyCourse; index: CourseIndex }) {
-  const { completedCount, isComplete, toggleComplete, markComplete, setLast, lastId } = useCourseProgress(course.id);
+  const { completedCount, isComplete, toggleComplete, markComplete, setLast, lastId, markStarted } = useCourseProgress(course.id);
   // Leaf backdrop (frosted-glass cards float over it) — one photo per visit.
   const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -421,6 +428,9 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
 
   const openVideo = useCallback((id: string, opts?: { autoplay?: boolean }) => {
     if (!index.get(id)) return;
+    // An explicit open counts as STARTING the course (the home's Learn band
+    // keys on this) — merely landing on the page does not.
+    markStarted();
     setActiveId(id);
     setAutoplay(!!opts?.autoplay);
     setJustEnded(false);
@@ -498,7 +508,7 @@ export function CoursePage({ course, index }: { course: JourneyCourse; index: Co
         <div className="mt-5 flex flex-col gap-6 lg:flex-row">
           {/* Main: player + lesson detail */}
           <div className="min-w-0 flex-1" ref={playerTopRef}>
-            <LessonPlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} />
+            <LessonPlayer videoId={activeId} autoplay={autoplay} onEnded={handleEnded} onPlaying={markStarted} />
 
             {active && (
               <div className="mt-4">

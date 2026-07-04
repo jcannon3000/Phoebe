@@ -24,7 +24,6 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
-import { commitmentDay, COMMITMENT_DAYS, clearCommitment } from "@/lib/commitment";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 
@@ -150,10 +149,6 @@ function CardSubtitleCycle({ values, className, style }: { values: string[]; cla
 // rail. Same /api/me/prayer-days the rhythm hook reads (React Query dedupes).
 function StreakCard() {
   const { t } = useTranslation();
-  // When the 30-day trial completes, a one-time review moment shows here until
-  // the pray-er acts (keep / tend) — which clears the commitment and returns the
-  // ordinary streak. Local flag re-renders the card the moment they choose.
-  const [reviewDismissed, setReviewDismissed] = useState(false);
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
@@ -170,83 +165,13 @@ function StreakCard() {
   const gardenWeekCount = gardenWeek?.count ?? 0;
   const gardenFaces = (gardenWeek?.people ?? []).slice(0, 6);
   const gardenOverflow = Math.max(0, gardenWeekCount - gardenFaces.length);
-  // Rhythm party — 2–3 people keeping ONE shared 30-day commitment. When
-  // active, the trial band reads "with Sarah & Marcus" and shows their faces
-  // with a today-kept ring (presence, never history). Gated on the prayer-days
-  // query having resolved (i.e. signed in) so guests never fire it.
-  const { data: partyData } = useQuery<{
-    party: { id: number; presetId: string; days: number; startYmd: string | null; status: string; day: number | null } | null;
-    members: Array<{ id: number; name: string | null; avatarUrl: string | null; isMe: boolean; keptToday: boolean }>;
-  }>({
-    queryKey: ["/api/me/rhythm-party"],
-    queryFn: () => apiRequest("GET", "/api/me/rhythm-party"),
-    staleTime: 60_000,
-    enabled: !!data,
-  });
-  const party = partyData?.party?.status === "active" ? partyData.party : null;
-  const companions = party ? (partyData?.members ?? []).filter((m) => !m.isMe) : [];
+  // (The 30-day commitment band, its day-30 review moment, and the shared
+  // rhythm-party "with Sarah & Marcus" band are removed per owner — choosing a
+  // rhythm just sets it; the card is the plain streak again.)
   if (!data) return null;
   const { days, streak, last7 } = data;
   const GREEN = "46,107,64";
   const GREEN_BRIGHT = "110,180,130";
-  // During the 30-day commitment, the flame streak is replaced by a
-  // non-resetting "Day N of 30" — position, not a streak you feel guilty about
-  // breaking. Grace is architectural: the day count never resets on a miss.
-  const cDay = commitmentDay();
-  // A shared party's server-aligned day wins over the device-local count, so
-  // every companion sees the SAME "Day N" regardless of when they accepted.
-  const partyDay = party?.day ?? null;
-  const partyLen = party?.days ?? COMMITMENT_DAYS;
-  const inTrial = (partyDay !== null && partyDay >= 1 && partyDay <= partyLen)
-    || (cDay !== null && cDay <= COMMITMENT_DAYS);
-  const trialDay = partyDay !== null
-    ? Math.min(Math.max(partyDay, 1), partyLen)
-    : Math.min(cDay ?? 0, COMMITMENT_DAYS);
-  const keptInWindow = days.filter((d) => d.kept).length;
-  const yesterdayMissed = days.length >= 2 && !days[days.length - 2].kept;
-
-  // ── Day 30+ — the rule-review moment (a genuine spiritual-direction practice,
-  // not a trophy). Persists until the pray-er keeps or tends the rule. ────────
-  const complete = !reviewDismissed && cDay !== null && cDay > COMMITMENT_DAYS;
-  if (complete) {
-    const keep = () => { clearCommitment(); setReviewDismissed(true); };
-    return (
-      <div
-        className="relative flex rounded-2xl overflow-hidden mt-6"
-        style={{ background: "rgba(22,46,32, 0.40)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${GREEN_BRIGHT},0.4)` }}
-      >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.85)` }} />
-        <div className="flex-1 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl flex-shrink-0">🌿</span>
-            <p className="flex-1 min-w-0" style={{ color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 700, lineHeight: 1.2 }}>
-              {t("rhythm.review_title", { defaultValue: "A month of days" })}
-            </p>
-          </div>
-          <p className="text-[13px] mt-2" style={{ color: SAGE, fontFamily: FONT, lineHeight: 1.5 }}>
-            {t("rhythm.review_body", { defaultValue: "What began as something you were holding has begun to hold you. Keep this rhythm as it is, or tend it — deepen the silence, add a practice, reshape a day." })}
-          </p>
-          <div className="flex items-center gap-2.5 mt-3.5">
-            <button
-              onClick={keep}
-              className="flex-1 rounded-xl text-center"
-              style={{ background: `rgba(${GREEN},0.72)`, border: `1px solid rgba(${GREEN_BRIGHT},0.6)`, color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 700, padding: "12px 0", cursor: "pointer" }}
-            >
-              {t("rhythm.review_keep", { defaultValue: "Keep this rhythm" })}
-            </button>
-            <Link
-              href="/rule-of-life"
-              onClick={keep}
-              className="flex-1 rounded-xl text-center"
-              style={{ background: "rgba(143,175,150,0.14)", border: "1px solid rgba(143,175,150,0.3)", color: SAGE, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "12px 0", cursor: "pointer" }}
-            >
-              {t("rhythm.review_tend", { defaultValue: "Tend my rule" })}
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -255,63 +180,18 @@ function StreakCard() {
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.7)` }} />
       <div className="flex-1 px-4 py-4">
-        {inTrial ? (
-          <>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl flex-shrink-0">🌱</span>
-              <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 24, fontWeight: 700 }}>
-                {t("rhythm.trial_day", { day: trialDay, total: partyLen, defaultValue: `Day ${trialDay} of ${partyLen}` })}
-              </p>
-              <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
-                {t("rhythm.trial_kept", { kept: keptInWindow, total: days.length, defaultValue: `kept ${keptInWindow} of ${days.length}` })}
-              </p>
-            </div>
-            {/* Walking the month together — companion faces with a today-kept
-                ring (bright = kept today, faint = not yet). Presence only;
-                nobody's history is ever shown. */}
-            {companions.length > 0 && (
-              <div className="mt-2.5 flex items-center gap-2.5">
-                <div className="flex items-center -space-x-1.5 flex-shrink-0">
-                  {companions.slice(0, 2).map((c) => {
-                    const ring = c.keptToday ? `rgba(${GREEN_BRIGHT},0.95)` : "rgba(143,175,150,0.3)";
-                    return c.avatarUrl ? (
-                      <img key={c.id} src={c.avatarUrl} alt={c.name ?? ""} title={c.name ?? undefined} className="w-7 h-7 rounded-full object-cover" style={{ border: `2px solid ${ring}` }} />
-                    ) : (
-                      <div key={c.id} title={c.name ?? undefined} className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: `2px solid ${ring}` }}>
-                        {(c.name ?? "?").trim().slice(0, 1).toUpperCase()}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-[12px] min-w-0" style={{ color: SAGE, fontFamily: FONT }}>
-                  {t("rhythm.trial_with", {
-                    names: companions.map((c) => (c.name ?? "a friend").split(/\s+/)[0]).join(" & "),
-                    defaultValue: `with ${companions.map((c) => (c.name ?? "a friend").split(/\s+/)[0]).join(" & ")}`,
-                  })}
-                  {companions.some((c) => c.keptToday) && (
-                    <span style={{ color: `rgba(${GREEN_BRIGHT},0.9)` }}>
-                      {" · "}
-                      {t("rhythm.trial_companion_kept", { defaultValue: "kept today" })}
-                    </span>
-                  )}
-                </p>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="text-2xl flex-shrink-0">🔥</span>
-            <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
-              {streak}
-              <span className="text-[13px] font-semibold ml-2" style={{ color: SAGE }}>
-                {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
-              </span>
-            </p>
-            <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
-              {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
-            </p>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <span className="text-2xl flex-shrink-0">🔥</span>
+          <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
+            {streak}
+            <span className="text-[13px] font-semibold ml-2" style={{ color: SAGE }}>
+              {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
+            </span>
+          </p>
+          <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
+            {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
+          </p>
+        </div>
         <div className="flex items-center gap-1.5 mt-3.5">
           {days.map((d, i) => {
             const isToday = i === days.length - 1;
@@ -330,17 +210,9 @@ function StreakCard() {
             );
           })}
         </div>
-        {inTrial && yesterdayMissed ? (
-          <p className="text-[11.5px] mt-2 italic" style={{ color: SAGE, fontFamily: FONT }}>
-            {t("rhythm.grace_line", { defaultValue: "Yesterday slipped. Rules bend — that's how they survive. Begin again this morning." })}
-          </p>
-        ) : (
-          <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
-            {inTrial
-              ? t("rhythm.trial_hint", { defaultValue: "A month of days — let it hold you." })
-              : t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
-          </p>
-        )}
+        <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
+          {t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
+        </p>
         {gardenWeekCount > 0 && (
           <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
             {gardenFaces.length > 0 && (

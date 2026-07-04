@@ -44,7 +44,7 @@ function videoCourseCard(
   course: { id: string; title: string },
   index: CourseIndex,
   href: string,
-  progress: { completed: Set<string>; completedCount: number; lastId?: string },
+  progress: { completed: Set<string>; completedCount: number; lastId?: string; started: boolean },
 ): LearnCard {
   const { completed, completedCount, lastId } = progress;
   const resume = lastId && index.get(lastId) && !completed.has(lastId) ? index.get(lastId) : undefined;
@@ -56,7 +56,10 @@ function videoCourseCard(
     href: nextVid ? `${href}?v=${nextVid.id}` : href,
     done: completedCount,
     total: index.total,
-    started: completedCount > 0 || !!lastId,
+    // "Started" = an explicit play/open (markStarted) or real progress — NEVER
+    // a mere page visit (lastId is stamped on visits for resume, so it can't
+    // count here or browsing the Learn tab fills the home with Continue cards).
+    started: completedCount > 0 || progress.started,
   };
 }
 
@@ -82,7 +85,7 @@ export function HomeLearnSection() {
       href: "/way-of-love-course",
       done: wol.completedCount,
       total: WOL_TOTAL,
-      started: wol.completedCount > 0 || !!wol.lastId,
+      started: wol.completedCount > 0 || wol.started,
     });
   }
 

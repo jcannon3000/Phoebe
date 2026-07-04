@@ -921,6 +921,12 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
         eveningTime: usersTable.parishOfficeEveningTime,
         morningSentDate: usersTable.parishOfficeMorningSentDate,
         eveningSentDate: usersTable.parishOfficeEveningSentDate,
+        // The synced routine (device localStorage mirrored via LWW) — carries
+        // the side's REAL practice ("phoebe:office:level:morning" = office /
+        // devotion / psalms / reflect-sit / fdd / examen / …), which the
+        // reminder pref columns flatten to office|devotion. Used so the push
+        // names what they actually practice.
+        ruleConfig: usersTable.ruleConfig,
         parishFeedId: usersTable.parishFeedId,
         parishTitle: prayerFeedsTable.title,
         parishTimezone: prayerFeedsTable.timezone,
@@ -931,6 +937,14 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
         eq(prayerFeedsTable.kind, "parish"),
       ))
       .where(sql`(${usersTable.parishOfficeMorningPref} != 'none' OR ${usersTable.parishOfficeEveningPref} != 'none')`);
+
+    // The side's practice, for the push copy: the synced routine's per-side
+    // level when present, else the flattened reminder pref (office/devotion).
+    const sideLevel = (rc: { values?: Record<string, string> } | null, side: "morning" | "evening", pref: string | null): string | null => {
+      const v = rc && typeof rc === "object" ? rc.values?.[`phoebe:office:level:${side}`] : undefined;
+      if (typeof v === "string" && v.length > 0 && v !== "ask") return v;
+      return pref && pref !== "none" ? pref : null;
+    };
 
     for (const r of rows) {
       const tz = r.parishTimezone || r.userTimezone || "America/New_York";
@@ -963,6 +977,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
               await sendParishOfficeReminderPush(r.userId, {
                 side: "morning",
                 parishTitle: r.parishTitle,
+                level: sideLevel(r.ruleConfig, "morning", r.morningPref),
               });
               await db
                 .update(usersTable)
@@ -1016,6 +1031,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
               await sendParishOfficeReminderPush(r.userId, {
                 side: "evening",
                 parishTitle: r.parishTitle,
+                level: sideLevel(r.ruleConfig, "evening", r.eveningPref),
               });
               logger.info({ userId: r.userId, pref: r.eveningPref }, "[office-reminder] evening push sent");
               await db

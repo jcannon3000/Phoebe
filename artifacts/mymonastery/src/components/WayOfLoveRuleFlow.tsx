@@ -2373,10 +2373,10 @@ export default function WayOfLoveRuleFlow({
       <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
         {t("wol_rule.done_edit_hint", { defaultValue: "Tap any practice to adjust it." })}
       </p>
-      {/* One plain closing CTA — the "Keep this rhythm for 30 days" commitment
-          offer is removed (owner, 2026-07-03). Full-app authors still get the
-          rhythm-party invite stage after keeping the rule. */}
-      <button onClick={() => { if (user && !user.isAnonymous && !guest && !prescribe) setInviteStage(true); else onDone(); }} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+      {/* One plain closing CTA — no 30-day offer, no "do it together" invite
+          stage (owner, 2026-07-03): they chose the rhythm, it's set, done.
+          (The inviteStage screen below is intentionally unreachable now.) */}
+      <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
         {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
       </button>
       {/* WEB save = an account (owner, 2026-07-03): on the web, browser storage

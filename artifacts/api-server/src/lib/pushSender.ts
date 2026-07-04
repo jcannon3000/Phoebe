@@ -1100,32 +1100,67 @@ export function sendPrayerInvitePush(
 }
 
 // Morning / evening office reminder. Fires at the user's chosen reminder
-// time once per local day. It opens the user's DEFAULT prayer — begin-prayer
-// routes to their defaultPrayerLevel for this time of day (or the chooser, if
-// their default is "ask") — so the copy stays generic rather than promising a
-// specific office the tap might not open. parishTitle, when present, names
-// the parish for a communal feel; otherwise the body is a quiet personal
-// nudge. Sound is the standard mid chime — a gentle invitation, not urgent.
+// time once per local day. The copy names the side's ACTUAL practice when we
+// know it (`level` — the synced routine's per-side level, falling back to the
+// flattened office/devotion reminder pref), so a Psalms-in-the-morning person
+// is invited to the Psalms, not a generic office. Unknown/legacy levels keep
+// the old generic copy. The tap opens /begin-prayer pinned to this side, so a
+// late-morning reminder can't resolve to the evening office. parishTitle,
+// when present, still names the parish in the body for a communal feel.
+// Sound is the standard mid chime — a gentle invitation, not urgent.
 export function sendParishOfficeReminderPush(
   userId: number,
   opts: {
     side: "morning" | "evening";
     parishTitle?: string | null;
+    level?: string | null;
   }
 ) {
-  const { side, parishTitle } = opts;
-  const title = side === "morning"
-    ? "Begin your day in prayer"
-    : "Close your day in prayer";
+  const { side, parishTitle, level } = opts;
+  const cap = side === "morning" ? "Morning" : "Evening";
+  const practiceCopy: Record<string, { title: string; body: string }> = {
+    office: {
+      title: `${cap} Prayer`,
+      body: side === "morning" ? "The office is ready — begin the day in prayer." : "The office is ready — close the day in prayer.",
+    },
+    devotion: {
+      title: `${cap} Devotion`,
+      body: side === "morning" ? "A short office to begin the day." : "A short office to close the day.",
+    },
+    psalms: {
+      title: "Praying the Psalms",
+      body: side === "morning" ? "This morning's appointed psalms are ready." : "This evening's appointed psalms are ready.",
+    },
+    "reflect-sit": {
+      title: `${cap} Contemplation`,
+      body: "A few minutes of loving God in silence.",
+    },
+    fdd: {
+      title: "Forward Day by Day",
+      body: "Today's reflection is ready.",
+    },
+    examen: {
+      title: "The Examen",
+      body: "Review the day with God.",
+    },
+    journal: {
+      title: "Journal",
+      body: side === "morning" ? "A few quiet lines to begin the day." : "A few quiet lines before the day ends.",
+    },
+  };
+  const practice = level ? practiceCopy[level] : undefined;
+  const title = practice?.title
+    ?? (side === "morning" ? "Begin your day in prayer" : "Close your day in prayer");
   const body = parishTitle
     ? `Pray with ${parishTitle}.`
-    : side === "morning"
-      ? "A few quiet minutes to start the day."
-      : "A few quiet minutes before the day ends.";
+    : practice?.body
+      ?? (side === "morning"
+        ? "A few quiet minutes to start the day."
+        : "A few quiet minutes before the day ends.");
   return sendPushToUser(userId, {
     title,
     body,
-    path: "/begin-prayer",
+    path: `/begin-prayer?side=${side}`,
     threadId: `parish-office-${side}`,
     collapseId: `parish-office-${side}-${userId}`,
     sound: PHOEBE_SOUND_MID,

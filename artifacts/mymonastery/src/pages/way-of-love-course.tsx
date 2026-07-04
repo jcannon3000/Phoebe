@@ -46,7 +46,7 @@ interface ShowResponse {
 
 export default function WayOfLoveCoursePage() {
   const player = usePodcastPlayer();
-  const { completedCount, isComplete, toggleComplete, setLast } = useCourseProgress(WAY_OF_LOVE.id);
+  const { completedCount, isComplete, toggleComplete, setLast, markStarted } = useCourseProgress(WAY_OF_LOVE.id);
   const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const { data, isLoading } = useQuery<ShowResponse>({
@@ -81,13 +81,14 @@ export default function WayOfLoveCoursePage() {
     }
     player.play(toPlaying(ep));
     setLast(lesson.key);
+    markStarted();
   };
 
   const playSeries = () => {
     const queue = WOL_LESSONS.map((l) => epMap[l.key])
       .filter((e): e is PodcastEpisode => !!e?.audioUrl)
       .map(toPlaying);
-    if (queue.length) player.playQueue(queue);
+    if (queue.length) { player.playQueue(queue); markStarted(); }
   };
 
   const firstIncomplete = WOL_LESSONS.find((l) => !isComplete(l.key)) ?? null;
