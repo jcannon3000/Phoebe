@@ -24,6 +24,7 @@ import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
 import { isJardinSealed } from "@/lib/jardinMode";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
+import { CREATION_OPENING_SENTENCES } from "@/lib/creationLiturgy";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -739,7 +740,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, soloSilenceActive, silenceDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -773,6 +774,10 @@ function DailyProgressPill() {
     // matching the two home cards, not a single aggregate "silence" dot (that
     // under-counted: 2 dots for 3 cards). Morning sits here; evening near Evening.
     ...(morningContemplationActive ? [{ key: "contemplation-morning", done: morningContemplationDone }] : []),
+    // The single aggregate silence GOAL card (no per-side contemplation) — its
+    // own dot so a "5 minutes of silence" rule is counted. Mutually exclusive
+    // with the per-side contemplation dots above.
+    ...(soloSilenceActive ? [{ key: "silence", done: silenceDone }] : []),
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
@@ -1085,8 +1090,12 @@ function OpeningSplash() {
   // The faces rail is retired; keep the flag (false) so its now-dormant render +
   // cache effects still compile without ever running.
   const showFaces = false;
-  // The quote advances each app open.
-  const quote = SPLASH_QUOTES[splashOpenN % SPLASH_QUOTES.length]!;
+  // The syncing screen now shows a Season of Creation OPENING SENTENCE (public-
+  // domain scripture) instead of the general quotes — advancing each app open.
+  // The scripture ref takes the "author" slot so the render is unchanged.
+  const sentence = CREATION_OPENING_SENTENCES[splashOpenN % CREATION_OPENING_SENTENCES.length]!;
+  const quote = { text: sentence.text, author: sentence.ref };
+  void SPLASH_QUOTES;
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;

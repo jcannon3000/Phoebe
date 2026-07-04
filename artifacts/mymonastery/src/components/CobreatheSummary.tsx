@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { collectForToday } from "@/lib/creationLiturgy";
 
 // ── CobreatheSummary ─────────────────────────────────────────────────────────
 //
@@ -91,7 +92,8 @@ export function CobreatheSummary({
         background: "#0A1C14",
         paddingTop: "var(--safe-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
-        overflow: "hidden",
+        // Scrollable so a longer collect fits below the fold on small screens.
+        overflowY: "auto", overflowX: "hidden",
       }}
     >
       {/* Full-bleed landscape + green wash — mirrors ContemplationTimer's close. */}
@@ -113,9 +115,29 @@ export function CobreatheSummary({
         </p>
         {/* The climate-justice thanks — the quiet italic sub-line, where the
             contemplation close carries "carry the quiet with you". */}
-        <p className="text-[13px] mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
+        <p className="text-[13px] mb-6" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
           {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying with all creation." })}
         </p>
+        {/* The day's COLLECT — a Season of Creation prayer to close with (owner).
+            Rotates daily through the whole set. */}
+        {(() => {
+          const c = collectForToday();
+          return (
+            <div className="mb-7" style={{ maxWidth: 400 }}>
+              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
+                {c.title}
+              </p>
+              <p className="text-[14.5px] leading-relaxed" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
+                {c.text}
+              </p>
+              {c.attribution && (
+                <p className="text-[11px] mt-2.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+                  {c.attribution}
+                </p>
+              )}
+            </div>
+          );
+        })()}
         {/* Breaths so far this week, and who you breathed with today — the small
             stat line, in the contemplation close's goal-progress slot. */}
         <p className="text-[12px] mb-6" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
