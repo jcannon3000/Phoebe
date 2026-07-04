@@ -819,7 +819,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Reference content the guest Resources menu links to.
   "/building-faith",
   "/signin", "/login", "/onboarding",
-  "/about", "/privacy", "/terms",
+  "/about", "/about-deck", "/privacy", "/terms",
 ]);
 const GUEST_ALLOWED_PREFIX = [
   "/bcp", "/prayer-mode", "/scripture", "/cobreathe",
