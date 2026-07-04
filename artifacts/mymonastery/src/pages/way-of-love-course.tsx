@@ -59,7 +59,9 @@ export default function WayOfLoveCoursePage() {
   const showArtwork = data?.show?.artwork ?? null;
   const epMap = useMemo(() => resolveWolEpisodes(episodes), [episodes]);
 
-  const toPlaying = (ep: PodcastEpisode): PlayingEpisode => ({
+  // Tag each episode with its lesson so finishing it (audio end) marks the
+  // practice complete — see PodcastPlayer.onEndedEv.
+  const toPlaying = (ep: PodcastEpisode, lessonKey: string): PlayingEpisode => ({
     showSlug: WAY_OF_LOVE.showSlug,
     episodeId: ep.id,
     title: ep.title,
@@ -70,24 +72,28 @@ export default function WayOfLoveCoursePage() {
     durationSeconds: ep.durationSeconds,
     publishedAt: ep.publishedAt,
     description: ep.description,
+    courseComplete: { courseId: WAY_OF_LOVE.id, lessonKey },
   });
 
   const playLesson = (lesson: WolLesson) => {
     const ep = epMap[lesson.key];
     if (!ep?.audioUrl) return;
-    if (player.isCurrent(WAY_OF_LOVE.showSlug, ep.id)) {
+    // Only toggle (pause) if this lesson is actively PLAYING. Otherwise — not
+    // current, or current-but-finished/paused — (re)start it, so a completed
+    // lesson can always be clicked to listen again.
+    if (player.isCurrent(WAY_OF_LOVE.showSlug, ep.id) && player.isPlaying) {
       player.toggle();
       return;
     }
-    player.play(toPlaying(ep));
+    player.play(toPlaying(ep, lesson.key));
     setLast(lesson.key);
     markStarted();
   };
 
   const playSeries = () => {
-    const queue = WOL_LESSONS.map((l) => epMap[l.key])
-      .filter((e): e is PodcastEpisode => !!e?.audioUrl)
-      .map(toPlaying);
+    const queue = WOL_LESSONS
+      .map((l) => { const ep = epMap[l.key]; return ep?.audioUrl ? toPlaying(ep, l.key) : null; })
+      .filter((e): e is PlayingEpisode => e !== null);
     if (queue.length) { player.playQueue(queue); markStarted(); }
   };
 

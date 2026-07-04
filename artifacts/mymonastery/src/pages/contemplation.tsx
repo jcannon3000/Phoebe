@@ -9,8 +9,6 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
-
-const CONTEMPLATION_LEAF = pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null);
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer, CONTEMPLATION_PRESENCE_ENABLED, type ContemplationWhatsNext } from "@/components/ContemplationTimer";
@@ -492,6 +490,9 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
 export default function ContemplationPage() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  // Leaf/Wide backdrop, picked once per mount so it rotates to a fresh photo
+  // each visit (web uses a Wide photo; native falls back to a bundled leaf).
+  const contemplationLeaf = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const [timerOpen, setTimerOpen] = useState(false);
   // First-ever silent sit gets a one-card intro (what silence is, where it comes
   // from, what to do) so a beginner isn't dropped into a blank timer unguided.
@@ -909,9 +910,9 @@ export default function ContemplationPage() {
           }}
         >
           <AnimatedBackground base="#0C1F12" variant="pronounced" />
-          {CONTEMPLATION_LEAF && (
+          {contemplationLeaf && (
             <>
-              <img src={CONTEMPLATION_LEAF} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
+              <img src={contemplationLeaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
               <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.66) 45%, rgba(8,22,15,0.82) 100%)" }} />
             </>
           )}

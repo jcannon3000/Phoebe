@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { WIDE_PHOTOS } from "@/lib/wideBackgrounds";
+import { markComplete as markCourseLessonComplete } from "@/lib/courseProgress";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 // ≥2 minutes of actual listening to a (non-office) podcast counts the
@@ -76,6 +77,10 @@ export type PlayingEpisode = {
   // newsletter). Only navigated if the full-screen player is still open, so
   // a backgrounded listen doesn't yank the user mid-task.
   afterEndHref?: string;
+  // When set, finishing this episode marks the given course lesson complete —
+  // so listening a Way of Love episode to its end completes that practice (and
+  // finishing the series completes the course). See onEndedEv.
+  courseComplete?: { courseId: string; lessonKey: string };
   // ── Segment playback (scripture readings) ──
   // Start at this offset (seconds) instead of the saved resume position — e.g.
   // tapping "Gospel" brings the episode up at the Gospel's start — and pause
@@ -904,6 +909,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false); closeSeg(); syncMediaPlaybackState();
     if (current) clearPos(current);
     commitSession();
+    // A tagged course lesson finished → mark it complete (e.g. a Way of Love
+    // episode completes that practice; finishing the series completes the course).
+    if (current?.courseComplete) {
+      markCourseLessonComplete(current.courseComplete.courseId, current.courseComplete.lessonKey);
+    }
     // Auto-advance through the listen-list queue if one is active.
     const nextIdx = queueIndexRef.current + 1;
     if (nextIdx > 0 && nextIdx < queueRef.current.length) {
@@ -1112,13 +1122,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   }, [reverbOn]);
   const officeBg = useMemo(() => {
     if (!current) return null;
-    // A stable, full-bleed LANDSCAPE backdrop for every listen (offices +
-    // podcasts). We deliberately do NOT fall back to a show's square artwork.
-    // On the WEB use a Wide photo (not bundled into iOS); on native fall back to
-    // a dedicated office photo, else the bundled Cobreathe library.
+    // A full-bleed LANDSCAPE backdrop for every listen (offices + podcasts). We
+    // deliberately do NOT fall back to a show's square artwork. On the WEB use a
+    // Wide photo (not bundled into iOS), ROTATING to a fresh one each time a new
+    // episode/office opens (the memo recomputes on `current` change); on native
+    // fall back to a dedicated office photo, else the bundled Cobreathe library.
     const seed = current?.episodeId || current?.showSlug || "audio";
     if (!isNativeShell() && WIDE_PHOTOS.length > 0) {
-      return WIDE_PHOTOS[hashStr(seed) % WIDE_PHOTOS.length];
+      return WIDE_PHOTOS[Math.floor(Math.random() * WIDE_PHOTOS.length)]!;
     }
     if (officeSide) {
       const dedicated = dedicatedOfficeBg(officeSide);

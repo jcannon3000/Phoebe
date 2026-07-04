@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -301,7 +301,9 @@ function ListenListRow({
 
 export default function PodcastsPage() {
   // Wide landscape backdrop on the web; the bundled leaf photo on native.
-  const podcastBg = pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null);
+  // Pick ONCE per mount (rotates to a fresh Wide photo each visit) — without the
+  // memo it re-picked a new random on every render, flickering the backdrop.
+  const podcastBg = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null), []);
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [tab, setTab] = useState<"discover" | "listen-list">("discover");
