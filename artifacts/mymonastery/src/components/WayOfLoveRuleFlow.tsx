@@ -32,6 +32,7 @@ import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import {
   setSideLevel,
   setSideReflection,
@@ -757,8 +758,12 @@ export default function WayOfLoveRuleFlow({
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
     // Guests have no server prefs — the local officePrefs initializers above
-    // already seeded the flow from the device.
-    enabled: !guest,
+    // already seeded the flow from the device. The isDeviceLocalGuest check is
+    // the backstop for the mount race: if the flow renders before /auth/me
+    // settles (guest prop briefly false), a fresh anonymous account's default
+    // prefs ("evening: none") would otherwise hydrate in and clobber the
+    // seeded Evening side.
+    enabled: !guest && !isDeviceLocalGuest(user),
   });
   const hydrated = useRef(false);
   // Set once the user touches any control — so a slow office-prefs response
@@ -779,6 +784,13 @@ export default function WayOfLoveRuleFlow({
   const chooseNoReflection = () => { touchedRef.current = true; setNewsletters([]); };
   useEffect(() => {
     if (hydrated.current || touchedRef.current || !prefs) return;
+    // GUESTS never hydrate from server office-prefs — not even from CACHE.
+    // Disabling the query above stops the fetch, but react-query still hands
+    // this component any cached response another surface fetched (the home
+    // queries office-prefs as the anonymous user), and a fresh anonymous
+    // account's defaults ("evening: none") would overwrite the seeded
+    // Morning + Evening rule right here. Device truth wins for guests.
+    if (guest || isDeviceLocalGuest(user)) return;
     hydrated.current = true;
     // Seed each side's way from its EXPLICIT saved per-side level only; otherwise
     // keep the standard (Devotion, the initial state). We deliberately do NOT

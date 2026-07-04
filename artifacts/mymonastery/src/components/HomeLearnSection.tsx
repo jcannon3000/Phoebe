@@ -30,7 +30,6 @@ const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.
 
 type LearnCard = {
   key: string;
-  emoji: string;
   title: string;
   nextLabel: string;
   href: string;
@@ -44,7 +43,6 @@ type LearnCard = {
 function videoCourseCard(
   course: { id: string; title: string },
   index: CourseIndex,
-  emoji: string,
   href: string,
   progress: { completed: Set<string>; completedCount: number; lastId?: string },
 ): LearnCard {
@@ -53,7 +51,6 @@ function videoCourseCard(
   const nextVid = resume ?? index.videos.find((v) => !completed.has(v.id)) ?? index.videos[0];
   return {
     key: course.id,
-    emoji,
     title: course.title,
     nextLabel: nextVid ? videoLabel(nextVid) : "",
     href: nextVid ? `${href}?v=${nextVid.id}` : href,
@@ -72,16 +69,16 @@ export function HomeLearnSection() {
 
   const cards: LearnCard[] = [];
   if (!native) {
-    cards.push(videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "🕯️", "/centering-prayer", centering));
-    cards.push(videoCourseCard(SPIRITUAL_JOURNEY, JOURNEY_INDEX, "🎓", "/journey", journey));
+    cards.push(videoCourseCard(CENTERING_PRAYER, CENTERING_INDEX, "/centering-prayer", centering));
+    cards.push(videoCourseCard(SPIRITUAL_JOURNEY, JOURNEY_INDEX, "/journey", journey));
   }
   {
     const nextLesson = WOL_LESSONS.find((l) => !wol.completed.has(l.key)) ?? WOL_LESSONS[0];
     cards.push({
       key: WAY_OF_LOVE.id,
-      emoji: "❤️",
       title: WAY_OF_LOVE.title,
-      nextLabel: nextLesson ? `${nextLesson.emoji} ${nextLesson.practice}` : "",
+      // Text only — no lesson emoji on the course cards (owner).
+      nextLabel: nextLesson ? nextLesson.practice : "",
       href: "/way-of-love-course",
       done: wol.completedCount,
       total: WOL_TOTAL,
@@ -117,7 +114,6 @@ export function HomeLearnSection() {
               style={{ ...FROST, background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl flex-shrink-0" aria-hidden>{c.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10.5px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
                     {c.started ? "Continue" : "Start course"} · {c.title}

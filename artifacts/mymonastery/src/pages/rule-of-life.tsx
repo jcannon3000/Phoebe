@@ -332,7 +332,12 @@ export default function RuleOfLifePage() {
   // handed the public the FULL flow and let its empty server office-prefs
   // hydration clobber the seeded Evening side. Pilot-group members and super
   // admins keep the full flow; flag off → unchanged.
-  const { isGuest: guestFlow } = useGuestMode();
+  // isLoading matters: while /auth/me resolves, isGuest is conservatively
+  // false — mounting the flow in that window would briefly run it as the FULL
+  // customizer (its server office-prefs query fires and, for an anonymous
+  // user, its "evening: none" default clobbers the seeded Evening side). We
+  // hold rendering below until the shape is known.
+  const { isGuest: guestFlow, isLoading: guestLoading } = useGuestMode();
 
   // Public — the Rule of Life / customizer is open to all users. The beta gate
   // that redirected non-beta users to /dashboard was removed per request, so
@@ -854,11 +859,16 @@ export default function RuleOfLifePage() {
         chromeless
         onClose={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
       >
-        <WayOfLoveRuleFlow
-          guest={guestFlow}
-          onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
-          onDone={() => setLocation("/daily-progress")}
-        />
+        {/* Hold the flow until the guest shape is settled — mounting it while
+            /auth/me is in flight would run one render as the FULL flow and let
+            its office-prefs hydration overwrite the seeded rule. */}
+        {!guestLoading && (
+          <WayOfLoveRuleFlow
+            guest={guestFlow}
+            onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
+            onDone={() => setLocation("/daily-progress")}
+          />
+        )}
       </Layout>
     );
   }

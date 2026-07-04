@@ -743,10 +743,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // between the two things you carry in.
   const morningBlurb = t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" });
   const eveningBlurb = t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" });
-  const officeCycle = [
-    t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
-    t("rhythm.with_community", { defaultValue: "with community prayers" }),
-  ];
+  // Guests never carry community intercessions into the office (that handoff
+  // is stripped in guest mode), so their card must not promise them — the
+  // subtitle stays on the BCP line instead of alternating.
+  const officeCycle = guest
+    ? [t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" })]
+    : [
+        t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
+        t("rhythm.with_community", { defaultValue: "with community prayers" }),
+      ];
   // Per-side Contemplative Prayer blurb — a silent sit is binary (kept this side
   // or not), so the card reads "kept" when done, else the sit length. The daily
   // minutes goal + ladder still set the timer length; they no longer gate the
