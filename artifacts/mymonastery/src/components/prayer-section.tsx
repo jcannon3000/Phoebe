@@ -345,7 +345,7 @@ export function PrayerSection({
                                   {breathedToday && (
                                     <span
                                       className="absolute -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center"
-                                      title="Cobreathed today"
+                                      title="Breathed together today"
                                       style={{ background: "#0C1F12", padding: 1.5, lineHeight: 0 }}
                                     >
                                       <CobreatheGlobe size={14} />

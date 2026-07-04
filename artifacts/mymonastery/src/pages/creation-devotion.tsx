@@ -69,7 +69,7 @@ export default function CreationDevotionPage() {
         <span className="text-3xl">{emoji}</span>
         <div className="flex-1">
           <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
-          <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>The creation Psalter &amp; prayers, with Co-Breathe</p>
+          <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>The creation Psalter &amp; prayers, with Creation Prayer</p>
           {active && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
         </div>
         <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
@@ -88,7 +88,7 @@ export default function CreationDevotionPage() {
             Creation Prayer 🌱
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            A creation-focused devotion — a two-week cycle of the Psalms with prayers for creation, and the Co-Breathe breath woven in at the intercession
+            A creation-focused devotion — a two-week cycle of the Psalms with prayers for creation, and the Creation Prayer breath woven in at the intercession
           </p>
         </div>
 

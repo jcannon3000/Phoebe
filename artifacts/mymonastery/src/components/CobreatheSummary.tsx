@@ -111,7 +111,7 @@ export function CobreatheSummary({
         {/* The climate-justice thanks — the quiet italic sub-line, where the
             contemplation close carries "carry the quiet with you". */}
         <p className="text-[13px] mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
-          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying for climate justice." })}
+          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying with all creation." })}
         </p>
         {/* Breaths so far this week, and who you breathed with today — the small
             stat line, in the contemplation close's goal-progress slot. */}

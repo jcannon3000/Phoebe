@@ -70,7 +70,7 @@ export function TodaysRhythm() {
       key: "silence", label: t("rhythm.silence", { defaultValue: "Contemplation" }), icon: "🕯️",
       done: silenceDone, href: "/contemplation",
       cta: t("rhythm.cta_silence", { defaultValue: "Sit in contemplation" }),
-      blurb: t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" }),
+      blurb: t("rhythm.blurb_silence", { defaultValue: "Sit, or breathe with creation" }),
     },
     {
       key: "reflect", label: t("rhythm.reflect", { defaultValue: "Reflect" }), icon: "📖",
@@ -186,7 +186,7 @@ export function TodaysRhythm() {
               </p>
               <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>
                 {next.key === "silence" && cobreatheCount > 0
-                  ? t("rhythm.blurb_silence_count", { count: cobreatheCount, defaultValue: `Sit, or cobreathe — ${cobreatheCount} have breathed today` })
+                  ? t("rhythm.blurb_silence_count", { count: cobreatheCount, defaultValue: `Sit, or breathe with creation — ${cobreatheCount} have breathed today` })
                   : next.blurb}
               </p>
             </div>

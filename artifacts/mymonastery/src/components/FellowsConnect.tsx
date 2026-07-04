@@ -108,13 +108,13 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     if (!day) return null;
     const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const todayStr = ymd(new Date());
-    if (day === todayStr) return t("fellows_c.breathed_today", { defaultValue: "Cobreathed together today" });
+    if (day === todayStr) return t("fellows_c.breathed_today", { defaultValue: "Breathed together in prayer today" });
     const d0 = new Date(`${day}T00:00:00`);
     const diff = Math.round((new Date(`${todayStr}T00:00:00`).getTime() - d0.getTime()) / 86400000);
     const when = diff === 1 ? t("fellows_c.yesterday", { defaultValue: "yesterday" })
       : diff > 1 && diff < 30 ? t("fellows_c.n_days_ago", { count: diff, defaultValue: `${diff} days ago` })
       : d0.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    return t("fellows_c.breathed_ago", { when, defaultValue: `Cobreathed together ${when}` });
+    return t("fellows_c.breathed_ago", { when, defaultValue: `Breathed together in prayer ${when}` });
   };
 
   const [optReq, setOptReq] = useState<Set<number>>(() => new Set());

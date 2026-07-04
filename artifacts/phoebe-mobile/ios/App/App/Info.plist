@@ -64,7 +64,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Phoebe uses your camera so you can take a profile photo.</string>
 	<key>NSAppleMusicUsageDescription</key>
-	<string>Phoebe plays a contemplative playlist while you breathe with Cobreathe. It only plays music — it never reads your listening history.</string>
+	<string>Phoebe plays a contemplative playlist while you breathe with Creation Prayer. It only plays music — it never reads your listening history.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Phoebe uses your photos so you can choose a profile picture.</string>
 	<key>NSHealthShareUsageDescription</key>

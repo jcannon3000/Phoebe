@@ -9,8 +9,9 @@
 // web/desktop-only (YouTube IFrame player) — on the iOS shell only Bishop
 // Budde's Way of Love (an audio course on the podcast player) appears.
 
+import { useRef } from "react";
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { Play } from "lucide-react";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useCourseProgress } from "@/lib/courseProgress";
@@ -101,11 +102,14 @@ export function HomeLearnSection() {
   const show = active.length > 0 ? active : wolCard && wolCard.done < wolCard.total ? [wolCard] : [];
   if (show.length === 0) return null;
 
-  // Same fade-up cascade as the rhythm cards above — the header rises first,
-  // each course card follows a beat behind.
+  // Fade-up cascade like the rhythm cards — the header rises first, each course
+  // card a beat behind. Triggered when the section scrolls INTO view (it sits
+  // below the fold, so an on-mount animate would play off-screen and be missed);
+  // `once` so it doesn't replay each time you scroll past.
   const enterUp = (i: number) => ({
     initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, amount: 0.3 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 1.2) },
   });
 

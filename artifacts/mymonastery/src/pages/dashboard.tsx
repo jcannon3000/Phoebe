@@ -2881,7 +2881,7 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
               <span className="text-[34px] leading-none flex-shrink-0">🌱</span>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
-                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Co-Breathe</p>
+                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Creation Prayer</p>
               </div>
               <div className="flex-shrink-0">
                 <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>

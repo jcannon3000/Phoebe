@@ -1035,7 +1035,7 @@ export function ContemplationTimer({
                         style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
                       >
                         <span style={{ fontSize: 15, fontWeight: 600 }}><CobreatheGlobe size={15} style={{ marginRight: 4, verticalAlign: "-1px" }} />{t("contemplation_timer.cobreathe", { defaultValue: "Creation Prayer" })}</span>
-                        <span style={{ fontSize: 12, color: SAGE, marginTop: 2 }}>{t("contemplation_timer.cobreathe_sub", { defaultValue: "Breathing together for climate justice" })}</span>
+                        <span style={{ fontSize: 12, color: SAGE, marginTop: 2 }}>{t("contemplation_timer.cobreathe_sub", { defaultValue: "Breathing together with all creation" })}</span>
                       </button>
                     </>
                   ) : (
