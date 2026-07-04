@@ -591,17 +591,21 @@ export function useRhythmState(): RhythmState {
   // device (which POSTed its contemplationSide) reads done here too.
   const morningContemplationDone = contemplationSideDone.morning || !!sidesToday?.morning;
   const eveningContemplationDone = contemplationSideDone.evening || !!sidesToday?.evening;
+  // SOLO silence — a daily minutes goal with NO per-side contemplation card on
+  // either side. The goal must still be visible somewhere, so it gets its own
+  // single "Silence" card with a progress bar (DailyProgressBody) and exactly
+  // one dot below. Guests are always in this shape (their per-side flags are
+  // forced off above); a signed-in user lands here by setting minutes on the
+  // Silence step without checking Contemplative Prayer on a side.
+  const soloSilenceActive = contemplationGoalMin > 0 && !morningContemplationActive && !eveningContemplationActive;
   // Aggregate, for the single-silence consumers (splash / widget / prayer-mode /
-  // routine-print / TodaysRhythm): active if either side is; done when every
-  // active side is kept. silenceGoalMet stays available for minutes displays.
-  // For a GUEST the aggregate IS the single Silence goal: active when a daily
-  // goal is set, done when today's local minutes have reached it (goal-met
-  // semantics — the progress bar stays visible while under goal).
-  const silenceActive = guest
-    ? contemplationGoalMin > 0
-    : (morningContemplationActive || eveningContemplationActive);
-  const silenceDone = guest
-    ? (silenceActive && contemplationMin >= contemplationGoalMin)
+  // routine-print / TodaysRhythm): active if either side is, or the solo goal
+  // is; done when every active side is kept — or, solo, when today's minutes
+  // have reached the goal (goal-met semantics — the progress bar stays visible
+  // while under goal).
+  const silenceActive = morningContemplationActive || eveningContemplationActive || soloSilenceActive;
+  const silenceDone = soloSilenceActive
+    ? contemplationMin >= contemplationGoalMin
     : (silenceActive
       && (!morningContemplationActive || morningContemplationDone)
       && (!eveningContemplationActive || eveningContemplationDone));
@@ -635,10 +639,11 @@ export function useRhythmState(): RhythmState {
   const coreFlags = [
     ...(morningActive ? [morningDone] : []),
     ...(morningContemplationActive ? [morningContemplationDone] : []),
-    // The guest single Silence goal anchor — guests keep ONE goal card (with a
-    // progress bar) in place of the per-side contemplation cards, so it counts
-    // exactly one dot here and the dots always match the cards.
-    ...(guest && silenceActive ? [silenceDone] : []),
+    // The SOLO Silence goal anchor — one goal card (with a progress bar) when
+    // neither side carries a contemplation card (all guests; signed-in users
+    // who set only the minutes goal), so it counts exactly one dot here and
+    // the dots always match the cards.
+    ...(soloSilenceActive ? [silenceDone] : []),
     ...reflections.map((r) => r.done),
     ...(eveningActive ? [eveningDone] : []),
     ...(eveningContemplationActive ? [eveningContemplationDone] : []),

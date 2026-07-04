@@ -939,14 +939,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
-    // GUEST "Silence" goal card — ONE card with a PROGRESS BAR of today's
-    // minutes toward the daily goal, in place of the per-side contemplation
-    // cards (useRhythmState keeps those off for guests). For guests the hook's
-    // contemplationGoalMin/contemplationMin ARE the device-local guest values
-    // (getGuestSilenceGoalMin + the guestSilenceLog sit tally, which a finished
-    // signed-out sit in ContemplationTimer feeds). Begin opens the timer
-    // straight at the goal length; past goal it stays tappable to sit again.
-    ...(guest && contemplationGoalMin > 0 ? [{
+    // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's
+    // minutes toward the daily goal, whenever a goal is set and NEITHER side
+    // carries a contemplation card: all guests (useRhythmState keeps their
+    // per-side flags off; goal/minutes are the device-local guest values), and
+    // signed-in users who set only the minutes goal on the Silence step — a
+    // saved goal must always be visible somewhere. Signed-in minutes come from
+    // the server's sit stats. Begin opens the timer straight at the goal
+    // length; past goal it stays tappable to sit again.
+    ...(contemplationGoalMin > 0 && !morningContemplationActive && !eveningContemplationActive ? [{
       key: "silence", slot: "anytime" as CustomSlot, emoji: "🕯️", rgb: "62,124,122",
       done: contemplationMin >= contemplationGoalMin,
       href: `/contemplation?begin=1&sit=${contemplationGoalMin}`,
