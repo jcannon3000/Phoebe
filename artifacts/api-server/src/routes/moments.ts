@@ -1268,7 +1268,7 @@ router.post("/moments", perUserRateLimit("moments_create", {
       "",
       "———",
       "",
-      "Phoebe · A place set apart for connection",
+      "Phoebe · A daily rhythm of prayer",
     ].join("\n");
   }
 

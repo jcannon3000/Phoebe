@@ -354,8 +354,8 @@ if (fs.existsSync(frontendDist)) {
   // initial index.html before the SPA boots.
   const ogStaticOverrides: Record<string, { title: string; description: string }> = {
     "/church-deck": {
-      title: "How Phoebe Cultivates Connection",
-      description: "A place set apart for connection. Every day. Between Sundays.",
+      title: "How Phoebe Builds a Daily Habit of Prayer",
+      description: "A daily rhythm of prayer you build and keep. One day at a time.",
     },
     "/cobreathe": {
       title: "Creation Prayer — a prayer with all creation",
@@ -434,7 +434,7 @@ if (fs.existsSync(frontendDist)) {
           const title = `Pray Daily with ${group.name}`;
           const description = group.description && group.description.trim().length > 0
             ? group.description
-            : "A place set apart for connection. Every day. Between Sundays.";
+            : "A daily rhythm of prayer you build and keep. One day at a time.";
           res.type("html").send(renderIndexWithOg(title, description));
           return;
         }

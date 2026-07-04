@@ -32,7 +32,7 @@ export async function sendLetterInvitationCalendarEvent(params: {
         `You can read letters at the link above. To write back, you'll need a free Phoebe account.`,
         "",
         `──────────────────`,
-        `Be together with Phoebe.`,
+        `Pray daily with Phoebe.`,
       ].join("\n")
     : [
         `📮 ${creatorName} invited you to exchange letters.`,
@@ -43,7 +43,7 @@ export async function sendLetterInvitationCalendarEvent(params: {
         `You can read letters at the link above. To write back, you'll need a free Phoebe account.`,
         "",
         `──────────────────`,
-        `Be together with Phoebe.`,
+        `Pray daily with Phoebe.`,
       ].join("\n");
 
   try {
@@ -100,7 +100,7 @@ export async function sendLetterCalendarEvent(params: {
     `Then write back when it's your turn. 🌿`,
     "",
     `──────────────────`,
-    `Be together with Phoebe.`,
+    `Pray daily with Phoebe.`,
   ].join("\n");
 
   try {
@@ -143,7 +143,7 @@ export async function sendLetterWindowOpenCalendarEvent(params: {
     letterUrl,
     "",
     `──────────────────`,
-    `Be together with Phoebe.`,
+    `Pray daily with Phoebe.`,
   ].join("\n");
 
   try {
@@ -188,7 +188,7 @@ export async function sendLetterOverdueCalendarEvent(params: {
     letterUrl,
     "",
     `──────────────────`,
-    `Be together with Phoebe.`,
+    `Pray daily with Phoebe.`,
   ].join("\n");
 
   try {

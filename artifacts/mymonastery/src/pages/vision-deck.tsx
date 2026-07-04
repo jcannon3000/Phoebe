@@ -212,7 +212,7 @@ const SLIDES: Slide[] = [
     kind: "title",
     eyebrow: "Phoebe",
     headline: "A technology of holding",
-    sub: "Built on monastic life and the rule of life — to help a person be held by a practice, not left to sustain it alone.",
+    sub: "Built on monastic life and the rule of life — to help a person build a daily habit of prayer, and be held by it rather than left to sustain it alone.",
     mock: "home",
   },
   {

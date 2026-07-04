@@ -215,7 +215,7 @@ export default function ParishDashboard() {
           >
             {format(new Date(), "EEEE, d MMMM")}
           </h1>
-          <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+          <LiturgicalDateHeader feastOnly fallbackText="A Daily Rhythm of Prayer" />
 
           {/* Primary anchor. Feed-first home (the default for portal
               sign-ups) shows the featured feed's tall hero card; with no
