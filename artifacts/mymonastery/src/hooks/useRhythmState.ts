@@ -67,6 +67,10 @@ export type RhythmState = {
    *  chosen). A user who turns one off drops its card + dot + weekly row. */
   morningActive: boolean;
   silenceActive: boolean;
+  /** The single aggregate silence GOAL card (a goal is set but neither per-side
+   *  contemplation card is on) — its own dot in the pill, distinct from the two
+   *  per-side contemplation dots. */
+  soloSilenceActive: boolean;
   /** Per-side Contemplative Prayer — the Morning / Evening Contemplation cards.
    *  Each is its own card, kept independently (a sit from one side's card clears
    *  that side; evening stays visible after the morning sit meets the goal). */
@@ -696,6 +700,7 @@ export function useRhythmState(): RhythmState {
     eveningActive,
     morningActive,
     silenceActive,
+    soloSilenceActive,
     morningContemplationActive,
     eveningContemplationActive,
     morningContemplationDone,
