@@ -14,7 +14,8 @@ import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
-import { pickWideBackground } from "@/lib/wideBackgrounds";
+import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -34,6 +35,12 @@ const COBREATHE_TOP_PHOTOS = Object.values(
   }),
 ) as string[];
 const COBREATHE_PHOTOS = [...COBREATHE_TOP_PHOTOS];
+
+// The photo pool the breath rotates through, one per breath. On the WEB use the
+// wide landscape set (proper aspect for a desktop window — the bundled photos
+// are portrait and zoom/crop badly wide, owner); on iOS the wide set isn't
+// bundled, so keep the bundled library.
+const BREATH_PHOTOS: string[] = (!isNativeShell() && WIDE_PHOTOS.length > 0) ? WIDE_PHOTOS : COBREATHE_PHOTOS;
 
 // Fingerprint of the bundled photo set — two clients only sync if it matches,
 // so a build/version drift (different photos) safely falls back to solo order.
@@ -429,7 +436,7 @@ export default function CobreathePage() {
           totalBreaths={lengthBreaths}
           onReachTarget={handleReachTarget}
           onEnd={handleEnd}
-          photos={COBREATHE_PHOTOS}
+          photos={BREATH_PHOTOS}
           followSeed={breathSync.leader?.masterSeed}
           followStartEpochMs={breathSync.leader?.startEpochMs}
           onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
