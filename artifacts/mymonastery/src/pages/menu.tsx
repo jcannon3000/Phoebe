@@ -94,17 +94,16 @@ export default function MenuPage() {
   // Spiritual Journey are YouTube video courses → WEB ONLY. The Way of Love
   // (Bishop Budde) rides the podcast library, so it's the ONE course that also
   // works on iOS. So: three courses on the web, only one (Way of Love) on iOS.
+  // Courses belong to the LIGHT experience too — their routes are in the guest
+  // allowlist and the home's Learn band starts the Way of Love for a fresh
+  // guest — so there's no guest gating here, only the platform rule.
   const learn: MenuHubGroup = { header: "Learn", items: [] };
   if (!isNativeShell()) {
     learn.items.push({ emoji: "🕯️", label: "Centering Prayer", sub: "Learn the practice with Fr. Keating", onClick: () => go("/centering-prayer") });
-    if (!isGuest) {
-      learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
-    }
+    learn.items.push({ emoji: "🎓", label: "The Spiritual Journey", sub: "Keating's full contemplative series", onClick: () => go("/journey") });
   }
-  if (!isGuest) {
-    learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
-  }
-  if (learn.items.length) groups.push(learn);
+  learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
+  groups.push(learn);
 
   // El Jardín — study + formation tools (beta only).
   if (rawIsBeta) {
