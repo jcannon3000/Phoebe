@@ -325,6 +325,7 @@ const JardinNextSundayPage = lazy(() => import("./pages/jardin-next-sunday"));
 const JardinLeaderboardPage = lazy(() => import("./pages/jardin-leaderboard"));
 const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
 const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
+const MenuLearnPage = lazy(() => import("./pages/menu-learn"));
 const MenuReflectionsPage = lazy(() => import("./pages/menu-reflections"));
 const ReflectionReadPage = lazy(() => import("./pages/reflection-read"));
 const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
@@ -805,7 +806,7 @@ function PilotGate({ children }: { children: ReactNode }) {
 // would loop). No-op entirely when guest mode isn't active.
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
-  "/menu", "/menu/bcp", "/menu/practices", "/menu/reflections", "/menu/resources",
+  "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/resources",
   "/psalms", "/contemplation", "/reflect/fdd",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
@@ -1008,6 +1009,7 @@ function Router() {
       <Route path="/jardin/leaderboard" component={JardinLeaderboardPage} />
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
+      <Route path="/menu/learn" component={MenuLearnPage} />
       <Route path="/menu/reflections" component={MenuReflectionsPage} />
       <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />

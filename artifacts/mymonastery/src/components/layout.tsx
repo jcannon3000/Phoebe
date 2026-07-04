@@ -384,6 +384,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
                   <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
                   <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
+                  {/* Learn — the courses tab (Centering Prayer + The Spiritual
+                      Journey on web; The Way of Love everywhere). Everyone sees
+                      it, guests included — courses are part of the light
+                      experience. */}
+                  <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
                 </>
               )}
               {/* El Jardín. For a SEALED Jardín account the drawer IS the El
