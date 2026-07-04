@@ -32,6 +32,7 @@ import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache"
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { notificationsSupportedHere } from "@/lib/notifSupport";
 import {
   setSideLevel,
   setSideReflection,
@@ -1773,6 +1774,11 @@ export default function WayOfLoveRuleFlow({
             </div>
           </>
         )}
+        {/* Reminder picker — only where a push can actually arrive (the iOS
+            shell, or Android mobile web). On desktop / iOS-Safari web there is
+            no notification surface at all; the committed reminder pref simply
+            keeps its default for when they get the app. */}
+        {notificationsSupportedHere() && (<>
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
         </p>
@@ -1816,6 +1822,7 @@ export default function WayOfLoveRuleFlow({
             ? t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })
             : t("wol_rule.reminder_note_off", { side: cap.toLowerCase(), defaultValue: `No ${cap.toLowerCase()} reminder — this practice still counts toward your rhythm.` })}
         </p>
+        </>)}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );

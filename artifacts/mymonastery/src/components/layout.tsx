@@ -11,6 +11,7 @@ import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotOpen, type CustomS
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -269,10 +270,37 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </button>
             </div>
 
-            {/* ── Profile ── (signed-in only: a signed-OUT guest has no
-                account row — Settings stays reachable below. Keyed on `user`,
-                not isGuest: a widened signed-in guest still has an account.) */}
-            {!!user && (
+            {/* ── Profile / Sign in ── an ACCOUNT-LESS session (signed out, or
+                the anonymous device user — whose synthetic anon-…@device
+                address must never show) gets a Sign in / Sign up block that
+                names the reason: saving the rhythm. Real accounts keep the
+                profile row. */}
+            {(!user || user.isAnonymous) && (
+              <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+                <button
+                  type="button"
+                  onClick={() => navigate("/signin")}
+                  className="w-full flex items-center gap-3 text-left transition-opacity hover:opacity-80"
+                  style={{ background: "transparent", cursor: "pointer" }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    <LogIn size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {t("menu.sign_in_up", { defaultValue: "Sign in / Sign up" })}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                      {t("menu.sign_in_up_sub", { defaultValue: "Save your daily rhythm across devices." })}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
+            {!!user && !user.isAnonymous && (
             <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Tapping the profile (avatar / name / email) opens
                   Settings — navigate() closes the drawer first. */}
@@ -449,7 +477,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 Keyed on `user` too, so a widened SIGNED-IN guest keeps Sign
                 out. */}
             <div className="px-5 py-4 flex-1 flex flex-col justify-end">
-              {isGuest && !user ? (
+              {/* Account-less sessions (signed out OR the anonymous device
+                  user) have nothing to sign OUT of — the quiet row is a second
+                  Sign in / Sign up door instead. */}
+              {!user || user.isAnonymous ? (
                 <button
                   onClick={() => navigate("/signin")}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
@@ -458,7 +489,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
                 >
                   <LogIn size={15} />
-                  {t("menu.sign_in", { defaultValue: "Sign in" })}
+                  {t("menu.sign_in_up", { defaultValue: "Sign in / Sign up" })}
                 </button>
               ) : (
                 <button
@@ -1516,6 +1547,9 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
 
 export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false, onClose }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number; chromeless?: boolean; onClose?: () => void }) {
   const { user } = useAuth();
+  // Guest SHAPE — light users get no "+" create FAB (its entries are all
+  // full-app prayer features).
+  const { isGuest } = useGuestMode();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { t } = useTranslation();
   // Beta testers get the "Way of Love" header pill (opens the progress
@@ -1606,7 +1640,13 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           </Link>
         </div>
 
-        {user && (
+        {/* Render the header pills IMMEDIATELY when the public version is on —
+            gating on `user` made both pills (and the Menu button!) wait out
+            the /auth/me round-trip, which read as "the menu takes a while to
+            load" (and a signed-out guest got NO menu at all until the
+            anonymous session landed). The pills are local-first; nothing in
+            them needs the account. */}
+        {(user || PHOEBE_GUEST_ENABLED) && (
           <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
             {/* Daily-progress pill — the four dots reflect today's rhythm;
                 tapping opens /daily-progress. Hidden for the offices-only tier
@@ -1657,8 +1697,11 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
         </motion.div>
       </main>
 
-      {/* Create "+" FAB, bottom-right (Menu lives top-right in the header). */}
-      {user && <CreateFab />}
+      {/* Create "+" FAB, bottom-right (Menu lives top-right in the header).
+          FULL app only — every entry it opens (prayer request, community
+          intercession, event) is closed to light users, so they get no dead
+          plus button. */}
+      {user && !isGuest && <CreateFab />}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -1243,6 +1244,37 @@ export default function ContemplationPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* ── Learn the practice — Fr. Keating's two courses (web only; both
+            are YouTube video courses, so the iOS shell doesn't list them). */}
+        {!isNativeShell() && (
+          <div className="mt-10">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                {t("contemplation.learn_heading", { defaultValue: "Learn" })}
+              </h3>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+            </div>
+            <div className="space-y-2.5">
+              <Link href="/centering-prayer" className="block rounded-xl px-4 py-3.5" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}>
+                <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                  {t("contemplation.learn_centering", { defaultValue: "Centering Prayer" })}
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
+                  {t("contemplation.learn_centering_sub", { defaultValue: "Learn the practice with Fr. Thomas Keating" })}
+                </p>
+              </Link>
+              <Link href="/journey" className="block rounded-xl px-4 py-3.5" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}>
+                <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                  {t("contemplation.learn_journey", { defaultValue: "The Spiritual Journey" })}
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
+                  {t("contemplation.learn_journey_sub", { defaultValue: "Keating's full contemplative series" })}
+                </p>
+              </Link>
+            </div>
+          </div>
         )}
         </>)}
       </motion.div>

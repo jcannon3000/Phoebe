@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { notificationsSupportedHere } from "@/lib/notifSupport";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1925,10 +1926,14 @@ export default function SettingsPage() {
           <HomeDisplaySettings />
         </div>
 
-        {/* ── Office reminders ── */}
+        {/* ── Office reminders — only where a push can actually arrive (the
+              iOS shell, or Android mobile web). Desktop / iOS-Safari web get
+              no notification UI at all. ── */}
+        {notificationsSupportedHere() && (
         <div className="mb-8">
           <OfficeReminderSettings />
         </div>
+        )}
 
         {/* ── Language — full app only; the public version is English-only
               (no Spanish row). ── */}
@@ -1961,10 +1966,12 @@ export default function SettingsPage() {
         </div>
         )}
 
-        {/* ── Notifications master switch ── */}
+        {/* ── Notifications master switch — same platform rule as reminders. ── */}
+        {notificationsSupportedHere() && (
         <div className="mb-8">
           <NotificationsSettings />
         </div>
+        )}
 
         {/* ── Email opt-in/out — full app only; the public version sends the
               light user no emails (the anonymous address isn't real anyway). ── */}
