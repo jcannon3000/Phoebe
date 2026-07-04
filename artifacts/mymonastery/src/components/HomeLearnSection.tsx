@@ -103,18 +103,19 @@ export function HomeLearnSection() {
   if (show.length === 0) return null;
 
   // Fade-up cascade like the rhythm cards — the header rises first, each course
-  // card a beat behind. Triggered when the section scrolls INTO view (it sits
-  // below the fold, so an on-mount animate would play off-screen and be missed);
-  // `once` so it doesn't replay each time you scroll past.
+  // card a beat behind. Held hidden until the SECTION scrolls into view (it sits
+  // below the fold, so an on-mount cascade would play off-screen and be missed),
+  // then the whole cascade fires once, top-to-bottom, via the per-index delay.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, amount: 0.25 });
   const enterUp = (i: number) => ({
     initial: { opacity: 0, y: 10 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, amount: 0.3 },
+    animate: inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 1.2) },
   });
 
   return (
-    <div className="mt-10">
+    <div className="mt-10" ref={rootRef}>
       {/* Same header recipe as the daily spine's "Next" / "Done" headings
           (DailyProgressBody.sectionHeader) so the sections read as siblings. */}
       <motion.div {...enterUp(0)} className="flex items-center gap-3 mb-2">
