@@ -265,7 +265,9 @@ export const REMINDER_TIME: Record<TimeOfDay, string> = {
 // Minutes-available chip → office depth. Short office for a few minutes; the
 // full office when there's room.
 export function officeDepthForMinutes(minutes: number): "short" | "full" {
-  return minutes >= 12 ? "full" : "short";
+  // The full office is presented as ~10 minutes app-wide (devotion ~5), so
+  // ten available minutes is enough for the full form.
+  return minutes >= 10 ? "full" : "short";
 }
 
 // Minutes-available → a sensible contemplative-silence length (the Pray
