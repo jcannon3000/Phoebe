@@ -13,6 +13,7 @@ export default function WalkLogPage() {
       whatLabel="Where did you walk?"
       whatPlaceholder="A trail, a neighborhood, a garden…"
       logCta="Log today's walk"
+      plainBackground
     />
   );
 }

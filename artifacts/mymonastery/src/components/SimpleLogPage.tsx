@@ -37,7 +37,7 @@ const FROST_CTA = {
 type ServerEntry = { id: number; day: string; what: string; notes: string; createdAt: string };
 type View = "log" | "history";
 
-export function SimpleLogPage({ kind, practiceKey, title, subtitle, emoji, whatLabel, whatPlaceholder, logCta }: {
+export function SimpleLogPage({ kind, practiceKey, title, subtitle, emoji, whatLabel, whatPlaceholder, logCta, plainBackground = false }: {
   kind: string;
   practiceKey: OptionalPractice;
   title: string;
@@ -46,11 +46,14 @@ export function SimpleLogPage({ kind, practiceKey, title, subtitle, emoji, whatL
   whatLabel: string;
   whatPlaceholder: string;
   logCta: string;
+  // When true, skip the leaf photo and let RiseSheet's solid green show
+  // through — the Contemplative Walk wants a plain green ground (owner).
+  plainBackground?: boolean;
 }) {
   const [view, setView] = useState<View>("log");
   const [what, setWhat] = useState("");
   const [notes, setNotes] = useState("");
-  const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  const bgPhoto = useMemo(() => (plainBackground || LEAF_PHOTOS.length === 0 ? null : LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]!), [plainBackground]);
 
   const qc = useQueryClient();
   const listKey = [`/api/practice-log/${kind}`];
