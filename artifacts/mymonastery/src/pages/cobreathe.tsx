@@ -8,10 +8,8 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
-import { CobreathePrayerIntro } from "@/components/CobreathePrayerIntro";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useAuth } from "@/hooks/useAuth";
-import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
@@ -172,17 +170,12 @@ export default function CobreathePage() {
   // the "before you begin" screen (settings + Start Breathing) and then the
   // breath. A ?start=1 quick-launch (e.g. the home card) skips both and goes
   // straight into the synced breath.
-  const [mode, setMode] = useState<"prayer" | "intro" | "breathing" | "done">(() =>
-    wantsStart() ? "breathing" : "prayer",
+  // The Laurel Kearns "Prayer of Con-Spiring" slideshow is removed (owner) —
+  // landing on /cobreathe goes straight to the "before you begin" screen for
+  // everyone (a ?start=1 quick-launch still jumps into the breath).
+  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
+    wantsStart() ? "breathing" : "intro",
   );
-  // PUBLIC no-login version: guests skip the Kearns prayer slideshow entirely —
-  // straight to the breath-selection ("before you begin") screen. An effect
-  // (not the initializer) because auth may still be resolving on first render;
-  // it only ever bumps "prayer" → "intro", never disturbs a running breath.
-  const { isGuest } = useGuestMode();
-  useEffect(() => {
-    if (isGuest) setMode((m) => (m === "prayer" ? "intro" : m));
-  }, [isGuest]);
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
   const [lengthBreaths, setLengthBreaths] = useState<number>(DEFAULT_TOTAL_BREATHS);
@@ -414,15 +407,6 @@ export default function CobreathePage() {
   // overlay (no Layout chrome), rendered before the "before you begin" screen.
   // Its final slide's "Begin breathing" hands to the intro (Skip does too), so
   // the reader still lands on the length/settings screen before the breath.
-  if (mode === "prayer") {
-    return (
-      <CobreathePrayerIntro
-        onDone={() => setMode("intro")}
-        onSkip={() => setMode("intro")}
-      />
-    );
-  }
-
   // Breathing is a full-screen portal — render it WITHOUT the Layout chrome
   // (app header + page background) so navigating in doesn't flash the page
   // behind the breath for a frame. (The breath's own opaque field covers the

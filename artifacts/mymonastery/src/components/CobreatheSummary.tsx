@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 
 // ── CobreatheSummary ─────────────────────────────────────────────────────────
 //
@@ -67,6 +70,15 @@ export function CobreatheSummary({
   onEntered?: () => void;
 }) {
   const { t } = useTranslation();
+  // A still landscape behind the close — the SAME treatment as the
+  // contemplation end-of-sit screen (wide web photo / bundled EARTH on native,
+  // washed heavily in the home green so the text stays legible). This is the
+  // "make the closing slide look like the contemplation close" the owner asked
+  // for; the two-overlapping-circles motif is gone.
+  const bgPhoto = useMemo(
+    () => pickWideBackground() ?? (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+    [],
+  );
   return (
     <motion.div
       className="flex flex-col"
@@ -76,32 +88,23 @@ export function CobreatheSummary({
       onAnimationComplete={() => { if (fadeOut) onFadeOutComplete?.(); else onEntered?.(); }}
       style={{
         position: "fixed", inset: 0, zIndex: 60,
-        // STATIC gradient — the drifting AnimatedBackground was removed here
-        // because its blobs popped in as the summary mounted ("the background
-        // glitches in"). A still gradient gives depth with nothing to animate.
-        background: "radial-gradient(120% 80% at 50% 30%, #122E20 0%, #0A1C14 65%)",
+        background: "#0A1C14",
         paddingTop: "var(--safe-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
         overflow: "hidden",
       }}
     >
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto relative">
-        {/* Two equal circles overlapping vertically — "breathing together / the
-            same air." The overlap is the golden section: the non-overlapping
-            part of each circle is 1.618× the overlap (so total height = 1.618·D).
-            For diameter D, overlap o = D/2.618, centres offset by D − o = 0.618·D. */}
-        {(() => {
-          const D = 52, r = D / 2, off = 0.618 * D, H = D + off; // H = 1.618·D
-          return (
-            <svg width={D} height={H} viewBox={`0 0 ${D} ${H}`} className="mb-4" aria-hidden>
-              <circle cx={r} cy={r} r={r - 1} fill="rgba(111,175,133,0.45)" stroke="rgba(140,205,160,0.9)" strokeWidth={1.5} />
-              <circle cx={r} cy={r + off} r={r - 1} fill="rgba(150,135,200,0.45)" stroke="rgba(176,158,224,0.9)" strokeWidth={1.5} />
-            </svg>
-          );
-        })()}
+      {/* Full-bleed landscape + green wash — mirrors ContemplationTimer's close. */}
+      {bgPhoto && (
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+          <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16, 0.550) 0%, rgba(9,26,16, 0.792) 55%, rgba(9,26,16, 0.946) 100%)" }} />
+        </div>
+      )}
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto relative" style={{ zIndex: 1 }}>
         {/* Eyebrow — same shape as the contemplation close's tiny uppercase line. */}
         <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-          {t("cobreathe.summary_eyebrow", { defaultValue: "Co-Breathe complete" })}
+          {t("cobreathe.summary_eyebrow", { defaultValue: "Creation Prayer complete" })}
         </p>
         {/* Breaths this session — the headline, in the contemplation close's big
             italic serif (was a bold Space Grotesk number). */}
