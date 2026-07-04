@@ -3890,22 +3890,8 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
             >
               {eyebrow}
             </p>
-            {/* Customize → the per-side office wizard (depth, way to pray,
-                confession, reflection). The only pill on the card now;
-                Prayer list lives in the header next to Menu. */}
-            <Link
-              href="/rule-of-life"
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
-              style={{
-                background: "rgba(46,107,64,0.22)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.4)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-              aria-label={t("dashboard.office_customize", { defaultValue: "Shape your rule of life" })}
-            >
-              {t("dashboard.office_customize_short", { defaultValue: "Shape your rhythm" })}
-            </Link>
+            {/* Customize pill removed from the hero card per owner — the
+                rule-of-life customizer stays reachable from the menu. */}
           </div>
           {/* LEFT  column = title + "N people prayed with you this week"
               RIGHT column = avatar stack only (no copy beside it).
