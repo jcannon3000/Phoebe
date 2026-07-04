@@ -1,0 +1,7 @@
+/* The Creation Prayer app reuses Phoebe's stylesheet (Tailwind + fonts +
+   theme) wholesale, then tells Tailwind v4 to also scan the shared Phoebe
+   components so their utility classes aren't purged. */
+@import "../../mymonastery/src/index.css";
+
+@source "../../mymonastery/src";
+@source "./";
