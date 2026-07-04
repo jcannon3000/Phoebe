@@ -26,6 +26,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import SimpleRuleEditor from "@/components/SimpleRuleEditor";
 import {
   setSideLevel,
   setSideEntry,
@@ -347,6 +348,8 @@ export default function RuleOfLifePage() {
   // (The questionnaire phases below stay in the file but are no longer
   // reached; WayOfLoveStep is self-contained and runs fine with defaults.)
   const [phase, setPhase] = useState<Phase>("practices");
+  // Guests start on the simple editor; this flips them into the full slideshow.
+  const [showFullFlow, setShowFullFlow] = useState(false);
   const [mode, setMode] = useState<Mode>("self");
   const [subjectName, setSubjectName] = useState("");
   const [slideIndex, setSlideIndex] = useState(0);
@@ -862,12 +865,29 @@ export default function RuleOfLifePage() {
         {/* Hold the flow until the guest shape is settled — mounting it while
             /auth/me is in flight would run one render as the FULL flow and let
             its office-prefs hydration overwrite the seeded rule. */}
+        {/* Guests / light-mode land on the SIMPLE editor: their current rule of
+            life shown as tappable cards (tap a card → focused sheet → save), a
+            reset-to-default, and a "Full customization" link into the complete
+            slideshow. Signed-in customizers get the full flow directly. */}
         {!guestLoading && (
-          <WayOfLoveRuleFlow
-            guest={guestFlow}
-            onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
-            onDone={() => setLocation("/daily-progress")}
-          />
+          guestFlow && !showFullFlow ? (
+            <SimpleRuleEditor
+              onFull={() => setShowFullFlow(true)}
+              onDone={() => setLocation("/daily-progress")}
+            />
+          ) : (
+            <WayOfLoveRuleFlow
+              guest={guestFlow}
+              onBack={() =>
+                guestFlow && showFullFlow
+                  ? setShowFullFlow(false)
+                  : result
+                  ? setPhase("result")
+                  : setLocation("/daily-progress")
+              }
+              onDone={() => setLocation("/daily-progress")}
+            />
+          )
         )}
       </Layout>
     );
