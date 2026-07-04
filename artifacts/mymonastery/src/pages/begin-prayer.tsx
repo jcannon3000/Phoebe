@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getSideLevel, getSideEntry, type OfficeSide } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 
 // /begin-prayer — landing page for the iOS "Begin prayer" home-screen
 // shortcut. iOS quick actions are static (configured in Info.plist),
@@ -44,11 +45,18 @@ export default function BeginPrayerPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    // PUBLIC no-login version: a guest prays from DEVICE prefs — the seeded
+    // rule lives in localStorage and the offices below are public, so resolve
+    // exactly like a signed-in user. (The old signed-out bounce went to /pray,
+    // which isn't even in the guest allowlist — GuestGate threw the visitor
+    // straight back to the home, so the hero's "Begin prayer" did nothing.)
+    if (!user && !PHOEBE_GUEST_ENABLED) {
       setLocation("/pray", { replace: true });
       return;
     }
-    if (prefsLoading || historyLoading) return;
+    // Server prefs/history only exist for a session with a user — a signed-out
+    // guest's queries are disabled and would report "loading" forever.
+    if (user && (prefsLoading || historyLoading)) return;
 
     // Which side to pray. An explicit ?side= (set by a Morning/Evening card)
     // WINS over the clock, so tapping "Morning Devotion" after noon still opens

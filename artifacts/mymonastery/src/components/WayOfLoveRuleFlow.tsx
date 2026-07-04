@@ -21,7 +21,6 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { RhythmWhyIntro } from "@/components/RhythmWhyIntro";
-import { isCommitmentActive, startCommitment } from "@/lib/commitment";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -2171,6 +2170,15 @@ export default function WayOfLoveRuleFlow({
       sub: silenceMode === "grow" ? "Growing toward 30 min" : (goalMin > 0 ? `${goalMin} min a day` : "A silent sit"),
       step: "contemplation-goal" as Step,
     }))),
+    // SOLO silence goal — minutes set with no per-side contemplation: the home
+    // shows the single "Silence" progress card, so the review names it too
+    // (otherwise a saved goal looks like it didn't take).
+    ...((goalMin > 0 && !contemplationBySide.morning && !contemplationBySide.evening) ? [{
+      emoji: (silenceMode === "grow" ? "🌱" : "🕯️"),
+      label: "Silence",
+      sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
+      step: "contemplation-goal" as Step,
+    }] : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
     ...(contemplative.scripture ? [{ emoji: "📖", label: "Listen to Scripture", sub: SLOT_LABEL[slotByPractice.scripture], step: "contemplative" as Step }] : []),
@@ -2365,27 +2373,12 @@ export default function WayOfLoveRuleFlow({
       <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
         {t("wol_rule.done_edit_hint", { defaultValue: "Tap any practice to adjust it." })}
       </p>
-      {/* First-time authors are invited to commit to a month — the trial that
-          carries a practice through its fragile early stretch. Grace is built in:
-          the day count never resets on a miss. Anyone already mid-trial just
-          keeps their rhythm. */}
-      {isCommitmentActive() ? (
-        <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-          {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
-        </button>
-      ) : (
-        <>
-          <p style={{ textAlign: "center", color: SAGE, fontSize: 13, fontFamily: FONT, lineHeight: 1.55, margin: "18px auto 0", maxWidth: 320 }}>
-            {t("wol_rule.commit_blurb", { defaultValue: "A practice takes about thirty days to stop being something you hold and start being something that holds you." })}
-          </p>
-          <button onClick={() => { startCommitment(); if (user && !user.isAnonymous && !guest && !prescribe) setInviteStage(true); else onDone(); }} style={{ marginTop: 12, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-            {t("wol_rule.commit_cta", { defaultValue: "Keep this rhythm for 30 days" })}
-          </button>
-          <button onClick={onDone} style={{ marginTop: 10, background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
-            {t("wol_rule.commit_skip", { defaultValue: "or just begin quietly" })}
-          </button>
-        </>
-      )}
+      {/* One plain closing CTA — the "Keep this rhythm for 30 days" commitment
+          offer is removed (owner, 2026-07-03). Full-app authors still get the
+          rhythm-party invite stage after keeping the rule. */}
+      <button onClick={() => { if (user && !user.isAnonymous && !guest && !prescribe) setInviteStage(true); else onDone(); }} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+        {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
+      </button>
       {/* WEB save = an account (owner, 2026-07-03): on the web, browser storage
           is ephemeral — an account is what makes the rule durable. Offered to
           guests (no user, or the anonymous device user) on web only; the rhythm
