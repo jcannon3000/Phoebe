@@ -62,7 +62,12 @@ export default function Onboarding() {
     : null;
 
   useEffect(() => {
-    if (!isLoading && user) {
+    // A REAL account → into the app. But the public no-login version gives
+    // every logged-out visitor a silent ANONYMOUS device user, which is still
+    // a truthy `user` — bouncing on it sent "Sign in / Sign up" straight back
+    // to /dashboard (a dead button). An anonymous user MUST reach this form to
+    // upgrade to a real account; only redirect once they actually have one.
+    if (!isLoading && user && !user.isAnonymous) {
       setLocation(explicitRedirect ?? "/dashboard");
     }
   }, [user, isLoading, setLocation, explicitRedirect]);
