@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, getSideLevel, type ReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -628,11 +628,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // or not), so the card reads "kept" when done, else the sit length. The daily
   // minutes goal + ladder still set the timer length; they no longer gate the
   // per-side card (so evening stays inviting after the morning sit met the goal).
-  const contemplationBlurbFor = (done: boolean) => done
+  // Each side's card carries its OWN sit length (the customizer's per-side
+  // picker, 5–30) — never the daily minutes goal (a 90-minute goal must not
+  // read "90 minutes" on each card — owner). Out-of-range stored values are
+  // legacy goal-splash artifacts and fall back to a gentle 15.
+  const sideSitMin = (side: "morning" | "evening"): number => {
+    const raw = getSideMinutes(side);
+    return raw >= 5 && raw <= 30 ? raw : 15;
+  };
+  const contemplationBlurbFor = (done: boolean, mins: number) => done
     ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
-    : contemplationGoalMin > 0
-      ? t("rhythm.contemplation_side_len", { mins: contemplationGoalMin, defaultValue: `${contemplationGoalMin} minutes of loving God in silence` })
-      : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
+    : t("rhythm.contemplation_side_len", { mins, defaultValue: `${mins} minutes of loving God in silence` });
 
   const officeTitle = (side: "Morning" | "Evening") => {
     // Praying the Psalms IS this side's prayer → the card reads "Morning Psalms"
@@ -795,19 +801,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // the morning sit met the daily minutes goal.
     ...(morningContemplationActive ? [{
       key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: morningContemplationDone,
-      // With a set sit length, Begin opens straight into a timer at that length
-      // (?sit=N), skipping the length picker.
-      href: `/contemplation?begin=1&side=morning${contemplationGoalMin > 0 ? `&sit=${contemplationGoalMin}` : ""}`,
+      // Begin opens straight into a timer at THIS SIDE's sit length (?sit=N),
+      // skipping the length picker.
+      href: `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`,
       title: t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
-      blurb: contemplationBlurbFor(morningContemplationDone),
+      blurb: contemplationBlurbFor(morningContemplationDone, sideSitMin("morning")),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     ...(eveningContemplationActive ? [{
       key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
-      href: `/contemplation?begin=1&side=evening${contemplationGoalMin > 0 ? `&sit=${contemplationGoalMin}` : ""}`,
+      href: `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`,
       title: t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
-      blurb: contemplationBlurbFor(eveningContemplationDone),
+      blurb: contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening")),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),

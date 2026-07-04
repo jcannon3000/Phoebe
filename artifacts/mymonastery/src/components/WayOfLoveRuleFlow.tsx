@@ -37,6 +37,7 @@ import {
   setSideLevel,
   setSideReflection,
   setSideMinutes,
+  getSideMinutes,
   setReflectionSource,
   setSideEntry,
   getSideLevel,
@@ -466,6 +467,19 @@ export default function WayOfLoveRuleFlow({
     morning: getSideEntry("morning"),
     evening: getSideEntry("evening"),
   }));
+  // Per-side SIT LENGTH — each side's contemplation card opens a sit of THIS
+  // length; it is NOT the daily minutes goal (a 90-minute goal must never put
+  // "90 minutes" on each card — owner). Values outside the picker's 5–30
+  // range are legacy artifacts of the old goal-splash and read as unset.
+  const sideSit = (side: OfficeSide): number => {
+    const raw = getSideMinutes(side);
+    return raw >= 5 && raw <= 30 ? raw : 15;
+  };
+  const [minutesBySide, setMinutesBySide] = useState<Record<OfficeSide, number>>(() => ({
+    morning: sideSit("morning"),
+    evening: sideSit("evening"),
+  }));
+  const chooseSideMinutes = (side: OfficeSide, m: number) => { touchedRef.current = true; setMinutesBySide((prev) => ({ ...prev, [side]: m })); };
   // Multiple daily reflections may be followed — each shows its own home card
   // and counts toward the Reflect anchor. The home reads the chosen set from the
   // home-layout cards (cac/fdd/ssje), so seed from THOSE — otherwise re-opening
@@ -860,7 +874,8 @@ export default function WayOfLoveRuleFlow({
         setSideReflection(side, primary);
         persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         setSideContemplation(side, contemplationBySide[side]);
-        if (effGoalMin > 0) setSideMinutes(side, effGoalMin);
+        // Sit length is per side (config picker), NOT the daily goal.
+        if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
       } else {
         setSideLevel(side, "ask");
         persistCommunityWithOffice(side, false);
@@ -950,7 +965,9 @@ export default function WayOfLoveRuleFlow({
         persistCommunityWithOffice(side, prayBySide[side] !== "community" && communityWithOffice[side]);
         // Per-side Contemplative Prayer → the home's Morning/Evening Contemplation card.
         setSideContemplation(side, contemplationBySide[side]);
-        if (effGoalMin > 0) setSideMinutes(side, effGoalMin);
+        // Sit length is per side (config picker), NOT the daily goal — a
+        // 90-minute goal must not put a 90-minute sit on each card (owner).
+        if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
       } else {
         // Not part of their chosen rhythm — clear the level so it isn't a
         // programmed office for that side.
@@ -1123,7 +1140,13 @@ export default function WayOfLoveRuleFlow({
     try {
       const id = new URLSearchParams(window.location.search).get("adopt");
       const preset = id ? RULE_PRESETS.find((p) => p.id === id) : null;
-      if (preset) { setShowWhy(false); adoptRule(preset); }
+      // NEVER silently replace an EXISTING rule — the Centering course's
+      // practice bridge lands here with ?adopt=centering, and one tap was
+      // wiping a person's Morning/Evening offices ("it reverted back to
+      // contemplation"). Auto-adopt is for first authors only; anyone with a
+      // rule lands in their normal customizer, rule intact.
+      const hasRule = !!(getExplicitSideLevel("morning") || getExplicitSideLevel("evening"));
+      if (preset && !hasRule) { setShowWhy(false); adoptRule(preset); }
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1147,6 +1170,12 @@ export default function WayOfLoveRuleFlow({
     // Starter rules carry a fixed minutes goal — adopt the fixed sizing, not the ladder.
     setSilenceMode("fixed");
     setGoal(String(preset.silence ? preset.goalMin : 0));
+    // The preset's sit IS its promise ("5 minutes of silence" = one 5-minute
+    // sit) — size each side's card to it.
+    setMinutesBySide({
+      morning: preset.silence && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
+      evening: preset.silence && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
+    });
     setNewsletters(preset.reflections);
     setExtras({ gratitude: false, examen: false, listening: false, journaling: false, reading: false, podcasts: false, prayerList: false });
     try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
@@ -1760,14 +1789,11 @@ export default function WayOfLoveRuleFlow({
             </p>
             <div style={{ position: "relative", marginBottom: 4 }}>
               <select
-                value={String(goalMin > 0 ? goalMin : 5)}
-                onChange={(e) => { chooseGoal(e.target.value); chooseSilenceMode("fixed"); }}
+                value={String(minutesBySide[side])}
+                onChange={(e) => chooseSideMinutes(side, parseInt(e.target.value, 10) || 15)}
                 aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
                 style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
               >
-                {goalMin > 0 && ![5, 10, 15, 20, 30].includes(goalMin) && (
-                  <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
-                )}
                 {[5, 10, 15, 20, 30].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
               </select>
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>

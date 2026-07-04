@@ -10,6 +10,7 @@
 // Budde's Way of Love (an audio course on the podcast player) appears.
 
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 import { Play } from "lucide-react";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useCourseProgress } from "@/lib/courseProgress";
@@ -100,20 +101,28 @@ export function HomeLearnSection() {
   const show = active.length > 0 ? active : wolCard && wolCard.done < wolCard.total ? [wolCard] : [];
   if (show.length === 0) return null;
 
+  // Same fade-up cascade as the rhythm cards above — the header rises first,
+  // each course card follows a beat behind.
+  const enterUp = (i: number) => ({
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 1.2) },
+  });
+
   return (
     <div className="mt-10">
       {/* Same header recipe as the daily spine's "Next" / "Done" headings
           (DailyProgressBody.sectionHeader) so the sections read as siblings. */}
-      <div className="flex items-center gap-3 mb-2">
+      <motion.div {...enterUp(0)} className="flex items-center gap-3 mb-2">
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>Learn</h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
+      </motion.div>
       <div className="space-y-3">
-        {show.map((c) => {
+        {show.map((c, cardIdx) => {
           const pct = Math.round((c.done / Math.max(1, c.total)) * 100);
           return (
+            <motion.div key={c.key} {...enterUp(cardIdx + 1)}>
             <button
-              key={c.key}
               onClick={() => setLocation(c.href)}
               className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-95 active:scale-[0.99]"
               style={{ ...FROST, background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
@@ -144,6 +153,7 @@ export function HomeLearnSection() {
                 </span>
               </div>
             </button>
+            </motion.div>
           );
         })}
       </div>
