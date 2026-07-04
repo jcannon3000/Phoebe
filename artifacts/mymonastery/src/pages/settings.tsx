@@ -260,9 +260,9 @@ function LanguageSettings() {
   });
 
   const current: "en" | "es" = user?.locale ?? "en";
+  // Spanish removed — the app is English-only (owner). Español option dropped.
   const options: Array<{ value: "en" | "es"; label: string; sub: string }> = [
     { value: "en", label: t("settings.language_english"), sub: t("settings.language_english_sub") },
-    { value: "es", label: t("settings.language_spanish"), sub: t("settings.language_subtitle") },
   ];
 
   return (

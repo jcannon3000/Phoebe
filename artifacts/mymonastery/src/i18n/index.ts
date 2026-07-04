@@ -32,13 +32,9 @@ export type SupportedLocale = typeof SUPPORTED_LOCALES[number];
 // is the source of truth on the client; server returns the same value
 // on /me which we then re-sync via i18n.changeLanguage().
 function readInitialLocale(): SupportedLocale {
-  try {
-    const raw = localStorage.getItem("phoebe:locale");
-    if (raw === "es") return "es";
-    return "en";
-  } catch {
-    return "en";
-  }
+  // Spanish removed — the app is English-only (owner). Ignore any stored "es"
+  // preference so existing users always render in English; es is never loaded.
+  return "en";
 }
 
 void i18n
