@@ -1935,13 +1935,7 @@ export default function SettingsPage() {
         </div>
         )}
 
-        {/* ── Language — full app only; the public version is English-only
-              (no Spanish row). ── */}
-        {!isGuest && (
-        <div className="mb-8">
-          <LanguageSettings />
-        </div>
-        )}
+        {/* Language settings removed — the app is English-only. */}
 
         {/* ── Offices-only extras (tier-gated) ── */}
         {user.accessTier === "offices-only" && (
