@@ -239,20 +239,46 @@ function DailyGoalCard({
   saving: boolean;
 }) {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const hasGoal = goalMinutes > 0;
 
   // iOS only: meditation logged in OTHER apps (Calm, Insight Timer, Apple
   // Mindfulness) lands in Apple Health as Mindful Minutes. We read today's
   // total — excludeOwn drops the sits Phoebe itself wrote back to Health, so
-  // they're never double-counted — and fold it into the goal below. Access is
-  // requested + synced automatically (no connect button); keyed by local day
-  // so it refetches across midnight.
+  // they're never double-counted — and fold it into the goal below. Keyed by
+  // local day so it refetches across midnight.
   const healthQ = useQuery<{ minutes: number; sessions: number } | null>({
     queryKey: ["apple-health-mindful-external", new Date().toLocaleDateString("en-CA")],
     queryFn: () => getMindfulMinutesToday(true),
     enabled: appleHealthAvailable(),
     staleTime: 5 * 60_000,
   });
+
+  // Whether the user has connected Apple Health on THIS install. The flag is
+  // localStorage-only, so deleting + re-downloading the app clears it even
+  // though iOS keeps the underlying HealthKit grant. Surface a Connect button
+  // right here on the stats page (not just buried in Settings) so a fresh
+  // install can re-authorize + re-arm the sync without hunting for it.
+  const [healthConnected, setHealthConnected] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
+  });
+  const [connectingHealth, setConnectingHealth] = useState(false);
+  const connectHealth = async () => {
+    setConnectingHealth(true);
+    try {
+      await requestMindfulAuthorization();
+      try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
+      setHealthConnected(true);
+      // Re-read now that we're (re)authorized so today's minutes appear at once.
+      await qc.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
+    } finally {
+      setConnectingHealth(false);
+    }
+  };
+  // Show the connect prompt only in the native shell, before they've connected
+  // on this install. Once connected (or once a live read returns minutes) the
+  // synced-from-Health line below carries it instead.
+  const showHealthConnect = appleHealthAvailable() && !healthConnected;
   // The live HealthKit read (iOS only; 0/absent on web) — gates the connect
   // prompt. The upload to the server happens app-wide from the Layout shell
   // (useSyncHealthMinutes), so the goal card no longer uploads itself.
@@ -317,6 +343,25 @@ function DailyGoalCard({
           <span aria-hidden>🍎</span>
           {t("contemplation.health_counted", { defaultValue: `Including ${healthMin} min synced from Apple Health`, count: healthMin })}
         </p>
+      )}
+
+      {/* Connect Apple Health — shown on the stats page for a native install
+          that hasn't connected yet (incl. after a re-download, which clears the
+          local flag). Folds any meditation from Calm / Insight Timer / Apple
+          Mindfulness into the goal above. */}
+      {showHealthConnect && (
+        <button
+          type="button"
+          onClick={connectHealth}
+          disabled={connectingHealth}
+          className="rounded-full px-4 py-2 text-[13px] font-semibold flex items-center gap-1.5 mb-3 transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: connectingHealth ? "default" : "pointer" }}
+        >
+          <span aria-hidden>🍎</span>
+          {connectingHealth
+            ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
+            : t("contemplation.health_connect", { defaultValue: "Connect Apple Health" })}
+        </button>
       )}
 
       {showEditor ? (

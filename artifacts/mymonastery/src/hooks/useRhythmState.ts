@@ -574,22 +574,27 @@ export function useRhythmState(): RhythmState {
     ? (elExplicit != null ? isActiveLevel(elExplicit) : ((officePrefs?.evening ?? null) != null && officePrefs?.evening !== "none"))
     : (isActiveLevel(el) || (officePrefs?.evening ?? "devotion") !== "none");
   // Per-side Contemplative Prayer → the home's Morning / Evening Contemplation
-  // cards. Explicit per-side flags win; a customized user with a legacy single
-  // silence goal (no per-side pick yet) migrates to BOTH sides; an un-set-up user
-  // falls back to the reflect-sit default (evening only for a fresh rhythm).
-  // "Has the user made an EXPLICIT per-side pick?" — a written 0 or 1 for either
-  // side. Only then do we read the per-side flags; otherwise a legacy single goal
-  // migrates to both sides. (Checking `=== true` here would wrongly re-migrate a
-  // user who deliberately turned BOTH sides off.)
+  // cards. A per-side card appears ONLY when the user EXPLICITLY chose
+  // Contemplative Prayer on that side in the customizer (which writes the
+  // per-side flag). A plain minutes goal with NO per-side pick is NOT a per-side
+  // card — it renders as the single "solo silence" goal card below (the same
+  // shape guests / logged-out users see), so the two views stay consistent.
+  //
+  // This deliberately does NOT auto-migrate a bare goal into BOTH per-side cards.
+  // That old behavior added a phantom "Morning Contemplation" on login: the
+  // per-side flags are device-local (not server-synced), so a signed-in user's
+  // fresh session has none set, and the office-prefs GET default goal (5) then
+  // flipped both sides on — a card the user never asked for. A goal is a goal;
+  // per-side contemplation is only what they picked per side.
   const perSideContemplationSet = getSideContemplationExplicit("morning") !== null || getSideContemplationExplicit("evening") !== null;
   // GUESTS never get the per-side cards — their silence is ONE goal card with a
   // progress bar (DailyProgressBody), so both per-side flags stay off and the
   // aggregate below carries the anchor instead.
   const morningContemplationActive = !guest && (customized
-    ? (perSideContemplationSet ? getSideContemplation("morning") : contemplationGoalMin > 0)
+    ? (perSideContemplationSet ? getSideContemplation("morning") : false)
     : (getSideLevel("morning") === "reflect-sit"));
   const eveningContemplationActive = !guest && (customized
-    ? (perSideContemplationSet ? getSideContemplation("evening") : contemplationGoalMin > 0)
+    ? (perSideContemplationSet ? getSideContemplation("evening") : false)
     : (getSideLevel("evening") === "reflect-sit"));
   // Local day-flag OR the server's cross-device echo — a sit done on another
   // device (which POSTed its contemplationSide) reads done here too.
