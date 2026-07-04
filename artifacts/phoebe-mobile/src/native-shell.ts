@@ -1309,13 +1309,11 @@ function wireCobreatheMusic() {
     const music = getCobreatheMusic();
     if (!music) return;
     try {
-      // Ensure access (prompts on first run), then only play for subscribers;
-      // denied access / non-subscribers silently skip — the breath plays on.
+      // Co-Breathe must NEVER prompt for Apple Music (owner): only play if the
+      // user has ALREADY granted access elsewhere (e.g. Audio Divina). If not
+      // authorized — or not a subscriber — we silently skip; the breath plays on.
       const status = (await music.getAuthorizationStatus?.())?.status;
-      if (status !== "authorized") {
-        const res = await music.authorize?.();
-        if (res?.status !== "authorized") return;
-      }
+      if (status !== "authorized") return;
       const avail = await music.isAvailable?.();
       if (!avail?.available) return;
       await music.play?.({ playlistId: COBREATHE_PLAYLIST_ID });
