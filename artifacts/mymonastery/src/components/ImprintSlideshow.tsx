@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -122,6 +122,23 @@ export default function ImprintSlideshow({
   function skip() {
     finish();
   }
+
+  // Desktop keyboard nav — ArrowRight advances (finishing on the last slide),
+  // ArrowLeft steps back. A ref keeps the listener bound once while seeing the
+  // current index; skipped while a text field is focused.
+  const advanceRef = useRef(advance);
+  advanceRef.current = advance;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); advanceRef.current(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); setIndex((i) => Math.max(0, i - 1)); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const isLast = index === slides.length - 1;
   const slide = slides[index];

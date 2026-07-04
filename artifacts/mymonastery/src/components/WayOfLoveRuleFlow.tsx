@@ -1273,6 +1273,24 @@ export default function WayOfLoveRuleFlow({
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
   const goPrev = () => { const i = orderedSteps.indexOf(step); if (i > 0) setStep(orderedSteps[i - 1]); else onBack(); };
 
+  // Desktop keyboard nav — ArrowRight advances a step, ArrowLeft goes back.
+  // A ref holds the latest closures so the listener binds once yet always sees
+  // the current step. Ignored while a text field is focused (so typing a custom
+  // anchor / minutes doesn't jump steps).
+  const keyNavRef = useRef<{ next: () => void; prev: () => void }>({ next: () => {}, prev: () => {} });
+  keyNavRef.current = { next: goNext, prev: goPrev };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); keyNavRef.current.next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); keyNavRef.current.prev(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // The top "Back" row is intentionally NOT rendered (per design — the flow
   // leads with the progress bar and the content sits higher). Kept as a no-op so
   // the per-step call sites don't each need editing; navigation still happens

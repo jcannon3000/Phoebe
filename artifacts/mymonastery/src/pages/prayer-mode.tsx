@@ -4022,6 +4022,25 @@ export default function PrayerModePage() {
     }, 220);
   };
 
+  // Desktop keyboard nav — ArrowRight steps forward (quiet, no amen — same as
+  // a swipe-left / "Not today"), ArrowLeft steps back. Mirrors the swipe
+  // gestures so someone on a laptop can move through the office without a mouse.
+  // A ref keeps the latest closures so the listener stays bound once (no churn)
+  // yet always sees the current slide index. Ignored while typing in a field.
+  const keyNavRef = useRef<{ next: () => void; back: () => void }>({ next: () => {}, back: () => {} });
+  keyNavRef.current = { next: skipToNext, back: goBack };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); keyNavRef.current.next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); keyNavRef.current.back(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Swipe left → advance (skip forward), swipe right → goBack.
   // The amen hold button is the intentional "I prayed this" action;
   // swiping forward is a navigation gesture (same as "Not today").
