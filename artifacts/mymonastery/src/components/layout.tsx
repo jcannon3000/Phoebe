@@ -24,7 +24,6 @@ import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
 import { isJardinSealed } from "@/lib/jardinMode";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
-import { CREATION_OPENING_SENTENCES } from "@/lib/creationLiturgy";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -1090,12 +1089,8 @@ function OpeningSplash() {
   // The faces rail is retired; keep the flag (false) so its now-dormant render +
   // cache effects still compile without ever running.
   const showFaces = false;
-  // The syncing screen now shows a Season of Creation OPENING SENTENCE (public-
-  // domain scripture) instead of the general quotes — advancing each app open.
-  // The scripture ref takes the "author" slot so the render is unchanged.
-  const sentence = CREATION_OPENING_SENTENCES[splashOpenN % CREATION_OPENING_SENTENCES.length]!;
-  const quote = { text: sentence.text, author: sentence.ref };
-  void SPLASH_QUOTES;
+  // The quote advances each app open.
+  const quote = SPLASH_QUOTES[splashOpenN % SPLASH_QUOTES.length]!;
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;

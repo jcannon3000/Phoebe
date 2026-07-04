@@ -6,6 +6,7 @@ import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from 
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
 import { CobreatheMap } from "@/components/CobreatheMap";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { CREATION_OPENING_SENTENCES } from "@/lib/creationLiturgy";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -122,10 +123,8 @@ const BREATH_Y = "63%";
 // across sessions.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
-// The sync-screen quotes — one chosen per sit (see shortQuoteRef). Text + author
-// live in the render (they go through t()); this just fixes the set + order.
-type QuoteKind = "weil" | "merton" | "mlk" | "teresa" | "theophilus";
-const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa", "theophilus"];
+// (The old Weil/Merton/MLK/Teresa sync quotes are replaced by the Season of
+// Creation opening sentences — see CREATION_OPENING_SENTENCES.)
 // Frosted-glass rings — back to the ORIGINAL warm-white tones. Two tones: the
 // inhale fills with the light warm-white and HOLDS; the much-darker base sweeps
 // over it on the exhale, settling the ring back to its dark resting tone (a
@@ -261,11 +260,12 @@ export function CobreatheBreath({
     sessionGlobeRef.current = GLOBES[gi];
     try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
   }
-  // Which sync quote this session shows — Weil · Merton · King · Teresa, chosen
-  // once per sit so the slot isn't always the same line.
-  const shortQuoteRef = useRef<QuoteKind | null>(null);
-  if (shortQuoteRef.current === null) {
-    shortQuoteRef.current = QUOTE_KINDS[Math.floor(Math.random() * QUOTE_KINDS.length)];
+  // The opening sentence shown while the breath syncs — a Season of Creation
+  // Scripture opening sentence (owner), chosen once per sit so the slot isn't
+  // always the same line.
+  const openingIdxRef = useRef<number | null>(null);
+  if (openingIdxRef.current === null) {
+    openingIdxRef.current = Math.floor(Math.random() * CREATION_OPENING_SENTENCES.length);
   }
   // A leaf rests behind the SYNC ("loading") screen — picked once per sit. It
   // fades out as the breath goes live and the rotating breath photos take over.
@@ -785,32 +785,10 @@ export function CobreatheBreath({
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
   // The session globe (held for the whole sit).
   const globe = sessionGlobeRef.current ?? GLOBES[0];
-  // The sync-screen quote for this sit — one of QUOTE_KINDS, fixed per sit by
-  // shortQuoteRef. A short, punchy line on belonging / one another.
-  const quoteKind: QuoteKind = shortQuoteRef.current ?? "weil";
-  const SYNC_QUOTES: Record<QuoteKind, { text: string; author: string }> = {
-    weil: {
-      text: t("cobreathe.sync_quote_weil", { defaultValue: "Attention is the rarest and purest form of generosity." }),
-      author: t("cobreathe.sync_quote_weil_author", { defaultValue: "Simone Weil" }),
-    },
-    merton: {
-      text: t("cobreathe.sync_quote_merton", { defaultValue: "What I wear is pants.\nWhat I do is live.\nHow I pray is breathe." }),
-      author: t("cobreathe.sync_quote_merton_author", { defaultValue: "Thomas Merton" }),
-    },
-    mlk: {
-      text: t("cobreathe.sync_quote_mlk", { defaultValue: "We must all learn to live together as brothers—or we will all perish together as fools." }),
-      author: t("cobreathe.sync_quote_mlk_author", { defaultValue: "Martin Luther King Jr." }),
-    },
-    teresa: {
-      text: t("cobreathe.sync_quote_teresa", { defaultValue: "If we have no peace, it is because we have forgotten that we belong to each other." }),
-      author: t("cobreathe.sync_quote_teresa_author", { defaultValue: "Mother Teresa" }),
-    },
-    theophilus: {
-      text: t("cobreathe.sync_quote_theophilus", { defaultValue: "God has given to the earth the breath which feeds it. It is God’s breath that gives life to all things. And if God were to withhold it, everything would be annihilated. God’s breath vibrates in your breath, in your voice. It is the breath of God that you breathe." }),
-      author: t("cobreathe.sync_quote_theophilus_author", { defaultValue: "Theophilus of Antioch, 2nd century" }),
-    },
-  };
-  const syncQuote = SYNC_QUOTES[quoteKind];
+  // The opening sentence for this sit — a Season of Creation Scripture line,
+  // fixed per sit by openingIdxRef. The scripture ref sits in the author slot.
+  const openingSentence = CREATION_OPENING_SENTENCES[openingIdxRef.current ?? 0]!;
+  const syncQuote = { text: openingSentence.text, author: openingSentence.ref };
 
   // Soft sage tones that sit calmly on the deep-green field.
   const TEXT_DIM = "rgba(182,210,188,0.72)";
