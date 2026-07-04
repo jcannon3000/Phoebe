@@ -810,12 +810,22 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   "/psalms", "/contemplation", "/reflect/fdd",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
+  // Media the guest's OWN office routes to: the listen-medium office podcasts
+  // (begin-prayer's flow=daily hand-off) and the watch-medium pages (the
+  // office + devotion viewers hand off to these) — audio/video INSIDE the
+  // offices, which the public spec keeps.
+  "/podcast/morning-office", "/podcast/evening-office",
+  "/devotion/watch", "/ncmp/watch",
+  // Reference content the guest Resources menu links to.
+  "/building-faith",
   "/signin", "/login", "/onboarding",
   "/about", "/privacy", "/terms",
 ]);
 const GUEST_ALLOWED_PREFIX = [
   "/bcp", "/prayer-mode", "/scripture", "/cobreathe",
   "/rule-of-life", "/settings", "/menu/reflections/",
+  // Saints index + detail pages (guest Resources → Saints).
+  "/saints",
 ];
 
 function GuestGate({ children }: { children: ReactNode }) {
