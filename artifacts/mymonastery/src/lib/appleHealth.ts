@@ -277,14 +277,43 @@ export function useDailySteps(enabled = true): { steps: number } {
   return { steps };
 }
 
+/**
+ * Read today's EXTERNAL mindful minutes and push them to the server RIGHT NOW
+ * (not on the next render/stale cycle). Call this immediately after the user
+ * grants Health access — the app-wide sync hook below reads once on mount and,
+ * before permission is granted, caches a 0; connecting doesn't make it re-read.
+ * This does the fresh read + upload directly so the minutes count at once.
+ * Best-effort; returns the minutes read (0 off-native / on an empty read).
+ */
+export async function syncMindfulMinutesNow(): Promise<number> {
+  const p = getPlugin();
+  if (!p) return 0;
+  try {
+    const r = await getMindfulMinutesToday(true);
+    const minutes = r?.minutes ?? 0;
+    if (minutes > 0) {
+      const day = new Date().toLocaleDateString("en-CA");
+      lastHealthUpload = `${day}:${minutes}`; // keep the hook from re-uploading the same value
+      await apiRequest("PUT", "/api/me/contemplation-health-minutes", { minutes, day });
+    }
+    return minutes;
+  } catch { return 0; }
+}
+
 export function useSyncHealthMinutes(): void {
   const day = new Date().toLocaleDateString("en-CA");
   const qc = useQueryClient();
+  // Gate on the connect flag too — before the user grants access, reading
+  // returns 0 and caches it (staleTime), and connecting wouldn't re-enable a
+  // query that was already enabled. Keeping it disabled until connected means
+  // the FIRST read happens after permission (on the next Layout mount), fresh.
+  let connected = false;
+  try { connected = localStorage.getItem("phoebe:health-connected") === "1"; } catch { /* private mode */ }
   const q = useQuery<{ minutes: number; sessions: number } | null>({
     // Same key/queryFn as the Contemplation goal card → one shared fetch.
     queryKey: ["apple-health-mindful-external", day],
     queryFn: () => getMindfulMinutesToday(true),
-    enabled: appleHealthAvailable(),
+    enabled: appleHealthAvailable() && connected,
     staleTime: 5 * 60_000,
   });
   // Arm background delivery once HealthKit is available — so a goal crossed

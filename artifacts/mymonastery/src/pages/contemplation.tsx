@@ -25,7 +25,7 @@ import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
 } from "@/lib/cacReadState";
 import { primeAudio } from "@/lib/amenFeedback";
-import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, type MindfulSession } from "@/lib/appleHealth";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, syncMindfulMinutesNow, type MindfulSession } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -269,8 +269,12 @@ function DailyGoalCard({
       await requestMindfulAuthorization();
       try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
       setHealthConnected(true);
-      // Re-read now that we're (re)authorized so today's minutes appear at once.
+      // Read the freshly-authorized external mindful minutes and push them to the
+      // server NOW so they count immediately (the app-wide sync hook won't re-read
+      // just because we set the flag). Then refresh the display + stats.
+      await syncMindfulMinutesNow();
       await qc.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
+      qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
     } finally {
       setConnectingHealth(false);
     }

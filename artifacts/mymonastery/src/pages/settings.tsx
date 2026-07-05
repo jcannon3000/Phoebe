@@ -10,7 +10,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, openHealthApp } from "@/lib/appleHealth";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, syncMindfulMinutesNow, openHealthApp } from "@/lib/appleHealth";
 import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
@@ -60,6 +60,7 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 // Phoebe → allow Mindfulness). Renders nothing on the web.
 function AppleHealthSettings() {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState<boolean>(() => {
     try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
@@ -86,6 +87,11 @@ function AppleHealthSettings() {
       await requestMindfulAuthorization();
       try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
       setConnected(true);
+      // Read the freshly-authorized external mindful minutes and push them up NOW
+      // so they count toward the contemplation goal at once, then refresh.
+      await syncMindfulMinutesNow();
+      qc.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
+      qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
     } finally {
       setConnecting(false);
     }
