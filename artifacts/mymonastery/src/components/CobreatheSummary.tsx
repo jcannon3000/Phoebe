@@ -116,7 +116,7 @@ export function CobreatheSummary({
         {/* The climate-justice thanks — the quiet italic sub-line, where the
             contemplation close carries "carry the quiet with you". */}
         <p className="text-[13px] mb-6" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
-          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying with all creation." })}
+          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for breathing with all creation." })}
         </p>
         {/* The day's COLLECT — a Season of Creation prayer to close with (owner).
             Rotates daily through the whole set. */}
