@@ -173,7 +173,11 @@ export function CobreatheBreath({
   mapFellows = [],
   myLoc = null,
   coBreathingFellows = [],
+  onTutorial,
 }: {
+  // Tapped from the "Tutorial" pill on the SYNC/loading screen — hands back to
+  // the page to (re)show the how-it-works slideshow; returning re-syncs.
+  onTutorial?: () => void;
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
   onReachTarget?: (secondsKept: number) => void;
@@ -1027,6 +1031,19 @@ export function CobreatheBreath({
           <p className="text-[12px] mt-1" style={{ color: TEXT_FAINT, fontFamily: SPACE_GROTESK }}>
             {t("cobreathe.breathed_today_count", { count: todayCount, defaultValue: `${todayCount} ${todayCount === 1 ? "person has" : "people have"} breathed today` })}
           </p>
+        )}
+        {/* Tutorial — while it's syncing ("loading"), a frosted pill re-opens the
+            how-it-works slideshow. Hands back to the page; returning re-syncs. */}
+        {!counting && onTutorial && (
+          <button
+            type="button"
+            onClick={onTutorial}
+            className="inline-flex items-center gap-1.5 mt-3 rounded-full px-4 py-1.5 text-[12.5px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK }}
+          >
+            <span aria-hidden>📖</span>
+            {t("cobreathe.tutorial_pill", { defaultValue: "Tutorial" })}
+          </button>
         )}
       </div>
 

@@ -469,6 +469,9 @@ export default function CobreathePage() {
           othersToday={others}
           todayCount={state?.count ?? 0}
           totalBreaths={lengthBreaths}
+          // Tutorial pill on the sync/loading screen → the how-it-works slides;
+          // returning to "breathing" re-mounts the breath, so it re-syncs.
+          onTutorial={() => setMode("howto")}
           onReachTarget={handleReachTarget}
           onEnd={handleEnd}
           photos={BREATH_PHOTOS}
