@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
@@ -50,6 +50,23 @@ export function RhythmWhyIntro({ onDone }: { onDone: () => void }) {
   const last = i === SLIDES.length - 1;
   const s = SLIDES[i];
   const advance = () => { if (last) onDone(); else setI((n) => n + 1); };
+
+  // Desktop keyboard nav — ArrowRight advances (finishing on the last slide,
+  // same as a tap), ArrowLeft steps back. The ref keeps the listener bound once
+  // while seeing the current advance closure (it captures `last`).
+  const advanceRef = useRef(advance);
+  advanceRef.current = advance;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); advanceRef.current(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div

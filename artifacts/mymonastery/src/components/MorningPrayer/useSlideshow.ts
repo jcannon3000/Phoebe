@@ -151,6 +151,10 @@ export function useSlideshow({ total, scrollableSlides }: UseSlideshowOptions) {
   // Keyboard handler
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Don't hijack shortcuts (Cmd+Arrow = line jump) or typing in a field.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
         advance();

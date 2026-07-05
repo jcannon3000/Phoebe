@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 
@@ -65,6 +65,20 @@ export function CobreathePrayerIntro({
   const photo = EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[i % EARTH_PHOTOS.length]! : null;
   const next = () => setI((n) => Math.min(SLIDES.length - 1, n + 1));
   const prev = () => setI((n) => Math.max(0, n - 1));
+
+  // Desktop keyboard nav — ArrowRight/ArrowLeft mirror tap-forward / left-edge
+  // back. Functional setI means the listener can bind once with no stale index.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); setI((n) => Math.min(SLIDES.length - 1, n + 1)); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div

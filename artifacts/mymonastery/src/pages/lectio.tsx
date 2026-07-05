@@ -475,6 +475,23 @@ export default function LectioPage() {
   const next = () => setSlideIdx((i) => Math.min(i + 1, slides.length - 1));
   const prev = () => setSlideIdx((i) => Math.max(i - 1, 0));
 
+  // Desktop keyboard nav — ArrowRight/ArrowLeft mirror next/prev. A ref keeps
+  // the latest closures (slides.length changes as stages load) while the
+  // listener binds once. Skipped while typing a response in the entry field.
+  const keyNavRef = useRef<{ next: () => void; prev: () => void }>({ next: () => {}, prev: () => {} });
+  keyNavRef.current = { next, prev };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); keyNavRef.current.next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); keyNavRef.current.prev(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Jump to a specific stage's Responses slide — used by each summary row.
   const jumpToStageResponses = (stage: Stage) => {
     const idx = slides.findIndex(

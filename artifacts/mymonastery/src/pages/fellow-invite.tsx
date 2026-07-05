@@ -206,6 +206,21 @@ function FellowOnboardingDeck({ token, inviter, setLocation }: { token: string; 
   const next = () => { haptic("light"); setI((n) => Math.min(SLIDES - 1, n + 1)); };
   const back = () => setI((n) => Math.max(0, n - 1));
 
+  // Desktop keyboard nav — ArrowRight/ArrowLeft mirror the Next/back buttons
+  // (functional setI → no stale index; listener binds once). Skipped while a
+  // text field is focused.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); setI((n) => Math.min(SLIDES - 1, n + 1)); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); setI((n) => Math.max(0, n - 1)); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const finish = () => {
     try {
       localStorage.setItem(PENDING_TOKEN_KEY, token);

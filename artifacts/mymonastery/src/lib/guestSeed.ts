@@ -11,7 +11,7 @@
 // DailyProgressBody now — for guests it applies EVERY day, not just the seed
 // day.) See memory "project_public_no_login".
 
-import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel } from "@/lib/officePrefs";
+import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -42,6 +42,7 @@ export function seedGuestRule(): void {
     setSideEntry("evening", "read");
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
+    setSideReflection("evening", "fdd");
     // The 5-minute silence DAILY GOAL (single goal card w/ progress bar) is a
     // guest-local pref — the goal card reads it via the guest goal key below
     // (server contemplationGoalMinutes needs an account).
@@ -72,5 +73,10 @@ export function getGuestSilenceGoalMinRaw(): number | null {
   } catch { return null; }
 }
 export function setGuestSilenceGoalMin(min: number): void {
-  try { localStorage.setItem(GUEST_GOAL_KEY, String(Math.max(0, Math.min(180, Math.round(min))))); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(GUEST_GOAL_KEY, String(Math.max(0, Math.min(180, Math.round(min)))));
+    // Same live-update signal the officePrefs setters fire, so the home cards
+    // and the simple rule editor re-read the goal without a reload.
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* ignore */ }
 }
