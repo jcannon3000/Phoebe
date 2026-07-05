@@ -29,7 +29,9 @@ export default function DailyStepsPage() {
   const native = appleHealthAvailable();
   const { steps } = useDailySteps();
   const [connected, setConnected] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
+    // STEP read is a SEPARATE HealthKit permission from mindful minutes — its own
+    // flag, never `phoebe:health-connected` (the mindful one).
+    try { return localStorage.getItem("phoebe:health-step-connected") === "1"; } catch { return false; }
   });
 
   // Guests are login-free — their step goal lives device-local (like the
@@ -57,7 +59,7 @@ export default function DailyStepsPage() {
   const connect = () => {
     void requestStepAuthorization()
       .then(() => {
-        try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
+        try { localStorage.setItem("phoebe:health-step-connected", "1"); } catch { /* private mode */ }
         setConnected(true);
         qc.invalidateQueries({ queryKey: ["apple-health-steps"] });
       })

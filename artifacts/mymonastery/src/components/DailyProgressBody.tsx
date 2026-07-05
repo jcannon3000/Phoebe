@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { appleHealthAvailable } from "@/lib/appleHealth";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
@@ -845,9 +846,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       done: stepsDone,
       href: "/daily-steps",
       title: t("rhythm.card_steps", { defaultValue: "Daily steps" }),
+      // On the web with no synced count (no iPhone syncing steps up), don't show
+      // a permanent "0 of N" — name where steps come from instead.
       blurb: stepsDone
         ? t("rhythm.steps_kept", { defaultValue: "You reached your step goal today" })
-        : t("rhythm.steps_of_goal", { current: stepsToday, goal: stepsGoal, defaultValue: `${stepsToday.toLocaleString()} of ${stepsGoal.toLocaleString()} steps today` }),
+        : (!appleHealthAvailable() && stepsToday <= 0)
+          ? t("rhythm.steps_sync_ios", { defaultValue: "Steps sync from Apple Health on your iPhone" })
+          : t("rhythm.steps_of_goal", { current: stepsToday, goal: stepsGoal, defaultValue: `${stepsToday.toLocaleString()} of ${stepsGoal.toLocaleString()} steps today` }),
       progress: { current: stepsToday, goal: stepsGoal },
       cta: t("rhythm.view", { defaultValue: "View" }), later: false,
     }] : []),

@@ -804,10 +804,13 @@ export default function WayOfLoveRuleFlow({
     if (guest || isDeviceLocalGuest(user)) setGuestStepGoal(g);
     else void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: g }).catch(() => { /* best-effort */ });
     // Turning steps ON (a bigger goal) → connect Apple Health for step data.
+    // STEP read is a SEPARATE HealthKit permission from mindful minutes, so it
+    // sets its OWN flag — never `phoebe:health-connected` (the mindful flag that
+    // gates useHealthMindfulToday + the contemplation stats Connect button).
     if (g > 0 && appleHealthAvailable() && localStorage.getItem("phoebe:health-step-asked") !== "1") {
       try { localStorage.setItem("phoebe:health-step-asked", "1"); } catch { /* private mode */ }
       void requestStepAuthorization().then((ok) => {
-        if (ok) { try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* ignore */ } }
+        if (ok) { try { localStorage.setItem("phoebe:health-step-connected", "1"); } catch { /* ignore */ } }
       }).catch(() => { /* best-effort */ });
     }
   };
@@ -2304,7 +2307,11 @@ export default function WayOfLoveRuleFlow({
     ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),
-  ];
+    // Drop any row whose edit target is no longer in the flow (e.g. an existing
+    // user's contemplative/extras cards under the limited customizer) — tapping
+    // it would jump to an unreachable step and strand them. Their cards stay on
+    // the home; the review just doesn't offer to edit what this flow can't.
+  ].filter((r) => orderedSteps.includes(r.step));
 
   // ── Starter — a first author receives a named rule (adopt whole, tune later),
   // or chooses to build their own. Adopting commits the preset, then beholds it.

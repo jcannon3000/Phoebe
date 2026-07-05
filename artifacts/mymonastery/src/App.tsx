@@ -4,6 +4,7 @@ import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-q
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { ApiError, apiRequest } from "@/lib/queryClient";
+import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
 // foreground / every 5 min) so the Cobreathe communal breath is already aligned
 // the instant a session opens — every device shares one schedule.
@@ -163,6 +164,23 @@ function CustomAnchorServerSync() {
     // Routine settings (office levels, slots, etc.) — same migrate-up-or-adopt
     // sync, so the rhythm matches phone ↔ web (lib/routineSync).
     syncRoutineFromServer(rc);
+    // One-time: carry a guest's device-local DAILY STEP goal up to the real
+    // account on conversion. The anon→account upgrade preserves server data, but
+    // the step goal lived in localStorage (phoebe:guest-step-goal) and would be
+    // unread once the card switches to reading office-prefs.dailyStepGoal (0 for
+    // a fresh account). Runs once, only for a REAL account (not the anon guest);
+    // the flag is set only after the PUT lands (or when there's nothing to move)
+    // so a failure retries next load.
+    if (!(user as { isAnonymous?: boolean }).isAnonymous && localStorage.getItem("phoebe:guest-step-migrated") !== "1") {
+      const g = (() => { try { return getGuestStepGoal(); } catch { return 0; } })();
+      if (g > 0) {
+        void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: g })
+          .then(() => { try { localStorage.setItem("phoebe:guest-step-migrated", "1"); } catch { /* ignore */ } qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }); })
+          .catch(() => { /* leave flag unset → retry next load */ });
+      } else {
+        try { localStorage.setItem("phoebe:guest-step-migrated", "1"); } catch { /* ignore */ }
+      }
+    }
     // Home layout — if a save was dropped (iOS suspended the WebView mid-PUT),
     // re-send it on load so the routine the user set actually lands.
     flushHomeLayout(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
