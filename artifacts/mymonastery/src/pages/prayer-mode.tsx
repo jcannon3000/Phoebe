@@ -713,7 +713,7 @@ function SlideContent({
               Start contemplation <span aria-hidden>→</span>
             </button>
           </div>
-          {/* Cobreathe — set apart with a space. */}
+          {/* Creation Prayer (the breath) — set apart with a space. */}
           <button
             type="button"
             onClick={onStartCobreathe}
@@ -721,7 +721,7 @@ function SlideContent({
             style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.45)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
           >
             <CobreatheGlobe size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-            Cobreathe
+            Creation Prayer
           </button>
         </div>
 
