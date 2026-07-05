@@ -243,6 +243,14 @@ export function CobreatheBreath({
   // (left) and the twelve-breath session ring (right), driven from the rAF
   // clock below.
   const labelRef = useRef<HTMLDivElement>(null);
+  // The WORD swaps inside the rAF at the exact phase boundary (where the fade
+  // sits at zero) — the React tick only re-renders every ~450ms, and a late
+  // text swap re-lit the OLD word on the new phase's rising fade (a flash).
+  // Same pattern as the rotating prayer text. labelWordsRef mirrors the
+  // localized strings for the rAF closure; labelShownRef dedupes DOM writes.
+  const labelTextRef = useRef<HTMLParagraphElement>(null);
+  const labelWordsRef = useRef({ in: "Breathe In", out: "Breathe Out" });
+  const labelShownRef = useRef("");
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
   const sessionRingRef = useRef<SVGCircleElement>(null);
@@ -539,6 +547,16 @@ export function CobreatheBreath({
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
         labelRef.current.style.transform = isCounting ? `translateY(${((0.5 - f) * 14).toFixed(2)}px)` : "translateY(0px)";
       }
+      // Swap the word HERE, at the frame the phase turns — the fade is at zero
+      // then, so "Breathe In"/"Breathe Out" never changes while visible and the
+      // old word is never re-lit by the new phase's rise.
+      if (isCounting && labelTextRef.current) {
+        const word = pos < INHALE_MS ? labelWordsRef.current.in : labelWordsRef.current.out;
+        if (labelShownRef.current !== word) {
+          labelShownRef.current = word;
+          labelTextRef.current.textContent = word;
+        }
+      }
       // Breath-progress rings: the lighter ring fills over the inhale + holds; the
       // darker ring sweeps over it on the exhale; both reset each cycle. The inner
       // blue ring fills once, slowly, across the whole set of breaths.
@@ -669,6 +687,11 @@ export function CobreatheBreath({
     phase === "in"
       ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
       : t("cobreathe.phase_out", { defaultValue: "Breathe Out" });
+  // Mirror the localized words for the rAF's exact-boundary swap above.
+  labelWordsRef.current = {
+    in: t("cobreathe.phase_in", { defaultValue: "Breathe In" }),
+    out: t("cobreathe.phase_out", { defaultValue: "Breathe Out" }),
+  };
 
   // Where are we in the count? Negative during the pre-roll; uncapped after,
   // so the count keeps climbing past the target while they keep breathing.
@@ -945,6 +968,7 @@ export function CobreatheBreath({
       >
         <div ref={labelRef} style={{ willChange: "transform, opacity", textAlign: "center", maxWidth: 520 }}>
           <p
+            ref={labelTextRef}
             style={{
               color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic",
               fontSize: counting ? "clamp(30px, 8.4vw, 42px)" : 17, lineHeight: 1.3, margin: 0,
