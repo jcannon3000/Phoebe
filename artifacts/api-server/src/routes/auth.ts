@@ -987,12 +987,45 @@ router.post(
     }
   }
 
-  // ── Create the user ────────────────────────────────────────────────────
+  // ── Create (or upgrade) the user ───────────────────────────────────────
   const passwordHash = await hashPassword(password);
-  const [user] = await db
-    .insert(usersTable)
-    .values({ email: normalizedEmail, name: trimmedName, passwordHash, officesOnly: officesOnly === true })
-    .returning();
+  // If this request already holds an ANONYMOUS DEVICE session (the public
+  // no-login guest signing up to "save" their practice), UPGRADE that same
+  // user row in place rather than minting a fresh account. Because the id is
+  // unchanged, everything already keyed to it — the streak / prayer_sessions,
+  // contemplation minutes, Co-Breathe log, push tokens (and thus the daily
+  // bell), and the server rule_config — carries straight into the real
+  // account, with nothing to migrate. The email-uniqueness check above already
+  // proved `normalizedEmail` is free, so claiming it on the anon row is safe.
+  // We keep onboarding_completed=true (it was, as a guest) so the converting
+  // user lands right back on their home instead of being bounced into the
+  // new-account tour. A truly logged-out visitor still gets a fresh insert.
+  const anonUserId =
+    req.user && (req.user as { isAnonymous?: boolean }).isAnonymous
+      ? (req.user as { id: number }).id
+      : null;
+  let user: typeof usersTable.$inferSelect | undefined;
+  if (anonUserId != null) {
+    [user] = await db
+      .update(usersTable)
+      .set({
+        email: normalizedEmail,
+        name: trimmedName,
+        passwordHash,
+        isAnonymous: false,
+        officesOnly: officesOnly === true,
+      })
+      .where(and(eq(usersTable.id, anonUserId), eq(usersTable.isAnonymous, true)))
+      .returning();
+  }
+  // Fresh visitor, or the in-place upgrade didn't match a row (raced to
+  // non-anon / swept) — mint a new account so registration never no-ops.
+  if (!user) {
+    [user] = await db
+      .insert(usersTable)
+      .values({ email: normalizedEmail, name: trimmedName, passwordHash, officesOnly: officesOnly === true })
+      .returning();
+  }
 
   // If they were on the waitlist, drop their entry — they have an account
   // now, so the list shouldn't keep their email indefinitely.

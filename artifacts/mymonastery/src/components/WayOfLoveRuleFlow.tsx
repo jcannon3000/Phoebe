@@ -2434,10 +2434,13 @@ export default function WayOfLoveRuleFlow({
           is ephemeral — an account is what makes the rule durable. Offered to
           guests (no user, or the anonymous device user) on web only; the rhythm
           is already committed locally, and routineSync migrates it up to the
-          account after sign-in. The iOS app stays fully login-free. */}
+          account after sign-in. Signing up now upgrades the anonymous device
+          user in place (auth/register), so the streak + practice history carry
+          over too — the CTA can honestly promise "keep everything". The iOS app
+          stays fully login-free. */}
       {guest && !isNativeShell() && (!user || user.isAnonymous) && (
         <button onClick={() => setLocation("/signin")} style={{ marginTop: 12, background: "none", border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center", width: "100%" }}>
-          {t("wol_rule.web_save_cta", { defaultValue: "Create an account to save this rhythm" })}
+          {t("wol_rule.web_save_cta", { defaultValue: "Create an account to keep your rhythm and progress" })}
         </button>
       )}
     </>,
