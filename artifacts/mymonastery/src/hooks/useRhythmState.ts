@@ -133,6 +133,11 @@ export type RhythmState = {
    *  Contemplation card's goal progress. */
   contemplationMin: number;
   contemplationGoalMin: number;
+  /** The style a side's contemplation takes: a silent sit, or the Creation
+   *  Prayer breath. Global (a side is office OR contemplation, so one flag
+   *  covers whichever sides are contemplative). Drives per-side card naming +
+   *  routing in DailyProgressBody. */
+  contemplationStyle: "silent" | "cobreathe";
   /** "Grow my silence" ladder state when enabled (else null) — the current rung
    *  drives contemplationGoalMin; daysToNext/nextLevel feed the card. */
   silenceLadder: { level: number; levelDays: number; daysToNext: number; nextLevel: number; atMax: boolean } | null;
@@ -615,6 +620,12 @@ export function useRhythmState(): RhythmState {
   // fresh session has none set, and the office-prefs GET default goal (5) then
   // flipped both sides on — a card the user never asked for. A goal is a goal;
   // per-side contemplation is only what they picked per side.
+  // The contemplation STYLE (silent sit vs the Creation Prayer breath) — a side
+  // is office OR contemplation, so one global flag covers whichever sides are
+  // contemplative. Set by the customizer's Creation Prayer choice.
+  const contemplationStyle: "silent" | "cobreathe" = (() => {
+    try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
+  })();
   const perSideContemplationSet = getSideContemplationExplicit("morning") !== null || getSideContemplationExplicit("evening") !== null;
   // GUESTS never get the per-side cards — their silence is ONE goal card with a
   // progress bar (DailyProgressBody), so both per-side flags stay off and the
@@ -779,6 +790,7 @@ export function useRhythmState(): RhythmState {
     prayerKind,
     contemplationMin,
     contemplationGoalMin,
+    contemplationStyle,
     silenceLadder: ladderEnabled && ladderData?.enabled && typeof ladderData.level === "number"
       ? { level: ladderData.level, levelDays: ladderData.levelDays ?? 0, daysToNext: ladderData.daysToNext ?? 0, nextLevel: ladderData.nextLevel ?? ladderData.level, atMax: !!ladderData.atMax }
       : null,

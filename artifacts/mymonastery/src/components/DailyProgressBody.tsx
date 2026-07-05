@@ -573,7 +573,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -754,6 +754,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // and reflections anchor morning / evening; the optional practices (Co-Breathe,
   // Audio Divina, Lectio, Walk, Journaling, customs) ride at their chosen slot;
   // the Examen + Gratitude are end-of-day, so they sit in the evening.
+  // Creation Prayer as a per-side anchor: when a side's contemplation style is
+  // the breath, that side's card IS Creation Prayer (🌍, opens /cobreathe for
+  // this side) instead of a silent sit. Naming per the owner's rule: on ONE side
+  // it's just "Creation Prayer"; on BOTH, "Morning Creation Prayer" / "Evening
+  // Creation Prayer" (kept to one line). When per-side Creation Prayer is on, the
+  // standalone Co-Breathe card is suppressed (below) so it isn't shown twice.
+  const creationStyle = contemplationStyle === "cobreathe";
+  const creationBothSides = creationStyle && morningContemplationActive && eveningContemplationActive;
+  const creationTitle = (side: "morning" | "evening"): string =>
+    creationBothSides
+      ? (side === "morning"
+          ? t("rhythm.card_morning_creation", { defaultValue: "Morning Creation Prayer" })
+          : t("rhythm.card_evening_creation", { defaultValue: "Evening Creation Prayer" }))
+      : t("rhythm.card_creation", { defaultValue: "Creation Prayer" });
+  const creationBlurb = (done: boolean): string =>
+    done ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths, a prayer with all creation" });
   const rawCards = [
     // Morning drops off Daily progress once the morning is past (afternoon) and
     // it wasn't prayed — we don't nag about a missed morning in Next; past noon
@@ -801,22 +817,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // THIS side; ?side= tells the timer which). Evening stays in Next even after
     // the morning sit met the daily minutes goal.
     ...(morningContemplationActive ? [{
-      key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: morningContemplationDone,
-      // Begin opens straight into a timer at THIS SIDE's sit length (?sit=N),
-      // skipping the length picker.
-      href: `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`,
-      title: t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
-      blurb: contemplationBlurbFor(morningContemplationDone, sideSitMin("morning")),
+      key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: creationStyle ? "🌍" : "🕯️", rgb: "62,124,122", done: morningContemplationDone,
+      // Creation Prayer → the breath for this side; silent → the sit timer at
+      // THIS SIDE's length (?sit=N), skipping the length picker.
+      href: creationStyle ? "/cobreathe?begin=1&side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`,
+      title: creationStyle ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
+      blurb: creationStyle ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning")),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      doneCta: creationStyle ? t("rhythm.breathe_again", { defaultValue: "Breathe again" }) : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     ...(eveningContemplationActive ? [{
-      key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
-      href: `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`,
-      title: t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
-      blurb: contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening")),
+      key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: creationStyle ? "🌍" : "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
+      href: creationStyle ? "/cobreathe?begin=1&side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`,
+      title: creationStyle ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
+      blurb: creationStyle ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening")),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      doneCta: creationStyle ? t("rhythm.breathe_again", { defaultValue: "Breathe again" }) : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's
     // minutes toward the daily goal, whenever a goal is set and NEITHER side
@@ -857,7 +873,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.view", { defaultValue: "View" }), later: false,
     }] : []),
     // Optional practices ride at the time of day the user chose for each.
-    ...(cobreatheActive ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
+    ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(lectioActive ? [{ ...lectioCard, slot: lectioSlot }] : []),
     ...(scriptureActive ? [{ ...scriptureCard, slot: scriptureSlot }] : []),

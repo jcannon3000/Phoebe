@@ -369,6 +369,15 @@ export default function CobreathePage() {
     }
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
+    // Launched as a per-side Creation Prayer card (/cobreathe?side=morning)? Stamp
+    // the side so it credits THAT side's per-side completion (like a silent
+    // per-side sit), not just the aggregate.
+    const sideParam = (() => {
+      try {
+        const s = new URLSearchParams(window.location.search).get("side");
+        return s === "morning" || s === "evening" ? s : undefined;
+      } catch { return undefined; }
+    })();
     void apiRequest("POST", "/api/prayer-sessions", {
       surface: "contemplation",
       source: "cobreathe",
@@ -376,10 +385,12 @@ export default function CobreathePage() {
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
       isPrivate: false,
+      ...(sideParam ? { contemplationSide: sideParam } : {}),
     })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sides-today"] });
       })
       .catch(() => { /* best-effort */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps

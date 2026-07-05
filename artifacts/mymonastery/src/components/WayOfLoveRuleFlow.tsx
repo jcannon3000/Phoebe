@@ -1666,32 +1666,43 @@ export default function WayOfLoveRuleFlow({
               choosePrayBySide here — it's an add-on, not the office anchor.
               Contemplation-only = leave the office rows off (prayBySide "none")
               and turn this on. */}
-          {choiceRow(contemplationBySide[side], `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "A silent sit — its own card for this part of the day." }), () => {
-            const turningOn = !contemplationBySide[side];
-            toggleContemplationSide(side);
-            chooseContemplationStyle("silent");
+          {choiceRow(contemplationBySide[side] && contemplationStyle === "silent", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "A silent sit — its own card for this part of the day." }), () => {
+            const turningOn = !(contemplationBySide[side] && contemplationStyle === "silent");
+            touchedRef.current = true;
+            // From Creation Prayer → silent on the same side: keep the side on,
+            // just flip the style. Otherwise toggle the side as before.
+            if (contemplationBySide[side] && contemplationStyle === "cobreathe") {
+              chooseContemplationStyle("silent");
+            } else {
+              toggleContemplationSide(side);
+              chooseContemplationStyle("silent");
+            }
             // A silent sit needs a length — default to 5 minutes if none is set
             // yet, so the config step + the home "Begin" have a duration to use.
             if (turningOn && goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
           })}
-          {/* Co-Breathe — a GUEST way option ("selectable for morning or
-              evening"). It stays the same ADD-ON the contemplative step toggles
-              (contemplative.cobreathe — never choosePrayBySide, per the add-on
-              invariant); picking it here also slots its card to THIS side.
-              Checked on the side currently holding the slot; tapping the other
-              side moves it there. */}
-          {guest && choiceRow(
-            contemplative.cobreathe && slotByPractice.cobreathe === side,
+          {/* Creation Prayer — a per-side PRIMARY way (owner): picking it makes the
+              12-breath Creation Prayer THIS side's prayer and REPLACES the office
+              (clears prayBySide). It rides the per-side contemplation slot with the
+              "cobreathe" style, so the home shows a per-side Creation Prayer card
+              (named "Morning/Evening Creation Prayer" on both sides, just "Creation
+              Prayer" on one). Available to everyone, morning and evening. */}
+          {choiceRow(
+            contemplationBySide[side] && contemplationStyle === "cobreathe",
             `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`,
             t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths, a prayer with all creation." }),
             () => {
-              const onHere = contemplative.cobreathe && slotByPractice.cobreathe === side;
+              const on = contemplationBySide[side] && contemplationStyle === "cobreathe";
               touchedRef.current = true;
-              if (onHere) {
-                setContemplative((c) => ({ ...c, cobreathe: false }));
+              if (on) {
+                // Turn this side's Creation Prayer OFF.
+                toggleContemplationSide(side);
               } else {
-                setContemplative((c) => ({ ...c, cobreathe: true }));
-                chooseSlot("cobreathe", side);
+                // Replace the office on this side and make it Creation Prayer.
+                choosePrayBySide(side, "none");
+                if (!contemplationBySide[side]) toggleContemplationSide(side);
+                chooseContemplationStyle("cobreathe");
+                if (goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
               }
             },
           )}
