@@ -491,7 +491,6 @@ const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -874,15 +873,16 @@ function GuestGate({ children }: { children: ReactNode }) {
     if (!allowed) setLocation("/dashboard");
   }, [location, isGuest, isLoading, setLocation]);
 
-  // WEB: to customize your rule you must sign in. A logged-out / anonymous web
-  // visitor who opens the customizer is sent to sign in first, then bounced
-  // straight back to it (?redirect=). Gate on isDeviceLocalGuest (logged-out OR
-  // anonymous) — NOT useGuestMode — so a signed-in "light" user, who has a real
-  // durable account, reaches the customizer instead of looping to sign-in.
-  // iOS (native shell) stays fully login-free.
+  // To customize your rule you must sign in — on BOTH web and iOS (owner,
+  // 2026-07-05: a logged-out person sees the standard rule; to change it they
+  // log in). A logged-out / anonymous visitor who opens the customizer is sent
+  // to sign in first, then bounced straight back to it (?redirect=). Gate on
+  // isDeviceLocalGuest (logged-out OR the anonymous device user) — NOT
+  // useGuestMode — so a signed-in "light" user, who has a real durable account,
+  // reaches the customizer instead of looping to sign-in.
   useEffect(() => {
     if (authLoading) return;
-    if (isNativeShell() || !isDeviceLocalGuest(user)) return;
+    if (!isDeviceLocalGuest(user)) return;
     if (WEB_CUSTOMIZER_ROUTES.has(location)) {
       setLocation("/signin?mode=signup&redirect=" + encodeURIComponent(location));
     }
