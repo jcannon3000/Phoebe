@@ -6,7 +6,7 @@ import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from 
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
 import { CobreatheMap } from "@/components/CobreatheMap";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
-import { CREATION_OPENING_SENTENCES } from "@/lib/creationLiturgy";
+import { openingSentenceForToday } from "@/lib/creationLiturgy";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -263,13 +263,6 @@ export function CobreatheBreath({
     try { gi = ((parseInt(localStorage.getItem("phoebe:cobreathe-globe") || "0", 10) || 0) % GLOBES.length + GLOBES.length) % GLOBES.length; } catch { /* ignore */ }
     sessionGlobeRef.current = GLOBES[gi];
     try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
-  }
-  // The opening sentence shown while the breath syncs — a Season of Creation
-  // Scripture opening sentence (owner), chosen once per sit so the slot isn't
-  // always the same line.
-  const openingIdxRef = useRef<number | null>(null);
-  if (openingIdxRef.current === null) {
-    openingIdxRef.current = Math.floor(Math.random() * CREATION_OPENING_SENTENCES.length);
   }
   // A leaf rests behind the SYNC ("loading") screen — picked once per sit. It
   // fades out as the breath goes live and the rotating breath photos take over.
@@ -789,9 +782,10 @@ export function CobreatheBreath({
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
   // The session globe (held for the whole sit).
   const globe = sessionGlobeRef.current ?? GLOBES[0];
-  // The opening sentence for this sit — a Season of Creation Scripture line,
-  // fixed per sit by openingIdxRef. The scripture ref sits in the author slot.
-  const openingSentence = CREATION_OPENING_SENTENCES[openingIdxRef.current ?? 0]!;
+  // The opening sentence — a Season of Creation Scripture line that ROTATES
+  // DAILY (day-of-year), same as the closing collect, so the open and close
+  // move together each day. The scripture ref sits in the author slot.
+  const openingSentence = openingSentenceForToday();
   const syncQuote = { text: openingSentence.text, author: openingSentence.ref };
 
   // Soft sage tones that sit calmly on the deep-green field.
