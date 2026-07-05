@@ -206,9 +206,10 @@ const TIME_LADDER: TimeStep[] = [
     preset: { id: "time-30", emoji: "📖", sides: { morning: true, evening: true }, pray: "offices", silence: true, goalMin: 5, silenceSide: "morning", reflections: ["fdd"] },
   },
 ];
-// The dial starts at 20 — Morning Prayer · Forward Day by Day · 5 minutes of
-// silence, with no evening prayer (the owner's chosen starting rule).
-const TIME_LADDER_DEFAULT = 3;
+// The dial starts at 30 — Morning Prayer · Evening Prayer · Forward Day by Day ·
+// 5 minutes of silence (the owner's chosen starting rule: the full Daily Office,
+// morning AND evening).
+const TIME_LADDER_DEFAULT = 5;
 
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…90
