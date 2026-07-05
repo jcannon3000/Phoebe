@@ -699,10 +699,6 @@ export function CobreatheBreath({
   const [breathFaces, setBreathFaces] = useState(coBreathingFellows);
   useEffect(() => { setBreathFaces(coFacesRef.current); }, [breathNum]);
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
-  // The ordinal eyebrow under the centre breathing word — "FIRST…", "SECOND…"
-  // per breath; past the twelfth it simply counts on.
-  const ORDINALS = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth"];
-  const breathOrdinal = counting ? `${(ORDINALS[breathNum - 1] ?? `Breath ${breathNum}`).toUpperCase()}…` : null;
   // The opening sentence for this sit — a Season of Creation Scripture line,
   // fixed per sit by openingIdxRef. The scripture ref sits in the author slot.
   const openingSentence = CREATION_OPENING_SENTENCES[openingIdxRef.current ?? 0]!;
@@ -935,10 +931,10 @@ export function CobreatheBreath({
       {/* The CENTRE — the breathing word itself, like an office title screen:
           italic Georgia with a soft luminous glow, fading up-and-in / down-and-
           out with each phase (opacity + drift driven by the rAF via labelRef).
-          Under it, an all-caps Space Grotesk ordinal eyebrow counts the breath
-          — "FIRST…", "SECOND…". While syncing it holds the Syncing line steady.
-          In "Pray the breath" mode the prayer text (top half) stays the focal
-          point; the word still guides from the centre below it. */}
+          While syncing it holds the Syncing line steady. In "Pray the breath"
+          mode the prayer text (top half) stays the focal point; the word still
+          guides from the centre below it. The breath COUNT lives only in the
+          bottom-right session circle. */}
       <div
         aria-hidden="true"
         style={{
@@ -957,17 +953,6 @@ export function CobreatheBreath({
           >
             {centerLabel}
           </p>
-          {breathOrdinal && (
-            <p
-              style={{
-                color: TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600,
-                letterSpacing: "0.24em", textTransform: "uppercase", marginTop: 14,
-                textShadow: "0 2px 14px rgba(8,30,18,0.6)",
-              }}
-            >
-              {breathOrdinal}
-            </p>
-          )}
         </div>
       </div>
 
@@ -1028,38 +1013,52 @@ export function CobreatheBreath({
           counts the sit once the 12 are kept, and discards otherwise. (The
           labelled End/Discard belong to the silent ContemplationTimer, not here.) */}
 
-      {/* Bottom corners — two SMALL progress circles (~⅓ the old outer ring).
-          LEFT: the per-breath ring (light fill over the inhale, dark sweep on
-          the exhale). RIGHT: the twelve-breath session ring, filling once
-          across the whole set, with the breath number resting inside. The
+      {/* Bottom corners — two progress circles. LEFT: the per-breath ring
+          (light fill over the inhale, dark sweep on the exhale) with the
+          breath NUMBER inside. RIGHT: the twelve-breath session ring, filling
+          once across the whole set, with the sit's TOTAL TIME inside. The
           quick-close ✕ lives top-right. */}
       <div ref={bottomRef} className="w-full" style={{ paddingLeft: 24, paddingRight: 24, marginBottom: 6 }}>
         <div className="flex items-end justify-between">
-          {/* LEFT — per-breath progress. */}
-          <svg aria-hidden="true" width={50} height={50} viewBox="0 0 128 128" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={8} strokeOpacity={0.9}
-              style={{ filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
-            <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={8} strokeLinecap="round" strokeOpacity={0.85}
-              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
-            <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={8} strokeLinecap="round" strokeOpacity={0.9}
-              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
-          </svg>
-          {/* RIGHT — the twelve-breath session ring, count inside. */}
-          <div style={{ position: "relative", width: 50, height: 50 }}>
-            <svg aria-hidden="true" width={50} height={50} viewBox="0 0 80 80" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-              <circle cx={40} cy={40} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={5} />
-              <circle ref={sessionRingRef} cx={40} cy={40} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={5} strokeLinecap="round" strokeOpacity={0.8}
-                style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
+          {/* LEFT — per-breath progress, breath number inside. */}
+          <div style={{ position: "relative", width: 72, height: 72 }}>
+            <svg aria-hidden="true" width={72} height={72} viewBox="0 0 128 128" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+              <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={7} strokeOpacity={0.9}
+                style={{ filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
+              <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={7} strokeLinecap="round" strokeOpacity={0.85}
+                style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
+              <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={7} strokeLinecap="round" strokeOpacity={0.9}
+                style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
             </svg>
             {counting && (
               <span
                 style={{
                   position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
                   color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK,
-                  fontSize: reachedNow ? 15 : 13, fontWeight: 600,
+                  fontSize: reachedNow ? 18 : 16, fontWeight: 600, textShadow: "0 2px 10px rgba(8,30,18,0.6)",
                 }}
               >
                 {reachedNow ? "🌿" : breathNum}
+              </span>
+            )}
+          </div>
+          {/* RIGHT — the twelve-breath session ring, total time inside. */}
+          <div style={{ position: "relative", width: 72, height: 72 }}>
+            <svg aria-hidden="true" width={72} height={72} viewBox="0 0 80 80" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+              <circle cx={40} cy={40} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={4.4} />
+              <circle ref={sessionRingRef} cx={40} cy={40} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={4.4} strokeLinecap="round" strokeOpacity={0.8}
+                style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
+            </svg>
+            {counting && (
+              <span
+                style={{
+                  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  color: TEXT_DIM, fontFamily: SPACE_GROTESK,
+                  fontSize: 14, fontWeight: 600, letterSpacing: "0.03em", fontVariantNumeric: "tabular-nums",
+                  textShadow: "0 2px 10px rgba(8,30,18,0.6)",
+                }}
+              >
+                {`${Math.floor(sinceCount / 60000)}:${String(Math.floor((sinceCount % 60000) / 1000)).padStart(2, "0")}`}
               </span>
             )}
           </div>
