@@ -294,7 +294,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                       {t("menu.sign_in_up", { defaultValue: "Sign in / Sign up" })}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                      {t("menu.sign_in_up_sub", { defaultValue: "Save your daily rhythm across devices." })}
+                      {t("menu.sign_in_up_sub", { defaultValue: "Keep your rhythm and progress on every device." })}
                     </p>
                   </div>
                 </button>

@@ -1,6 +1,6 @@
 import { getFrontendUrl, getInviteBaseUrl } from "../lib/urls";
 import { sendPasswordResetEmail } from "../lib/email";
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import passport from "passport";
 import { loginFreshSession } from "../lib/session";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
@@ -36,8 +36,13 @@ if (GOOGLE_CONFIGURED) {
         clientSecret: process.env["GOOGLE_CLIENT_SECRET"]!,
         callbackURL,
         scope: ["profile", "email"],
+        // Pass `req` into verify so we can see the CURRENT session — an
+        // anonymous device guest signing up via Google should upgrade that
+        // same row in place (keep their streak), not mint a fresh account.
+        passReqToCallback: true,
       },
       async (
+        req: Request,
         accessToken: string,
         refreshToken: string,
         profile: Profile,
@@ -90,6 +95,21 @@ if (GOOGLE_CONFIGURED) {
             return done(null, user);
           }
 
+          // Anonymous device guest signing up via Google → upgrade that same
+          // row in place (keeps streak / history / push token / rule; id
+          // unchanged), mirroring /auth/register + Apple. Only reached when the
+          // email is free (byEmail miss above), so there's no takeover risk.
+          const anonId = req.user && (req.user as { isAnonymous?: boolean }).isAnonymous
+            ? (req.user as { id: number }).id
+            : null;
+          if (anonId != null) {
+            const [upgraded] = await db
+              .update(usersTable)
+              .set({ name, email, avatarUrl, googleId, isAnonymous: false })
+              .where(and(eq(usersTable.id, anonId), eq(usersTable.isAnonymous, true)))
+              .returning();
+            if (upgraded) return done(null, upgraded);
+          }
           const [user] = await db
             .insert(usersTable)
             .values({ name, email, avatarUrl, googleId })

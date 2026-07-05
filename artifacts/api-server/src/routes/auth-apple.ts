@@ -24,7 +24,7 @@
 import { Router, type IRouter } from "express";
 import { loginFreshSession } from "../lib/session";
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { db, usersTable } from "@workspace/db";
@@ -149,15 +149,34 @@ router.post("/auth/apple/native", async (req, res): Promise<void> => {
         res.status(400).json({ error: "email_required_on_first_signup" });
         return;
       }
-      const [created] = await db
-        .insert(usersTable)
-        .values({
-          name: displayName,
-          email,
-          appleId: sub,
-        })
-        .returning();
-      user = created;
+      // If this device is already an ANONYMOUS guest (the public no-login
+      // shape), UPGRADE that same row in place instead of minting a new
+      // account — so the guest's streak / prayer history / push token / rule
+      // carry into the real account (id unchanged). Mirrors /auth/register.
+      // Only reached when the email is free (byEmail miss above); an Apple
+      // login onto an EXISTING account is the link/merge case handled earlier.
+      const anonId = req.user && (req.user as { isAnonymous?: boolean }).isAnonymous
+        ? (req.user as { id: number }).id
+        : null;
+      if (anonId != null) {
+        const [upgraded] = await db
+          .update(usersTable)
+          .set({ name: displayName, email, appleId: sub, isAnonymous: false })
+          .where(and(eq(usersTable.id, anonId), eq(usersTable.isAnonymous, true)))
+          .returning();
+        user = upgraded;
+      }
+      if (!user) {
+        const [created] = await db
+          .insert(usersTable)
+          .values({
+            name: displayName,
+            email,
+            appleId: sub,
+          })
+          .returning();
+        user = created;
+      }
     }
 
     // 6. Log in via Passport so the browser session cookie picks up. Rotate the

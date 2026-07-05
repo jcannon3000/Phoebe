@@ -837,6 +837,9 @@ const GUEST_ALLOWED_PREFIX = [
 // and the register in-place upgrade preserves the rule if they later sign up).
 const WEB_CUSTOMIZER_ROUTES = new Set<string>([
   "/rule-of-life", "/pilot/build", "/find-your-rhythm",
+  // The office "Customize" pill (/bcp/daily-office/settings) also shapes the
+  // rule — which office form, medium, reflection, minutes — so it's gated too.
+  "/bcp/daily-office/settings",
 ]);
 
 function GuestGate({ children }: { children: ReactNode }) {
