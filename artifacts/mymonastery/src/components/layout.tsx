@@ -1071,16 +1071,22 @@ function OpeningSplash() {
     { active: rhythm.gratitudeActive, done: rhythm.gratitudeDone, slot: "evening", emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" },
     { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : "Evening prayer", blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : "Mark the day's end with the office", rgb: "124,116,196" },
   ];
-  // EVENING-slot practices (Evening Prayer, the Examen, Gratitude, anything the
-  // user slotted to evening) never surface as "what's next" before 5pm — only
-  // the morning/midday/afternoon practices lead earlier in the day. From 5pm on,
-  // the evening slot joins the running (and still sorts last).
+  // From the AFTERNOON on (noon onward), "what's next" LEADS WITH EVENING (owner)
+  // — once the day has turned, the evening office is what's ahead, so it surfaces
+  // and sorts FIRST rather than nagging an undone morning. Before noon the normal
+  // morning→evening order holds. The evening slot is included from noon so it can
+  // lead (its own card still won't be tappable until its 5pm window — the splash
+  // just points ahead to it).
+  const afternoon = hour >= 12;
+  const rankOf = (slot: CustomSlot): number =>
+    afternoon && slot === "evening" ? -1 : SLOT_RANK[slot];
   const firstUp = nextCandidates
     // Only surface a practice whose slot window is open — mirrors the
     // daily-progress time-gate so the home "what's next" never offers a
-    // tappable practice before its window (Midday 10 / Afternoon 2 / Evening 5).
-    .filter((c) => c.active && !c.done && isSlotOpen(c.slot))
-    .sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
+    // tappable practice before its window (Midday 10 / Afternoon 2 / Evening 5) —
+    // except the evening office, which is allowed to LEAD from noon.
+    .filter((c) => c.active && !c.done && (isSlotOpen(c.slot) || (afternoon && c.slot === "evening")))
+    .sort((a, b) => rankOf(a.slot) - rankOf(b.slot))[0];
   const nextUp: { emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean } | null =
     firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb, logOnly: firstUp.logOnly } : null;
   const showFellows = false;
