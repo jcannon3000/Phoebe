@@ -11,6 +11,7 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guestSilenceLog";
 import { resolveContemplationSideForSit } from "@/lib/contemplationSideDone";
+import { appleHealthAvailable, requestMindfulAuthorization } from "@/lib/appleHealth";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
@@ -519,6 +520,23 @@ export function ContemplationTimer({
     // instead of a suspended one. Without this, the swell often silently
     // fails on the first sit after a cold launch.
     primeAudio();
+    // Health-on-silence: the first time anyone begins a sit, ask Apple Health
+    // for Mindful-Minutes access (native only, once per device) — silence IS
+    // the thing Health tracks, so this is the natural moment to connect. Fired
+    // inside the Begin tap's gesture so iOS lets the permission sheet show; the
+    // connected flag is set optimistically (HealthKit hides read-grant state,
+    // so we infer it from whether minutes come back), matching the Settings /
+    // stats Connect button.
+    try {
+      if (appleHealthAvailable()
+        && localStorage.getItem("phoebe:health-connected") !== "1"
+        && localStorage.getItem("phoebe:health-sit-asked") !== "1") {
+        localStorage.setItem("phoebe:health-sit-asked", "1");
+        void requestMindfulAuthorization().finally(() => {
+          try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
+        });
+      }
+    } catch { /* private mode / non-native — silence stays login-free */ }
     setSatSeconds(0);
     setReachedGoal(false);
     setOvertime(0);

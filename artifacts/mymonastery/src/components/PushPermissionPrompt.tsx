@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { apiRequest } from "@/lib/queryClient";
 
 /**
  * One-time push-permission nudge for the native iOS shell.
@@ -37,6 +39,23 @@ export function PushPermissionPrompt() {
   const { user } = useAuth();
   const { isGuest } = useGuestMode();
 
+  // A GUEST'S ask now waits until they've prayed their FIRST office (after the
+  // first-run intro + office), not their first landing on the home — front-
+  // loading a system dialog before any value was shown reads as spammy. We
+  // gate on the server "days of prayer" (the same signal the streak card and
+  // welcome card read; React Query dedupes). Only queried for a native guest
+  // who hasn't been asked yet, so it's a no-op for web / signed-in / done.
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
+  const alreadyAsked = (() => { try { return localStorage.getItem("phoebe:push-prompt-asked") === "1"; } catch { return true; } })();
+  const guestNative = !user && isGuest && isNativeShell() && !alreadyAsked;
+  const { data: prayerDays } = useQuery<{ streak: number; last7: number; keptToday: boolean }>({
+    queryKey: ["/api/me/prayer-days", tz],
+    queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
+    enabled: guestNative,
+    staleTime: 60_000,
+  });
+  const guestHasPrayed = !!prayerDays && (prayerDays.keptToday || prayerDays.last7 > 0 || prayerDays.streak > 0);
+
   useEffect(() => {
     if (!user && !isGuest) return;
 
@@ -48,13 +67,16 @@ export function PushPermissionPrompt() {
     const KEY = "phoebe:push-prompt-asked";
     if (localStorage.getItem(KEY) === "1") return;
 
+    // Guest: hold the ask until the first office is prayed (see above).
+    // Signed-in users keep the ask-anywhere behavior.
+    if (!user && !guestHasPrayed) return;
+
     const timer = window.setTimeout(() => {
-      // A GUEST'S ask waits for the home screen: fire only when the 2s tick
-      // catches them on /dashboard (their routing lands there straight from
-      // the seed). Elsewhere (a deep link), nothing is stamped — the next
-      // launch re-arms. Signed-in users keep the ask-anywhere behavior;
-      // checked at FIRE time (window.location, not a hook dep) so the
-      // signed-in effect lifecycle is untouched.
+      // A GUEST'S ask fires on the home screen — fire only when the 2s tick
+      // catches them on /dashboard (where they land after the office).
+      // Elsewhere (a deep link), nothing is stamped — the next launch re-arms.
+      // Signed-in users keep the ask-anywhere behavior; checked at FIRE time
+      // (window.location, not a hook dep) so their effect lifecycle is untouched.
       if (!user && window.location.pathname !== "/dashboard") return;
       try {
         window.dispatchEvent(new Event("phoebe:request-push-permission"));
@@ -65,7 +87,7 @@ export function PushPermissionPrompt() {
     }, 2000);
 
     return () => window.clearTimeout(timer);
-  }, [user, isGuest]);
+  }, [user, isGuest, guestHasPrayed]);
 
   return null;
 }

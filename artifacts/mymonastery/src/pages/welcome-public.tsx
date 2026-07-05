@@ -11,6 +11,13 @@ import { ensureAnonymousUser } from "@/lib/guestProvision";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { primeAudio } from "@/lib/amenFeedback";
+import { FirstRunIntro } from "@/components/FirstRunIntro";
+
+// Shown ONCE, on a fresh guest's very first open, before the home.
+const INTRO_SEEN_KEY = "phoebe:first-run-intro-seen";
+function introAlreadySeen(): boolean {
+  try { return localStorage.getItem(INTRO_SEEN_KEY) === "1"; } catch { return false; }
+}
 
 // ── First-open chooser ───────────────────────────────────────────────────────
 //
@@ -61,6 +68,9 @@ export default function WelcomePublicPage() {
   // (Morning/Evening Office + FDD + a 5-min silence goal) and they land
   // straight on the home, already going. No login anywhere.
   const qc = useQueryClient();
+  // A fresh guest sees the one-time first-run intro before the home; a returning
+  // guest (intro already seen) is sent straight to /dashboard as before.
+  const [showIntro, setShowIntro] = useState(false);
   useEffect(() => {
     if (isLoading) return;
     if (user) { setLocation("/dashboard"); return; }
@@ -72,9 +82,31 @@ export default function WelcomePublicPage() {
       void ensureAnonymousUser().then((created) => {
         if (created) qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       });
-      setLocation("/dashboard", { replace: true });
+      if (introAlreadySeen()) {
+        setLocation("/dashboard", { replace: true });
+      } else {
+        setShowIntro(true); // render FirstRunIntro below; it routes onward
+      }
     }
   }, [user, isLoading, setLocation, qc]);
+
+  // First-run intro (guests, once). "Start here" launches the time-appropriate
+  // office — EVENING once it's past noon, Morning before — and "Skip" drops
+  // them on the home. Either way we stamp the seen-flag so it never re-shows.
+  if (showIntro) {
+    const side = new Date().getHours() >= 12 ? "evening" : "morning";
+    const officeLabel = side === "morning"
+      ? t("offices.morning_prayer", { defaultValue: "Morning Prayer" })
+      : t("offices.evening_prayer", { defaultValue: "Evening Prayer" });
+    const stampSeen = () => { try { localStorage.setItem(INTRO_SEEN_KEY, "1"); } catch { /* private mode */ } };
+    return (
+      <FirstRunIntro
+        officeLabel={officeLabel}
+        onStart={() => { stampSeen(); setLocation(`/begin-prayer?side=${side}`); }}
+        onSkip={() => { stampSeen(); setLocation("/dashboard", { replace: true }); }}
+      />
+    );
+  }
 
   // Don't paint the chooser while we're still resolving the auth
   // state — avoids a brief flash before the redirect above fires.
