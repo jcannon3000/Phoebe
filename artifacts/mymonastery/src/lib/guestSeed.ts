@@ -80,3 +80,20 @@ export function setGuestSilenceGoalMin(min: number): void {
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
   } catch { /* ignore */ }
 }
+
+// The guest DAILY STEP goal (steps) — device-local stand-in for the server's
+// dailyStepGoal (which guests, being login-free, don't reach). The Daily steps
+// page + the home step card read/write this when in guest mode. 0 = off.
+export const GUEST_STEP_GOAL_KEY = "phoebe:guest-step-goal";
+export function getGuestStepGoal(): number {
+  try {
+    const v = parseInt(localStorage.getItem(GUEST_STEP_GOAL_KEY) ?? "", 10);
+    return Number.isFinite(v) && v >= 0 && v <= 200000 ? v : 0;
+  } catch { return 0; }
+}
+export function setGuestStepGoal(steps: number): void {
+  try {
+    localStorage.setItem(GUEST_STEP_GOAL_KEY, String(Math.max(0, Math.min(200000, Math.round(steps)))));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* ignore */ }
+}

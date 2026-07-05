@@ -25,6 +25,7 @@ export default function MenuPracticesPage() {
           // Contemplation leads the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
           { emoji: "📖", label: "Listen to Scripture", sub: "Hear the day's OT, Psalm, NT & Gospel", onClick: () => go("/scripture/readings") },
+          { emoji: "👟", label: "Daily steps", sub: "Walk toward a step goal, counted from Apple Health", onClick: () => go("/daily-steps") },
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),

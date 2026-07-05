@@ -9,12 +9,13 @@ import {
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
+import { useDailySteps } from "@/lib/appleHealth";
 import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
+import { getGuestSilenceGoalMin, getGuestStepGoal } from "@/lib/guestSeed";
 import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
 
@@ -95,6 +96,11 @@ export type RhythmState = {
   cobreatheActive: boolean;
   prayerListActive: boolean;
   scriptureActive: boolean;
+  /** Daily steps (Apple Health) — a step-goal card, active when a goal is set. */
+  stepsActive: boolean;
+  stepsToday: number;
+  stepsGoal: number;
+  stepsDone: boolean;
   gratitudeDone: boolean;
   examenDone: boolean;
   listeningDone: boolean;
@@ -531,6 +537,20 @@ export function useRhythmState(): RhythmState {
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
+  // Daily steps (Apple Health) — a step-goal card, active whenever a goal is
+  // set (office-prefs `dailyStepGoal`), like the silence goal. Today's count
+  // comes from HealthKit on native and the server-synced value on web — read
+  // only while active (the hook is gated). Kept when the count reaches the goal
+  // (or the server already stamped today's reached-date, for a cross-device
+  // echo). Guests share the same shape (goal-driven), just device-local prefs.
+  // Guests are login-free, so the server office-prefs query is disabled for
+  // them — their step goal is the device-local guest key (like the silence
+  // goal). Signed-in users read dailyStepGoal from office-prefs.
+  const stepsGoal = guest ? getGuestStepGoal() : (officePrefs?.dailyStepGoal ?? 0);
+  const stepsActive = stepsGoal > 0;
+  const { steps: stepsToday } = useDailySteps(stepsActive);
+  const stepsDone = stepsActive && (stepsToday >= stepsGoal || (!guest && (officePrefs?.dailyStepReachedDate ?? null) === day));
+
   // The four core anchors plus whichever optional practices the user added.
   // Evening is an OPT-IN anchor — off by default (evening office pref "none"),
   // so an un-set-up user keeps three dots: morning · contemplation · reflection.
@@ -669,6 +689,7 @@ export function useRhythmState(): RhythmState {
     ...(scriptureActive ? [scriptureDone] : []),
     ...(examenActive ? [examenDone] : []),
     ...(journalingActive ? [journalingDone] : []),
+    ...(stepsActive ? [stepsDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
@@ -723,6 +744,10 @@ export function useRhythmState(): RhythmState {
     cobreatheActive,
     prayerListActive,
     scriptureActive,
+    stepsActive,
+    stepsToday,
+    stepsGoal,
+    stepsDone,
     gratitudeDone,
     examenDone,
     listeningDone,

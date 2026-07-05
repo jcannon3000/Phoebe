@@ -572,7 +572,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -836,6 +836,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       progress: { current: contemplationMin, goal: contemplationGoalMin },
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+    }] : []),
+    // Daily steps (Apple Health) — an all-day step-goal card with a progress
+    // bar, same shape as the silence goal. Active whenever a goal is set; today's
+    // count comes from HealthKit (native) or the server-synced value (web).
+    ...(stepsActive ? [{
+      key: "steps", slot: "anytime" as CustomSlot, emoji: "👟", rgb: "108,140,180",
+      done: stepsDone,
+      href: "/daily-steps",
+      title: t("rhythm.card_steps", { defaultValue: "Daily steps" }),
+      blurb: stepsDone
+        ? t("rhythm.steps_kept", { defaultValue: "You reached your step goal today" })
+        : t("rhythm.steps_of_goal", { current: stepsToday, goal: stepsGoal, defaultValue: `${stepsToday.toLocaleString()} of ${stepsGoal.toLocaleString()} steps today` }),
+      progress: { current: stepsToday, goal: stepsGoal },
+      cta: t("rhythm.view", { defaultValue: "View" }), later: false,
     }] : []),
     // Optional practices ride at the time of day the user chose for each.
     ...(cobreatheActive ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
