@@ -347,21 +347,28 @@ function DailyGoalCard({
 
       {/* Connect Apple Health — shown on the stats page for a native install
           that hasn't connected yet (incl. after a re-download, which clears the
-          local flag). Folds any meditation from Calm / Insight Timer / Apple
-          Mindfulness into the goal above. */}
+          local flag). The explanation is the point: connecting lets Phoebe
+          COUNT silence you keep in OTHER apps (Calm, Insight Timer, Apple
+          Mindfulness) toward this goal, so your practice reflects everywhere
+          you sit — not only in-app. */}
       {showHealthConnect && (
-        <button
-          type="button"
-          onClick={connectHealth}
-          disabled={connectingHealth}
-          className="rounded-full px-4 py-2 text-[13px] font-semibold flex items-center gap-1.5 mb-3 transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: connectingHealth ? "default" : "pointer" }}
-        >
-          <span aria-hidden>🍎</span>
-          {connectingHealth
-            ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
-            : t("contemplation.health_connect", { defaultValue: "Connect Apple Health" })}
-        </button>
+        <div className="mb-3">
+          <p className="text-[12.5px] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
+            {t("contemplation.health_connect_why", { defaultValue: "Connect Apple Health and Phoebe will count the silence you keep in other apps — Calm, Insight Timer, Apple Mindfulness — toward your goal too." })}
+          </p>
+          <button
+            type="button"
+            onClick={connectHealth}
+            disabled={connectingHealth}
+            className="rounded-full px-4 py-2 text-[13px] font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: connectingHealth ? "default" : "pointer" }}
+          >
+            <span aria-hidden>🍎</span>
+            {connectingHealth
+              ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
+              : t("contemplation.health_connect", { defaultValue: "Connect Apple Health" })}
+          </button>
+        </div>
       )}
 
       {showEditor ? (
