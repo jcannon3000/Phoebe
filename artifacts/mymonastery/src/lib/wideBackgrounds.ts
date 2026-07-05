@@ -11,7 +11,7 @@
 
 import { isNativeShell } from "@/lib/isNativeShell";
 
-const WIDE_COUNT = 21;
+const WIDE_COUNT = 39;
 
 export const WIDE_PHOTOS: string[] = Array.from({ length: WIDE_COUNT }, (_, i) =>
   `/wide/wide-${String(i + 1).padStart(2, "0")}.jpg`,
