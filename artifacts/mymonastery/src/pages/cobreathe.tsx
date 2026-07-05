@@ -8,6 +8,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
+import { CobreatheHowToIntro } from "@/components/CobreatheHowToIntro";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
@@ -167,6 +168,15 @@ function Faces({ companions }: { companions: Companion[] }) {
   );
 }
 
+// One-time "how it works" intro shown to a first-time Co-Breather after Begin.
+const COBREATHE_HOWTO_KEY = "phoebe:cobreathe-howto-seen";
+function cobreatheHowtoSeen(): boolean {
+  try { return localStorage.getItem(COBREATHE_HOWTO_KEY) === "1"; } catch { return false; }
+}
+function markCobreatheHowtoSeen(): void {
+  try { localStorage.setItem(COBREATHE_HOWTO_KEY, "1"); } catch { /* private mode */ }
+}
+
 export default function CobreathePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -182,8 +192,10 @@ export default function CobreathePage() {
   // The Laurel Kearns "Prayer of Con-Spiring" slideshow is removed (owner) —
   // landing on /cobreathe goes straight to the "before you begin" screen for
   // everyone (a ?start=1 quick-launch still jumps into the breath).
-  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
-    wantsStart() ? "breathing" : "intro",
+  const [mode, setMode] = useState<"intro" | "howto" | "breathing" | "done">(() =>
+    // A ?start=1 quick-launch jumps in — but a FIRST-time breather still gets the
+    // one-time "how it works" intro first.
+    wantsStart() ? (cobreatheHowtoSeen() ? "breathing" : "howto") : "intro",
   );
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
@@ -432,6 +444,15 @@ export default function CobreathePage() {
   // (app header + page background) so navigating in doesn't flash the page
   // behind the breath for a frame. (The breath's own opaque field covers the
   // screen from the first paint.)
+  // First-time "how it works" — three slides after Begin, then the breath.
+  if (mode === "howto") {
+    return (
+      <CobreatheHowToIntro
+        onDone={() => { markCobreatheHowtoSeen(); setMode("breathing"); }}
+      />
+    );
+  }
+
   if (mode === "breathing") {
     // Fade INTO the breath rather than hard-cutting from the intro — a gentle
     // half-second opacity rise as the practice takes over the screen. The
@@ -553,10 +574,11 @@ export default function CobreathePage() {
 
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
 
-            {/* Begin — into the synced breath. */}
+            {/* Begin — into the synced breath (a first-timer sees the one-time
+                "how it works" intro first). */}
             <button
               type="button"
-              onClick={() => setMode("breathing")}
+              onClick={() => setMode(cobreatheHowtoSeen() ? "breathing" : "howto")}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
             >
