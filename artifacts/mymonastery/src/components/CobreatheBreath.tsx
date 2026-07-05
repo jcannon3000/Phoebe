@@ -119,6 +119,9 @@ function breathHaptic(out: boolean): void {
 // screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";
 
+// The world turns between these three globes — one held per session, rotating
+// across sessions.
+const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
 // (The old Weil/Merton/MLK/Teresa sync quotes are replaced by the Season of
 // Creation opening sentences — see CREATION_OPENING_SENTENCES.)
@@ -132,6 +135,7 @@ const RING_OUT = "#4A473F";              // a lot darker — the base / exhale s
 const RING_GLOW = "rgba(240,237,230,0.45)";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
+const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
 // Inner SESSION ring — ONE slow circle filling once across the whole set of
 // breaths, in the SAME card-surface green glass as the breath fill.
 const SESSION_RING = "#EFECE4";
@@ -238,22 +242,24 @@ export function CobreatheBreath({
     const id = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(id);
   }, []);
-  // The breath's centre is the BREATHING WORD (globe removed — owner). Two
-  // small progress circles rest in the bottom corners: the per-breath ring
-  // (left) and the twelve-breath session ring (right), driven from the rAF
-  // clock below.
+  // The breath is a draggable centre globe (🌍) ringed by CONCENTRIC progress
+  // circles (outer breath ring + inner blue session ring, golden ratio apart)
+  // over a softly breathing photo field — see the SVG in the render below.
   const labelRef = useRef<HTMLDivElement>(null);
-  // The WORD swaps inside the rAF at the exact phase boundary (where the fade
-  // sits at zero) — the React tick only re-renders every ~450ms, and a late
-  // text swap re-lit the OLD word on the new phase's rising fade (a flash).
-  // Same pattern as the rotating prayer text. labelWordsRef mirrors the
-  // localized strings for the rAF closure; labelShownRef dedupes DOM writes.
-  const labelTextRef = useRef<HTMLParagraphElement>(null);
-  const labelWordsRef = useRef({ in: "Breathe In", out: "Breathe Out" });
-  const labelShownRef = useRef("");
+  // Globe + the rings around it (driven from the rAF clock below).
+  const globeRef = useRef<HTMLDivElement>(null);
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
   const sessionRingRef = useRef<SVGCircleElement>(null);
+  // The globe is chosen ONCE per session and held for the whole sit; a
+  // localStorage counter rotates 🌍 → 🌎 → 🌏 across sessions.
+  const sessionGlobeRef = useRef<string | null>(null);
+  if (sessionGlobeRef.current === null) {
+    let gi = 0;
+    try { gi = ((parseInt(localStorage.getItem("phoebe:cobreathe-globe") || "0", 10) || 0) % GLOBES.length + GLOBES.length) % GLOBES.length; } catch { /* ignore */ }
+    sessionGlobeRef.current = GLOBES[gi];
+    try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
+  }
   // The opening sentence shown while the breath syncs — a Season of Creation
   // Scripture opening sentence (owner), chosen once per sit so the slot isn't
   // always the same line.
@@ -267,8 +273,67 @@ export function CobreatheBreath({
   if (sessionLeafRef.current === null && LEAF_PHOTOS.length > 0) {
     sessionLeafRef.current = LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]!;
   }
+  // ── Draggable globe ──────────────────────────────────────────────────────
+  // The globe cluster can be dragged anywhere on screen (kept 24px clear of the
+  // edges + the top title and bottom labels). Released near its home (centre),
+  // it springs back with a soft haptic. The chosen spot persists across sits.
+  // Always START perfectly centred (on 50% / 61.8%). We no longer restore a
+  // persisted drag offset — a stale offset from a prior sit was leaving the
+  // globe + rings off-centre on open. Dragging still works within the sit.
+  const [globeOffset, setGlobeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [globeSnapping, setGlobeSnapping] = useState(false);
+  // Globe box size in px. On MOBILE the page width is 2.61× the OUTER ring's
+  // diameter — i.e. outer diameter = viewport width / 2.61. The outer ring is
+  // 2·RING_R of the 128 viewBox, so the box (the full viewBox) = outer·128/116.
+  // Desktop keeps the fixed 158 box.
+  const globeBoxPx = (vw: number): number => {
+    if (vw > 0 && vw <= 600) {
+      const outer = vw / 2.61;
+      return Math.round(outer * (128 / (2 * RING_R)));
+    }
+    return 158;
+  };
+  const [globePx, setGlobePx] = useState<number>(() => {
+    try { return globeBoxPx(window.innerWidth); } catch { return 158; }
+  });
+  useEffect(() => {
+    const onResize = () => { try { setGlobePx(globeBoxPx(window.innerWidth)); } catch { /* ignore */ } };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => { window.removeEventListener("resize", onResize); window.removeEventListener("orientationchange", onResize); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const globeCellRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Captured at pointer-down: start pointer, offset at start, and the clamp
+  // bounds (from the cell's natural rect + the title/bottom content edges).
+  const globeDragRef = useRef<{ px: number; py: number; ox: number; oy: number; minX: number; maxX: number; minY: number; maxY: number } | null>(null);
+  // Re-clamp the (persisted) offset to the CURRENT viewport on mount + on
+  // resize/rotate — a value saved on a larger screen could otherwise strand the
+  // globe off-view or over the title/labels with no way back but a blind drag.
+  useEffect(() => {
+    const clamp = () => {
+      const cell = globeCellRef.current; if (!cell) return;
+      const rect = cell.getBoundingClientRect();
+      setGlobeOffset((cur) => {
+        const natLeft = rect.left - cur.x, natTop = rect.top - cur.y;
+        const titleBottom = titleRef.current?.getBoundingClientRect().bottom ?? 0;
+        const bottomTop = bottomRef.current?.getBoundingClientRect().top ?? window.innerHeight;
+        let minX = 24 - natLeft, maxX = (window.innerWidth - 24) - (natLeft + rect.width);
+        let minY = (titleBottom + 24) - natTop, maxY = (bottomTop - 24) - (natTop + rect.height);
+        if (minX > maxX) minX = maxX = (minX + maxX) / 2;   // screen too narrow → lock to centre
+        if (minY > maxY) minY = maxY = (minY + maxY) / 2;   // too short → lock to centre
+        const nx = Math.min(maxX, Math.max(minX, cur.x));
+        const ny = Math.min(maxY, Math.max(minY, cur.y));
+        return (nx === cur.x && ny === cur.y) ? cur : { x: nx, y: ny };
+      });
+    };
+    clamp();
+    window.addEventListener("resize", clamp);
+    window.addEventListener("orientationchange", clamp);
+    return () => { window.removeEventListener("resize", clamp); window.removeEventListener("orientationchange", clamp); };
+  }, []);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
   // the incoming layer fades in over the outgoing (never a hard switch), and each
@@ -537,25 +602,26 @@ export function CobreatheBreath({
           }
         }
       }
-      // The CENTRE phase word — "Breathe In" / "Breathe Out" — fades UP from
-      // nothing at the start of each phase, peaks mid-phase, and fades DOWN to
-      // nothing at the turn (so the word swap happens while invisible), while
-      // drifting gently upward through the phase — the office title-screen
-      // feel. Before sync, the "Syncing" label holds at full opacity, still.
+      // The phase word — "Breathe In" / "Breathe Out" — fades UP from nothing at
+      // the start of each phase, peaks mid-phase, and fades DOWN to nothing at
+      // the turn (so the word swap happens while invisible). The word stays a
+      // CONSTANT SIZE — no scale ride (it was reading as the text growing and
+      // shrinking). Before sync, the "Syncing" label holds at full opacity.
       if (labelRef.current) {
         const f = pos < INHALE_MS ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS;
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
-        labelRef.current.style.transform = isCounting ? `translateY(${((0.5 - f) * 14).toFixed(2)}px)` : "translateY(0px)";
       }
-      // Swap the word HERE, at the frame the phase turns — the fade is at zero
-      // then, so "Breathe In"/"Breathe Out" never changes while visible and the
-      // old word is never re-lit by the new phase's rise.
-      if (isCounting && labelTextRef.current) {
-        const word = pos < INHALE_MS ? labelWordsRef.current.in : labelWordsRef.current.out;
-        if (labelShownRef.current !== word) {
-          labelShownRef.current = word;
-          labelTextRef.current.textContent = word;
-        }
+      // Globe GREEN glow crossfades with the breath — darker at the bottom of the
+      // exhale (pAnim→0), lighter at the top of the inhale (pAnim→1). Skipped once
+      // the set is complete, so the declarative blue glow takes over.
+      if (globeRef.current && !reachedRef.current) {
+        const gr = Math.round(46 + (134 - 46) * pAnim);
+        const gg = Math.round(107 + (199 - 107) * pAnim);
+        const gb = Math.round(64 + (155 - 64) * pAnim);
+        const blur = (10 + pAnim * 13).toFixed(1);
+        const alpha = (0.42 + pAnim * 0.42).toFixed(2);
+        globeRef.current.style.filter =
+          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.6))`;
       }
       // Breath-progress rings: the lighter ring fills over the inhale + holds; the
       // darker ring sweeps over it on the exhale; both reset each cycle. The inner
@@ -687,11 +753,6 @@ export function CobreatheBreath({
     phase === "in"
       ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
       : t("cobreathe.phase_out", { defaultValue: "Breathe Out" });
-  // Mirror the localized words for the rAF's exact-boundary swap above.
-  labelWordsRef.current = {
-    in: t("cobreathe.phase_in", { defaultValue: "Breathe In" }),
-    out: t("cobreathe.phase_out", { defaultValue: "Breathe Out" }),
-  };
 
   // Where are we in the count? Negative during the pre-roll; uncapped after,
   // so the count keeps climbing past the target while they keep breathing.
@@ -722,6 +783,8 @@ export function CobreatheBreath({
   const [breathFaces, setBreathFaces] = useState(coBreathingFellows);
   useEffect(() => { setBreathFaces(coFacesRef.current); }, [breathNum]);
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
+  // The session globe (held for the whole sit).
+  const globe = sessionGlobeRef.current ?? GLOBES[0];
   // The opening sentence for this sit — a Season of Creation Scripture line,
   // fixed per sit by openingIdxRef. The scripture ref sits in the author slot.
   const openingSentence = CREATION_OPENING_SENTENCES[openingIdxRef.current ?? 0]!;
@@ -730,6 +793,46 @@ export function CobreatheBreath({
   // Soft sage tones that sit calmly on the deep-green field.
   const TEXT_DIM = "rgba(182,210,188,0.72)";
   const TEXT_FAINT = "rgba(182,210,188,0.48)";
+
+  // Drag-the-globe handlers (Pointer Events → touch + mouse). Bounds keep it
+  // 24px clear of the screen edges and the top/bottom text; releasing within
+  // 44px of home springs it back to centre with a soft haptic.
+  const onGlobeDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const cell = globeCellRef.current; if (!cell) return;
+    try { cell.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+    setGlobeSnapping(false);
+    const rect = cell.getBoundingClientRect();
+    const natLeft = rect.left - globeOffset.x, natTop = rect.top - globeOffset.y;
+    const titleBottom = titleRef.current?.getBoundingClientRect().bottom ?? 0;
+    const bottomTop = bottomRef.current?.getBoundingClientRect().top ?? window.innerHeight;
+    let minX = 24 - natLeft, maxX = (window.innerWidth - 24) - (natLeft + rect.width);
+    let minY = (titleBottom + 24) - natTop, maxY = (bottomTop - 24) - (natTop + rect.height);
+    if (minX > maxX) minX = maxX = (minX + maxX) / 2;   // screen too narrow → lock X to centre
+    if (minY > maxY) minY = maxY = (minY + maxY) / 2;   // too short → lock Y to centre
+    globeDragRef.current = { px: e.clientX, py: e.clientY, ox: globeOffset.x, oy: globeOffset.y, minX, maxX, minY, maxY };
+  };
+  const onGlobeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = globeDragRef.current; if (!d) return;
+    setGlobeOffset({
+      x: Math.min(d.maxX, Math.max(d.minX, d.ox + (e.clientX - d.px))),
+      y: Math.min(d.maxY, Math.max(d.minY, d.oy + (e.clientY - d.py))),
+    });
+  };
+  const onGlobeUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = globeDragRef.current; if (!d) return;
+    globeDragRef.current = null;
+    try { globeCellRef.current?.releasePointerCapture(e.pointerId); } catch { /* unsupported */ }
+    setGlobeOffset((cur) => {
+      if (Math.hypot(cur.x, cur.y) < 44) {
+        setGlobeSnapping(true);
+        try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* web */ }
+        try { localStorage.removeItem("phoebe:cobreathe-globe-offset"); } catch { /* ignore */ }
+        return { x: 0, y: 0 };
+      }
+      try { localStorage.setItem("phoebe:cobreathe-globe-offset", JSON.stringify(cur)); } catch { /* ignore */ }
+      return cur;
+    });
+  };
 
   // Portal to <body> so the full-screen overlay escapes any transformed
   // ancestor (page transitions, etc.) that would otherwise trap its fixed
@@ -951,34 +1054,89 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* The CENTRE — the breathing word itself, like an office title screen:
-          italic Georgia with a soft luminous glow, fading up-and-in / down-and-
-          out with each phase (opacity + drift driven by the rAF via labelRef).
-          While syncing it holds the Syncing line steady. In "Pray the breath"
-          mode the prayer text (top half) stays the focal point; the word still
-          guides from the centre below it. The breath COUNT lives only in the
-          bottom-right session circle. */}
+      {/* Globe + rings — CENTRED, the still point of the screen, but DRAGGABLE:
+          grab it anywhere on screen (24px clear of the edges + the top/bottom
+          text); let go near home and it springs back to centre. The outer ring
+          breathes (lighter green in, darker green out); the inner blue ring fills
+          once across the whole set. Hidden in "Pray the breath" mode — there the
+          breathing prayer text IS the focal point, not the globe. */}
+      {!usePrayers && (
       <div
-        aria-hidden="true"
+        ref={globeCellRef}
+        onPointerDown={onGlobeDown}
+        onPointerMove={onGlobeMove}
+        onPointerUp={onGlobeUp}
+        onPointerCancel={onGlobeUp}
         style={{
-          position: "absolute", left: 28, right: 28, top: "50%",
-          transform: "translateY(-50%)", zIndex: 3, pointerEvents: "none",
-          display: "flex", justifyContent: "center",
+          // Positioned absolutely so the globe's CENTRE sits ~2/3 down the screen
+          // (golden ratio, 61.8%) — owner reverted the brief centered (50%) try.
+          // The −50%/−50% centres the box on that point; the drag offset composes
+          // on top (onGlobeDown/Move recover the natural position by subtracting
+          // the offset from the measured rect, so the drag clamp still bounds it).
+          position: "absolute", left: "50%", top: "61.8%",
+          width: globePx, height: globePx, zIndex: 3,
+          transform: `translate(-50%, -50%) translate(${globeOffset.x}px, ${globeOffset.y}px)`,
+          transition: globeSnapping ? "transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1)" : "none",
+          touchAction: "none", cursor: "grab",
         }}
       >
-        <div ref={labelRef} style={{ willChange: "transform, opacity", textAlign: "center", maxWidth: 520 }}>
-          <p
-            ref={labelTextRef}
-            style={{
-              color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic",
-              fontSize: counting ? "clamp(30px, 8.4vw, 42px)" : 17, lineHeight: 1.3, margin: 0,
-              textShadow: "0 0 26px rgba(150,215,170,0.5), 0 0 60px rgba(110,190,140,0.25), 0 2px 16px rgba(8,30,18,0.65)",
-            }}
-          >
-            {centerLabel}
-          </p>
+        <svg
+          aria-hidden="true"
+          width={globePx} height={globePx} viewBox="0 0 128 128"
+          style={{
+            position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none",
+            // Frost ONLY the two ring bands: a backdrop blur (the same 11.34px the
+            // cards use) clipped by a radial mask to the breath ring (~90% radius)
+            // and the session ring (~56%), so each ring reads like the app's
+            // frosted-glass card surface instead of a flat stroke. The mask also
+            // trims the per-stroke glows to the bands.
+            backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+            WebkitMaskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
+            maskImage: "radial-gradient(circle closest-side, transparent 0 50%, #000 51% 61%, transparent 62% 84%, #000 85% 96%, transparent 97%)",
+          }}
+        >
+          {/* TWO frosted tones only. The resting BASE ring — the base sage tone
+              the breath starts and ends on; the inhale brightens over it, the
+              exhale settles back to this base color. */}
+          <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.9}
+            style={{ filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
+          {/* Lighter-tone progress — draws FORWARD over the base on the inhale
+              and holds full. */}
+          <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
+          {/* Exhale sweep — the darker tone again, drawing FORWARD in the same
+              direction over the lighter on the exhale, settling the ring back to
+              its resting tone. Never rewinds. */}
+          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.9}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
+          {/* inner session ring — a faint frosted track (so the two rings read as
+              concentric even at rest) + slow fill, thickness matched to the outer */}
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={RING_SW} />
+          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
+            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
+        </svg>
+        <div
+          ref={globeRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            // Flex-centre the emoji over the rings box. SVG <text> positioning
+            // follows the glyph's FONT metrics (which sit off-centre for the
+            // globe emoji), so it drifted up-left of the rings; flex centring of
+            // the line box reads as truly concentric, as it did originally.
+            display: "flex", alignItems: "center", justifyContent: "center",
+            // Symmetric glow (no downward Y offset) so the shadow doesn't pull the
+            // globe's visual weight below the rings' centre.
+            filter: reachedNow
+              ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 0 10px rgba(8,30,18,0.5))"
+              : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))",
+            transition: reachedNow ? "filter 1.2s ease" : "none",
+          }}
+        >
+          <span style={{ fontSize: Math.round(globePx * 0.5), lineHeight: 1 }}>{globe}</span>
         </div>
       </div>
+      )}
 
       {/* "Breathing together" map — when you opted into an in-person session and
           Fellows are breathing with you (precise coords), show where they are with
@@ -1037,55 +1195,29 @@ export function CobreatheBreath({
           counts the sit once the 12 are kept, and discards otherwise. (The
           labelled End/Discard belong to the silent ContemplationTimer, not here.) */}
 
-      {/* Bottom corners — two progress circles. LEFT: the per-breath ring
-          (light fill over the inhale, dark sweep on the exhale) with the
-          breath NUMBER inside. RIGHT: the twelve-breath session ring, filling
-          once across the whole set, with the sit's TOTAL TIME inside. The
-          quick-close ✕ lives top-right. */}
-      <div ref={bottomRef} className="w-full" style={{ paddingLeft: 24, paddingRight: 24, marginBottom: 6 }}>
-        <div className="flex items-end justify-between">
-          {/* LEFT — per-breath progress, breath number inside. */}
-          <div style={{ position: "relative", width: 72, height: 72 }}>
-            <svg aria-hidden="true" width={72} height={72} viewBox="0 0 128 128" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-              <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={7} strokeOpacity={0.9}
-                style={{ filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
-              <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={7} strokeLinecap="round" strokeOpacity={0.85}
-                style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
-              <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={7} strokeLinecap="round" strokeOpacity={0.9}
-                style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 4px ${RING_GLOW})` }} />
-            </svg>
-            {counting && (
-              <span
-                style={{
-                  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                  color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK,
-                  fontSize: reachedNow ? 18 : 16, fontWeight: 600, textShadow: "0 2px 10px rgba(8,30,18,0.6)",
-                }}
-              >
-                {reachedNow ? "🌿" : breathNum}
-              </span>
-            )}
+      {/* Bottom — the breathing word in the LEFT corner + the breath
+          count in the RIGHT corner. The quick-close ✕ lives top-right. */}
+      <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
+        <div className="flex items-end" style={{ gap: 14 }}>
+          {/* LEFT — Breathe In / Breathe Out. */}
+          <div ref={labelRef} className="flex-1 min-w-0" style={{ willChange: "transform, opacity" }}>
+            <span
+              style={{
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.2, fontWeight: 600,
+                letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
+              }}
+            >
+              {centerLabel}
+            </span>
           </div>
-          {/* RIGHT — the twelve-breath session ring, total time inside. */}
-          <div style={{ position: "relative", width: 72, height: 72 }}>
-            <svg aria-hidden="true" width={72} height={72} viewBox="0 0 80 80" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-              <circle cx={40} cy={40} r={SESSION_R} fill="none" stroke="rgba(215,212,205,0.34)" strokeWidth={4.4} />
-              <circle ref={sessionRingRef} cx={40} cy={40} r={SESSION_R} fill="none" stroke={SESSION_RING} strokeWidth={4.4} strokeLinecap="round" strokeOpacity={0.8}
-                style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: `drop-shadow(0 0 5px ${RING_GLOW})` }} />
-            </svg>
-            {counting && (
-              <span
-                style={{
-                  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                  color: TEXT_DIM, fontFamily: SPACE_GROTESK,
-                  fontSize: 14, fontWeight: 600, letterSpacing: "0.03em", fontVariantNumeric: "tabular-nums",
-                  textShadow: "0 2px 10px rgba(8,30,18,0.6)",
-                }}
-              >
-                {`${Math.floor(sinceCount / 60000)}:${String(Math.floor((sinceCount % 60000) / 1000)).padStart(2, "0")}`}
-              </span>
-            )}
-          </div>
+          {/* RIGHT — just "n of 12" (no leading "Breath"), once counting. */}
+          {counting && (
+            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 15.2, fontWeight: 600, letterSpacing: "0.04em" }}>
+              {reachedNow
+                ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 ${breathNum}` })
+                : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `${breathNum} of ${totalBreaths}` })}
+            </p>
+          )}
         </div>
       </div>
     </div>,
