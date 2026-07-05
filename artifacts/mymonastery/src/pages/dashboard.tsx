@@ -7778,24 +7778,40 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   const cTomorrow = evBase + evToday.length;
                   const cWeek = cTomorrow + evTomorrow.length;
                   const cMonth = cWeek + evWeek.length;
-                  const newRequestBtn = isAdminOfAny ? (
+                  // Two pills, side by side: "Add" (new request) and "Edit"
+                  // (manage your own prayers on the prayer list).
+                  const pillStyle = { padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 } as const;
+                  const addPill = isAdminOfAny ? (
                     <button
                       type="button"
                       onClick={() => setShowNewPrayerChoice(true)}
-                      className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                      className="flex-1 rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      style={pillStyle}
                     >
-                      {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
+                      {t("dashboard.add_prayer_short", { defaultValue: "Add" })}
                     </button>
                   ) : (
-                    <Link href="/pray-request/new" className="block">
+                    <Link href="/pray-request/new" className="flex-1 block">
                       <div
                         className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                        style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                        style={pillStyle}
                       >
-                        {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
+                        {t("dashboard.add_prayer_short", { defaultValue: "Add" })}
                       </div>
                     </Link>
+                  );
+                  const newRequestBtn = (
+                    <div className="flex" style={{ gap: 10 }}>
+                      {addPill}
+                      <Link href="/prayer-list" className="flex-1 block">
+                        <div
+                          className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                          style={pillStyle}
+                        >
+                          {t("dashboard.edit_prayers", { defaultValue: "Edit" })}
+                        </div>
+                      </Link>
+                    </div>
                   );
                   return (
                     <div style={{ marginTop: 12 }}>
