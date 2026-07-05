@@ -1297,8 +1297,8 @@ export default function WayOfLoveRuleFlow({
     // preserved by commit (the extras/contemplative state seeds from the saved
     // layout); this only stops the customizer from ADDING more.
     "custom",
-    // Beta: the weekly Way of Love rhythm is offered as a final, optional step.
-    ...(rawIsBeta ? (["weekly"] as Step[]) : []),
+    // (The final "weekly Way of Love rhythm" step was removed per owner — the
+    // customizer ends on "custom" and saves.)
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
@@ -2209,10 +2209,10 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            {/* Beta users get one more (optional) step — the weekly rhythm —
-                before saving, so the button just continues there. */}
-            <button onClick={rawIsBeta ? goNext : commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-              {rawIsBeta ? t("ruleOfLife.continue", { defaultValue: "Continue" }) : t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
+            {/* The customizer ends on "custom" — Save the rhythm (the old
+                weekly-rhythm follow-up step was removed). */}
+            <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
             </button>
             <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
