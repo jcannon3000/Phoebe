@@ -17,6 +17,8 @@ import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { getSideMinutes, getReflectionSource, getSideContemplationExplicit } from "@/lib/officePrefs";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import {
@@ -696,6 +698,30 @@ export default function ContemplationPage() {
       ) as Promise<Stats>,
   });
 
+  // GUESTS (public no-login) can't POST prayer_sessions, so the server stats are
+  // empty for them — their sits (silent AND Creation Prayer) live only in the
+  // device-local tally the home reads. Fold that tally into today's minutes so
+  // the Contemplation page shows the same count as the home. Re-read on the
+  // guest-silence event + return-to-app so a just-finished sit lands live.
+  const guest = isDeviceLocalGuest(user);
+  const [guestSeconds, setGuestSeconds] = useState(() => getGuestSilenceMinutesToday() * 60);
+  useEffect(() => {
+    if (!guest) return;
+    const recheck = () => setGuestSeconds(getGuestSilenceMinutesToday() * 60);
+    recheck();
+    window.addEventListener(GUEST_SILENCE_EVENT, recheck);
+    window.addEventListener("focus", recheck);
+    window.addEventListener("pageshow", recheck);
+    window.addEventListener("visibilitychange", recheck);
+    return () => {
+      window.removeEventListener(GUEST_SILENCE_EVENT, recheck);
+      window.removeEventListener("focus", recheck);
+      window.removeEventListener("pageshow", recheck);
+      window.removeEventListener("visibilitychange", recheck);
+    };
+  }, [guest]);
+  const todayTotalSeconds = (stats?.todaySeconds ?? 0) + (guest ? guestSeconds : 0);
+
   // History — every logged sit, newest first.
   const { data: sessions = [] } = useQuery<Session[]>({
     queryKey: ["/api/me/contemplation-sessions"],
@@ -1045,7 +1071,7 @@ export default function ContemplationPage() {
         ) : (
           <DailyGoalCard
             goalMinutes={goalMinutes}
-            todaySeconds={stats?.todaySeconds ?? 0}
+            todaySeconds={todayTotalSeconds}
             healthMinutesToday={stats?.healthMinutesToday ?? 0}
             onSet={(m) => goalMutation.mutate(m)}
             saving={goalMutation.isPending}
@@ -1089,13 +1115,13 @@ export default function ContemplationPage() {
             <div className="flex gap-3 mb-4">
               {/* Cumulative time = in-app sits (incl. Cobreathe) + external
                   Apple Health mindful minutes for each window. */}
-              <StatTile label={t("contemplation.label_today")} value={humanMinutes((stats?.todaySeconds ?? 0) + (stats?.healthMinutesToday ?? 0) * 60)} />
+              <StatTile label={t("contemplation.label_today")} value={humanMinutes(todayTotalSeconds + (stats?.healthMinutesToday ?? 0) * 60)} />
               <StatTile label={t("contemplation.label_this_week")} value={humanMinutes((stats?.weekSeconds ?? 0) + (stats?.healthMinutesWeek ?? 0) * 60)} />
               <StatTile label={t("contemplation.label_all_time")} value={humanMinutes((stats?.totalSeconds ?? 0) + (stats?.healthMinutesTotal ?? 0) * 60)} />
             </div>
             <RowLabel>{t("contemplation.average_per_day")}</RowLabel>
             <div className="flex gap-3">
-              <StatTile label={t("contemplation.label_today")} value={avgPerDayWithHealth(stats?.todaySeconds ?? 0, stats?.healthMinutesToday ?? 0, stats?.todayDays ?? 0)} />
+              <StatTile label={t("contemplation.label_today")} value={avgPerDayWithHealth(todayTotalSeconds, stats?.healthMinutesToday ?? 0, stats?.todayDays ?? 0)} />
               <StatTile label={t("contemplation.label_this_week")} value={avgPerDayWithHealth(stats?.weekSeconds ?? 0, stats?.healthMinutesWeek ?? 0, stats?.weekDays ?? 0)} />
               <StatTile label={t("contemplation.label_all_time")} value={avgPerDayWithHealth(stats?.totalSeconds ?? 0, stats?.healthMinutesTotal ?? 0, stats?.totalDays ?? 0)} />
             </div>

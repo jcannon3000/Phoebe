@@ -396,13 +396,15 @@ export default function CobreathePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reaching the 12th breath records the day's communal breath (the count +
-  // who's breathing). We do NOT log the contemplation sit here — the breath
-  // keeps going past 12, and we want history/stats to credit the FULL length
-  // the user actually sat, not just the first twelve. The sit is logged on
-  // finish (handleEnd) with the real elapsed time.
+  // Reaching the set records the communal breath AND logs the contemplation sit
+  // right away — so a completed Creation Prayer ALWAYS lands in the daily
+  // contemplation/silence count, even if the user never taps "Done" (or backs
+  // out at the summary). logSit is idempotent (sitLoggedRef), so the later
+  // handleEnd can't double it; it just can't credit the extra breaths past the
+  // target — a guaranteed count matters more than the last few seconds.
   const handleReachTarget = useCallback((secondsKept: number) => {
     record.mutate(secondsKept);
+    logSit(secondsKept);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -460,6 +462,7 @@ export default function CobreathePage() {
     return (
       <CobreatheHowToIntro
         onDone={() => { markCobreatheHowtoSeen(); setMode("breathing"); }}
+        photos={BREATH_PHOTOS}
       />
     );
   }
