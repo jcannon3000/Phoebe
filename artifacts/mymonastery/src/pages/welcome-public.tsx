@@ -61,6 +61,10 @@ export default function WelcomePublicPage() {
   // (Morning/Evening Office + FDD + a 5-min silence goal) and they land
   // straight on the home, already going. No login anywhere.
   const qc = useQueryClient();
+  // Show this welcome splash ONCE (first open on this device); afterwards guests
+  // go straight to the home. The marker is stamped as soon as it's shown.
+  const WELCOME_SEEN_KEY = "phoebe:welcome-splash-seen";
+  const alreadySeen = (() => { try { return localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch { return false; } })();
   useEffect(() => {
     if (isLoading) return;
     if (user) { setLocation("/dashboard"); return; }
@@ -72,15 +76,17 @@ export default function WelcomePublicPage() {
       void ensureAnonymousUser().then((created) => {
         if (created) qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       });
-      // Straight to the home — the "Begin here" welcome card (with a Learn more
-      // pill) greets them there. (The first-run intro slideshow was removed.)
-      setLocation("/dashboard", { replace: true });
+      // First open → SHOW the welcome splash (below) and stamp it seen. Every
+      // open after → straight to the home, already going.
+      if (alreadySeen) { setLocation("/dashboard", { replace: true }); return; }
+      try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch { /* private mode */ }
     }
-  }, [user, isLoading, setLocation, qc]);
+  }, [user, isLoading, setLocation, qc, alreadySeen]);
 
-  // Don't paint the chooser while we're still resolving the auth
-  // state — avoids a brief flash before the redirect above fires.
-  if (isLoading || user || PHOEBE_GUEST_ENABLED) return null;
+  // Don't paint while resolving auth, for signed-in users, or for a returning
+  // guest (who's being forwarded to the home). A FIRST-run guest falls through
+  // to the splash below.
+  if (isLoading || user || (PHOEBE_GUEST_ENABLED && alreadySeen)) return null;
 
   const morning = isMorningNow();
   const officeLabel = morning ? t("offices.morning_prayer") : t("offices.evening_prayer");
@@ -130,7 +136,7 @@ export default function WelcomePublicPage() {
             className="text-[28px] font-bold leading-tight mb-2"
             style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}
           >
-            {t("welcome_public.title")}
+            {t("welcome_public.welcome_title", { defaultValue: "Welcome" })}
           </h1>
           {/* Auto-fit so the (long, ~61-char) tagline stays on ONE line across
               phone widths. No `nowrap`: a longer translation (e.g. Spanish) then
@@ -140,6 +146,10 @@ export default function WelcomePublicPage() {
           </p>
         </motion.div>
 
+        {/* "Start here" — the first card is the way in (today's office). */}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] mb-2 px-1" style={{ color: "rgba(143,175,150,0.7)" }}>
+          {t("welcome_public.start_here", { defaultValue: "Start here" })}
+        </p>
         <div className="flex flex-col gap-3">
           {/* 1 — the time-appropriate office. Praying it as a guest ends in an
               invitation to sign up (PublicPrayerPage). */}
@@ -197,6 +207,19 @@ export default function WelcomePublicPage() {
               {t("welcome_public.appstore_pill", { defaultValue: "Download the app" })}
             </PillLink>
           )}
+        </div>
+
+        {/* Skip straight to the home — the rhythm is already seeded, so this
+            just drops them onto the daily-progress home, already going. */}
+        <div className="mt-8 mb-2 text-center">
+          <button
+            type="button"
+            onClick={() => setLocation("/dashboard", { replace: true })}
+            className="text-sm font-medium"
+            style={{ color: SAGE, background: "none", border: "none", cursor: "pointer", padding: 8 }}
+          >
+            {t("welcome_public.skip_to_home", { defaultValue: "Skip to home →" })}
+          </button>
         </div>
       </main>
     </div>
