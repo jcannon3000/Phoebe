@@ -10,7 +10,7 @@ import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceComplet
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { useDailySteps } from "@/lib/appleHealth";
-import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
@@ -211,6 +211,13 @@ export function useRhythmState(): RhythmState {
     // A cross-device routine sync rewrote the local office levels / slots — force
     // a re-read so the cards reflect the synced rhythm (lib/routineSync).
     window.addEventListener(ROUTINE_SYNCED_EVENT, recheck);
+    // A goal changed in-document (e.g. a guest sets a step or silence goal on
+    // /daily-steps) — the `storage` event only fires cross-tab, so without this
+    // the home wouldn't grow the new goal card until a reload. OFFICE_PREFS_EVENT
+    // and GUEST_SILENCE_EVENT fire same-document; recheck's fresh setState forces
+    // the re-render that re-reads the (device-local) goals.
+    window.addEventListener(OFFICE_PREFS_EVENT, recheck);
+    window.addEventListener(GUEST_SILENCE_EVENT, recheck);
     return () => {
       window.removeEventListener(CAC_READ_EVENT, recheck);
       window.removeEventListener(FDD_READ_EVENT, recheck);
@@ -223,6 +230,8 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener("phoebe:appactive", recheck);
       window.removeEventListener("phoebe:browserfinished", recheck);
       window.removeEventListener(ROUTINE_SYNCED_EVENT, recheck);
+      window.removeEventListener(OFFICE_PREFS_EVENT, recheck);
+      window.removeEventListener(GUEST_SILENCE_EVENT, recheck);
     };
   }, []);
 

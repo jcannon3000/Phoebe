@@ -16,6 +16,8 @@ import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
 import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -338,9 +340,21 @@ export default function CobreathePage() {
   // set completes (so a finished Cobreathe counts even if they never tap
   // Finish) and on an early end (>=30s). Guarded so the two paths don't double.
   const sitLoggedRef = useRef(false);
+  // Latest user for the guest check inside the stable ([]) logSit callback.
+  const userRef = useRef(user);
+  userRef.current = user;
   const logSit = useCallback((secondsKept: number) => {
     if (sitLoggedRef.current || secondsKept < 2) return;
     sitLoggedRef.current = true;
+    // PUBLIC no-login version: a GUEST has no account to POST prayer_sessions to,
+    // so — exactly like ContemplationTimer — a finished breath logs its whole
+    // minutes to the device-local silence tally the home "Silence" goal card
+    // reads. Without this the breath never advanced a guest's silence goal (the
+    // server session below is invisible to their device-local contemplationMin).
+    if (isDeviceLocalGuest(userRef.current)) {
+      addGuestSilenceMinutes(Math.floor(secondsKept / 60));
+      return;
+    }
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
     void apiRequest("POST", "/api/prayer-sessions", {
