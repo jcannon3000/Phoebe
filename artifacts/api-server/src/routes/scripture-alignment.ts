@@ -30,22 +30,35 @@ function todayYmd(): string {
 // Today's episode from the cached feed (cheap): the four parsed citations PLUS
 // the episode guid, so the read can tell whether a stored alignment is actually
 // for the CURRENT episode. Never throws — can't break the timestamps read.
-async function todayEpisode(): Promise<{ readings: ReturnType<typeof parseScriptureReadings>; guid: string | null }> {
+async function todayEpisode(): Promise<{ readings: ReturnType<typeof parseScriptureReadings>; guid: string | null; date: string | null }> {
   try {
     const showMeta = SHOWS[SCRIPTURE_SOURCE];
-    if (!showMeta) return { readings: [], guid: null };
+    if (!showMeta) return { readings: [], guid: null, date: null };
     const feed = await loadFeed(showMeta, 1);
     const ep = feed.episodes[0];
-    return { readings: parseScriptureReadings(ep?.description), guid: ep?.id ?? ep?.audioUrl ?? null };
+    // The episode's OWN publish date (UTC) is the day it belongs to. The office
+    // always plays the NEWEST episode, so "today" must track that episode — not
+    // wall-clock UTC, which rolls a day ahead every evening in the Americas and
+    // left the office polling an unpublished, never-aligned date (no pills) all
+    // evening while the played episode's alignment sat done under yesterday.
+    const date = ep?.publishedAt ? new Date(ep.publishedAt).toISOString().slice(0, 10) : null;
+    return { readings: parseScriptureReadings(ep?.description), guid: ep?.id ?? ep?.audioUrl ?? null, date };
   } catch {
-    return { readings: [], guid: null };
+    return { readings: [], guid: null, date: null };
   }
 }
 
 router.get("/podcast/scripture/timestamps", async (req: Request, res: Response): Promise<void> => {
   const q = req.query.date;
-  const episodeDate = typeof q === "string" && /^\d{4}-\d{2}-\d{2}$/.test(q) ? q : todayYmd();
-  const isToday = episodeDate === todayYmd();
+  // "Today" tracks the newest published episode's own date, NOT wall-clock UTC —
+  // otherwise the office polls a date whose episode isn't out yet every evening.
+  const today = await todayEpisode();
+  const resolvedToday = today.date ?? todayYmd();
+  const episodeDate = typeof q === "string" && /^\d{4}-\d{2}-\d{2}$/.test(q) ? q : resolvedToday;
+  const isToday = episodeDate === resolvedToday;
+  // On-demand builds must target the SAME date the reader resolved (noon UTC
+  // keeps the ymd stable across DST), not the builder's own wall-clock default.
+  const buildDate = new Date(`${episodeDate}T12:00:00Z`);
 
   const [row] = await db
     .select()
@@ -58,17 +71,16 @@ router.get("/podcast/scripture/timestamps", async (req: Request, res: Response):
       ),
     );
 
-  // Citations are useful even before the timeline exists; only spend the feed
-  // read for today (past days just serve whatever was stored).
-  const today = isToday ? await todayEpisode() : { readings: [], guid: null };
-  const readings = today.readings;
+  // Citations are useful even before the timeline exists; only serve today's
+  // parsed readings (past days just serve whatever sections were stored).
+  const readings = isToday ? today.readings : [];
 
   // Self-heal: if today's stored timeline predates the deterministic
   // announcement matcher (an old "openai"/"heuristic" aligner), re-run it once
   // so the corrected markers replace the stale guess. Serve "building" meanwhile
   // so the client polls for the new one.
   if (isToday && row?.status === "done" && !String(row.aligner ?? "").startsWith("announce")) {
-    triggerOnce(`scripture-realign:${episodeDate}`, () => buildScriptureAlignment({ force: true }));
+    triggerOnce(`scripture-realign:${episodeDate}`, () => buildScriptureAlignment({ force: true, date: buildDate }));
     res.json({ episodeDate, status: "building", readings, sections: [] });
     return;
   }
@@ -80,7 +92,7 @@ router.get("/podcast/scripture/timestamps", async (req: Request, res: Response):
   // the stale stored `sections` (yesterday's), and no Listen pill appears. Re-align
   // against the current episode; serve "building" until it's redone.
   if (isToday && row?.status === "done" && today.guid && row.episodeGuid && row.episodeGuid !== today.guid) {
-    triggerOnce(`scripture-realign:${episodeDate}:${today.guid}`, () => buildScriptureAlignment({ force: true }));
+    triggerOnce(`scripture-realign:${episodeDate}:${today.guid}`, () => buildScriptureAlignment({ force: true, date: buildDate }));
     res.json({ episodeDate, status: "building", readings, sections: [] });
     return;
   }
@@ -92,7 +104,7 @@ router.get("/podcast/scripture/timestamps", async (req: Request, res: Response):
     // duplicate it), and the client polls until it flips to "done". Not when a
     // prior attempt already "failed" — that needs the explicit POST /align.
     if ((status === "none" || status === "pending") && isToday) {
-      triggerOnce(`scripture:${episodeDate}`, () => buildScriptureAlignment({}));
+      triggerOnce(`scripture:${episodeDate}`, () => buildScriptureAlignment({ date: buildDate }));
       res.json({ episodeDate, status: "building", readings, sections: [] });
       return;
     }
