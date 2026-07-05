@@ -97,3 +97,39 @@ export function setGuestStepGoal(steps: number): void {
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
   } catch { /* ignore */ }
 }
+
+// Reset ALL device-local rule / preference state on LOGOUT, so the next person
+// on this device (a guest) starts from the STANDARD seeded rule — not the
+// signed-out user's customizations. The authoritative rule data lives on the
+// server (rule_config, office-prefs, home layout, custom anchors, Way of Love)
+// and is restored on the next sign-in, so clearing the DEVICE copy is safe. It
+// also fixes re-login on the SAME device: a blank device + a zeroed routine
+// sync clock makes routineSync ADOPT the server config in full, instead of a
+// stale local copy winning last-write-wins. Clearing the guest-seeded marker
+// makes seedGuestRule() re-run fresh on the next guest boot → the standard rule.
+export function resetDeviceRuleForLogout(): void {
+  try {
+    const PREFIXES = [
+      "phoebe:office:",           // per-side levels/entries/reflections/minutes/etc.
+      "phoebe:office-completed:", // today's office done flags
+      "phoebe:practice-done:",    // today's optional-practice done flags
+      "phoebe:contemplation",     // per-side sit done flags + style
+      "phoebe:slot:",             // practice time-of-day slots
+      "phoebe:guest-",            // guest silence/step goals, seed marker, welcome, migrated
+      "phoebe:home-layout",       // cached home card order/visibility
+      "phoebe:routine",           // routine sync clock (UPDATED_AT)
+      "phoebe:health-",           // Apple Health connect/step flags
+    ];
+    const EXACT = new Set([
+      "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:scripture-scope",
+      "phoebe:journaling-slot", "phoebe:commitment-start", "phoebe:dp-pulse",
+    ]);
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (EXACT.has(k) || PREFIXES.some((p) => k.startsWith(p))) toRemove.push(k);
+    }
+    for (const k of toRemove) localStorage.removeItem(k);
+  } catch { /* private mode — nothing to reset */ }
+}

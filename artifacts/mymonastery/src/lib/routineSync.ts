@@ -25,6 +25,11 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:office:community-within:morning", "phoebe:office:community-within:evening",
   // Per-side Contemplative Prayer (drives the Morning/Evening Contemplation cards).
   "phoebe:office:contemplation:morning", "phoebe:office:contemplation:evening",
+  // Per-side sit length + confession + gratitude toggles (were device-local
+  // only, so they were lost on logout→login; now they ride the rule_config).
+  "phoebe:office:minutes:morning", "phoebe:office:minutes:evening",
+  "phoebe:office:confession:morning", "phoebe:office:confession:evening",
+  "phoebe:office:gratitude:morning", "phoebe:office:gratitude:evening",
   // Global office/reflection settings.
   "phoebe:office:reflection-source", "phoebe:office:audio-source",
   "phoebe:office:default-entry", "phoebe:office:include-gratitude-slide",

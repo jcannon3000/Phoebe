@@ -1068,12 +1068,12 @@ export function CobreatheBreath({
         onPointerUp={onGlobeUp}
         onPointerCancel={onGlobeUp}
         style={{
-          // Positioned absolutely so the globe's CENTRE sits at the MIDDLE of
-          // the screen (owner: "the globe is not centered" — was 61.8%). The
-          // −50%/−50% centres the box on that point; the drag offset composes on
-          // top (onGlobeDown/Move recover the natural position by subtracting the
-          // offset from the measured rect, so the drag clamp still bounds it).
-          position: "absolute", left: "50%", top: "50%",
+          // Positioned absolutely so the globe's CENTRE sits ~2/3 down the screen
+          // (golden ratio, 61.8%) — owner reverted the brief centered (50%) try.
+          // The −50%/−50% centres the box on that point; the drag offset composes
+          // on top (onGlobeDown/Move recover the natural position by subtracting
+          // the offset from the measured rect, so the drag clamp still bounds it).
+          position: "absolute", left: "50%", top: "61.8%",
           width: globePx, height: globePx, zIndex: 3,
           transform: `translate(-50%, -50%) translate(${globeOffset.x}px, ${globeOffset.y}px)`,
           transition: globeSnapping ? "transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1)" : "none",

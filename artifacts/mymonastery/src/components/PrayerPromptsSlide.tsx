@@ -4,7 +4,6 @@
 // where you write the prayer and either keep it on your list or share it with
 // the community. "Continue" finishes without adding.
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { usePilotMode } from "@/hooks/usePilotMode";
@@ -29,7 +28,6 @@ const PROMPTS: Array<{ emoji: string; key: string; label: string }> = [
 export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
   const { t } = useTranslation();
   const { isPilot } = usePilotMode();
-  const [, setLocation] = useLocation();
   // null = the pill grid; otherwise the input screen for the chosen prompt.
   const [picked, setPicked] = useState<{ key: string; label: string } | null>(null);
   const [text, setText] = useState("");
@@ -141,26 +139,8 @@ export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
         ))}
       </div>
 
-      {/* …or browse the Book of Common Prayer's intercessions and keep one on
-          your list. Leaves the slideshow for the BCP library (a closing-slide
-          action, so exiting here is fine). */}
-      <button
-        type="button"
-        onClick={() => setLocation("/bcp/intercessions?add=1")}
-        className="w-full rounded-full flex items-center gap-3 px-5 py-3.5 text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
-        style={{
-          background: "rgba(46,107,64,0.2)",
-          backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-          border: "1px solid rgba(168,197,160,0.4)",
-        }}
-      >
-        <span aria-hidden style={{ fontSize: 17, lineHeight: 1 }}>📖</span>
-        <span className="flex-1" style={{ color: WARM, fontFamily: FONT, fontSize: 14.5, fontWeight: 600 }}>
-          {t("prayer_prompts.bcp", { defaultValue: "From the Book of Common Prayer" })}
-        </span>
-        <span aria-hidden style={{ color: SAGE, fontSize: 16 }}>›</span>
-      </button>
-
+      {/* (The "From the Book of Common Prayer" intercessions link was removed
+          per owner — these are PERSONAL prayer prompts.) */}
       <button
         onClick={onContinue}
         className="mt-1 w-full rounded-full py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"

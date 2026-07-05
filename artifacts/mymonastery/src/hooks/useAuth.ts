@@ -7,6 +7,7 @@ import {
 } from "@/lib/persistentAuth";
 import { clearIdbCache } from "@/lib/idbCache";
 import { clearCustomAnchorStorage } from "@/lib/customAnchors";
+import { resetDeviceRuleForLogout } from "@/lib/guestSeed";
 import { applyCachedHomeLayout } from "@/lib/homeLayoutCache";
 
 // Phoebe Parish — derived server-side from beta_users + group_members
@@ -181,6 +182,13 @@ export function useLogout() {
     // syncs UP — if the next person inherited it, their first change would push
     // the previous user's rituals to the new account. Wipe all of it on logout.
     try { clearCustomAnchorStorage(); } catch { /* ignore */ }
+    // Reset the device-local RULE state (office prefs, practice slots, the
+    // routine sync clock, guest goals + seed marker, cached home layout, Health
+    // flags) so the next person sees the STANDARD seeded rule — not the
+    // signed-out user's customizations. The rule is safe on the server, so the
+    // SAME user re-signing-in gets it restored in full (blank device + zeroed
+    // clock → routineSync adopts the server config).
+    try { resetDeviceRuleForLogout(); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
     try { await clearIdbCache(); } catch { /* ignore */ }

@@ -644,7 +644,17 @@ function SlideContent({
   // ── Prayer prompts — seven topics to lift up, written in place. Sits right
   // before the pause slide (was a closing intercept). Continue → the pause.
   if (slide.kind === "prompts") {
-    return <PrayerPromptsSlide onContinue={onAdvance} />;
+    // Vertically center the prompts (the slide container sits at flex-start with
+    // top padding, so reserve most of the height + center inside — same trick as
+    // the pause slide below).
+    return (
+      <div
+        className="w-full flex flex-col justify-center"
+        style={{ minHeight: "calc(100dvh - 32dvh)" }}
+      >
+        <PrayerPromptsSlide onContinue={onAdvance} />
+      </div>
+    );
   }
 
   // ── Open pause — invitation to bring anything else to prayer.

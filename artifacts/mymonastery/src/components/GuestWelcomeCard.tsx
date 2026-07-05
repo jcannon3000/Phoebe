@@ -5,6 +5,7 @@
 // caller gates on the guest shape).
 
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -57,6 +58,15 @@ export function GuestWelcomeCard() {
           ? "You've begun. Return each day and let the rhythm hold you — one practice at a time."
           : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time — just begin with whatever’s next."}
       </p>
+      {/* Learn more — a quiet pill into the About deck (replaces the removed
+          first-run intro slideshow). */}
+      <Link
+        href="/about-deck"
+        className="inline-flex items-center gap-1 mt-3 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-opacity hover:opacity-90"
+        style={{ ...FROST, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: FONT }}
+      >
+        Learn more →
+      </Link>
     </div>
   );
 }
