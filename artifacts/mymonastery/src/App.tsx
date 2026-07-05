@@ -472,6 +472,8 @@ const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
+import { isNativeShell } from "@/lib/isNativeShell";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { isJardinPath, isJardinSealed } from "@/lib/jardinMode";
@@ -828,9 +830,19 @@ const GUEST_ALLOWED_PREFIX = [
   "/saints",
 ];
 
+// The customizer routes (rule of life / pilot build / the questionnaire) that
+// CREATE or CHANGE a person's rule. On the web these require an account —
+// browser storage is ephemeral, so a rule built by a logged-out visitor can't
+// be made durable. iOS is exempt (its anonymous device user is server-backed,
+// and the register in-place upgrade preserves the rule if they later sign up).
+const WEB_CUSTOMIZER_ROUTES = new Set<string>([
+  "/rule-of-life", "/pilot/build", "/find-your-rhythm",
+]);
+
 function GuestGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { isGuest, isLoading } = useGuestMode();
+  const { user, isLoading: authLoading } = useAuthForGate();
 
   useEffect(() => {
     if (isLoading || !isGuest) return;
@@ -839,6 +851,20 @@ function GuestGate({ children }: { children: ReactNode }) {
       GUEST_ALLOWED_PREFIX.some((p) => location.startsWith(p));
     if (!allowed) setLocation("/dashboard");
   }, [location, isGuest, isLoading, setLocation]);
+
+  // WEB: to customize your rule you must sign in. A logged-out / anonymous web
+  // visitor who opens the customizer is sent to sign in first, then bounced
+  // straight back to it (?redirect=). Gate on isDeviceLocalGuest (logged-out OR
+  // anonymous) — NOT useGuestMode — so a signed-in "light" user, who has a real
+  // durable account, reaches the customizer instead of looping to sign-in.
+  // iOS (native shell) stays fully login-free.
+  useEffect(() => {
+    if (authLoading) return;
+    if (isNativeShell() || !isDeviceLocalGuest(user)) return;
+    if (WEB_CUSTOMIZER_ROUTES.has(location)) {
+      setLocation("/signin?mode=signup&redirect=" + encodeURIComponent(location));
+    }
+  }, [location, authLoading, user, setLocation]);
 
   return <>{children}</>;
 }
