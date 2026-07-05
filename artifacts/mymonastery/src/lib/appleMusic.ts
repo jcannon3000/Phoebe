@@ -47,9 +47,13 @@ function plugin(): AppleMusicPlugin | null {
   return (plugins?.CobreatheMusic as AppleMusicPlugin) ?? null;
 }
 
-/** iOS app + the MusicKit plugin present + a configured playlist. */
+/** Apple Music is REMOVED from Phoebe (owner) — never used, and it must never
+ *  raise the system Apple Music permission prompt. Force-unavailable so no
+ *  surface offers it and nothing ever calls authorize(). The native plugin is
+ *  also unregistered + its authorize() neutered (belt and suspenders). To
+ *  restore, return `isNativeIOS() && !!plugin() && appleMusicConfigured()`. */
 export function appleMusicAvailable(): boolean {
-  return isNativeIOS() && !!plugin() && appleMusicConfigured();
+  return false;
 }
 
 // ——— Module state (mirrors spotifyPlayer so the unified layer is symmetric) ———

@@ -37,11 +37,16 @@ export default function Onboarding() {
   // One stable leaf backdrop, matching the welcome chooser + the rest of the app.
   const [bgPhoto] = useState<string | null>(() => LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null);
 
+  // Arriving from the customizer's "create an account" CTA (?from=customize):
+  // lead with SIGN UP + copy about creating an account to customize/save, and
+  // show a close (✕) so they can step back to their rhythm.
+  const fromCustomize = new URLSearchParams(window.location.search).get("from") === "customize";
   // The welcome card can deep-link straight to a tab (?mode=signup); default to
-  // sign-in otherwise.
+  // sign-in otherwise (but sign-UP when they came to save/customize).
   const initialMode: Mode = (() => {
     const m = new URLSearchParams(window.location.search).get("mode");
-    return m === "signup" ? "signup" : "signin";
+    if (m === "signup" || fromCustomize) return "signup";
+    return "signin";
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
@@ -182,10 +187,21 @@ export default function Onboarding() {
           <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
         </>
       )}
-      <header className="px-6 py-6 flex items-center">
+      <header className="px-6 py-6 flex items-center justify-between">
         <span className="text-2xl font-bold" style={{ color: WARM, letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
+        {/* Close — step back to where they came from (their rhythm) without
+            signing up. Falls back to the home if there's no history to pop. */}
+        <button
+          type="button"
+          aria-label={t("common.close", { defaultValue: "Close" })}
+          onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) window.history.back(); else setLocation("/"); }}
+          className="flex items-center justify-center rounded-full"
+          style={{ width: 36, height: 36, background: "rgba(0,0,0,0.32)", border: "1px solid rgba(200,225,210,0.28)", color: WARM, fontSize: 18, lineHeight: 1, cursor: "pointer" }}
+        >
+          ✕
+        </button>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-12">
@@ -198,10 +214,14 @@ export default function Onboarding() {
           >
             <div className="text-5xl mb-5">🙏🏽</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: WARM, letterSpacing: "-0.02em" }}>
-              {t("auth_landing.hero_title")}
+              {fromCustomize
+                ? t("auth_landing.customize_title", { defaultValue: "Sign in to customize" })
+                : t("auth_landing.hero_title")}
             </h1>
             <p className="text-base leading-relaxed" style={{ color: SAGE }}>
-              {t("auth_landing.hero_body")}
+              {fromCustomize
+                ? t("auth_landing.customize_body", { defaultValue: "Create an account to save and customize your prayer experience — your rhythm and your progress, kept and carried across your devices." })
+                : t("auth_landing.hero_body")}
             </p>
           </motion.div>
 

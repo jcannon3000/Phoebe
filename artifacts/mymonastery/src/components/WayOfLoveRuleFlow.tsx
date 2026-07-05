@@ -2520,7 +2520,7 @@ export default function WayOfLoveRuleFlow({
           over too — the CTA can honestly promise "keep everything". The iOS app
           stays fully login-free. */}
       {guest && !isNativeShell() && (!user || user.isAnonymous) && (
-        <button onClick={() => setLocation("/signin")} style={{ marginTop: 12, background: "none", border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center", width: "100%" }}>
+        <button onClick={() => setLocation("/signin?from=customize")} style={{ marginTop: 12, background: "none", border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "center", width: "100%" }}>
           {t("wol_rule.web_save_cta", { defaultValue: "Create an account to keep your rhythm and progress" })}
         </button>
       )}

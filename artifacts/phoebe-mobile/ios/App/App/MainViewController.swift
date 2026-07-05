@@ -29,13 +29,11 @@ class MainViewController: CAPBridgeViewController {
         // placeholder. Register it explicitly so the App Group write + the
         // WidgetKit reloadAllTimelines() actually run.
         bridge?.registerPluginInstance(PhoebeWidgetPlugin())
-        // CobreatheMusic (Apple Music / MusicKit) is dead-stripped for the SAME
-        // reason — nothing in Swift references the class. Register it so the
-        // Listening practice + Cobreathe can play a curated Apple Music playlist.
-        // NOTE: this only compiles once CobreatheMusicPlugin.swift is added to the
-        // App target's Target Membership in Xcode (it ships in the repo but isn't
-        // in the target yet) AND MusicKit is enabled for the App ID in the portal.
-        bridge?.registerPluginInstance(CobreatheMusicPlugin())
+        // CobreatheMusic (Apple Music / MusicKit) is REMOVED (owner) — Phoebe uses
+        // no Apple Music at all, so we do NOT register the plugin. Left
+        // unregistered the class is dead-stripped and its MusicKit code never runs,
+        // so the Apple Music permission prompt can never appear.
+        // (Re-add `bridge?.registerPluginInstance(CobreatheMusicPlugin())` to restore.)
         // PhoebeAudio (Core-Haptics smooth swell + the prayer-bell scheduler) is
         // ALSO only referenced from comments now, so the linker dead-strips it and
         // window.Capacitor.Plugins.PhoebeAudio was undefined — which is why the

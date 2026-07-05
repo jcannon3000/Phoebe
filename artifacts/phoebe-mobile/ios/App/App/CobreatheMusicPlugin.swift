@@ -70,14 +70,11 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func authorize(_ call: CAPPluginCall) {
-        if #available(iOS 16.0, *) {
-            Task {
-                let status = await MusicAuthorization.request()
-                call.resolve(["status": status.phoebeString])
-            }
-        } else {
-            call.resolve(["status": "unavailable"])
-        }
+        // Apple Music is REMOVED from Phoebe (owner) — we never want the system
+        // Apple Music permission prompt. Never call MusicAuthorization.request();
+        // report unavailable so every caller silently skips. (Kept as a stub so
+        // the JS bridge shape is unchanged; restore the request() call to re-enable.)
+        call.resolve(["status": "unavailable"])
     }
 
     @objc func getAuthorizationStatus(_ call: CAPPluginCall) {
