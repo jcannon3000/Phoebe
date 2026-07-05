@@ -950,7 +950,7 @@ const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
 ];
 
 function OpeningSplash() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
   const native = isNativeShell();
   const [, splashGoTo] = useLocation();
@@ -1212,14 +1212,19 @@ function OpeningSplash() {
     }
   }, [phase]);
 
-  if (!native || !user || phase === "gone") return null;
+  // Show the opaque splash from the FIRST native paint — including while
+  // /api/auth/me is still in flight. Gating on `user` used to return null during
+  // that window, so the home rendered underneath and then the splash appeared
+  // over it: the "home flashes before the splash" on a cold open / fresh
+  // install. Only bail once auth has RESOLVED to no user (web / logged out).
+  if (!native || phase === "gone" || (!user && !authLoading)) return null;
 
   const greeting = hour < 12
     ? t("splash.morning", { defaultValue: "Good morning" })
     : hour < 17
       ? t("splash.afternoon", { defaultValue: "Good afternoon" })
       : t("splash.evening", { defaultValue: "Good evening" });
-  const firstName = (user.name ?? "").trim().split(/\s+/)[0] || "";
+  const firstName = (user?.name ?? "").trim().split(/\s+/)[0] || "";
 
   return (
     <motion.div
@@ -1301,7 +1306,7 @@ function OpeningSplash() {
         // Prefer the live set; fall back to last session's cached faces so the
         // rail paints instantly on a cold open (no network wait) — but ONLY when
         // the cache belongs to THIS user (never flash a prior account's faces).
-        const cached = cachedFaces.uid === user.id ? cachedFaces.people : [];
+        const cached = cachedFaces.uid === user?.id ? cachedFaces.people : [];
         const people = (data?.people && data.people.length > 0) ? data.people : cached;
         // Base64-inlined avatars from a prior cold open, keyed by URL — so even the
         // freshly-fetched live people paint from the cached photo (zero network
@@ -1480,7 +1485,7 @@ function OpeningSplash() {
             {/* Your own card, beneath all the others — only when a fellow has
                 practiced (per the design: never your card on its own). */}
             <motion.div variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mt-1" style={{ background: "rgba(46,107,64,0.20)", border: "1px solid rgba(108,168,224,0.30)" }}>
-              {renderAvatar(user.avatarUrl, user.name)}
+              {renderAvatar(user?.avatarUrl ?? null, user?.name ?? null)}
               <span className="flex-1 min-w-0 truncate text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("splash.you", { defaultValue: "You" })}</span>
               {renderLights(myLights)}
             </motion.div>
