@@ -191,12 +191,14 @@ export default function Onboarding() {
         <span className="text-2xl font-bold" style={{ color: WARM, letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
-        {/* Close — step back to where they came from (their rhythm) without
-            signing up. Falls back to the home if there's no history to pop. */}
+        {/* Close — EXPLICIT navigation, never history.back(): inside the native
+            WebView (wouter + the shell's own history handling) back() was a
+            no-op, so the ✕ appeared dead. From the customizer → back to it;
+            otherwise → the home. Always lands somewhere real. */}
         <button
           type="button"
           aria-label={t("common.close", { defaultValue: "Close" })}
-          onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) window.history.back(); else setLocation("/"); }}
+          onClick={() => setLocation(fromCustomize ? "/rule-of-life" : "/dashboard")}
           className="flex items-center justify-center rounded-full"
           style={{ width: 36, height: 36, background: "rgba(0,0,0,0.32)", border: "1px solid rgba(200,225,210,0.28)", color: WARM, fontSize: 18, lineHeight: 1, cursor: "pointer" }}
         >
