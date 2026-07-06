@@ -1736,7 +1736,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               >
                 {currentSlide.title ?? ""}
               </h1>
-              {currentSlide.content && (
+              {/* Morning/Evening Prayer keep just the title on the threshold
+                  slide — the long description is dropped (owner). Other intros
+                  (devotion, etc.) still show their line. */}
+              {currentSlide.content && !(resolvedMode === "morning" || resolvedMode === "evening") && (
                 <p
                   style={{
                     fontSize: 17,
