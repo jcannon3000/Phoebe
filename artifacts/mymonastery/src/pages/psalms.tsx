@@ -4,10 +4,19 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { WIDE_PHOTOS } from "@/lib/wideBackgrounds";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
+import { PointedLine } from "@/components/PointedLine";
+
+// Backdrop pool — real landscapes (owner: "not just leaves"), matching the
+// office's own backdrop philosophy. Web gets the true-wide landscape set (a
+// proper aspect for a wide window); native falls back to the bundled curated
+// EARTH_PHOTOS pool (broad nature/landscape shots, not leaf close-ups).
+const PSALM_BACKDROP_PHOTOS: string[] = (!isNativeShell() && WIDE_PHOTOS.length > 0) ? WIDE_PHOTOS : EARTH_PHOTOS;
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -51,12 +60,15 @@ type PsalmSlide =
   | { kind: "gloria"; eyebrow: string };
 
 // A parsed verse: its number + the half-lines (BCP pointing keeps the second
-// half on its own indented line).
-type Verse = { num: string; lines: string[] };
+// half on its own indented line — `indented` drives that visual offset, same
+// as the office's parsePsalmContent in bcp-daily-office.tsx).
+type PsalmVerseLine = { text: string; indented: boolean };
+type Verse = { num: string; lines: PsalmVerseLine[] };
 
 // Split the pointed BCP text into verses (a line beginning "N " starts one;
-// continuation/hemistich lines belong to the verse above), then group into
-// chunks of 4 (like the office).
+// continuation/hemistich lines belong to the verse above — a LEADING space in
+// the source marks the second hemistich, mirrored here as `indented`), then
+// group into chunks of 4 (like the office).
 function parseVerses(content: string): Verse[] {
   const verses: Verse[] = [];
   let cur: Verse | null = null;
@@ -66,11 +78,12 @@ function parseVerses(content: string): Verse[] {
     const m = line.match(/^(\d+)\s+(.*)$/);
     if (m) {
       if (cur) verses.push(cur);
-      cur = { num: m[1], lines: [m[2]] };
+      cur = { num: m[1], lines: [{ text: m[2], indented: false }] };
     } else if (cur) {
-      cur.lines.push(line);
+      const indented = /^\s/.test(rawLine);
+      cur.lines.push({ text: line.trim(), indented });
     } else {
-      cur = { num: "", lines: [line] };
+      cur = { num: "", lines: [{ text: line.trim(), indented: false }] };
     }
   }
   if (cur) verses.push(cur);
@@ -183,8 +196,8 @@ export default function PsalmsPage() {
   // lectionary chooser unguided.
   const [introDismissed, setIntroDismissed] = useState(false);
 
-  // A still leaf backdrop, picked once — matching the office slideshow.
-  const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  // A still landscape backdrop, picked once (owner: "not just leaves").
+  const leaf = useMemo(() => (PSALM_BACKDROP_PHOTOS.length > 0 ? PSALM_BACKDROP_PHOTOS[Math.floor(Math.random() * PSALM_BACKDROP_PHOTOS.length)]! : null), []);
 
   const goHome = () => setLocation("/dashboard");
   // Finishing the psalms = the day's Praying-the-Psalms is kept (side-scoped).
@@ -262,11 +275,15 @@ export default function PsalmsPage() {
     );
   }
 
-  // Shared chrome — leaf backdrop + header (Back · side label · close).
+  // Shared chrome — landscape backdrop + header (Back · side label · close).
+  // A photographic landscape reads best held quiet under a heavy dark wash
+  // (matching the office/Kearns-intro backdrop treatment) — the old leaf
+  // opacity (0.7) was tuned for a close-up leaf texture and would overpower a
+  // real photo.
   const Backdrop = leaf ? (
     <>
-      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7, zIndex: -2 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.8) 0%, rgba(12,31,18,0.64) 45%, rgba(12,31,18,0.84) 100%)" }} />
+      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.28, zIndex: -2 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.62) 0%, rgba(12,31,18,0.55) 45%, rgba(12,31,18,0.85) 100%)" }} />
     </>
   ) : null;
   const header = (onBack: () => void) => (
@@ -358,10 +375,12 @@ export default function PsalmsPage() {
       {Backdrop}
       {header(back)}
 
-      {/* Slide body — tap the right half to advance, left half to go back. */}
+      {/* Slide body — tap the right half to advance, left half to go back.
+          Horizontal padding (20px) matches the office's own slide column
+          (`px-5`) so the two surfaces read at the same width. */}
       <div
         onClick={(e) => { const w = (e.currentTarget as HTMLElement).clientWidth; if (e.clientX > w / 2) advance(); else back(); }}
-        style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "8px 28px 0", cursor: "pointer", WebkitOverflowScrolling: "touch" }}
+        style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "8px 20px 0", cursor: "pointer", WebkitOverflowScrolling: "touch" }}
       >
         {slide?.kind === "title" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16 }}>
@@ -373,20 +392,30 @@ export default function PsalmsPage() {
         )}
 
         {slide?.kind === "verses" && (
-          <div style={{ maxWidth: 760, width: "100%", margin: "0 auto", paddingTop: 18 }}>
+          // Width, gutter, and typography match the office's own psalm-verse
+          // slide (bcp-daily-office.tsx) exactly — same maxWidth, verse-number
+          // gutter, and PointedLine hemistich treatment (the second half of a
+          // pointed verse indents, and a trailing " *" never orphans).
+          <div style={{ maxWidth: 600, width: "100%", margin: "0 auto", paddingTop: 18 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 22px", fontWeight: 600 }}>
               {slide.eyebrow.replace(/^PSALM\b/i, "PSALM")}
             </p>
-            {slide.verses.map((v, i) => (
-              <div key={i} style={{ display: "flex", gap: 18, marginBottom: 18 }}>
-                <span style={{ flexShrink: 0, width: 18, textAlign: "right", color: "rgba(143,175,150,0.45)", fontFamily: FONT, fontSize: 18, lineHeight: 1.5, paddingTop: 1 }}>{v.num}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {v.lines.map((ln, j) => (
-                    <p key={j} style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 20, lineHeight: 1.5 }}>{ln}</p>
-                  ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {slide.verses.map((v, i) => (
+                <div key={i} style={{ display: "flex", gap: 10 }}>
+                  <span style={{ flex: "0 0 auto", minWidth: 22, textAlign: "right", color: "rgba(143,175,150,0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {v.lines.map((ln, j) => (
+                      <PointedLine
+                        key={j}
+                        text={ln.text}
+                        style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 19, lineHeight: 1.6, paddingLeft: ln.indented ? 24 : 0, whiteSpace: "pre-wrap" }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
             {slide.bcpRef && <p style={{ marginTop: 14, fontSize: 11.5, letterSpacing: "0.12em", textTransform: "uppercase", color: PAGE_REF, fontFamily: FONT }}>{slide.bcpRef}</p>}
           </div>
         )}
