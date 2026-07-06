@@ -65,9 +65,14 @@ export default function WelcomePublicPage() {
   // go straight to the home. The marker is stamped as soon as it's shown.
   const WELCOME_SEEN_KEY = "phoebe:welcome-splash-seen";
   const alreadySeen = (() => { try { return localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch { return false; } })();
+  // The PUBLIC app provisions an ANONYMOUS device user, so `user` is truthy for
+  // anyone who's opened the app before — gating the splash on `!user` meant it
+  // only ever showed on a truly fresh install. Treat an anonymous user as a
+  // guest: only a REAL (signed-in) account skips straight to the home.
+  const isRealUser = !!user && !user.isAnonymous;
   useEffect(() => {
     if (isLoading) return;
-    if (user) { setLocation("/dashboard"); return; }
+    if (isRealUser) { setLocation("/dashboard"); return; }
     if (PHOEBE_GUEST_ENABLED) {
       seedGuestRule();
       // Silently provision the anonymous DEVICE user (no credentials, normal
@@ -81,12 +86,12 @@ export default function WelcomePublicPage() {
       if (alreadySeen) { setLocation("/dashboard", { replace: true }); return; }
       try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch { /* private mode */ }
     }
-  }, [user, isLoading, setLocation, qc, alreadySeen]);
+  }, [isRealUser, isLoading, setLocation, qc, alreadySeen]);
 
-  // Don't paint while resolving auth, for signed-in users, or for a returning
-  // guest (who's being forwarded to the home). A FIRST-run guest falls through
-  // to the splash below.
-  if (isLoading || user || (PHOEBE_GUEST_ENABLED && alreadySeen)) return null;
+  // Don't paint while resolving auth, for REAL signed-in users, or for a
+  // returning guest (being forwarded to the home). A FIRST-run guest —
+  // including the anonymous device user — falls through to the splash below.
+  if (isLoading || isRealUser || (PHOEBE_GUEST_ENABLED && alreadySeen)) return null;
 
   const morning = isMorningNow();
   const officeLabel = morning ? t("offices.morning_prayer") : t("offices.evening_prayer");
