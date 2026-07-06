@@ -2,16 +2,16 @@
 // of life into the same device-local officePrefs the customizer uses, ONCE, so
 // a brand-new person lands on a home that's already going:
 //
-//   Morning Office · Evening Office · Forward Day by Day · a 5-minute silence
-//   daily goal (its own single goal card with a progress bar — NOT the per-side
-//   contemplation cards).
+//   Morning Psalms (whole Psalter, monthly) · Evening Psalms (same cycle) ·
+//   Forward Day by Day · a 5-minute silence daily goal (its own single goal
+//   card with a progress bar — NOT the per-side contemplation cards).
 //
 // Adjustable afterward in Daily progress → Customize, exactly like any rule.
 // (The after-noon "morning belongs to tomorrow" rule lives in
 // DailyProgressBody now — for guests it applies EVERY day, not just the seed
 // day.) See memory "project_public_no_login".
 
-import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, setPsalmCycle, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -36,10 +36,11 @@ export function seedGuestRule(): void {
     }
     // Respect an existing rule (e.g. a device that used the app signed-in).
     if (getExplicitSideLevel("morning") || getExplicitSideLevel("evening")) return;
-    setSideLevel("morning", "office");
-    setSideLevel("evening", "office");
+    setSideLevel("morning", "psalms");
+    setSideLevel("evening", "psalms");
     setSideEntry("morning", "read");
     setSideEntry("evening", "read");
+    setPsalmCycle("monthly"); // the whole Psalter, cycling every 30 days
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
     setSideReflection("evening", "fdd");
