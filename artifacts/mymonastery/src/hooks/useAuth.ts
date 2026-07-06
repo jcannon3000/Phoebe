@@ -144,6 +144,16 @@ export function useAuth() {
     queryFn: fetchMe,
     retry: false,
     staleTime: 5 * 60 * 1000,
+    // A routine change on one device (rule_config, home layout, etc.) only
+    // reaches another device's ALREADY-OPEN tab via the visibilitychange/
+    // focus/appactive listeners in App.tsx — which never fire if that tab
+    // just sits open and focused the whole time (the common "web open at my
+    // desk while I customize on my phone" case). A light periodic re-check
+    // closes that gap; react-query dedupes this to ONE request app-wide
+    // (every useAuth() call shares the same query) and — since
+    // refetchIntervalInBackground defaults to false — it only ticks while
+    // the tab is actually visible, so a backgrounded tab doesn't poll.
+    refetchInterval: 60 * 1000,
   });
 
   return { user: user ?? null, isLoading };
