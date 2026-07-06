@@ -64,7 +64,12 @@ export default function WelcomePublicPage() {
   // Show this welcome splash ONCE (first open on this device); afterwards guests
   // go straight to the home. The marker is stamped as soon as it's shown.
   const WELCOME_SEEN_KEY = "phoebe:welcome-splash-seen";
-  const alreadySeen = (() => { try { return localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch { return false; } })();
+  // Capture ONCE at mount, NOT a per-render localStorage read: the effect stamps
+  // the marker as soon as the splash shows, and ensureAnonymousUser() invalidates
+  // /me a beat later, which re-renders — a re-read would then see "1" and the
+  // whole splash would vanish to a blank the instant after it appeared. useState
+  // freezes the first-open answer for this mount so the splash actually stays up.
+  const [alreadySeen] = useState<boolean>(() => { try { return localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch { return false; } });
   // The PUBLIC app provisions an ANONYMOUS device user, so `user` is truthy for
   // anyone who's opened the app before — gating the splash on `!user` meant it
   // only ever showed on a truly fresh install. Treat an anonymous user as a
