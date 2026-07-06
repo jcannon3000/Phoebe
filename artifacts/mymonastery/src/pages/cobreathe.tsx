@@ -50,7 +50,15 @@ const BREATH_PHOTOS: string[] = (!isNativeShell() && WIDE_PHOTOS.length > 0) ? W
 const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
 
 function wantsStart(): boolean {
-  try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
+  // ?start=1 — the standalone Co-Breathe card. ?begin=1 — the per-side Creation
+  // Prayer home card (/cobreathe?begin=1&side=…). Both jump straight into the
+  // breath (via the first-run how-it-works the first time), rather than parking
+  // on the "before you begin" settings screen, so the home "Begin" behaves like
+  // the office "Begin".
+  try {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("start") === "1" || p.get("begin") === "1";
+  } catch { return false; }
 }
 // Launched from the contemplation page / sit? Those entry points pass
 // ?from=contemplation, and finishing then shows the summary screen (and returns
