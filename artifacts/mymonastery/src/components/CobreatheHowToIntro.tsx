@@ -43,7 +43,7 @@ const SLIDES: Slide[] = [
   {
     eyebrow: "Twelve breaths",
     title: "The inner ring counts them",
-    body: "It fills a little with each breath — twelve make one prayer.",
+    body: "It fills a little with each breath, counting up to twelve.",
   },
   {
     // Last slide — just the invitation, centered. No eyebrow, no headline.
