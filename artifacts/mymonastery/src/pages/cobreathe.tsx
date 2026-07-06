@@ -86,18 +86,6 @@ const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Shared look for the intro-slide setting dropdowns: a native <select> stripped
-// of its OS chrome and themed to the row (green value text + our own ▾ caret),
-// so it reads as part of the row but opens a real dropdown on tap.
-const SETTING_SELECT_WRAP: React.CSSProperties = { position: "relative", display: "flex", alignItems: "center" };
-const SETTING_SELECT: React.CSSProperties = {
-  appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-  background: "transparent", border: "none", outline: "none",
-  color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500,
-  textAlign: "right", textAlignLast: "right", cursor: "pointer", paddingRight: 18,
-};
-const SETTING_SELECT_CARET: React.CSSProperties = { position: "absolute", right: 0, pointerEvents: "none", color: "#A8C5A0", opacity: 0.7, fontSize: 12 };
-
 // The week's intention — who this week's breath is held for. Rotates by
 // week-of-year so the whole community holds the same focus at the same time.
 const WEEKLY_FOCI: Array<{ emoji: string; key: string; title: string; line: string }> = [
@@ -205,21 +193,16 @@ export default function CobreathePage() {
     // one-time "how it works" intro first.
     wantsStart() ? (cobreatheHowtoSeen() ? "breathing" : "howto") : "intro",
   );
-  // Intro-slide settings: breath count (6-breath increments, default 12), the
-  // photo topic, and whether to share coarse presence ("same air").
-  // The length hydrates from (and persists to) phoebe:cobreathe-length — the
-  // same key the customizer's Creation Prayer "How many breaths?" preset
-  // writes — so the home card's Begin opens straight into the chosen length.
-  const [lengthBreaths, setLengthBreaths] = useState<number>(() => {
+  // Breath count — 12 by DEFAULT (owner: no selector on this screen anymore).
+  // Reads phoebe:cobreathe-length so the customizer's Creation Prayer "How many
+  // breaths?" preset still applies (the home card's Begin opens at that
+  // length); with nothing saved, it falls back to the 12-breath default.
+  const [lengthBreaths] = useState<number>(() => {
     try {
       const n = parseInt(localStorage.getItem("phoebe:cobreathe-length") || "", 10);
       return [6, 12, 18, 24, 30, 36].includes(n) ? n : DEFAULT_TOTAL_BREATHS;
     } catch { return DEFAULT_TOTAL_BREATHS; }
   });
-  const chooseLengthBreaths = (n: number) => {
-    setLengthBreaths(n);
-    try { localStorage.setItem("phoebe:cobreathe-length", String(n)); } catch { /* ignore */ }
-  };
   // Location features are removed (no presence, no coarse bucket, no coords) —
   // Co-Breathe is the global synchronized breath only. Held as const false so
   // the sync hook never acquires or broadcasts any geographic signal.
@@ -590,22 +573,11 @@ export default function CobreathePage() {
           <div className="w-full" style={{ maxWidth: 440 }}>
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
 
-            {/* Setting rows — label left, a real dropdown right. */}
-            <div className="w-full flex items-center justify-between rounded-xl px-4 py-3 mb-2"
-              style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.32)" }}>
-              <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_length", { defaultValue: "Length" })}</span>
-              <div style={SETTING_SELECT_WRAP}>
-                <select value={lengthBreaths} onChange={(e) => chooseLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
-                  {/* Increments of 6 breaths, default 12. */}
-                  {[6, 12, 18, 24, 30, 36].map((n) => (
-                    <option key={n} value={n}>{n} {t("cobreathe.breaths", { defaultValue: "breaths" })}</option>
-                  ))}
-                </select>
-                <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
-              </div>
-            </div>
-
-            <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 13.5, lineHeight: 1.5, marginTop: 12, textAlign: "center" }}>
+            {/* The breath-count selector was removed from this screen (owner):
+                the length is now set ONLY in the customizer's Creation Prayer
+                step (defaulting to 12, phoebe:cobreathe-length) — this "before
+                you begin" screen just invites, it doesn't ask. */}
+            <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 13.5, lineHeight: 1.5, marginTop: 4, textAlign: "center" }}>
               {t("cobreathe.invite_note", { defaultValue: "An invitation, not a goal — breathe as many as you have in you, and stop whenever you like." })}
             </p>
 
