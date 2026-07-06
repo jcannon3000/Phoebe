@@ -61,19 +61,9 @@ export default function WelcomePublicPage() {
   // (Morning/Evening Office + FDD + a 5-min silence goal) and they land
   // straight on the home, already going. No login anywhere.
   const qc = useQueryClient();
-  // Show this welcome splash ONCE (first open on this device); afterwards guests
-  // go straight to the home. The marker is stamped as soon as it's shown.
-  const WELCOME_SEEN_KEY = "phoebe:welcome-splash-seen";
-  // Capture ONCE at mount, NOT a per-render localStorage read: the effect stamps
-  // the marker as soon as the splash shows, and ensureAnonymousUser() invalidates
-  // /me a beat later, which re-renders — a re-read would then see "1" and the
-  // whole splash would vanish to a blank the instant after it appeared. useState
-  // freezes the first-open answer for this mount so the splash actually stays up.
-  const [alreadySeen] = useState<boolean>(() => { try { return localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch { return false; } });
   // The PUBLIC app provisions an ANONYMOUS device user, so `user` is truthy for
-  // anyone who's opened the app before — gating the splash on `!user` meant it
-  // only ever showed on a truly fresh install. Treat an anonymous user as a
-  // guest: only a REAL (signed-in) account skips straight to the home.
+  // anyone who's opened the app before. Only a REAL (signed-in) account matters
+  // for the redirect; an anonymous/guest still gets the seeded public home.
   const isRealUser = !!user && !user.isAnonymous;
   useEffect(() => {
     if (isLoading) return;
@@ -86,17 +76,18 @@ export default function WelcomePublicPage() {
       void ensureAnonymousUser().then((created) => {
         if (created) qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       });
-      // First open → SHOW the welcome splash (below) and stamp it seen. Every
-      // open after → straight to the home, already going.
-      if (alreadySeen) { setLocation("/dashboard", { replace: true }); return; }
-      try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch { /* private mode */ }
+      // NO first-open welcome splash (per owner): seed the rhythm and drop
+      // straight onto the daily-progress home, already going. Sign in + the
+      // office/creation/customize entry points all live in the menu + home.
+      setLocation("/dashboard", { replace: true });
     }
-  }, [isRealUser, isLoading, setLocation, qc, alreadySeen]);
+  }, [isRealUser, isLoading, setLocation, qc]);
 
-  // Don't paint while resolving auth, for REAL signed-in users, or for a
-  // returning guest (being forwarded to the home). A FIRST-run guest —
-  // including the anonymous device user — falls through to the splash below.
-  if (isLoading || isRealUser || (PHOEBE_GUEST_ENABLED && alreadySeen)) return null;
+  // Don't paint while resolving auth, for REAL signed-in users, or for ANY guest
+  // in the public app (they're being forwarded straight to the home). The
+  // chooser body below only ever renders when the guest flag is OFF (the plain
+  // signed-out web landing).
+  if (isLoading || isRealUser || PHOEBE_GUEST_ENABLED) return null;
 
   const morning = isMorningNow();
   const officeLabel = morning ? t("offices.morning_prayer") : t("offices.evening_prayer");
