@@ -1501,7 +1501,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             }, (
               <>
                 <option value="psalms">Today's Psalms</option>
-                <option value="intercessions">Community Intercessions</option>
+                {/* Community Intercessions is hidden in the public/guest (and
+                    pilot) shape — those sessions can't hand off to the community
+                    slideshow (noCommunityHandoff), so offering it as a way to
+                    pray would dead-end. Signed-in community members still see it. */}
+                {!noCommunityHandoff && <option value="intercessions">Community Intercessions</option>}
                 <option value="devotion">{sideWord} Devotion</option>
                 <option value="office">{sideWord} Prayer</option>
               </>
