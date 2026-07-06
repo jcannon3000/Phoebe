@@ -952,7 +952,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const contemplationHero = (!!renderOfficeHero && noOffice)
     ? coloredCards.find((c) =>
         !c.done && (
-          c.key === "contemplation-morning" ||
+          // Morning leads ONLY while it's still morning — exactly like the
+          // office heroSide (past noon an undone morning steps aside; it never
+          // sits as a giant hero at night). Evening takes the hero from 5 PM.
+          (c.key === "contemplation-morning" && hour < 12) ||
           (c.key === "contemplation-evening" && hour >= 17)
         ))
     : undefined;
@@ -976,14 +979,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // waits under a small "Tomorrow" divider at the bottom instead of sitting in
   // Next. It stays tappable (praying it anyway completes today's), and the new
   // day restores it to Next. Signed-in full-app users keep the no-Tomorrow rule.
+  // The morning ANCHOR card — the office, or (when Creation Prayer / a silent
+  // sit IS the morning prayer, so there's no office) the morning contemplation
+  // card. Past noon an undone morning anchor belongs to tomorrow morning, so it
+  // waits under the "Tomorrow" divider rather than nagging in Next — exactly as
+  // the office does.
+  const morningAnchorKey = visibleCards.some((c) => c.key === "morning")
+    ? "morning"
+    : visibleCards.some((c) => c.key === "contemplation-morning")
+      ? "contemplation-morning"
+      : null;
   const guestMorningTomorrow = guest
     && hour >= 12
-    && visibleCards.some((c) => c.key === "morning" && !c.done);
+    && !!morningAnchorKey
+    && visibleCards.some((c) => c.key === morningAnchorKey && !c.done);
   const tomorrowDisplay = guestMorningTomorrow
-    ? visibleCards.filter((c) => c.key === "morning")
+    ? visibleCards.filter((c) => c.key === morningAnchorKey)
     : [];
   const upcomingDisplay = (() => {
-    const all = visibleCards.filter((c) => !c.done && !(guestMorningTomorrow && c.key === "morning"));
+    const all = visibleCards.filter((c) => !c.done && !(guestMorningTomorrow && c.key === morningAnchorKey));
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.

@@ -36,6 +36,9 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:office:contemplation-minutes",
   "phoebe:office:show-cac-close", "phoebe:office:show-fdd-close", "phoebe:office:show-ssje-close",
   "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:contemplation-style",
+  // Creation Prayer breath-count preset (customizer "How many breaths?" +
+  // the /cobreathe Length dropdown share this key).
+  "phoebe:cobreathe-length",
   // Practice time-of-day slots (customAnchors.ts).
   "phoebe:slot:cobreathe", "phoebe:slot:listening", "phoebe:slot:examen",
   "phoebe:slot:lectio", "phoebe:slot:walk", "phoebe:slot:scripture", "phoebe:slot:reading", "phoebe:journaling-slot",

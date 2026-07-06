@@ -33,7 +33,6 @@ import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache"
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { notificationsSupportedHere } from "@/lib/notifSupport";
 import {
   setSideLevel,
   setSideReflection,
@@ -90,6 +89,10 @@ const SIDES = ["morning", "evening"] as const;
 // contemplation/fdd/examen values remain only so an OLD saved level still reads
 // back (prayFromLevel) and migrates forward on the next save.
 type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen" | "creation";
+
+// Creation Prayer lengths — 6-breath increments, mirroring the /cobreathe
+// page's own Length dropdown (default 12).
+const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
 type Step =
   | "when"
   | "morning-way" | "morning-bcp" | "morning-config"
@@ -516,6 +519,24 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setContemplationStyle(s);
     try { localStorage.setItem("phoebe:contemplation-style", s); } catch { /* ignore */ }
+  };
+  // Creation Prayer length — a BREATHS preset (the same 6-breath increments the
+  // /cobreathe page offers), not minutes. One shared preset (the breath has one
+  // length wherever it opens); /cobreathe hydrates from the same key, so the
+  // home card's "Begin" opens straight into the chosen length.
+  const [cobreatheBreaths, setCobreatheBreaths] = useState<number>(() => {
+    try {
+      const n = parseInt(localStorage.getItem("phoebe:cobreathe-length") || "", 10);
+      return COBREATHE_LENGTHS.includes(n) ? n : 12;
+    } catch { return 12; }
+  });
+  const chooseCobreatheBreaths = (side: OfficeSide, n: number) => {
+    touchedRef.current = true;
+    setCobreatheBreaths(n);
+    try { localStorage.setItem("phoebe:cobreathe-length", String(n)); } catch { /* ignore */ }
+    // Keep the minutes-based silence goal coherent with the breath length
+    // (12s per breath), so a finished Creation Prayer completes the goal.
+    chooseSideMinutes(side, Math.max(1, Math.round((n * 12) / 60)));
   };
   // Written vs audio for Forward Day by Day (the fdd-mode step, shown when FDD
   // is the morning prayer). Persisted via officePrefs; the home FDD card reads it.
@@ -1792,6 +1813,65 @@ export default function WayOfLoveRuleFlow({
     // read/listen/watch dropdown. (Silent-sit length is set on the dedicated
     // contemplation-goal step, not here — contemplation is no longer a side anchor.)
     const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms" || prayBySide[side] === "creation";
+    // Creation Prayer side → the length question is a BREATHS preset, not a
+    // silent-sit's minutes (owner: "it should not be minutes but the preset
+    // for breaths").
+    const isCobreatheSide = contemplationBySide[side] && contemplationStyle === "cobreathe";
+    // Reminder-led variant (no method/cycle rows): the body copy ASKS "when
+    // would you like a reminder?" — so the time picker answers it FIRST, and
+    // any length question follows (owner). Method sides keep "how and when"
+    // order: method first, reminder last.
+    const reminderFirst = noMethod && prayBySide[side] !== "psalms";
+    // The reminder picker shows on EVERY platform (the pref rides the account
+    // and fires wherever pushes can arrive — hiding it on desktop left the
+    // body copy asking a question with no answer under it).
+    const reminderBlock = (
+      <>
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: reminderFirst ? "0 0 10px" : "26px 0 10px", fontFamily: FONT }}>
+          {t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
+        </p>
+        {/* Pick between a reminder time and no reminder at all. Tapping the time
+            field (or its value) selects the reminder; the pill on the right
+            selects silence. The selected one carries the active border. */}
+        <div style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
+          <input
+            type="time"
+            value={timeBySide[side]}
+            onChange={(e) => chooseTimeBySide(side, e.target.value)}
+            onFocus={() => chooseReminderOn(side, true)}
+            aria-label={t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
+            style={{
+              flex: 1, maxWidth: 200,
+              background: reminderOnBySide[side] ? CARD_ACTIVE : CARD,
+              border: `1px solid ${reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
+              borderRadius: 12, padding: "13px 14px",
+              color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark",
+              opacity: reminderOnBySide[side] ? 1 : 0.5,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => chooseReminderOn(side, false)}
+            style={{
+              flex: 1, maxWidth: 200,
+              background: !reminderOnBySide[side] ? CARD_ACTIVE : CARD,
+              border: `1px solid ${!reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
+              borderRadius: 12, padding: "13px 14px",
+              color: !reminderOnBySide[side] ? CREAM : SAGE,
+              fontSize: 14.5, fontFamily: FONT, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            }}
+          >
+            🔕 {t("wol_rule.reminder_none", { defaultValue: "No reminder" })}
+          </button>
+        </div>
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
+          {reminderOnBySide[side]
+            ? t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })
+            : t("wol_rule.reminder_note_off", { side: cap.toLowerCase(), defaultValue: `No ${cap.toLowerCase()} reminder — this practice still counts toward your rhythm.` })}
+        </p>
+      </>
+    );
     return shell(
       <>
         {backRow(goPrev)}
@@ -1803,6 +1883,9 @@ export default function WayOfLoveRuleFlow({
               ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
               : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
+        {/* Reminder-led sides: the time picker directly answers the body copy's
+            question, so it comes FIRST; the length question follows below. */}
+        {reminderFirst && reminderBlock}
         {/* GUEST (public no-login): the BCP FORM choice is merged INTO this
             slide — one slide per side holds the form (Office / Devotion /
             Psalms) + the medium select + the reminder ("there doesn't need to
@@ -1874,76 +1957,43 @@ export default function WayOfLoveRuleFlow({
             </div>
           </>
         )}
-        {/* Contemplation is this side's prayer → also ask HOW LONG the sit is
-            (the default the home "Begin" opens straight into). Sets the shared
-            silence goal / timer length. */}
+        {/* Contemplation is this side's prayer → also ask HOW LONG it is (the
+            default the home "Begin" opens straight into). A Creation Prayer
+            side asks in BREATHS (the /cobreathe preset); a silent sit asks in
+            minutes (the shared silence goal / timer length). */}
         {contemplationBySide[side] && (
           <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: reminderFirst ? "26px 0 10px" : "0 0 10px", fontFamily: FONT }}>
+              {isCobreatheSide
+                ? t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })
+                : t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
             </p>
             <div style={{ position: "relative", marginBottom: 4 }}>
-              <select
-                value={String(minutesBySide[side])}
-                onChange={(e) => chooseSideMinutes(side, parseInt(e.target.value, 10) || 15)}
-                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
-                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-              >
-                {[5, 10, 15, 20, 30].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
-              </select>
+              {isCobreatheSide ? (
+                <select
+                  value={String(cobreatheBreaths)}
+                  onChange={(e) => chooseCobreatheBreaths(side, parseInt(e.target.value, 10) || 12)}
+                  aria-label={t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })}
+                  style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                >
+                  {COBREATHE_LENGTHS.map((n) => (<option key={n} value={String(n)}>{t("wol_rule.n_breaths", { count: n, defaultValue: `${n} breaths` })}</option>))}
+                </select>
+              ) : (
+                <select
+                  value={String(minutesBySide[side])}
+                  onChange={(e) => chooseSideMinutes(side, parseInt(e.target.value, 10) || 15)}
+                  aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
+                  style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                >
+                  {[5, 10, 15, 20, 30].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
+                </select>
+              )}
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
           </>
         )}
-        {/* Reminder picker — only where a push can actually arrive (the iOS
-            shell, or Android mobile web). On desktop / iOS-Safari web there is
-            no notification surface at all; the committed reminder pref simply
-            keeps its default for when they get the app. */}
-        {notificationsSupportedHere() && (<>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
-        </p>
-        {/* Pick between a reminder time and no reminder at all. Tapping the time
-            field (or its value) selects the reminder; the pill on the right
-            selects silence. The selected one carries the active border. */}
-        <div style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
-          <input
-            type="time"
-            value={timeBySide[side]}
-            onChange={(e) => chooseTimeBySide(side, e.target.value)}
-            onFocus={() => chooseReminderOn(side, true)}
-            aria-label={t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
-            style={{
-              flex: 1, maxWidth: 200,
-              background: reminderOnBySide[side] ? CARD_ACTIVE : CARD,
-              border: `1px solid ${reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 12, padding: "13px 14px",
-              color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark",
-              opacity: reminderOnBySide[side] ? 1 : 0.5,
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => chooseReminderOn(side, false)}
-            style={{
-              flex: 1, maxWidth: 200,
-              background: !reminderOnBySide[side] ? CARD_ACTIVE : CARD,
-              border: `1px solid ${!reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 12, padding: "13px 14px",
-              color: !reminderOnBySide[side] ? CREAM : SAGE,
-              fontSize: 14.5, fontFamily: FONT, fontWeight: 600, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            }}
-          >
-            🔕 {t("wol_rule.reminder_none", { defaultValue: "No reminder" })}
-          </button>
-        </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {reminderOnBySide[side]
-            ? t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })
-            : t("wol_rule.reminder_note_off", { side: cap.toLowerCase(), defaultValue: `No ${cap.toLowerCase()} reminder — this practice still counts toward your rhythm.` })}
-        </p>
-        </>)}
+        {/* Method sides keep "how and when" order — reminder last. */}
+        {!reminderFirst && reminderBlock}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
@@ -2291,13 +2341,24 @@ export default function WayOfLoveRuleFlow({
       sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
-    // Per-side Contemplative Prayer — its own Morning / Evening Contemplation row.
-    ...((["morning", "evening"] as OfficeSide[]).filter((s) => contemplationBySide[s]).map((s) => ({
-      emoji: (silenceMode === "grow" ? "🌱" : "🕯️"),
-      label: `${s === "morning" ? "Morning" : "Evening"} Contemplation`,
-      sub: silenceMode === "grow" ? "Growing toward 30 min" : (goalMin > 0 ? `${goalMin} min a day` : "A silent sit"),
-      step: "contemplation-goal" as Step,
-    }))),
+    // Per-side contemplative prayer — its own row per side. When the style is
+    // the breath it's "Morning / Evening Creation Prayer" (🌍); a silent sit is
+    // "Morning / Evening Contemplation". The sub shows THIS side's session
+    // length (breaths for the breath, minutes for a sit) — NOT the whole-day
+    // goal, which read wrong ("144 min a day" on every card).
+    ...((["morning", "evening"] as OfficeSide[]).filter((s) => contemplationBySide[s]).map((s) => {
+      const isCob = contemplationStyle === "cobreathe";
+      const cap = s === "morning" ? "Morning" : "Evening";
+      return {
+        emoji: isCob ? "🌍" : (silenceMode === "grow" ? "🌱" : "🕯️"),
+        label: isCob ? `${cap} Creation Prayer` : `${cap} Contemplation`,
+        sub: isCob
+          ? t("wol_rule.n_breaths", { count: cobreatheBreaths, defaultValue: `${cobreatheBreaths} breaths` })
+          : (silenceMode === "grow" ? "Growing toward 30 min" : (minutesBySide[s] > 0 ? t("wol_rule.n_min", { count: minutesBySide[s], defaultValue: `${minutesBySide[s]} min` }) : "A silent sit")),
+        // Tapping edits THIS side (its config step sets the length + reminder).
+        step: (isCob ? (s === "morning" ? "morning-config" : "evening-config") : "contemplation-goal") as Step,
+      };
+    })),
     // SOLO silence goal — minutes set with no per-side contemplation: the home
     // shows the single "Silence" progress card, so the review names it too
     // (otherwise a saved goal looks like it didn't take).

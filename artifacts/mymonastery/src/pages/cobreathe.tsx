@@ -199,7 +199,19 @@ export default function CobreathePage() {
   );
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
-  const [lengthBreaths, setLengthBreaths] = useState<number>(DEFAULT_TOTAL_BREATHS);
+  // The length hydrates from (and persists to) phoebe:cobreathe-length — the
+  // same key the customizer's Creation Prayer "How many breaths?" preset
+  // writes — so the home card's Begin opens straight into the chosen length.
+  const [lengthBreaths, setLengthBreaths] = useState<number>(() => {
+    try {
+      const n = parseInt(localStorage.getItem("phoebe:cobreathe-length") || "", 10);
+      return [6, 12, 18, 24, 30, 36].includes(n) ? n : DEFAULT_TOTAL_BREATHS;
+    } catch { return DEFAULT_TOTAL_BREATHS; }
+  });
+  const chooseLengthBreaths = (n: number) => {
+    setLengthBreaths(n);
+    try { localStorage.setItem("phoebe:cobreathe-length", String(n)); } catch { /* ignore */ }
+  };
   // Location features are removed (no presence, no coarse bucket, no coords) —
   // Co-Breathe is the global synchronized breath only. Held as const false so
   // the sync hook never acquires or broadcasts any geographic signal.
@@ -575,7 +587,7 @@ export default function CobreathePage() {
               style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.32)" }}>
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_length", { defaultValue: "Length" })}</span>
               <div style={SETTING_SELECT_WRAP}>
-                <select value={lengthBreaths} onChange={(e) => setLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
+                <select value={lengthBreaths} onChange={(e) => chooseLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
                   {/* Increments of 6 breaths, default 12. */}
                   {[6, 12, 18, 24, 30, 36].map((n) => (
                     <option key={n} value={n}>{n} {t("cobreathe.breaths", { defaultValue: "breaths" })}</option>
