@@ -835,14 +835,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       doneCta: creationStyle ? t("rhythm.breathe_again", { defaultValue: "Breathe again" }) : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's
-    // minutes toward the daily goal, whenever a goal is set and NEITHER side
-    // carries a contemplation card: all guests (useRhythmState keeps their
-    // per-side flags off; goal/minutes are the device-local guest values), and
-    // signed-in users who set only the minutes goal on the Silence step — a
-    // saved goal must always be visible somewhere. Signed-in minutes come from
-    // the server's sit stats. Begin opens the timer straight at the goal
-    // length; past goal it stays tappable to sit again.
-    ...(contemplationGoalMin > 0 && !morningContemplationActive && !eveningContemplationActive ? [{
+    // minutes toward the daily goal. Shown whenever a goal is set and NEITHER
+    // side carries a contemplation card (all guests; signed-in users who set
+    // only the minutes goal on the Silence step) — a saved goal must always be
+    // visible somewhere. ALSO shown when Creation Prayer (the breath) is the
+    // active style even though a per-side card IS present: unlike a silent
+    // sit's blurb (which names that side's length), the Creation Prayer card's
+    // blurb never mentions minutes or the daily goal at all, so the goal
+    // progress ("N of M min today") would otherwise be invisible everywhere.
+    // Signed-in minutes come from the server's sit stats. Begin opens the timer
+    // straight at the goal length; past goal it stays tappable to sit again.
+    ...(contemplationGoalMin > 0 && (
+      (creationStyle && (morningContemplationActive || eveningContemplationActive)) ||
+      (!morningContemplationActive && !eveningContemplationActive)
+    ) ? [{
       key: "silence", slot: "anytime" as CustomSlot, emoji: "🕯️", rgb: "62,124,122",
       done: contemplationMin >= contemplationGoalMin,
       href: `/contemplation?begin=1&sit=${contemplationGoalMin}`,

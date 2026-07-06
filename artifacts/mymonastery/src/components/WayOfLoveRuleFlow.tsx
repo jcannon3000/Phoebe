@@ -30,7 +30,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
-import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import {
@@ -300,7 +299,10 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   // Creation Prayer gets the lighter nudge that opens the devotion.
   creation: "devotion",
 };
-const DEFAULT_REMINDER_TIME = "07:30";
+// Default reminder times — 7am / 6pm (owner). Reminder TIMES themselves are no
+// longer asked in the customizer; they're set in Settings → Daily reminders,
+// which uses these same defaults (settings.tsx DEFAULT_MORNING/DEFAULT_EVENING).
+const DEFAULT_REMINDER_TIME = "07:00";
 
 // Is a home module currently surfaced? Mirrors the dashboard's gate: only a
 // current-version layout counts, and the key must be in `order` and not
@@ -749,8 +751,6 @@ export default function WayOfLoveRuleFlow({
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
   const [customSlot, setCustomSlot] = useState<CustomSlot>("anytime");
-  // Inline "add your own practice" field on the Morning/Evening prayer-way step.
-  const [sideCustomDraft, setSideCustomDraft] = useState("");
   // Journaling's time-of-day slot — when they add Journaling we ask when in the
   // day they keep it, so its card slots into the rhythm at that point. Seeded
   // from the saved choice; persisted on tap (localStorage, per-device).
@@ -808,8 +808,6 @@ export default function WayOfLoveRuleFlow({
   const touchedRef = useRef(false);
   const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => { touchedRef.current = true; setPrayBySide((prev) => ({ ...prev, [side]: p })); };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
-  const chooseTimeBySide = (side: OfficeSide, tm: string) => { touchedRef.current = true; setReminderOnBySide((prev) => ({ ...prev, [side]: true })); setTimeBySide((prev) => ({ ...prev, [side]: tm })); };
-  const chooseReminderOn = (side: OfficeSide, on: boolean) => { touchedRef.current = true; setReminderOnBySide((prev) => ({ ...prev, [side]: on })); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
 
   // Daily steps (Apple Health) — its own optional customizer slide, like the
@@ -952,9 +950,13 @@ export default function WayOfLoveRuleFlow({
       eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
     };
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
-    const wantCobreathe =
-      contemplative.cobreathe ||
-      (contemplationStyle === "cobreathe" && anyContemplation);
+    // Creation Prayer earns a home card ONLY through the per-side "way" choice
+    // (a side's contemplation IS the breath) — the old standalone Co-Breathe
+    // add-on toggle (contemplative.cobreathe) is no longer reachable in the
+    // simplified flow, so it's dropped here too. Otherwise a leftover flag from
+    // an older save kept showing a duplicate "Creation Prayer" card even after
+    // the side switched back to the Book of Common Prayer.
+    const wantCobreathe = contemplationStyle === "cobreathe" && anyContemplation;
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
@@ -1097,9 +1099,13 @@ export default function WayOfLoveRuleFlow({
     // EITHER path: the Contemplation-practices toggle (contemplative.cobreathe) OR
     // choosing Co-Breathe as the contemplative sit's STYLE (contemplationStyle ===
     // "cobreathe" with Contemplative Prayer on). Mirrors the hydration logic above.
-    const wantCobreathe =
-      contemplative.cobreathe ||
-      (contemplationStyle === "cobreathe" && anyContemplation);
+    // Creation Prayer earns a home card ONLY through the per-side "way" choice
+    // (a side's contemplation IS the breath) — the old standalone Co-Breathe
+    // add-on toggle (contemplative.cobreathe) is no longer reachable in the
+    // simplified flow, so it's dropped here too. Otherwise a leftover flag from
+    // an older save kept showing a duplicate "Creation Prayer" card even after
+    // the side switched back to the Book of Common Prayer.
+    const wantCobreathe = contemplationStyle === "cobreathe" && anyContemplation;
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
@@ -1641,9 +1647,13 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
         </p>
-        {/* Select as many as you want. Your "office" is one method (BCP form,
-            Prayer List, Contemplative, or the Examen); Co-Breathe and Forward
-            Day by Day ride alongside as their own cards. */}
+        {/* SIMPLIFIED daily-prayer choice (owner): exactly two ways, single-select
+            — the Book of Common Prayer (its type + medium chosen on the next
+            slide) or Creation Prayer (the 12-breath practice, which REPLACES the
+            office for this side). No Contemplative/Prayer List/FDD/Examen rows
+            here anymore — contemplation is asked as its own goal-slide later in
+            the flow, reflections are chosen on "learn", and Examen/other add-ons
+            aren't offered in this flow. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {(() => {
             const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
@@ -1651,119 +1661,33 @@ export default function WayOfLoveRuleFlow({
               : prayBySide[side] === "devotion" ? devotionSub
               : prayBySide[side] === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
               : t("wol_rule.pray_bcp_sub", { defaultValue: "Pray the office — the psalms and lessons are filled in for you." });
-            return (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* With the Book of Common Prayer — one option. The form (Psalms /
-                    Devotion / Office) is chosen on the NEXT slide (morning-bcp /
-                    evening-bcp). The sub-line shows the current choice. Tapping
-                    again clears the office anchor (each row toggles independently). */}
-                {choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => choosePrayBySide(side, bcpOn ? "none" : bcpForm[side]))}
-                {bcpOn && communityWithOffice[side] && (
-                  <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, paddingLeft: 22, margin: 0 }}>
-                    {t("wol_rule.bcp_community_note", { defaultValue: "✓ Community intercessions are prayed within the office." })}
-                  </p>
-                )}
-              </div>
-            );
-          })()}
-          {/* Prayer List — the community's intercessions. Checked alongside BCP,
-              it folds into the office (a single card); on its own it IS the
-              office ("Pray Together"). Hidden for GUESTS — the public version
-              carries no community prayer list at all. */}
-          {!pilot && !guest && (() => {
-            const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
-            const on = prayBySide[side] === "community" || (bcpOn && communityWithOffice[side]);
-            return choiceRow(on, `🙏 ${t("wol_rule.pray_community_label", { defaultValue: "Prayer List" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray through your community's intercessions." }), () => {
-              // With a BCP office selected, this folds the community intercessions
-              // into that office (one card). On its own it IS the office; tapping
-              // again clears it.
-              if (bcpOn) { touchedRef.current = true; setCommunityWithOffice((p) => ({ ...p, [side]: !p[side] })); }
-              else choosePrayBySide(side, prayBySide[side] === "community" ? "none" : "community");
+            return choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => {
+              if (bcpOn) return; // already selected — nothing to switch
+              touchedRef.current = true;
+              // Selecting BCP replaces any Creation Prayer on this side.
+              if (contemplationBySide[side] && contemplationStyle === "cobreathe") toggleContemplationSide(side);
+              choosePrayBySide(side, bcpForm[side]);
             });
           })()}
-          {/* Contemplative Prayer — a silent sit. An add-on (its own Silence
-              card), so it rides alongside a BCP office rather than replacing it.
-              INVARIANT (reference_customizer_addon_model): NEVER call
-              choosePrayBySide here — it's an add-on, not the office anchor.
-              Contemplation-only = leave the office rows off (prayBySide "none")
-              and turn this on. */}
-          {choiceRow(contemplationBySide[side] && contemplationStyle === "silent", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "A silent sit — its own card for this part of the day." }), () => {
-            const turningOn = !(contemplationBySide[side] && contemplationStyle === "silent");
-            touchedRef.current = true;
-            // From Creation Prayer → silent on the same side: keep the side on,
-            // just flip the style. Otherwise toggle the side as before.
-            if (contemplationBySide[side] && contemplationStyle === "cobreathe") {
-              chooseContemplationStyle("silent");
-            } else {
-              toggleContemplationSide(side);
-              chooseContemplationStyle("silent");
-            }
-            // A silent sit needs a length — default to 5 minutes if none is set
-            // yet, so the config step + the home "Begin" have a duration to use.
-            if (turningOn && goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
-          })}
-          {/* Creation Prayer — a per-side PRIMARY way (owner): picking it makes the
-              12-breath Creation Prayer THIS side's prayer and REPLACES the office
-              (clears prayBySide). It rides the per-side contemplation slot with the
-              "cobreathe" style, so the home shows a per-side Creation Prayer card
-              (named "Morning/Evening Creation Prayer" on both sides, just "Creation
-              Prayer" on one). Available to everyone, morning and evening. */}
+          {/* Creation Prayer — picking it makes the 12-breath practice THIS side's
+              prayer and REPLACES the office (clears prayBySide). It rides the
+              per-side contemplation slot with the "cobreathe" style, so the home
+              shows a per-side Creation Prayer card (named "Morning/Evening
+              Creation Prayer" on both sides, just "Creation Prayer" on one). */}
           {choiceRow(
             contemplationBySide[side] && contemplationStyle === "cobreathe",
             `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`,
             t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths, a prayer with all creation." }),
             () => {
               const on = contemplationBySide[side] && contemplationStyle === "cobreathe";
+              if (on) return; // already selected — nothing to switch
               touchedRef.current = true;
-              if (on) {
-                // Turn this side's Creation Prayer OFF.
-                toggleContemplationSide(side);
-              } else {
-                // Replace the office on this side and make it Creation Prayer.
-                choosePrayBySide(side, "none");
-                if (!contemplationBySide[side]) toggleContemplationSide(side);
-                chooseContemplationStyle("cobreathe");
-                if (goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
-              }
+              choosePrayBySide(side, "none");
+              if (!contemplationBySide[side]) toggleContemplationSide(side);
+              chooseContemplationStyle("cobreathe");
+              if (goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
             },
           )}
-          {/* Creation Prayer — a creation-focused devotion (the creation Psalter
-              + prayers, opening with the Co-Breathe breath). IS this side's
-              prayer, like the office; mutually exclusive with the BCP office.
-              Hidden for now behind CREATION_PRAYER_ENABLED. */}
-          {!pilot && !guest && CREATION_PRAYER_ENABLED && choiceRow(prayBySide[side] === "creation", `🌱 ${t("wol_rule.pray_creation_label", { defaultValue: "Creation Prayer" })}`, t("wol_rule.pray_creation_sub", { defaultValue: "A creation-focused devotion, with Creation Prayer at the intercession." }), () => choosePrayBySide(side, prayBySide[side] === "creation" ? "none" : "creation"))}
-          {/* Forward Day by Day — an add-on reflection; the next step picks read
-              vs. listen (feeds the reflection/newsletter set). Hidden for
-              GUESTS — FDD is chosen on the separate "learn" newsletter step,
-              not as a way of prayer. */}
-          {!guest && choiceRow(newsletters.includes("fdd"), `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`, t("wol_rule.pray_fdd_sub", { defaultValue: "The daily reflection — read it or listen to it." }), () => toggleNewsletter("fdd"))}
-          {/* The Examen — an add-on evening card (shares one source of truth with
-              the contemplative-step Examen toggle, so it can't double-add).
-              Hidden for GUESTS (their ways = BCP · Contemplative · Co-Breathe). */}
-          {side === "evening" && !pilot && !guest && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God as your evening prayer." }), () => toggleContemplative("examen"))}
-        </div>
-
-        {/* Add your own practice for this part of the day — logged like a custom
-            anchor (tap to keep it each day). */}
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "20px 0 8px", fontFamily: FONT }}>
-          {t("wol_rule.side_custom_label", { defaultValue: "Add your own" })}
-        </p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            value={sideCustomDraft}
-            onChange={(e) => setSideCustomDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && sideCustomDraft.trim()) { touchedRef.current = true; addCustomAnchor(sideCustomDraft.trim(), "🌿", side); setSideCustomDraft(""); setCustomList(getCustomAnchors()); } }}
-            placeholder={t("wol_rule.side_custom_placeholder", { defaultValue: "e.g. the Rosary" })}
-            style={{ flex: 1, minWidth: 0, ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
-          />
-          <button
-            type="button"
-            disabled={!sideCustomDraft.trim()}
-            onClick={() => { touchedRef.current = true; addCustomAnchor(sideCustomDraft.trim(), "🌿", side); setSideCustomDraft(""); setCustomList(getCustomAnchors()); }}
-            style={{ flexShrink: 0, background: sideCustomDraft.trim() ? CTA : CARD, border: `1px solid ${sideCustomDraft.trim() ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "0 18px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: sideCustomDraft.trim() ? "pointer" : "default" }}
-          >
-            {t("common.add", { defaultValue: "Add" })}
-          </button>
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -1801,7 +1725,10 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Per-side CONFIG slide — default method + reminder time ────────────────
+  // ── Per-side CONFIG slide — default method / breath count ─────────────────
+  // Reminder TIMES are no longer asked here (owner): they live in Settings →
+  // Daily reminders, defaulting to 7am / 6pm. This slide only asks HOW you'll
+  // pray (medium, or breath count for Creation Prayer).
   if (step === "morning-config" || step === "evening-config") {
     const side: OfficeSide = step === "morning-config" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
@@ -1809,83 +1736,26 @@ export default function WayOfLoveRuleFlow({
     const method = isIntercessions ? "read" : methodBySide[side];
     // FDD / Psalms have no office "way to pray" method — they open their own
     // card — and a side with NO office anchor ("none": contemplation/examen only)
-    // has no method either, so this slide shows ONLY the reminder time, not the
-    // read/listen/watch dropdown. (Silent-sit length is set on the dedicated
+    // has no method either. (Silent-sit length is set on the dedicated
     // contemplation-goal step, not here — contemplation is no longer a side anchor.)
     const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms" || prayBySide[side] === "creation";
     // Creation Prayer side → the length question is a BREATHS preset, not a
     // silent-sit's minutes (owner: "it should not be minutes but the preset
     // for breaths").
     const isCobreatheSide = contemplationBySide[side] && contemplationStyle === "cobreathe";
-    // Reminder-led variant (no method/cycle rows): the body copy ASKS "when
-    // would you like a reminder?" — so the time picker answers it FIRST, and
-    // any length question follows (owner). Method sides keep "how and when"
-    // order: method first, reminder last.
-    const reminderFirst = noMethod && prayBySide[side] !== "psalms";
-    // The reminder picker shows on EVERY platform (the pref rides the account
-    // and fires wherever pushes can arrive — hiding it on desktop left the
-    // body copy asking a question with no answer under it).
-    const reminderBlock = (
-      <>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: reminderFirst ? "0 0 10px" : "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
-        </p>
-        {/* Pick between a reminder time and no reminder at all. Tapping the time
-            field (or its value) selects the reminder; the pill on the right
-            selects silence. The selected one carries the active border. */}
-        <div style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
-          <input
-            type="time"
-            value={timeBySide[side]}
-            onChange={(e) => chooseTimeBySide(side, e.target.value)}
-            onFocus={() => chooseReminderOn(side, true)}
-            aria-label={t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
-            style={{
-              flex: 1, maxWidth: 200,
-              background: reminderOnBySide[side] ? CARD_ACTIVE : CARD,
-              border: `1px solid ${reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 12, padding: "13px 14px",
-              color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark",
-              opacity: reminderOnBySide[side] ? 1 : 0.5,
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => chooseReminderOn(side, false)}
-            style={{
-              flex: 1, maxWidth: 200,
-              background: !reminderOnBySide[side] ? CARD_ACTIVE : CARD,
-              border: `1px solid ${!reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 12, padding: "13px 14px",
-              color: !reminderOnBySide[side] ? CREAM : SAGE,
-              fontSize: 14.5, fontFamily: FONT, fontWeight: 600, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            }}
-          >
-            🔕 {t("wol_rule.reminder_none", { defaultValue: "No reminder" })}
-          </button>
-        </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {reminderOnBySide[side]
-            ? t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })
-            : t("wol_rule.reminder_note_off", { side: cap.toLowerCase(), defaultValue: `No ${cap.toLowerCase()} reminder — this practice still counts toward your rhythm.` })}
-        </p>
-      </>
-    );
     return shell(
       <>
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {prayBySide[side] === "psalms"
-            ? t("wol_rule.side_config_psalms_body", { side: cap.toLowerCase(), defaultValue: `Choose how the Psalter unfolds, and when you'd like a reminder in the ${cap.toLowerCase()}.` })
-            : noMethod
-              ? t("wol_rule.side_config_reminder_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder in the ${cap.toLowerCase()}?` })
-              : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
+            ? t("wol_rule.side_config_psalms_body_notime", { side: cap.toLowerCase(), defaultValue: `Choose how the Psalter unfolds in the ${cap.toLowerCase()}.` })
+            : isCobreatheSide
+              ? t("wol_rule.side_config_breaths_body", { side: cap.toLowerCase(), defaultValue: `How many breaths would you like each ${cap.toLowerCase()}?` })
+              : noMethod
+                ? t("wol_rule.side_config_plain_body", { side: cap.toLowerCase(), defaultValue: `Set up your ${cap.toLowerCase()} prayer.` })
+                : t("wol_rule.side_config_body_notime", { side: cap.toLowerCase(), defaultValue: `How would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
-        {/* Reminder-led sides: the time picker directly answers the body copy's
-            question, so it comes FIRST; the length question follows below. */}
-        {reminderFirst && reminderBlock}
         {/* GUEST (public no-login): the BCP FORM choice is merged INTO this
             slide — one slide per side holds the form (Office / Devotion /
             Psalms) + the medium select + the reminder ("there doesn't need to
@@ -1963,7 +1833,7 @@ export default function WayOfLoveRuleFlow({
             minutes (the shared silence goal / timer length). */}
         {contemplationBySide[side] && (
           <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: reminderFirst ? "26px 0 10px" : "0 0 10px", fontFamily: FONT }}>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 10px", fontFamily: FONT }}>
               {isCobreatheSide
                 ? t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })
                 : t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
@@ -1992,8 +1862,6 @@ export default function WayOfLoveRuleFlow({
             </div>
           </>
         )}
-        {/* Method sides keep "how and when" order — reminder last. */}
-        {!reminderFirst && reminderBlock}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
