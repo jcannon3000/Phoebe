@@ -3237,7 +3237,8 @@ function FddHomeCard() {
 // Praying the Psalms home card — replaces the office card for a side set to
 // "psalms". Shows today's appointed psalms (per the chosen cycle) and opens the
 // /psalms reader. Warm parchment tone, distinct from the blue FDD card.
-function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
+function PsalmsHomeCard({ side, hero = false, requesterFaces = [], slideshowCount = 0 }: { side: "morning" | "evening"; hero?: boolean; requesterFaces?: Array<{ id: number; name: string; avatarUrl: string }>; slideshowCount?: number }) {
+  const { t } = useTranslation();
   const [, goTo] = useLocation();
   const [done, setDone] = useState(() => hasPrayedPsalmsToday(side));
   const [cycle, setCycle] = useState(() => getPsalmCycle());
@@ -3270,32 +3271,63 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
   // cards rather than standing out.
   const rgb = side === "evening" ? "124,116,196" : "46,107,64";
 
-  // Hero layout — the big "what's next" card, mirroring the office hero, when
-  // Praying the Psalms is this side's prayer.
+  // Hero layout — per owner, this is now the SAME shell/chrome as the office
+  // hero in PrayerOfficeCard (rounded-3xl card, green accent bar, eyebrow,
+  // avatar rail + prayer count, two-pill done state) — only the title and the
+  // CTA's destination differ (Psalms, not the office).
   if (hero) {
+    const withAvatars = requesterFaces;
+    const countCopy = slideshowCount === 0
+      ? null
+      : `${slideshowCount} prayer${slideshowCount === 1 ? "" : "s"}`;
     return (
       <div
-        role="button"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
-        className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-        style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        className="relative flex rounded-3xl overflow-hidden"
+        style={{
+          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          border: "1px solid rgba(200,212,192,0.35)",
+        }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-        <div className="flex-1 px-5 py-5">
-          <div className="flex items-start gap-3.5">
-            <span className="text-[34px] leading-none flex-shrink-0">📜</span>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
-              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>{subtitle}</p>
-            </div>
-            <div className="flex-shrink-0">
-              <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {done ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> Pray again</> : "Pray"} <span aria-hidden className="ml-1">→</span>
-              </span>
-            </div>
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+        <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
+              {t("dashboard.book_of_common_prayer", { defaultValue: "Book of Common Prayer" })}
+            </p>
           </div>
+          <div className="mt-[4px] flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}>
+                {title}
+              </p>
+              {countCopy && (
+                <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}>
+                  {countCopy}
+                </p>
+              )}
+            </div>
+            {withAvatars.length > 0 && (
+              <div className="flex items-center -space-x-2 shrink-0">
+                {withAvatars.slice(0, 8).map((p) => (
+                  <img key={p.id} src={p.avatarUrl} alt={p.name} title={p.name} className="w-6 h-6 rounded-full object-cover" style={{ border: "1.5px solid rgba(12,31,18,0.9)" }} />
+                ))}
+              </div>
+            )}
+          </div>
+          {done ? (
+            <div className="mt-[12px] flex items-stretch gap-2">
+              <div aria-label="Prayer completed today" className="flex-1 rounded-xl text-center" style={{ background: "rgba(46,107,64,0.10)", color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: "1px solid rgba(46,107,64,0.22)" }}>
+                Prayer completed <span aria-hidden>✓</span>
+              </div>
+              <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="flex-1 rounded-xl text-center cursor-pointer" style={{ background: "rgba(46,107,64,0.22)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: "1px solid rgba(46,107,64,0.45)" }}>
+                Pray again <span aria-hidden>→</span>
+              </div>
+            </div>
+          ) : (
+            <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-[12px] w-full rounded-xl text-center cursor-pointer" style={{ background: "rgba(46,107,64,0.22)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: "1px solid rgba(46,107,64,0.45)" }}>
+              Begin prayer <span aria-hidden>→</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -3680,7 +3712,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   if (getSideLevel(isMorning ? "morning" : "evening") === "psalms") {
     // A forced side (the home "what's next" / office-hero slot) renders the big
     // hero variant; the compact mini stays small.
-    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
+    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} requesterFaces={requesterFaces} slideshowCount={slideshowCount} />;
   }
   // Per-user: Contemplation / the Examen IS this side's prayer → its card
   // replaces the office card for this user. Same after-all-hooks placement as
