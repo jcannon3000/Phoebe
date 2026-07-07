@@ -496,7 +496,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // Subtle landscape, held quiet under a heavy dark wash — matches the Laurel
   // Kearns Co-Breathe intro / the prayer slideshow (photo at 0.22), so the office
   // text stays fully legible over the scenery.
-  const officeBgOpacity = 0.22;
+  const officeBgOpacity = 0.3; // a little brighter (owner)
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
@@ -3524,7 +3524,7 @@ function PhysicalBookGuide(props: {
     >
       {leafBg ? (
         <>
-          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, zIndex: -1 }} />
+          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6, zIndex: -1 }} />
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.7) 45%, rgba(8,22,15,0.84) 100%)" }} />
         </>
       ) : (

@@ -4,19 +4,11 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
-import { EARTH_PHOTOS } from "@/lib/earthPhotos";
-import { WIDE_PHOTOS } from "@/lib/wideBackgrounds";
-import { isNativeShell } from "@/lib/isNativeShell";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { PointedLine } from "@/components/PointedLine";
-
-// Backdrop pool — real landscapes (owner: "not just leaves"), matching the
-// office's own backdrop philosophy. Web gets the true-wide landscape set (a
-// proper aspect for a wide window); native falls back to the bundled curated
-// EARTH_PHOTOS pool (broad nature/landscape shots, not leaf close-ups).
-const PSALM_BACKDROP_PHOTOS: string[] = (!isNativeShell() && WIDE_PHOTOS.length > 0) ? WIDE_PHOTOS : EARTH_PHOTOS;
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -196,8 +188,8 @@ export default function PsalmsPage() {
   // lectionary chooser unguided.
   const [introDismissed, setIntroDismissed] = useState(false);
 
-  // A still landscape backdrop, picked once (owner: "not just leaves").
-  const leaf = useMemo(() => (PSALM_BACKDROP_PHOTOS.length > 0 ? PSALM_BACKDROP_PHOTOS[Math.floor(Math.random() * PSALM_BACKDROP_PHOTOS.length)]! : null), []);
+  // A still leaf backdrop, picked once — matching the office slideshow.
+  const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const goHome = () => setLocation("/dashboard");
   // Finishing the psalms = the day's Praying-the-Psalms is kept (side-scoped).
@@ -276,14 +268,11 @@ export default function PsalmsPage() {
   }
 
   // Shared chrome — landscape backdrop + header (Back · side label · close).
-  // A photographic landscape reads best held quiet under a heavy dark wash
-  // (matching the office/Kearns-intro backdrop treatment) — the old leaf
-  // opacity (0.7) was tuned for a close-up leaf texture and would overpower a
-  // real photo.
+  // Leaf backdrop, matching the office — a little brighter than before (owner).
   const Backdrop = leaf ? (
     <>
-      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.28, zIndex: -2 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.62) 0%, rgba(12,31,18,0.55) 45%, rgba(12,31,18,0.85) 100%)" }} />
+      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, zIndex: -2 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.75) 0%, rgba(12,31,18,0.58) 45%, rgba(12,31,18,0.8) 100%)" }} />
     </>
   ) : null;
   const header = (onBack: () => void) => (
