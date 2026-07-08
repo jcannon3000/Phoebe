@@ -291,8 +291,8 @@ export default function PsalmsPage() {
   // Leaf backdrop, matching the office — a little brighter than before (owner).
   const Backdrop = leaf ? (
     <>
-      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, zIndex: -2 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.75) 0%, rgba(12,31,18,0.58) 45%, rgba(12,31,18,0.8) 100%)" }} />
+      <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, filter: "blur(3px)", transform: "scale(1.02)", zIndex: -2 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.85) 0%, rgba(12,31,18,0.7) 45%, rgba(12,31,18,0.9) 100%)" }} />
     </>
   ) : null;
   const header = (onBack: () => void) => (
