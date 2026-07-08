@@ -14,6 +14,7 @@ import {
   type ReflectionSource,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
+import { pushRoutineConfig } from "@/lib/routineSync";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -55,11 +56,16 @@ export default function CustomizePage() {
 
   // A signed-in "light" account (real, but not device-local) has its silence
   // goal + step goal on the server; a device-local guest keeps them local.
-  const { data: officePrefs } = useQuery<{ contemplationGoalMinutes?: number; dailyStepGoal?: number }>({
+  const { data: officePrefs, isLoading: officePrefsLoading } = useQuery<{ contemplationGoalMinutes?: number; dailyStepGoal?: number }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     enabled: !guest,
   });
+  // A guest's local values are available synchronously; a light account's
+  // saved goals need this query to resolve first — render those two rows only
+  // once we actually KNOW the value, so a light account never briefly sees a
+  // wrong default (e.g. "5 min") before their real saved goal paints.
+  const goalsReady = guest || !officePrefsLoading;
 
   const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer());
   const [newsletter, setNewsletter] = useState<ReflectionSource>(() => getReflectionSource());
@@ -76,8 +82,10 @@ export default function CustomizePage() {
   const applyDailyPrayer = (choice: DailyPrayer) => {
     setDailyPrayer(choice);
     if (choice === "creation") {
-      setSideLevel("morning", "none");
-      setSideLevel("evening", "none");
+      // "ask" is the real OfficeLevel for "no BCP anchor on this side" — the
+      // same value the full customizer's PrayChoice "none" maps to.
+      setSideLevel("morning", "ask");
+      setSideLevel("evening", "ask");
       setSideContemplation("morning", true);
       setSideContemplation("evening", true);
       try { localStorage.setItem("phoebe:contemplation-style", "cobreathe"); window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
@@ -92,6 +100,12 @@ export default function CustomizePage() {
       if (choice === "psalms") setPsalmCycle("office");
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     }
+    // Push this device's routine up (rule_config) — same call the full
+    // customizer makes on commit — so the choice reaches this account's other
+    // devices instead of staying stuck on this one. Safe for any session
+    // (real or the anonymous device user); a truly logged-out visitor has no
+    // session to push to and the PUT just 401s silently.
+    if (user) pushRoutineConfig();
   };
 
   const applyNewsletter = (id: ReflectionSource) => {
@@ -99,6 +113,7 @@ export default function CustomizePage() {
     setReflectionSource(id);
     setSideReflection("morning", id);
     setSideReflection("evening", id);
+    if (user) pushRoutineConfig();
   };
 
   const applySilence = (min: number) => {
@@ -162,10 +177,10 @@ export default function CustomizePage() {
             { value: "cac", label: "CAC Daily Meditation" },
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
-          {row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}
+          {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}
 
           {/* Daily steps — Apple Health, iOS only. */}
-          {isNativeShell() && row("Daily steps", String(effectiveStepGoal), [
+          {isNativeShell() && goalsReady && row("Daily steps", String(effectiveStepGoal), [
             { value: "0", label: "Off" },
             ...STEP_OPTS.map((g) => ({ value: String(g), label: `${g.toLocaleString()} steps` })),
           ], (v) => applySteps(parseInt(v, 10) || 0))}

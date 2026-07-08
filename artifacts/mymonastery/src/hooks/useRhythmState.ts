@@ -593,9 +593,15 @@ export function useRhythmState(): RhythmState {
   // force a side on even after the user turned it OFF in the customizer.
   const mlExplicit = getExplicitSideLevel("morning");
   const elExplicit = getExplicitSideLevel("evening");
-  // Has the user designed a rule yet? A saved home layout is the signal (for a
-  // guest, the device-local cached layout their customizer writes).
-  const customized = !!hl;
+  // Has the user designed a rule yet? A saved home layout is ONE signal (for a
+  // guest, the device-local cached layout their customizer writes) — but the
+  // basic /customize page sets an explicit per-side level directly WITHOUT
+  // ever saving a home layout, so an explicit level on either side counts too.
+  // Without this, turning a side OFF ("ask") via the basic customizer had no
+  // effect: customized stayed false, the fallback branch below ignored the
+  // explicit "ask" and kept the side on anyway (a stale default masquerading
+  // as "the office is still your prayer").
+  const customized = !!hl || mlExplicit != null || elExplicit != null;
   // A side a CUSTOMIZED user explicitly set on THIS device is authoritative —
   // "ask" means they turned it off, and that wins even over a stale server pref
   // (e.g. an office-prefs PUT that was dropped). With no explicit local level we
