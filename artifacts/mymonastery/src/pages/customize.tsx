@@ -186,7 +186,15 @@ export default function CustomizePage() {
           ], (v) => applySteps(parseInt(v, 10) || 0))}
         </div>
 
-        <Link href="/pilot/build" className="mt-6 text-sm font-medium" style={{ color: SAGE, fontFamily: FONT }}>
+        {/* The full customizer needs an account. A guest goes to sign-in
+            DIRECTLY (with a redirect back to the full flow) — not via
+            /pilot/build, which GuestGate now bounces back HERE (loop). A
+            signed-in light account skips the wall and goes straight in. */}
+        <Link
+          href={guest ? `/signin?mode=signup&redirect=${encodeURIComponent("/pilot/build")}` : "/pilot/build"}
+          className="mt-6 text-sm font-medium"
+          style={{ color: SAGE, fontFamily: FONT }}
+        >
           Customize more fully →
         </Link>
       </div>

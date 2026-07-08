@@ -874,18 +874,19 @@ function GuestGate({ children }: { children: ReactNode }) {
     if (!allowed) setLocation("/dashboard");
   }, [location, isGuest, isLoading, setLocation]);
 
-  // To customize your rule you must sign in — on BOTH web and iOS (owner,
-  // 2026-07-05: a logged-out person sees the standard rule; to change it they
-  // log in). A logged-out / anonymous visitor who opens the customizer is sent
-  // to sign in first, then bounced straight back to it (?redirect=). Gate on
-  // isDeviceLocalGuest (logged-out OR the anonymous device user) — NOT
-  // useGuestMode — so a signed-in "light" user, who has a real durable account,
-  // reaches the customizer instead of looping to sign-in.
+  // A logged-out / anonymous visitor who opens the FULL customizer (Shape your
+  // rhythm / pilot build / questionnaire / office settings) gets the SIMPLE
+  // 4-dropdown customizer FIRST (owner, 2026-07-08) — not a login wall. From
+  // /customize, its own "Customize more fully" link is what leads to sign-in
+  // (it points at /signin?redirect=/pilot/build directly, so this gate can't
+  // loop it back here). Gate on isDeviceLocalGuest (logged-out OR the
+  // anonymous device user) — NOT useGuestMode — so a signed-in "light" user,
+  // who has a real durable account, reaches the full customizer directly.
   useEffect(() => {
     if (authLoading) return;
     if (!isDeviceLocalGuest(user)) return;
     if (WEB_CUSTOMIZER_ROUTES.has(location)) {
-      setLocation("/signin?mode=signup&redirect=" + encodeURIComponent(location));
+      setLocation("/customize", { replace: true });
     }
   }, [location, authLoading, user, setLocation]);
 

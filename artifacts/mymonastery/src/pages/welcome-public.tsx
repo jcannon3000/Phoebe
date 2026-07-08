@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
-import { seedGuestRule, guestSeededYmd } from "@/lib/guestSeed";
+import { seedGuestRule } from "@/lib/guestSeed";
 import { ensureAnonymousUser } from "@/lib/guestProvision";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -69,10 +69,6 @@ export default function WelcomePublicPage() {
     if (isLoading) return;
     if (isRealUser) { setLocation("/dashboard"); return; }
     if (PHOEBE_GUEST_ENABLED) {
-      // Capture BEFORE seeding — seedGuestRule() is what stamps the seeded
-      // flag, so this is the only correct moment to ask "has this device ever
-      // opened before?"
-      const firstOpen = !guestSeededYmd();
       seedGuestRule();
       // Silently provision the anonymous DEVICE user (no credentials, normal
       // session cookie) so push tokens + reminders + prefs sync work — the UX
@@ -80,12 +76,12 @@ export default function WelcomePublicPage() {
       void ensureAnonymousUser().then((created) => {
         if (created) qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       });
-      // NO first-open welcome splash, NO login wall (per owner): the rhythm
-      // is seeded, then a first-time visitor lands on the basic 4-dropdown
-      // customizer (/customize — no account required) to shape it before
-      // ever reaching the home; a RETURNING guest (already seeded) skips
-      // straight to the daily-progress home, already going.
-      setLocation(firstOpen ? "/customize" : "/dashboard", { replace: true });
+      // NO first-open welcome splash, NO first-open customizer (owner,
+      // 2026-07-08 — reversed the brief /customize-first experiment): every
+      // guest open seeds the rhythm and lands straight on the daily-progress
+      // home, already going. The simple customizer is reached from the home's
+      // "Shape your rhythm" / the menu instead.
+      setLocation("/dashboard", { replace: true });
     }
   }, [isRealUser, isLoading, setLocation, qc]);
 
