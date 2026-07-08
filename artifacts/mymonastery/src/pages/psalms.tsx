@@ -183,6 +183,12 @@ export default function PsalmsPage() {
   const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
   const total = slides.length;
   const [index, setIndex] = useState(0);
+  // Finishing hands off to a DIFFERENT page (/prayer-mode's closing slide, or
+  // /dashboard) — an instant route swap cuts from this screen's bright leaf
+  // photo straight to the destination's flat starting background (its own
+  // photo fades in separately), which read as a flash. Fade this screen OUT
+  // first so the transition settles to a shared dark tone before the swap.
+  const [leaving, setLeaving] = useState(false);
   // First-ever visit gets a one-card intro to what the Psalms ARE (what it is /
   // where it comes from / what to do), so a beginner isn't dropped into a
   // lectionary chooser unguided.
@@ -193,10 +199,16 @@ export default function PsalmsPage() {
 
   const goHome = () => setLocation("/dashboard");
   // Finishing the psalms = the day's Praying-the-Psalms is kept (side-scoped).
+  // Fade out FIRST, then swap routes — the destination's own fade-in picks up
+  // from the same dark tone this settles to, so the handoff reads as one
+  // continuous dim-then-lighten instead of a hard, flashing cut.
   const finish = () => {
     markPsalmsPrayed(office);
-    if (isDailyPrayer) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
-    else goHome();
+    setLeaving(true);
+    window.setTimeout(() => {
+      if (isDailyPrayer) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
+      else goHome();
+    }, 240);
   };
   const beginFromIntro = () => {
     setPsalmCycle(cycle); // remember the chosen lectionary
@@ -330,7 +342,7 @@ export default function PsalmsPage() {
   if (step === "guide") {
     const psalms = data?.psalms ?? [];
     return (
-      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", opacity: leaving ? 0 : 1, transition: "opacity 240ms ease" }}>
         {Backdrop}
         {header(backToChooser)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -360,7 +372,7 @@ export default function PsalmsPage() {
   const slide = slides[index];
   const atEnd = index >= slides.length - 1;
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
+    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none", opacity: leaving ? 0 : 1, transition: "opacity 240ms ease" }}>
       {Backdrop}
       {header(back)}
 
