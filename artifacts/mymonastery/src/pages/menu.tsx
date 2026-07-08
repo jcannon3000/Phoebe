@@ -78,6 +78,10 @@ export default function MenuPage() {
       // header (small phones), or when it's turned off in Settings. Hidden in
       // pilot — the full daily-progress dashboard is replaced by /pilot/home.
       ...(!isPilot ? [{ emoji: "📿", label: t("menu.daily_progress", { defaultValue: "Daily progress" }), sub: t("menu.daily_progress_sub", { defaultValue: "Today's rhythm at a glance" }), onClick: () => go("/daily-progress") }] : []),
+      // Basic 4-dropdown customizer — guests only (device-local, no account
+      // needed); it has its own "Customize more fully" link into the real
+      // wizard for anyone who wants to sign in and go deeper.
+      ...(isGuest ? [{ emoji: "🎛️", label: t("menu.customize", { defaultValue: "Customize" }), sub: t("menu.customize_sub", { defaultValue: "Daily prayer, newsletter, silence, steps" }), onClick: () => go("/customize") }] : []),
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },

@@ -323,8 +323,8 @@ export default function PsalmsPage() {
               { value: "monthly", label: "Monthly Psalter" },
             ], (v) => setCycle(v as PsalmCycle))}
             {pill("Format", format, [
-              { value: "screen", label: "On screen" },
-              { value: "book", label: "Physical BCP" },
+              { value: "screen", label: "Digital" },
+              { value: "book", label: "Physical" },
               ...(canListen ? [{ value: "listen", label: "Listen" }] : []),
             ], (v) => setFormat(v as "screen" | "book" | "listen"))}
           </div>
@@ -404,7 +404,7 @@ export default function PsalmsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {slide.verses.map((v, i) => (
                 <div key={i} style={{ display: "flex", gap: 10 }}>
-                  <span style={{ flex: "0 0 auto", minWidth: 22, textAlign: "right", color: "rgba(143,175,150,0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
+                  <span style={{ flex: "0 0 auto", minWidth: 22, textAlign: "left", color: "rgba(143,175,150,0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {v.lines.map((ln, j) => (
                       <PointedLine

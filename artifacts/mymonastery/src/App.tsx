@@ -461,6 +461,7 @@ const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
 const AdminParishesPage = lazy(() => import("./pages/admin-parishes"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
+const CustomizePage = lazy(() => import("./pages/customize"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
@@ -827,7 +828,7 @@ function PilotGate({ children }: { children: ReactNode }) {
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/resources",
-  "/psalms", "/contemplation", "/daily-steps", "/reflect/fdd",
+  "/psalms", "/contemplation", "/daily-steps", "/reflect/fdd", "/customize",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
@@ -1088,6 +1089,11 @@ function Router() {
       <Route path="/dashboard"><Dashboard /></Route>
       <Route path="/pilot/home" component={PilotHomePage} />
       <Route path="/pilot/build" component={PilotBuildPage} />
+      {/* Basic 4-dropdown customizer for logged-out / device-local sessions —
+          deliberately NOT in WEB_CUSTOMIZER_ROUTES below (it writes device-
+          local prefs directly, no account needed); "Customize more fully"
+          hands off to /pilot/build, which IS gated to require signing in. */}
+      <Route path="/customize" component={CustomizePage} />
       <Route path="/events" component={EventsPage} />
       {/* BETA: Way of Love. The DAILY half folded back into /dashboard (Turn
           streak + the existing office / Contemplation / reflection cards); the

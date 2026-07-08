@@ -2,7 +2,7 @@
 // of life into the same device-local officePrefs the customizer uses, ONCE, so
 // a brand-new person lands on a home that's already going:
 //
-//   Morning Psalms (whole Psalter, monthly) · Evening Psalms (same cycle) ·
+//   Morning Psalms (Daily Office Lectionary) · Evening Psalms (same cycle) ·
 //   Forward Day by Day · a 5-minute silence daily goal (its own single goal
 //   card with a progress bar — NOT the per-side contemplation cards).
 //
@@ -40,7 +40,7 @@ export function seedGuestRule(): void {
     setSideLevel("evening", "psalms");
     setSideEntry("morning", "read");
     setSideEntry("evening", "read");
-    setPsalmCycle("monthly"); // the whole Psalter, cycling every 30 days
+    setPsalmCycle("office"); // the Daily Office Lectionary (calendar-based)
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
     setSideReflection("evening", "fdd");
