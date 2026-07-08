@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { WEEKLY_PLAN_ENABLED } from "@/lib/weeklyPlanFlag";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -110,11 +111,24 @@ export default function CommunityRuleOfLifePage() {
         <button
           type="button"
           onClick={() => setLocation(`/communities/${slug}/prescribe`)}
-          className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
+          className="w-full rounded-2xl mb-3 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
           style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 15, padding: "14px 20px", border: "1px solid rgba(46,107,64,0.6)" }}
         >
           🧭 Design a routine to share →
         </button>
+
+        {/* NOT YET PUBLIC (WEEKLY_PLAN_ENABLED) — a checklist of practices the
+            whole community keeps between Sundays. */}
+        {WEEKLY_PLAN_ENABLED && (
+          <button
+            type="button"
+            onClick={() => setLocation(`/communities/${slug}/weekly-plan`)}
+            className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.16)", color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 15, padding: "14px 20px", border: "1px solid rgba(46,107,64,0.3)" }}
+          >
+            📋 This week's plan →
+          </button>
+        )}
 
         {isError ? (
           <p className="text-[13px]" style={{ color: "#C47A65", fontFamily: FONT }}>You need to be a leader of this community to see this.</p>

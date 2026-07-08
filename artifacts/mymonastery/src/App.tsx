@@ -445,6 +445,8 @@ const GroupLeaderboardPage = lazy(() => import("./pages/group-leaderboard"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
+const CommunityWeeklyPlanPage = lazy(() => import("./pages/community-weekly-plan"));
+const CommunityWeeklyPlanEditPage = lazy(() => import("./pages/community-weekly-plan-edit"));
 const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
 const CompanionInvitePage = lazy(() => import("./pages/companion-invite"));
@@ -1278,6 +1280,10 @@ function Router() {
       <Route path="/welcome">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
       <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
+      {/* NOT YET PUBLIC (WEEKLY_PLAN_ENABLED) — both pages redirect away while
+          the flag is off; no menu/UI exposes these routes yet. */}
+      <Route path="/communities/:slug/weekly-plan" component={CommunityWeeklyPlanPage} />
+      <Route path="/communities/:slug/weekly-plan/edit" component={CommunityWeeklyPlanEditPage} />
       <Route path="/communities/:slug/prescribe" component={PrescribeRoutinePage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />

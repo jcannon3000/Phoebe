@@ -2481,6 +2481,45 @@ export async function migrate() {
       ON prescribed_routines (created_by_user_id)
     `);
 
+    // ── Group weekly plan (NOT YET PUBLIC — client is behind a flag) — a
+    //    church programs a checklist of practices for the week between Sundays
+    //    (read a CAC meditation, Co-Breathe once, 10 min of silence, a
+    //    podcast); members tick items done. week_start = that week's Sunday.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_weekly_items (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        week_start DATE NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'custom',
+        title TEXT NOT NULL,
+        detail TEXT,
+        target INTEGER NOT NULL DEFAULT 1,
+        sort INTEGER NOT NULL DEFAULT 0,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS group_weekly_items_by_group_week
+      ON group_weekly_items (group_id, week_start)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_weekly_completions (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER NOT NULL REFERENCES group_weekly_items(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS group_weekly_completions_item_user
+      ON group_weekly_completions (item_id, user_id)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS group_weekly_completions_by_user
+      ON group_weekly_completions (user_id)
+    `);
+
     // ── Home-load perf indexes (prayer-streak hot path) ──────────────────
     // Amen "prayed with me today" scan is bounded to the last 48h per request.
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_prayed ON prayer_request_amens (request_id, prayed_at)`);

@@ -87,3 +87,4 @@ export * from "./rule_of_life_requests";
 export * from "./group_messages";
 export * from "./prescribed_routines";
 export * from "./rhythm_parties";
+export * from "./group_weekly_plans";

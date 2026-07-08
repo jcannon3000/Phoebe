@@ -25,6 +25,8 @@ import {
   prayerFeedSubscriptionsTable,
   groupJoinRequestsTable,
   ruleOfLifeRequestsTable,
+  groupWeeklyItemsTable,
+  groupWeeklyCompletionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -4920,6 +4922,133 @@ router.patch("/groups/:slug/rule-of-life/:id", async (req, res): Promise<void> =
     }).catch(() => undefined);
   }
   res.json({ ok: true });
+});
+
+// ─── Group weekly plan (NOT YET PUBLIC — client UI is behind a flag) ─────────
+// A church programs a checklist of practices for the week between Sundays
+// ("read one CAC meditation", "Co-Breathe once", "sit in silence for 10
+// minutes", "listen to a podcast"); members see it and tick items done. The
+// week is identified by its Sunday (weekStart, YYYY-MM-DD — the client
+// computes its local week's Sunday, same convention as the home rhythm).
+
+const WEEK_START_RE = /^\d{4}-\d{2}-\d{2}$/;
+const WEEKLY_ITEM_KINDS = new Set(["cac", "cobreathe", "silence", "podcast", "custom"]);
+
+// GET /api/groups/:slug/weekly-plan?weekStart=YYYY-MM-DD — the week's
+// checklist + which items THIS member has done + how many members have done
+// each item (the church's shared momentum, not a leaderboard).
+router.get("/groups/:slug/weekly-plan", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not a member" }); return; }
+  const weekStart = String(req.query.weekStart ?? "");
+  if (!WEEK_START_RE.test(weekStart)) { res.status(400).json({ error: "weekStart must be YYYY-MM-DD" }); return; }
+
+  const items = await db.select().from(groupWeeklyItemsTable)
+    .where(and(eq(groupWeeklyItemsTable.groupId, result.group.id), eq(groupWeeklyItemsTable.weekStart, weekStart)))
+    .orderBy(asc(groupWeeklyItemsTable.sort), asc(groupWeeklyItemsTable.id));
+
+  const itemIds = items.map((i) => i.id);
+  const completions = itemIds.length === 0 ? [] : await db.select({
+    itemId: groupWeeklyCompletionsTable.itemId,
+    userId: groupWeeklyCompletionsTable.userId,
+  }).from(groupWeeklyCompletionsTable).where(inArray(groupWeeklyCompletionsTable.itemId, itemIds));
+
+  const doneCount = new Map<number, number>();
+  const mine = new Set<number>();
+  for (const c of completions) {
+    doneCount.set(c.itemId, (doneCount.get(c.itemId) ?? 0) + 1);
+    if (c.userId === user.id) mine.add(c.itemId);
+  }
+  res.json({
+    weekStart,
+    isAdmin: isAdminRole(result.member.role),
+    items: items.map((i) => ({
+      id: i.id, kind: i.kind, title: i.title, detail: i.detail, target: i.target, sort: i.sort,
+      done: mine.has(i.id),
+      doneCount: doneCount.get(i.id) ?? 0,
+    })),
+  });
+});
+
+// PUT /api/groups/:slug/weekly-plan — a leader authors (replaces) the week's
+// checklist. Replace-all semantics per (group, week): items sent without an id
+// are created; existing ids are updated in place (keeping their completions);
+// existing items NOT sent are deleted (their completions cascade).
+router.put("/groups/:slug/weekly-plan", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+  const body = req.body as { weekStart?: unknown; items?: unknown };
+  const weekStart = typeof body?.weekStart === "string" ? body.weekStart : "";
+  if (!WEEK_START_RE.test(weekStart)) { res.status(400).json({ error: "weekStart must be YYYY-MM-DD" }); return; }
+  if (!Array.isArray(body.items) || body.items.length > 20) { res.status(400).json({ error: "items must be an array of at most 20" }); return; }
+
+  const items = body.items.map((raw, idx) => {
+    const it = raw as { id?: unknown; kind?: unknown; title?: unknown; detail?: unknown; target?: unknown };
+    const kind = typeof it.kind === "string" && WEEKLY_ITEM_KINDS.has(it.kind) ? it.kind : "custom";
+    const title = typeof it.title === "string" ? it.title.trim().slice(0, 200) : "";
+    const detail = typeof it.detail === "string" && it.detail.trim() ? it.detail.trim().slice(0, 500) : null;
+    const targetN = typeof it.target === "number" && Number.isFinite(it.target) ? Math.max(1, Math.min(999, Math.round(it.target))) : 1;
+    const id = typeof it.id === "number" && Number.isFinite(it.id) ? it.id : null;
+    return { id, kind, title, detail, target: targetN, sort: idx };
+  }).filter((i) => i.title.length > 0);
+
+  const existing = await db.select({ id: groupWeeklyItemsTable.id }).from(groupWeeklyItemsTable)
+    .where(and(eq(groupWeeklyItemsTable.groupId, result.group.id), eq(groupWeeklyItemsTable.weekStart, weekStart)));
+  const existingIds = new Set(existing.map((e) => e.id));
+  const keptIds = new Set(items.map((i) => i.id).filter((id): id is number => id != null && existingIds.has(id)));
+  const toDelete = [...existingIds].filter((id) => !keptIds.has(id));
+
+  if (toDelete.length > 0) {
+    await db.delete(groupWeeklyItemsTable).where(inArray(groupWeeklyItemsTable.id, toDelete));
+  }
+  for (const it of items) {
+    if (it.id != null && keptIds.has(it.id)) {
+      await db.update(groupWeeklyItemsTable)
+        .set({ kind: it.kind, title: it.title, detail: it.detail, target: it.target, sort: it.sort })
+        .where(eq(groupWeeklyItemsTable.id, it.id));
+    } else {
+      await db.insert(groupWeeklyItemsTable).values({
+        groupId: result.group.id, weekStart, kind: it.kind, title: it.title,
+        detail: it.detail, target: it.target, sort: it.sort, createdByUserId: user.id,
+      });
+    }
+  }
+  res.json({ ok: true, count: items.length });
+});
+
+// POST /api/groups/:slug/weekly-plan/complete — a member ticks (or unticks)
+// one item. Idempotent both ways (unique index absorbs double-taps).
+router.post("/groups/:slug/weekly-plan/complete", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not a member" }); return; }
+
+  const body = req.body as { itemId?: unknown; done?: unknown };
+  const itemId = typeof body?.itemId === "number" && Number.isFinite(body.itemId) ? body.itemId : null;
+  if (itemId == null) { res.status(400).json({ error: "itemId required" }); return; }
+  const done = body?.done !== false; // default = mark done
+
+  // The item must belong to THIS group — a member of one community can't tick
+  // items in another by guessing ids.
+  const [item] = await db.select({ id: groupWeeklyItemsTable.id }).from(groupWeeklyItemsTable)
+    .where(and(eq(groupWeeklyItemsTable.id, itemId), eq(groupWeeklyItemsTable.groupId, result.group.id)));
+  if (!item) { res.status(404).json({ error: "not found" }); return; }
+
+  if (done) {
+    await db.insert(groupWeeklyCompletionsTable)
+      .values({ itemId, userId: user.id })
+      .onConflictDoNothing();
+  } else {
+    await db.delete(groupWeeklyCompletionsTable)
+      .where(and(eq(groupWeeklyCompletionsTable.itemId, itemId), eq(groupWeeklyCompletionsTable.userId, user.id)));
+  }
+  res.json({ ok: true, done });
 });
 
 export default router;
