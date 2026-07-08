@@ -27,6 +27,14 @@ const FAINT_GREEN = "rgba(143,175,150,0.55)";
 const SOFT_GREEN = "rgba(200,212,192,0.75)";
 const PAGE_REF = "rgba(168,197,160,0.7)";
 const BG = "#0C1F12";
+// The EXACT background prayer-mode.tsx's closing phase starts at
+// (phaseBg for phase==="closing"/"blessing"). Finishing here fades a solid
+// overlay of THIS color in (not just this screen's own opacity to 0) so the
+// route swap lands on an already-matching frame — the destination's own
+// backdrop photo then fades in over it with no perceptible cut, instead of
+// the screen dimming to ITS OWN background (a different shade) and still
+// hard-cutting to the closing slide's flat starting color.
+const CLOSING_BG = "#11291C";
 
 const GLORIA_PATRI =
   "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
@@ -342,7 +350,8 @@ export default function PsalmsPage() {
   if (step === "guide") {
     const psalms = data?.psalms ?? [];
     return (
-      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", opacity: leaving ? 0 : 1, transition: "opacity 240ms ease" }}>
+      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
         {Backdrop}
         {header(backToChooser)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -372,7 +381,8 @@ export default function PsalmsPage() {
   const slide = slides[index];
   const atEnd = index >= slides.length - 1;
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none", opacity: leaving ? 0 : 1, transition: "opacity 240ms ease" }}>
+    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
       {Backdrop}
       {header(back)}
 
