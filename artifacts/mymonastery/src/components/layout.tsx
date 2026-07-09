@@ -739,7 +739,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, soloSilenceActive, silenceDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, soloSilenceActive, silenceDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, prayerListActive, prayerListDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -777,6 +777,12 @@ function DailyProgressPill() {
     // own dot so a "5 minutes of silence" rule is counted. Mutually exclusive
     // with the per-side contemplation dots above.
     ...(soloSilenceActive ? [{ key: "silence", done: silenceDone }] : []),
+    // "Anytime" all-day anchors (rank right after morning): the daily-steps goal,
+    // the prayer-list card, and any custom placed at "anytime" — each renders a
+    // card, so each needs a dot or the pill under-counts the rhythm.
+    ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),
+    ...(prayerListActive ? [{ key: "prayer-list", done: prayerListDone }] : []),
+    ...cDots("anytime"),
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
