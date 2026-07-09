@@ -201,6 +201,12 @@ export default function AdminToolsPage() {
             {isAdmin && (
               <>
                 <LinkRow
+                  emoji="🧭"
+                  label="Preset rhythm link"
+                  description="Design a rule of life anyone can join via link"
+                  onClick={() => setLocation("/prescribe")}
+                />
+                <LinkRow
                   emoji="⛪"
                   label="Phoebe Parish"
                   description="Create & manage parish feeds (events + prayer list)"

@@ -1,10 +1,13 @@
 /**
- * Prescribe a routine (community admin / clergy).
+ * Prescribe a routine (community admin / clergy) — or, with NO community in the
+ * route (/prescribe), an app-wide PRESET rule (super admins only).
  *
  * Reuses the rule-of-life customizer in "prescribe" mode: the admin designs a
  * daily rhythm exactly as they would their own, but on finish the routine is
- * CAPTURED (never written to the admin's account) and turned into a share link
- * to send to someone. The recipient opens /routine/:token and applies it.
+ * CAPTURED (never written to the admin's account) and turned into a share link.
+ * The community flow sends it to one person; the preset flow mints a link
+ * anyone can join — the same /routine/:token landing applies it either way
+ * (the server counts accepts, so one link serves many people).
  *
  * Designing here mutates the admin's own routine localStorage (the customizer's
  * controls write as you go). We snapshot those keys on entry and restore them
@@ -54,7 +57,9 @@ function restoreRoutine(snap: Record<string, string>): void {
 }
 
 export default function PrescribeRoutinePage() {
-  const { slug } = useParams<{ slug: string }>();
+  // slug is absent on the /prescribe (app-wide preset, super admin) route.
+  const { slug } = useParams<{ slug?: string }>();
+  const backTarget = slug ? `/communities/${slug}/rule-of-life` : "/admin/tools";
   const [, setLocation] = useLocation();
   const snapRef = useRef<Record<string, string> | null>(null);
   const restoredRef = useRef(false);
@@ -90,14 +95,17 @@ export default function PrescribeRoutinePage() {
     if (!spec || busy) return;
     setBusy(true); setError(null);
     try {
+      // No slug → app-wide preset (server requires super admin for that path).
       const res = await apiRequest("POST", "/api/prescribed-routines", {
-        groupSlug: slug, spec, label: label.trim() || undefined,
+        ...(slug ? { groupSlug: slug } : {}), spec, label: label.trim() || undefined,
       }) as { url?: string };
       if (!res?.url) throw new Error("no url");
       setUrl(res.url);
       setPhase("done");
     } catch {
-      setError("Couldn't create the link. Make sure you're an admin of this community.");
+      setError(slug
+        ? "Couldn't create the link. Make sure you're an admin of this community."
+        : "Couldn't create the link. Preset rules need an app super admin.");
     } finally {
       setBusy(false);
     }
@@ -120,7 +128,7 @@ export default function PrescribeRoutinePage() {
       <WayOfLoveRuleFlow
         prescribe
         onPrescribe={handlePrescribe}
-        onBack={() => setLocation(`/communities/${slug}/rule-of-life`)}
+        onBack={() => setLocation(backTarget)}
         onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}
       />
     );
@@ -165,7 +173,7 @@ export default function PrescribeRoutinePage() {
           {busy ? "Creating…" : "Create share link"}
         </button>
         <button
-          type="button" onClick={() => setLocation(`/communities/${slug}/rule-of-life`)}
+          type="button" onClick={() => setLocation(backTarget)}
           style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 14, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
         >
           Cancel
@@ -198,7 +206,7 @@ export default function PrescribeRoutinePage() {
         {copied ? "Copied ✓" : "Share link"}
       </button>
       <button
-        type="button" onClick={() => setLocation(`/communities/${slug}/rule-of-life`)}
+        type="button" onClick={() => setLocation(backTarget)}
         style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 14, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
       >
         Done

@@ -849,6 +849,12 @@ const GUEST_ALLOWED_PREFIX = [
   "/rule-of-life", "/settings", "/menu/reflections/",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
+  // Prescribed-routine / preset-rule invite links (/routine/:token) — "join a
+  // rule via link" must work for the public no-login app too. The anonymous
+  // device user has a real session, so accepting applies server-side like any
+  // account; a truly session-less visitor still sees the landing and the
+  // accept simply asks them to try again after the app provisions one.
+  "/routine/",
 ];
 
 // The customizer routes (rule of life / pilot build / the questionnaire) that
@@ -1285,6 +1291,9 @@ function Router() {
       <Route path="/communities/:slug/weekly-plan" component={CommunityWeeklyPlanPage} />
       <Route path="/communities/:slug/weekly-plan/edit" component={CommunityWeeklyPlanEditPage} />
       <Route path="/communities/:slug/prescribe" component={PrescribeRoutinePage} />
+      {/* App-wide PRESET rule (no community) — the create POST requires a
+          super admin, so the page is safe to route for anyone. */}
+      <Route path="/prescribe" component={PrescribeRoutinePage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />

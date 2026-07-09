@@ -32,7 +32,10 @@ export type PrescribedRoutineSpec = {
 export const prescribedRoutinesTable = pgTable("prescribed_routines", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),
-  groupId: integer("group_id").notNull().references(() => groupsTable.id, { onDelete: "cascade" }),
+  // NULL = an app-wide PRESET rule minted by a super admin (no community
+  // attached) — anyone with the link can adopt it. Non-null = the original
+  // clergy-prescribes-for-their-community flow.
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   createdByUserId: integer("created_by_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   // A short human label the admin can give it ("Newcomer's rhythm", "Lent").
   label: text("label"),

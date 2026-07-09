@@ -16,6 +16,7 @@ import {
   usersTable,
   groupsTable,
   groupMembersTable,
+  betaUsersTable,
   type PrescribedRoutineSpec,
 } from "@workspace/db";
 
@@ -46,6 +47,21 @@ async function adminOfGroup(slug: string, userId: number) {
     .where(and(eq(groupMembersTable.groupId, group.id), eq(groupMembersTable.userId, userId)));
   if (!member || !member.joinedAt || !isAdminRole(member.role)) return null;
   return group;
+}
+
+// App SUPER ADMIN (beta_users.is_admin, matched by email) — the same check
+// /auth/me uses for `isSuperAdmin`. Gates creating an app-wide PRESET rule
+// (a prescribed routine with no group attached).
+async function isSuperAdminUser(userId: number): Promise<boolean> {
+  try {
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+    if (!u?.email) return false;
+    const [beta] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    return beta?.isAdmin === true;
+  } catch { return false; }
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────
@@ -117,21 +133,29 @@ function ymdShift(days: number): string {
 
 const LADDER_MIN = 5, LADDER_MAX = 30;
 
-// ── POST /api/prescribed-routines — create (admin of the named group) ────────
+// ── POST /api/prescribed-routines — create ───────────────────────────────────
+// With `groupSlug`: the clergy flow — must be an admin of that community.
+// WITHOUT `groupSlug`: an app-wide PRESET rule — super admins only. Same
+// spec/label/token shape either way; the row just has no group attached.
 router.post("/prescribed-routines", async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
   const body = (req.body ?? {}) as { groupSlug?: unknown; spec?: unknown; label?: unknown };
-  if (typeof body.groupSlug !== "string" || !body.groupSlug) { res.status(400).json({ error: "groupSlug required" }); return; }
-  const group = await adminOfGroup(body.groupSlug, me);
-  if (!group) { res.status(403).json({ error: "Admin access required" }); return; }
+  let groupId: number | null = null;
+  if (typeof body.groupSlug === "string" && body.groupSlug) {
+    const group = await adminOfGroup(body.groupSlug, me);
+    if (!group) { res.status(403).json({ error: "Admin access required" }); return; }
+    groupId = group.id;
+  } else {
+    if (!(await isSuperAdminUser(me))) { res.status(403).json({ error: "Admin access required" }); return; }
+  }
   const spec = sanitizeSpec(body.spec);
   if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
   const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) || null : null;
   const token = crypto.randomBytes(16).toString("hex");
   try {
     await db.insert(prescribedRoutinesTable).values({
-      token, groupId: group.id, createdByUserId: me, label, spec,
+      token, groupId, createdByUserId: me, label, spec,
     });
     res.json({ token, url: `https://withphoebe.app/routine/${token}` });
   } catch (err) {
@@ -152,7 +176,11 @@ router.get("/prescribed-routines/:token", async (req, res): Promise<void> => {
       createdByUserId: prescribedRoutinesTable.createdByUserId,
     }).from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.token, token)).limit(1);
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
-    const [group] = await db.select({ name: groupsTable.name }).from(groupsTable).where(eq(groupsTable.id, row.groupId)).limit(1);
+    // Presets have no group — groupName stays null and the landing page just
+    // shows the creator / "A rhythm for you".
+    const [group] = row.groupId != null
+      ? await db.select({ name: groupsTable.name }).from(groupsTable).where(eq(groupsTable.id, row.groupId)).limit(1)
+      : [undefined];
     const [creator] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.createdByUserId)).limit(1);
     res.json({
       label: row.label,

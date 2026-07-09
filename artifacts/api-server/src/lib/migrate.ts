@@ -2460,17 +2460,23 @@ export async function migrate() {
     // ── Prescribed routines — a community admin / clergy designs a daily
     //    rhythm for someone and shares it as a token link; the recipient opens
     //    /routine/:token and (on accept) has it applied to their account.
+    //    group_id is NULLABLE: null = an app-wide PRESET rule minted by a
+    //    super admin (no community attached), joinable by anyone with the link.
     await run(client, `
       CREATE TABLE IF NOT EXISTS prescribed_routines (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
-        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
         created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         label TEXT,
         spec JSONB NOT NULL,
         accept_count INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+    // Envs created before presets: relax the original NOT NULL.
+    await run(client, `
+      ALTER TABLE prescribed_routines ALTER COLUMN group_id DROP NOT NULL
     `);
     await run(client, `
       CREATE INDEX IF NOT EXISTS prescribed_routines_by_group
