@@ -8,7 +8,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import {
   getSideLevel, setSideLevel, setSideEntry,
-  getSideContemplation, setSideContemplation,
+  getSideContemplation, setSideContemplation, setSideMinutes,
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, OFFICE_PREFS_EVENT,
   type ReflectionSource,
@@ -35,16 +35,22 @@ const SOFT_GREEN = "rgba(200,212,192,0.75)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const BG = "#0C1F12";
 
-type DailyPrayer = "psalms" | "devotion" | "office" | "creation";
+type DailyPrayer = "psalms" | "devotion" | "office" | "contemplation" | "creation";
+
+// The default per-side silent-sit length for Contemplative Prayer picked from
+// the basic editor (minutes). Each side's Contemplation card carries its own
+// length; 15 is a gentle default (the full customizer can set 5–30).
+const CONTEMPLATION_DEFAULT_MIN = 15;
 
 function currentDailyPrayer(): DailyPrayer {
-  // Creation Prayer = the breath (Co-Breathe) as this side's prayer: no BCP
-  // office anchor, per-side contemplation on, and the "cobreathe" style. Read
-  // it back from those exact device-local prefs so the dropdown reopens on the
-  // user's current pick.
+  // The two contemplative anchors both clear the BCP office and turn on per-side
+  // contemplation; they differ only by STYLE. "cobreathe" = Creation Prayer (the
+  // breath); "silent" = Contemplative Prayer (a silent sit). Read those exact
+  // device-local prefs back so the dropdown reopens on the user's current pick.
   let style: "silent" | "cobreathe" = "silent";
   try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
-  if (style === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening"))) return "creation";
+  const perSideContemplation = getSideContemplation("morning") || getSideContemplation("evening");
+  if (perSideContemplation) return style === "cobreathe" ? "creation" : "contemplation";
   const lvl = getSideLevel("morning");
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
@@ -110,6 +116,21 @@ export default function CustomizePage() {
       setSideContemplation("morning", true);
       setSideContemplation("evening", true);
       try { localStorage.setItem("phoebe:contemplation-style", "cobreathe"); } catch { /* ignore */ }
+      window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+    } else if (choice === "contemplation") {
+      // Contemplative Prayer = a silent sit as this side's prayer. Same per-side
+      // anchor as Creation Prayer but the "silent" style, so the home renders
+      // Morning + Evening Contemplation cards (🕯️, the sit timer) at each side's
+      // own length — DIFFERENT from the daily silence GOAL card (that's a
+      // separate progress-bar anchor driven by the Silence row). Default each
+      // side to 15 min. No home-layout write (keeps the newsletter fallback).
+      setSideLevel("morning", "ask");
+      setSideLevel("evening", "ask");
+      setSideContemplation("morning", true);
+      setSideContemplation("evening", true);
+      setSideMinutes("morning", CONTEMPLATION_DEFAULT_MIN);
+      setSideMinutes("evening", CONTEMPLATION_DEFAULT_MIN);
+      try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     } else {
       // Back to a BCP form on both sides — clear the per-side Creation Prayer
@@ -192,6 +213,7 @@ export default function CustomizePage() {
             { value: "psalms", label: "Psalms" },
             { value: "devotion", label: "Devotions" },
             { value: "office", label: "Offices" },
+            { value: "contemplation", label: "Contemplative Prayer" },
             { value: "creation", label: "Creation Prayer" },
           ], (v) => applyDailyPrayer(v as DailyPrayer))}
 
