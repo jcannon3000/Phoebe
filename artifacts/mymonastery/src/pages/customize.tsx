@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -8,13 +8,13 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import {
   getSideLevel, setSideLevel, setSideEntry,
-  getSideContemplation, setSideContemplation,
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, OFFICE_PREFS_EVENT,
   type ReflectionSource,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
+import { readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -36,10 +36,18 @@ const BG = "#0C1F12";
 
 type DailyPrayer = "psalms" | "devotion" | "office" | "creation";
 
-function currentDailyPrayer(): DailyPrayer {
-  let style: "silent" | "cobreathe" = "silent";
-  try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
-  if (style === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening"))) return "creation";
+// Is the Creation Prayer (Co-Breathe) home card active? Mirrors
+// useRhythmState's homeCardActive — the card lives in the SAME home-layout
+// order/hidden arrays the full customizer writes, not a separate pref.
+function cobreatheCardActive(hl: HomeLayout | null, guest: boolean): boolean {
+  if (hl) return hl.order.includes("cobreathe") && !hl.hidden.includes("cobreathe");
+  // A signed-in (non-guest) account with no saved layout at all defaults to
+  // Co-Breathe on — the legacy no-layout default useRhythmState also applies.
+  return !guest;
+}
+
+function currentDailyPrayer(hl: HomeLayout | null, guest: boolean): DailyPrayer {
+  if (getSideLevel("morning") === "ask" && getSideLevel("evening") === "ask" && cobreatheCardActive(hl, guest)) return "creation";
   const lvl = getSideLevel("morning");
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
@@ -54,6 +62,10 @@ export default function CustomizePage() {
   // A still leaf backdrop, picked once — matching the office/psalms screens.
   const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
+  // Fade + rise in on mount, matching the office/psalms "before you begin" entrance.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => { const t = requestAnimationFrame(() => setEntered(true)); return () => cancelAnimationFrame(t); }, []);
+
   // A signed-in "light" account (real, but not device-local) has its silence
   // goal + step goal on the server; a device-local guest keeps them local.
   const { data: officePrefs, isLoading: officePrefsLoading } = useQuery<{ contemplationGoalMinutes?: number; dailyStepGoal?: number }>({
@@ -67,7 +79,12 @@ export default function CustomizePage() {
   // wrong default (e.g. "5 min") before their real saved goal paints.
   const goalsReady = guest || !officePrefsLoading;
 
-  const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer());
+  // The layout that decides whether the Creation Prayer (Co-Breathe) card is
+  // active: the signed-in user's server layout (already merged with any
+  // pending local cache by useAuth), or — for a guest — the device-local cache.
+  const hl = guest ? readCachedHomeLayout() : (user?.homeLayout ?? null);
+
+  const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer(hl, guest));
   const [newsletter, setNewsletter] = useState<ReflectionSource>(() => getReflectionSource());
   const [silenceMin, setSilenceMin] = useState<number>(() =>
     guest ? (getGuestSilenceGoalMin() || 5) : 5,
@@ -79,20 +96,32 @@ export default function CustomizePage() {
   const effectiveSilenceMin = guest ? silenceMin : (officePrefs?.contemplationGoalMinutes || silenceMin);
   const effectiveStepGoal = guest ? stepGoal : (officePrefs?.dailyStepGoal ?? stepGoal);
 
+  // Turn the Creation Prayer (Co-Breathe) home card on/off — it lives in the
+  // SAME home-layout order/hidden arrays the full customizer writes, so this
+  // merges into whatever layout already exists rather than replacing it.
+  const setCobreatheCard = (on: boolean) => {
+    const current = hl ?? { order: [], hidden: [], v: HOME_LAYOUT_VERSION };
+    const order = current.order.filter((k) => k !== "cobreathe");
+    const hidden = current.hidden.filter((k) => k !== "cobreathe");
+    if (on) order.push("cobreathe"); else hidden.push("cobreathe");
+    const next: HomeLayout = { order, hidden, v: current.v ?? HOME_LAYOUT_VERSION };
+    if (guest) cacheHomeLayoutLocalOnly(next);
+    else void saveHomeLayout(next).catch(() => { /* best-effort; homeLayoutCache retries via flushHomeLayout */ });
+  };
+
   const applyDailyPrayer = (choice: DailyPrayer) => {
     setDailyPrayer(choice);
     if (choice === "creation") {
       // "ask" is the real OfficeLevel for "no BCP anchor on this side" — the
-      // same value the full customizer's PrayChoice "none" maps to.
+      // same value the full customizer's PrayChoice "none" maps to. Creation
+      // Prayer IS the Co-Breathe practice (renamed) — an add-on home card, not
+      // a per-side Contemplative Prayer flag.
       setSideLevel("morning", "ask");
       setSideLevel("evening", "ask");
-      setSideContemplation("morning", true);
-      setSideContemplation("evening", true);
-      try { localStorage.setItem("phoebe:contemplation-style", "cobreathe"); window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
+      setCobreatheCard(true);
+      window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     } else {
-      setSideContemplation("morning", false);
-      setSideContemplation("evening", false);
-      try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
+      setCobreatheCard(false);
       setSideLevel("morning", choice);
       setSideLevel("evening", choice);
       setSideEntry("morning", "read");
@@ -156,7 +185,7 @@ export default function CustomizePage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
         <button onClick={() => setLocation("/dashboard")} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px max(2rem, env(safe-area-inset-bottom))" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px max(2rem, env(safe-area-inset-bottom))", opacity: entered ? 1 : 0, transform: entered ? "translateY(0)" : "translateY(14px)", transition: "opacity 420ms ease, transform 420ms ease" }}>
         <p style={{ color: "rgba(143,175,150,0.7)", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "18px 0 6px", fontWeight: 600 }}>Your daily rhythm</p>
         <h1 style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 44px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: "0 0 10px", textAlign: "center" }}>Customize</h1>
         <p style={{ fontSize: 15, lineHeight: 1.6, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: "0 0 24px", textAlign: "center", maxWidth: 420 }}>
@@ -185,6 +214,18 @@ export default function CustomizePage() {
             ...STEP_OPTS.map((g) => ({ value: String(g), label: `${g.toLocaleString()} steps` })),
           ], (v) => applySteps(parseInt(v, 10) || 0))}
         </div>
+
+        {/* Every row above already applies the moment it's changed — this
+            button is the confirming "you're done" action back to the home,
+            not a separate persistence step. */}
+        <button
+          type="button"
+          onClick={() => setLocation("/dashboard")}
+          className="mt-7 w-full"
+          style={{ maxWidth: 420, borderRadius: 14, padding: "14px 20px", background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 15.5, border: "1px solid rgba(46,107,64,0.6)", cursor: "pointer" }}
+        >
+          Save
+        </button>
 
         {/* The full customizer needs an account. A guest goes to sign-in
             DIRECTLY (with a redirect back to the full flow) — not via
