@@ -87,6 +87,29 @@ export function flushHomeLayout(invalidate?: () => void): void {
     .catch(() => { /* stays dirty; retried next app-active */ });
 }
 
+// Recovery for a short-lived bug: the basic /customize editor briefly wrote a
+// home layout containing only "cobreathe" for the Creation Prayer pick. Any
+// present home layout disables the "un-set-up user falls back to Forward Day by
+// Day" reflection rule in useRhythmState, so that spurious write silently
+// dropped the newsletter card. A guest NEVER legitimately has a home layout —
+// the full customizer that writes one requires an account, and it always
+// includes the structural "office" key in its order. So a cached layout whose
+// order lacks "office" is that spurious write; clear it (and its dirty flag) so
+// `hl` returns to null and the FDD fallback — and the newsletter — come back.
+// Returns true if it cleared something. Safe to call on every guest boot.
+export function clearSpuriousGuestHomeLayout(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as HomeLayout;
+    const order = Array.isArray(parsed?.order) ? parsed.order : [];
+    if (order.includes("office")) return false; // a real full-customizer layout
+    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(DIRTY_KEY);
+    return true;
+  } catch { return false; }
+}
+
 // While a save is still pending, the local copy is the user's true latest
 // intent — let it win over a stale server `homeLayout` so the routine they just
 // set shows immediately (and keeps showing if the push is still retrying).

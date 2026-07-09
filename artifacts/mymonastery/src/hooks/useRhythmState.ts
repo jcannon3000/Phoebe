@@ -633,15 +633,20 @@ export function useRhythmState(): RhythmState {
     try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
   })();
   const perSideContemplationSet = getSideContemplationExplicit("morning") !== null || getSideContemplationExplicit("evening") !== null;
-  // GUESTS never get the per-side cards — their silence is ONE goal card with a
-  // progress bar (DailyProgressBody), so both per-side flags stay off and the
-  // aggregate below carries the anchor instead.
-  const morningContemplationActive = !guest && (customized
+  // A guest who has NOT explicitly chosen per-side contemplation keeps the ONE
+  // silence goal card (their default 5-min sit renders as the aggregate solo
+  // card below), NOT two per-side cards. But a guest who DID explicitly pick a
+  // per-side anchor — e.g. Creation Prayer (the breath) as Morning + Evening in
+  // the basic /customize editor, which sets both per-side flags — must get the
+  // Morning/Evening Creation Prayer cards like any signed-in user. So the guest
+  // restriction applies only to the un-chosen fallback branch, not the explicit
+  // per-side pick.
+  const morningContemplationActive = customized
     ? (perSideContemplationSet ? getSideContemplation("morning") : false)
-    : (getSideLevel("morning") === "reflect-sit"));
-  const eveningContemplationActive = !guest && (customized
+    : (!guest && getSideLevel("morning") === "reflect-sit");
+  const eveningContemplationActive = customized
     ? (perSideContemplationSet ? getSideContemplation("evening") : false)
-    : (getSideLevel("evening") === "reflect-sit"));
+    : (!guest && getSideLevel("evening") === "reflect-sit");
   // Local day-flag OR the server's cross-device echo — a sit done on another
   // device (which POSTed its contemplationSide) reads done here too.
   const morningContemplationDone = contemplationSideDone.morning || !!sidesToday?.morning;

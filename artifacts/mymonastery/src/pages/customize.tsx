@@ -8,13 +8,14 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import {
   getSideLevel, setSideLevel, setSideEntry,
+  getSideContemplation, setSideContemplation,
   getReflectionSource, setReflectionSource, setSideReflection,
   setPsalmCycle, OFFICE_PREFS_EVENT,
   type ReflectionSource,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
-import { readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
+import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -36,18 +37,14 @@ const BG = "#0C1F12";
 
 type DailyPrayer = "psalms" | "devotion" | "office" | "creation";
 
-// Is the Creation Prayer (Co-Breathe) home card active? Mirrors
-// useRhythmState's homeCardActive — the card lives in the SAME home-layout
-// order/hidden arrays the full customizer writes, not a separate pref.
-function cobreatheCardActive(hl: HomeLayout | null, guest: boolean): boolean {
-  if (hl) return hl.order.includes("cobreathe") && !hl.hidden.includes("cobreathe");
-  // A signed-in (non-guest) account with no saved layout at all defaults to
-  // Co-Breathe on — the legacy no-layout default useRhythmState also applies.
-  return !guest;
-}
-
-function currentDailyPrayer(hl: HomeLayout | null, guest: boolean): DailyPrayer {
-  if (getSideLevel("morning") === "ask" && getSideLevel("evening") === "ask" && cobreatheCardActive(hl, guest)) return "creation";
+function currentDailyPrayer(): DailyPrayer {
+  // Creation Prayer = the breath (Co-Breathe) as this side's prayer: no BCP
+  // office anchor, per-side contemplation on, and the "cobreathe" style. Read
+  // it back from those exact device-local prefs so the dropdown reopens on the
+  // user's current pick.
+  let style: "silent" | "cobreathe" = "silent";
+  try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
+  if (style === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening"))) return "creation";
   const lvl = getSideLevel("morning");
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
@@ -66,6 +63,12 @@ export default function CustomizePage() {
   const [entered, setEntered] = useState(false);
   useEffect(() => { const t = requestAnimationFrame(() => setEntered(true)); return () => cancelAnimationFrame(t); }, []);
 
+  // Self-heal a stale home layout a short-lived Creation Prayer bug wrote, which
+  // hid the newsletter card. Guests only (they never have a legit home layout).
+  useEffect(() => {
+    if (guest && clearSpuriousGuestHomeLayout()) window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  }, [guest]);
+
   // A signed-in "light" account (real, but not device-local) has its silence
   // goal + step goal on the server; a device-local guest keeps them local.
   const { data: officePrefs, isLoading: officePrefsLoading } = useQuery<{ contemplationGoalMinutes?: number; dailyStepGoal?: number }>({
@@ -79,12 +82,7 @@ export default function CustomizePage() {
   // wrong default (e.g. "5 min") before their real saved goal paints.
   const goalsReady = guest || !officePrefsLoading;
 
-  // The layout that decides whether the Creation Prayer (Co-Breathe) card is
-  // active: the signed-in user's server layout (already merged with any
-  // pending local cache by useAuth), or — for a guest — the device-local cache.
-  const hl = guest ? readCachedHomeLayout() : (user?.homeLayout ?? null);
-
-  const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer(hl, guest));
+  const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer());
   const [newsletter, setNewsletter] = useState<ReflectionSource>(() => getReflectionSource());
   const [silenceMin, setSilenceMin] = useState<number>(() =>
     guest ? (getGuestSilenceGoalMin() || 5) : 5,
@@ -96,32 +94,29 @@ export default function CustomizePage() {
   const effectiveSilenceMin = guest ? silenceMin : (officePrefs?.contemplationGoalMinutes || silenceMin);
   const effectiveStepGoal = guest ? stepGoal : (officePrefs?.dailyStepGoal ?? stepGoal);
 
-  // Turn the Creation Prayer (Co-Breathe) home card on/off — it lives in the
-  // SAME home-layout order/hidden arrays the full customizer writes, so this
-  // merges into whatever layout already exists rather than replacing it.
-  const setCobreatheCard = (on: boolean) => {
-    const current = hl ?? { order: [], hidden: [], v: HOME_LAYOUT_VERSION };
-    const order = current.order.filter((k) => k !== "cobreathe");
-    const hidden = current.hidden.filter((k) => k !== "cobreathe");
-    if (on) order.push("cobreathe"); else hidden.push("cobreathe");
-    const next: HomeLayout = { order, hidden, v: current.v ?? HOME_LAYOUT_VERSION };
-    if (guest) cacheHomeLayoutLocalOnly(next);
-    else void saveHomeLayout(next).catch(() => { /* best-effort; homeLayoutCache retries via flushHomeLayout */ });
-  };
-
   const applyDailyPrayer = (choice: DailyPrayer) => {
     setDailyPrayer(choice);
     if (choice === "creation") {
-      // "ask" is the real OfficeLevel for "no BCP anchor on this side" — the
-      // same value the full customizer's PrayChoice "none" maps to. Creation
-      // Prayer IS the Co-Breathe practice (renamed) — an add-on home card, not
-      // a per-side Contemplative Prayer flag.
+      // Creation Prayer IS the breath (Co-Breathe) as this side's prayer. It's a
+      // PER-SIDE contemplation anchor with the "cobreathe" style — the home then
+      // renders Morning + Evening Creation Prayer cards (🌍) exactly like the
+      // full customizer's Creation Prayer pick. "ask" is the OfficeLevel for "no
+      // BCP office on this side" (the same value the full customizer's "none"
+      // maps to). Deliberately NO home-layout write here: the reflection
+      // (Forward Day by Day) newsletter falls back only while no home layout
+      // exists, so writing one would silently drop the newsletter card.
       setSideLevel("morning", "ask");
       setSideLevel("evening", "ask");
-      setCobreatheCard(true);
+      setSideContemplation("morning", true);
+      setSideContemplation("evening", true);
+      try { localStorage.setItem("phoebe:contemplation-style", "cobreathe"); } catch { /* ignore */ }
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     } else {
-      setCobreatheCard(false);
+      // Back to a BCP form on both sides — clear the per-side Creation Prayer
+      // anchor and the breath style so the office cards return.
+      setSideContemplation("morning", false);
+      setSideContemplation("evening", false);
+      try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
       setSideLevel("morning", choice);
       setSideLevel("evening", choice);
       setSideEntry("morning", "read");

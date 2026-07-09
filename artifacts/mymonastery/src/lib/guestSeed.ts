@@ -12,6 +12,7 @@
 // day.) See memory "project_public_no_login".
 
 import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, setPsalmCycle, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -28,6 +29,9 @@ export function guestSeededYmd(): string | null {
  *  explicit rule or has seeded before). Safe to call on every guest boot. */
 export function seedGuestRule(): void {
   try {
+    // Undo a stale home layout a short-lived bug wrote for the Creation Prayer
+    // pick, which was hiding the newsletter card (see clearSpuriousGuestHomeLayout).
+    if (clearSpuriousGuestHomeLayout()) { try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ } }
     if (localStorage.getItem(SEED_KEY)) {
       // Backfill for devices seeded by an earlier bundle that didn't write the
       // goal key yet — without it the home shows no Silence card at all.
