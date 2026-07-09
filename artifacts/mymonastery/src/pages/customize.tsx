@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -37,10 +37,11 @@ const BG = "#0C1F12";
 
 type DailyPrayer = "psalms" | "devotion" | "office" | "contemplation" | "creation";
 
-// The default per-side silent-sit length for Contemplative Prayer picked from
-// the basic editor (minutes). Each side's Contemplation card carries its own
-// length; 15 is a gentle default (the full customizer can set 5–30).
-const CONTEMPLATION_DEFAULT_MIN = 15;
+// Contemplative Prayer from the basic editor: the SILENCE GOAL is the total
+// daily silence (default 20 min, chosen in 10-min steps), and the two per-side
+// cards SPLIT it — Morning + Evening Contemplation each carry half (20 → 10+10).
+// Halves land on 5–30, the per-side sit clamp DailyProgressBody applies.
+const CONTEMPLATION_GOAL_DEFAULT_MIN = 20;
 
 function currentDailyPrayer(): DailyPrayer {
   // The two contemplative anchors both clear the BCP office and turn on per-side
@@ -61,6 +62,7 @@ export default function CustomizePage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const guest = isDeviceLocalGuest(user);
+  const qc = useQueryClient();
 
   // A still leaf backdrop, picked once — matching the office/psalms screens.
   const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -120,16 +122,15 @@ export default function CustomizePage() {
     } else if (choice === "contemplation") {
       // Contemplative Prayer = a silent sit as this side's prayer. Same per-side
       // anchor as Creation Prayer but the "silent" style, so the home renders
-      // Morning + Evening Contemplation cards (🕯️, the sit timer) at each side's
-      // own length — DIFFERENT from the daily silence GOAL card (that's a
-      // separate progress-bar anchor driven by the Silence row). Default each
-      // side to 15 min. No home-layout write (keeps the newsletter fallback).
+      // Morning + Evening Contemplation cards (🕯️, the sit timer). The Silence
+      // GOAL becomes the day's TOTAL silence (default 20 min, 10-min steps) and
+      // the two sessions SPLIT it — each side sits half. No home-layout write
+      // (keeps the newsletter fallback).
       setSideLevel("morning", "ask");
       setSideLevel("evening", "ask");
       setSideContemplation("morning", true);
       setSideContemplation("evening", true);
-      setSideMinutes("morning", CONTEMPLATION_DEFAULT_MIN);
-      setSideMinutes("evening", CONTEMPLATION_DEFAULT_MIN);
+      writeSilenceGoal(CONTEMPLATION_GOAL_DEFAULT_MIN, { splitAcrossSides: true });
       try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     } else {
@@ -161,10 +162,28 @@ export default function CustomizePage() {
     if (user) pushRoutineConfig();
   };
 
-  const applySilence = (min: number) => {
+  // Write the silence goal everywhere it's read: local row state, the guest
+  // key or the server pref (with the query cache updated so the row doesn't
+  // snap back to the stale fetched value), and — when Contemplative Prayer is
+  // the anchor — the two per-side sit lengths, each HALF the goal (two
+  // sessions split the day's total silence).
+  function writeSilenceGoal(min: number, opts?: { splitAcrossSides?: boolean }) {
     setSilenceMin(min);
     if (guest) setGuestSilenceGoalMin(min);
-    else void apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min }).catch(() => { /* best-effort */ });
+    else {
+      qc.setQueryData(["/api/me/office-prefs"], (old: Record<string, unknown> | undefined) =>
+        ({ ...(old ?? {}), contemplationGoalMinutes: min }));
+      void apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: min }).catch(() => { /* best-effort */ });
+    }
+    if (opts?.splitAcrossSides) {
+      const half = Math.round(min / 2);
+      setSideMinutes("morning", half);
+      setSideMinutes("evening", half);
+    }
+  }
+
+  const applySilence = (min: number) => {
+    writeSilenceGoal(min, { splitAcrossSides: dailyPrayer === "contemplation" });
   };
 
   const applySteps = (goal: number) => {
@@ -173,7 +192,12 @@ export default function CustomizePage() {
     else void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: goal }).catch(() => { /* best-effort */ });
   };
 
-  const SILENCE_OPTS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+  // Contemplative Prayer counts silence as the day's TOTAL across two sits, so
+  // its steps are 10-minute (each side gets a clean half); every other anchor
+  // keeps the finer 5-minute goal steps.
+  const SILENCE_OPTS = dailyPrayer === "contemplation"
+    ? [10, 20, 30, 40, 50, 60]
+    : [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
   const STEP_OPTS = [5000, 7500, 10000, 12500, 15000];
 
   const row = (label: string, value: string, opts: Array<{ value: string; label: string }>, onChange: (v: string) => void) => (
