@@ -13,6 +13,7 @@ import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback, primeAudio } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import FddJournalSheet from "@/components/FddJournalSheet";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import {
@@ -4076,19 +4077,12 @@ export default function PrayerModePage() {
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
     triggerAmenFeedback();
-    // Clear today's bell (morning / midday / evening) from the lock
-    // screen the moment the user prays. Each Amen tap is a "yes, I'm
-    // praying" signal — the nudge has done its job and shouldn't
-    // linger. Native shell removes any delivered push whose APN
-    // thread-id matches; idempotent if the notification was already
-    // dismissed or the user is on web.
-    try {
-      window.dispatchEvent(
-        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } })
-      );
-    } catch {
-      /* non-fatal */
-    }
+    // Clear today's morning/evening reminder from the lock screen the moment
+    // the user prays. Each Amen tap is a "yes, I'm praying" signal — the nudge
+    // (the general bell AND the user's own office reminder) has done its job and
+    // shouldn't linger. Native shell removes any delivered push whose thread-id
+    // matches; idempotent if already dismissed or the user is on web.
+    clearOfficeReminderNotifications();
     // Record the "Amen" side effect as the viewer leaves the slide.
     // Fire-and-forget — we don't want a slow network call to gate the fade.
     // - request slide → POST /amen (the existing behaviour)
@@ -4314,20 +4308,13 @@ export default function PrayerModePage() {
       /* non-fatal */
     }
 
-    // Clear today's morning/evening bell from the iOS notification
-    // center. The bell push is a "time to pray for your friends"
-    // nudge — once the user has actually prayed, the lock-screen
-    // banner has done its job and lingering there into the afternoon
-    // just looks like an unread item. Native shell listens for
-    // 'phoebe:clear-notifications' and removes any delivered
-    // notification whose APN thread-id matches. No-op on web.
-    try {
-      window.dispatchEvent(
-        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } })
-      );
-    } catch {
-      /* non-fatal */
-    }
+    // Clear today's morning/evening reminder from the iOS notification
+    // center now that the user has finished praying. Covers BOTH the general
+    // bell AND the user's own office reminder (parish-office-morning/evening) —
+    // when morning prayer is the intercession list, completing it here is
+    // "completed morning prayer," so that reminder shouldn't linger. Native
+    // shell removes any delivered push whose thread-id matches; no-op on web.
+    clearOfficeReminderNotifications();
 
     // Fade out then navigate. The CTA flow now reads: dashboard card →
     // slideshow (/prayer-mode) → home (/dashboard). The closing slide

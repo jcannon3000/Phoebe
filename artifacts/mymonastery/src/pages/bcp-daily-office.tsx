@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { swellHaptic } from "@/lib/swellHaptic";
+import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -145,32 +146,9 @@ interface OfficeDayInfo {
   feastName?: string | null;
 }
 
-// Clear every office-reminder push from the lock screen once the user
-// has prayed. The daily reminders arrive under a few different APN
-// thread-ids depending on which sender fired them:
-//   • "bell"                 — the general morning bell / evening nudge
-//   • "parish-office-morning"
-//   • "parish-office-evening"
-// The native shell's phoebe:clear-notifications handler removes
-// delivered pushes matching one thread-id per event, so we dispatch
-// once per id. No-op on web (the listener only exists in the
-// Capacitor shell) and idempotent if the notification was already
-// dismissed. Clearing both sides regardless of which office the user
-// prayed is intentional: a stray evening reminder shouldn't survive a
-// morning office and vice versa once they've engaged with prayer for
-// the day.
-function clearOfficeReminderNotifications() {
-  const threadIds = ["bell", "parish-office-morning", "parish-office-evening"];
-  for (const threadId of threadIds) {
-    try {
-      window.dispatchEvent(
-        new CustomEvent("phoebe:clear-notifications", { detail: { threadId } }),
-      );
-    } catch {
-      /* non-fatal; web build has no listener and the OS drops the push later */
-    }
-  }
-}
+// Office-reminder push clearing now lives in @/lib/officeReminders
+// (clearOfficeReminderNotifications) so the thread-id list has a single source
+// of truth — a stale duplicate here once let the slideshow clear only "bell".
 
 // Friendly section label for the bottom pill, derived from the slide
 // type. Keeps the chrome readable when the eyebrow is verbose

@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
+import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 
 // Manual "I prayed it" logging for the offices — for people praying Morning
@@ -44,14 +45,9 @@ export function markOfficeBookComplete(side: "morning" | "evening"): void {
   // A fresh office log (from the book) → the swell haptic.
   if (!wasAlreadyLogged) swellHaptic();
   // The office is done → clear any delivered reminder push so the morning/evening
-  // prayer notification disappears (the slideshow + book-guide paths already do
-  // this; the one-tap log did not). No-op on web; the native shell's
+  // prayer notification disappears. No-op on web; the native shell's
   // phoebe:clear-notifications handler removes matching delivered pushes.
-  for (const threadId of ["bell", "parish-office-morning", "parish-office-evening"]) {
-    try {
-      window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId } }));
-    } catch { /* non-fatal — web has no listener */ }
-  }
+  clearOfficeReminderNotifications();
   const now = new Date();
   void apiRequest("POST", "/api/prayer-sessions", {
     surface,
