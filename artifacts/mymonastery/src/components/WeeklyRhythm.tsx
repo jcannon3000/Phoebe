@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { ROUTINE_SYNCED_EVENT, pushRoutineConfig } from "@/lib/routineSync";
 import {
@@ -70,6 +71,7 @@ function logKey(kind: WeeklyKind): string[] {
 export function WeeklyRhythm() {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { rawIsBeta } = useBetaStatus();
   const [open, setOpen] = useState<WeeklyKind | null>(null);
   // The optional rest window — re-read when the planner (or a device sync /
   // rule adopt) changes it.
@@ -85,6 +87,22 @@ export function WeeklyRhythm() {
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  // BETA — hold the rest window like an appointment: (re)schedule the native
+  // weekly local notification ("Your rest begins now 🌙") whenever the rest
+  // days or window change. The native shell listens (wireRestReminders) and
+  // no-ops on web. Rest must be enabled; clearing the window cancels.
+  const restDaysKey = JSON.stringify(user?.restDays ?? []);
+  useEffect(() => {
+    if (!rawIsBeta) return;
+    const enabled = getEnabledWeekly().includes("rest");
+    const days: number[] = enabled ? (JSON.parse(restDaysKey) as number[]) : [];
+    try {
+      window.dispatchEvent(new CustomEvent("phoebe:schedule-rest-reminders", {
+        detail: { days, start: restWindow?.start ?? null },
+      }));
+    } catch { /* non-fatal */ }
+  }, [rawIsBeta, restDaysKey, restWindow?.start]);
 
   // One-tap log for Commune / Go / Bless: tap → kept this week; tap again →
   // un-kept (delete the week's entry). A log, not a journal.

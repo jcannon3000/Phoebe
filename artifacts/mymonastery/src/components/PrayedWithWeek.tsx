@@ -17,18 +17,28 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 export function PrayedWithWeek() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const guest = isDeviceLocalGuest(user);
+  const { rawIsBeta } = useBetaStatus();
+
+  // SUNDAY BENEDICTION (beta): when the week turns, look back once — "last
+  // week you prayed with N" — instead of showing the new week's near-zero.
+  // Spoken as a blessing over the finished week, not a score for the new one.
+  const isSunday = new Date().getDay() === 0;
+  const benediction = rawIsBeta && isSunday;
 
   // This week's Sunday, local calendar (YYYY-MM-DD) — the same week the
   // practice logs stamp, so "this week" means the member's own lived week.
+  // In benediction mode, LAST week's Sunday.
   const weekStart = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay());
+    if (benediction) d.setDate(d.getDate() - 7);
     return d.toLocaleDateString("en-CA");
-  }, []);
+  }, [benediction]);
 
   const { data } = useQuery<{ count: number; viewerPracticed: boolean }>({
     queryKey: ["/api/me/prayed-with-week", weekStart],
@@ -40,7 +50,11 @@ export function PrayedWithWeek() {
   const count = data?.count ?? 0;
   if (!user || guest || count < 1) return null;
 
-  const text = data?.viewerPracticed
+  const text = benediction
+    ? (count === 1
+        ? t("dashboard.prayed_with_last_one", { defaultValue: "Last week you prayed with 1 person" })
+        : t("dashboard.prayed_with_last_n", { count, defaultValue: `Last week you prayed with ${count} people` }))
+    : data?.viewerPracticed
     ? (count === 1
         ? t("dashboard.prayed_with_one", { defaultValue: "You prayed with 1 person this week" })
         : t("dashboard.prayed_with_n", { count, defaultValue: `You prayed with ${count} people this week` }))

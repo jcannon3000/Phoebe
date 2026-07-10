@@ -1,5 +1,6 @@
 import { pgTable, serial, integer, text, jsonb, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { groupsTable } from "./groups";
 import type { PrescribedRoutineSpec } from "./prescribed_routines";
 
 // Creator seasons — a creator turns the practice their content inspired into a
@@ -29,10 +30,16 @@ export const creatorSeasonsTable = pgTable("creator_seasons", {
   // which is what makes the check-ins a shared season instead of N solo runs.
   startYmd: text("start_ymd").notNull(),
   createdByUserId: integer("created_by_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  // COMMUNITY seasons — a season a group's leaders run for the whole
+  // community ("we keep our rule together for these three weeks"). NULL = the
+  // original creator-audience shape. A community season snapshots the group's
+  // rule of life as its spec, so joining = taking up the rule for the season.
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   byToken: uniqueIndex("creator_seasons_token").on(t.token),
   byCreator: index("creator_seasons_by_creator").on(t.createdByUserId),
+  byGroup: index("creator_seasons_by_group").on(t.groupId),
 }));
 
 export const creatorSeasonMembersTable = pgTable("creator_season_members", {

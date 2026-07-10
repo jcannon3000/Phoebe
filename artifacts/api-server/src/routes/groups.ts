@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, asc, desc, gt, gte, inArray, isNull, isNotNull, ne, count, sql } from "drizzle-orm";
+import { eq, and, or, asc, desc, gt, gte, lt, lte, inArray, isNull, isNotNull, ne, count, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -30,6 +30,7 @@ import {
   prescribedRoutinesTable,
   prayerSessionsTable,
   practiceCompletionTable,
+  practiceLogEntriesTable,
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { z } from "zod/v4";
@@ -5164,41 +5165,130 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
     const memberIds = memberRows.map((m) => m.userId).filter((id): id is number => id != null);
     if (memberIds.length <= 1) { res.json({ count: 0, viewerPracticed: false }); return; }
 
-    // Approximate UTC start of the local week (covers UTC-14) for the
-    // timestamp-based signals; practice_completion matches week_start exactly.
-    const sinceUtc = new Date(`${weekStart}T00:00:00Z`);
-    sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
-
-    const practiced = new Set<number>();
-    const completions = await db.selectDistinct({ userId: practiceCompletionTable.userId })
-      .from(practiceCompletionTable)
-      .where(and(inArray(practiceCompletionTable.userId, memberIds), eq(practiceCompletionTable.weekStart, weekStart)));
-    for (const r of completions) practiced.add(r.userId);
-    // A session counts as "practiced" when it was a COMPLETED office (the
-    // app-wide office invariant) or any other real practice of at least a
-    // minute — never a sub-minute glance (prayer-list opens log a session on
-    // sight so a brief look still records; that is not praying together).
-    const sessions = await db.selectDistinct({ userId: prayerSessionsTable.userId })
-      .from(prayerSessionsTable)
-      .where(and(
-        inArray(prayerSessionsTable.userId, memberIds),
-        gte(prayerSessionsTable.endedAt, sinceUtc),
-        or(
-          eq(prayerSessionsTable.completed, true),
-          and(ne(prayerSessionsTable.surface, "prayer-list"), gte(prayerSessionsTable.durationSeconds, 60)),
-        ),
-      ));
-    for (const r of sessions) if (r.userId != null) practiced.add(r.userId);
-    const amens = await db.selectDistinct({ userId: prayerRequestAmensTable.userId })
-      .from(prayerRequestAmensTable)
-      .where(and(inArray(prayerRequestAmensTable.userId, memberIds), gte(prayerRequestAmensTable.prayedAt, sinceUtc)));
-    for (const r of amens) practiced.add(r.userId);
-
+    const practiced = await practicedThisWeek(memberIds, weekStart);
     const viewerPracticed = practiced.has(user.id);
     practiced.delete(user.id);
     res.json({ count: practiced.size, viewerPracticed });
   } catch (err) {
     console.error("[prayed-with-week] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Which of `memberIds` practiced at least one thing in the week starting at
+// `weekStart` (a Sunday, YYYY-MM-DD)? Signals:
+//   • practice_completion — exact week_start match (each member's own local week)
+//   • practice_log_entries — any log (weekly Way of Love, reading, listening…)
+//     dated inside the week (lexical YYYY-MM-DD compare)
+//   • prayer_sessions — a COMPLETED office, or any non-glance session ≥60s
+//   • prayer_request_amens — praying the list
+// Timestamp signals are BOUNDED to [weekStart−14h, weekStart+7d+14h] so a past
+// weekStart returns THAT week, not cumulative-since (±14h absorbs any tz).
+async function practicedThisWeek(memberIds: number[], weekStart: string): Promise<Set<number>> {
+  const sinceUtc = new Date(`${weekStart}T00:00:00Z`);
+  sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+  const untilUtc = new Date(`${weekStart}T00:00:00Z`);
+  untilUtc.setUTCDate(untilUtc.getUTCDate() + 7);
+  untilUtc.setUTCHours(untilUtc.getUTCHours() + 14);
+  // The week's last local day, for the string-dated practice-log compare.
+  const weekEnd = new Date(`${weekStart}T00:00:00Z`);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  const weekEndYmd = weekEnd.toISOString().slice(0, 10);
+
+  const practiced = new Set<number>();
+  const completions = await db.selectDistinct({ userId: practiceCompletionTable.userId })
+    .from(practiceCompletionTable)
+    .where(and(inArray(practiceCompletionTable.userId, memberIds), eq(practiceCompletionTable.weekStart, weekStart)));
+  for (const r of completions) practiced.add(r.userId);
+  const logs = await db.selectDistinct({ userId: practiceLogEntriesTable.userId })
+    .from(practiceLogEntriesTable)
+    .where(and(
+      inArray(practiceLogEntriesTable.userId, memberIds),
+      gte(practiceLogEntriesTable.day, weekStart),
+      lte(practiceLogEntriesTable.day, weekEndYmd),
+    ));
+  for (const r of logs) practiced.add(r.userId);
+  // A session counts as "practiced" when it was a COMPLETED office (the
+  // app-wide office invariant) or any other real practice of at least a
+  // minute — never a sub-minute glance (prayer-list opens log a session on
+  // sight so a brief look still records; that is not praying together).
+  const sessions = await db.selectDistinct({ userId: prayerSessionsTable.userId })
+    .from(prayerSessionsTable)
+    .where(and(
+      inArray(prayerSessionsTable.userId, memberIds),
+      gte(prayerSessionsTable.endedAt, sinceUtc),
+      lt(prayerSessionsTable.endedAt, untilUtc),
+      or(
+        eq(prayerSessionsTable.completed, true),
+        and(ne(prayerSessionsTable.surface, "prayer-list"), gte(prayerSessionsTable.durationSeconds, 60)),
+      ),
+    ));
+  for (const r of sessions) if (r.userId != null) practiced.add(r.userId);
+  const amens = await db.selectDistinct({ userId: prayerRequestAmensTable.userId })
+    .from(prayerRequestAmensTable)
+    .where(and(
+      inArray(prayerRequestAmensTable.userId, memberIds),
+      gte(prayerRequestAmensTable.prayedAt, sinceUtc),
+      lt(prayerRequestAmensTable.prayedAt, untilUtc),
+    ));
+  for (const r of amens) practiced.add(r.userId);
+  return practiced;
+}
+
+// GET /api/me/rule-offers (BETA surface) — the communities I belong to that
+// keep a rule of life, for the home's one-time "take up our rule" offer (the
+// register path never sees the join-time offer). Returns slug/name/label only.
+router.get("/me/rule-offers", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const rows = await db.select({
+      slug: groupsTable.slug,
+      name: groupsTable.name,
+      ruleId: groupsTable.ruleRoutineId,
+    }).from(groupMembersTable)
+      .innerJoin(groupsTable, eq(groupsTable.id, groupMembersTable.groupId))
+      .where(and(eq(groupMembersTable.userId, user.id), isNotNull(groupMembersTable.joinedAt), isNotNull(groupsTable.ruleRoutineId)));
+    const ids = rows.map((r) => r.ruleId).filter((id): id is number => id != null);
+    const labels = ids.length > 0
+      ? await db.select({ id: prescribedRoutinesTable.id, label: prescribedRoutinesTable.label })
+          .from(prescribedRoutinesTable).where(inArray(prescribedRoutinesTable.id, ids))
+      : [];
+    const labelById = new Map(labels.map((l) => [l.id, l.label]));
+    res.json({
+      offers: rows.map((r) => ({ slug: r.slug, name: r.name, label: r.ruleId != null ? (labelById.get(r.ruleId) ?? null) : null })),
+    });
+  } catch (err) {
+    console.error("[rule-offers] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/groups/:slug/pulse (BETA surface) — the LEADER's aggregate read:
+// how many of us practiced at least one thing this week. AGGREGATE ONLY with a
+// PRIVACY FLOOR: under 4 members the count is withheld (null) so a tiny group
+// can never be reverse-engineered into attendance. Never names, never who.
+router.get("/groups/:slug/pulse", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const weekStartRaw = typeof req.query.weekStart === "string" ? req.query.weekStart : "";
+  const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(weekStartRaw)
+    ? weekStartRaw
+    : (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d.toISOString().slice(0, 10); })();
+  try {
+    const memberRows = await db.select({ userId: groupMembersTable.userId })
+      .from(groupMembersTable)
+      .where(and(eq(groupMembersTable.groupId, result.group.id), isNotNull(groupMembersTable.joinedAt)));
+    const memberIds = memberRows.map((m) => m.userId).filter((id): id is number => id != null);
+    const memberCount = memberIds.length;
+    // PRIVACY FLOOR — with fewer than 4 members an aggregate IS attendance.
+    if (memberCount < 4) { res.json({ count: null, memberCount }); return; }
+    const practiced = await practicedThisWeek(memberIds, weekStart);
+    res.json({ count: practiced.size, memberCount });
+  } catch (err) {
+    console.error("[group-pulse] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

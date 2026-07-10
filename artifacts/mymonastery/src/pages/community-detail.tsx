@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { CommunityRuleCard } from "@/components/CommunityRuleCard";
+import { CommunitySeasonCard, CommunityPulseLine } from "@/components/CommunitySeasonCard";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -1865,6 +1866,12 @@ export default function CommunityDetailPage() {
             adoptable in one tap (praying WITH each other). Self-gating: shows
             nothing until the leaders set a rule (admins get the doorway). */}
         {!isJardinGroup && <CommunityRuleCard slug={slug} />}
+
+        {/* BETA — the leader's aggregate weekly pulse (never names, floored
+            under 4 members) and the community SEASON (the rule kept together
+            for a bounded few weeks; leaders start it, everyone checks in). */}
+        {!isJardinGroup && rawIsBeta && isAdmin && <CommunityPulseLine slug={slug} />}
+        {!isJardinGroup && rawIsBeta && <CommunitySeasonCard slug={slug} />}
 
         {/* Beta — rule-of-life: members ask their community's leaders for help
             building a daily prayer routine; leaders see + respond. The app is

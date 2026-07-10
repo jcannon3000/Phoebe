@@ -1070,6 +1070,56 @@ function bellIdToNumeric(bellId: string): number {
   return Math.abs(h) & 0x7fffffff;
 }
 
+// ─── Rest-window reminders (BETA) ────────────────────────────────────────────
+// The Way of Love's Rest practice can carry a TIME WINDOW ("an event to
+// rest" — e.g. Saturday 2:00 PM). The web app dispatches
+// `phoebe:schedule-rest-reminders` { days: number[], start: "HH:MM" | null }
+// whenever the rest days or window change; we cancel the previous weekly
+// schedules and, when a window is set, schedule one gentle repeating weekly
+// notification per rest day at the window's start. days uses JS getDay()
+// numbering (0 = Sunday); Capacitor's `on.weekday` is 1 = Sunday … 7 = Saturday.
+const REST_REMINDER_ID_BASE = 8600; // ids 8600–8606, one per weekday
+function wireRestReminders() {
+  window.addEventListener("phoebe:schedule-rest-reminders", async e => {
+    const detail = (e as CustomEvent).detail as { days?: number[]; start?: string | null } | undefined;
+    const days = Array.isArray(detail?.days)
+      ? detail.days.filter((d): d is number => typeof d === "number" && d >= 0 && d <= 6)
+      : [];
+    const start = typeof detail?.start === "string" && /^\d{2}:\d{2}$/.test(detail.start) ? detail.start : null;
+    // Always clear the previous weekly schedules first — days/window changes
+    // and Clear both land here.
+    try {
+      await LocalNotifications.cancel({
+        notifications: Array.from({ length: 7 }, (_, d) => ({ id: REST_REMINDER_ID_BASE + d })),
+      });
+    } catch { /* best-effort */ }
+    if (!start || days.length === 0) return;
+    try {
+      const perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== "granted") {
+        const req = await LocalNotifications.requestPermissions();
+        if (req.display !== "granted") return;
+      }
+      const [hStr, mStr] = start.split(":");
+      const hour = parseInt(hStr ?? "0", 10);
+      const minute = parseInt(mStr ?? "0", 10);
+      await LocalNotifications.schedule({
+        notifications: days.map(d => ({
+          id: REST_REMINDER_ID_BASE + d,
+          title: "Your rest begins now 🌙",
+          body: "The window you set aside is here. Put the day down.",
+          schedule: { on: { weekday: d + 1, hour, minute }, repeats: true, allowWhileIdle: true },
+          smallIcon: "phoebe_bell",
+          iconColor: "#2E6B40",
+          threadIdentifier: "rest-window",
+        })),
+      });
+    } catch {
+      /* best-effort — web build / permission denied */
+    }
+  });
+}
+
 function wireLocalNotifications() {
   // Make sure permission is at least asked for once when scheduling.
   window.addEventListener("phoebe:schedule-bell", async e => {
@@ -1670,6 +1720,7 @@ function exposePublicApi() {
   injectSiwaButton();
   wireBiometricLock();
   wireLocalNotifications();
+  wireRestReminders();
   wireContemplation();
   wireCobreatheMusic();
   wireDurableStorage();

@@ -14,6 +14,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { PrayedWithWeek } from "@/components/PrayedWithWeek";
+import { CommunityRuleOfferBeta } from "@/components/CommunityRuleOfferBeta";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
@@ -7371,6 +7372,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               the date: names the given rhythm and promises the daily
               walk-through. Guests only. */}
           {!eventsOnly && isGuestShape && <GuestWelcomeCard />}
+          {/* BETA — the one-time "your community keeps a rule of life" offer:
+              new accounts that registered through an invite never saw the
+              join-time offer, so the home makes it once (Not now dismisses). */}
+          {!eventsOnly && isBeta && <CommunityRuleOfferBeta />}
           {eventsOnly && (
             <p
               className="mb-1"

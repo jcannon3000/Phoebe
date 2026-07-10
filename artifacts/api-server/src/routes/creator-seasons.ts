@@ -19,6 +19,9 @@ import {
   creatorSeasonNotesTable,
   creatorSeasonCheckinsTable,
   usersTable,
+  groupsTable,
+  groupMembersTable,
+  prescribedRoutinesTable,
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { isSuperAdminUser } from "../lib/superAdmin";
@@ -35,6 +38,19 @@ async function isBetaOrSuperAdmin(userId: number): Promise<boolean> {
       .where(eq(betaUsersTable.email, u.email.toLowerCase()));
     return !!beta;
   } catch { return false; }
+}
+
+// Group membership/admin resolution for COMMUNITY seasons (mirrors groups.ts).
+function isGroupAdminRole(role: string | null | undefined): boolean {
+  return role === "admin" || role === "hidden_admin";
+}
+async function groupMemberOf(slug: string, userId: number) {
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, slug));
+  if (!group) return null;
+  const [member] = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, group.id), eq(groupMembersTable.userId, userId)));
+  if (!member || !member.joinedAt) return null;
+  return { group, member };
 }
 
 const router: IRouter = Router();
@@ -279,12 +295,19 @@ router.post("/creator/seasons/:token/notes", async (req, res): Promise<void> => 
   const token = req.params.token;
   if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
   try {
-    const [season] = await db.select({ id: creatorSeasonsTable.id, createdByUserId: creatorSeasonsTable.createdByUserId })
+    const [season] = await db.select({ id: creatorSeasonsTable.id, createdByUserId: creatorSeasonsTable.createdByUserId, groupId: creatorSeasonsTable.groupId })
       .from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
     if (!season) { res.status(404).json({ error: "Not found" }); return; }
-    // The season's creator, or any super admin (operators posting on a
-    // creator's behalf while creation is operator-run).
-    if (season.createdByUserId !== me && !(await isSuperAdminUser(me))) {
+    // The season's creator, any super admin — or, for a COMMUNITY season, any
+    // leader of the group it belongs to (leaders share the shepherding).
+    let allowed = season.createdByUserId === me || (await isSuperAdminUser(me));
+    if (!allowed && season.groupId != null) {
+      const [member] = await db.select({ role: groupMembersTable.role, joinedAt: groupMembersTable.joinedAt })
+        .from(groupMembersTable)
+        .where(and(eq(groupMembersTable.groupId, season.groupId), eq(groupMembersTable.userId, me)));
+      allowed = !!member && !!member.joinedAt && isGroupAdminRole(member.role);
+    }
+    if (!allowed) {
       res.status(403).json({ error: "Only the creator can post notes" }); return;
     }
     const body = typeof (req.body ?? {}).body === "string" ? ((req.body as { body: string }).body).trim().slice(0, 2000) : "";
@@ -293,6 +316,104 @@ router.post("/creator/seasons/:token/notes", async (req, res): Promise<void> => 
     res.json({ ok: true });
   } catch (err) {
     console.error("[creator-seasons] note failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ═══ COMMUNITY seasons (BETA) — a group's leaders run a bounded season ═══════
+//
+// "Our community keeps its rule together for these three weeks." A community
+// season is a creator_seasons row with group_id set: its spec is a SNAPSHOT of
+// the group's rule of life at start (joining = taking up the rule for the
+// season + entering the cohort), its creatorName is the community's name, and
+// its notes may be posted by any group leader. The member experience is the
+// existing /season/:token page — Day-N clock, one-tap check-ins witnessed as
+// today's count + first names, leader notes.
+
+// POST /api/groups/:slug/season — a leader starts a season (requires the
+// group to have a rule of life; one ACTIVE season at a time).
+router.post("/groups/:slug/season", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await groupMemberOf(req.params.slug, me);
+  if (!result || !isGroupAdminRole(result.member.role)) { res.status(403).json({ error: "Admin access required" }); return; }
+  const ruleId = (result.group as { ruleRoutineId?: number | null }).ruleRoutineId ?? null;
+  if (!ruleId) { res.status(409).json({ error: "Set your community's rule of life first" }); return; }
+  const [rule] = await db.select({ spec: prescribedRoutinesTable.spec, label: prescribedRoutinesTable.label })
+    .from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
+  const spec = rule ? sanitizeSpec(rule.spec) : null;
+  if (!rule || !spec) { res.status(409).json({ error: "Set your community's rule of life first" }); return; }
+
+  const body = (req.body ?? {}) as { title?: unknown; durationDays?: unknown; startYmd?: unknown };
+  const durationDays = typeof body.durationDays === "number" && Number.isFinite(body.durationDays)
+    ? Math.max(7, Math.min(28, Math.round(body.durationDays))) : 21;
+  const startYmd = typeof body.startYmd === "string" && YMD_RE.test(body.startYmd)
+    ? body.startYmd : new Date().toISOString().slice(0, 10);
+  const title = typeof body.title === "string" && body.title.trim()
+    ? body.title.trim().slice(0, 120)
+    : (rule.label?.trim() ? `${rule.label.trim()} — a season together` : "A season together");
+
+  try {
+    // One ACTIVE season per group — starting a new one while another runs is a
+    // conflict (finite is the point; overlapping clocks would blur it).
+    const existing = await db.select({
+      id: creatorSeasonsTable.id, startYmd: creatorSeasonsTable.startYmd, durationDays: creatorSeasonsTable.durationDays,
+    }).from(creatorSeasonsTable).where(eq(creatorSeasonsTable.groupId, result.group.id));
+    const today = new Date().toISOString().slice(0, 10);
+    const active = existing.find((s) => dayNumber(s.startYmd, today) <= s.durationDays);
+    if (active) { res.status(409).json({ error: "A season is already running" }); return; }
+
+    const token = crypto.randomBytes(16).toString("hex");
+    await db.insert(creatorSeasonsTable).values({
+      token, title, creatorName: result.group.name, description: null,
+      spec, durationDays, startYmd, createdByUserId: me, groupId: result.group.id,
+    });
+    res.json({ ok: true, token, url: `https://withphoebe.app/season/${token}` });
+  } catch (err) {
+    console.error("[community-season] create failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/groups/:slug/season — the group's current season, for the
+// community-page card. Members only.
+router.get("/groups/:slug/season", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await groupMemberOf(req.params.slug, me);
+  if (!result) { res.status(403).json({ error: "Members only" }); return; }
+  try {
+    const rows = await db.select({
+      id: creatorSeasonsTable.id,
+      token: creatorSeasonsTable.token,
+      title: creatorSeasonsTable.title,
+      startYmd: creatorSeasonsTable.startYmd,
+      durationDays: creatorSeasonsTable.durationDays,
+    }).from(creatorSeasonsTable)
+      .where(eq(creatorSeasonsTable.groupId, result.group.id))
+      .orderBy(desc(creatorSeasonsTable.createdAt)).limit(1);
+    const season = rows[0];
+    const isAdmin = isGroupAdminRole(result.member.role);
+    if (!season) { res.json({ season: null, isAdmin }); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    const day = dayNumber(season.startYmd, today);
+    if (day > season.durationDays) {
+      // Finished — the card returns to its invitation state.
+      res.json({ season: null, isAdmin }); return;
+    }
+    const [countRow] = await db.select({ n: sql<number>`count(*)::int` })
+      .from(creatorSeasonMembersTable).where(eq(creatorSeasonMembersTable.seasonId, season.id));
+    const [mine] = await db.select({ id: creatorSeasonMembersTable.id }).from(creatorSeasonMembersTable)
+      .where(and(eq(creatorSeasonMembersTable.seasonId, season.id), eq(creatorSeasonMembersTable.userId, me)));
+    res.json({
+      season: {
+        token: season.token, title: season.title, startYmd: season.startYmd,
+        durationDays: season.durationDays, day, memberCount: Number(countRow?.n ?? 0), joined: !!mine,
+      },
+      isAdmin,
+    });
+  } catch (err) {
+    console.error("[community-season] get failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

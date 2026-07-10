@@ -2558,6 +2558,15 @@ export async function migrate() {
     await run(client, `
       CREATE INDEX IF NOT EXISTS creator_seasons_by_creator ON creator_seasons (created_by_user_id)
     `);
+    // COMMUNITY seasons — a group's leaders run a bounded season for the whole
+    // community; NULL keeps the original creator-audience shape.
+    await run(client, `
+      ALTER TABLE creator_seasons ADD COLUMN IF NOT EXISTS group_id
+      INTEGER REFERENCES groups(id) ON DELETE CASCADE
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS creator_seasons_by_group ON creator_seasons (group_id)
+    `);
     await run(client, `
       CREATE TABLE IF NOT EXISTS creator_season_members (
         id SERIAL PRIMARY KEY,
