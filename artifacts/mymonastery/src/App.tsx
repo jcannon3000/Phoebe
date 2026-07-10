@@ -448,6 +448,7 @@ const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-lif
 const CommunityWeeklyPlanPage = lazy(() => import("./pages/community-weekly-plan"));
 const CommunityWeeklyPlanEditPage = lazy(() => import("./pages/community-weekly-plan-edit"));
 const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
+const CommunityRuleSetPage = lazy(() => import("./pages/community-rule-set"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
 const CreatorStudioPage = lazy(() => import("./pages/creator-studio"));
 const SeasonPage = lazy(() => import("./pages/season"));
@@ -1295,6 +1296,8 @@ function Router() {
       <Route path="/welcome">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
       <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
+      {/* Leaders set the community's shared RULE OF LIFE (adoptable in one tap). */}
+      <Route path="/communities/:slug/rule-of-life/set" component={CommunityRuleSetPage} />
       {/* NOT YET PUBLIC (WEEKLY_PLAN_ENABLED) — both pages redirect away while
           the flag is off; no menu/UI exposes these routes yet. */}
       <Route path="/communities/:slug/weekly-plan" component={CommunityWeeklyPlanPage} />

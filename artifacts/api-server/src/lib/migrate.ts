@@ -2478,6 +2478,14 @@ export async function migrate() {
     await run(client, `
       ALTER TABLE prescribed_routines ALTER COLUMN group_id DROP NOT NULL
     `);
+    // Community RULE OF LIFE — the prescribed_routines row that carries the
+    // daily rhythm this community keeps together (members adopt it in one
+    // tap; "praying WITH each other"). Placed here (not in the groups block)
+    // because the FK needs prescribed_routines to exist first.
+    await run(client, `
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS rule_routine_id
+      INTEGER REFERENCES prescribed_routines(id) ON DELETE SET NULL
+    `);
     await run(client, `
       CREATE INDEX IF NOT EXISTS prescribed_routines_by_group
       ON prescribed_routines (group_id)

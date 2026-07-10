@@ -36,6 +36,11 @@ export const groupsTable = pgTable("groups", {
   // super admins (beta_users.is_admin) from the group's settings. See memory
   // "project_public_no_login".
   isPilotGroup: boolean("is_pilot_group").notNull().default(false),
+  // The community's RULE OF LIFE — the prescribed_routines row (spec + adopt
+  // count) that carries the daily rhythm this community keeps together;
+  // members adopt it in one tap. Plain integer here (no .references()) because
+  // prescribed_routines imports THIS table — the FK lives in migrate.ts SQL.
+  ruleRoutineId: integer("rule_routine_id"),
   createdByUserId: integer("created_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

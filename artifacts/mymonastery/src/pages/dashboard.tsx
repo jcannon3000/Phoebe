@@ -13,6 +13,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
+import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
@@ -7361,6 +7362,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           {!eventsOnly && (
             <div className="mb-2">
               <LiturgicalDateHeader />
+              {/* Praying WITH each other — "you prayed with N people this
+                  week" (aggregate only; never who did or didn't). */}
+              <PrayedWithWeek />
             </div>
           )}
           {/* PUBLIC first-open welcome — a dismissible "begin here" note under

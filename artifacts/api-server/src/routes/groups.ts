@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, asc, desc, gt, inArray, isNull, isNotNull, ne, count, sql } from "drizzle-orm";
+import { eq, and, or, asc, desc, gt, gte, inArray, isNull, isNotNull, ne, count, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -27,7 +27,11 @@ import {
   ruleOfLifeRequestsTable,
   groupWeeklyItemsTable,
   groupWeeklyCompletionsTable,
+  prescribedRoutinesTable,
+  prayerSessionsTable,
+  practiceCompletionTable,
 } from "@workspace/db";
+import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendAnnouncementEmail, sendPrayerInviteEmail } from "../lib/email";
@@ -5049,6 +5053,143 @@ router.post("/groups/:slug/weekly-plan/complete", async (req, res): Promise<void
       .where(and(eq(groupWeeklyCompletionsTable.itemId, itemId), eq(groupWeeklyCompletionsTable.userId, user.id)));
   }
   res.json({ ok: true, done });
+});
+
+
+// ═══ Community rule of life — praying WITH each other ════════════════════════
+//
+// Each community can carry ONE canonical rule of life (a prescribed-routine
+// row pointed at by groups.rule_routine_id): the daily rhythm the community
+// keeps together. Members adopt it in one tap (the shared routineSpec apply —
+// offices, cards, silence; never their prayers/journals). And the week's
+// fellowship is made visible WITHOUT surveillance: "you prayed with N people
+// this week" counts distinct fellow community members with at least one
+// practice signal this week — an aggregate number only, never who did or
+// didn't. Presence, not attendance.
+
+// GET /api/groups/:slug/rule — the community's rule (members).
+router.get("/groups/:slug/rule", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Members only" }); return; }
+  const ruleId = (result.group as { ruleRoutineId?: number | null }).ruleRoutineId ?? null;
+  if (!ruleId) { res.json({ rule: null, isAdmin: isAdminRole(result.member.role) }); return; }
+  const [row] = await db.select({
+    label: prescribedRoutinesTable.label,
+    spec: prescribedRoutinesTable.spec,
+    acceptCount: prescribedRoutinesTable.acceptCount,
+  }).from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
+  if (!row) { res.json({ rule: null, isAdmin: isAdminRole(result.member.role) }); return; }
+  res.json({
+    rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount },
+    isAdmin: isAdminRole(result.member.role),
+  });
+});
+
+// PUT /api/groups/:slug/rule — a leader sets (or replaces) the community's
+// rule of life. A NEW prescribed-routine row is minted and the group pointer
+// moves — any previously shared token links keep resolving to the rule they
+// carried, and the adopt count starts fresh for the new rule.
+router.put("/groups/:slug/rule", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const body = (req.body ?? {}) as { spec?: unknown; label?: unknown };
+  const spec = sanitizeSpec(body.spec);
+  if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
+  const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) || null : null;
+  const token = crypto.randomBytes(16).toString("hex");
+  const [inserted] = await db.insert(prescribedRoutinesTable).values({
+    token, groupId: result.group.id, createdByUserId: user.id, label, spec,
+  }).returning({ id: prescribedRoutinesTable.id });
+  if (!inserted) { res.status(500).json({ error: "internal_error" }); return; }
+  await db.update(groupsTable)
+    .set({ ruleRoutineId: inserted.id })
+    .where(eq(groupsTable.id, result.group.id));
+  res.json({ ok: true, token, url: `https://withphoebe.app/routine/${token}` });
+});
+
+// POST /api/groups/:slug/rule/adopt — a member takes up the community's rule:
+// applies it to their account (same machinery as accepting a routine link)
+// and counts the adoption. Returns the spec's ruleConfig so the client can
+// mirror the routine onto the device immediately.
+router.post("/groups/:slug/rule/adopt", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Members only" }); return; }
+  const ruleId = (result.group as { ruleRoutineId?: number | null }).ruleRoutineId ?? null;
+  if (!ruleId) { res.status(404).json({ error: "This community has no rule yet" }); return; }
+  const [row] = await db.select({ id: prescribedRoutinesTable.id, spec: prescribedRoutinesTable.spec })
+    .from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
+  if (!row) { res.status(404).json({ error: "This community has no rule yet" }); return; }
+  const spec = sanitizeSpec(row.spec);
+  if (!spec) { res.status(422).json({ error: "Rule is no longer valid" }); return; }
+  await applyRoutineSpecToUser(user.id, spec);
+  await db.update(prescribedRoutinesTable)
+    .set({ acceptCount: sql`${prescribedRoutinesTable.acceptCount} + 1` })
+    .where(eq(prescribedRoutinesTable.id, row.id));
+  res.json({ ok: true, ruleConfig: spec.ruleConfig });
+});
+
+// GET /api/me/prayed-with-week?weekStart=YYYY-MM-DD — "you prayed with N
+// people this week." N = DISTINCT other members across all my joined
+// communities with at least one practice signal this week:
+//   • a practice_completion row whose week_start matches (the client writes
+//     each member's own local Sunday there, so weeks align per-member)
+//   • a completed prayer session (offices, contemplation, the breath)
+//   • an amen on the prayer list
+// AGGREGATE ONLY — this endpoint never returns names, ids, or who was
+// missing. Presence, not attendance. viewerPracticed drives the copy ("you
+// prayed with…" vs "…prayed this week"), same signals for the viewer.
+router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const weekStartRaw = typeof req.query.weekStart === "string" ? req.query.weekStart : "";
+  const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(weekStartRaw)
+    ? weekStartRaw
+    : (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d.toISOString().slice(0, 10); })();
+  try {
+    // My joined communities → fellow member ids (me included, for viewerPracticed).
+    const myGroups = await db.select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(and(eq(groupMembersTable.userId, user.id), isNotNull(groupMembersTable.joinedAt)));
+    const groupIds = myGroups.map((g) => g.groupId);
+    if (groupIds.length === 0) { res.json({ count: 0, viewerPracticed: false }); return; }
+    const memberRows = await db.selectDistinct({ userId: groupMembersTable.userId })
+      .from(groupMembersTable)
+      .where(and(inArray(groupMembersTable.groupId, groupIds), isNotNull(groupMembersTable.joinedAt)));
+    const memberIds = memberRows.map((m) => m.userId).filter((id): id is number => id != null);
+    if (memberIds.length <= 1) { res.json({ count: 0, viewerPracticed: false }); return; }
+
+    // Approximate UTC start of the local week (covers UTC-14) for the
+    // timestamp-based signals; practice_completion matches week_start exactly.
+    const sinceUtc = new Date(`${weekStart}T00:00:00Z`);
+    sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+
+    const practiced = new Set<number>();
+    const completions = await db.selectDistinct({ userId: practiceCompletionTable.userId })
+      .from(practiceCompletionTable)
+      .where(and(inArray(practiceCompletionTable.userId, memberIds), eq(practiceCompletionTable.weekStart, weekStart)));
+    for (const r of completions) practiced.add(r.userId);
+    const sessions = await db.selectDistinct({ userId: prayerSessionsTable.userId })
+      .from(prayerSessionsTable)
+      .where(and(inArray(prayerSessionsTable.userId, memberIds), gte(prayerSessionsTable.endedAt, sinceUtc)));
+    for (const r of sessions) if (r.userId != null) practiced.add(r.userId);
+    const amens = await db.selectDistinct({ userId: prayerRequestAmensTable.userId })
+      .from(prayerRequestAmensTable)
+      .where(and(inArray(prayerRequestAmensTable.userId, memberIds), gte(prayerRequestAmensTable.prayedAt, sinceUtc)));
+    for (const r of amens) practiced.add(r.userId);
+
+    const viewerPracticed = practiced.has(user.id);
+    practiced.delete(user.id);
+    res.json({ count: practiced.size, viewerPracticed });
+  } catch (err) {
+    console.error("[prayed-with-week] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 export default router;
