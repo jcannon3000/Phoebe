@@ -126,6 +126,23 @@ export function syncRoutineFromServer(server: RoutineConfig | null | undefined):
   // Equal → already in sync.
 }
 
+// Apply an ADOPTED routine (community rule-of-life adopt, prescribed-routine /
+// preset link accept, creator-season join) directly to this device. This is
+// NOT a reconciliation — the adopted values ARE the new truth — so it bypasses
+// syncRoutineFromServer's LWW entirely: routed through the reconciler, an
+// empty ruleConfig hits the "migrate this device up" branch (pushing the OLD
+// routine over the server-side adopt), and a local clock stamped ahead by
+// another device flips the compare and pushes the old routine up too — either
+// way silently reverting the adoption. Here: apply the values, then push (the
+// push re-stamps the LWW clock so every other device adopts on next sync).
+// Empty/missing values = apply nothing locally (the server-side office prefs
+// and home layout from the adopt still stand; device keys stay at defaults).
+export function adoptRoutineConfig(values: Record<string, string> | null | undefined): void {
+  if (!values || typeof values !== "object" || Object.keys(values).length === 0) return;
+  applyRoutineValues(values);
+  pushRoutineConfig();
+}
+
 // Reset the sync clock on logout so the next user re-syncs from scratch (the
 // routine keys themselves are cleared by their own modules / on a fresh login).
 export function clearRoutineSyncClock(): void {

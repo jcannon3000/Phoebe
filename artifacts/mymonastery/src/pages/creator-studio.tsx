@@ -67,14 +67,16 @@ function localYmd(): string {
 
 export default function CreatorStudioPage() {
   const [, setLocation] = useLocation();
-  const { rawIsBeta, rawIsAdmin: isAdmin } = useBetaStatus();
+  const { rawIsBeta, rawIsAdmin: isAdmin, isLoading: statusLoading } = useBetaStatus();
   const qc = useQueryClient();
   const canSee = isAdmin || rawIsBeta;
 
   // Not for everyone (yet) — bounce anyone who isn't a super admin or beta.
+  // Wait for /api/beta/status to RESOLVE first: on a cold load / deep link the
+  // flags are false while loading, which bounced even super admins.
   useEffect(() => {
-    if (!canSee) setLocation("/dashboard", { replace: true });
-  }, [canSee, setLocation]);
+    if (!statusLoading && !canSee) setLocation("/dashboard", { replace: true });
+  }, [statusLoading, canSee, setLocation]);
 
   const { data: list } = useQuery<{ seasons: SeasonRow[] }>({
     queryKey: ["/api/creator/seasons"],

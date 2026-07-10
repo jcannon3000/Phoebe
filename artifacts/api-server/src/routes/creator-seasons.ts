@@ -22,6 +22,20 @@ import {
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { isSuperAdminUser } from "../lib/superAdmin";
+import { betaUsersTable } from "@workspace/db";
+
+// Beta user OR super admin — the studio-list gate. (The seasons list carries
+// every join token, so it must never be readable by an ordinary session; the
+// public no-login app gives ANONYMOUS device users real sessions.)
+async function isBetaOrSuperAdmin(userId: number): Promise<boolean> {
+  try {
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+    if (!u?.email) return false;
+    const [beta] = await db.select({ id: betaUsersTable.id }).from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    return !!beta;
+  } catch { return false; }
+}
 
 const router: IRouter = Router();
 
@@ -45,9 +59,18 @@ function dayNumber(startYmd: string, todayYmd: string): number {
 
 // The caller's local day, from an optional ?ymd= (validated) falling back to
 // server UTC — same viewer-tz convention as the other check-in surfaces.
+// CLAMPED to within one day of the server's UTC date: a client-supplied ymd
+// exists only to absorb timezone offsets, never to browse other days — an
+// unclamped value would let a member read any past day's kept-names (breaking
+// "no history is surfaced") or backfill/pre-fill check-ins for the whole season.
 function callerYmd(raw: unknown): string {
-  if (typeof raw === "string" && YMD_RE.test(raw)) return raw;
-  return new Date().toISOString().slice(0, 10);
+  const serverToday = new Date().toISOString().slice(0, 10);
+  if (typeof raw === "string" && YMD_RE.test(raw)) {
+    const t = Date.parse(`${raw}T00:00:00Z`);
+    const s = Date.parse(`${serverToday}T00:00:00Z`);
+    if (Number.isFinite(t) && Math.abs(t - s) <= 86_400_000) return raw;
+  }
+  return serverToday;
 }
 
 // ── POST /api/creator/seasons — create (super admin) ─────────────────────────
@@ -86,6 +109,9 @@ router.post("/creator/seasons", async (req, res): Promise<void> => {
 router.get("/creator/seasons", async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  // The list exposes every season's join token — beta/super-admin only
+  // (matches the client studio gate; anonymous sessions must not enumerate).
+  if (!(await isBetaOrSuperAdmin(me))) { res.status(403).json({ error: "Admin access required" }); return; }
   try {
     const rows = await db.select({
       id: creatorSeasonsTable.id,
@@ -191,15 +217,24 @@ router.post("/creator/seasons/:token/join", async (req, res): Promise<void> => {
   const token = req.params.token;
   if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
   try {
-    const [season] = await db.select({ id: creatorSeasonsTable.id, spec: creatorSeasonsTable.spec })
-      .from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
+    const [season] = await db.select({
+      id: creatorSeasonsTable.id, spec: creatorSeasonsTable.spec,
+      startYmd: creatorSeasonsTable.startYmd, durationDays: creatorSeasonsTable.durationDays,
+    }).from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
     if (!season) { res.status(404).json({ error: "Not found" }); return; }
+    // Finite is the point — once the season has ended, the link stops joining
+    // (and stops overwriting routines).
+    if (dayNumber(season.startYmd, new Date().toISOString().slice(0, 10)) > season.durationDays) {
+      res.status(409).json({ error: "This season has ended" }); return;
+    }
     const spec = sanitizeSpec(season.spec);
     if (!spec) { res.status(422).json({ error: "Season is no longer valid" }); return; }
-    await applyRoutineSpecToUser(me, spec);
     await db.insert(creatorSeasonMembersTable)
       .values({ seasonId: season.id, userId: me })
       .onConflictDoNothing();
+    // Membership first, THEN apply — a failed insert must not leave the
+    // person's whole routine replaced by a season they never entered.
+    await applyRoutineSpecToUser(me, spec);
     res.json({ ok: true });
   } catch (err) {
     console.error("[creator-seasons] join failed:", err);

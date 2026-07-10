@@ -18,6 +18,8 @@ import { computeFingerprint } from "@/lib/cobreatheOrder";
 import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { attributeContemplationSit } from "@/lib/contemplationSideDone";
+import { getSideContemplation } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
@@ -361,6 +363,26 @@ export default function CobreathePage() {
   const logSit = useCallback((secondsKept: number) => {
     if (sitLoggedRef.current || secondsKept < 2) return;
     sitLoggedRef.current = true;
+    // Launched as a per-side Creation Prayer card (/cobreathe?side=morning)? Stamp
+    // the side so it credits THAT side's per-side completion (like a silent
+    // per-side sit), not just the aggregate.
+    const sideParam = (() => {
+      try {
+        const s = new URLSearchParams(window.location.search).get("side");
+        return s === "morning" || s === "evening" ? s : undefined;
+      } catch { return undefined; }
+    })();
+    // Stamp the per-side day-flag LOCALLY for everyone (same instant echo the
+    // silent sit gets from ContemplationTimer). For guests this is the ONLY
+    // layer — their /api/me/contemplation-sides-today query is disabled, so
+    // without it a guest's Morning/Evening Creation Prayer card could never
+    // read "kept". Signed-in users still get the server echo below too.
+    if (getSideContemplation("morning") || getSideContemplation("evening")) {
+      attributeContemplationSit({
+        explicitSide: sideParam ?? null,
+        activeSides: { morning: getSideContemplation("morning"), evening: getSideContemplation("evening") },
+      });
+    }
     // PUBLIC no-login version: a GUEST has no account to POST prayer_sessions to,
     // so — exactly like ContemplationTimer — a finished breath logs its whole
     // minutes to the device-local silence tally the home "Silence" goal card
@@ -372,15 +394,6 @@ export default function CobreathePage() {
     }
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-    // Launched as a per-side Creation Prayer card (/cobreathe?side=morning)? Stamp
-    // the side so it credits THAT side's per-side completion (like a silent
-    // per-side sit), not just the aggregate.
-    const sideParam = (() => {
-      try {
-        const s = new URLSearchParams(window.location.search).get("side");
-        return s === "morning" || s === "evening" ? s : undefined;
-      } catch { return undefined; }
-    })();
     void apiRequest("POST", "/api/prayer-sessions", {
       surface: "contemplation",
       source: "cobreathe",

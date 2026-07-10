@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { CommunityRuleCard } from "@/components/CommunityRuleCard";
@@ -221,6 +222,14 @@ function iconForPractice(templateType: string | null): { emoji: string; label: s
 export default function CommunityJoinPage() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
   const { user, isLoading: authLoading } = useAuth();
+  // PUBLIC no-login version: a device-local guest (signed out OR the silently
+  // provisioned ANONYMOUS device user) must NOT be auto-joined — a community
+  // roster full of nameless anonymous accounts is wrong, and joining a pilot
+  // group would silently upgrade a throwaway account to the full app. For this
+  // page they are "not signed in": they get the invite slideshow + the
+  // register/sign-in flow (register upgrades the anonymous account in place,
+  // preserving the device's rhythm).
+  const joinableUser = user && !isDeviceLocalGuest(user) ? user : null;
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -300,11 +309,11 @@ export default function CommunityJoinPage() {
   });
 
   useEffect(() => {
-    if (!authLoading && user && slug && token && autoJoinStatus === "idle") {
+    if (!authLoading && joinableUser && slug && token && autoJoinStatus === "idle") {
       setAutoJoinStatus("loading");
       joinMutation.mutate();
     }
-  }, [authLoading, user, slug, token, autoJoinStatus]);
+  }, [authLoading, joinableUser, slug, token, autoJoinStatus]);
 
   // The community's RULE OF LIFE, fetched the moment a fresh join lands (the
   // joiner is a member now, so the members-only GET succeeds). When the group
@@ -569,8 +578,9 @@ export default function CommunityJoinPage() {
     );
   }
 
-  // Authenticated path — auto-join + simple confirmation
-  if (user) {
+  // Authenticated path — auto-join + simple confirmation. Device-local guests
+  // (incl. the anonymous device user) fall through to the signup/sign-in flow.
+  if (joinableUser) {
     const groupName = invite.group.name;
     // Fresh join into a community that keeps a RULE OF LIFE: the join moment
     // is the adoption moment. Hold here, show the rule card (its own adopt

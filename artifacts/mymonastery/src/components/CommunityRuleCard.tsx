@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { syncRoutineFromServer } from "@/lib/routineSync";
+import { adoptRoutineConfig } from "@/lib/routineSync";
 import { swellHaptic } from "@/lib/swellHaptic";
 
 type RuleSpec = {
@@ -72,7 +72,7 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
     try {
       const res = await apiRequest("POST", `/api/groups/${slug}/rule/adopt`, {}) as { ruleConfig?: Record<string, string> };
       // Mirror the rule onto THIS device so the home reflects it immediately.
-      syncRoutineFromServer({ values: res?.ruleConfig ?? {}, updatedAt: Date.now() });
+      adoptRoutineConfig(res?.ruleConfig);
       swellHaptic();
       setAdopted(true);
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });

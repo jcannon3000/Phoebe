@@ -740,7 +740,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, soloSilenceActive, silenceDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, scriptureActive, scriptureDone, prayerListActive, prayerListDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, journalingActive, journalingDone, cobreatheStandaloneActive, cobreatheDone, scriptureActive, scriptureDone, prayerListActive, prayerListDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -774,10 +774,10 @@ function DailyProgressPill() {
     // matching the two home cards, not a single aggregate "silence" dot (that
     // under-counted: 2 dots for 3 cards). Morning sits here; evening near Evening.
     ...(morningContemplationActive ? [{ key: "contemplation-morning", done: morningContemplationDone }] : []),
-    // The single aggregate silence GOAL card (no per-side contemplation) — its
-    // own dot so a "5 minutes of silence" rule is counted. Mutually exclusive
-    // with the per-side contemplation dots above.
-    ...(soloSilenceActive ? [{ key: "silence", done: silenceDone }] : []),
+    // The silence GOAL card exactly as the home renders it — the solo card, OR
+    // the goal-progress card riding alongside per-side Creation Prayer cards
+    // (whose own dots are the per-side entries above).
+    ...(silenceGoalCardActive ? [{ key: "silence", done: silenceGoalCardDone }] : []),
     // "Anytime" all-day anchors (rank right after morning): the daily-steps goal,
     // the prayer-list card, and any custom placed at "anytime" — each renders a
     // card, so each needs a dot or the pill under-counts the rhythm.
@@ -787,7 +787,9 @@ function DailyProgressPill() {
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
-    ...(cobreatheActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
+    // Standalone Co-Breathe only — when per-side Creation Prayer cards replace
+    // the standalone card, its dot would have no card (theirs are above).
+    ...(cobreatheStandaloneActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
     ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
     ...(lectioActive ? [{ key: "lectio", done: lectioDone }] : []),
     ...(scriptureActive ? [{ key: "scripture", done: scriptureDone }] : []),

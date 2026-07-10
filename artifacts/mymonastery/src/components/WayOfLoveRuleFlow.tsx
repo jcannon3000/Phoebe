@@ -934,7 +934,9 @@ export default function WayOfLoveRuleFlow({
     // office anchor (morning first); fall back to the first chosen side otherwise.
     const officeSides = SIDES.filter((s) => sides[s] && prayBySide[s] !== "none");
     const primarySide: OfficeSide = officeSides[0] ?? (sides.morning ? "morning" : "evening");
-    const wantLadder = silenceMode === "grow";
+    // The "grow toward 30" ladder was removed — always a fixed goal now, so the
+    // ladder is never enabled (and a returning grow-user is switched to fixed).
+    const wantLadder = false;
     const officePrefs = {
       defaultPrayerLevel: (() => {
         const lvl = PRAY_LEVEL[prayBySide[primarySide]];
@@ -1043,7 +1045,9 @@ export default function WayOfLoveRuleFlow({
     // Silence slide — the same standalone treatment the fixed dropdown gets (the
     // goal is written regardless of the later multi-select). Otherwise we
     // explicitly disable it so a previously-enabled ladder stops driving the goal.
-    const wantLadder = silenceMode === "grow";
+    // The "grow toward 30" ladder was removed — always a fixed goal now, so the
+    // ladder is never enabled (and a returning grow-user is switched to fixed).
+    const wantLadder = false;
     // PUBLIC no-login version: every guest commit writes the device-local
     // silence goal — the home's single "Silence" progress-bar card reads this
     // key, and the ANONYMOUS DEVICE USER is a guest too (keying on `!user`
@@ -1529,57 +1533,27 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 13, fontFamily: FONT, margin: "8px 0 0" }}>
           {t("wol_rule.silence_quote_attr", { defaultValue: "— Blaise Pascal" })}
         </p>
-        {/* GUESTS keep the minutes goal but not the ladder — "grow toward 30"
-            is a server feature (users.silence_ladder), so the public no-login
-            version offers the fixed dropdown only (silenceMode stays "fixed"). */}
-        {!guest && (
-          <>
-            <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "26px 0 10px" }}>
-              {t("wol_rule.silence_mode_label", { defaultValue: "How would you like to practice?" })}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {choiceRow(
-                silenceMode === "grow",
-                `🌱 ${t("wol_rule.silence_grow_title", { defaultValue: "Grow toward 30 min" })}`,
-                t("wol_rule.silence_grow_sub", { defaultValue: "Start at 5 minutes a day and increase by five minutes each week — gently, all the way to 30." }),
-                () => chooseSilenceMode("grow"),
-              )}
-              {choiceRow(
-                silenceMode === "fixed",
-                `🕯️ ${t("wol_rule.silence_fixed_title", { defaultValue: "A fixed amount" })}`,
-                t("wol_rule.silence_fixed_sub", { defaultValue: "Set the same daily goal and keep it." }),
-                () => chooseSilenceMode("fixed"),
-              )}
-            </div>
-          </>
-        )}
-        {(guest || silenceMode === "fixed") ? (
-          <>
-            <div style={{ position: "relative", marginTop: 16 }}>
-              <select
-                value={String(goalMin)}
-                onChange={(e) => chooseGoal(e.target.value)}
-                aria-label={t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
-                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-              >
-                <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
-                {/* Preserve a previously-saved non-standard goal (e.g. 144) as an option. */}
-                {goalMin > 0 && !GOAL_OPTIONS.includes(goalMin) && (
-                  <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
-                )}
-                {GOAL_OPTIONS.map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
-              </select>
-              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-            </div>
-            <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-              {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
-            </p>
-          </>
-        ) : (
-          <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "14px 0 0", lineHeight: 1.5 }}>
-            {t("wol_rule.silence_grow_note", { defaultValue: "Miss a single day and your place holds — grace for one. Miss two in a row and you ease back down 5 minutes. It's never measured against you." })}
-          </p>
-        )}
+        {/* Just the fixed daily-minutes goal — the "grow toward 30" ladder option
+            was removed (owner); everyone sets a fixed amount. */}
+        <div style={{ position: "relative", marginTop: 24 }}>
+          <select
+            value={String(goalMin)}
+            onChange={(e) => chooseGoal(e.target.value)}
+            aria-label={t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
+            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+          >
+            <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
+            {/* Preserve a previously-saved non-standard goal (e.g. 144) as an option. */}
+            {goalMin > 0 && !GOAL_OPTIONS.includes(goalMin) && (
+              <option value={String(goalMin)}>{t("wol_rule.n_min", { count: goalMin, defaultValue: `${goalMin} min` })}</option>
+            )}
+            {GOAL_OPTIONS.map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
+          </select>
+          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+        </div>
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
+          {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
+        </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );

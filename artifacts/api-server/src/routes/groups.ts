@@ -5174,9 +5174,20 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
       .from(practiceCompletionTable)
       .where(and(inArray(practiceCompletionTable.userId, memberIds), eq(practiceCompletionTable.weekStart, weekStart)));
     for (const r of completions) practiced.add(r.userId);
+    // A session counts as "practiced" when it was a COMPLETED office (the
+    // app-wide office invariant) or any other real practice of at least a
+    // minute — never a sub-minute glance (prayer-list opens log a session on
+    // sight so a brief look still records; that is not praying together).
     const sessions = await db.selectDistinct({ userId: prayerSessionsTable.userId })
       .from(prayerSessionsTable)
-      .where(and(inArray(prayerSessionsTable.userId, memberIds), gte(prayerSessionsTable.endedAt, sinceUtc)));
+      .where(and(
+        inArray(prayerSessionsTable.userId, memberIds),
+        gte(prayerSessionsTable.endedAt, sinceUtc),
+        or(
+          eq(prayerSessionsTable.completed, true),
+          and(ne(prayerSessionsTable.surface, "prayer-list"), gte(prayerSessionsTable.durationSeconds, 60)),
+        ),
+      ));
     for (const r of sessions) if (r.userId != null) practiced.add(r.userId);
     const amens = await db.selectDistinct({ userId: prayerRequestAmensTable.userId })
       .from(prayerRequestAmensTable)

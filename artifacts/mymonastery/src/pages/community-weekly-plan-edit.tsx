@@ -51,11 +51,16 @@ export default function CommunityWeeklyPlanEditPage() {
     if (!WEEKLY_PLAN_ENABLED) setLocation(`/communities/${slug}`, { replace: true });
   }, [slug, setLocation]);
 
-  const { data, isLoading, isError } = useQuery<{ items: ServerItem[] }>({
+  const { data, isLoading, isError } = useQuery<{ items: ServerItem[]; isAdmin?: boolean }>({
     queryKey: [`/api/groups/${slug}/weekly-plan`, weekStart],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/weekly-plan?weekStart=${weekStart}`),
     enabled: WEEKLY_PLAN_ENABLED,
   });
+  // Leaders only — a regular member reaching this URL directly would otherwise
+  // get the full composer whose Save silently 403s. Send them to the checklist.
+  useEffect(() => {
+    if (data && data.isAdmin === false) setLocation(`/communities/${slug}/weekly-plan`, { replace: true });
+  }, [data, slug, setLocation]);
 
   const [items, setItems] = useState<DraftItem[] | null>(null);
   // Seed the draft from the loaded week ONCE — after that, local edits win
@@ -90,6 +95,9 @@ export default function CommunityWeeklyPlanEditPage() {
       setLocation(`/communities/${slug}/weekly-plan`);
     },
   });
+  // Surface a failed save — without this the button just un-pends and the
+  // edits look like they vanished.
+  const saveFailed = save.isError;
 
   if (!WEEKLY_PLAN_ENABLED) return null;
 
@@ -160,6 +168,11 @@ export default function CommunityWeeklyPlanEditPage() {
               ))}
             </div>
 
+            {saveFailed && (
+              <p className="text-[12.5px] mb-2" style={{ color: "#C47A65", fontFamily: FONT }}>
+                Couldn't save — you need to be a leader of this community. Your edits are still here.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => save.mutate()}

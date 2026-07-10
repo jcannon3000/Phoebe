@@ -30,6 +30,10 @@ const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
 const ROUTINE_EXACT = [
   "phoebe:journaling-slot", "phoebe:scripture-scope", "phoebe:fdd-mode",
   "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
+  // Also written by the customizer's controls (breath-count picker) or carried
+  // in ROUTINE_KEYS — missing from this list, designing-for-others permanently
+  // overwrote the designer's own values and pushed them to their devices.
+  "phoebe:cobreathe-length", "phoebe:commitment-start",
 ];
 function isRoutineKey(k: string): boolean {
   return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.includes(k);

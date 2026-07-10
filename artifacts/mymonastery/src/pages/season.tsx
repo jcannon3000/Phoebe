@@ -14,7 +14,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { syncRoutineFromServer } from "@/lib/routineSync";
+import { adoptRoutineConfig } from "@/lib/routineSync";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
@@ -112,7 +112,7 @@ export default function SeasonPage() {
     try {
       await apiRequest("POST", `/api/creator/seasons/${token}/join`, {});
       // Mirror the practice onto THIS device so the home reflects it at once.
-      syncRoutineFromServer({ values: data.spec.ruleConfig ?? {}, updatedAt: Date.now() });
+      adoptRoutineConfig(data.spec.ruleConfig);
       swellHaptic();
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });

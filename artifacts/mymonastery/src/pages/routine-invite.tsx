@@ -11,7 +11,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { syncRoutineFromServer } from "@/lib/routineSync";
+import { adoptRoutineConfig } from "@/lib/routineSync";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 const WARM = "#F0EDE6";
@@ -83,7 +83,7 @@ export default function RoutineInvitePage() {
       await apiRequest("POST", `/api/prescribed-routines/${token}/accept`, {});
       // Mirror the routine onto THIS device so the home reflects it immediately
       // (the home reads office levels / slots straight from localStorage).
-      syncRoutineFromServer({ values: data.spec.ruleConfig ?? {}, updatedAt: Date.now() });
+      adoptRoutineConfig(data.spec.ruleConfig);
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
       qc.invalidateQueries({ queryKey: ["/api/me/silence-ladder"] });

@@ -72,6 +72,17 @@ export type RhythmState = {
    *  contemplation card is on) — its own dot in the pill, distinct from the two
    *  per-side contemplation dots. */
   soloSilenceActive: boolean;
+  /** The silence GOAL card as the home actually RENDERS it: the solo card, OR
+   *  the goal-progress card that rides ALONGSIDE per-side Creation Prayer
+   *  cards (whose blurbs never show minutes). Dot/count consumers must use
+   *  THIS (with silenceGoalCardDone), not soloSilenceActive, or the
+   *  creation-style goal card has no dot. */
+  silenceGoalCardActive: boolean;
+  silenceGoalCardDone: boolean;
+  /** The STANDALONE Co-Breathe card — false when per-side Creation Prayer
+   *  cards replace it (DailyProgressBody suppresses the standalone card then,
+   *  so a dot on bare cobreatheActive would have no card). */
+  cobreatheStandaloneActive: boolean;
   /** Per-side Contemplative Prayer — the Morning / Evening Contemplation cards.
    *  Each is its own card, kept independently (a sit from one side's card clears
    *  that side; evening stays visible after the morning sit meets the goal). */
@@ -669,6 +680,14 @@ export function useRhythmState(): RhythmState {
     : (silenceActive
       && (!morningContemplationActive || morningContemplationDone)
       && (!eveningContemplationActive || eveningContemplationDone));
+  // Creation Prayer (the breath) as the per-side style: the home suppresses the
+  // standalone Co-Breathe card (the per-side cards ARE it) but ALSO renders the
+  // minutes-goal card alongside (the breath cards never show goal progress).
+  // These two mirror those exact render rules so dots/counts match the cards.
+  const creationPerSide = contemplationStyle === "cobreathe" && (morningContemplationActive || eveningContemplationActive);
+  const silenceGoalCardActive = soloSilenceActive || (creationPerSide && contemplationGoalMin > 0);
+  const silenceGoalCardDone = contemplationMin >= contemplationGoalMin;
+  const cobreatheStandaloneActive = cobreatheActive && !creationPerSide;
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
@@ -703,13 +722,13 @@ export function useRhythmState(): RhythmState {
     // neither side carries a contemplation card (all guests; signed-in users
     // who set only the minutes goal), so it counts exactly one dot here and
     // the dots always match the cards.
-    ...(soloSilenceActive ? [silenceDone] : []),
+    ...(silenceGoalCardActive ? [silenceGoalCardDone] : []),
     ...reflections.map((r) => r.done),
     ...(eveningActive ? [eveningDone] : []),
     ...(eveningContemplationActive ? [eveningContemplationDone] : []),
   ];
   const extraFlags = [
-    ...(cobreatheActive ? [cobreatheDone] : []),
+    ...(cobreatheStandaloneActive ? [cobreatheDone] : []),
     ...(listeningActive ? [listeningDone] : []),
     ...(lectioActive ? [lectioDone] : []),
     ...(readingActive ? [readingDone] : []),
@@ -758,6 +777,9 @@ export function useRhythmState(): RhythmState {
     morningActive,
     silenceActive,
     soloSilenceActive,
+    silenceGoalCardActive,
+    silenceGoalCardDone,
+    cobreatheStandaloneActive,
     morningContemplationActive,
     eveningContemplationActive,
     morningContemplationDone,

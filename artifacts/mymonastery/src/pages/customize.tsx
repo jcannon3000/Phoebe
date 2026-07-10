@@ -60,8 +60,11 @@ function currentDailyPrayer(): DailyPrayer {
 
 export default function CustomizePage() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
-  const guest = isDeviceLocalGuest(user);
+  const { user, isLoading: authLoading } = useAuth();
+  // Wait for auth to settle before treating the session as a guest — while
+  // /auth/me is in flight `user` is null, which reads as guest and would run
+  // the guest-only self-heal (and paint guest fallbacks) for a signed-in user.
+  const guest = !authLoading && isDeviceLocalGuest(user);
   const qc = useQueryClient();
 
   // A still leaf backdrop, picked once — matching the office/psalms screens.
@@ -103,6 +106,9 @@ export default function CustomizePage() {
   const effectiveStepGoal = guest ? stepGoal : (officePrefs?.dailyStepGoal ?? stepGoal);
 
   const applyDailyPrayer = (choice: DailyPrayer) => {
+    // Re-selecting the current anchor is a no-op — without this, re-picking
+    // Contemplative Prayer would re-clobber an adjusted goal back to 20.
+    if (choice === dailyPrayer) return;
     setDailyPrayer(choice);
     if (choice === "creation") {
       // Creation Prayer IS the breath (Co-Breathe) as this side's prayer. It's a
@@ -189,7 +195,15 @@ export default function CustomizePage() {
   const applySteps = (goal: number) => {
     setStepGoalState(goal);
     if (guest) setGuestStepGoal(goal);
-    else void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: goal }).catch(() => { /* best-effort */ });
+    else {
+      // Update the cached office-prefs too — effectiveStepGoal prefers the
+      // fetched value (?? never falls through to local state since the server
+      // always returns a number), so without this the row snaps back to the
+      // stale goal until some later refetch.
+      qc.setQueryData(["/api/me/office-prefs"], (old: Record<string, unknown> | undefined) =>
+        ({ ...(old ?? {}), dailyStepGoal: goal }));
+      void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: goal }).catch(() => { /* best-effort */ });
+    }
   };
 
   // Contemplative Prayer counts silence as the day's TOTAL across two sits, so
