@@ -1645,11 +1645,34 @@ export default function WayOfLoveRuleFlow({
             return choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => {
               if (bcpOn) return; // already selected — nothing to switch
               touchedRef.current = true;
-              // Selecting BCP replaces any Creation Prayer on this side.
-              if (contemplationBySide[side] && contemplationStyle === "cobreathe") toggleContemplationSide(side);
+              // Selecting BCP replaces any per-side contemplation on this side
+              // (silent Contemplation OR the Creation Prayer breath).
+              if (contemplationBySide[side]) toggleContemplationSide(side);
               choosePrayBySide(side, bcpForm[side]);
             });
           })()}
+          {/* Contemplation — a silent sit as THIS side's prayer (same as the
+              basic /customize "Contemplative Prayer"). Clears the office and
+              rides the per-side contemplation slot with the "silent" style, so
+              the home shows a Morning/Evening Contemplation card (the sit timer).
+              Seeds the shared silence goal to 20 min (the day's total across the
+              two sits) and this side's length to 10 — the "two sessions split
+              the goal" default; both are adjustable on the next slides. */}
+          {choiceRow(
+            contemplationBySide[side] && contemplationStyle === "silent",
+            `🕯️ ${t("wol_rule.cp_contemplation", { defaultValue: "Contemplative Prayer" })}`,
+            t("wol_rule.cp_contemplation_sub", { defaultValue: "A silent sit — loving God in silence." }),
+            () => {
+              const on = contemplationBySide[side] && contemplationStyle === "silent";
+              if (on) return; // already selected — nothing to switch
+              touchedRef.current = true;
+              choosePrayBySide(side, "none");
+              if (!contemplationBySide[side]) toggleContemplationSide(side);
+              chooseContemplationStyle("silent");
+              chooseSideMinutes(side, 10);
+              if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
+            },
+          )}
           {/* Creation Prayer — picking it makes the 12-breath practice THIS side's
               prayer and REPLACES the office (clears prayBySide). It rides the
               per-side contemplation slot with the "cobreathe" style, so the home
