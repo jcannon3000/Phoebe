@@ -25,9 +25,9 @@ import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
 // invisibly layered on top so it's a real dropdown on tap. Writes straight to
 // the same device-local prefs the seeded guest rule + full customizer read, so
 // the home reflects a change immediately; nothing here requires an account.
-// A quiet "Customize more fully" link hands off to the full flow
-// (/pilot/build), which is ALREADY gated by GuestGate to require signing in
-// first — so this page is intentionally NOT in that gate's route set.
+// A quiet "Customize more fully" link hands off to the FULL rule-of-life
+// builder (/rule-of-life — an account is the unlock; guests route through
+// sign-in first). This page is intentionally NOT in GuestGate's route set.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -284,10 +284,12 @@ export default function CustomizePage() {
 
         {/* The full customizer needs an account. A guest goes to sign-in
             DIRECTLY (with a redirect back to the full flow) — not via
-            /pilot/build, which GuestGate now bounces back HERE (loop). A
-            signed-in light account skips the wall and goes straight in. */}
+            /rule-of-life, which GuestGate bounces back HERE for device-local
+            sessions (loop). A signed-in account goes straight to the FULL
+            rule-of-life builder (account = the unlock; /pilot/build is the
+            trimmed pilot variant and no longer the upgrade target). */}
         <Link
-          href={guest ? `/signin?mode=signup&redirect=${encodeURIComponent("/pilot/build")}` : "/pilot/build"}
+          href={guest ? `/signin?mode=signup&redirect=${encodeURIComponent("/rule-of-life")}` : "/rule-of-life"}
           className="mt-6 text-sm font-medium"
           style={{ color: SAGE, fontFamily: FONT }}
         >

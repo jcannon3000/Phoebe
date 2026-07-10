@@ -40,6 +40,8 @@ import {
   type DefaultOfficeEntry,
 } from "@/lib/officePrefs";
 import WayOfLoveRuleFlow from "@/components/WayOfLoveRuleFlow";
+import { useAuth } from "@/hooks/useAuth";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -339,6 +341,15 @@ export default function RuleOfLifePage() {
   // user, its "evening: none" default clobbers the seeded Evening side). We
   // hold rendering below until the shape is known.
   const { isGuest: guestFlow, isLoading: guestLoading } = useGuestMode();
+  // CREATING AN ACCOUNT UNLOCKS THE FULL BUILDER (owner, 2026-07-10): the
+  // guest/simple builder is for DEVICE-LOCAL sessions only (signed out or the
+  // anonymous device user — no durable account, plus the anonymous
+  // office-prefs hydration hazard above). An ordinary signed-in account keeps
+  // the light APP shape (useGuestMode still trims menus/social — that gate is
+  // about pilot groups), but gets the COMPLETE rule-of-life flow here:
+  // separate BCP slide, per-side lengths, the weekly Way of Love step.
+  const { user: authUser } = useAuth();
+  const builderGuest = guestFlow && isDeviceLocalGuest(authUser);
 
   // Public — the Rule of Life / customizer is open to all users. The beta gate
   // that redirected non-beta users to /dashboard was removed per request, so
@@ -870,16 +881,16 @@ export default function RuleOfLifePage() {
             reset-to-default, and a "Full customization" link into the complete
             slideshow. Signed-in customizers get the full flow directly. */}
         {!guestLoading && (
-          guestFlow && !showFullFlow ? (
+          builderGuest && !showFullFlow ? (
             <SimpleRuleEditor
               onFull={() => setShowFullFlow(true)}
               onDone={() => setLocation("/daily-progress")}
             />
           ) : (
             <WayOfLoveRuleFlow
-              guest={guestFlow}
+              guest={builderGuest}
               onBack={() =>
-                guestFlow && showFullFlow
+                builderGuest && showFullFlow
                   ? setShowFullFlow(false)
                   : result
                   ? setPhase("result")
