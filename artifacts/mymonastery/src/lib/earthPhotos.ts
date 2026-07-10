@@ -41,6 +41,27 @@ export const HOME_LEAF_PHOTOS = (() => {
   return home.length > 0 ? home : LEAF_PHOTOS;
 })();
 
+// The ANIMAL photos within the landscape library (matched by their unsplash
+// basename — stable across vite's content-hash suffix). Derived from the
+// owner's curated Pictures/Animals folder. PLANET_PHOTOS below is the
+// landscape set WITHOUT them — "the planet pictures, but not the animals"
+// (the office backdrop chooser's Planet option).
+const ANIMAL_PHOTO_IDS = [
+  "alli-elder-zX6X-6AUYhk", "annie-spratt-zoYsDbUC05o", "benaja-germann-xuq2Q3SPI-g",
+  "darien-attridge-byZUF1EMG9I", "david-clode--m9AEfF-u-s", "dick-hoogerdijk-D2Nx305s3lQ",
+  "doug-bagg-I6Qh6UAYazg", "edrick-krozendijk-25JxltstHSc", "janosch-diggelmann-axc38tRdjWI",
+  "jay-wennington-s-fD5Tpew2k", "joaquin-arenas-gpteT8d_XvE", "jonah-brown-ftyPhU-_hBY",
+  "luka-vilfan-tHxE679NPqE", "malivez-0UUoz7ZBdtY", "mario-scheibl-ZPCppeCA6x8",
+  "mauro-lima-eRzd4WEJitU", "nicolas-dc-DfPgOyU_VUE", "nir-himi-Imx5vhZVvgM",
+  "peter-thomas--O88zet1ZKc", "peter-thomas-ZSs1gspOSTc", "slava-auchynnikau-78qSZ56GqJM",
+  "smithsonian-f_fv4_u0EAY", "smithsonian-wqoTh96twsc", "tim-mossholder-8pvuxTJRgEg",
+  "valentin-vEqnu8hJkPM", "will-rust-ERm7haDBW8k",
+];
+export const PLANET_PHOTOS = (() => {
+  const planets = EARTH_PHOTOS.filter((url) => !ANIMAL_PHOTO_IDS.some((id) => url.includes(id)));
+  return planets.length > 0 ? planets : EARTH_PHOTOS;
+})();
+
 // One photo per calendar day — stable through a whole office sit (and across a
 // morning→evening pair on the same day), rotating gently day to day. Pass a date
 // for testing; defaults to today.
