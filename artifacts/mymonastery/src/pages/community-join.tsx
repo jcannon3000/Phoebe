@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { CommunityRuleCard } from "@/components/CommunityRuleCard";
 import { TermsBody } from "./terms";
 import { PrivacyBody } from "./privacy";
 
@@ -305,6 +306,17 @@ export default function CommunityJoinPage() {
     }
   }, [authLoading, user, slug, token, autoJoinStatus]);
 
+  // The community's RULE OF LIFE, fetched the moment a fresh join lands (the
+  // joiner is a member now, so the members-only GET succeeds). When the group
+  // keeps a rule, the join moment IS the adoption moment — the welcome screen
+  // offers it in one tap instead of silently redirecting home.
+  const { data: joinRule, isError: joinRuleError } = useQuery<{ rule: { label: string | null } | null }>({
+    queryKey: [`/api/groups/${slug}/rule`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/rule`),
+    enabled: autoJoinStatus === "success",
+    retry: false,
+  });
+
   // Already-logged-in visitors skip the onboarding slideshow entirely.
   // Once the auto-join resolves (success OR already-joined), drop them
   // straight on the community page. New signups still see the pre-
@@ -312,14 +324,16 @@ export default function CommunityJoinPage() {
   // `user` is null.
   useEffect(() => {
     // A fresh join lands on the home screen — the group's content already
-    // surfaces there, so there's no need to drop them on the group page.
+    // surfaces there, so there's no need to drop them on the group page —
+    // UNLESS the community keeps a rule of life: then we hold on this page
+    // and offer it (the render below), and the person continues themselves.
     // A returning member who re-opens an invite still goes to the group.
     if (autoJoinStatus === "success") {
-      setLocation("/dashboard");
+      if (joinRuleError || (joinRule && !joinRule.rule)) setLocation("/dashboard");
     } else if (autoJoinStatus === "already") {
       setLocation(`/communities/${slug}`);
     }
-  }, [autoJoinStatus, slug, setLocation]);
+  }, [autoJoinStatus, joinRule, joinRuleError, slug, setLocation]);
 
   // Effective email: pre-filled from invite on per-member tokens, user-entered
   // on community-wide tokens. Both forms use this single resolver.
@@ -558,13 +572,38 @@ export default function CommunityJoinPage() {
   // Authenticated path — auto-join + simple confirmation
   if (user) {
     const groupName = invite.group.name;
+    // Fresh join into a community that keeps a RULE OF LIFE: the join moment
+    // is the adoption moment. Hold here, show the rule card (its own adopt
+    // button does the work), and let the person continue when ready.
+    const offeringRule = autoJoinStatus === "success" && !!joinRule?.rule;
     return (
       <Layout>
         <div className="max-w-md mx-auto w-full text-center py-16">
           {(autoJoinStatus === "loading" || autoJoinStatus === "idle") && (
             <p className="text-sm" style={{ color: "#8FAF96" }}>{t("community_join.joining", { name: groupName })}</p>
           )}
-          {(autoJoinStatus === "success" || autoJoinStatus === "already") && (
+          {offeringRule && (
+            <>
+              <div className="text-5xl mb-4">{invite.group.emoji ?? "🏘️"}</div>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("community_join.welcome_to", { name: groupName })}
+              </h1>
+              <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
+                {t("community_join.keeps_rule", { defaultValue: "This community keeps a rule of life — one daily rhythm, prayed together. Take it up if you'd like; you can always shape your own." })}
+              </p>
+              <div className="text-left">
+                <CommunityRuleCard slug={slug} />
+              </div>
+              <button
+                onClick={() => setLocation("/dashboard")}
+                className="w-full px-6 py-3 rounded-xl text-sm font-semibold mt-2"
+                style={{ background: "rgba(46,107,64,0.16)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.3)" }}
+              >
+                {t("community_join.continue_home", { defaultValue: "Continue to home →" })}
+              </button>
+            </>
+          )}
+          {(!offeringRule && (autoJoinStatus === "success" || autoJoinStatus === "already")) && (
             <>
               <div className="text-5xl mb-4">{autoJoinStatus === "already" ? "✓" : "🏘️"}</div>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>

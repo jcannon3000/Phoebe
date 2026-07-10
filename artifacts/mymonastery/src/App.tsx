@@ -861,6 +861,11 @@ const GUEST_ALLOWED_PREFIX = [
   // Creator-season links (/season/:token) — the one-tap "take the practice
   // home" from a video description; the same no-account-wall rule applies.
   "/season/",
+  // Community invite links (/communities/join/:slug/:token) — the page has its
+  // own signup/sign-in flow for signed-out visitors, which the guest gate was
+  // bouncing to the dashboard before it could render. An invite link someone
+  // was HANDED must always open.
+  "/communities/join/",
 ];
 
 // The customizer routes (rule of life / pilot build / the questionnaire) that

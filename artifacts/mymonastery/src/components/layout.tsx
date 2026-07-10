@@ -20,6 +20,7 @@ import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
 import { isJardinSealed } from "@/lib/jardinMode";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
@@ -1420,6 +1421,10 @@ function OpeningSplash() {
           <p className="mt-5 text-[13px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
             Tap to begin →
           </p>
+          {/* Praying WITH each other — the aggregate week line (never who). */}
+          <div className="mt-6 flex justify-center">
+            <PrayedWithWeek />
+          </div>
         </motion.div>
       )}
       {/* Quote — the fallback once the day is kept. A single contemplative line
@@ -1444,6 +1449,10 @@ function OpeningSplash() {
           >
             {quote.author}
           </p>
+          {/* Praying WITH each other — the aggregate week line (never who). */}
+          <div className="mt-6 flex justify-center">
+            <PrayedWithWeek />
+          </div>
         </motion.div>
       )}
       {/* Fellows who have practiced today — any of the three coarse presence
