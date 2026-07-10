@@ -985,12 +985,19 @@ export default function WayOfLoveRuleFlow({
     ];
     const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
     const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
+    // The captured rule-config is the DESIGNER's device snapshot — strip keys
+    // that are personal state rather than routine structure. Without this,
+    // everyone adopting the rule inherits the designer's own 30-day
+    // commitment start (their "Day N of 30" opens mid-trial, or is wiped when
+    // the designer has none, since applying a config REMOVES omitted keys).
+    const ruleConfig = collectRoutineValues();
+    delete ruleConfig["phoebe:commitment-start"];
     return {
       v: 1,
       officePrefs,
       silenceLadderEnabled: wantLadder,
       homeLayout: { order, hidden, v: HOME_LAYOUT_VERSION },
-      ruleConfig: collectRoutineValues(),
+      ruleConfig,
     };
   };
 
@@ -2126,9 +2133,23 @@ export default function WayOfLoveRuleFlow({
           </>
         )}
 
-        {/* (An Audio Divina "bonus practice" row briefly lived here for guests;
-            the owner re-reversed on 2026-07-02 — the PUBLIC version has NO
-            Audio Divina anywhere. Listen to Scripture stays.) */}
+        {/* Audio Divina — sacred listening (bring your own music, logged by the
+            minute). An optional add-on the user can switch on here (owner); when
+            on it becomes its own home card at its chosen slot. Shown on the main
+            custom slide, not the add-a-practice sub-slide. */}
+        {!addingCustom && (
+          <div style={{ marginTop: 22 }}>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
+              {t("wol_rule.custom_more", { defaultValue: "Or add a practice we've made" })}
+            </p>
+            {choiceRow(
+              contemplative.audio,
+              `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`,
+              t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening — a few minutes with music, held as prayer." }),
+              () => toggleContemplative("audio"),
+            )}
+          </div>
+        )}
 
         {/* Bottom: the add sub-slide just returns to the list; otherwise Save. */}
         {addingCustom ? (
