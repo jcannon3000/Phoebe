@@ -18,6 +18,7 @@ import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 import { swellHaptic } from "@/lib/swellHaptic";
+import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
@@ -40,9 +41,13 @@ function useEnabledWeekly(): WeeklyKind[] {
     const sync = () => setEnabled(getEnabledWeekly());
     window.addEventListener(WEEKLY_ENABLED_EVENT, sync);
     window.addEventListener("storage", sync);
+    // The key now rides rule_config — re-read when a device sync / a rule
+    // adopt applies it (adoptRoutineConfig / syncRoutineFromServer).
+    window.addEventListener(ROUTINE_SYNCED_EVENT, sync);
     return () => {
       window.removeEventListener(WEEKLY_ENABLED_EVENT, sync);
       window.removeEventListener("storage", sync);
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, sync);
     };
   }, []);
   return enabled;

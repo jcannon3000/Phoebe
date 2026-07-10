@@ -7570,8 +7570,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 <HomeLearnSection />
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
                     private self-logs, a separate band below the daily spine.
-                    Beta only for now. */}
-                {isBeta && <WeeklyRhythm />}
+                    Self-hides until the customizer's weekly step enables one. */}
+                <WeeklyRhythm />
                 </>
               )}
             </div>

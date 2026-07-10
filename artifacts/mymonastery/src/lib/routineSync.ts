@@ -48,6 +48,11 @@ const ROUTINE_KEYS: string[] = [
   // "Day N of 30" agrees across the user's devices instead of each device
   // starting its own trial.
   "phoebe:commitment-start",
+  // The Way of Love WEEKLY practices the user keeps (lib/weeklyRhythm.ts —
+  // Commune/Go/Bless/Rest, a JSON array). Synced so the "This week" band
+  // matches across devices, and carried into prescribed/community rules so a
+  // rule of life can include a weekly rhythm too.
+  "phoebe:weekly-practices",
 ];
 
 const UPDATED_AT_KEY = "phoebe:routine:updated-at";

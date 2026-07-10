@@ -1336,8 +1336,10 @@ export default function WayOfLoveRuleFlow({
     // preserved by commit (the extras/contemplative state seeds from the saved
     // layout); this only stops the customizer from ADDING more.
     "custom",
-    // (The final "weekly Way of Love rhythm" step was removed per owner — the
-    // customizer ends on "custom" and saves.)
+    // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
+    // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
+    // Each pick adds a card to the home's "This week" band, logged with a tap.
+    "weekly",
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
@@ -2157,10 +2159,12 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            {/* The customizer ends on "custom" — Save the rhythm (the old
-                weekly-rhythm follow-up step was removed). */}
-            <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-              {t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
+            {/* When the weekly step follows (main flow), Continue there; the
+                pilot/guest flows still end here and save. */}
+            <button onClick={orderedSteps.includes("weekly") ? goNext : commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {orderedSteps.includes("weekly")
+                ? t("ruleOfLife.continue", { defaultValue: "Continue" })
+                : t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
             </button>
             <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
