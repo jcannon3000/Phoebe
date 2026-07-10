@@ -53,6 +53,9 @@ const ROUTINE_KEYS: string[] = [
   // matches across devices, and carried into prescribed/community rules so a
   // rule of life can include a weekly rhythm too.
   "phoebe:weekly-practices",
+  // The optional rest WINDOW ("an event to rest" — day lives in users.restDays,
+  // the time window here). Rides rules so a community's rule can carry it.
+  "phoebe:rest-window",
 ];
 
 const UPDATED_AT_KEY = "phoebe:routine:updated-at";

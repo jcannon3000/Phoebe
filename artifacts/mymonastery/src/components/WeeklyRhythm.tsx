@@ -2,12 +2,13 @@
  * "This week" — the WEEKLY rhythm of the Way of Love (Commune · Go · Bless ·
  * Rest), kept as private self-logs alongside the daily rhythm. Beta only.
  *
- * This is presence, not performance. Each practice is a quiet card you tap to
- * log for yourself — who you communed with, where you went, how you blessed,
- * the day you rested. There is no sharing, no streak, no shortfall. A kept
- * practice shows a soft ✓ for the week and resets gently on Sunday. Rest is the
- * one with a "when": you set the day you'll rest (the same phone-sabbath
- * `restDays`) and the app holds it with you.
+ * This is presence, not performance. Commune / Go / Bless are ONE-TAP logs
+ * (owner): the card carries the invitation, tapping it marks the week kept,
+ * tapping again un-marks it — a log, not a journal. There is no sharing, no
+ * streak, no shortfall; a kept practice shows a soft ✓ and resets gently on
+ * Sunday. Rest is the one with a "when": its sheet is a small PLANNER — the
+ * day you'll rest (the same phone-sabbath `restDays`) plus an optional TIME
+ * WINDOW, held like an appointment ("an event to rest"), and a one-tap mark.
  *
  * Sits below the daily rhythm on the home (a separate band — the daily office
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
@@ -18,7 +19,7 @@ import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 import { swellHaptic } from "@/lib/swellHaptic";
-import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
+import { ROUTINE_SYNCED_EVENT, pushRoutineConfig } from "@/lib/routineSync";
 import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
@@ -28,6 +29,10 @@ import {
   keptThisWeek,
   primarySabbathDay,
   todayISO,
+  getRestWindow,
+  setRestWindow,
+  formatWindow,
+  type RestWindow,
   type WeeklyKind,
   type WeeklyPractice,
   type PracticeLogEntry,
@@ -66,6 +71,34 @@ export function WeeklyRhythm() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState<WeeklyKind | null>(null);
+  // The optional rest window — re-read when the planner (or a device sync /
+  // rule adopt) changes it.
+  const [restWindow, setRestWindowState] = useState<RestWindow | null>(() => getRestWindow());
+  useEffect(() => {
+    const sync = () => setRestWindowState(getRestWindow());
+    window.addEventListener(WEEKLY_ENABLED_EVENT, sync);
+    window.addEventListener(ROUTINE_SYNCED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(WEEKLY_ENABLED_EVENT, sync);
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  // One-tap log for Commune / Go / Bless: tap → kept this week; tap again →
+  // un-kept (delete the week's entry). A log, not a journal.
+  const toggle = useMutation({
+    mutationFn: async ({ kind, kept }: { kind: WeeklyKind; kept: PracticeLogEntry | null }) => {
+      if (kept) await apiRequest("DELETE", `/api/practice-log/${kind}/${kept.id}`);
+      else await apiRequest("POST", `/api/practice-log/${kind}`, { day: todayISO(), what: "", notes: "" });
+      return kind;
+    },
+    onSuccess: (kind, vars) => {
+      if (!vars.kept) swellHaptic();
+      qc.invalidateQueries({ queryKey: logKey(kind) });
+    },
+  });
 
   // Only the practices the user has turned on in the customizer appear here.
   const enabled = useEnabledWeekly();
@@ -109,7 +142,11 @@ export function WeeklyRhythm() {
               practice={p}
               kept={kept}
               sabbathDay={sabbath}
-              onClick={() => setOpen(p.kind)}
+              restWindow={p.kind === "rest" ? restWindow : null}
+              // Rest opens its planner; the others are one-tap logs.
+              onClick={p.kind === "rest"
+                ? () => setOpen("rest")
+                : () => { if (!toggle.isPending) toggle.mutate({ kind: p.kind, kept }); }}
             />
           );
         })}
@@ -135,20 +172,22 @@ function WeeklyCard({
   practice,
   kept,
   sabbathDay,
+  restWindow,
   onClick,
 }: {
   practice: WeeklyPractice;
   kept: PracticeLogEntry | null;
   sabbathDay: number | null;
+  restWindow: RestWindow | null;
   onClick: () => void;
 }) {
   // The card's second line: once kept this week, say so; otherwise the
-  // invitation. For Rest, surface the chosen sabbath day when there is one.
+  // invitation. For Rest, surface the planned rest — day + optional window.
   let sub: string;
   if (kept) {
     sub = kept.what?.trim() ? `${practice.keptLabel} — ${kept.what.trim()}` : practice.keptLabel;
   } else if (practice.kind === "rest" && sabbathDay !== null) {
-    sub = `Your sabbath is ${WEEKDAY_FULL[sabbathDay]}`;
+    sub = `Your sabbath is ${WEEKDAY_FULL[sabbathDay]}${restWindow ? ` · ${formatWindow(restWindow)}` : ""}`;
   } else {
     sub = practice.prompt;
   }
@@ -203,23 +242,26 @@ function LogSheet({
   onLogged: () => void;
 }) {
   const qc = useQueryClient();
-  const [what, setWhat] = useState("");
-  const [notes, setNotes] = useState("");
   const [closing, setClosing] = useState(false);
   const kept = keptThisWeek(entries);
-  const isRest = practice.kind === "rest";
+  // The optional TIME WINDOW — rest held like an appointment. Persisted the
+  // moment both ends are set (and synced across devices via the routine keys).
+  const [win, setWin] = useState<RestWindow | null>(() => getRestWindow());
+  const saveWindow = (next: RestWindow | null) => {
+    setWin(next);
+    setRestWindow(next);
+    pushRoutineConfig();
+  };
 
   const logMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", `/api/practice-log/${practice.kind}`, {
         day: todayISO(),
-        what: what.trim(),
-        notes: notes.trim(),
+        what: "",
+        notes: "",
       }),
     onSuccess: () => {
       swellHaptic();
-      setWhat("");
-      setNotes("");
       onLogged();
     },
   });
@@ -287,7 +329,7 @@ function LogSheet({
           {practice.prompt}
         </p>
 
-        {isRest && (
+        {(
           <div className="mb-5">
             <p className="text-[12px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
               The day you'll rest
@@ -329,68 +371,68 @@ function LogSheet({
           </div>
         )}
 
-        {/* the log field */}
-        <label className="block text-[13px] font-medium mb-1.5" style={{ color: "rgba(240,237,230,0.8)", fontFamily: FONT }}>
-          {practice.askLabel}
-        </label>
-        <input
-          type="text"
-          value={what}
-          onChange={(e) => setWhat(e.target.value)}
-          placeholder={practice.askPlaceholder}
-          className="w-full rounded-xl px-3.5 py-3 text-[15px] mb-3 outline-none"
-          style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT }}
-        />
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="A note, if you'd like (optional)"
-          rows={2}
-          className="w-full rounded-xl px-3.5 py-3 text-[14px] mb-4 outline-none resize-none"
-          style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT }}
-        />
+        {/* A time window — rest as an EVENT you keep, not an afterthought.
+            Optional: pick From + To and it's held with the day; Clear drops it. */}
+        <div className="mb-6">
+          <p className="text-[12px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
+            A time to rest (optional)
+          </p>
+          <div className="flex items-center gap-2.5">
+            <input
+              type="time"
+              value={win?.start ?? ""}
+              onChange={(e) => {
+                const start = e.target.value;
+                if (start && win?.end) saveWindow({ start, end: win.end });
+                else setWin(start ? { start, end: win?.end ?? "" } : null);
+              }}
+              aria-label="Rest starts"
+              className="flex-1 rounded-xl px-3 py-2.5 text-[15px] outline-none"
+              style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, colorScheme: "dark" }}
+            />
+            <span style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 13 }}>to</span>
+            <input
+              type="time"
+              value={win?.end ?? ""}
+              onChange={(e) => {
+                const end = e.target.value;
+                if (end && win?.start) saveWindow({ start: win.start, end });
+                else setWin(end ? { start: win?.start ?? "", end } : null);
+              }}
+              aria-label="Rest ends"
+              className="flex-1 rounded-xl px-3 py-2.5 text-[15px] outline-none"
+              style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, colorScheme: "dark" }}
+            />
+            {(win?.start || win?.end) && (
+              <button
+                type="button"
+                onClick={() => saveWindow(null)}
+                className="text-[12px] shrink-0 px-1 transition-opacity active:opacity-60"
+                style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+            {win?.start && win?.end
+              ? `Held for you: ${formatWindow(win)}.`
+              : "A window your rest can live in — like an appointment with quiet."}
+          </p>
+        </div>
+
+        {/* One-tap mark, one-tap undo — a log, not a journal. */}
         <button
           type="button"
-          disabled={logMutation.isPending || (!isRest && what.trim() === "")}
-          onClick={() => logMutation.mutate()}
+          disabled={logMutation.isPending || deleteMutation.isPending}
+          onClick={() => (kept ? deleteMutation.mutate(kept.id) : logMutation.mutate())}
           className="w-full rounded-xl py-3.5 text-[15px] font-semibold transition-opacity active:opacity-80 disabled:opacity-45"
-          style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }}
+          style={kept
+            ? { background: "rgba(46,107,64,0.3)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }
+            : { background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }}
         >
-          {isRest ? "Mark this week kept" : "Log it for this week"}
+          {kept ? "Rested this week ✓ — tap to undo" : "Mark this week kept"}
         </button>
-
-        {/* this week + recent — for yourself, quietly */}
-        {entries.length > 0 && (
-          <div className="mt-6">
-            <p className="text-[11px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
-              Lately
-            </p>
-            <div className="space-y-1.5">
-              {entries.slice(0, 8).map((e) => (
-                <div key={e.id} className="flex items-start gap-2 rounded-xl px-3 py-2" style={{ background: "rgba(9,26,16,0.4)" }}>
-                  <div className="flex-1 min-w-0">
-                    {e.what?.trim() && (
-                      <p className="text-[13.5px]" style={{ color: "rgba(240,237,230,0.9)", fontFamily: FONT }}>{e.what.trim()}</p>
-                    )}
-                    {e.notes?.trim() && (
-                      <p className="text-[12.5px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>{e.notes.trim()}</p>
-                    )}
-                    <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>{e.day}</p>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label="Remove"
-                    onClick={() => deleteMutation.mutate(e.id)}
-                    className="text-[13px] shrink-0 px-1.5 transition-opacity active:opacity-60"
-                    style={{ color: "rgba(143,175,150,0.5)" }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </motion.div>
     </motion.div>
   );

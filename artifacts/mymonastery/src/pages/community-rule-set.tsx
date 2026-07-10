@@ -28,7 +28,7 @@ const ROUTINE_EXACT = [
   // Also written by the customizer's controls (breath-count picker) or carried
   // in ROUTINE_KEYS — missing from this list, designing-for-others permanently
   // overwrote the designer's own values and pushed them to their devices.
-  "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices",
+  "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
 ];
 function isRoutineKey(k: string): boolean {
   return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.includes(k);

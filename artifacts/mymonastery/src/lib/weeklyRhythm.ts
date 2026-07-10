@@ -109,6 +109,50 @@ export function keptThisWeek(entries: PracticeLogEntry[] | undefined): PracticeL
   return null;
 }
 
+// ── The rest WINDOW — "an event to rest" ──────────────────────────────
+// Optional: alongside the day you'll rest (users.restDays), you can set a
+// TIME WINDOW for it — e.g. Saturday 2:00–6:00 PM — so rest is held like an
+// appointment, not an afterthought. Stored as a routine key (ROUTINE_KEYS in
+// lib/routineSync), so it syncs across devices and rides community rules /
+// preset links: a rule of life can carry its rest window.
+const REST_WINDOW_KEY = "phoebe:rest-window";
+export type RestWindow = { start: string; end: string }; // "HH:MM" 24h
+
+const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export function getRestWindow(): RestWindow | null {
+  try {
+    const raw = localStorage.getItem(REST_WINDOW_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RestWindow;
+    if (parsed && HHMM_RE.test(parsed.start ?? "") && HHMM_RE.test(parsed.end ?? "")) return parsed;
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function setRestWindow(w: RestWindow | null): void {
+  try {
+    if (w && HHMM_RE.test(w.start) && HHMM_RE.test(w.end)) {
+      localStorage.setItem(REST_WINDOW_KEY, JSON.stringify({ start: w.start, end: w.end }));
+    } else {
+      localStorage.removeItem(REST_WINDOW_KEY);
+    }
+    window.dispatchEvent(new Event(WEEKLY_ENABLED_EVENT));
+  } catch { /* private mode */ }
+}
+
+// "14:00" → "2:00 PM" (the card + sheet display format).
+export function formatHHMM(hhmm: string): string {
+  const [hStr, m] = hhmm.split(":");
+  const h = parseInt(hStr ?? "0", 10);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m} ${ampm}`;
+}
+export function formatWindow(w: RestWindow): string {
+  return `${formatHHMM(w.start)}–${formatHHMM(w.end)}`;
+}
+
 // ── Which weekly practices are turned on ──────────────────────────────
 // Opt-in, like the daily extras: a practice only appears in the "This week"
 // band once the user enables it in the customizer. Stored on its own

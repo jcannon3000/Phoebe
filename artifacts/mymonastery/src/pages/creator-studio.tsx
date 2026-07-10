@@ -32,7 +32,7 @@ const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
 const ROUTINE_EXACT = [
   "phoebe:journaling-slot", "phoebe:scripture-scope", "phoebe:fdd-mode",
   "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
-  "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices",
+  "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
 ];
 function isRoutineKey(k: string): boolean {
   return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.includes(k);
