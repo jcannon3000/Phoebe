@@ -1,0 +1,265 @@
+// Creator seasons — a creator turns the practice their content inspired into a
+// BOUNDED 2–4 week season people actually live:
+//   • one-tap join link (/season/:token) — joining APPLIES the practice
+//     (prescribed-routines spec, shared apply machinery) and adds the person
+//     to the cohort
+//   • a cohort-shared Day-N clock (everyone counts from the same start_ymd —
+//     finite is the point)
+//   • one daily check-in per member; the group witnesses TODAY's count +
+//     first names (presence, not a scoreboard — no history is surfaced)
+//   • short async notes from the creator, a few times a week (one-way)
+// Creation is super-admin gated for now ("Creator" in Admin tools).
+import { Router, type IRouter } from "express";
+import crypto from "crypto";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import {
+  db,
+  creatorSeasonsTable,
+  creatorSeasonMembersTable,
+  creatorSeasonNotesTable,
+  creatorSeasonCheckinsTable,
+  usersTable,
+} from "@workspace/db";
+import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
+import { isSuperAdminUser } from "../lib/superAdmin";
+
+const router: IRouter = Router();
+
+function getUserId(req: unknown): number | null {
+  const u = (req as { user?: { id?: number } }).user;
+  return u && typeof u.id === "number" ? u.id : null;
+}
+
+const TOKEN_RE = /^[a-f0-9]{32}$/i;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Day N of the season for a local calendar day: 1 on start_ymd. 0/negative =
+// hasn't started; > durationDays = finished. Pure calendar-string math (both
+// sides are YYYY-MM-DD) so timezones can't skew it.
+function dayNumber(startYmd: string, todayYmd: string): number {
+  const start = Date.parse(`${startYmd}T00:00:00Z`);
+  const today = Date.parse(`${todayYmd}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(today)) return 0;
+  return Math.round((today - start) / 86_400_000) + 1;
+}
+
+// The caller's local day, from an optional ?ymd= (validated) falling back to
+// server UTC — same viewer-tz convention as the other check-in surfaces.
+function callerYmd(raw: unknown): string {
+  if (typeof raw === "string" && YMD_RE.test(raw)) return raw;
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ── POST /api/creator/seasons — create (super admin) ─────────────────────────
+router.post("/creator/seasons", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isSuperAdminUser(me))) { res.status(403).json({ error: "Admin access required" }); return; }
+  const body = (req.body ?? {}) as {
+    title?: unknown; creatorName?: unknown; description?: unknown;
+    spec?: unknown; durationDays?: unknown; startYmd?: unknown;
+  };
+  const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
+  const creatorName = typeof body.creatorName === "string" ? body.creatorName.trim().slice(0, 80) : "";
+  if (!title || !creatorName) { res.status(400).json({ error: "title and creatorName required" }); return; }
+  const description = typeof body.description === "string" ? body.description.trim().slice(0, 1000) || null : null;
+  const spec = sanitizeSpec(body.spec);
+  if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
+  // 2–4 weeks; finite is the point.
+  const durationDays = typeof body.durationDays === "number" && Number.isFinite(body.durationDays)
+    ? Math.max(7, Math.min(28, Math.round(body.durationDays))) : 21;
+  const startYmd = typeof body.startYmd === "string" && YMD_RE.test(body.startYmd)
+    ? body.startYmd : new Date().toISOString().slice(0, 10);
+  const token = crypto.randomBytes(16).toString("hex");
+  try {
+    const [row] = await db.insert(creatorSeasonsTable).values({
+      token, title, creatorName, description, spec, durationDays, startYmd, createdByUserId: me,
+    }).returning({ id: creatorSeasonsTable.id });
+    res.json({ id: row?.id, token, url: `https://withphoebe.app/season/${token}` });
+  } catch (err) {
+    console.error("[creator-seasons] create failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── GET /api/creator/seasons — list (super admin OR beta; the studio index) ──
+router.get("/creator/seasons", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const rows = await db.select({
+      id: creatorSeasonsTable.id,
+      token: creatorSeasonsTable.token,
+      title: creatorSeasonsTable.title,
+      creatorName: creatorSeasonsTable.creatorName,
+      durationDays: creatorSeasonsTable.durationDays,
+      startYmd: creatorSeasonsTable.startYmd,
+      createdAt: creatorSeasonsTable.createdAt,
+    }).from(creatorSeasonsTable).orderBy(desc(creatorSeasonsTable.createdAt)).limit(50);
+    const ids = rows.map((r) => r.id);
+    const counts = ids.length > 0
+      ? await db.select({
+          seasonId: creatorSeasonMembersTable.seasonId,
+          n: sql<number>`count(*)::int`,
+        }).from(creatorSeasonMembersTable)
+          .where(inArray(creatorSeasonMembersTable.seasonId, ids))
+          .groupBy(creatorSeasonMembersTable.seasonId)
+      : [];
+    const byId = new Map(counts.map((c) => [c.seasonId, Number(c.n)]));
+    res.json({ seasons: rows.map((r) => ({ ...r, memberCount: byId.get(r.id) ?? 0 })) });
+  } catch (err) {
+    console.error("[creator-seasons] list failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── GET /api/creator/seasons/:token — public landing + member day view ───────
+// One endpoint for both: the landing fields are public; when the caller is a
+// member it also carries the day's check-in state, today's witnesses, and the
+// creator's notes.
+router.get("/creator/seasons/:token", async (req, res): Promise<void> => {
+  const token = req.params.token;
+  if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
+  try {
+    const [season] = await db.select().from(creatorSeasonsTable)
+      .where(eq(creatorSeasonsTable.token, token)).limit(1);
+    if (!season) { res.status(404).json({ error: "Not found" }); return; }
+
+    const [{ n: memberCount }] = await db.select({ n: sql<number>`count(*)::int` })
+      .from(creatorSeasonMembersTable).where(eq(creatorSeasonMembersTable.seasonId, season.id));
+
+    const me = getUserId(req);
+    let membership: { joined: boolean } | null = null;
+    let today: { ymd: string; day: number; checkedIn: boolean; keptCount: number; keptNames: string[] } | null = null;
+    let notes: Array<{ id: number; body: string; createdAt: Date | null }> | null = null;
+    if (me) {
+      const [m] = await db.select({ id: creatorSeasonMembersTable.id }).from(creatorSeasonMembersTable)
+        .where(and(eq(creatorSeasonMembersTable.seasonId, season.id), eq(creatorSeasonMembersTable.userId, me)));
+      membership = { joined: !!m };
+      if (m) {
+        const ymd = callerYmd(req.query.ymd);
+        const day = dayNumber(season.startYmd, ymd);
+        const kept = await db.select({
+          userId: creatorSeasonCheckinsTable.userId,
+          name: usersTable.name,
+        }).from(creatorSeasonCheckinsTable)
+          .innerJoin(usersTable, eq(usersTable.id, creatorSeasonCheckinsTable.userId))
+          .where(and(eq(creatorSeasonCheckinsTable.seasonId, season.id), eq(creatorSeasonCheckinsTable.ymd, ymd)))
+          .limit(200);
+        // First names only — witnessing, not identifying.
+        const keptNames = kept.filter((k) => k.userId !== me)
+          .map((k) => (k.name ?? "Someone").split(/\s+/)[0] ?? "Someone").slice(0, 12);
+        today = {
+          ymd, day,
+          checkedIn: kept.some((k) => k.userId === me),
+          keptCount: kept.length,
+          keptNames,
+        };
+        const noteRows = await db.select({
+          id: creatorSeasonNotesTable.id,
+          body: creatorSeasonNotesTable.body,
+          createdAt: creatorSeasonNotesTable.createdAt,
+        }).from(creatorSeasonNotesTable)
+          .where(eq(creatorSeasonNotesTable.seasonId, season.id))
+          .orderBy(desc(creatorSeasonNotesTable.createdAt)).limit(30);
+        notes = noteRows;
+      }
+    }
+
+    res.json({
+      title: season.title,
+      creatorName: season.creatorName,
+      description: season.description,
+      durationDays: season.durationDays,
+      startYmd: season.startYmd,
+      memberCount: Number(memberCount ?? 0),
+      spec: season.spec,
+      joined: membership?.joined ?? false,
+      today,
+      notes,
+    });
+  } catch (err) {
+    console.error("[creator-seasons] get failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── POST /api/creator/seasons/:token/join — apply the practice + enter cohort ─
+router.post("/creator/seasons/:token/join", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const token = req.params.token;
+  if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
+  try {
+    const [season] = await db.select({ id: creatorSeasonsTable.id, spec: creatorSeasonsTable.spec })
+      .from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
+    if (!season) { res.status(404).json({ error: "Not found" }); return; }
+    const spec = sanitizeSpec(season.spec);
+    if (!spec) { res.status(422).json({ error: "Season is no longer valid" }); return; }
+    await applyRoutineSpecToUser(me, spec);
+    await db.insert(creatorSeasonMembersTable)
+      .values({ seasonId: season.id, userId: me })
+      .onConflictDoNothing();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[creator-seasons] join failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── POST /api/creator/seasons/:token/checkin — "I kept it today" ─────────────
+router.post("/creator/seasons/:token/checkin", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const token = req.params.token;
+  if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
+  try {
+    const [season] = await db.select({
+      id: creatorSeasonsTable.id,
+      startYmd: creatorSeasonsTable.startYmd,
+      durationDays: creatorSeasonsTable.durationDays,
+    }).from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
+    if (!season) { res.status(404).json({ error: "Not found" }); return; }
+    const [m] = await db.select({ id: creatorSeasonMembersTable.id }).from(creatorSeasonMembersTable)
+      .where(and(eq(creatorSeasonMembersTable.seasonId, season.id), eq(creatorSeasonMembersTable.userId, me)));
+    if (!m) { res.status(403).json({ error: "Join the season first" }); return; }
+    const ymd = callerYmd((req.body ?? {}).ymd);
+    const day = dayNumber(season.startYmd, ymd);
+    // The season is bounded — check-ins only count inside it.
+    if (day < 1 || day > season.durationDays) { res.status(409).json({ error: "Season is not active today" }); return; }
+    await db.insert(creatorSeasonCheckinsTable)
+      .values({ seasonId: season.id, userId: me, ymd })
+      .onConflictDoNothing();
+    res.json({ ok: true, day });
+  } catch (err) {
+    console.error("[creator-seasons] checkin failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ── POST /api/creator/seasons/:token/notes — creator's async note ────────────
+router.post("/creator/seasons/:token/notes", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const token = req.params.token;
+  if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
+  try {
+    const [season] = await db.select({ id: creatorSeasonsTable.id, createdByUserId: creatorSeasonsTable.createdByUserId })
+      .from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
+    if (!season) { res.status(404).json({ error: "Not found" }); return; }
+    // The season's creator, or any super admin (operators posting on a
+    // creator's behalf while creation is operator-run).
+    if (season.createdByUserId !== me && !(await isSuperAdminUser(me))) {
+      res.status(403).json({ error: "Only the creator can post notes" }); return;
+    }
+    const body = typeof (req.body ?? {}).body === "string" ? ((req.body as { body: string }).body).trim().slice(0, 2000) : "";
+    if (!body) { res.status(400).json({ error: "body required" }); return; }
+    await db.insert(creatorSeasonNotesTable).values({ seasonId: season.id, authorUserId: me, body });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[creator-seasons] note failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+export default router;

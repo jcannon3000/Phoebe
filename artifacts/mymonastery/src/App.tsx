@@ -449,6 +449,8 @@ const CommunityWeeklyPlanPage = lazy(() => import("./pages/community-weekly-plan
 const CommunityWeeklyPlanEditPage = lazy(() => import("./pages/community-weekly-plan-edit"));
 const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
+const CreatorStudioPage = lazy(() => import("./pages/creator-studio"));
+const SeasonPage = lazy(() => import("./pages/season"));
 const CompanionInvitePage = lazy(() => import("./pages/companion-invite"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
@@ -855,6 +857,9 @@ const GUEST_ALLOWED_PREFIX = [
   // account; a truly session-less visitor still sees the landing and the
   // accept simply asks them to try again after the app provisions one.
   "/routine/",
+  // Creator-season links (/season/:token) — the one-tap "take the practice
+  // home" from a video description; the same no-account-wall rule applies.
+  "/season/",
 ];
 
 // The customizer routes (rule of life / pilot build / the questionnaire) that
@@ -1157,6 +1162,10 @@ function Router() {
       <Route path="/invite/:token" component={InvitePage} />
       <Route path="/fellow/:token" component={FellowInvitePage} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
+      {/* Creator seasons — /creator (studio: super admins create, beta can see)
+          + /season/:token (public landing → join → the cohort's day view). */}
+      <Route path="/creator" component={CreatorStudioPage} />
+      <Route path="/season/:token" component={SeasonPage} />
       <Route path="/companion/:token" component={CompanionInvitePage} />
       <Route path="/letter/:id" component={LetterSplash} />
       <Route path="/letters" component={LettersPage} />

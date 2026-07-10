@@ -198,6 +198,15 @@ export default function AdminToolsPage() {
                 onClick={() => setLocation("/menu/jardin")}
               />
             )}
+            {/* Creator — super admins design seasons; beta users can see them. */}
+            {(isAdmin || rawIsBeta) && (
+              <LinkRow
+                emoji="🎬"
+                label="Creator"
+                description="Bounded seasons of a practice, joined via link"
+                onClick={() => setLocation("/creator")}
+              />
+            )}
             {isAdmin && (
               <>
                 <LinkRow

@@ -2526,6 +2526,77 @@ export async function migrate() {
       ON group_weekly_completions (user_id)
     `);
 
+    // ── Creator seasons — a creator turns the practice their content inspired
+    //    into a bounded 2–4 week season: one-tap join link applies the practice
+    //    (prescribed-routines spec), a cohort-shared Day-N clock, daily
+    //    check-ins the group witnesses, and short async creator notes.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS creator_seasons (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL,
+        title TEXT NOT NULL,
+        creator_name TEXT NOT NULL,
+        description TEXT,
+        spec JSONB NOT NULL,
+        duration_days INTEGER NOT NULL DEFAULT 21,
+        start_ymd TEXT NOT NULL,
+        created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS creator_seasons_token ON creator_seasons (token)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS creator_seasons_by_creator ON creator_seasons (created_by_user_id)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS creator_season_members (
+        id SERIAL PRIMARY KEY,
+        season_id INTEGER NOT NULL REFERENCES creator_seasons(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS creator_season_members_once
+      ON creator_season_members (season_id, user_id)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS creator_season_members_by_user
+      ON creator_season_members (user_id)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS creator_season_notes (
+        id SERIAL PRIMARY KEY,
+        season_id INTEGER NOT NULL REFERENCES creator_seasons(id) ON DELETE CASCADE,
+        author_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS creator_season_notes_by_season
+      ON creator_season_notes (season_id)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS creator_season_checkins (
+        id SERIAL PRIMARY KEY,
+        season_id INTEGER NOT NULL REFERENCES creator_seasons(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ymd TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS creator_season_checkins_once
+      ON creator_season_checkins (season_id, user_id, ymd)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS creator_season_checkins_by_season_day
+      ON creator_season_checkins (season_id, ymd)
+    `);
+
     // ── Home-load perf indexes (prayer-streak hot path) ──────────────────
     // Amen "prayed with me today" scan is bounded to the last 48h per request.
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_prayed ON prayer_request_amens (request_id, prayed_at)`);

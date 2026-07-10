@@ -70,6 +70,7 @@ import reflectionsRouter from "./reflections";
 import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
 import prescribedRoutinesRouter from "./prescribed-routines";
+import creatorSeasonsRouter from "./creator-seasons";
 
 const router: IRouter = Router();
 
@@ -216,6 +217,7 @@ router.use(reflectionsRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(prescribedRoutinesRouter);
+router.use(creatorSeasonsRouter);
 router.use(jardinRouter);
 
 export default router;
