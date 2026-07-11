@@ -10,12 +10,14 @@
 import { useMemo } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useEffect } from "react";
-import { ChevronLeft, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { WEEKLY_PLAN_ENABLED } from "@/lib/weeklyPlanFlag";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { thisWeekStart, deckByline, type WeeklyItemPayload } from "@/lib/weeklyDeck";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -27,9 +29,14 @@ type Item = {
   title: string;
   detail: string | null;
   target: number;
+  payload: WeeklyItemPayload | null;
   done: boolean;
   doneCount: number;
 };
+
+// The leader-authored kinds whose row OPENS the content (the check circle
+// alone toggles); the simple kinds keep whole-row toggle.
+const CONTENT_KINDS = new Set(["pdf", "deck", "episode"]);
 
 const KIND_EMOJI: Record<string, string> = {
   cac: "🌅",
@@ -37,14 +44,22 @@ const KIND_EMOJI: Record<string, string> = {
   silence: "🕯️",
   podcast: "🎙️",
   custom: "🌿",
+  pdf: "📄",
+  deck: "🎞️",
+  episode: "🎧",
 };
 
-// This week's Sunday, local calendar day (YYYY-MM-DD) — same convention the
-// server stores week_start as.
-function thisWeekStart(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - d.getDay());
-  return d.toLocaleDateString("en-CA");
+// Auto-subline for the content kinds when the leader left detail blank.
+function contentSubline(item: Item): string | null {
+  const p = item.payload;
+  if (!p) return null;
+  if (item.kind === "pdf" && "pdfId" in p) return p.pageCount ? `Reading · ${p.pageCount} page${p.pageCount === 1 ? "" : "s"}` : "Reading";
+  if (item.kind === "deck" && "slides" in p) return deckByline(p.slides.length);
+  if (item.kind === "episode" && "episode" in p) {
+    return [p.episode.showTitle, p.episode.durationSeconds ? `${Math.round(p.episode.durationSeconds / 60)} min` : null]
+      .filter(Boolean).join(" · ") || "Episode";
+  }
+  return null;
 }
 
 export default function CommunityWeeklyPlanPage() {
@@ -53,6 +68,7 @@ export default function CommunityWeeklyPlanPage() {
   const qc = useQueryClient();
   const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const weekStart = useMemo(() => thisWeekStart(), []);
+  const player = usePodcastPlayer();
 
   useEffect(() => {
     if (!WEEKLY_PLAN_ENABLED) setLocation(`/communities/${slug}`, { replace: true });
@@ -121,11 +137,39 @@ export default function CommunityWeeklyPlanPage() {
             {data?.isAdmin ? "Nothing planned yet — tap Edit to add this week's practices." : "Your leaders haven't planned this week yet."}
           </p>
         ) : (
-          items.map((item) => (
+          items.map((item) => {
+            const isContent = CONTENT_KINDS.has(item.kind) && !!item.payload;
+            // Content rows OPEN the content; the check circle alone toggles
+            // (manual toggle always works — nobody is locked out of marking
+            // something kept). Simple rows keep the whole-row toggle.
+            const openContent = () => {
+              if (item.kind === "pdf") { setLocation(`/communities/${slug}/weekly-plan/read/${item.id}`); return; }
+              if (item.kind === "deck") { setLocation(`/communities/${slug}/weekly-plan/deck/${item.id}`); return; }
+              if (item.kind === "episode" && item.payload && "episode" in item.payload) {
+                const ep = item.payload.episode;
+                player.play({
+                  showSlug: "weekly-plan",
+                  episodeId: `weekly-item-${item.id}`,
+                  title: ep.title,
+                  audioUrl: ep.audioUrl,
+                  imageUrl: ep.imageUrl,
+                  showTitle: ep.showTitle ?? "This week's plan",
+                  showArtwork: ep.imageUrl,
+                  durationSeconds: ep.durationSeconds,
+                  sessionSurface: "weekly-plan-episode",
+                  showHref: `/communities/${slug}/weekly-plan`,
+                  skipHistory: true,
+                  hideRecommend: true,
+                  creditWeeklyItem: { groupSlug: slug!, itemId: item.id },
+                });
+              }
+            };
+            const sub = item.detail?.trim() || (isContent ? contentSubline(item) : null);
+            return (
             <button
               key={item.id}
               type="button"
-              onClick={() => toggle.mutate({ itemId: item.id, done: !item.done })}
+              onClick={() => (isContent ? openContent() : toggle.mutate({ itemId: item.id, done: !item.done }))}
               className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 mb-2 text-left transition-opacity active:scale-[0.99]"
               style={{
                 background: item.done ? "rgba(46,107,64,0.16)" : "rgba(9,26,16,0.42)",
@@ -134,8 +178,10 @@ export default function CommunityWeeklyPlanPage() {
               }}
             >
               <span
+                role={isContent ? "button" : undefined}
+                onClick={isContent ? (e) => { e.stopPropagation(); toggle.mutate({ itemId: item.id, done: !item.done }); } : undefined}
                 className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: item.done ? "rgba(46,107,64,0.9)" : "rgba(46,107,64,0.15)", border: `1px solid ${item.done ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.3)"}` }}
+                style={{ background: item.done ? "rgba(46,107,64,0.9)" : "rgba(46,107,64,0.15)", border: `1px solid ${item.done ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.3)"}`, padding: isContent ? 8 : 0, boxSizing: "content-box", margin: isContent ? -8 : 0 }}
               >
                 {item.done ? <Check size={15} color={WARM} /> : <span aria-hidden style={{ fontSize: 13 }}>{KIND_EMOJI[item.kind] ?? "🌿"}</span>}
               </span>
@@ -143,8 +189,8 @@ export default function CommunityWeeklyPlanPage() {
                 <p className="text-[14.5px] font-semibold" style={{ color: item.done ? "rgba(220,232,214,0.75)" : WARM, fontFamily: FONT, textDecoration: item.done ? "line-through" : "none", textDecorationColor: "rgba(220,232,214,0.4)" }}>
                   {item.title}
                 </p>
-                {item.detail?.trim() && (
-                  <p className="text-[12px] mt-0.5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: FONT }}>{item.detail.trim()}</p>
+                {sub && (
+                  <p className="text-[12px] mt-0.5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: FONT }}>{sub}</p>
                 )}
               </div>
               {item.doneCount > 0 && (
@@ -152,8 +198,10 @@ export default function CommunityWeeklyPlanPage() {
                   {item.doneCount} kept
                 </span>
               )}
+              {isContent && <ChevronRight size={16} style={{ color: "rgba(143,175,150,0.5)", flexShrink: 0 }} />}
             </button>
-          ))
+            );
+          })
         )}
       </div>
     </Layout>

@@ -33,6 +33,8 @@ import {
   practiceLogEntriesTable,
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
+import { sanitizeWeeklyPayload } from "../lib/weeklyPayload";
+import type { WeeklyItemPayload } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendAnnouncementEmail, sendPrayerInviteEmail } from "../lib/email";
@@ -352,11 +354,11 @@ export async function reconcileAllPracticesForGroup(groupId: number): Promise<vo
 
 type SessionUser = { id: number; email: string; name: string };
 
-function getUser(req: any): SessionUser | null {
+export function getUser(req: any): SessionUser | null {
   return req.user ? (req.user as SessionUser) : null;
 }
 
-async function requireMember(groupSlug: string, userId: number) {
+export async function requireMember(groupSlug: string, userId: number) {
   const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, groupSlug));
   if (!group) return null;
   const [member] = await db.select().from(groupMembersTable)
@@ -369,11 +371,11 @@ async function requireMember(groupSlug: string, userId: number) {
 // pilot users for platform-side observation / management of a community.
 // For permission checks they behave exactly like an admin, but the role
 // value is filtered out of roster views so other members don't see them.
-function isAdminRole(role: string): boolean {
+export function isAdminRole(role: string): boolean {
   return role === "admin" || role === "hidden_admin";
 }
 
-async function requireAdmin(groupSlug: string, userId: number) {
+export async function requireAdmin(groupSlug: string, userId: number) {
   const result = await requireMember(groupSlug, userId);
   if (!result || !isAdminRole(result.member.role)) return null;
   return result;
@@ -4937,7 +4939,10 @@ router.patch("/groups/:slug/rule-of-life/:id", async (req, res): Promise<void> =
 // computes its local week's Sunday, same convention as the home rhythm).
 
 const WEEK_START_RE = /^\d{4}-\d{2}-\d{2}$/;
-const WEEKLY_ITEM_KINDS = new Set(["cac", "cobreathe", "silence", "podcast", "custom"]);
+const WEEKLY_ITEM_KINDS = new Set(["cac", "cobreathe", "silence", "podcast", "custom", "pdf", "deck", "episode"]);
+// The leader-authored CONTENT kinds carry a validated payload (slides / an
+// episode snapshot / a pdf reference) — see lib/weeklyPayload.
+const WEEKLY_CONTENT_KINDS = new Set(["pdf", "deck", "episode"]);
 
 // GET /api/groups/:slug/weekly-plan?weekStart=YYYY-MM-DD — the week's
 // checklist + which items THIS member has done + how many members have done
@@ -4971,6 +4976,7 @@ router.get("/groups/:slug/weekly-plan", async (req, res): Promise<void> => {
     isAdmin: isAdminRole(result.member.role),
     items: items.map((i) => ({
       id: i.id, kind: i.kind, title: i.title, detail: i.detail, target: i.target, sort: i.sort,
+      payload: i.payload ?? null,
       done: mine.has(i.id),
       doneCount: doneCount.get(i.id) ?? 0,
     })),
@@ -4992,15 +4998,32 @@ router.put("/groups/:slug/weekly-plan", async (req, res): Promise<void> => {
   if (!WEEK_START_RE.test(weekStart)) { res.status(400).json({ error: "weekStart must be YYYY-MM-DD" }); return; }
   if (!Array.isArray(body.items) || body.items.length > 20) { res.status(400).json({ error: "items must be an array of at most 20" }); return; }
 
-  const items = body.items.map((raw, idx) => {
-    const it = raw as { id?: unknown; kind?: unknown; title?: unknown; detail?: unknown; target?: unknown };
+  const rawItems = body.items.map((raw, idx) => {
+    const it = raw as { id?: unknown; kind?: unknown; title?: unknown; detail?: unknown; target?: unknown; payload?: unknown };
     const kind = typeof it.kind === "string" && WEEKLY_ITEM_KINDS.has(it.kind) ? it.kind : "custom";
     const title = typeof it.title === "string" ? it.title.trim().slice(0, 200) : "";
     const detail = typeof it.detail === "string" && it.detail.trim() ? it.detail.trim().slice(0, 500) : null;
     const targetN = typeof it.target === "number" && Number.isFinite(it.target) ? Math.max(1, Math.min(999, Math.round(it.target))) : 1;
     const id = typeof it.id === "number" && Number.isFinite(it.id) ? it.id : null;
-    return { id, kind, title, detail, target: targetN, sort: idx };
+    return { id, kind, title, detail, target: targetN, sort: idx, rawPayload: it.payload };
   }).filter((i) => i.title.length > 0);
+
+  // Validate the content kinds' payloads (slide caps, pdf ownership, episode
+  // snapshot shape). An invalid payload rejects the WHOLE save with the item
+  // named, so a leader never silently loses a slideshow they authored.
+  const items: Array<{ id: number | null; kind: string; title: string; detail: string | null; target: number; sort: number; payload: WeeklyItemPayload | null }> = [];
+  for (const it of rawItems) {
+    if (WEEKLY_CONTENT_KINDS.has(it.kind)) {
+      const payload = await sanitizeWeeklyPayload(it.kind, it.rawPayload, result.group.id);
+      if (!payload) {
+        res.status(400).json({ error: "invalid_payload", kind: it.kind, title: it.title });
+        return;
+      }
+      items.push({ id: it.id, kind: it.kind, title: it.title, detail: it.detail, target: it.target, sort: it.sort, payload });
+    } else {
+      items.push({ id: it.id, kind: it.kind, title: it.title, detail: it.detail, target: it.target, sort: it.sort, payload: null });
+    }
+  }
 
   const existing = await db.select({ id: groupWeeklyItemsTable.id }).from(groupWeeklyItemsTable)
     .where(and(eq(groupWeeklyItemsTable.groupId, result.group.id), eq(groupWeeklyItemsTable.weekStart, weekStart)));
@@ -5014,12 +5037,12 @@ router.put("/groups/:slug/weekly-plan", async (req, res): Promise<void> => {
   for (const it of items) {
     if (it.id != null && keptIds.has(it.id)) {
       await db.update(groupWeeklyItemsTable)
-        .set({ kind: it.kind, title: it.title, detail: it.detail, target: it.target, sort: it.sort })
+        .set({ kind: it.kind, title: it.title, detail: it.detail, target: it.target, sort: it.sort, payload: it.payload })
         .where(eq(groupWeeklyItemsTable.id, it.id));
     } else {
       await db.insert(groupWeeklyItemsTable).values({
         groupId: result.group.id, weekStart, kind: it.kind, title: it.title,
-        detail: it.detail, target: it.target, sort: it.sort, createdByUserId: user.id,
+        detail: it.detail, target: it.target, sort: it.sort, payload: it.payload, createdByUserId: user.id,
       });
     }
   }

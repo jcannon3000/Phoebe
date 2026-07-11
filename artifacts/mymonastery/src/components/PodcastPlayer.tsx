@@ -67,6 +67,10 @@ export type PlayingEpisode = {
   // Skip the listening-history write — the daily office changes every day
   // and is tracked via prayer-sessions, not the podcast history.
   skipHistory?: boolean;
+  /** Weekly-plan episode item — auto-complete the checklist item once ≥60%
+   *  of the episode has been heard (fires once per play; the checklist's
+   *  manual circle-tap remains the fallback). */
+  creditWeeklyItem?: { groupSlug: string; itemId: number };
   // Hide the Recommend (♡) action — a daily office isn't a shareable ep.
   hideRecommend?: boolean;
   // Override the "view show" link target — offices have no /podcasts/show
@@ -441,6 +445,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // The episodeId of the office episode we've already credited this play, so the
   // ≥60% office credit fires exactly once per listen.
   const officeCreditedRef = useRef<string | null>(null);
+  const weeklyCreditedRef = useRef<string | null>(null);
   // Whether THIS podcast play has already credited the Podcasts daily practice
   // (so the ≥2-min credit fires once per episode play).
   const podcastCreditedRef = useRef(false);
@@ -856,6 +861,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       officeCreditedRef.current = current.episodeId;
       const played = seg.current.acc + (seg.current.start !== null ? (Date.now() - seg.current.start) / 1000 : 0);
       creditOfficePodcast(officeSide, played > 1 ? played : a.currentTime, seg.current.startedAt);
+    }
+    // Weekly-plan episode credit — ≥60% heard completes the checklist item
+    // (60% not 100%: outros, and grace). Fires once per play.
+    if (
+      current.creditWeeklyItem &&
+      weeklyCreditedRef.current !== current.episodeId &&
+      isFinite(a.duration) && a.duration > 0 &&
+      a.currentTime / a.duration >= OFFICE_CREDIT_FRACTION
+    ) {
+      weeklyCreditedRef.current = current.episodeId;
+      const { groupSlug, itemId } = current.creditWeeklyItem;
+      apiRequest("POST", `/api/groups/${groupSlug}/weekly-plan/complete`, { itemId, done: true })
+        .then(() => queryClient.invalidateQueries({ queryKey: [`/api/groups/${groupSlug}/weekly-plan`] }))
+        .catch(() => { /* best-effort — the manual circle-tap still works */ });
     }
     // Podcast practice credit: ≥2 min of ACTUAL listening (accumulated play
     // time, so skipping ahead doesn't count) to a real podcast — not an office

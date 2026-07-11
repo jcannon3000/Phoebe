@@ -457,6 +457,8 @@ const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
 const CommunityWeeklyPlanPage = lazy(() => import("./pages/community-weekly-plan"));
 const CommunityWeeklyPlanEditPage = lazy(() => import("./pages/community-weekly-plan-edit"));
+const CommunityWeeklyPlanReadPage = lazy(() => import("./pages/community-weekly-plan-read"));
+const CommunityWeeklyPlanDeckPage = lazy(() => import("./pages/community-weekly-plan-deck"));
 const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const CommunityRuleSetPage = lazy(() => import("./pages/community-rule-set"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
@@ -1324,6 +1326,8 @@ function Router() {
           the flag is off; no menu/UI exposes these routes yet. */}
       <Route path="/communities/:slug/weekly-plan" component={CommunityWeeklyPlanPage} />
       <Route path="/communities/:slug/weekly-plan/edit" component={CommunityWeeklyPlanEditPage} />
+      <Route path="/communities/:slug/weekly-plan/read/:itemId" component={CommunityWeeklyPlanReadPage} />
+      <Route path="/communities/:slug/weekly-plan/deck/:itemId" component={CommunityWeeklyPlanDeckPage} />
       <Route path="/communities/:slug/prescribe" component={PrescribeRoutinePage} />
       {/* App-wide PRESET rule (no community) — the create POST requires a
           super admin, so the page is safe to route for anyone. */}

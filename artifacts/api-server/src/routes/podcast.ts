@@ -430,7 +430,7 @@ const cache = new Map<string, { at: number; data: ParsedFeed }>();
 const FEED_TIMEOUT_MS = 10_000;
 const FEED_MAX_BYTES = 8 * 1024 * 1024;
 
-async function fetchFeedText(url: string): Promise<string> {
+export async function fetchFeedText(url: string): Promise<string> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FEED_TIMEOUT_MS);
   try {
@@ -514,7 +514,7 @@ function firstMatch(block: string, re: RegExp): string | null {
   return m ? m[1] : null;
 }
 
-function parseFeed(xml: string, limit: number): ParsedFeed {
+export function parseFeed(xml: string, limit: number): ParsedFeed {
   const channelPart = xml.split(/<item[\s>]/)[0] ?? "";
   const feedTitle = firstMatch(channelPart, /<title>([\s\S]*?)<\/title>/);
   const feedImageRaw =

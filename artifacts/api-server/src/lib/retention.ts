@@ -50,6 +50,24 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
   const yearAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(YEAR);
 
   const steps: Array<[string, () => Promise<unknown>]> = [
+    // Weekly-plan PDFs: (a) orphans — uploaded from the composer but never
+    // referenced by a saved item (abandoned drafts) — after 48h; (b) PDFs
+    // whose item's week is >8 weeks past (8 MB rows shouldn't accrete).
+    ["group_weekly_pdfs orphans+old", () =>
+      db.execute(sql`
+        DELETE FROM group_weekly_pdfs p
+        WHERE (
+          p.created_at < now() - interval '48 hours'
+          AND NOT EXISTS (
+            SELECT 1 FROM group_weekly_items i
+            WHERE i.kind = 'pdf' AND (i.payload->>'pdfId')::int = p.id
+          )
+        ) OR EXISTS (
+          SELECT 1 FROM group_weekly_items i
+          WHERE i.kind = 'pdf' AND (i.payload->>'pdfId')::int = p.id
+            AND i.week_start < (CURRENT_DATE - INTERVAL '8 weeks')
+        )
+      `)],
     ["bell_notifications>90d", () =>
       db.delete(bellNotificationsTable).where(lt(bellNotificationsTable.createdAt, D90))],
     ["app_opens>90d", () =>

@@ -2533,6 +2533,27 @@ export async function migrate() {
       CREATE INDEX IF NOT EXISTS group_weekly_completions_by_user
       ON group_weekly_completions (user_id)
     `);
+    // Leader-authored content payload (pdf / deck / episode kinds).
+    await run(client, `
+      ALTER TABLE group_weekly_items ADD COLUMN IF NOT EXISTS payload JSONB
+    `);
+    // Uploaded weekly-plan PDFs (raw bytes; pilot-scale, pruned by retention).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_weekly_pdfs (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        filename TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        page_count INTEGER,
+        data BYTEA NOT NULL,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS group_weekly_pdfs_by_group
+      ON group_weekly_pdfs (group_id)
+    `);
 
     // ── Creator seasons — a creator turns the practice their content inspired
     //    into a bounded 2–4 week season: one-tap join link applies the practice
