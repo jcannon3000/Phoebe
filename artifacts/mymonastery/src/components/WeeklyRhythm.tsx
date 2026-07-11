@@ -25,6 +25,8 @@ import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
   WEEKDAY_FULL,
+  addHours,
+  windowHours,
   WEEKLY_ENABLED_EVENT,
   getEnabledWeekly,
   keptThisWeek,
@@ -104,20 +106,6 @@ export function WeeklyRhythm() {
     } catch { /* non-fatal */ }
   }, [rawIsBeta, restDaysKey, restWindow?.start]);
 
-  // One-tap log for Commune / Go / Bless: tap → kept this week; tap again →
-  // un-kept (delete the week's entry). A log, not a journal.
-  const toggle = useMutation({
-    mutationFn: async ({ kind, kept }: { kind: WeeklyKind; kept: PracticeLogEntry | null }) => {
-      if (kept) await apiRequest("DELETE", `/api/practice-log/${kind}/${kept.id}`);
-      else await apiRequest("POST", `/api/practice-log/${kind}`, { day: todayISO(), what: "", notes: "" });
-      return kind;
-    },
-    onSuccess: (kind, vars) => {
-      if (!vars.kept) swellHaptic();
-      qc.invalidateQueries({ queryKey: logKey(kind) });
-    },
-  });
-
   // Only the practices the user has turned on in the customizer appear here.
   const enabled = useEnabledWeekly();
   const practices = WEEKLY_PRACTICES.filter((p) => enabled.includes(p.kind));
@@ -144,12 +132,13 @@ export function WeeklyRhythm() {
 
   return (
     <div className="mt-7">
-      <p
-        className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-2.5 px-0.5"
-        style={{ color: "rgba(143,175,150,0.65)", fontFamily: FONT }}
-      >
-        This week
-      </p>
+      {/* Same header treatment as the daily sections (Next / Done). */}
+      <div className="flex items-center gap-3 mb-2">
+        <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
+          This week
+        </h3>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
       <div className="space-y-2">
         {practices.map((p) => {
           const kept = keptThisWeek(entriesByKind[p.kind]);
@@ -161,10 +150,9 @@ export function WeeklyRhythm() {
               kept={kept}
               sabbathDay={sabbath}
               restWindow={p.kind === "rest" ? restWindow : null}
-              // Rest opens its planner; the others are one-tap logs.
-              onClick={p.kind === "rest"
-                ? () => setOpen("rest")
-                : () => { if (!toggle.isPending) toggle.mutate({ kind: p.kind, kept }); }}
+              // Every practice opens its sheet — the "Did you …?" ask (or,
+              // for Rest, the planner) — like tapping a custom practice.
+              onClick={() => setOpen(p.kind)}
             />
           );
         })}
@@ -200,48 +188,54 @@ function WeeklyCard({
   onClick: () => void;
 }) {
   // The card's second line: once kept this week, say so; otherwise the
-  // invitation. For Rest, surface the planned rest — day + optional window.
+  // invitation. For Rest, surface the planned rest — day + optional window —
+  // held like a calendar event.
   let sub: string;
   if (kept) {
     sub = kept.what?.trim() ? `${practice.keptLabel} — ${kept.what.trim()}` : practice.keptLabel;
   } else if (practice.kind === "rest" && sabbathDay !== null) {
-    sub = `Your sabbath is ${WEEKDAY_FULL[sabbathDay]}${restWindow ? ` · ${formatWindow(restWindow)}` : ""}`;
+    sub = `${WEEKDAY_FULL[sabbathDay]}${restWindow ? ` · ${formatWindow(restWindow)}` : ""}`;
   } else {
     sub = practice.prompt;
   }
+  const RGB = practice.rgb;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left rounded-2xl px-4 py-3.5 flex items-center gap-3 transition-opacity active:opacity-80"
+      className="relative w-full flex rounded-3xl overflow-hidden text-left transition-opacity hover:opacity-95 active:scale-[0.99]"
       style={{
-        background: "rgba(9,26,16,0.42)",
+        background: "rgba(22,46,32, 0.330)",
         backdropFilter: "blur(11.34px)",
         WebkitBackdropFilter: "blur(11.34px)",
-        border: kept ? "1px solid rgba(126,210,140,0.4)" : "1px solid rgba(46,107,64,0.3)",
+        border: kept ? "1px solid rgba(126,210,140,0.4)" : "1px solid rgba(200,212,192,0.35)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
       }}
     >
-      <span className="text-[22px] leading-none shrink-0" aria-hidden>
-        {practice.emoji}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>
-          {practice.label}
-        </p>
-        <p className="text-[12.5px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT }}>
-          {sub}
-        </p>
+      {/* The daily cards' colored spine. */}
+      <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${RGB},0.9)` }} />
+      <div className="flex-1 px-5 py-4 flex items-center gap-3.5 min-w-0">
+        <span className="text-[28px] leading-none flex-shrink-0" aria-hidden>
+          {practice.emoji}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[16px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
+            {practice.label}
+          </p>
+          <p className="text-[13px] mt-0.5 leading-snug truncate" style={{ color: SAGE, fontFamily: FONT }}>
+            {sub}
+          </p>
+        </div>
+        <span
+          className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+          style={kept
+            ? { background: "rgba(46,107,64,0.3)", color: "rgba(220,232,214,0.9)", border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }
+            : { background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT }}
+        >
+          {kept ? "✓ Kept" : practice.kind === "rest" ? <>Plan <span aria-hidden>→</span></> : <>Log <span aria-hidden>→</span></>}
+        </span>
       </div>
-      {kept ? (
-        <span className="text-[15px] font-bold shrink-0" style={{ color: GREEN }} aria-label="Kept this week">
-          ✓
-        </span>
-      ) : (
-        <span className="text-[20px] shrink-0" style={{ color: "rgba(143,175,150,0.45)" }} aria-hidden>
-          +
-        </span>
-      )}
     </button>
   );
 }
@@ -343,14 +337,16 @@ function LogSheet({
             <span className="ml-auto text-[13px] font-bold" style={{ color: GREEN, fontFamily: FONT }}>✓ kept</span>
           )}
         </div>
-        <p className="text-[13.5px] leading-snug mb-5" style={{ color: SAGE, fontFamily: FONT }}>
-          {practice.prompt}
+        {/* The ask — "Did you …?" — the same tap-to-log shape as a custom
+            practice. Rest's sheet is the planner (below) + the same mark. */}
+        <p className="text-[15px] leading-snug mb-5" style={{ color: WARM, fontFamily: FONT }}>
+          {practice.kind === "rest" ? "When will you carve out space to rest this week?" : practice.question}
         </p>
 
-        {(
+        {practice.kind === "rest" && (
           <div className="mb-5">
             <p className="text-[12px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
-              The day you'll rest
+              The day
             </p>
             <div className="flex gap-1.5 flex-wrap">
               {WEEKDAY_LABELS.map((label, idx) => {
@@ -389,39 +385,48 @@ function LogSheet({
           </div>
         )}
 
-        {/* A time window — rest as an EVENT you keep, not an afterthought.
-            Optional: pick From + To and it's held with the day; Clear drops it. */}
+        {/* The window — held like a calendar event: a start time and a
+            length (an hour, two, three), not an errand squeezed in. */}
+        {practice.kind === "rest" && (
         <div className="mb-6">
           <p className="text-[12px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
-            A time to rest (optional)
+            The window
           </p>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 13.5 }}>From</span>
             <input
               type="time"
               value={win?.start ?? ""}
               onChange={(e) => {
                 const start = e.target.value;
-                if (start && win?.end) saveWindow({ start, end: win.end });
-                else setWin(start ? { start, end: win?.end ?? "" } : null);
+                if (!start) { saveWindow(null); return; }
+                // Keep the existing length (default: two hours) anchored to
+                // the new start — the event moves, its size holds.
+                saveWindow({ start, end: addHours(start, win ? windowHours(win) : 2) });
               }}
               aria-label="Rest starts"
-              className="flex-1 rounded-xl px-3 py-2.5 text-[15px] outline-none"
-              style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, colorScheme: "dark" }}
+              className="rounded-xl px-3 py-2.5 text-[15px] outline-none"
+              style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, colorScheme: "dark", width: 118 }}
             />
-            <span style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 13 }}>to</span>
-            <input
-              type="time"
-              value={win?.end ?? ""}
-              onChange={(e) => {
-                const end = e.target.value;
-                if (end && win?.start) saveWindow({ start: win.start, end });
-                else setWin(end ? { start: win?.start ?? "", end } : null);
-              }}
-              aria-label="Rest ends"
-              className="flex-1 rounded-xl px-3 py-2.5 text-[15px] outline-none"
-              style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, colorScheme: "dark" }}
-            />
-            {(win?.start || win?.end) && (
+            <span style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 13.5 }}>for</span>
+            {[1, 2, 3].map((h) => {
+              const selected = !!win?.start && windowHours(win) === h;
+              return (
+                <button
+                  key={h}
+                  type="button"
+                  disabled={!win?.start}
+                  onClick={() => { if (win?.start) saveWindow({ start: win.start, end: addHours(win.start, h) }); }}
+                  className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:opacity-75 disabled:opacity-40"
+                  style={selected
+                    ? { background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(126,210,140,0.5)", fontFamily: FONT }
+                    : { background: "transparent", color: "rgba(182,210,188,0.7)", border: "1px solid rgba(143,175,150,0.25)", fontFamily: FONT }}
+                >
+                  {h}h
+                </button>
+              );
+            })}
+            {win?.start && (
               <button
                 type="button"
                 onClick={() => saveWindow(null)}
@@ -434,10 +439,11 @@ function LogSheet({
           </div>
           <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
             {win?.start && win?.end
-              ? `Held for you: ${formatWindow(win)}.`
-              : "A window your rest can live in — like an appointment with quiet."}
+              ? `Held for you${restDays.length > 0 ? ` — ${restDays.map((d) => WEEKDAY_FULL[d]).join(" & ")}` : ""}, ${formatWindow(win)}. Like any other appointment — except this one is with quiet.`
+              : "Pick a start and a length — two or three unhurried hours."}
           </p>
         </div>
+        )}
 
         {/* One-tap mark, one-tap undo — a log, not a journal. */}
         <button
@@ -449,7 +455,9 @@ function LogSheet({
             ? { background: "rgba(46,107,64,0.3)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }
             : { background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }}
         >
-          {kept ? "Rested this week ✓ — tap to undo" : "Mark this week kept"}
+          {kept
+            ? `${practice.keptLabel} ✓ — tap to undo`
+            : practice.kind === "rest" ? "I rested — mark the week kept" : "✓ Yes — mark the week kept"}
         </button>
       </motion.div>
     </motion.div>

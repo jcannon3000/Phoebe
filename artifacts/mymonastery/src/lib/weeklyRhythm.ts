@@ -23,6 +23,10 @@ export type WeeklyKind = "commune" | "go" | "bless" | "rest";
 export type WeeklyPractice = {
   kind: WeeklyKind;
   label: string;
+  /** The log sheet's question — "Did you …?" (tap-to-log, like a custom practice). */
+  question: string;
+  /** The daily rhythm-card ramp color (R,G,B) for the left bar + pill. */
+  rgb: string;
   emoji: string;
   // The quiet one-line invitation shown on the card.
   prompt: string;
@@ -36,6 +40,8 @@ export type WeeklyPractice = {
 export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   {
     kind: "commune",
+    question: "Did you commune this week — worship together, or reach out to someone from your community?",
+    rgb: "108,162,124",
     label: "Commune",
     emoji: "🤝🏽",
     prompt: "Worship together, or reach out to someone from your community.",
@@ -45,6 +51,8 @@ export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   },
   {
     kind: "go",
+    question: "Did you go this week — cross a boundary, serve, listen?",
+    rgb: "120,160,120",
     label: "Go",
     emoji: "🚶🏽",
     prompt: "Cross a boundary — go to someone, serve, listen.",
@@ -54,6 +62,8 @@ export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   },
   {
     kind: "bless",
+    question: "Did you bless someone this week — with your time, your means, your faith?",
+    rgb: "143,170,150",
     label: "Bless",
     emoji: "🎁",
     prompt: "Share something — your time, your means, your faith.",
@@ -63,6 +73,8 @@ export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   },
   {
     kind: "rest",
+    question: "Did you keep your rest this week?",
+    rgb: "124,116,196",
     label: "Rest",
     emoji: "🌙",
     prompt: "Set the day you'll rest, and keep it.",
@@ -149,6 +161,22 @@ export function formatHHMM(hhmm: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m} ${ampm}`;
 }
+/** "HH:MM" + n hours → "HH:MM" (wraps past midnight). */
+export function addHours(start: string, hours: number): string {
+  const [h, m] = start.split(":").map(Number);
+  const total = ((h ?? 0) * 60 + (m ?? 0) + hours * 60) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** A window's length in whole hours (rounded; wraps past midnight). */
+export function windowHours(win: RestWindow): number {
+  const [sh, sm] = win.start.split(":").map(Number);
+  const [eh, em] = win.end.split(":").map(Number);
+  let mins = ((eh ?? 0) * 60 + (em ?? 0)) - ((sh ?? 0) * 60 + (sm ?? 0));
+  if (mins <= 0) mins += 24 * 60;
+  return Math.max(1, Math.round(mins / 60));
+}
+
 export function formatWindow(w: RestWindow): string {
   return `${formatHHMM(w.start)}–${formatHHMM(w.end)}`;
 }
