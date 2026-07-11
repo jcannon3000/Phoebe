@@ -42,11 +42,34 @@ export function useOfficeDisplay(): { backdrop: OfficeBackdrop; fontScale: numbe
   return display;
 }
 
-/** The zoom + width-compensation the decks wrap their slide content in: the
- *  content renders at its original column width, just bigger — larger text
- *  wraps to a narrower measure instead of overflowing. `maxWidthPx` is the
- *  column's usual max-width (672 = Tailwind max-w-2xl). */
+// iOS WebKit (Safari or the Capacitor shell). CSS `zoom` is unreliable for
+// TEXT there — long-standing WebKit regressions leave glyphs unscaled (or,
+// on iPadOS, scaled inversely) while the box math still applies, so A+/A−
+// read as "just adding or removing padding" and A− overflowed the right
+// edge. The maxTouchPoints clause catches iPadOS, whose Safari masquerades
+// as macOS in the user agent.
+const IS_IOS_WEBKIT = (() => {
+  try {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  } catch { return false; }
+})();
+
+/** The text-scaling style the decks wrap their slide content in.
+ *
+ *  iOS: `-webkit-text-size-adjust: N%` — WebKit's own text-scaling mode on
+ *  iPhone (honored in WKWebView): glyphs grow/shrink and REWRAP inside the
+ *  same fixed column, no width games. (iPadOS may ignore it — a graceful
+ *  no-op with zero layout damage, unlike the zoom path.)
+ *
+ *  Everywhere else: CSS zoom with width compensation — the content renders
+ *  at its original column width, just bigger, wrapping at a proportionally
+ *  narrower measure instead of overflowing. `maxWidthPx` is the column's
+ *  usual max-width (672 = Tailwind max-w-2xl). */
 export function fontScaleWrapStyle(scale: number, maxWidthPx = 672): React.CSSProperties {
+  if (IS_IOS_WEBKIT) {
+    return { maxWidth: maxWidthPx, WebkitTextSizeAdjust: `${Math.round(scale * 100)}%` };
+  }
   if (scale === 1) return { maxWidth: maxWidthPx };
   return { zoom: scale, width: `${100 / scale}%`, maxWidth: `${maxWidthPx / scale}px` };
 }

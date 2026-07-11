@@ -15,7 +15,7 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
-import { OfficeDisplaySheet, useOfficeDisplay } from "@/components/OfficeDisplaySheet";
+import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
@@ -1567,14 +1567,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           style={{
             display: "flex",
             flexDirection: "column",
-            // TEXT SIZE (⚙ sheet): CSS zoom scales every slide's px-sized text
-            // in one place. Width/max-width are divided by the scale so the
-            // RENDERED column stays exactly the old w-full / max-w-2xl (672px)
-            // — text wraps at a proportionally narrower measure instead of
-            // overflowing the viewport.
-            zoom: display.fontScale,
-            width: `${100 / display.fontScale}%`,
-            maxWidth: `${672 / display.fontScale}px`,
+            // TEXT SIZE (⚙ sheet): platform-branched in fontScaleWrapStyle —
+            // -webkit-text-size-adjust on iOS (zoom's text scaling is broken
+            // there: boxes moved, glyphs didn't), CSS zoom + width
+            // compensation elsewhere. Column stays the old max-w-2xl (672px).
+            ...fontScaleWrapStyle(display.fontScale, 672),
             // Title cards: flex-grow fills the scroll container so
             // justifyContent:center vertically centers them in the viewport.
             // Content slides: flex-grow:0 keeps the div at its natural height
