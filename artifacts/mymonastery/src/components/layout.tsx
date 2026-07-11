@@ -1425,7 +1425,7 @@ function OpeningSplash() {
           </p>
           {/* Praying WITH each other — the aggregate week line (never who). */}
           <div className="mt-6 flex justify-center">
-            <PrayedWithWeek />
+            <PrayedWithWeek variant="splash" />
           </div>
         </motion.div>
       )}
@@ -1453,7 +1453,7 @@ function OpeningSplash() {
           </p>
           {/* Praying WITH each other — the aggregate week line (never who). */}
           <div className="mt-6 flex justify-center">
-            <PrayedWithWeek />
+            <PrayedWithWeek variant="splash" />
           </div>
         </motion.div>
       )}

@@ -5158,17 +5158,37 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
       .from(groupMembersTable)
       .where(and(eq(groupMembersTable.userId, user.id), isNotNull(groupMembersTable.joinedAt)));
     const groupIds = myGroups.map((g) => g.groupId);
-    if (groupIds.length === 0) { res.json({ count: 0, viewerPracticed: false }); return; }
-    const memberRows = await db.selectDistinct({ userId: groupMembersTable.userId })
+    if (groupIds.length === 0) { res.json({ count: 0, viewerPracticed: false, groups: [] }); return; }
+    // groupId + userId pairs (not distinct users) so the per-group breakdown
+    // below can attribute each practiced member to the group(s) they share
+    // with the viewer.
+    const memberRows = await db.select({ groupId: groupMembersTable.groupId, userId: groupMembersTable.userId })
       .from(groupMembersTable)
       .where(and(inArray(groupMembersTable.groupId, groupIds), isNotNull(groupMembersTable.joinedAt)));
-    const memberIds = memberRows.map((m) => m.userId).filter((id): id is number => id != null);
-    if (memberIds.length <= 1) { res.json({ count: 0, viewerPracticed: false }); return; }
+    const memberIds = [...new Set(memberRows.map((m) => m.userId).filter((id): id is number => id != null))];
+    if (memberIds.length <= 1) { res.json({ count: 0, viewerPracticed: false, groups: [] }); return; }
 
     const practiced = await practicedThisWeek(memberIds, weekStart);
     const viewerPracticed = practiced.has(user.id);
     practiced.delete(user.id);
-    res.json({ count: practiced.size, viewerPracticed });
+
+    // Per-group breakdown — STILL aggregate-only (each entry is the viewer's
+    // own community's name + a count; never names/ids of who practiced). The
+    // splash uses it to say "you prayed with N people from St. Mark's".
+    const groupNames = await db.select({ id: groupsTable.id, name: groupsTable.name })
+      .from(groupsTable).where(inArray(groupsTable.id, groupIds));
+    const nameById = new Map(groupNames.map((g) => [g.id, g.name]));
+    const perGroup = new Map<number, number>();
+    for (const row of memberRows) {
+      if (row.userId == null || row.userId === user.id) continue;
+      if (!practiced.has(row.userId)) continue;
+      perGroup.set(row.groupId, (perGroup.get(row.groupId) ?? 0) + 1);
+    }
+    const groups = [...perGroup.entries()]
+      .map(([gid, count]) => ({ name: nameById.get(gid) ?? "your community", count }))
+      .sort((a, b) => b.count - a.count);
+
+    res.json({ count: practiced.size, viewerPracticed, groups });
   } catch (err) {
     console.error("[prayed-with-week] failed:", err);
     res.status(500).json({ error: "internal_error" });
