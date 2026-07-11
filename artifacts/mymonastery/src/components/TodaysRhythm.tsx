@@ -68,7 +68,10 @@ export function TodaysRhythm() {
     },
     {
       key: "silence", label: t("rhythm.silence", { defaultValue: "Contemplation" }), icon: "🕯️",
-      done: silenceDone, href: "/contemplation",
+      // ?begin=1 opens the sit directly (same entry the home card uses) — bare
+      // /contemplation is the stats page, a form drop mid-chain (office →
+      // silence should stay one continuous deck-to-deck walk).
+      done: silenceDone, href: "/contemplation?begin=1",
       cta: t("rhythm.cta_silence", { defaultValue: "Sit in contemplation" }),
       blurb: t("rhythm.blurb_silence", { defaultValue: "Sit, or breathe with creation" }),
     },

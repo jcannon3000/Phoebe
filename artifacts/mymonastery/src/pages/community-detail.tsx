@@ -41,19 +41,6 @@ type Group = {
   focus?: string | null;
   contemplationGoalMinutes?: number | null;
 };
-// Shape of an entry in GET /api/groups/:slug/focus. `subject` is populated
-// when focusType === "person"; the other types carry their subject in
-// `subjectText`. The "addedBy" string lets us show attribution and hide
-// the delete button for non-authors (admins see it on every row).
-type FocusEntry = {
-  id: number;
-  focusType: "person" | "situation" | "cause" | "custom";
-  subject: { userId: number; name: string | null; avatarUrl: string | null } | null;
-  subjectText: string | null;
-  notes: string | null;
-  addedBy: { name: string | null; email: string } | null;
-  createdAt: string;
-};
 type Member = {
   id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null; isBeta?: boolean;
 };
@@ -76,9 +63,6 @@ type Gathering = {
   // Drives the "📹 Video call" tag + "Join video call" button.
   meetingUrl?: string | null;
 };
-type Announcement = {
-  id: number; title: string | null; content: string; authorName: string; createdAt: string;
-};
 // One intention card in a prayer circle. The GET /api/groups/:slug response
 // carries an `intentions` array (non-archived, sorted). We render each as its
 // own card on the community home tab and surface them through the daily bell.
@@ -88,31 +72,6 @@ type Intention = {
   description: string | null;
   createdByUserId: number;
   createdAt: string;
-};
-
-// Shape of the moments returned by /api/moments — we only consume the
-// fields we render on the community home feed. Keeps this page decoupled
-// from the dashboard's much larger internal Moment type.
-type CommunityMoment = {
-  id: number;
-  name: string;
-  templateType: string | null;
-  intention: string;
-  intercessionTopic?: string | null;
-  todayPostCount: number;
-  memberCount: number;
-  windowOpen: boolean;
-  myUserToken: string | null;
-  momentToken: string | null;
-  commitmentSessionsGoal?: number | null;
-  commitmentSessionsLogged?: number | null;
-  computedSessionsLogged?: number;
-  goalDays?: number | null;
-  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
-  // Moments attached to multiple communities expose the extras here.
-  // Primary group stays on `group`; additionalGroups is the rest.
-  additionalGroups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
-  members: Array<{ name: string; email: string }>;
 };
 
 // ─── Service schedule (e.g. Sunday Services) ────────────────────────────────
@@ -592,106 +551,6 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
   );
 }
 
-// Contemplation-community Home (beta). For communities created with
-// focus = "contemplation" this replaces the office/practice feed: a
-// shared daily contemplation goal the whole community holds together,
-// a CTA into the timer, and the CAC meditation they reflect on as a
-// group (reusing the shared ReflectionEntryCard). Self-contained so the
-// 3k-line page body doesn't grow another inline branch.
-function ContemplationCommunityHome({ slug, group }: { slug: string; group: Group }) {
-  const { t } = useTranslation();
-  const [, setLocation] = useLocation();
-  const goalMinutes = group.contemplationGoalMinutes ?? 20;
-
-  const { data } = useQuery<{
-    goalMinutes: number;
-    totalSeconds: number;
-    memberCount: number;
-    metCount: number;
-    mySeconds: number;
-  }>({
-    queryKey: ["/api/groups", slug, "contemplation-today"],
-    queryFn: () => {
-      const since = new Date(); since.setHours(0, 0, 0, 0);
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      return apiRequest(
-        "GET",
-        `/api/groups/${slug}/contemplation-today?todaySince=${encodeURIComponent(since.toISOString())}&tz=${encodeURIComponent(tz)}`,
-      );
-    },
-  });
-
-  const effGoalMin = data?.goalMinutes ?? goalMinutes;
-  const goalSeconds = effGoalMin * 60;
-  const mySeconds = data?.mySeconds ?? 0;
-  const myPct = goalSeconds > 0 ? Math.min(100, Math.round((mySeconds / goalSeconds) * 100)) : 0;
-  const myMin = Math.floor(mySeconds / 60);
-  const iMet = mySeconds >= goalSeconds && mySeconds > 0;
-  const totalMin = Math.floor((data?.totalSeconds ?? 0) / 60);
-  const metCount = data?.metCount ?? 0;
-  const memberCount = data?.memberCount ?? 0;
-
-  return (
-    <div className="space-y-6">
-      {/* Shared daily goal — everyone holds the same target; the page
-          shows the viewer's own progress and the community's collective
-          minutes toward it. */}
-      <div
-        className="rounded-2xl p-5"
-        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.6)" }}>
-          {t("community_detail.todays_contemplation")}
-          <span
-            className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
-            style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
-          >
-            {t("community_detail.beta")}
-          </span>
-        </p>
-        <p className="text-2xl font-bold mt-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {iMet ? `${t("community_detail.you_sat_your_min", { count: effGoalMin })} 🕯️` : t("community_detail.sit_minutes_together", { count: effGoalMin })}
-        </p>
-        <p className="text-[13px] mt-1" style={{ color: "#8FAF96" }}>
-          {iMet
-            ? t("community_detail.met_shared_goal")
-            : myMin > 0
-              ? t("community_detail.you_sat_of_min", { min: myMin, goal: effGoalMin })
-              : t("community_detail.shared_silence_sub")}
-        </p>
-
-        <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: "rgba(46,107,64,0.18)" }}>
-          <div className="h-full rounded-full transition-all" style={{ width: `${myPct}%`, background: "#5C8A5F" }} />
-        </div>
-
-        <p className="text-[12px] mt-2.5" style={{ color: "rgba(143,175,150,0.85)" }}>
-          {memberCount > 0
-            ? t("community_detail.together_min_met", { total: totalMin, met: metCount, members: memberCount, goal: effGoalMin })
-            : t("community_detail.together_min", { total: totalMin })}
-        </p>
-
-        <button
-          onClick={() => setLocation("/contemplation")}
-          className="w-full mt-4 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {iMet ? t("community_detail.sit_again") : t("community_detail.sit_in_contemplation")}
-        </button>
-      </div>
-
-      {/* The day's CAC meditation the community reflects on together. The
-          shared ReflectionEntryCard already links into the full
-          /communities/:slug/reflection discussion thread. */}
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-          {t("community_detail.reflect_together")}
-        </p>
-        <ReflectionEntryCard slug={slug} />
-      </div>
-    </div>
-  );
-}
-
 // Sunday-service reflection entry card — beta-only. Pinned to the most
 // recent Sunday, the card surfaces "how many of your community have
 // reflected this week" and routes to /communities/:slug/sunday-reflection
@@ -1114,297 +973,6 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
   );
 }
 
-// ─── Community home — Sunday Service card ──────────────────────────────────
-// Pill-based card that mirrors the home dashboard's `ServiceCard` visual so
-// the community home tab reads as a scoped sibling of the main home screen.
-// Fetches the same `/api/groups/:slug/service-schedule` endpoint the
-// Gatherings tab uses. Renders nothing when the community hasn't set up a
-// schedule yet — keeps the home tab quiet for new communities.
-function CommunityServiceHomeCard({
-  slug,
-  groupName,
-  groupEmoji,
-  onOpen,
-}: {
-  slug: string;
-  groupName: string;
-  groupEmoji: string | null;
-  onOpen: () => void;
-}) {
-  const { t } = useTranslation();
-  const { data } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
-    queryKey: ["/api/groups", slug, "service-schedule"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
-    enabled: !!slug,
-  });
-  const schedule = data?.schedule ?? null;
-  if (!schedule || schedule.times.length === 0) return null;
-
-  const dayLabel = dowNames(t).find(d => d.value === schedule.dayOfWeek)?.label ?? t("community_detail.day_sunday");
-  const title = schedule.name || t("community_detail.day_services", { day: dayLabel });
-
-  // Eyebrow-less card so the community home tab can stack it under a single
-  // shared "Gatherings" label alongside the ritual cards. The outer
-  // `CommunityGatheringsHomeBlock` owns the section header now.
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-      className="block w-full text-left cursor-pointer"
-    >
-      <div
-        className="relative flex rounded-xl overflow-hidden"
-        style={{
-          // `gatherings` category palette: bar #6FAF85, bg rgba(111,175,133,0.15)
-          background: "rgba(111,175,133,0.15)",
-          border: "1px solid rgba(111,175,133,0.35)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-        }}
-      >
-        <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
-        <div className="flex-1 px-4 pt-3 pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-              🙌🏽 {title}
-            </span>
-            {/* Top-right eyebrow — matches the dashboard card, which puts
-                the community's emoji + name here. Same slot, same look,
-                even though the user is already inside that community. */}
-            <span
-              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-            >
-              {groupEmoji ?? "⛪"} {groupName}
-            </span>
-          </div>
-
-          {/* Pills — single-line with runtime overflow detection, same as
-              the dashboard. Long rows auto-scroll instead of wrapping. */}
-          <ServiceTimesPillRow schedule={schedule} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Community home — "Prayed this week" ticker ────────────────────────────
-// Scrolls through every member who has prayed an intercession, checked in on
-// a practice, or amened a prayer request in the last 7 days. Data comes from
-// /api/groups/:slug/prayer-activity. Quiet (nothing rendered) when no one has
-// prayed this week yet so the tab stays clean for new communities.
-type PrayerActivityUser = {
-  userId: number;
-  name: string;
-  avatarUrl: string | null;
-  lastPrayedAt: string;
-};
-
-function PrayedThisWeekTicker({ slug }: { slug: string }) {
-  const { t } = useTranslation();
-  const { data } = useQuery<{ users: PrayerActivityUser[] }>({
-    queryKey: ["/api/groups", slug, "prayer-activity"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-activity`),
-    enabled: !!slug,
-  });
-  // Dedupe server-side payload by userId as a belt-and-suspenders guard.
-  // The server already dedupes, but a stale client-side duplicate would
-  // show the same face twice — user flagged this explicitly.
-  const users = useMemo(() => {
-    const seen = new Set<number>();
-    const out: PrayerActivityUser[] = [];
-    for (const u of data?.users ?? []) {
-      if (seen.has(u.userId)) continue;
-      seen.add(u.userId);
-      out.push(u);
-    }
-    return out;
-  }, [data?.users]);
-
-  // Overflow-driven ticker: measure the intrinsic width of the pill row
-  // against the visible row width. If the pills fit, render them once
-  // statically (no animation, no duplication). Only when they overflow
-  // do we double + animate — earlier everyone saw a scrolling ticker
-  // with a duplicated list, which made a two-person community look
-  // like four.
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const [ticker, setTicker] = useState(false);
-  useEffect(() => {
-    const measure = () => {
-      if (!containerRef.current || !contentRef.current) return;
-      const overflow = contentRef.current.scrollWidth > containerRef.current.clientWidth + 1;
-      setTicker(overflow);
-    };
-    measure();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    if (ro && containerRef.current) ro.observe(containerRef.current);
-    if (ro && contentRef.current) ro.observe(contentRef.current);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [users.length]);
-
-  if (users.length === 0) return null;
-
-  const renderPill = (u: PrayerActivityUser, key: string) => {
-    const first = (u.name ?? "").split(/\s+/)[0] || t("community_detail.friend");
-    return (
-      <div
-        key={key}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full shrink-0"
-        style={{
-          background: "rgba(46,107,64,0.15)",
-          border: "1px solid rgba(46,107,64,0.28)",
-        }}
-      >
-        {u.avatarUrl ? (
-          <img
-            src={u.avatarUrl}
-            alt={u.name}
-            className="w-5 h-5 rounded-full object-cover shrink-0"
-            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-          />
-        ) : (
-          <div
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-          >
-            {(u.name ?? "?").charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span className="text-xs font-medium whitespace-nowrap" style={{ color: "#F0EDE6" }}>
-          {t("community_detail.name_prayed", { name: first })} 🙏
-        </span>
-      </div>
-    );
-  };
-
-  return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-        {t("community_detail.prayed_this_week")}
-      </p>
-      <div
-        ref={containerRef}
-        className={`relative rounded-xl ${ticker ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`}
-        style={{
-          background: "rgba(46,107,64,0.08)",
-          border: "1px solid rgba(46,107,64,0.2)",
-          maskImage: ticker ? "linear-gradient(to right, black 0%, black 88%, transparent 100%)" : undefined,
-          WebkitMaskImage: ticker ? "linear-gradient(to right, black 0%, black 88%, transparent 100%)" : undefined,
-        }}
-      >
-        <div
-          ref={contentRef}
-          className="py-3"
-          style={
-            ticker
-              ? {
-                  display: "flex",
-                  gap: 10,
-                  width: "max-content",
-                  paddingLeft: 12,
-                  paddingRight: 40,
-                }
-              : {
-                  display: "flex",
-                  gap: 10,
-                  paddingLeft: 12,
-                  paddingRight: 12,
-                  flexWrap: "nowrap",
-                }
-          }
-        >
-          {users.map((u) => renderPill(u, String(u.userId)))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Community prayer compose bar ────────────────────────────────────────
-// Mirrors the /prayer-list compose bar, but scoped to this community —
-// posts directly to `POST /api/groups/:slug/prayer-requests`. Sits at
-// the bottom of the community home tab so sharing a request feels just
-// as immediate as the app-wide compose. No "for me / for someone else"
-// popup here — inside a community the submission is always "share
-// with this community", which matches how the existing Prayer Wall tab
-// compose already behaves.
-
-function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupName: string }) {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [value, setValue] = useState("");
-  const [saved, setSaved] = useState(false);
-
-  const createRequest = useMutation({
-    mutationFn: (body: string) =>
-      apiRequest("POST", `/api/groups/${slug}/prayer-requests`, { body }),
-    onSuccess: () => {
-      setValue("");
-      setSaved(true);
-      // Auto-fade the confirmation so the bar returns to its idle state.
-      setTimeout(() => setSaved(false), 2400);
-      // Invalidate BOTH feeds:
-      //   • the community's wall (still used by the Prayer Wall tab)
-      //   • the global garden (now what the Home tab reads) so the new
-      //     post appears on the home feed without a page refresh.
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-  });
-
-  const submit = () => {
-    const trimmed = value.trim();
-    if (!trimmed || createRequest.isPending) return;
-    createRequest.mutate(trimmed);
-  };
-
-  return (
-    <div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder={`${t("community_detail.share_a_prayer")} 🌿`}
-          maxLength={1000}
-          disabled={createRequest.isPending}
-          className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
-          style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6", fontFamily: FONT }}
-        />
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!value.trim() || createRequest.isPending}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-          style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          🙏🏽
-        </button>
-      </div>
-      <AnimatePresence>
-        {saved && (
-          <motion.p
-            initial={{ opacity: 0, y: -2 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-xs mt-2"
-            style={{ color: "#A8C5A0", fontFamily: FONT }}
-          >
-            ✓ {t("community_detail.shared_with_group", { name: groupName })}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 export default function CommunityDetailPage() {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
@@ -1424,7 +992,7 @@ export default function CommunityDetailPage() {
     return (["hub", "practices", "gatherings", "members"] as const)
       .find((k) => k === tabParam) ?? "hub";
   })();
-  const [activeTab, setActiveTab] = useState<"hub" | "home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
+  const [activeTab, setActiveTab] = useState<"hub" | "prayer" | "practices" | "gatherings" | "members">(initialTab);
 
   // Strip the legacy `?welcome=1` query param if it's still in the URL
   // (older links). The dedicated post-signup community welcome overlay
@@ -1443,15 +1011,6 @@ export default function CommunityDetailPage() {
   // home dashboard. Lets a community admin start a practice, lectio, fast,
   // event, or prayer feed scoped to *this* community.
   const [fabOpen, setFabOpen] = useState(false);
-  const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("");
-  const [newAnnouncementContent, setNewAnnouncementContent] = useState("");
-  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
-  // Prayer-walk fields. Surfaced when newAnnouncementKind === "prayer_walk".
-  // Climate-enrolled users see kind='prayer_walk' rows in their /climate
-  // feed, sorted by event_at across all groups.
-  const [newAnnouncementKind, setNewAnnouncementKind] = useState<"announcement" | "prayer_walk">("announcement");
-  const [newAnnouncementEventAt, setNewAnnouncementEventAt] = useState(""); // datetime-local value
-  const [newAnnouncementLocation, setNewAnnouncementLocation] = useState("");
   // ── Prayer Circle — "Praying today" add form state ────────────────────
   // Members can add what they are carrying in prayer today. The form is
   // collapsed by default; when `showFocusForm` is true we reveal a type
@@ -1514,80 +1073,8 @@ export default function CommunityDetailPage() {
   const { data: gatheringsData } = useQuery<{ gatherings: Gathering[] }>({
     queryKey: ["/api/groups", slug, "gatherings"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
-    // Home tab surfaces a gatherings preview, so keep the fetch enabled
-    // for both tabs so switching tabs stays instant.
-    enabled: !!user && !!slug && (effectiveTab === "gatherings" || effectiveTab === "home"),
+    enabled: !!user && !!slug && effectiveTab === "gatherings",
   });
-
-  const { data: announcementsData } = useQuery<{ announcements: Announcement[] }>({
-    queryKey: ["/api/groups", slug, "announcements"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/announcements`),
-    enabled: !!user && !!slug && (effectiveTab === "announcements" || effectiveTab === "home"),
-  });
-
-  // Prayer feeds bound to this community. Each row is one feed plus
-  // today's intercessions on it (concrete + recurring merged), so the
-  // home tab can surface "Phoebe Climate has 3 intercessions today" as
-  // a card alongside the in-community Intercessions list. 403 on
-  // non-members is silenced into an empty array.
-  const { data: feedsData } = useQuery<{
-    feeds: Array<{
-      feedId: number;
-      feedSlug: string;
-      feedTitle: string;
-      feedCoverEmoji: string | null;
-      subscriberCount: number;
-      todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
-    }>;
-  }>({
-    queryKey: ["/api/groups", slug, "prayer-feeds"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-feeds`),
-    enabled: !!user && !!slug && effectiveTab === "home",
-  });
-  const boundFeeds = feedsData?.feeds ?? [];
-
-  // Home-feed data: pull the rich moments list + this community's prayer
-  // requests so the front page can render a dashboard-style mix of
-  // intercessions, practices, and prayer requests — scoped to this group.
-  const { data: momentsData } = useQuery<{ moments: CommunityMoment[] }>({
-    queryKey: ["/api/moments"],
-    queryFn: () => apiRequest("GET", "/api/moments"),
-    enabled: !!user && effectiveTab === "home",
-  });
-  // Community home is scoped to THIS community's members only — the
-  // backend endpoint filters to (group_id = this group) OR (owner is a
-  // joined member of this community). Earlier we routed this to the
-  // global /api/prayer-requests feed which leaked prayers from every
-  // community the viewer was in (Marcus showed up on Heavenly Rest even
-  // though he isn't a member). Back to community-scoped.
-  const { data: homePrayerData } = useQuery<{ requests: PrayerRequest[] }>({
-    queryKey: ["/api/groups", slug, "prayer-requests"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
-    enabled: !!user && !!slug && effectiveTab === "home",
-  });
-
-  // Today's prayer focus — only fetched once we know this is a circle group.
-  // Server returns an empty list for non-circles, but we still gate the
-  // query so the network request only fires where it's meaningful.
-  const isCircle = !!groupData?.group?.isPrayerCircle;
-  const { data: focusData } = useQuery<{ date: string | null; focus: FocusEntry[] }>({
-    queryKey: ["/api/groups", slug, "focus"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/focus`),
-    enabled: !!user && !!slug && isCircle && effectiveTab === "home",
-  });
-
-  // Pull the service schedule at the parent level too (React Query
-  // dedupes by key with the one inside CommunityServiceHomeCard, so no
-  // extra network call) — the "nothing here yet" guard below needs to
-  // know whether a Sunday Service card will render before it decides
-  // to paint the empty-state message. Previously the empty-state fired
-  // even though a Gatherings card was plainly visible on the page.
-  const { data: serviceScheduleData } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
-    queryKey: ["/api/groups", slug, "service-schedule"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
-    enabled: !!user && !!slug && effectiveTab === "home",
-  });
-  const hasServiceSchedule = !!serviceScheduleData?.schedule && serviceScheduleData.schedule.times.length > 0;
 
   // ── Admin "new arrival" popup ──────────────────────────────────────────
   // Fetches any new-member / new-prayer-request events this admin hasn't
@@ -1636,33 +1123,6 @@ export default function CommunityDetailPage() {
     onSuccess: () => {
       setNewPrayer("");
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-requests"] });
-    },
-  });
-
-  const announcementMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/announcements`, {
-      title: newAnnouncementTitle || undefined,
-      content: newAnnouncementContent,
-      kind: newAnnouncementKind,
-      // datetime-local has no tz suffix — convert to ISO via Date so the
-      // server gets UTC. Empty string → undefined so Zod's optional fires.
-      eventAt:
-        newAnnouncementKind === "prayer_walk" && newAnnouncementEventAt
-          ? new Date(newAnnouncementEventAt).toISOString()
-          : undefined,
-      location:
-        newAnnouncementKind === "prayer_walk" && newAnnouncementLocation
-          ? newAnnouncementLocation
-          : undefined,
-    }),
-    onSuccess: () => {
-      setNewAnnouncementTitle("");
-      setNewAnnouncementContent("");
-      setNewAnnouncementKind("announcement");
-      setNewAnnouncementEventAt("");
-      setNewAnnouncementLocation("");
-      setShowAnnouncementForm(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "announcements"] });
     },
   });
 
@@ -1783,20 +1243,13 @@ export default function CommunityDetailPage() {
   // unlocks the direct-add form on the Members tab.
   const canInviteByEmail = isAdmin && isBeta;
 
-  // Jardín groups carry only the Prayer Wall (shared prayer requests) + Members
-  // tabs — Forum + Leaderboard live as cards above, and the general community
-  // tabs (home / gatherings / announcements) don't apply.
-  const tabs = isJardinGroup
-    ? [
-        { key: "prayer" as const, label: t("community_detail.tab_prayer", { defaultValue: "Prayer Wall" }), emoji: "🙏🏽" },
-        { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
-      ]
-    : [
-        { key: "home" as const, label: t("community_detail.tab_home"), emoji: "🏡" },
-        { key: "gatherings" as const, label: t("community_detail.tab_gatherings"), emoji: "🤝🏽" },
-        { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
-        { key: "announcements" as const, label: t("community_detail.tab_announcements"), emoji: "📮" },
-      ];
+  // The tab STRIP only renders for Jardín groups (general groups navigate by
+  // hub tiles), and Jardín carries only the Prayer Wall (shared prayer
+  // requests) + Members — Forum + Leaderboard live as cards above.
+  const tabs = [
+    { key: "prayer" as const, label: t("community_detail.tab_prayer", { defaultValue: "Prayer Wall" }), emoji: "🙏🏽" },
+    { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
+  ];
 
   return (
     <Layout>

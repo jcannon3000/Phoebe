@@ -14,6 +14,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { PrayedWithWeek } from "@/components/PrayedWithWeek";
+import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { CommunityRuleOfferBeta } from "@/components/CommunityRuleOfferBeta";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
@@ -7368,6 +7369,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               <PrayedWithWeek />
             </div>
           )}
+          {/* A fellow's one-tap 🙌 lands INSIDE the daily loop (it only
+              rendered on the People page before, which most users never
+              visit). Self-hides when there's nothing unseen; gated on the
+              fellows flag like every Fellow surface. */}
+          {!eventsOnly && FELLOWS_ENABLED && <EncouragementBanner />}
           {/* PUBLIC first-open welcome — a dismissible "begin here" note under
               the date: names the given rhythm and promises the daily
               walk-through. Guests only. */}
@@ -7505,6 +7511,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           rhythm is done — the Learn band renders on the
                           finished-day view too. */}
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}><HomeLearnSection /></motion.div>
+                      {/* The WEEKLY rhythm stays visible on a kept day — resting
+                          in a finished day is exactly when you'd log Bless or
+                          Rest. (It self-hides when no weekly practice is on.) */}
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}><WeeklyRhythm /></motion.div>
                     </div>
                   );
                 }
@@ -7544,6 +7554,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
                     {/* Same finished-day Learn band as the no-events branch. */}
                     <motion.div {...enterUp(2)}><HomeLearnSection /></motion.div>
+                    {/* Weekly rhythm stays on the kept view (see the no-events
+                        branch note). */}
+                    <motion.div {...enterUp(3)}><WeeklyRhythm /></motion.div>
                   </div>
                 );
               })() : (

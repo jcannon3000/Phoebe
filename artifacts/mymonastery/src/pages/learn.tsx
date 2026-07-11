@@ -123,15 +123,19 @@ export default function LearnPage() {
           ))}
         </div>
 
-        {/* Guided courses — web only (in-app player + progress tracking). */}
-        {!isNativeShell() && (
-          <div className="mt-8">
+        {/* Guided courses. VIDEO courses (YouTube player) are web-only; the
+            Way of Love AUDIO course plays natively too — same split as the
+            home's HomeLearnSection, which was already iOS-aware while this
+            page hid the whole section (the flagship rule-of-life course was
+            invisible in the app). */}
+        <div className="mt-8">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
               Courses
             </p>
             <div className="space-y-3">
               {/* Centering Prayer first — the short PRACTICE course is the
                   on-ramp; the Spiritual Journey is where it deepens. */}
+              {!isNativeShell() && (
               <button
                 onClick={() => setLocation("/centering-prayer")}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -154,7 +158,9 @@ export default function LearnPage() {
                   </div>
                 </div>
               </button>
+              )}
 
+              {!isNativeShell() && (
               <button
                 onClick={() => setLocation("/journey")}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -177,6 +183,7 @@ export default function LearnPage() {
                   </div>
                 </div>
               </button>
+              )}
 
               <button
                 onClick={() => setLocation("/way-of-love-course")}
@@ -201,8 +208,7 @@ export default function LearnPage() {
                 </div>
               </button>
             </div>
-          </div>
-        )}
+        </div>
 
         <p className="text-xs italic text-center mt-8" style={{ color: "rgba(143,175,150,0.5)" }}>
           {t("learn.more_to_come")}

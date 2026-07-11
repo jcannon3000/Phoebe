@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -152,6 +153,18 @@ function CelebrationOverlay({ doneCount, total, onClose }: {
       >
         {t("daily_complete.kept_count", { count: doneCount, total })}
       </motion.p>
+
+      {/* Praying WITH each other — the aggregate "you prayed with N people
+          this week" lands at the payoff moment, turning a private win into
+          communion. Renders nothing at zero (good news only). */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.75 }}
+        className="relative z-10"
+      >
+        <PrayedWithWeek />
+      </motion.div>
 
       {/* Continue */}
       <motion.button
