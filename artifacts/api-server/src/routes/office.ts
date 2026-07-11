@@ -23,17 +23,25 @@ import { PSALTER } from "../seeds/bcpPsalter";
 
 const router = Router();
 
+// Parse a ?date=YYYY-MM-DD by anchoring at LOCAL noon. A bare YYYY-MM-DD in
+// new Date() parses as UTC MIDNIGHT, and the assembly pipeline reads it with
+// local getters (startOfDay / getOfficeDay) — so any server west of UTC
+// rolled the office back a day (prod's UTC clock masked this; local dev
+// served yesterday's propers — caught comparing against the lectionary).
+// Noon keeps the calendar day stable under both local and UTC getters for
+// every timezone. Same anchor /psalms/today already uses.
+function parseOfficeDate(raw: unknown): Date {
+  if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const d = new Date(`${raw}T12:00:00`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const d = typeof raw === "string" && raw ? new Date(raw) : new Date();
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
 // GET /office/morning — public, no auth required (liturgical content is same for all users)
 router.get("/office/morning", async (req, res) => {
-  let date: Date;
-  try {
-    date = req.query.date
-      ? new Date(req.query.date as string)
-      : new Date();
-    if (isNaN(date.getTime())) throw new Error("Invalid date");
-  } catch {
-    date = new Date();
-  }
+  const date = parseOfficeDate(req.query.date);
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
@@ -146,7 +154,7 @@ router.get("/office/morning", async (req, res) => {
 router.get("/office/evening", async (req, res) => {
   let date: Date;
   try {
-    date = req.query.date ? new Date(req.query.date as string) : new Date();
+    date = parseOfficeDate(req.query.date);
     if (isNaN(date.getTime())) throw new Error("Invalid date");
   } catch {
     date = new Date();
@@ -236,7 +244,7 @@ router.get("/office/compline", async (req, res) => {
 
   let date: Date;
   try {
-    date = req.query.date ? new Date(req.query.date as string) : new Date();
+    date = parseOfficeDate(req.query.date);
     if (isNaN(date.getTime())) throw new Error("Invalid date");
   } catch {
     date = new Date();
@@ -377,7 +385,7 @@ router.get("/devotion/:kind", async (req, res) => {
 
   let date: Date;
   try {
-    date = req.query.date ? new Date(req.query.date as string) : new Date();
+    date = parseOfficeDate(req.query.date);
     if (isNaN(date.getTime())) throw new Error("Invalid date");
   } catch {
     date = new Date();

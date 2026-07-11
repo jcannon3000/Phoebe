@@ -4513,13 +4513,9 @@ function PrayerListCarousel({
   // the prayer list flows continuously right after the routine. It must NOT wait
   // on a separate readiness flag — that made the cards pop in as a delayed batch
   // ~2s after the rhythm (which paints from cache well before the flag flips).
+  // (The per-row haptic ticks were removed per owner — the prayer list rises
+  // in silently; only the rhythm cards above keep the cascade haptics.)
   const cascadeOn = splashCleared;
-  const carouselHaptedRef = useRef(false);
-  useEffect(() => {
-    if (!cascadeOn || carouselHaptedRef.current) return;
-    carouselHaptedRef.current = true;
-    return scheduleCascadeHaptics(cascadeFrom, requests.length);
-  }, [cascadeOn, cascadeFrom, requests.length]);
   // Tapping a prayer card (anywhere, including the 🙏) opens the prayer
   // slideshow focused on that request — and queues the rest of your prayer
   // list — so you actually pray it (and Amen there), rather than a silent
