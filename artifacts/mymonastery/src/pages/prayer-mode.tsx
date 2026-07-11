@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Settings2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -41,7 +42,8 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -3754,6 +3756,12 @@ export default function PrayerModePage() {
   // Cobreathe overlay — also opened from the pause slide, beside the timer.
   const [cobreatheOpen, setCobreatheOpen] = useState(false);
   const [visible, setVisible] = useState(false);
+  // Display prefs (text size + backdrop) — the SAME device-local officeDisplay
+  // prefs the Daily Office deck reads, so a reader's chosen size/backdrop
+  // survives the office → intercessions handoff (and applies to standalone
+  // prayer-list walks, which share this deck's form).
+  const display = useOfficeDisplay();
+  const [displayOpen, setDisplayOpen] = useState(false);
   // Starts false so the FIRST slide fades up via the 0.22s content transition,
   // same as every later slide (advance() drives the false→true cycle). The
   // visible-gate effect raises it once the slide is ready. Initializing it true
@@ -4466,9 +4474,12 @@ export default function PrayerModePage() {
 
   const slide = displaySlides[index];
   // A DIFFERENT calm landscape rests behind each office slide/section (keyed by
-  // the slide index, from the "life on earth" library), under a dark wash so the
-  // prayer text stays legible. On the prayer slides — closing/blessing keep their look.
-  const officePhoto = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[index % LEAF_PHOTOS.length] : null;
+  // the slide index), under a dark wash so the prayer text stays legible. The
+  // library follows the reader's backdrop pref: Leaves (default), Planet (the
+  // landscape set minus the animals), or none for Plain (the solid base color
+  // stands alone). On the prayer slides — closing/blessing keep their look.
+  const bgPhotoSet = display.backdrop === "plain" ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const officePhoto = bgPhotoSet.length > 0 ? bgPhotoSet[index % bgPhotoSet.length]! : null;
 
   return (
     <div
@@ -4501,6 +4512,9 @@ export default function PrayerModePage() {
             style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }}
           />
         </>
+      ) : display.backdrop === "plain" ? (
+        /* Plain — a perfectly still solid green; no photo, no drifting gradient. */
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "#0C1F12" }} />
       ) : (
         <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />
       )}
@@ -4515,6 +4529,16 @@ export default function PrayerModePage() {
       >
         ×
       </button>
+      {/* Display settings (⚙) — same sheet as the Daily Office deck. */}
+      <button
+        onClick={() => setDisplayOpen(true)}
+        aria-label="Display settings"
+        className="absolute w-10 h-10 flex items-center justify-center rounded-full z-10"
+        style={{ top: "calc(var(--safe-top) + 12px)", right: "calc(1.5rem + 48px)", color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+      >
+        <Settings2 size={16} />
+      </button>
+      <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
 
       {/* Content — vertically CENTERED in the viewport (so a short prayer
           request / intercession sits in the middle of the screen rather than
@@ -4526,7 +4550,10 @@ export default function PrayerModePage() {
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
-          maxWidth: 560,
+          // Text size (A− / A+): zoom with width compensation, so bigger text
+          // wraps to a narrower measure instead of overflowing (same trick as
+          // the Daily Office deck).
+          ...fontScaleWrapStyle(display.fontScale, 560),
           margin: "0 auto",
           minHeight: "100dvh",
           justifyContent: "center",

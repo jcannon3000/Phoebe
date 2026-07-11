@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Settings2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
@@ -202,8 +204,69 @@ export default function PsalmsPage() {
   // lectionary chooser unguided.
   const [introDismissed, setIntroDismissed] = useState(false);
 
-  // A still leaf backdrop, picked once — matching the office slideshow.
-  const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  // Display prefs (text size + backdrop) — the same device-local officeDisplay
+  // prefs as the office deck, changed live from the ⚙ sheet.
+  const display = useOfficeDisplay();
+  const [displayOpen, setDisplayOpen] = useState(false);
+
+  // A still backdrop, picked once per backdrop choice — Leaves (default),
+  // Planet (landscapes minus the animals), or none for Plain (solid green).
+  const bgPhotoSet = display.backdrop === "plain" ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const leaf = useMemo(
+    () => (bgPhotoSet.length > 0 ? bgPhotoSet[Math.floor(Math.random() * bgPhotoSet.length)]! : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [display.backdrop],
+  );
+
+  // ── Resume — a phone call at Psalm 78 shouldn't restart the deck. ─────────
+  // Same per-day progress-key pattern as the office slideshow: restore once
+  // the slides exist, persist on every advance, clear on finish. Keyed by
+  // side + day + lectionary so yesterday's place (or the other office's)
+  // never bleeds in; stale keys from previous days are pruned on mount.
+  const progressKey = `phoebe:psalms-progress:${office}:${today}:${cycle}`;
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    try {
+      const stale: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("phoebe:psalms-progress:") && !k.includes(`:${today}:`)) stale.push(k);
+      }
+      for (const k of stale) localStorage.removeItem(k);
+    } catch { /* private mode */ }
+  }, [today]);
+  useEffect(() => {
+    if (restoredRef.current || step !== "read" || slides.length === 0) return;
+    restoredRef.current = true;
+    try {
+      const n = parseInt(localStorage.getItem(progressKey) ?? "", 10);
+      if (Number.isFinite(n) && n > 0 && n < slides.length) setIndex(n);
+    } catch { /* private mode */ }
+  }, [step, slides.length, progressKey]);
+  useEffect(() => {
+    if (step !== "read" || index <= 0) return;
+    try { localStorage.setItem(progressKey, String(index)); } catch { /* private mode */ }
+  }, [index, step, progressKey]);
+
+  // Swipe left → next, right → prev — same thresholds as the office deck
+  // (horizontal must dominate vertical so long-psalm scrolling isn't hijacked).
+  const swipeXRef = useRef<number | null>(null);
+  const swipeYRef = useRef<number | null>(null);
+  const handleSwipeTouchStart = (e: React.TouchEvent) => {
+    swipeXRef.current = e.touches[0].clientX;
+    swipeYRef.current = e.touches[0].clientY;
+  };
+  const makeSwipeTouchEnd = (onNext: () => void, onPrev: () => void) => (e: React.TouchEvent) => {
+    if (swipeXRef.current === null || swipeYRef.current === null) return;
+    const dx = e.changedTouches[0].clientX - swipeXRef.current;
+    const dy = e.changedTouches[0].clientY - swipeYRef.current;
+    swipeXRef.current = null;
+    swipeYRef.current = null;
+    if (Math.abs(dy) > Math.abs(dx)) return; // primarily vertical — let scroll handle it
+    if (Math.abs(dx) < 50) return;            // too small — ignore
+    if (dx < 0) onNext();
+    else onPrev();
+  };
 
   const goHome = () => setLocation("/dashboard");
   // Finishing the psalms = the day's Praying-the-Psalms is kept (side-scoped).
@@ -212,6 +275,7 @@ export default function PsalmsPage() {
   // continuous dim-then-lighten instead of a hard, flashing cut.
   const finish = () => {
     markPsalmsPrayed(office);
+    try { localStorage.removeItem(progressKey); } catch { /* private mode */ }
     setLeaving(true);
     window.setTimeout(() => {
       if (isDailyPrayer) setLocation(`/prayer-mode?closingOnly=1&side=${office}`);
@@ -299,7 +363,10 @@ export default function PsalmsPage() {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
       <span style={{ borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>{sideLabel}</span>
-      <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={() => setDisplayOpen(true)} aria-label="Display settings" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><Settings2 size={15} /></button>
+        <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+      </span>
     </div>
   );
 
@@ -320,6 +387,7 @@ export default function PsalmsPage() {
     return (
       <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
         {Backdrop}
+        <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
         {header(goHome)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "8px 28px", gap: 16 }}>
           <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Before you begin</p>
@@ -353,6 +421,7 @@ export default function PsalmsPage() {
       <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
         {Backdrop}
+        <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
         {header(backToChooser)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px max(1.5rem, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "8px 0 4px", fontWeight: 600 }}>{eyebrowLabel}</p>
@@ -384,6 +453,7 @@ export default function PsalmsPage() {
     <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
       {Backdrop}
+      <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
       {header(back)}
 
       {/* Slide body — tap the right half to advance, left half to go back.
@@ -391,8 +461,14 @@ export default function PsalmsPage() {
           (`px-5`) so the two surfaces read at the same width. */}
       <div
         onClick={(e) => { const w = (e.currentTarget as HTMLElement).clientWidth; if (e.clientX > w / 2) advance(); else back(); }}
+        onTouchStart={handleSwipeTouchStart}
+        onTouchEnd={makeSwipeTouchEnd(advance, back)}
         style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "8px 20px 0", cursor: "pointer", WebkitOverflowScrolling: "touch" }}
       >
+        {/* Text size (A− / A+): zoom + width compensation on the slide content
+            only — the tap container above stays unzoomed so its left/right
+            halves keep measuring correctly. */}
+        <div style={{ width: "100%", margin: "0 auto", flex: 1, display: "flex", flexDirection: "column", ...fontScaleWrapStyle(display.fontScale, 600) }}>
         {slide?.kind === "title" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>{eyebrowLabel}</p>
@@ -437,6 +513,7 @@ export default function PsalmsPage() {
             <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 22, lineHeight: 1.6, margin: 0 }}>{GLORIA_PATRI}</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Footer — Back · section label · Next/Done. */}
