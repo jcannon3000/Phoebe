@@ -23,6 +23,7 @@ import {
   type ReflectionSource,
   type OfficeAudioSource,
 } from "@/lib/officePrefs";
+import { getOfficePrayingMode, setOfficePrayingMode, type OfficePrayingMode } from "@/lib/officeDisplay";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -640,6 +641,68 @@ function DefaultPrayerLevelSettings() {
         Shape your rule of life
         <span aria-hidden>→</span>
       </Link>
+    </>
+  );
+}
+
+// ── Praying the office: alone vs together ─────────────────────────────────
+// Device-local (a phone or screen used at a gathering flips to communal
+// without touching the rule or any server pref). "Together" shows the BCP's
+// corporate form on the full offices: Officiant / People rubrics over the
+// dialogues, "said by" rubrics on the common texts, and the salutation
+// before the Lord's Prayer ("The Lord be with you") that individual use
+// omits. The Daily Devotions stay personal either way.
+function OfficePrayingModeSettings() {
+  const [mode, setMode] = useState<OfficePrayingMode>(() => getOfficePrayingMode());
+  const pick = (m: OfficePrayingMode) => {
+    setMode(m);
+    setOfficePrayingMode(m);
+  };
+  const options: Array<{ value: OfficePrayingMode; label: string; sub: string }> = [
+    { value: "individual", label: "On my own", sub: "A clean personal reading — no role labels." },
+    { value: "communal", label: "Together", sub: "Officiant and People parts, with the responses said in community." },
+  ];
+  return (
+    <>
+      <SectionHeader label="Praying the office" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        The Daily Office is written to be prayed together. Choose how this device prays it.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = mode === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => pick(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.sub}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
     </>
   );
 }
@@ -1925,6 +1988,9 @@ export default function SettingsPage() {
         {/* ── Default prayer depth — what the home "Begin prayer" CTA opens. ── */}
         <div className="mb-8">
           <DefaultPrayerLevelSettings />
+
+          <div className="mt-8" />
+          <OfficePrayingModeSettings />
         </div>
 
         {/* ── Home display — header daily-progress dots on/off ── */}

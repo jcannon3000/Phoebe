@@ -16,6 +16,7 @@ import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
+import { getOfficePrayingMode } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
@@ -173,12 +174,65 @@ const SECTION_LABEL: Record<string, string> = {
   creed: "Creed",
   lords_prayer: "Lord's Prayer",
   suffrages: "Suffrages",
+  salutation: "The Prayers",
   collect: "Collect",
   prayer_for_mission: "Prayer for Mission",
   intercessions: "Intercessions",
   general_thanksgiving: "General Thanksgiving",
   closing: "Closing",
 };
+
+// ── Praying TOGETHER (Settings → Praying the office) ─────────────────────────
+// Communal mode restores the corporate form of the office: Officiant / People
+// rubrics over each dialogue line, "said by" rubrics on the common texts, and
+// the salutation before the Lord's Prayer — the exchange the BCP appoints for
+// group use that Phoebe omits when praying alone. Device-local pref; the
+// individual (default) office is unchanged.
+const SPEAKER_LABEL: Record<"officiant" | "people" | "both", { en: string; es: string }> = {
+  officiant: { en: "Officiant", es: "Oficiante" },
+  people: { en: "People", es: "Pueblo" },
+  both: { en: "All", es: "Todos" },
+};
+const SAID_BY: Partial<Record<string, { en: string; es: string }>> = {
+  confession: { en: "Officiant and People together", es: "Oficiante y Pueblo juntos" },
+  absolution: { en: "The Officiant", es: "El Oficiante" },
+  opening_sentence: { en: "The Officiant", es: "El Oficiante" },
+  collect: { en: "The Officiant", es: "El Oficiante" },
+  prayer_for_mission: { en: "The Officiant", es: "El Oficiante" },
+  creed: { en: "Said by all", es: "Dicho por todos" },
+  lords_prayer: { en: "Said by all", es: "Dicho por todos" },
+  general_thanksgiving: { en: "Said by all", es: "Dicho por todos" },
+  canticle: { en: "Said by all", es: "Dicho por todos" },
+  invitatory_psalm: { en: "Said together", es: "Dicho juntos" },
+  psalm: { en: "Said together", es: "Dicho juntos" },
+  psalm_gloria: { en: "Said together", es: "Dicho juntos" },
+};
+const pickLoc = (v: { en: string; es: string }): string => (i18n.language?.startsWith("es") ? v.es : v.en);
+
+// The salutation slide (BCP p. 97 MP / p. 121 EP) spliced before the Lord's
+// Prayer in communal mode — "The Lord be with you" is a dialogue that only
+// exists with a People to answer it.
+function buildSalutationSlide(mode: "morning" | "evening"): Slide {
+  const es = !!i18n.language?.startsWith("es");
+  return {
+    id: "salutation",
+    type: "salutation",
+    emoji: "🕊️",
+    eyebrow: es ? "Las Oraciones" : "The Prayers",
+    title: null,
+    content: "",
+    isCallAndResponse: true,
+    callAndResponseLines: [
+      { speaker: "officiant", text: es ? "El Señor sea con ustedes." : "The Lord be with you." },
+      { speaker: "people", text: es ? "Y con tu espíritu." : "And also with you." },
+      { speaker: "officiant", text: es ? "Oremos." : "Let us pray." },
+    ],
+    bcpReference: mode === "morning" ? "BCP p. 97" : "BCP p. 121",
+    isScrollable: false,
+    scrollHint: null,
+    metadata: {},
+  };
+}
 
 // Parse a 1979 BCP Psalter content blob into a structured list for the
 // renderer. The data file (api-server/src/seeds/bcpPsalter.ts) stores
@@ -455,6 +509,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
+  // Praying TOGETHER (Settings → Praying the office). Only the corporate
+  // offices carry the rubrics — the Daily Devotions are explicitly the
+  // personal short forms, so they stay label-less either way.
+  const communal =
+    display.prayingMode === "communal" &&
+    (resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline");
   // The chosen photo library: Leaves (default), Planet (the landscape set
   // without the animal photos), or none for Plain (solid dark green below).
   const bgPhotoSet = display.backdrop === "plain" ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
@@ -668,6 +728,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // finishes by redirecting to /prayer-mode?closingOnly=1, and
         // that screen is where the user expects the "read a
         // reflection" affordance to sit, next to Give thanks.
+        // Praying TOGETHER: splice the salutation before the Lord's Prayer
+        // (only the full offices have one; read the pref at fetch time —
+        // changing it means a trip through Settings, which remounts us).
+        if (
+          getOfficePrayingMode() === "communal" &&
+          (resolvedMode === "morning" || resolvedMode === "evening")
+        ) {
+          const lp = fetched.findIndex((sl) => sl.type === "lords_prayer");
+          if (lp >= 0 && !fetched.some((sl) => sl.type === "salutation")) {
+            fetched = [...fetched.slice(0, lp), buildSalutationSlide(resolvedMode), ...fetched.slice(lp)];
+          }
+        }
         setSlides(fetched);
         setOfficeDay(data.officeDay ?? null);
         // Allow returning into the office mid-flow — when the
@@ -2295,18 +2367,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               const stripped = fullTitle.replace(/^Canticle\s+\w+\s*[—-]\s*/i, "");
               const eyebrowLabel = stripped.length > 0 ? stripped : (fullTitle || "Canticle");
               return (
-                <p
-                  style={{
-                    color: FAINT_GREEN,
-                    fontSize: 10,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                    margin: 0,
-                    fontWeight: 600,
-                  }}
-                >
-                  {eyebrowLabel}
-                </p>
+                <>
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 10,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {eyebrowLabel}
+                  </p>
+                  {communal && SAID_BY.canticle && (
+                    <p style={{ color: "rgba(143,175,150,0.55)", fontSize: 11.5, fontStyle: "italic", margin: "-2px 0 0", fontFamily: SPACE_GROTESK }}>
+                      {pickLoc(SAID_BY.canticle)}
+                    </p>
+                  )}
+                </>
               );
             })()
           ) : (
@@ -2330,6 +2409,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     instead. */}
                 {currentSlide.eyebrow || sectionLabel}
               </p>
+              {/* Communal mode: the BCP's "said by" rubric under the
+                  eyebrow — Officiant / Officiant and People / all. */}
+              {communal && SAID_BY[currentSlide.type] && (
+                <p style={{ color: "rgba(143,175,150,0.55)", fontSize: 11.5, fontStyle: "italic", margin: "-2px 0 0", fontFamily: SPACE_GROTESK }}>
+                  {pickLoc(SAID_BY[currentSlide.type]!)}
+                </p>
+              )}
               {/* Title slot. Intercession + psalm slides took
                   earlier branches (above), so we know currentSlide
                   isn't either of those here. The collect drops its
@@ -2514,21 +2600,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               ))}
             </div>
           ) : currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
-            // Officiant / People / All speaker labels are dropped on
-            // both the Daily Office AND the Daily Devotions — Phoebe
-            // is used overwhelmingly as a personal-prayer surface, not
-            // a corporate one, so the role labels just added visual
-            // noise above each line. The lines now read as one
-            // continuous prayer.
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 560 }}>
-              {currentSlide.callAndResponseLines.map((line, i) => (
-                <p
-                  key={i}
-                  style={{ fontSize: 20, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK }}
-                >
-                  {fixQuoteDirection(line.text)}
-                </p>
-              ))}
+            // Officiant / People / All speaker labels show only in communal
+            // mode (Settings → Praying the office → Together) — praying
+            // alone, the role labels read as visual noise and the lines run
+            // as one continuous prayer. Together, the labels are the point:
+            // they mark who says which line. A label renders when the
+            // speaker CHANGES so a wrapped suffrage line isn't re-labelled.
+            <div style={{ display: "flex", flexDirection: "column", gap: communal ? 16 : 10, maxWidth: 560 }}>
+              {currentSlide.callAndResponseLines.map((line, i) => {
+                const prev = currentSlide.callAndResponseLines?.[i - 1];
+                const showLabel = communal && (!prev || prev.speaker !== line.speaker);
+                return (
+                  <div key={i}>
+                    {showLabel && (
+                      <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 3px", fontWeight: 600 }}>
+                        {pickLoc(SPEAKER_LABEL[line.speaker] ?? SPEAKER_LABEL.both)}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 20, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK }}>
+                      {fixQuoteDirection(line.text)}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           ) : currentSlide.type === "invitatory_psalm" && currentSlide.content ? (
             // Invitatory psalm body — canticle-shaped lines (no

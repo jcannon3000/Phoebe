@@ -9,6 +9,28 @@ export const OFFICE_DISPLAY_EVENT = "phoebe:office-display-changed";
 export type OfficeBackdrop = "leaves" | "planet" | "plain";
 const BACKDROP_KEY = "phoebe:office-backdrop";
 const FONT_KEY = "phoebe:office-font-scale";
+const PRAYING_MODE_KEY = "phoebe:office-praying-mode";
+
+// How the office is prayed on THIS device: alone (today's clean, label-less
+// reading) or together (the corporate form — Officiant / People rubrics on
+// the dialogues, plus the responses the BCP appoints for group use, like the
+// salutation before the Lord's Prayer). Device-local on purpose: a phone or
+// screen used at a gathering flips to communal without touching the rule.
+export type OfficePrayingMode = "individual" | "communal";
+
+export function getOfficePrayingMode(): OfficePrayingMode {
+  try {
+    if (localStorage.getItem(PRAYING_MODE_KEY) === "communal") return "communal";
+  } catch { /* private mode */ }
+  return "individual";
+}
+
+export function setOfficePrayingMode(m: OfficePrayingMode): void {
+  try {
+    localStorage.setItem(PRAYING_MODE_KEY, m);
+    window.dispatchEvent(new Event(OFFICE_DISPLAY_EVENT));
+  } catch { /* non-fatal */ }
+}
 
 // The stepped text sizes (A− / A+). 1 = today's size.
 export const OFFICE_FONT_SCALES = [0.85, 1, 1.15, 1.3] as const;

@@ -18,9 +18,11 @@ import {
   OFFICE_FONT_SCALES,
   getOfficeBackdrop,
   getOfficeFontScale,
+  getOfficePrayingMode,
   setOfficeBackdrop,
   setOfficeFontScale,
   type OfficeBackdrop,
+  type OfficePrayingMode,
 } from "@/lib/officeDisplay";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
 
@@ -31,11 +33,12 @@ const BORDER = "rgba(200,212,192,0.15)";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 /** Live view of the device-local display prefs — re-renders on every change
- *  (the sheet dispatches OFFICE_DISPLAY_EVENT on each write). */
-export function useOfficeDisplay(): { backdrop: OfficeBackdrop; fontScale: number } {
-  const [display, setDisplay] = useState(() => ({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale() }));
+ *  (writers dispatch OFFICE_DISPLAY_EVENT; the praying-mode toggle in
+ *  Settings rides the same event). */
+export function useOfficeDisplay(): { backdrop: OfficeBackdrop; fontScale: number; prayingMode: OfficePrayingMode } {
+  const [display, setDisplay] = useState(() => ({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale(), prayingMode: getOfficePrayingMode() }));
   useEffect(() => {
-    const sync = () => setDisplay({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale() });
+    const sync = () => setDisplay({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale(), prayingMode: getOfficePrayingMode() });
     window.addEventListener(OFFICE_DISPLAY_EVENT, sync);
     return () => window.removeEventListener(OFFICE_DISPLAY_EVENT, sync);
   }, []);

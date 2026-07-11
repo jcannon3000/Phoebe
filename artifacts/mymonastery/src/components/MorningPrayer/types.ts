@@ -61,6 +61,12 @@ export type SlideType =
   // injected fresh on every office request so the 05:00 ET FDD
   // publish reaches users without a cache rebuild.
   | "fdd_meditation"
+  // The salutation before the Lord's Prayer ("The Lord be with you. /
+  // And also with you. / Let us pray.") — spliced in CLIENT-side when
+  // Settings → Praying the office is set to "Together" (the exchange the
+  // BCP appoints for group use, omitted when praying alone). Not produced
+  // by the server assemblers.
+  | "salutation"
   | "closing";
 
 export interface CallAndResponseLine {
