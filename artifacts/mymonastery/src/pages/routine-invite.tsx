@@ -183,9 +183,22 @@ export default function RoutineInvitePage() {
 
       {!user ? (
         <>
-          <button type="button" onClick={() => setLocation("/signin")} style={primaryBtn}>Sign in to add this rhythm</button>
+          <button
+            type="button"
+            onClick={() => {
+              // Stash the token so App.tsx's pending-invite redirect brings
+              // them straight back here once they're signed in (same
+              // round-trip the fellow/companion invites use) — without it the
+              // link silently dies for every brand-new invitee.
+              try { sessionStorage.setItem("phoebe:routine-token", token ?? ""); } catch { /* ignore */ }
+              setLocation("/signin");
+            }}
+            style={primaryBtn}
+          >
+            Sign in to add this rhythm
+          </button>
           <p style={{ fontSize: 12, color: SAGE, fontFamily: FONT, textAlign: "center" }}>
-            Come back to this link after signing in.
+            We'll bring you back here after you sign in.
           </p>
         </>
       ) : applied ? (

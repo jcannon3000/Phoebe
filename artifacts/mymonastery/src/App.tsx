@@ -102,6 +102,16 @@ function PendingFellowInviteRedirect() {
     if (companion && /^[a-f0-9]{32}$/i.test(companion)) {
       try { sessionStorage.removeItem("phoebe:companion-token"); } catch { /* ignore */ }
       setLocation(`/companion/${companion}`);
+      return;
+    }
+    // And for a prescribed-routine / preset-rule link (/routine/:token) — the
+    // landing stashes the token before "Sign in to add this rhythm".
+    if (location.startsWith("/routine/")) return;
+    let routine: string | null = null;
+    try { routine = sessionStorage.getItem("phoebe:routine-token"); } catch { /* ignore */ }
+    if (routine && /^[a-f0-9]{32}$/i.test(routine)) {
+      try { sessionStorage.removeItem("phoebe:routine-token"); } catch { /* ignore */ }
+      setLocation(`/routine/${routine}`);
     }
   }, [user, isLoading, location, setLocation]);
   return null;
@@ -866,6 +876,13 @@ const GUEST_ALLOWED_PREFIX = [
   // bouncing to the dashboard before it could render. An invite link someone
   // was HANDED must always open.
   "/communities/join/",
+  // Fellow invites (/fellow/:token) and rhythm-party invites
+  // (/companion/:token) — both pages carry their own explainer + sign-in
+  // round-trip (they stash the token and finish after signup), but the guest
+  // gate was bouncing public-app visitors to the dashboard before either could
+  // render. Same rule as above: a handed link must always open.
+  "/fellow/",
+  "/companion/",
 ];
 
 // The customizer routes (rule of life / pilot build / the questionnaire) that
