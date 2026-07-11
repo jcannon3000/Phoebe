@@ -20,12 +20,14 @@ const SLIDES: Slide[] = [
   },
   // The Daily Office — the real Evening Prayer psalm mock. Copy to the side,
   // mock on the right (the psalms render left-aligned, like the real office).
+  // Names the FORM claim explicitly (slideshow, not a scrolling document) —
+  // the thing young adults actually asked for.
   {
     kind: "feature-combo",
     label: "",
     headline: "The Daily Office",
     body: [
-      "Pray Morning and Evening Prayer with the psalms and lessons already filled in for you.",
+      "Pray Morning and Evening Prayer with the psalms and lessons already filled in for you — presented one movement at a time, in the form the apps you already use taught you. Not a document to scroll.",
     ],
     mock: "daily-office",
   },
@@ -39,15 +41,24 @@ const SLIDES: Slide[] = [
     ],
     mock: "office-formats",
   },
-  // Shape your own rhythm — the customizer / rule-of-life builder.
+  // Shape your own rhythm — the customizer / rule-of-life builder. Names the
+  // rule of life and the light-on-day-one → deeper-when-ready arc.
   {
     kind: "feature-combo",
     label: "",
     headline: "Shape your own rhythm",
     body: [
-      "Build the practice that's yours — the offices, a reflection, a few minutes of silence. Keep whatever you already pray, add only what you want, and it's all held in one place — and easily changed as your life does.",
+      "Build a rule of life that's actually yours — the offices, a reflection, a few minutes of silence. Begin lightly on day one, go deeper when you're ready. Keep whatever you already pray, add only what you want — and change it as your life changes.",
     ],
     mock: "customizer",
+  },
+  // The breadth of practices — the ones young adults asked for by name.
+  {
+    kind: "statement",
+    headline: "Practices that meet you",
+    body: [
+      "Forward Day by Day and the CAC's daily meditation. Audio Divina — praying with the music you love. Creation prayer, silence, gratitude, a daily walk — or a practice you name yourself. And each week, the Way of Love.",
+    ],
   },
   // The reflection, right where the office ends — the seamless FDD handoff.
   {
@@ -87,6 +98,39 @@ const SLIDES: Slide[] = [
       "Open Phoebe and see exactly where you are in today's rhythm — and the next thing to pray. Made for the pace of modern life: nothing to figure out, just the next step.",
     ],
     mock: "prayer-streak",
+  },
+  // ─────────────────────────────────────────────────────────────
+  // The communal turn — praying WITH each other, not just for.
+  // (The email's "most consequential difference"; was absent here.)
+  // ─────────────────────────────────────────────────────────────
+  {
+    kind: "statement",
+    headline: "Prayed with, not just for",
+    body: [
+      "Phoebe is made to be prayed in community as well as alone. Your community keeps one rule of life — a shared daily rhythm you take up in one tap — and through the week your home quietly says: you prayed with 14 people this week.",
+      "Never who did or who didn't. Presence, not attendance.",
+    ],
+  },
+  // The leader-programmed shared prayer list — the same intercessions,
+  // wherever each person prays.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "One prayer list, prayed together",
+    body: [
+      "Leaders set the day's intercessions for the whole community — so wherever each person prays, everyone is praying the same prayers.",
+    ],
+    mock: "community-intercession",
+  },
+  // Events alongside the daily practices.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "Alongside the life of your church",
+    body: [
+      "Gatherings and services appear beside the daily practices — personal prayer, connected to the community it belongs to.",
+    ],
+    mock: "gatherings",
   },
   // The name.
   {
