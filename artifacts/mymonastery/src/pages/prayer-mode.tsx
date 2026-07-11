@@ -44,6 +44,7 @@ import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
+import { officeThemeStyle } from "@/lib/officeDisplay";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -52,11 +53,11 @@ import { getPracticeSlot, SLOT_RANK, type CustomSlot } from "@/lib/customAnchors
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
-// to the app green (#091A10) at launch; prayer-mode's slides — especially the
-// warmer closing slide (#11291C) — differ, leaving a visible mismatched band
+// to the app green (var(--oh-bg2, #091A10)) at launch; prayer-mode's slides — especially the
+// warmer closing slide (var(--oh-closing, #11291C)) — differ, leaving a visible mismatched band
 // at the top. Best-effort + native-only (no-ops on web / when the plugin is
 // absent); the web/PWA equivalent is the theme-color meta handled alongside.
-const APP_STATUS_BAR = "#091A10";
+const APP_STATUS_BAR = "var(--oh-bg2, #091A10)";
 function setNativeStatusBarColor(color: string): void {
   try {
     const sb = (window as unknown as {
@@ -328,9 +329,9 @@ function AmenButton({ slideKey, onAdvance }: {
       aria-label="Amen"
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
-        background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
-        border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
-        color: "#F0EDE6",
+        background: ready ? "var(--oh-cta, #2D5E3F)" : "rgba(var(--ot-green, 46,107,64),0.18)",
+        border: `1px solid ${ready ? "rgba(var(--ot-green, 46,107,64),0.7)" : "rgba(var(--ot-green, 46,107,64),0.3)"}`,
+        color: "var(--oh-ink, #F0EDE6)",
         cursor: ready ? "pointer" : "default",
         minWidth: 140,
         transition: ready
@@ -343,7 +344,7 @@ function AmenButton({ slideKey, onAdvance }: {
         key={slideKey}
         className="absolute left-0 top-0 bottom-0 amen-progress-fill"
         style={{
-          background: "rgba(46,107,64,0.45)",
+          background: "rgba(var(--ot-green, 46,107,64),0.45)",
           pointerEvents: "none",
           opacity: ready ? 0 : 1,
           transition: "opacity 360ms ease-out",
@@ -462,19 +463,19 @@ function SlideContent({
       <div className="w-full flex flex-col items-center text-center gap-5">
         <p
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
         >
           Before we close
         </p>
         <p
           className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+          style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
         >
           Would you like to pray for one of your friends?
         </p>
         <p
           className="text-[12px] italic"
-          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", marginTop: "-6px" }}
         >
           Tap a name to start a prayer for them.
         </p>
@@ -490,9 +491,9 @@ function SlideContent({
               onClick={() => onPrayForFriend(f.email)}
               className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-opacity hover:opacity-90"
               style={{
-                background: "rgba(46,107,64,0.18)",
-                border: "1px solid rgba(46,107,64,0.3)",
-                fontFamily: "'Space Grotesk', sans-serif",
+                background: "rgba(var(--ot-green, 46,107,64),0.18)",
+                border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)",
+                fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
               }}
             >
               {f.avatarUrl ? (
@@ -504,7 +505,7 @@ function SlideContent({
               ) : (
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                  style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                  style={{ background: "rgba(var(--ot-fern, 168,197,160),0.2)", color: "var(--oh-fern, #A8C5A0)" }}
                 >
                   {(f.name || f.email || "?").trim().charAt(0).toUpperCase()}
                 </div>
@@ -519,7 +520,7 @@ function SlideContent({
         <button
           onClick={onAdvance}
           className="text-sm transition-opacity hover:opacity-80 mt-2"
-          style={{ color: "rgba(143,175,150,0.55)" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)" }}
         >
           Skip
         </button>
@@ -534,13 +535,13 @@ function SlideContent({
       <div className="w-full flex flex-col items-center text-center gap-5">
         <p
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
         >
           Before we close
         </p>
         <p
           className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+          style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
         >
           How can your community<br />pray for you?
         </p>
@@ -552,10 +553,10 @@ function SlideContent({
           placeholder="What's on your heart?"
           className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none"
           style={{
-            background: "rgba(46,107,64,0.12)",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "#F0EDE6",
-            fontFamily: "'Space Grotesk', sans-serif",
+            background: "rgba(var(--ot-green, 46,107,64),0.12)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)",
+            color: "var(--oh-ink, #F0EDE6)",
+            fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
             fontStyle: "italic",
             lineHeight: 1.65,
           }}
@@ -569,9 +570,9 @@ function SlideContent({
           onChange={(e) => setAskDays(Number(e.target.value))}
           aria-label="How long should we carry it?"
           style={{
-            width: "100%", background: "rgba(46,107,64,0.22)", color: "#F0EDE6",
-            border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999,
-            padding: "12px 22px", fontSize: 14, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif",
+            width: "100%", background: "rgba(var(--ot-green, 46,107,64),0.22)", color: "var(--oh-ink, #F0EDE6)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.50)", borderRadius: 999,
+            padding: "12px 22px", fontSize: 14, fontWeight: 600, fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
             textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
           }}
         >
@@ -586,14 +587,14 @@ function SlideContent({
             onClick={() => askBody.trim() && onAskSubmit(askBody.trim(), askDays)}
             disabled={askBody.trim().length === 0 || askSubmitting}
             className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
           >
             {askSubmitting ? "Sharing…" : "Share with my community →"}
           </button>
           <button
             onClick={onAdvance}
             className="text-sm transition-opacity hover:opacity-80"
-            style={{ color: "rgba(143,175,150,0.55)" }}
+            style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)" }}
           >
             Skip
           </button>
@@ -608,12 +609,12 @@ function SlideContent({
             className="mt-4 w-full max-w-xs rounded-xl p-4 text-left"
             style={{
               background: "#0F2818",
-              border: "1px solid rgba(46,107,64,0.35)",
+              border: "1px solid rgba(var(--ot-green, 46,107,64),0.35)",
             }}
           >
             <p
               className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
-              style={{ color: "rgba(143,175,150,0.6)" }}
+              style={{ color: "rgba(var(--ot-sage, 143,175,150),0.6)" }}
             >
               Or renew your last one
             </p>
@@ -634,7 +635,7 @@ function SlideContent({
               onClick={onRenewLastMine}
               disabled={renewingLastMine}
               className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-              style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
+              style={{ background: "rgba(var(--ot-green, 46,107,64),0.45)", color: "var(--oh-ink, #F0EDE6)" }}
             >
               {renewingLastMine ? "Renewing…" : "Renew for 7 days"}
             </button>
@@ -679,13 +680,13 @@ function SlideContent({
         <div className="flex flex-col items-center gap-3">
           <p
             className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: "rgba(143,175,150,0.45)" }}
+            style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
           >
             🕯️ A moment to pause
           </p>
           <p
             className="text-[22px] leading-[1.5] font-medium italic"
-            style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif", maxWidth: 360 }}
+            style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "Georgia, 'Times New Roman', serif", maxWidth: 360 }}
           >
             Take a breath. Bring anything else on your heart to prayer.
           </p>
@@ -703,9 +704,9 @@ function SlideContent({
                 aria-label="Length"
                 className="w-full rounded-full"
                 style={{
-                  background: "rgba(46,107,64,0.18)",
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600,
+                  background: "rgba(var(--ot-green, 46,107,64),0.18)",
+                  border: "1px solid rgba(var(--ot-green, 46,107,64),0.4)",
+                  color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600,
                   padding: "15px 40px", outline: "none", colorScheme: "dark",
                   appearance: "none", WebkitAppearance: "none", cursor: "pointer",
                   textAlign: "center", textAlignLast: "center",
@@ -715,13 +716,13 @@ function SlideContent({
                   <option key={m} value={String(m)}>{m} minutes</option>
                 ))}
               </select>
-              <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "rgba(143,175,150,0.85)", fontSize: 12 }}>▾</span>
+              <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "rgba(var(--ot-sage, 143,175,150),0.85)", fontSize: 12 }}>▾</span>
             </div>
             <button
               type="button"
               onClick={() => onStartContemplation(pauseMin)}
               className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.7)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
+              style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
             >
               Start contemplation <span aria-hidden>→</span>
             </button>
@@ -731,7 +732,7 @@ function SlideContent({
             type="button"
             onClick={onStartCobreathe}
             className="w-full rounded-full mt-6 transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.45)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
+            style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.45)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
           >
             <CobreatheGlobe size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
             Creation Prayer
@@ -744,7 +745,7 @@ function SlideContent({
           type="button"
           onClick={onAdvance}
           className="transition-opacity active:opacity-70"
-          style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "8px 12px" }}
+          style={{ background: "none", border: "none", color: "rgba(var(--ot-sage, 143,175,150),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "8px 12px" }}
         >
           or continue with office <span aria-hidden>→</span>
         </button>
@@ -758,13 +759,13 @@ function SlideContent({
       <div className="w-full flex flex-col items-center text-center gap-5">
         <p
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
         >
           Prayer ended
         </p>
         <p
           className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+          style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
         >
           Your prayer for {slide.recipientName} has ended.
         </p>
@@ -772,7 +773,7 @@ function SlideContent({
           <button
             onClick={() => onRenew(slide.prayerForId!, 7)}
             className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
           >
             Pray for another 7 days
           </button>
@@ -780,9 +781,9 @@ function SlideContent({
             onClick={() => onEnd(slide.prayerForId!)}
             className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
             style={{
-              background: "rgba(200,212,192,0.06)",
-              border: "1px solid rgba(46,107,64,0.25)",
-              color: "#8FAF96",
+              background: "rgba(var(--ot-mist, 200,212,192),0.06)",
+              border: "1px solid rgba(var(--ot-green, 46,107,64),0.25)",
+              color: "var(--oh-sage, #8FAF96)",
             }}
           >
             Done
@@ -798,7 +799,7 @@ function SlideContent({
       <div className="w-full flex flex-col items-center text-center gap-5">
         <p
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
         >
           Praying for
         </p>
@@ -807,12 +808,12 @@ function SlideContent({
             src={slide.recipientAvatarUrl}
             alt={slide.recipientName}
             className="w-16 h-16 rounded-full object-cover"
-            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+            style={{ border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)" }}
           />
         ) : (
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold"
-            style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+            style={{ background: "#1A4A2E", color: "var(--oh-fern, #A8C5A0)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)" }}
           >
             {(slide.recipientName ?? "")
               .split(" ")
@@ -823,7 +824,7 @@ function SlideContent({
         )}
         <p
           className="text-[22px] leading-[1.4] font-medium"
-          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+          style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
         >
           {slide.recipientName}
         </p>
@@ -832,8 +833,8 @@ function SlideContent({
           <div
             className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
             style={{
-              background: "rgba(46,107,64,0.12)",
-              border: "1px solid rgba(46,107,64,0.15)",
+              background: "rgba(var(--ot-green, 46,107,64),0.12)",
+              border: "1px solid rgba(var(--ot-green, 46,107,64),0.15)",
             }}
           >
             {(() => {
@@ -842,8 +843,8 @@ function SlideContent({
                 <p
                   className="italic whitespace-pre-wrap"
                   style={{
-                    color: "#C8D4C0",
-                    fontFamily: "'Space Grotesk', sans-serif",
+                    color: "var(--oh-mist, #C8D4C0)",
+                    fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
                     fontSize: `${fit.size}px`,
                     lineHeight: fit.leading,
                   }}
@@ -857,13 +858,13 @@ function SlideContent({
 
         <p
           className="text-[12px] italic"
-          style={{ color: "rgba(143,175,150,0.55)" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)" }}
         >
           Hold {slide.recipientName?.split(" ")[0]} in prayer today.
         </p>
 
         {slide.dayLabel && (
-          <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.35)" }}>
+          <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.35)" }}>
             {slide.dayLabel}
           </p>
         )}
@@ -942,7 +943,7 @@ function SlideContent({
         )}
 
         {slide.authorName && (
-          <p className="text-[12px]" style={{ color: "rgba(150,178,214,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <p className="text-[12px]" style={{ color: "rgba(150,178,214,0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
             {slide.authorName} is praying for you{slide.prayingSinceLabel ? ` · ${slide.prayingSinceLabel}` : ""}
           </p>
         )}
@@ -950,7 +951,7 @@ function SlideContent({
         <button
           onClick={onAdvance}
           className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2E5C8F", color: "#F0EDE6" }}
+          style={{ background: "#2E5C8F", color: "var(--oh-ink, #F0EDE6)" }}
         >
           Continue →
         </button>
@@ -981,7 +982,7 @@ function SlideContent({
           ) : (
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
-              style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+              style={{ background: "#1A4A2E", color: "var(--oh-fern, #A8C5A0)" }}
             >
               {(slide.authorName ?? "")
                 .split(" ")
@@ -991,7 +992,7 @@ function SlideContent({
             </div>
           )}
           {slide.authorName && (
-            <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <p className="text-[14px]" style={{ color: "var(--oh-mist, #C8D4C0)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
               {slide.authorName}
             </p>
           )}
@@ -1002,7 +1003,7 @@ function SlideContent({
         <div className="flex items-center gap-2 flex-wrap justify-center">
           <p
             className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: "rgba(143,175,150,0.45)" }}
+            style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
           >
             {slide.kind === "intercession"
               ? "Community Intercession"
@@ -1020,10 +1021,10 @@ function SlideContent({
           <span
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
             style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.4)",
-              fontFamily: "'Space Grotesk', sans-serif",
+              background: "rgba(var(--ot-green, 46,107,64),0.22)",
+              color: "var(--oh-fern, #A8C5A0)",
+              border: "1px solid rgba(var(--ot-green, 46,107,64),0.4)",
+              fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
             }}
           >
             🌿 {slide.feedTag}
@@ -1034,7 +1035,7 @@ function SlideContent({
       <p
         className="text-[22px] leading-[1.5] font-medium italic"
         style={{
-          color: "#E8E4D8",
+          color: "var(--oh-ink2, #E8E4D8)",
           fontFamily: "Georgia, 'Times New Roman', serif",
         }}
       >
@@ -1044,7 +1045,7 @@ function SlideContent({
       {slide.intention && (
         <p
           className="text-sm italic"
-          style={{ color: "#8FAF96", marginTop: "-4px" }}
+          style={{ color: "var(--oh-sage, #8FAF96)", marginTop: "-4px" }}
         >
           {slide.intention}
         </p>
@@ -1073,10 +1074,10 @@ function SlideContent({
                 aria-hidden={i >= slide.groups!.length}
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap shrink-0"
                 style={{
-                  background: "rgba(46,107,64,0.18)",
-                  color: "#A8C5A0",
-                  border: "1px solid rgba(46,107,64,0.32)",
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  background: "rgba(var(--ot-green, 46,107,64),0.18)",
+                  color: "var(--oh-fern, #A8C5A0)",
+                  border: "1px solid rgba(var(--ot-green, 46,107,64),0.32)",
+                  fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
                 }}
               >
                 {g.emoji && <span aria-hidden>{g.emoji}</span>}
@@ -1086,7 +1087,7 @@ function SlideContent({
           </div>
         </div>
       ) : slide.kind !== "intercession" && slide.attribution ? (
-        <p className="text-sm" style={{ color: "#8FAF96" }}>
+        <p className="text-sm" style={{ color: "var(--oh-sage, #8FAF96)" }}>
           {slide.attribution}
         </p>
       ) : null}
@@ -1116,7 +1117,7 @@ function SlideContent({
                   style={{
                     width: 30,
                     height: 30,
-                    border: "2px solid #091A10",
+                    border: "2px solid var(--oh-bg2, #091A10)",
                     background: "#1A4A2E",
                   }}
                 >
@@ -1129,7 +1130,7 @@ function SlideContent({
                   ) : (
                     <div
                       className="w-full h-full flex items-center justify-center text-[11px] font-semibold"
-                      style={{ color: "#A8C5A0" }}
+                      style={{ color: "var(--oh-fern, #A8C5A0)" }}
                     >
                       {f.name
                         .split(" ")
@@ -1144,7 +1145,7 @@ function SlideContent({
           )}
           <p
             className="text-[12px] italic"
-            style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+            style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", marginTop: "-6px" }}
           >
             {slide.weekPrayCount && slide.weekPrayCount > 0
               ? slide.feedTag
@@ -1167,7 +1168,7 @@ function SlideContent({
       {slide.kind === "circle-intention" && slide.groupName && (
         <p
           className="text-[12px] italic"
-          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", marginTop: "-6px" }}
         >
           {slide.groupEmoji ? `${slide.groupEmoji} ` : ""}The {slide.groupName} circle is praying this together.
         </p>
@@ -1180,10 +1181,10 @@ function SlideContent({
         <div
           className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
-            background: "rgba(9,26,16, 0.297)",
+            background: "rgba(var(--ot-deep, 9,26,16), 0.297)",
             backdropFilter: "blur(11.34px)",
             WebkitBackdropFilter: "blur(11.34px)",
-            border: "1px solid rgba(46,107,64,0.15)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.15)",
           }}
         >
           {(() => {
@@ -1192,8 +1193,8 @@ function SlideContent({
               <p
                 className="italic"
                 style={{
-                  color: "#C8D4C0",
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  color: "var(--oh-mist, #C8D4C0)",
+                  fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
                   fontSize: `${fit.size}px`,
                   lineHeight: fit.leading,
                 }}
@@ -1204,7 +1205,7 @@ function SlideContent({
           })()}
           <p
             className="text-[9px] uppercase tracking-[0.14em] mt-3"
-            style={{ color: "rgba(143,175,150,0.3)" }}
+            style={{ color: "rgba(var(--ot-sage, 143,175,150),0.3)" }}
           >
             {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
           </p>
@@ -1235,10 +1236,10 @@ function SlideContent({
         <div
           className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
-            background: "rgba(9,26,16, 0.297)",
+            background: "rgba(var(--ot-deep, 9,26,16), 0.297)",
             backdropFilter: "blur(11.34px)",
             WebkitBackdropFilter: "blur(11.34px)",
-            border: "1px solid rgba(46,107,64,0.15)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.15)",
           }}
         >
           {(() => {
@@ -1247,8 +1248,8 @@ function SlideContent({
               <p
                 className="italic"
                 style={{
-                  color: "#C8D4C0",
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  color: "var(--oh-mist, #C8D4C0)",
+                  fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
                   fontSize: `${fit.size}px`,
                   lineHeight: fit.leading,
                 }}
@@ -1260,7 +1261,7 @@ function SlideContent({
           {slide.source === "bcp" && (
             <p
               className="text-[9px] uppercase tracking-[0.14em] mt-3"
-              style={{ color: "rgba(143,175,150,0.3)" }}
+              style={{ color: "rgba(var(--ot-sage, 143,175,150),0.3)" }}
             >
               {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
             </p>
@@ -1290,8 +1291,8 @@ function SlideContent({
             <p
               className="text-sm leading-relaxed"
               style={{
-                color: "#C8D4C0",
-                fontFamily: "'Space Grotesk', sans-serif",
+                color: "var(--oh-mist, #C8D4C0)",
+                fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
               }}
             >
               You can take action by emailing the applicable representatives.
@@ -1310,13 +1311,13 @@ function SlideContent({
             >
               <p
                 className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-                style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+                style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", margin: 0 }}
               >
                 Read Article
               </p>
               <p
                 className="text-sm leading-relaxed"
-                style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                style={{ color: "var(--oh-mist, #C8D4C0)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", margin: 0 }}
               >
                 &ldquo;{slide.learnMoreTitle}&rdquo;
               </p>
@@ -1395,10 +1396,10 @@ function StreakCelebration({ streak }: { streak: number }) {
       >
         <span
           style={{
-            fontFamily: "'Space Grotesk', sans-serif",
+            fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
             fontSize: 96,
             fontWeight: 700,
-            color: "#F0EDE6",
+            color: "var(--oh-ink, #F0EDE6)",
             lineHeight: 1,
             letterSpacing: "-0.03em",
           }}
@@ -1421,11 +1422,11 @@ function StreakCelebration({ streak }: { streak: number }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.6 }}
         style={{
-          fontFamily: "'Space Grotesk', sans-serif",
+          fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
           fontSize: 13,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: "#8FAF96",
+          color: "var(--oh-sage, #8FAF96)",
           marginTop: 8,
         }}
       >
@@ -1439,8 +1440,8 @@ function StreakCelebration({ streak }: { streak: number }) {
         transition={{ duration: 0.5, delay: 0.8 }}
         className="text-base leading-relaxed"
         style={{
-          color: "#F0EDE6",
-          fontFamily: "'Space Grotesk', sans-serif",
+          color: "var(--oh-ink, #F0EDE6)",
+          fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
           maxWidth: 360,
           marginTop: 8,
         }}
@@ -1617,10 +1618,10 @@ function HabitSlide({
           onClick={() => setThanksOpen(true)}
           className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
           style={{
-            background: "rgba(46,107,64,0.22)",
-            color: "#A8C5A0",
-            border: "1px solid rgba(46,107,64,0.45)",
-            fontFamily: "'Space Grotesk', sans-serif",
+            background: "rgba(var(--ot-green, 46,107,64),0.22)",
+            color: "var(--oh-fern, #A8C5A0)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
+            fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
             cursor: "pointer",
           }}
         >
@@ -1633,10 +1634,10 @@ function HabitSlide({
               type="button"
               className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
               style={{
-                background: "rgba(46,107,64,0.22)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.45)",
-                fontFamily: "'Space Grotesk', sans-serif",
+                background: "rgba(var(--ot-green, 46,107,64),0.22)",
+                color: "var(--oh-fern, #A8C5A0)",
+                border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
+                fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
                 cursor: "pointer",
               }}
             >
@@ -1650,7 +1651,7 @@ function HabitSlide({
       <button
         onClick={onDone}
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
       >
         Done
       </button>
@@ -1685,7 +1686,7 @@ function ReflectionSlide({
       : source === "ssje" ? "Brother, Give Us a Word"
         : "CAC Daily Meditation";
   const canEmbed = source !== "cac";
-  const RFONT = "'Space Grotesk', sans-serif";
+  const RFONT = "var(--office-font, 'Space Grotesk', sans-serif)";
 
   // They're reading it now — flip the home card / dashboard module to
   // "Read again", same as the old close pill did on tap.
@@ -1743,19 +1744,19 @@ function ReflectionSlide({
         zIndex: 70,
         display: "flex",
         flexDirection: "column",
-        background: "#0C1F12",
+        background: "var(--oh-bg, #0C1F12)",
         paddingTop: "max(0.75rem, var(--safe-top))",
       }}
     >
       {/* Header — what they're reading + a deliberate open-out escape. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 18px 10px", flexShrink: 0 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(143,175,150,0.8)", fontFamily: RFONT }}>
+        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(var(--ot-sage, 143,175,150),0.8)", fontFamily: RFONT }}>
           {t("offices.todays_reflection", { defaultValue: "Today's reflection" })}
         </span>
         <button
           type="button"
           onClick={() => openExternal(url)}
-          style={{ background: "none", border: "none", color: "#8FAF96", fontSize: 12, fontFamily: RFONT, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+          style={{ background: "none", border: "none", color: "var(--oh-sage, #8FAF96)", fontSize: 12, fontFamily: RFONT, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
         >
           {t("offices.open_external", { defaultValue: "Open ↗" })}
         </button>
@@ -1773,12 +1774,12 @@ function ReflectionSlide({
             overflow: "hidden",
             // FDD has no dark theme; the iframe below is inverted to dark, so
             // back it with the dark ground (not white) to avoid a flash.
-            background: source === "fdd" ? "#0C1F12" : "#fff",
+            background: source === "fdd" ? "var(--oh-bg, #0C1F12)" : "#fff",
             // Native app: edge-to-edge, top/bottom hairlines only. Web: a
             // padded, rounded card.
             ...(fullBleed
-              ? { borderTop: "1px solid rgba(46,107,64,0.3)", borderBottom: "1px solid rgba(46,107,64,0.3)" }
-              : { margin: "0 12px", borderRadius: 16, border: "1px solid rgba(46,107,64,0.3)" }),
+              ? { borderTop: "1px solid rgba(var(--ot-green, 46,107,64),0.3)", borderBottom: "1px solid rgba(var(--ot-green, 46,107,64),0.3)" }
+              : { margin: "0 12px", borderRadius: 16, border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)" }),
           }}
         >
           <iframe
@@ -1804,22 +1805,22 @@ function ReflectionSlide({
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: "0 34px", textAlign: "center" }}>
-          <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(143,175,150,0.7)", margin: 0, fontFamily: RFONT }}>
+          <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(var(--ot-sage, 143,175,150),0.7)", margin: 0, fontFamily: RFONT }}>
             Center for Action and Contemplation
           </p>
           {cacTitle ? (
             // Once today's title resolves: "Today's Daily Meditation" as a
             // small label above the actual meditation title for the day.
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#8FAF96", margin: 0, fontFamily: RFONT }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--oh-sage, #8FAF96)", margin: 0, fontFamily: RFONT }}>
                 {t("offices.cac_fallback_title", { defaultValue: "Today’s Daily Meditation" })}
               </p>
-              <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "#F0EDE6", margin: 0, fontFamily: RFONT }}>
+              <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "var(--oh-ink, #F0EDE6)", margin: 0, fontFamily: RFONT }}>
                 {cacTitle}
               </h2>
             </div>
           ) : (
-            <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "#F0EDE6", margin: 0, fontFamily: RFONT }}>
+            <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "var(--oh-ink, #F0EDE6)", margin: 0, fontFamily: RFONT }}>
               {t("offices.cac_fallback_title", { defaultValue: "Today’s Daily Meditation" })}
             </h2>
           )}
@@ -1827,7 +1828,7 @@ function ReflectionSlide({
             type="button"
             onClick={() => openExternal(url)}
             className="px-8 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: RFONT, marginTop: 4 }}
+            style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)", fontFamily: RFONT, marginTop: 4 }}
           >
             {t("offices.read_now", { defaultValue: "Read now →" })}
           </button>
@@ -1840,7 +1841,7 @@ function ReflectionSlide({
           type="button"
           onClick={() => setJournalOpen(true)}
           className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: RFONT }}
+          style={{ background: "rgba(var(--ot-green, 46,107,64),0.25)", color: "var(--oh-fern, #A8C5A0)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.5)", fontFamily: RFONT }}
         >
           {t("fdd_journal.button", { defaultValue: "✎ Journal" })}
         </button>
@@ -1848,7 +1849,7 @@ function ReflectionSlide({
           type="button"
           onClick={onContinue}
           className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: RFONT }}
+          style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)", fontFamily: RFONT }}
         >
           {t("common.continue", { defaultValue: "Continue" })} →
         </button>
@@ -1896,7 +1897,7 @@ function HoldMeComposer() {
     return (
       <p
         className="text-[13px]"
-        style={{ color: "rgba(168,197,160,0.85)", fontFamily: "'Space Grotesk', sans-serif", maxWidth: 380 }}
+        style={{ color: "rgba(var(--ot-fern, 168,197,160),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", maxWidth: 380 }}
       >
         🙏 Shared — your community will hold you in prayer.
       </p>
@@ -1907,7 +1908,7 @@ function HoldMeComposer() {
     <div className="w-full flex flex-col items-stretch gap-2.5 text-left" style={{ maxWidth: 380 }}>
       <p
         className="text-[10px] uppercase tracking-[0.18em] font-semibold text-center"
-        style={{ color: "rgba(143,175,150,0.55)" }}
+        style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)" }}
       >
         Let your community hold you in prayer
       </p>
@@ -1918,17 +1919,17 @@ function HoldMeComposer() {
         placeholder="Share something on your heart, an important event coming up, someone you care for, or a cause that is dear to you…"
         className="w-full rounded-2xl px-4 py-3 text-[14px] outline-none resize-none"
         style={{
-          background: "rgba(46,107,64,0.12)",
-          border: "1px solid rgba(46,107,64,0.3)",
-          color: "#F0EDE6",
-          fontFamily: "'Space Grotesk', sans-serif",
+          background: "rgba(var(--ot-green, 46,107,64),0.12)",
+          border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)",
+          color: "var(--oh-ink, #F0EDE6)",
+          fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
           fontStyle: "italic",
           lineHeight: 1.6,
         }}
       />
       <div className="flex items-center justify-between gap-2">
         <label className="flex items-center gap-2">
-          <span className="text-[12px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <span className="text-[12px]" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
             How long
           </span>
           <select
@@ -1936,10 +1937,10 @@ function HoldMeComposer() {
             onChange={(e) => setDays(parseInt(e.target.value, 10))}
             className="text-[13px] font-semibold rounded-lg px-2.5 py-1.5"
             style={{
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              background: "rgba(46,107,64,0.22)",
-              border: "1px solid rgba(46,107,64,0.45)",
+              color: "var(--oh-ink, #F0EDE6)",
+              fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
+              background: "rgba(var(--ot-green, 46,107,64),0.22)",
+              border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
               appearance: "auto",
             }}
           >
@@ -1952,13 +1953,13 @@ function HoldMeComposer() {
           onClick={() => body.trim() && create.mutate()}
           disabled={body.trim().length === 0 || create.isPending}
           className="px-5 py-2 rounded-full text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
         >
           {create.isPending ? "Sharing…" : "Share →"}
         </button>
       </div>
       {create.isError && (
-        <p className="text-[12px]" style={{ color: "#D98A8A", fontFamily: "'Space Grotesk', sans-serif" }}>
+        <p className="text-[12px]" style={{ color: "#D98A8A", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
           Couldn't share right now — your words are still here, try again in a moment.
         </p>
       )}
@@ -2051,10 +2052,10 @@ function ClosingSlide({
             type="button"
             className="text-[13px] font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.45)",
-              fontFamily: "'Space Grotesk', sans-serif",
+              background: "rgba(var(--ot-green, 46,107,64),0.22)",
+              color: "var(--oh-fern, #A8C5A0)",
+              border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
+              fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
               cursor: "pointer",
             }}
           >
@@ -2066,7 +2067,7 @@ function ClosingSlide({
       <button
         onClick={onDone}
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
       >
         {effectiveDoneLabel}
       </button>
@@ -2115,8 +2116,8 @@ function WhatsNextSlide({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 }}
         style={{
-          fontFamily: "'Space Grotesk', sans-serif", fontSize: 12,
-          letterSpacing: "0.22em", textTransform: "uppercase", color: "#8FAF96",
+          fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 12,
+          letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--oh-sage, #8FAF96)",
         }}
       >
         {t("prayer_mode.as_you_go", { defaultValue: "As you go" })}
@@ -2127,8 +2128,8 @@ function WhatsNextSlide({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.12 }}
         style={{
-          fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700,
-          color: "#F0EDE6", letterSpacing: "-0.01em", maxWidth: 320, lineHeight: 1.3,
+          fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 22, fontWeight: 700,
+          color: "var(--oh-ink, #F0EDE6)", letterSpacing: "-0.01em", maxWidth: 320, lineHeight: 1.3,
         }}
       >
         {t("prayer_mode.whats_next_headline", { defaultValue: "Carry the day with you" })}
@@ -2144,18 +2145,18 @@ function WhatsNextSlide({
         className="w-full flex flex-col items-start gap-1.5 rounded-2xl px-5 py-4 text-left transition-opacity hover:opacity-90 active:scale-[0.98]"
         style={{
           maxWidth: 360,
-          background: "rgba(46,107,64,0.22)",
-          border: "1px solid rgba(46,107,64,0.45)",
+          background: "rgba(var(--ot-green, 46,107,64),0.22)",
+          border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
           cursor: "pointer",
         }}
       >
-        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8FAF96" }}>
+        <span style={{ fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--oh-sage, #8FAF96)" }}>
           {t("offices.todays_reflection", { defaultValue: "Today's reflection" })}
         </span>
-        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, color: "#F0EDE6" }}>
+        <span style={{ fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 17, fontWeight: 600, color: "var(--oh-ink, #F0EDE6)" }}>
           {name}
         </span>
-        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600, color: "#A8C5A0", marginTop: 2 }}>
+        <span style={{ fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 13, fontWeight: 600, color: "var(--oh-fern, #A8C5A0)", marginTop: 2 }}>
           {t("common.read", { defaultValue: "Read" })} →
         </span>
       </motion.button>
@@ -2167,7 +2168,7 @@ function WhatsNextSlide({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.36 }}
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
       >
         {t("common.done")}
       </motion.button>
@@ -2261,7 +2262,7 @@ function PrayerCompletedSlide({
     <div className="w-full flex flex-col items-center text-center" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease", gap: 26 }}>
       <motion.p
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
+        style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
       >
         {t("prayer_mode.prayer_completed", { defaultValue: "Prayer completed" })}
       </motion.p>
@@ -2278,16 +2279,16 @@ function PrayerCompletedSlide({
           className={`w-full relative flex rounded-2xl overflow-hidden text-left transition-opacity hover:opacity-90 active:scale-[0.98]${reflDone ? " dp-card-pulse" : ""}`}
           style={{
             maxWidth: 360, cursor: "pointer",
-            background: "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.14) 100%)",
-            border: reflDone ? undefined : "1px solid rgba(46,107,64,0.16)",
+            background: "linear-gradient(180deg, rgba(var(--ot-green, 46,107,64),0.08) 0%, rgba(var(--ot-green, 46,107,64),0.14) 100%)",
+            border: reflDone ? undefined : "1px solid rgba(var(--ot-green, 46,107,64),0.16)",
           }}
         >
           <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.7)" }} />
           <div className="flex-1 min-w-0 px-4 py-3.5 flex items-center gap-3">
             <span className="text-xl flex-shrink-0" aria-hidden>📖</span>
             <div className="flex-1 min-w-0">
-              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{reflName}</p>
-              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>{reflName}</p>
+              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "var(--oh-sage, #8FAF96)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
                 {reflDone
                   ? t("rhythm.kept", { defaultValue: "Kept today" })
                   : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })}
@@ -2296,11 +2297,11 @@ function PrayerCompletedSlide({
             {reflDone ? (
               <span
                 className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-                style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
+                style={{ background: "rgba(var(--ot-green, 46,107,64),0.18)", color: "rgba(var(--ot-ink3, 240,237,230),0.85)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)" }}
                 aria-hidden
               >✓</span>
             ) : (
-              <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: "rgba(46,107,64,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: "rgba(var(--ot-green, 46,107,64),0.85)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
                 {t("common.read", { defaultValue: "Read" })} <span aria-hidden>→</span>
               </span>
             )}
@@ -2318,21 +2319,21 @@ function PrayerCompletedSlide({
           className="w-full relative flex rounded-2xl overflow-hidden text-left transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{
             maxWidth: 360, cursor: "pointer",
-            background: "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.14) 100%)",
-            border: "1px solid rgba(46,107,64,0.16)",
+            background: "linear-gradient(180deg, rgba(var(--ot-green, 46,107,64),0.08) 0%, rgba(var(--ot-green, 46,107,64),0.14) 100%)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.16)",
           }}
         >
           <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.7)" }} />
           <div className="flex-1 min-w-0 px-4 py-3.5 flex items-center gap-3">
             <span className="text-xl flex-shrink-0" aria-hidden>{nextUp.emoji}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-[9.5px] font-semibold leading-none mb-1" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+              <p className="text-[9.5px] font-semibold leading-none mb-1" style={{ color: "var(--oh-sage, #8FAF96)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
                 {t("prayer_mode.up_next", { defaultValue: "Up next" })}
               </p>
-              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.title}</p>
-              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.blurb}</p>
+              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>{nextUp.title}</p>
+              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "var(--oh-sage, #8FAF96)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>{nextUp.blurb}</p>
             </div>
-            <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: "rgba(46,107,64,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: "rgba(var(--ot-green, 46,107,64),0.85)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
               {t("common.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
             </span>
           </div>
@@ -2343,7 +2344,7 @@ function PrayerCompletedSlide({
         type="button" onClick={onDone}
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.36 }}
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
       >
         {doneLabel ?? t("common.done")}
       </motion.button>
@@ -2361,14 +2362,14 @@ function OfficeCloseEventsSlide({ onDone, visible }: { onDone: () => void; visib
     <div className="w-full flex flex-col items-center text-center" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease", gap: 26 }}>
       <motion.p
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}
-        style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "#8FAF96" }}
+        style={{ fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--oh-sage, #8FAF96)" }}
       >
         {t("prayer_mode.coming_up", { defaultValue: "Coming up" })}
       </motion.p>
       <OfficeCloseEvents max={3} onResolvedEmpty={onDone} onEmpty={(
         <motion.p
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }}
-          style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 19, color: "#F0EDE6", maxWidth: 320, lineHeight: 1.45 }}
+          style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 19, color: "var(--oh-ink, #F0EDE6)", maxWidth: 320, lineHeight: 1.45 }}
         >
           {t("prayer_mode.go_in_peace_line", { defaultValue: "Go in peace to love and serve the Lord." })}
         </motion.p>
@@ -2377,7 +2378,7 @@ function OfficeCloseEventsSlide({ onDone, visible }: { onDone: () => void; visib
         type="button" onClick={onDone}
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.36 }}
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
       >
         {t("common.done")}
       </motion.button>
@@ -2422,8 +2423,8 @@ function BlessingSlide({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         style={{
-          fontFamily: "'Space Grotesk', sans-serif", fontSize: 12,
-          letterSpacing: "0.24em", textTransform: "uppercase", color: "#8FAF96",
+          fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 12,
+          letterSpacing: "0.24em", textTransform: "uppercase", color: "var(--oh-sage, #8FAF96)",
         }}
       >
         {t("prayer_mode.go_in_peace", { defaultValue: "Go in peace" })}
@@ -2436,7 +2437,7 @@ function BlessingSlide({
         style={{
           fontFamily: "Georgia, 'Times New Roman', serif",
           fontStyle: "italic",
-          fontSize: 21, lineHeight: 1.55, color: "#E8E4D8", maxWidth: 340,
+          fontSize: 21, lineHeight: 1.55, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 340,
         }}
       >
         {blessing}
@@ -2449,7 +2450,7 @@ function BlessingSlide({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.55 }}
         className="px-12 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-        style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
       >
         {t("prayer_mode.amen", { defaultValue: "Amen" })}
       </motion.button>
@@ -3882,9 +3883,9 @@ export default function PrayerModePage() {
 
   // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
   // so the top status-bar area and the bottom home-indicator area both
-  // paint `#0C1F12` instead of flashing the app's default green/black.
+  // paint `var(--oh-bg, #0C1F12)` instead of flashing the app's default green/black.
   useEffect(() => {
-    const SLIDE_BG = "#0C1F12";
+    const SLIDE_BG = "var(--oh-bg, #0C1F12)";
     const html = document.documentElement;
     const body = document.body;
     const prevBodyOverflow = body.style.overflow;
@@ -3894,7 +3895,7 @@ export default function PrayerModePage() {
     body.style.backgroundColor = SLIDE_BG;
     html.style.backgroundColor = SLIDE_BG;
     const meta = document.querySelector('meta[name="theme-color"]');
-    const prevMeta = meta?.getAttribute("content") ?? "#091A10";
+    const prevMeta = meta?.getAttribute("content") ?? "var(--oh-bg2, #091A10)";
     meta?.setAttribute("content", SLIDE_BG);
     // Rising ambient swell — the chapel exhaling as the slideshow opens.
     // First slide always plays the base octave (step 0). Subsequent slide
@@ -3928,10 +3929,10 @@ export default function PrayerModePage() {
 
   // Keep the status bar (native iOS strip + web theme-color + the body/html
   // ground) matched to the CURRENT phase's background — the closing slide is
-  // the warmer #11291C, every other phase is #0C1F12 — so the top of the
+  // the warmer var(--oh-closing, #11291C), every other phase is var(--oh-bg, #0C1F12) — so the top of the
   // screen never reads as a different color than the slide under it.
   useEffect(() => {
-    const phaseBg = phase === "closing" || phase === "blessing" ? "#11291C" : "#0C1F12";
+    const phaseBg = phase === "closing" || phase === "blessing" ? "var(--oh-closing, #11291C)" : "var(--oh-bg, #0C1F12)";
     document.body.style.backgroundColor = phaseBg;
     document.documentElement.style.backgroundColor = phaseBg;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", phaseBg);
@@ -4402,7 +4403,7 @@ export default function PrayerModePage() {
   // While auth is still resolving, hold a dark field (NOT a blank white frame)
   // so arriving on the web fades dark → dark into the loading screen and the
   // first slide, instead of flashing white first.
-  if (authLoading) return <div style={{ background: "#0C1F12", minHeight: "100dvh" }} />;
+  if (authLoading) return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "100dvh" }} />;
   if (!user) return null;
 
   // Hold a calm loading screen until the slide list is captured into
@@ -4419,7 +4420,7 @@ export default function PrayerModePage() {
     // orb here — just hold a plain dark field (matching the office) until the
     // first intercession is ready and fades up. No "loading circle."
     if (seamlessFlow) {
-      return <div style={{ background: "#0C1F12", minHeight: "100dvh" }} />;
+      return <div style={{ background: "var(--oh-bg, #0C1F12)", minHeight: "100dvh" }} />;
     }
     // A calm "gathering" screen while the community intercession slideshow is
     // assembled — a slow breathing glow + a reverent line, over the same
@@ -4428,7 +4429,7 @@ export default function PrayerModePage() {
     return (
       <div
         style={{
-          background: "#0C1F12",
+          background: "var(--oh-bg, #0C1F12)",
           minHeight: "100dvh",
           position: "relative",
           display: "flex",
@@ -4437,7 +4438,7 @@ export default function PrayerModePage() {
           overflow: "hidden",
         }}
       >
-        <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />
+        <AnimatedBackground base="var(--oh-bg, #0C1F12)" variant="subtle" fadeTop />
         <div
           className="flex flex-col items-center"
           style={{ position: "relative", zIndex: 1, padding: "0 32px" }}
@@ -4449,19 +4450,19 @@ export default function PrayerModePage() {
               height: 72,
               borderRadius: "50%",
               background:
-                "radial-gradient(circle at 50% 38%, rgba(150,205,170,0.55) 0%, rgba(46,107,64,0.35) 55%, rgba(46,107,64,0.08) 100%)",
-              boxShadow: "0 0 36px rgba(46,107,64,0.55), inset 0 0 18px rgba(140,205,160,0.35)",
+                "radial-gradient(circle at 50% 38%, rgba(150,205,170,0.55) 0%, rgba(var(--ot-green, 46,107,64),0.35) 55%, rgba(var(--ot-green, 46,107,64),0.08) 100%)",
+              boxShadow: "0 0 36px rgba(var(--ot-green, 46,107,64),0.55), inset 0 0 18px rgba(140,205,160,0.35)",
             }}
           />
           <p
             className="mt-7 text-center"
             style={{
-              color: "rgba(182,210,188,0.82)",
+              color: "rgba(var(--ot-pale, 182,210,188),0.82)",
               fontFamily: "Georgia, 'Times New Roman', serif",
               fontStyle: "italic",
               fontSize: 16,
               lineHeight: 1.5,
-              textShadow: "0 2px 16px rgba(8,30,18,0.6)",
+              textShadow: "0 2px 16px rgba(var(--ot-shadow, 8,30,18),0.6)",
               maxWidth: 320,
             }}
           >
@@ -4478,13 +4479,13 @@ export default function PrayerModePage() {
   // library follows the reader's backdrop pref: Leaves (default), Planet (the
   // landscape set minus the animals), or none for Plain (the solid base color
   // stands alone). On the prayer slides — closing/blessing keep their look.
-  const bgPhotoSet = display.backdrop === "plain" ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
   const officePhoto = bgPhotoSet.length > 0 ? bgPhotoSet[index % bgPhotoSet.length]! : null;
 
   return (
     <div
       // Closing-slide background pulses gently to mark "you arrived" —
-      // a slow color breathe between the base #0C1F12 and a softly
+      // a slow color breathe between the base var(--oh-bg, #0C1F12) and a softly
       // brighter green, ~3.2s per cycle, infinite while the closing
       // slide is up. The pulse is implemented as a CSS animation on
       // the .closing-pulse class (see index.css). Other phases keep
@@ -4492,7 +4493,8 @@ export default function PrayerModePage() {
       onTouchStart={handleSwipeTouchStart}
       onTouchEnd={handleSwipeTouchEnd}
       style={{
-        background: "#0C1F12",
+        ...officeThemeStyle(display.backdrop, display.font),
+        background: "var(--oh-bg, #0C1F12)",
         minHeight: "100dvh",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
@@ -4509,14 +4511,14 @@ export default function PrayerModePage() {
           <OfficeBackdropPhoto key={officePhoto} src={officePhoto} slideVisible={slideVisible} />
           <div
             aria-hidden
-            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }}
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.62) 0%, rgba(var(--ot-wash, 8,22,15),0.80) 52%, rgba(var(--ot-wash, 8,22,15),0.90) 100%)" }}
           />
         </>
-      ) : display.backdrop === "plain" ? (
-        /* Plain — a perfectly still solid green; no photo, no drifting gradient. */
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "#0C1F12" }} />
+      ) : (display.backdrop === "plain" || display.backdrop === "paper") ? (
+        /* Plain / Paper — a perfectly still solid ground; no photo, no gradient. */
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "var(--oh-bg, #0C1F12)" }} />
       ) : (
-        <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />
+        <AnimatedBackground base="var(--oh-bg, #0C1F12)" variant="subtle" fadeTop />
       )}
       {/* Exit button — lands on the dashboard so leaving prayer is a clean
           return to the home view rather than dropping the user back into
@@ -4525,7 +4527,7 @@ export default function PrayerModePage() {
         onClick={handleExit}
         aria-label="Exit prayer mode"
         className="absolute right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
-        style={{ top: "calc(var(--safe-top) + 12px)", color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+        style={{ top: "calc(var(--safe-top) + 12px)", color: "rgba(var(--ot-mist, 200,212,192),0.4)", background: "rgba(var(--ot-mist, 200,212,192),0.06)" }}
       >
         ×
       </button>
@@ -4534,7 +4536,7 @@ export default function PrayerModePage() {
         onClick={() => setDisplayOpen(true)}
         aria-label="Display settings"
         className="absolute w-10 h-10 flex items-center justify-center rounded-full z-10"
-        style={{ top: "calc(var(--safe-top) + 12px)", right: "calc(1.5rem + 48px)", color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+        style={{ top: "calc(var(--safe-top) + 12px)", right: "calc(1.5rem + 48px)", color: "rgba(var(--ot-mist, 200,212,192),0.4)", background: "rgba(var(--ot-mist, 200,212,192),0.06)" }}
       >
         <Settings2 size={16} />
       </button>
@@ -4668,14 +4670,14 @@ export default function PrayerModePage() {
             onClick={skipToNext}
             className="pointer-events-auto text-[12px] font-medium underline transition-opacity hover:opacity-80"
             style={{
-              color: "rgba(143,175,150,0.6)",
-              textDecorationColor: "rgba(143,175,150,0.3)",
+              color: "rgba(var(--ot-sage, 143,175,150),0.6)",
+              textDecorationColor: "rgba(var(--ot-sage, 143,175,150),0.3)",
               textUnderlineOffset: 4,
               background: "transparent",
               border: "none",
               padding: 0,
               cursor: "pointer",
-              fontFamily: "'Space Grotesk', sans-serif",
+              fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
             }}
           >
             {t("prayer_mode.not_today")}
@@ -4693,7 +4695,7 @@ export default function PrayerModePage() {
           className="absolute left-0 right-0 flex justify-center pointer-events-none"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
         >
-          <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em" }}>
+          <p className="text-xs" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.32)", letterSpacing: "0.06em" }}>
             {index + 1} of {displaySlides.length}
           </p>
         </div>

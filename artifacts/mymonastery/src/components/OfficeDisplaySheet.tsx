@@ -16,12 +16,16 @@ import { X } from "lucide-react";
 import {
   OFFICE_DISPLAY_EVENT,
   OFFICE_FONT_SCALES,
+  OFFICE_FONT_FAMILIES,
   getOfficeBackdrop,
+  getOfficeFont,
   getOfficeFontScale,
   getOfficePrayingMode,
   setOfficeBackdrop,
+  setOfficeFont,
   setOfficeFontScale,
   type OfficeBackdrop,
+  type OfficeFont,
   type OfficePrayingMode,
 } from "@/lib/officeDisplay";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
@@ -35,10 +39,10 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 /** Live view of the device-local display prefs — re-renders on every change
  *  (writers dispatch OFFICE_DISPLAY_EVENT; the praying-mode toggle in
  *  Settings rides the same event). */
-export function useOfficeDisplay(): { backdrop: OfficeBackdrop; fontScale: number; prayingMode: OfficePrayingMode } {
-  const [display, setDisplay] = useState(() => ({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale(), prayingMode: getOfficePrayingMode() }));
+export function useOfficeDisplay(): { backdrop: OfficeBackdrop; fontScale: number; prayingMode: OfficePrayingMode; font: OfficeFont } {
+  const [display, setDisplay] = useState(() => ({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale(), prayingMode: getOfficePrayingMode(), font: getOfficeFont() }));
   useEffect(() => {
-    const sync = () => setDisplay({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale(), prayingMode: getOfficePrayingMode() });
+    const sync = () => setDisplay({ backdrop: getOfficeBackdrop(), fontScale: getOfficeFontScale(), prayingMode: getOfficePrayingMode(), font: getOfficeFont() });
     window.addEventListener(OFFICE_DISPLAY_EVENT, sync);
     return () => window.removeEventListener(OFFICE_DISPLAY_EVENT, sync);
   }, []);
@@ -80,6 +84,8 @@ export function fontScaleWrapStyle(scale: number, maxWidthPx = 672): React.CSSPr
 export function OfficeDisplaySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [scale, setScale] = useState(() => getOfficeFontScale());
   const [backdrop, setBackdrop] = useState<OfficeBackdrop>(() => getOfficeBackdrop());
+  const [font, setFontState] = useState<OfficeFont>(() => getOfficeFont());
+  const pickFont = (f: OfficeFont) => { setFontState(f); setOfficeFont(f); };
   const scales = OFFICE_FONT_SCALES as readonly number[];
   const idx = scales.reduce((best, s, i) => (Math.abs(s - scale) < Math.abs(scales[best]! - scale) ? i : best), 0);
   const step = (d: number) => {
@@ -96,6 +102,13 @@ export function OfficeDisplaySheet({ open, onClose }: { open: boolean; onClose: 
     { id: "leaves", label: "Leaves", swatch: LEAF_PHOTOS.length > 0 ? <img src={LEAF_PHOTOS[0]} alt="" aria-hidden style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span aria-hidden>🍃</span> },
     { id: "planet", label: "Planet", swatch: PLANET_PHOTOS.length > 0 ? <img src={PLANET_PHOTOS[0]} alt="" aria-hidden style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span aria-hidden>🌍</span> },
     { id: "plain", label: "Plain", swatch: <div aria-hidden style={{ position: "absolute", inset: 0, background: "#0C1F12" }} /> },
+    // Paper — the light mode: a warm letter-writing ground with black ink.
+    { id: "paper", label: "Paper", swatch: <div aria-hidden style={{ position: "absolute", inset: 0, background: "#F3ECDC" }} /> },
+  ];
+  const FONT_CHOICES: Array<{ id: OfficeFont; label: string }> = [
+    { id: "grotesk", label: "Grotesk" },
+    { id: "georgia", label: "Georgia" },
+    { id: "arial", label: "Arial" },
   ];
   return (
     <AnimatePresence>
@@ -153,6 +166,19 @@ export function OfficeDisplaySheet({ open, onClose }: { open: boolean; onClose: 
                     {b.swatch}
                   </div>
                   <span style={{ color: backdrop === b.id ? WARM_TEXT : MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: backdrop === b.id ? 600 : 500 }}>{b.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Typeface — each chip previews itself. */}
+            <p style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, margin: "20px 0 8px" }}>Type</p>
+            <div className="flex gap-4">
+              {FONT_CHOICES.map((f) => (
+                <button key={f.id} type="button" onClick={() => pickFont(f.id)} className="flex flex-col items-center gap-1.5" style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                  <div style={{ ...swatchBase, border: font === f.id ? "2px solid #7ED28C" : "1px solid rgba(143,175,150,0.3)", background: "rgba(9,26,16,0.6)" }}>
+                    <span aria-hidden style={{ color: WARM_TEXT, fontFamily: OFFICE_FONT_FAMILIES[f.id], fontSize: 21 }}>Aa</span>
+                  </div>
+                  <span style={{ color: font === f.id ? WARM_TEXT : MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: font === f.id ? 600 : 500 }}>{f.label}</span>
                 </button>
               ))}
             </div>

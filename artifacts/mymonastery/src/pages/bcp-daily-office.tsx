@@ -16,7 +16,7 @@ import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
-import { getOfficePrayingMode } from "@/lib/officeDisplay";
+import { getOfficePrayingMode, officeThemeStyle } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
@@ -39,13 +39,13 @@ import { PointedLine } from "@/components/PointedLine";
 // inline below — no SlideView dependency, since SlideView's chrome
 // fights with this layout.
 
-const BG = "#091A10";
-const WARM_TEXT = "#F0EDE6";
-const MUTED_GREEN = "#8FAF96";
-const FAINT_GREEN = "rgba(143,175,150,0.55)";
-const BORDER = "rgba(200,212,192,0.15)";
-const BUTTON_BG = "#2D5E3F";
-const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+const BG = "var(--oh-bg2, #091A10)";
+const WARM_TEXT = "var(--oh-ink, #F0EDE6)";
+const MUTED_GREEN = "var(--oh-sage, #8FAF96)";
+const FAINT_GREEN = "rgba(var(--ot-sage, 143,175,150),0.55)";
+const BORDER = "rgba(var(--ot-mist, 200,212,192),0.15)";
+const BUTTON_BG = "var(--oh-cta, #2D5E3F)";
+const SPACE_GROTESK = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 
 // Mode covers the five liturgies this viewer can render. The Daily
 // Office's Morning / Evening / Compline come from /api/office/* and
@@ -337,7 +337,7 @@ function IntercessionHead({
                 height: 64,
                 borderRadius: "50%",
                 background: "#1A4A2E",
-                color: "#A8C5A0",
+                color: "var(--oh-fern, #A8C5A0)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -353,7 +353,7 @@ function IntercessionHead({
             <p
               style={{
                 fontSize: 14,
-                color: "#C8D4C0",
+                color: "var(--oh-mist, #C8D4C0)",
                 fontFamily: SPACE_GROTESK,
                 margin: 0,
               }}
@@ -366,7 +366,7 @@ function IntercessionHead({
       <p
         style={{
           fontSize: 10,
-          color: "rgba(143,175,150,0.45)",
+          color: "rgba(var(--ot-sage, 143,175,150),0.45)",
           letterSpacing: "0.18em",
           textTransform: "uppercase",
           fontWeight: 600,
@@ -517,7 +517,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     (resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline");
   // The chosen photo library: Leaves (default), Planet (the landscape set
   // without the animal photos), or none for Plain (solid dark green below).
-  const bgPhotoSet = display.backdrop === "plain" ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
   // Photos behind the whole office / devotion slideshow — holding steady within a
   // section and cross-fading at each section boundary. A per-mount random
   // offset varies which photos a given day draws; reshuffled per backdrop.
@@ -927,8 +927,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       return (
         <div style={{ minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.5) 45%, rgba(8,18,12,0.78) 100%)" }} />
-          <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(143,175,150,0.25)", borderTopColor: "rgba(143,175,150,0.8)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
+          <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }} />
         </div>
       );
     }
@@ -949,10 +949,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             not loaded — under a darkened wash so the versicle reads clearly.
             A held breath into the office, on the same image as the app open. */}
         <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.5) 45%, rgba(8,18,12,0.78) 100%)" }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
         {/* A soft single-hue glow — fades only its alpha to 0 over several stops
             so it reads as a smooth wash, not a banded ring. */}
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(46,107,64,0.20) 0%, rgba(46,107,64,0.12) 28%, rgba(46,107,64,0.05) 54%, rgba(46,107,64,0) 82%)" }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(var(--ot-green, 46,107,64),0.20) 0%, rgba(var(--ot-green, 46,107,64),0.12) 28%, rgba(var(--ot-green, 46,107,64),0.05) 54%, rgba(var(--ot-green, 46,107,64),0) 82%)" }} />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "office-enter 1s ease backwards" }}>
           <p
             style={{
@@ -960,7 +960,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               fontStyle: "italic",
               fontSize: 24,
               lineHeight: 1.55,
-              color: "#E8E4D8",
+              color: "var(--oh-ink2, #E8E4D8)",
               textAlign: "center",
               maxWidth: 460,
               margin: 0,
@@ -993,8 +993,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             width: 22,
             height: 22,
             borderRadius: "50%",
-            border: "2px solid rgba(143,175,150,0.25)",
-            borderTopColor: "rgba(143,175,150,0.75)",
+            border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)",
+            borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.75)",
           }}
         />
       </div>
@@ -1379,16 +1379,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-          border: "1px solid rgba(46,107,64,0.32)",
+          background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          border: "1px solid rgba(var(--ot-green, 46,107,64),0.32)",
           borderRadius: 999,
           padding: "14px 20px",
           pointerEvents: "none",
         }}>
           <span style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14.5, fontWeight: 600, flexShrink: 0 }}>{categoryLabel}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span style={{ color: "rgba(168,197,160,0.95)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{valueLabel}</span>
-            <span aria-hidden style={{ color: "rgba(168,197,160,0.7)", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>›</span>
+            <span style={{ color: "rgba(var(--ot-fern, 168,197,160),0.95)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{valueLabel}</span>
+            <span aria-hidden style={{ color: "rgba(var(--ot-fern, 168,197,160),0.7)", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>›</span>
           </span>
         </div>
         <select
@@ -1478,8 +1478,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           style={{
             width: "100%",
             marginTop: 6,
-            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-            border: "1px solid rgba(168,197,160,0.45)",
+            background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+            border: "1px solid rgba(var(--ot-fern, 168,197,160),0.45)",
             borderRadius: 999,
             color: WARM_TEXT,
             fontFamily: SPACE_GROTESK,
@@ -1502,6 +1502,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       onTouchEnd={handleSwipeTouchEnd}
       onClick={handleTapNavigate}
       style={{
+        // Typeface + (for Paper) the light letter-paper theme — CSS custom
+        // properties every swept color var() in this deck resolves against.
+        ...officeThemeStyle(display.backdrop, display.font),
         height: "100dvh",
         overflow: "hidden",
         overscrollBehavior: "none",
@@ -1543,11 +1546,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             />
           </AnimatePresence>
           {/* Dark wash matching the Laurel Kearns intro / prayer slideshow. */}
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.62) 0%, rgba(var(--ot-wash, 8,22,15),0.80) 52%, rgba(var(--ot-wash, 8,22,15),0.90) 100%)" }} />
         </>
-      ) : display.backdrop === "plain" ? (
-        // Plain — just the dark green, perfectly still.
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "#0C1F12" }} />
+      ) : (display.backdrop === "plain" || display.backdrop === "paper") ? (
+        // Plain / Paper — one still solid ground (the swept background var
+        // renders dark green for Plain, letter-paper beige for Paper).
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "var(--oh-bg, #0C1F12)" }} />
       ) : (
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
       )}
@@ -1574,7 +1578,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           <span
             className="rounded-full"
             style={{
-              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
               border: `1px solid ${BORDER}`,
               color: WARM_TEXT,
               fontSize: 12,
@@ -1595,7 +1599,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               type="button"
               onClick={() => setDisplayOpen(true)}
               aria-label="Display settings"
-              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
             >
               <Settings2 size={15} />
             </button>
@@ -1603,7 +1607,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               type="button"
               onClick={onBack}
               aria-label="Close"
-              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
             >
               <X size={16} />
             </button>
@@ -1631,7 +1635,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           flexDirection: "column",
           // Slight drop shadow on all slide text (inherited) so it stays legible
           // over the leaf backdrop.
-          textShadow: "0 1px 6px rgba(8,30,18,0.5)",
+          textShadow: "0 1px 6px rgba(var(--ot-shadow, 8,30,18),0.5)",
         }}
       >
         <div
@@ -1714,7 +1718,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     fontSize: 17,
                     lineHeight: 1.7,
                     fontFamily: SPACE_GROTESK,
-                    color: "rgba(200,212,192,0.85)",
+                    color: "rgba(var(--ot-mist, 200,212,192),0.85)",
                     margin: 0,
                   }}
                 >
@@ -1750,9 +1754,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 7,
-                    background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                    background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
                     color: WARM_TEXT,
-                    border: "1px solid rgba(46,107,64,0.50)",
+                    border: "1px solid rgba(var(--ot-green, 46,107,64),0.50)",
                     borderRadius: 999,
                     padding: "10px 20px",
                     fontSize: 14,
@@ -1773,9 +1777,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       gap: 7,
                       // Muted purple — the Washington National Cathedral's
                       // identity color, distinct from the green office chrome.
-                      background: "rgba(124,92,176,0.20)",
+                      background: "rgba(var(--ot-violet, 124,92,176),0.20)",
                       color: WARM_TEXT,
-                      border: "1px solid rgba(124,92,176,0.50)",
+                      border: "1px solid rgba(var(--ot-violet, 124,92,176),0.50)",
                       borderRadius: 999,
                       padding: "10px 20px",
                       fontSize: 14,
@@ -1796,9 +1800,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     gap: 7,
                     // Warm leather brown — the physical book, distinct
                     // from the green chrome and the Cathedral purple.
-                    background: "rgba(166,124,82,0.18)",
+                    background: "rgba(var(--ot-brown, 166,124,82),0.18)",
                     color: WARM_TEXT,
-                    border: "1px solid rgba(166,124,82,0.50)",
+                    border: "1px solid rgba(var(--ot-brown, 166,124,82),0.50)",
                     borderRadius: 999,
                     padding: "10px 20px",
                     fontSize: 14,
@@ -1928,7 +1932,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       style={{
                         fontSize: 19,
                         fontFamily: SPACE_GROTESK,
-                        color: "rgba(200,212,192,0.75)",
+                        color: "rgba(var(--ot-mist, 200,212,192),0.75)",
                         margin: 0,
                       }}
                     >
@@ -1995,7 +1999,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       style={{
                         fontSize: 19,
                         fontFamily: SPACE_GROTESK,
-                        color: "rgba(200,212,192,0.75)",
+                        color: "rgba(var(--ot-mist, 200,212,192),0.75)",
                         margin: 0,
                       }}
                     >
@@ -2072,7 +2076,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                         Translation
                       </p>
                       <div style={{ display: "inline-flex", borderRadius: 999, overflow: "hidden", border: "1px solid rgba(140,195,160,0.3)" }}>
-                        <span style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: WARM_TEXT, background: "rgba(46,107,64,0.85)" }}>
+                        <span style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: WARM_TEXT, background: "rgba(var(--ot-green, 46,107,64),0.85)" }}>
                           WEB
                         </span>
                         <button
@@ -2086,7 +2090,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                             while (j < slides.length && slides[j].type === "lesson_verses") j++;
                             setSlideIdx(Math.min(j, slides.length - 1));
                           }}
-                          style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: "rgba(182,210,188,0.85)", background: "transparent", border: "none", cursor: "pointer" }}
+                          style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: "rgba(var(--ot-pale, 182,210,188),0.85)", background: "transparent", border: "none", cursor: "pointer" }}
                         >
                           NRSV
                         </button>
@@ -2234,7 +2238,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     style={{
                       fontSize: 16,
                       fontFamily: SPACE_GROTESK,
-                      color: "rgba(200,212,192,0.75)",
+                      color: "rgba(var(--ot-mist, 200,212,192),0.75)",
                       margin: 0,
                     }}
                   >
@@ -2381,7 +2385,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     {eyebrowLabel}
                   </p>
                   {communal && SAID_BY.canticle && (
-                    <p style={{ color: "rgba(143,175,150,0.55)", fontSize: 11.5, fontStyle: "italic", margin: "-2px 0 0", fontFamily: SPACE_GROTESK }}>
+                    <p style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", fontSize: 11.5, fontStyle: "italic", margin: "-2px 0 0", fontFamily: SPACE_GROTESK }}>
                       {pickLoc(SAID_BY.canticle)}
                     </p>
                   )}
@@ -2412,7 +2416,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               {/* Communal mode: the BCP's "said by" rubric under the
                   eyebrow — Officiant / Officiant and People / all. */}
               {communal && SAID_BY[currentSlide.type] && (
-                <p style={{ color: "rgba(143,175,150,0.55)", fontSize: 11.5, fontStyle: "italic", margin: "-2px 0 0", fontFamily: SPACE_GROTESK }}>
+                <p style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", fontSize: 11.5, fontStyle: "italic", margin: "-2px 0 0", fontFamily: SPACE_GROTESK }}>
                   {pickLoc(SAID_BY[currentSlide.type]!)}
                 </p>
               )}
@@ -2577,7 +2581,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       <div
                         key={i}
                         style={{
-                          borderTop: "1px solid rgba(143,175,150,0.18)",
+                          borderTop: "1px solid rgba(var(--ot-sage, 143,175,150),0.18)",
                           paddingTop: 12,
                           marginTop: 4,
                         }}
@@ -2785,7 +2789,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     fontSize: currentSlide.type === "intercessions" ? 22 : 20,
                     lineHeight: currentSlide.type === "intercessions" ? 1.5 : 1.7,
                     fontWeight: currentSlide.type === "intercessions" ? 500 : 400,
-                    color: currentSlide.type === "intercessions" ? "#E8E4D8" : WARM_TEXT,
+                    color: currentSlide.type === "intercessions" ? "var(--oh-ink2, #E8E4D8)" : WARM_TEXT,
                     margin: 0,
                     whiteSpace: "pre-wrap",
                     fontFamily: SPACE_GROTESK,
@@ -2847,7 +2851,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             return (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 4 }}>
                 {/* Invite a physical Bible first; the pill is the online option. */}
-                <p style={{ fontSize: 15, fontFamily: SPACE_GROTESK, color: "rgba(143,175,150,0.9)", margin: 0, textAlign: "center" }}>
+                <p style={{ fontSize: 15, fontFamily: SPACE_GROTESK, color: "rgba(var(--ot-sage, 143,175,150),0.9)", margin: 0, textAlign: "center" }}>
                   Open your Bible, or read online
                 </p>
                 <a
@@ -2857,7 +2861,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   onClick={(e) => { e.preventDefault(); openExternal(readHref); }}
                   style={{
                     padding: "10px 18px", borderRadius: 999,
-                    background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
+                    background: "rgba(var(--ot-green, 46,107,64),0.18)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
                     color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
                     textDecoration: "none", display: "inline-block",
                   }}
@@ -2916,9 +2920,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   margin: "8px 0 0",
                   padding: "6px 14px",
                   borderRadius: 999,
-                  background: "rgba(46,107,64,0.12)",
-                  border: "1px solid rgba(46,107,64,0.28)",
-                  color: "#A8C5A0",
+                  background: "rgba(var(--ot-green, 46,107,64),0.12)",
+                  border: "1px solid rgba(var(--ot-green, 46,107,64),0.28)",
+                  color: "var(--oh-fern, #A8C5A0)",
                   fontFamily: SPACE_GROTESK,
                   fontSize: 12,
                   fontWeight: 500,
@@ -2995,10 +2999,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 type="button"
                 onClick={() => setViewerLocation("/bcp/daily-devotions?mode=early-evening-devotion")}
                 style={{
-                  background: "rgba(46,107,64,0.10)",
-                  border: "1px solid rgba(46,107,64,0.32)",
+                  background: "rgba(var(--ot-green, 46,107,64),0.10)",
+                  border: "1px solid rgba(var(--ot-green, 46,107,64),0.32)",
                   borderRadius: 999,
-                  color: "rgba(168,197,160,0.95)",
+                  color: "rgba(var(--ot-fern, 168,197,160),0.95)",
                   fontFamily: SPACE_GROTESK,
                   fontSize: 12,
                   fontWeight: 500,
@@ -3025,7 +3029,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           transition: "bottom 0.2s ease",
           transform: "translateX(-50%)",
           zIndex: 50,
-          background: "rgba(9,26,16, 0.297)",
+          background: "rgba(var(--ot-deep, 9,26,16), 0.297)",
           backdropFilter: "blur(11.34px)",
           WebkitBackdropFilter: "blur(11.34px)",
           border: `1px solid ${BORDER}`,
@@ -3558,6 +3562,7 @@ function PhysicalBookGuide(props: {
   onPrayIntercessions: () => void;
   onMarkPrayed: () => void;
 }) {
+  const display = useOfficeDisplay();
   const { slides, officeTitle, mode, dayLabel, intercessionCount, playerDocked, showIntercessions, alreadyDoneToday, onClose, onPrayIntercessions, onMarkPrayed } = props;
   // Keep the screen awake while reading the page-number guide — you pray
   // from the open book with the phone set down, so it must not sleep.
@@ -3573,10 +3578,10 @@ function PhysicalBookGuide(props: {
     display: "flex",
     alignItems: "center",
     gap: 14,
-    background: "rgba(9,26,16, 0.297)",
+    background: "rgba(var(--ot-deep, 9,26,16), 0.297)",
     backdropFilter: "blur(11.34px)",
     WebkitBackdropFilter: "blur(11.34px)",
-    border: "1px solid rgba(200,212,192,0.16)",
+    border: "1px solid rgba(var(--ot-mist, 200,212,192),0.16)",
     borderRadius: 16,
     padding: "14px 16px",
   };
@@ -3596,9 +3601,9 @@ function PhysicalBookGuide(props: {
   };
   const badgeStyle: CSSProperties = {
     flexShrink: 0,
-    background: "rgba(166,124,82,0.18)",
-    border: "1px solid rgba(166,124,82,0.45)",
-    color: "#E8D5BC",
+    background: "rgba(var(--ot-brown, 166,124,82),0.18)",
+    border: "1px solid rgba(var(--ot-brown, 166,124,82),0.45)",
+    color: "var(--oh-cream, #E8D5BC)",
     borderRadius: 999,
     padding: "5px 12px",
     fontSize: 13,
@@ -3610,6 +3615,9 @@ function PhysicalBookGuide(props: {
   return (
     <div
       style={{
+        // Typeface + (for Paper) the light letter-paper theme — CSS custom
+        // properties every swept color var() in this deck resolves against.
+        ...officeThemeStyle(display.backdrop, display.font),
         height: "100dvh",
         overflow: "hidden",
         overscrollBehavior: "none",
@@ -3625,7 +3633,7 @@ function PhysicalBookGuide(props: {
       {leafBg ? (
         <>
           <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.7) 45%, rgba(8,22,15,0.84) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash, 8,22,15),0.55) 0%, rgba(var(--ot-wash, 8,22,15),0.7) 45%, rgba(var(--ot-wash, 8,22,15),0.84) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
@@ -3654,7 +3662,7 @@ function PhysicalBookGuide(props: {
           <span
             className="rounded-full"
             style={{
-              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
               border: `1px solid ${BORDER}`,
               color: WARM_TEXT,
               fontSize: 12,
@@ -3672,8 +3680,8 @@ function PhysicalBookGuide(props: {
               type="button"
               onClick={onMarkPrayed}
               style={{
-                background: "rgba(46,107,64,0.55)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-                border: "1px solid rgba(168,197,160,0.5)", color: WARM_TEXT,
+                background: "rgba(var(--ot-green, 46,107,64),0.55)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                border: "1px solid rgba(var(--ot-fern, 168,197,160),0.5)", color: WARM_TEXT,
                 borderRadius: 999, padding: "6px 16px", fontSize: 12, fontWeight: 700,
                 letterSpacing: "0.04em", cursor: "pointer", fontFamily: SPACE_GROTESK,
               }}
@@ -3727,13 +3735,13 @@ function PhysicalBookGuide(props: {
                 alignItems: "center",
                 gap: 8,
                 marginTop: 14,
-                background: "rgba(166,124,82,0.18)",
-                border: "1px solid rgba(166,124,82,0.45)",
+                background: "rgba(var(--ot-brown, 166,124,82),0.18)",
+                border: "1px solid rgba(var(--ot-brown, 166,124,82),0.45)",
                 borderRadius: 999,
                 padding: "8px 18px",
                 fontSize: 15,
                 fontWeight: 700,
-                color: "#E8D5BC",
+                color: "var(--oh-cream, #E8D5BC)",
               }}
             >
               📕 {bcpGuideText("Begin at {page}", { page: startPage })}
@@ -3762,7 +3770,7 @@ function PhysicalBookGuide(props: {
                         padding: 0,
                         fontSize: 12,
                         fontWeight: 600,
-                        color: "#A8C5A0",
+                        color: "var(--oh-fern, #A8C5A0)",
                         cursor: "pointer",
                         fontFamily: SPACE_GROTESK,
                       }}
@@ -3774,7 +3782,7 @@ function PhysicalBookGuide(props: {
                 {sec.page ? (
                   <span style={badgeStyle}>{sec.page}</span>
                 ) : sec.readUrl ? (
-                  <span style={{ ...badgeStyle, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#CFE3C8" }}>
+                  <span style={{ ...badgeStyle, background: "rgba(var(--ot-green, 46,107,64),0.18)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)", color: "var(--oh-pale, #CFE3C8)" }}>
                     {bcpGuideText("your Bible")}
                   </span>
                 ) : null}
@@ -3786,7 +3794,7 @@ function PhysicalBookGuide(props: {
                 key="__intercessions__"
                 type="button"
                 onClick={onPrayIntercessions}
-                style={{ ...cardStyle, width: "100%", textAlign: "left", cursor: "pointer", background: "rgba(46,107,64,0.20)", border: "1px solid rgba(46,107,64,0.45)" }}
+                style={{ ...cardStyle, width: "100%", textAlign: "left", cursor: "pointer", background: "rgba(var(--ot-green, 46,107,64),0.20)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)" }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={labelStyle}>{bcpGuideText("The Intercessions")}</p>
@@ -3895,12 +3903,12 @@ function OfficeMethodCard(props: {
         // Match the home cards: a colored left accent bar, a very slight
         // vertical gradient, and a slightly stronger border.
         background: now
-          ? "linear-gradient(180deg, rgba(46,107,64,0.14) 0%, rgba(46,107,64,0.24) 100%)"
-          : "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.17) 100%)",
-        border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.30)"}`,
+          ? "linear-gradient(180deg, rgba(var(--ot-green, 46,107,64),0.14) 0%, rgba(var(--ot-green, 46,107,64),0.24) 100%)"
+          : "linear-gradient(180deg, rgba(var(--ot-green, 46,107,64),0.08) 0%, rgba(var(--ot-green, 46,107,64),0.17) 100%)",
+        border: isDefault ? "2px solid var(--oh-fern, #A8C5A0)" : `1px solid ${now ? "rgba(var(--ot-green, 46,107,64),0.45)" : "rgba(var(--ot-green, 46,107,64),0.30)"}`,
       }}
     >
-      <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+      <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(var(--ot-green, 46,107,64),0.9)" }} />
       <div className="flex-1 min-w-0">
       <button
         type="button"
@@ -3910,17 +3918,17 @@ function OfficeMethodCard(props: {
         <div className="flex items-center gap-4">
           <span className="text-3xl">{meta.emoji}</span>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <p className="font-semibold text-base" style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
               {title}
             </p>
-            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+            <p className="text-sm mt-0.5" style={{ color: "var(--oh-sage, #8FAF96)" }}>
               Rite II · {meta.sub(side)}
             </p>
             {isDefault
-              ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
-              : now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+              ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "var(--oh-fern, #A8C5A0)" }}>Your default</p>
+              : now && <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--oh-green, #6FAF85)" }}>Available now</p>}
           </div>
-          <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
+          <span className="text-sm" style={{ color: "var(--oh-sage, #8FAF96)" }}>→</span>
         </div>
       </button>
       {/* Method picker — a native select so iOS shows its wheel. Kept
@@ -3929,9 +3937,9 @@ function OfficeMethodCard(props: {
           preference too. */}
       <label
         className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer"
-        style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16, 0.275)" }}
+        style={{ borderTop: "1px solid rgba(var(--ot-green, 46,107,64),0.22)", background: "rgba(var(--ot-deep, 9,26,16), 0.275)" }}
       >
-        <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+        <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
           How to pray
         </span>
         <select
@@ -3943,10 +3951,10 @@ function OfficeMethodCard(props: {
           }}
           className="text-sm font-semibold rounded-lg px-3 py-1.5"
           style={{
-            color: "#F0EDE6",
-            fontFamily: "'Space Grotesk', sans-serif",
-            background: "rgba(46,107,64,0.22)",
-            border: "1px solid rgba(46,107,64,0.45)",
+            color: "var(--oh-ink, #F0EDE6)",
+            fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
+            background: "rgba(var(--ot-green, 46,107,64),0.22)",
+            border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
             // Let the native control own its disclosure chrome.
             appearance: "auto",
           }}
@@ -4001,12 +4009,12 @@ function DevotionMethodCard(props: {
       className="w-full rounded-2xl overflow-hidden flex"
       style={{
         background: now
-          ? "linear-gradient(180deg, rgba(46,107,64,0.14) 0%, rgba(46,107,64,0.24) 100%)"
-          : "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.17) 100%)",
-        border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.30)"}`,
+          ? "linear-gradient(180deg, rgba(var(--ot-green, 46,107,64),0.14) 0%, rgba(var(--ot-green, 46,107,64),0.24) 100%)"
+          : "linear-gradient(180deg, rgba(var(--ot-green, 46,107,64),0.08) 0%, rgba(var(--ot-green, 46,107,64),0.17) 100%)",
+        border: isDefault ? "2px solid var(--oh-fern, #A8C5A0)" : `1px solid ${now ? "rgba(var(--ot-green, 46,107,64),0.45)" : "rgba(var(--ot-green, 46,107,64),0.30)"}`,
       }}
     >
-      <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+      <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(var(--ot-green, 46,107,64),0.9)" }} />
       <div className="flex-1 min-w-0">
         <button
           type="button"
@@ -4016,27 +4024,27 @@ function DevotionMethodCard(props: {
           <div className="flex items-center gap-4">
             <span className="text-3xl">{method === "read" ? emoji : meta.emoji}</span>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
-              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{sub}</p>
+              <p className="font-semibold text-base" style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>{title}</p>
+              <p className="text-sm mt-0.5" style={{ color: "var(--oh-sage, #8FAF96)" }}>{sub}</p>
               {isDefault
-                ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
-                : now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+                ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "var(--oh-fern, #A8C5A0)" }}>Your default</p>
+                : now && <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--oh-green, #6FAF85)" }}>Available now</p>}
             </div>
-            <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
+            <span className="text-sm" style={{ color: "var(--oh-sage, #8FAF96)" }}>→</span>
           </div>
         </button>
         <label
           className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer"
-          style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16, 0.275)" }}
+          style={{ borderTop: "1px solid rgba(var(--ot-green, 46,107,64),0.22)", background: "rgba(var(--ot-deep, 9,26,16), 0.275)" }}
         >
-          <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
             How to pray
           </span>
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value as "read" | "book" | "watch")}
             className="text-sm font-semibold rounded-lg px-3 py-1.5"
-            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", appearance: "auto" }}
+            style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", background: "rgba(var(--ot-green, 46,107,64),0.22)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)", appearance: "auto" }}
           >
             {methods.map((m) => (
               <option key={m} value={m}>
@@ -4262,28 +4270,28 @@ export default function BcpDailyOfficePage() {
         }}
         className="w-full text-left rounded-2xl overflow-hidden flex transition-all hover:shadow-md active:scale-[0.99]"
         style={{
-          background: opt.now ? "rgba(46,107,64,0.30)" : "rgba(9,26,16, 0.308)",
+          background: opt.now ? "rgba(var(--ot-green, 46,107,64),0.30)" : "rgba(var(--ot-deep, 9,26,16), 0.308)",
           ...FROST_BLUR,
           border: isDefault
-            ? "2px solid #A8C5A0"
-            : `1px solid ${opt.now ? "rgba(168,197,160,0.40)" : "rgba(200,225,210,0.16)"}`,
+            ? "2px solid var(--oh-fern, #A8C5A0)"
+            : `1px solid ${opt.now ? "rgba(var(--ot-fern, 168,197,160),0.40)" : "rgba(var(--ot-mint, 200,225,210),0.16)"}`,
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
         }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+        <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(var(--ot-green, 46,107,64),0.9)" }} />
         <div className="flex-1 min-w-0 p-5">
           <div className="flex items-center gap-4">
             <span className="text-3xl">{opt.emoji}</span>
             <div className="flex-1">
-              <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <p className="font-semibold text-base" style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
                 {opt.label}
               </p>
-              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{opt.sub}</p>
+              <p className="text-sm mt-0.5" style={{ color: "var(--oh-sage, #8FAF96)" }}>{opt.sub}</p>
               {isDefault
-                ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
-                : opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+                ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "var(--oh-fern, #A8C5A0)" }}>Your default</p>
+                : opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--oh-green, #6FAF85)" }}>Available now</p>}
             </div>
-            <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
+            <span className="text-sm" style={{ color: "var(--oh-sage, #8FAF96)" }}>→</span>
           </div>
         </div>
       </button>
@@ -4293,7 +4301,7 @@ export default function BcpDailyOfficePage() {
   const SectionLabel = ({ children }: { children: string }) => (
     <p
       className="text-[11px] font-semibold uppercase tracking-[0.16em] mt-6 mb-2"
-      style={{ color: "rgba(143,175,150,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
+      style={{ color: "rgba(var(--ot-sage, 143,175,150),0.5)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
     >
       {children}
     </p>
@@ -4342,9 +4350,9 @@ export default function BcpDailyOfficePage() {
   // soft light edge so each row reads as a pane of liquid glass.
   // Liquid-glass rows — a lighter translucent fill + a strong backdrop blur so
   // the leaf reads clearly through them, with a soft light edge + top sheen.
-  const officeRow: CSSProperties = { position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: "14px 16px", marginBottom: 8, background: "rgba(24,46,34,0.20)", backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)", border: "1px solid rgba(200,225,210,0.24)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" };
-  const officeRowLabel: CSSProperties = { color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600 };
-  const officeRowValue: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 500 };
+  const officeRow: CSSProperties = { position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: "14px 16px", marginBottom: 8, background: "rgba(var(--ot-card2, 24,46,34),0.20)", backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)", border: "1px solid rgba(var(--ot-mint, 200,225,210),0.24)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" };
+  const officeRowLabel: CSSProperties = { color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600 };
+  const officeRowValue: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--oh-fern, #A8C5A0)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 500 };
   // A transparent <select> covering the WHOLE row, so a tap anywhere opens it.
   const officeRowSelect: CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, appearance: "none", WebkitAppearance: "none", MozAppearance: "none", border: "none", outline: "none", cursor: "pointer", background: "transparent" };
 
@@ -4352,25 +4360,25 @@ export default function BcpDailyOfficePage() {
     <Layout bgPhoto={landingLeaf}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
-        <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
+        <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "var(--oh-sage, #8FAF96)" }}>
           ← Book of Common Prayer
         </Link>
 
         {/* The landing reads as an office's opening slide: a centered title and
             three settings rows (Time of day · Practice · How) → Begin. */}
         <div className="flex flex-col items-center text-center pt-1">
-          <p className="uppercase font-semibold" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, letterSpacing: "0.22em", marginBottom: 12 }}>
+          <p className="uppercase font-semibold" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 11, letterSpacing: "0.22em", marginBottom: 12 }}>
             Before you begin
           </p>
-          <h1 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 16 }}>
+          <h1 style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 16 }}>
             Daily Prayer
           </h1>
-          <p style={{ color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, lineHeight: 1.55, maxWidth: 440, marginBottom: 24 }}>
+          <p style={{ color: "rgba(var(--ot-ink3, 240,237,230),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, lineHeight: 1.55, maxWidth: 440, marginBottom: 24 }}>
             Morning and Evening Prayer, kept at the hinges of the day — the full office or the short devotion.
           </p>
 
           <div className="w-full" style={{ maxWidth: 460 }}>
-            <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
+            <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginBottom: 14 }} />
             <div style={officeRow}>
               <span style={officeRowLabel}>Time of day</span>
               <span style={officeRowValue}>{todPick === "morning" ? "Morning" : "Evening"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
@@ -4411,12 +4419,12 @@ export default function BcpDailyOfficePage() {
                 ))}
               </select>
             </div>
-            <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
+            <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginTop: 14, marginBottom: 20 }} />
 
             <button
               onClick={beginOffice}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "rgba(46,107,64,0.55)", ...FROST_BLUR, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 700, border: "1px solid rgba(168,197,160,0.5)", cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}
+              style={{ background: "rgba(var(--ot-green, 46,107,64),0.55)", ...FROST_BLUR, color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 17, fontWeight: 700, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.5)", cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}
             >
               Begin <span aria-hidden>→</span>
             </button>
@@ -4424,7 +4432,7 @@ export default function BcpDailyOfficePage() {
               <Link
                 href="/rule-of-life"
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
-                style={{ background: "rgba(9,26,16, 0.297)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.18)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
+                style={{ background: "rgba(var(--ot-deep, 9,26,16), 0.297)", ...FROST_BLUR, border: "1px solid rgba(var(--ot-mint, 200,225,210),0.18)", color: "var(--oh-fern, #A8C5A0)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 13, fontWeight: 600 }}
               >
                 Shape your rhythm
               </Link>

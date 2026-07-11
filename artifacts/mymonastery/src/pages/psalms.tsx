@@ -7,6 +7,7 @@ import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/l
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
+import { officeThemeStyle } from "@/lib/officeDisplay";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
@@ -22,13 +23,13 @@ import { PointedLine } from "@/components/PointedLine";
 // BCP" shows a page-number guide instead. Self-contained (it does NOT reuse the
 // office viewer), so finishing marks only the day's Praying-the-Psalms practice.
 
-const FONT = "'Space Grotesk', system-ui, sans-serif";
+const FONT = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 const SERIF = "Georgia, 'Times New Roman', serif";
-const WARM = "#F0EDE6";
-const FAINT_GREEN = "rgba(143,175,150,0.55)";
-const SOFT_GREEN = "rgba(200,212,192,0.75)";
-const PAGE_REF = "rgba(168,197,160,0.7)";
-const BG = "#0C1F12";
+const WARM = "var(--oh-ink, #F0EDE6)";
+const FAINT_GREEN = "rgba(var(--ot-sage, 143,175,150),0.55)";
+const SOFT_GREEN = "rgba(var(--ot-mist, 200,212,192),0.75)";
+const PAGE_REF = "rgba(var(--ot-fern, 168,197,160),0.7)";
+const BG = "var(--oh-bg, #0C1F12)";
 // The EXACT background prayer-mode.tsx's closing phase starts at
 // (phaseBg for phase==="closing"/"blessing"). Finishing here fades a solid
 // overlay of THIS color in (not just this screen's own opacity to 0) so the
@@ -36,7 +37,7 @@ const BG = "#0C1F12";
 // backdrop photo then fades in over it with no perceptible cut, instead of
 // the screen dimming to ITS OWN background (a different shade) and still
 // hard-cutting to the closing slide's flat starting color.
-const CLOSING_BG = "#11291C";
+const CLOSING_BG = "var(--oh-closing, #11291C)";
 
 const GLORIA_PATRI =
   "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
@@ -211,7 +212,7 @@ export default function PsalmsPage() {
 
   // A still backdrop, picked once per backdrop choice — Leaves (default),
   // Planet (landscapes minus the animals), or none for Plain (solid green).
-  const bgPhotoSet = display.backdrop === "plain" ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
   const leaf = useMemo(
     () => (bgPhotoSet.length > 0 ? bgPhotoSet[Math.floor(Math.random() * bgPhotoSet.length)]! : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -334,11 +335,11 @@ export default function PsalmsPage() {
   if (isLoading) {
     return (
       <div style={{ position: "fixed", inset: 0, background: BG, display: "flex", flexDirection: "column", justifyContent: "center", padding: 36 }}>
-        <p style={{ color: "#E8E4D8", fontFamily: SERIF, fontStyle: "italic", fontSize: 18, lineHeight: 1.55, margin: 0, maxWidth: 460 }}>
+        <p style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: SERIF, fontStyle: "italic", fontSize: 18, lineHeight: 1.55, margin: 0, maxWidth: 460 }}>
           &ldquo;{loadingQuote.text}&rdquo;
         </p>
         <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12.5, letterSpacing: "0.04em", margin: "12px 0 0" }}>— {loadingQuote.author}</p>
-        <p style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT, fontSize: 14, marginTop: 28 }}>Gathering today's psalms…</p>
+        <p style={{ color: "rgba(var(--ot-sage, 143,175,150),0.5)", fontFamily: FONT, fontSize: 14, marginTop: 28 }}>Gathering today's psalms…</p>
       </div>
     );
   }
@@ -356,16 +357,16 @@ export default function PsalmsPage() {
   const Backdrop = leaf ? (
     <>
       <img src={leaf} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.8, filter: "blur(3px)", transform: "scale(1.02)", zIndex: -2 }} />
-      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(12,31,18,0.85) 0%, rgba(12,31,18,0.7) 45%, rgba(12,31,18,0.9) 100%)" }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash3, 12,31,18),0.85) 0%, rgba(var(--ot-wash3, 12,31,18),0.7) 45%, rgba(var(--ot-wash3, 12,31,18),0.9) 100%)" }} />
     </>
   ) : null;
   const header = (onBack: () => void) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(0.75rem, var(--safe-top)) 20px 4px", flexShrink: 0 }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 15, cursor: "pointer", padding: 6 }}>← Back</button>
-      <span style={{ borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>{sideLabel}</span>
+      <span style={{ borderRadius: 999, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.3)", color: SOFT_GREEN, fontFamily: FONT, fontSize: 14, fontWeight: 600, padding: "6px 16px" }}>{sideLabel}</span>
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button onClick={() => setDisplayOpen(true)} aria-label="Display settings" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><Settings2 size={15} /></button>
-        <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(168,197,160,0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+        <button onClick={() => setDisplayOpen(true)} aria-label="Display settings" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.3)", background: "none", color: FAINT_GREEN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><Settings2 size={15} /></button>
+        <button onClick={goHome} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.3)", background: "none", color: FAINT_GREEN, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
       </span>
     </div>
   );
@@ -373,7 +374,7 @@ export default function PsalmsPage() {
   // ── Intro chooser — same pill UI as the office "before you begin" ─────────
   if (step === "intro") {
     const pill = (label: string, value: string, opts: Array<{ value: string; label: string }>, onChange: (v: string) => void) => (
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(24,46,34,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(var(--ot-card2, 24,46,34),0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
         <span style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600 }}>{label}</span>
         <span style={{ color: SOFT_GREEN, fontFamily: FONT, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
           {opts.find((o) => o.value === value)?.label}<span aria-hidden style={{ opacity: 0.7 }}>▾</span>
@@ -385,14 +386,14 @@ export default function PsalmsPage() {
       </div>
     );
     return (
-      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+      <div style={{ ...officeThemeStyle(display.backdrop, display.font), position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
         {Backdrop}
         <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
         {header(goHome)}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "8px 28px", gap: 16 }}>
           <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Before you begin</p>
           <h1 className="title-glow-breathe" style={{ fontFamily: FONT, fontSize: "clamp(40px, 8vw, 72px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.05 }}>{sideLabel}</h1>
-          <p style={{ fontSize: 16, lineHeight: 1.6, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: "0 0 8px" }}>The psalms appointed for today, from the Book of Common Prayer.</p>
+          <p style={{ fontSize: 16, lineHeight: 1.6, fontFamily: FONT, color: "rgba(var(--ot-mist, 200,212,192),0.85)", margin: "0 0 8px" }}>The psalms appointed for today, from the Book of Common Prayer.</p>
           <div style={{ width: "100%", maxWidth: 380, display: "flex", flexDirection: "column", gap: 10 }}>
             {pill("Lectionary", cycle, [
               { value: "office", label: "Daily Office Lectionary" },
@@ -406,7 +407,7 @@ export default function PsalmsPage() {
           </div>
         </div>
         <div style={{ flexShrink: 0, padding: "10px 28px max(1.25rem, env(safe-area-inset-bottom))", display: "flex", justifyContent: "center" }}>
-          <button onClick={beginFromIntro} style={{ width: "100%", maxWidth: 380, background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, borderRadius: 999, padding: "14px 24px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
+          <button onClick={beginFromIntro} style={{ width: "100%", maxWidth: 380, background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.45)", color: WARM, borderRadius: 999, padding: "14px 24px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
             Begin <span aria-hidden>→</span>
           </button>
         </div>
@@ -418,7 +419,7 @@ export default function PsalmsPage() {
   if (step === "guide") {
     const psalms = data?.psalms ?? [];
     return (
-      <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+      <div style={{ ...officeThemeStyle(display.backdrop, display.font), position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
         {Backdrop}
         <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
@@ -429,16 +430,16 @@ export default function PsalmsPage() {
           <p style={{ fontSize: 14.5, fontFamily: FONT, color: SOFT_GREEN, margin: "0 0 22px", textAlign: "center" }}>Find them in your Book of Common Prayer.</p>
           <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 12 }}>
             {psalms.map((p) => (
-              <div key={p.number + "-" + p.raw} style={{ display: "flex", alignItems: "center", gap: 14, borderRadius: 16, padding: "16px 18px", background: "rgba(22,46,32,0.45)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.22)" }}>
+              <div key={p.number + "-" + p.raw} style={{ display: "flex", alignItems: "center", gap: 14, borderRadius: 16, padding: "16px 18px", background: "rgba(var(--ot-card, 22,46,32),0.45)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.22)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 18, fontWeight: 700 }}>Psalm {refLabel(p)}</p>
-                  {p.title && <p style={{ margin: "2px 0 0", color: "rgba(200,212,192,0.6)", fontFamily: SERIF, fontStyle: "italic", fontSize: 14 }}>{p.title}</p>}
+                  {p.title && <p style={{ margin: "2px 0 0", color: "rgba(var(--ot-mist, 200,212,192),0.6)", fontFamily: SERIF, fontStyle: "italic", fontSize: 14 }}>{p.title}</p>}
                 </div>
                 <span style={{ flexShrink: 0, color: PAGE_REF, fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.04em" }}>{p.bcpRef || ""}</span>
               </div>
             ))}
           </div>
-          <button onClick={finish} style={{ marginTop: 26, background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.4)", color: WARM, borderRadius: 999, padding: "12px 30px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+          <button onClick={finish} style={{ marginTop: 26, background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.4)", color: WARM, borderRadius: 999, padding: "12px 30px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             I've prayed them <span aria-hidden>→</span>
           </button>
         </div>
@@ -450,7 +451,7 @@ export default function PsalmsPage() {
   const slide = slides[index];
   const atEnd = index >= slides.length - 1;
   return (
-    <div style={{ position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
+    <div style={{ ...officeThemeStyle(display.backdrop, display.font), position: "fixed", inset: 0, background: BG, overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column", userSelect: "none", WebkitUserSelect: "none" }}>
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 999, background: CLOSING_BG, opacity: leaving ? 1 : 0, transition: "opacity 240ms ease", pointerEvents: "none" }} />
       {Backdrop}
       <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
@@ -490,7 +491,7 @@ export default function PsalmsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {slide.verses.map((v, i) => (
                 <div key={i} style={{ display: "flex", gap: 10 }}>
-                  <span style={{ flex: "0 0 auto", minWidth: 22, textAlign: "left", color: "rgba(143,175,150,0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
+                  <span style={{ flex: "0 0 auto", minWidth: 22, textAlign: "left", color: "rgba(var(--ot-sage, 143,175,150),0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {v.lines.map((ln, j) => (
                       <PointedLine
@@ -518,10 +519,10 @@ export default function PsalmsPage() {
 
       {/* Footer — Back · section label · Next/Done. */}
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "10px 0 max(1.25rem, env(safe-area-inset-bottom))" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(9,26,16,0.55)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(168,197,160,0.22)", borderRadius: 999, padding: "8px 10px 8px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(var(--ot-deep, 9,26,16),0.55)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.22)", borderRadius: 999, padding: "8px 10px 8px 18px" }}>
           <button onClick={back} style={{ background: "none", border: "none", color: SOFT_GREEN, fontFamily: FONT, fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "6px 10px" }}>Back</button>
-          <span style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.08em" }}>PSALM {index + 1} / {total}</span>
-          <button onClick={advance} style={{ background: "rgba(46,107,64,0.6)", border: "1px solid rgba(168,197,160,0.4)", color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, borderRadius: 999, padding: "8px 20px", cursor: "pointer" }}>{atEnd ? "Done" : "Next"}</button>
+          <span style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.08em" }}>PSALM {index + 1} / {total}</span>
+          <button onClick={advance} style={{ background: "rgba(var(--ot-green, 46,107,64),0.6)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.4)", color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, borderRadius: 999, padding: "8px 20px", cursor: "pointer" }}>{atEnd ? "Done" : "Next"}</button>
         </div>
       </div>
     </div>
