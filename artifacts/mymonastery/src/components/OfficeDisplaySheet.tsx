@@ -24,6 +24,7 @@ import {
   setOfficeBackdrop,
   setOfficeFont,
   setOfficeFontScale,
+  setOfficePrayingMode,
   type OfficeBackdrop,
   type OfficeFont,
   type OfficePrayingMode,
@@ -81,11 +82,20 @@ export function fontScaleWrapStyle(scale: number, maxWidthPx = 672): React.CSSPr
   return { zoom: scale, width: `${100 / scale}%`, maxWidth: `${maxWidthPx / scale}px` };
 }
 
-export function OfficeDisplaySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function OfficeDisplaySheet({
+  open,
+  onClose,
+  // Show the "Praying" (on my own / together) row — only the full offices
+  // carry the Officiant/People rubrics + salutation, so the psalms deck and
+  // the intercessions slideshow leave it off.
+  showPrayingMode = false,
+}: { open: boolean; onClose: () => void; showPrayingMode?: boolean }) {
   const [scale, setScale] = useState(() => getOfficeFontScale());
   const [backdrop, setBackdrop] = useState<OfficeBackdrop>(() => getOfficeBackdrop());
   const [font, setFontState] = useState<OfficeFont>(() => getOfficeFont());
+  const [praying, setPrayingState] = useState<OfficePrayingMode>(() => getOfficePrayingMode());
   const pickFont = (f: OfficeFont) => { setFontState(f); setOfficeFont(f); };
+  const pickPraying = (m: OfficePrayingMode) => { setPrayingState(m); setOfficePrayingMode(m); };
   const scales = OFFICE_FONT_SCALES as readonly number[];
   const idx = scales.reduce((best, s, i) => (Math.abs(s - scale) < Math.abs(scales[best]! - scale) ? i : best), 0);
   const step = (d: number) => {
@@ -182,6 +192,39 @@ export function OfficeDisplaySheet({ open, onClose }: { open: boolean; onClose: 
                 </button>
               ))}
             </div>
+
+            {/* Praying — on my own vs together. Only the full offices carry
+                the Officiant/People rubrics + the salutation, so this row is
+                hidden on the psalms + intercessions decks. */}
+            {showPrayingMode && (
+              <>
+                <p style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, margin: "20px 0 8px" }}>Praying</p>
+                <div className="flex gap-2.5">
+                  {([
+                    { id: "individual" as const, label: "On my own", sub: "A clean, personal reading" },
+                    { id: "communal" as const, label: "Together", sub: "Officiant & People parts" },
+                  ]).map((m) => {
+                    const on = praying === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => pickPraying(m.id)}
+                        className="flex-1 text-left rounded-2xl px-3.5 py-3"
+                        style={{
+                          background: on ? "rgba(46,107,64,0.4)" : "rgba(9,26,16,0.6)",
+                          border: on ? "2px solid #7ED28C" : "1px solid rgba(143,175,150,0.3)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span className="block" style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: on ? 700 : 600 }}>{m.label}</span>
+                        <span className="block" style={{ color: MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 2 }}>{m.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </motion.div>
         </motion.div>
       )}

@@ -7503,14 +7503,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           contemplation card stands on its own, cascading in like
                           the rest of the home (splash-gated + a haptic tick). */}
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}>{contemplationAgainCard}</motion.div>
-                      {/* An in-flight course stays reachable after the day's
-                          rhythm is done — the Learn band renders on the
-                          finished-day view too. */}
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}><HomeLearnSection /></motion.div>
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
-                          Rest. (It self-hides when no weekly practice is on.) */}
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}><WeeklyRhythm /></motion.div>
+                          Rest. (It self-hides when no weekly practice is on.)
+                          Sits ABOVE the Learn band (owner). */}
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}><WeeklyRhythm /></motion.div>
+                      {/* An in-flight course stays reachable after the day's
+                          rhythm is done — the Learn band renders on the
+                          finished-day view too, UNDER the weekly practices. */}
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}><HomeLearnSection /></motion.div>
                     </div>
                   );
                 }
@@ -7548,11 +7549,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
-                    {/* Same finished-day Learn band as the no-events branch. */}
-                    <motion.div {...enterUp(2)}><HomeLearnSection /></motion.div>
-                    {/* Weekly rhythm stays on the kept view (see the no-events
-                        branch note). */}
-                    <motion.div {...enterUp(3)}><WeeklyRhythm /></motion.div>
+                    {/* Weekly rhythm stays on the kept view, above Learn (see
+                        the no-events branch note). */}
+                    <motion.div {...enterUp(2)}><WeeklyRhythm /></motion.div>
+                    {/* Same finished-day Learn band as the no-events branch,
+                        under the weekly practices. */}
+                    <motion.div {...enterUp(3)}><HomeLearnSection /></motion.div>
                   </div>
                 );
               })() : (
@@ -7577,15 +7579,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 />
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
-                {/* Learn — continue (or start) a course right after the daily
-                    spine: next episode + play + progress. Video courses are
+                {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
+                    private self-logs, a separate band below the daily spine.
+                    Self-hides until the customizer's weekly step enables one.
+                    Sits ABOVE the Learn band (owner). */}
+                <WeeklyRhythm />
+                {/* Learn — continue (or start) a course, UNDER the weekly
+                    practices: next episode + play + progress. Video courses are
                     web-only; the iOS shell shows only the Way of Love (audio).
                     See HomeLearnSection. */}
                 <HomeLearnSection />
-                {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
-                    private self-logs, a separate band below the daily spine.
-                    Self-hides until the customizer's weekly step enables one. */}
-                <WeeklyRhythm />
                 </>
               )}
             </div>

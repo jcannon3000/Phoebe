@@ -16,7 +16,7 @@ import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
-import { getOfficePrayingMode, officeThemeStyle } from "@/lib/officeDisplay";
+import { officeThemeStyle } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
@@ -509,12 +509,35 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
-  // Praying TOGETHER (Settings → Praying the office). Only the corporate
+  // Praying TOGETHER (the ⚙ Display sheet's "Praying" row). Only the corporate
   // offices carry the rubrics — the Daily Devotions are explicitly the
-  // personal short forms, so they stay label-less either way.
-  const communal =
-    display.prayingMode === "communal" &&
-    (resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline");
+  // personal short forms, so they stay label-less either way. isFullOffice
+  // also decides whether the ⚙ sheet even offers the toggle.
+  const isFullOffice =
+    resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline";
+  const communal = display.prayingMode === "communal" && isFullOffice;
+  // The salutation ("The Lord be with you") is an MP/EP exchange — Compline
+  // has no such dialogue, so it gets the rubric labels but no extra slide.
+  const canSalute = resolvedMode === "morning" || resolvedMode === "evening";
+  // Keep the salutation slide in sync with the live "Praying" toggle: insert
+  // it before the Lord's Prayer when communal, remove it when on-my-own — and
+  // nudge slideIdx so the reader stays on the SAME content across the shift.
+  useEffect(() => {
+    if (!canSalute) return;
+    setSlides((prev) => {
+      const salIdx = prev.findIndex((s) => s.type === "salutation");
+      const lp = prev.findIndex((s) => s.type === "lords_prayer");
+      if (communal && salIdx < 0 && lp >= 0) {
+        setSlideIdx((cur) => (cur >= lp ? cur + 1 : cur));
+        return [...prev.slice(0, lp), buildSalutationSlide(resolvedMode as "morning" | "evening"), ...prev.slice(lp)];
+      }
+      if (!communal && salIdx >= 0) {
+        setSlideIdx((cur) => (cur > salIdx ? cur - 1 : cur));
+        return prev.filter((s) => s.type !== "salutation");
+      }
+      return prev;
+    });
+  }, [communal, canSalute, resolvedMode]);
   // The chosen photo library: Leaves (default), Planet (the landscape set
   // without the animal photos), or none for Plain (solid dark green below).
   const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
@@ -728,18 +751,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // finishes by redirecting to /prayer-mode?closingOnly=1, and
         // that screen is where the user expects the "read a
         // reflection" affordance to sit, next to Give thanks.
-        // Praying TOGETHER: splice the salutation before the Lord's Prayer
-        // (only the full offices have one; read the pref at fetch time —
-        // changing it means a trip through Settings, which remounts us).
-        if (
-          getOfficePrayingMode() === "communal" &&
-          (resolvedMode === "morning" || resolvedMode === "evening")
-        ) {
-          const lp = fetched.findIndex((sl) => sl.type === "lords_prayer");
-          if (lp >= 0 && !fetched.some((sl) => sl.type === "salutation")) {
-            fetched = [...fetched.slice(0, lp), buildSalutationSlide(resolvedMode), ...fetched.slice(lp)];
-          }
-        }
+        // (Praying TOGETHER's salutation slide is spliced in reactively — see
+        // the effect keyed on `communal` — so toggling the ⚙ "Praying" row
+        // mid-office inserts/removes it live, not only on a fresh open.)
         setSlides(fetched);
         setOfficeDay(data.officeDay ?? null);
         // Allow returning into the office mid-flow — when the
@@ -1615,7 +1629,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
 
         </div>
       </header>
-      <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
+      <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} showPrayingMode={isFullOffice} />
 
       <main
         ref={mainRef}
