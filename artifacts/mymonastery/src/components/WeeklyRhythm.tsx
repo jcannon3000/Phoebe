@@ -13,7 +13,7 @@
  * Sits below the daily rhythm on the home (a separate band — the daily office
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -131,30 +131,33 @@ export function WeeklyRhythm() {
   // Nothing turned on → no band at all.
   if (practices.length === 0) return null;
 
-  // This band flows in AFTER the daily rhythm cards (owner): start the stagger
-  // just past the daily cascade's 0.7s cap so it reads as one continuous
-  // cascade. A plain CSS animation (office-enter keyframes + a per-item
-  // animation-delay), NOT framer. SAFETY: `revealed` flips true once the
-  // cascade window has passed and then FORCES opacity:1 (dropping the
-  // animation) — so the cards can never be left hidden if the fade-in fails to
-  // run for any reason.
-  const CASCADE_BASE = 0.8;
-  const [revealed, setRevealed] = useState(false);
+  // The band cascades in when it SCROLLS INTO VIEW — it sits below the fold on
+  // mobile, so a page-load timer fired off-screen and the animation was never
+  // seen (worked on desktop where it was visible on load). IntersectionObserver
+  // plays the office-enter stagger the moment the band appears; before that the
+  // cards wait at opacity 0. (No IO → reveal immediately, so nothing can stick
+  // hidden on an ancient engine.)
+  const bandRef = useRef<HTMLDivElement | null>(null);
+  const [entered, setEntered] = useState(false);
   useEffect(() => {
-    // After the whole cascade should be done (last card finishes ≈1.78s), so
-    // in production this is a no-op; if the fade never ran, it reveals them.
-    const id = window.setTimeout(() => setRevealed(true), 2000);
-    return () => window.clearTimeout(id);
+    const el = bandRef.current;
+    if (!el) { setEntered(true); return; }
+    if (typeof IntersectionObserver === "undefined") { setEntered(true); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { setEntered(true); io.disconnect(); }
+    }, { threshold: 0.12 });
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
   const rise = (delay: number): React.CSSProperties =>
-    revealed
-      ? { opacity: 1, transform: "none" }
-      : { animation: "office-enter 0.5s cubic-bezier(0.16,1,0.3,1) both", animationDelay: `${delay}s` };
+    entered
+      ? { animation: "office-enter 0.5s cubic-bezier(0.16,1,0.3,1) both", animationDelay: `${delay}s` }
+      : { opacity: 0 };
 
   return (
-    <div className="mt-7">
+    <div className="mt-7" ref={bandRef}>
       {/* Same header treatment as the daily sections (Next / Done). */}
-      <div className="flex items-center gap-3 mb-2" style={rise(CASCADE_BASE)}>
+      <div className="flex items-center gap-3 mb-2" style={rise(0)}>
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
           This week
         </h3>
@@ -171,11 +174,11 @@ export function WeeklyRhythm() {
           // as the daily rhythm's Next → Done split.
           const ordered = [...rows].sort((a, b) => Number(!!a.kept) - Number(!!b.kept));
           return ordered.map((r, i) => (
-            // Each card cascades in after the header (CASCADE_BASE + header +
-            // its own stagger). Kept cards re-sort to the bottom instantly.
+            // Each card cascades in a beat behind the header (once the band
+            // scrolls into view). Kept cards re-sort to the bottom instantly.
             <div
               key={r.practice.kind}
-              style={rise(CASCADE_BASE + 0.08 + Math.min(i * 0.08, 0.4))}
+              style={rise(0.1 + Math.min(i * 0.08, 0.4))}
             >
               <WeeklyCard
                 practice={r.practice}
