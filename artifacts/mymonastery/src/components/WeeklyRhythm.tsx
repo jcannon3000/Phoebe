@@ -14,7 +14,7 @@
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
  */
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
@@ -128,41 +128,34 @@ export function WeeklyRhythm() {
 
   const openPractice = practices.find((p) => p.kind === open) ?? null;
 
+  // The band cascades in when it SCROLLS INTO VIEW — it sits below the fold on
+  // mobile, so a page-load timer fired off-screen and the stagger was never
+  // seen. framer's useInView + motion.div drives the fade-up in JS (NOT a CSS
+  // keyframe on a style-swap, which the iOS WebView would not reliably start),
+  // exactly like HomeLearnSection. Hooks stay ABOVE the early return so the
+  // hook order never changes when the enabled set is empty.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, amount: 0.2 });
+
   // Nothing turned on → no band at all.
   if (practices.length === 0) return null;
 
-  // The band cascades in when it SCROLLS INTO VIEW — it sits below the fold on
-  // mobile, so a page-load timer fired off-screen and the animation was never
-  // seen (worked on desktop where it was visible on load). IntersectionObserver
-  // plays the office-enter stagger the moment the band appears; before that the
-  // cards wait at opacity 0. (No IO → reveal immediately, so nothing can stick
-  // hidden on an ancient engine.)
-  const bandRef = useRef<HTMLDivElement | null>(null);
-  const [entered, setEntered] = useState(false);
-  useEffect(() => {
-    const el = bandRef.current;
-    if (!el) { setEntered(true); return; }
-    if (typeof IntersectionObserver === "undefined") { setEntered(true); return; }
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) { setEntered(true); io.disconnect(); }
-    }, { threshold: 0.12 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  const rise = (delay: number): React.CSSProperties =>
-    entered
-      ? { animation: "office-enter 0.5s cubic-bezier(0.16,1,0.3,1) both", animationDelay: `${delay}s` }
-      : { opacity: 0 };
+  // Header rises first, each card a beat behind (delay by index), once in view.
+  const enterUp = (i: number) => ({
+    initial: { opacity: 0, y: 10 },
+    animate: inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.08, 0.6) },
+  });
 
   return (
-    <div className="mt-7" ref={bandRef}>
+    <div className="mt-7" ref={rootRef}>
       {/* Same header treatment as the daily sections (Next / Done). */}
-      <div className="flex items-center gap-3 mb-2" style={rise(0)}>
+      <motion.div className="flex items-center gap-3 mb-2" {...enterUp(0)}>
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
           This week
         </h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
+      </motion.div>
       <div className="space-y-2">
         {(() => {
           const rows = practices.map((p) => ({
@@ -176,10 +169,7 @@ export function WeeklyRhythm() {
           return ordered.map((r, i) => (
             // Each card cascades in a beat behind the header (once the band
             // scrolls into view). Kept cards re-sort to the bottom instantly.
-            <div
-              key={r.practice.kind}
-              style={rise(0.1 + Math.min(i * 0.08, 0.4))}
-            >
+            <motion.div key={r.practice.kind} {...enterUp(i + 1)}>
               <WeeklyCard
                 practice={r.practice}
                 kept={r.kept}
@@ -189,7 +179,7 @@ export function WeeklyRhythm() {
                 // for Rest, the planner) — like tapping a custom practice.
                 onClick={() => setOpen(r.practice.kind)}
               />
-            </div>
+            </motion.div>
           ));
         })()}
       </div>
