@@ -340,6 +340,19 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
             )}
 
+            {/* Daily progress — the TOP navigation option (the header pill that
+                used to open this was removed). Same visibility as the old pill:
+                not the offices-only tier, Jardín shell, or pilot. */}
+            {!officesOnly && !jardinShell && !isPilot && (
+              <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+                <MenuRow
+                  emoji="📿"
+                  label={t("menu.daily_progress", { defaultValue: "Daily progress" })}
+                  onClick={() => navigate("/daily-progress")}
+                />
+              </div>
+            )}
+
             {/* ── Communities ── lists the user's communities.
                 Offices-only tier has none, so the whole block is
                 hidden. Rendering branches on count:
@@ -1680,10 +1693,9 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
             them needs the account. */}
         {(user || PHOEBE_GUEST_ENABLED) && (
           <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-            {/* Daily-progress pill — the four dots reflect today's rhythm;
-                tapping opens /daily-progress. Hidden for the offices-only tier
-                to match the prior pill. */}
-            {!officesOnly && !headerJardinShell && !headerIsPilot && <DailyProgressPill />}
+            {/* The Daily-progress pill (with the four rhythm dots) was removed
+                from the header per owner — "Daily progress" now lives as the
+                top row of the Menu drawer instead. */}
             {/* Menu pill — opens the side drawer. */}
             {(
               <button

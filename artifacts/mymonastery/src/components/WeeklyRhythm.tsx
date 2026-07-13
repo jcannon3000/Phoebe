@@ -90,6 +90,7 @@ export function WeeklyRhythm() {
     };
   }, []);
 
+
   // BETA — hold the rest window like an appointment: (re)schedule the native
   // weekly local notification ("Your rest begins now 🌙") whenever the rest
   // days or window change. The native shell listens (wireRestReminders) and
@@ -130,10 +131,30 @@ export function WeeklyRhythm() {
   // Nothing turned on → no band at all.
   if (practices.length === 0) return null;
 
+  // This band flows in AFTER the daily rhythm cards (owner): start the stagger
+  // just past the daily cascade's 0.7s cap so it reads as one continuous
+  // cascade. A plain CSS animation (office-enter keyframes + a per-item
+  // animation-delay), NOT framer. SAFETY: `revealed` flips true once the
+  // cascade window has passed and then FORCES opacity:1 (dropping the
+  // animation) — so the cards can never be left hidden if the fade-in fails to
+  // run for any reason.
+  const CASCADE_BASE = 0.8;
+  const [revealed, setRevealed] = useState(false);
+  useEffect(() => {
+    // After the whole cascade should be done (last card finishes ≈1.78s), so
+    // in production this is a no-op; if the fade never ran, it reveals them.
+    const id = window.setTimeout(() => setRevealed(true), 2000);
+    return () => window.clearTimeout(id);
+  }, []);
+  const rise = (delay: number): React.CSSProperties =>
+    revealed
+      ? { opacity: 1, transform: "none" }
+      : { animation: "office-enter 0.5s cubic-bezier(0.16,1,0.3,1) both", animationDelay: `${delay}s` };
+
   return (
     <div className="mt-7">
       {/* Same header treatment as the daily sections (Next / Done). */}
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-2" style={rise(CASCADE_BASE)}>
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
           This week
         </h3>
@@ -150,25 +171,22 @@ export function WeeklyRhythm() {
           // as the daily rhythm's Next → Done split.
           const ordered = [...rows].sort((a, b) => Number(!!a.kept) - Number(!!b.kept));
           return ordered.map((r, i) => (
-            // Outer = smooth reorder when a card is kept (layout); inner = the
-            // one-time cascade-in, staggered like the daily cards.
-            <motion.div layout key={r.practice.kind} transition={{ layout: { duration: 0.34, ease: [0.16, 1, 0.3, 1] } }}>
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.08, 0.5) }}
-              >
-                <WeeklyCard
-                  practice={r.practice}
-                  kept={r.kept}
-                  sabbathDay={r.sabbath}
-                  restWindow={r.practice.kind === "rest" ? restWindow : null}
-                  // Every practice opens its sheet — the "Did you …?" ask (or,
-                  // for Rest, the planner) — like tapping a custom practice.
-                  onClick={() => setOpen(r.practice.kind)}
-                />
-              </motion.div>
-            </motion.div>
+            // Each card cascades in after the header (CASCADE_BASE + header +
+            // its own stagger). Kept cards re-sort to the bottom instantly.
+            <div
+              key={r.practice.kind}
+              style={rise(CASCADE_BASE + 0.08 + Math.min(i * 0.08, 0.4))}
+            >
+              <WeeklyCard
+                practice={r.practice}
+                kept={r.kept}
+                sabbathDay={r.sabbath}
+                restWindow={r.practice.kind === "rest" ? restWindow : null}
+                // Every practice opens its sheet — the "Did you …?" ask (or,
+                // for Rest, the planner) — like tapping a custom practice.
+                onClick={() => setOpen(r.practice.kind)}
+              />
+            </div>
           ));
         })()}
       </div>

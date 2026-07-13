@@ -119,7 +119,7 @@ export function HomeLearnSection() {
       {/* Same header recipe as the daily spine's "Next" / "Done" headings
           (DailyProgressBody.sectionHeader) so the sections read as siblings. */}
       <motion.div {...enterUp(0)} className="flex items-center gap-3 mb-2">
-        <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>Learn</h3>
+        <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>Courses</h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </motion.div>
       <div className="space-y-3">
