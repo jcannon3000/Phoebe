@@ -28,11 +28,19 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { isFirstOpen } from "@/lib/firstOpen";
 
 export function useGuestMode(): { isGuest: boolean; isLoading: boolean } {
   const { user, isLoading: authLoading } = useAuth();
   if (!PHOEBE_GUEST_ENABLED) return { isGuest: false, isLoading: false };
-  if (authLoading) return { isGuest: false, isLoading: true };
+  if (authLoading) {
+    // A genuine first launch can have no prior session, so the visitor IS a
+    // guest — commit to the guest shape immediately rather than holding the
+    // conservative "unknown" posture. This lets the seeded home render in the
+    // guest shell right away (no /api/auth/me wait, no full-app flash).
+    if (isFirstOpen()) return { isGuest: true, isLoading: false };
+    return { isGuest: false, isLoading: true };
+  }
   if (!user) return { isGuest: true, isLoading: false };
   // Pilot-group members keep the full app; so do app SUPER ADMINS (the
   // operator must reach the pilot-group toggle even before any group is

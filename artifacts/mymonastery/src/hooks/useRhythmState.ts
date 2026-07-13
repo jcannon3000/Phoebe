@@ -15,6 +15,7 @@ import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { isFirstOpen } from "@/lib/firstOpen";
 import { getGuestSilenceGoalMin, getGuestStepGoal } from "@/lib/guestSeed";
 import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
@@ -183,7 +184,12 @@ export function useRhythmState(): RhythmState {
   // push — treating it as signed-in put fresh devices on empty server prefs
   // (no Silence card, the legacy no-layout Co-Breathe default). Flag off, or
   // any REAL signed-in account, and nothing changes.
-  const guest = !authLoading && isDeviceLocalGuest(user);
+  // On a genuine FIRST launch there can be no prior session, so don't wait out
+  // the /api/auth/me round-trip before treating this as the device-local guest
+  // — the seeded rhythm paints instantly from local state instead of blanking
+  // until auth settles. Once auth resolves it's the anonymous device user, so
+  // `guest` stays true; a real signed-in account is impossible on a first open.
+  const guest = (!authLoading || isFirstOpen()) && isDeviceLocalGuest(user);
   // The layout that decides which optional cards are active: the signed-in
   // user's server layout, or — for a guest — the device-local cache.
   const hl = guest ? readCachedHomeLayout() : user?.homeLayout;

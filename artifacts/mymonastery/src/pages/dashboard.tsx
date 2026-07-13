@@ -28,6 +28,7 @@ import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { seedGuestRule } from "@/lib/guestSeed";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { isFirstOpen } from "@/lib/firstOpen";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
@@ -4499,6 +4500,7 @@ function PrayerListCarousel({
   // Hold the row cascade + haptics until the app-open splash has faded (native).
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    if (isFirstOpen()) return true; // first launch shows no splash → paint instantly
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
   useEffect(() => {
@@ -5295,6 +5297,7 @@ function TimeSection({
   // matching the rhythm cards in DailyProgressBody. Immediate on web.
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    if (isFirstOpen()) return true; // first launch shows no splash → paint instantly
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
   useEffect(() => {
@@ -5849,6 +5852,7 @@ function GoalReachedModal({
 function useSplashCleared(): boolean {
   const [cleared, setCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    if (isFirstOpen()) return true; // first launch shows no splash → nothing to wait for
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
   useEffect(() => {
@@ -7212,7 +7216,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // renders the home on device-local state — the rhythm cards + prefs are
   // already local-first, and every account surface below (prayer list, faces,
   // events, letters) is gated on `user` / its `enabled: !!user` query.
-  if (authLoading || (!user && !PHOEBE_GUEST_ENABLED)) return null;
+  // On a genuine first launch of the guest build, render the seeded home
+  // immediately instead of blanking through the /api/auth/me round-trip (the
+  // visitor can have no session yet, so they're a device-local guest).
+  if ((authLoading && !(PHOEBE_GUEST_ENABLED && isFirstOpen())) || (!user && !PHOEBE_GUEST_ENABLED)) return null;
 
   const userEmail = user?.email ?? "";
   const userName = user?.name ?? "";

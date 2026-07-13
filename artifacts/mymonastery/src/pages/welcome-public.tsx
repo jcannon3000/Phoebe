@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { isFirstOpen } from "@/lib/firstOpen";
 import { seedGuestRule } from "@/lib/guestSeed";
 import { ensureAnonymousUser } from "@/lib/guestProvision";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -66,7 +67,12 @@ export default function WelcomePublicPage() {
   // for the redirect; an anonymous/guest still gets the seeded public home.
   const isRealUser = !!user && !user.isAnonymous;
   useEffect(() => {
-    if (isLoading) return;
+    // First launch of the guest build: no session is possible yet, so don't
+    // wait out the /api/auth/me round-trip — seed and forward to the home
+    // immediately. Anon provisioning + the real /me refetch run in the
+    // background. (A real signed-in user can't exist on a first open.)
+    const firstOpenGuest = PHOEBE_GUEST_ENABLED && isFirstOpen();
+    if (isLoading && !firstOpenGuest) return;
     if (isRealUser) { setLocation("/dashboard"); return; }
     if (PHOEBE_GUEST_ENABLED) {
       seedGuestRule();

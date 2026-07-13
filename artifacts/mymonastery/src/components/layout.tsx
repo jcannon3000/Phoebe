@@ -14,6 +14,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { isFirstOpen } from "@/lib/firstOpen";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
@@ -988,6 +989,12 @@ function OpeningSplash() {
   const { isBeta } = useBetaStatus();
   const [phase, setPhase] = useState<"in" | "routine" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
+    // Brand-new user (very first launch on this device): NO app-open splash —
+    // land straight on the home with the seeded routine already there. The
+    // recap/quote greeting begins on the second open. Starting "gone" makes the
+    // phase→"gone" effect below stamp splash-done + fire phoebe:splash-done, so
+    // the card cascade un-gates immediately instead of waiting out the fallback.
+    if (isFirstOpen()) return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
   const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>; total?: number }>({

@@ -24,6 +24,7 @@ import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToda
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { isFirstOpen } from "@/lib/firstOpen";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -1023,6 +1024,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // has finished this session, cascade immediately.
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    // First launch shows no splash (see OpeningSplash), so there's nothing to
+    // wait for — paint the cards instantly instead of holding them out.
+    if (isFirstOpen()) return true;
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
   useEffect(() => {
