@@ -1107,7 +1107,7 @@ function wireRestReminders() {
         notifications: days.map(d => ({
           id: REST_REMINDER_ID_BASE + d,
           title: "Your rest begins now 🌙",
-          body: "The window you set aside is here. Put the day down.",
+          body: "The window you set aside for rest is here.",
           schedule: { on: { weekday: d + 1, hour, minute }, repeats: true, allowWhileIdle: true },
           smallIcon: "phoebe_bell",
           iconColor: "#2E6B40",
