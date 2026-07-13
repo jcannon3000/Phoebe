@@ -341,14 +341,20 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             )}
 
             {/* Daily progress — the TOP navigation option (the header pill that
-                used to open this was removed). Same visibility as the old pill:
-                not the offices-only tier, Jardín shell, or pilot. */}
+                used to open this was removed) — plus Shape your routine (the
+                rule-of-life / customizer). Same visibility as the old pill: not
+                the offices-only tier, Jardín shell, or pilot. */}
             {!officesOnly && !jardinShell && !isPilot && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <MenuRow
-                  emoji="📿"
+                  emoji="🙏🏽"
                   label={t("menu.daily_progress", { defaultValue: "Daily progress" })}
                   onClick={() => navigate("/daily-progress")}
+                />
+                <MenuRow
+                  emoji="📜"
+                  label={t("menu.shape_routine", { defaultValue: "Shape your routine" })}
+                  onClick={() => navigate("/rule-of-life")}
                 />
               </div>
             )}
