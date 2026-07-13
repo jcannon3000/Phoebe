@@ -140,22 +140,37 @@ export function WeeklyRhythm() {
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
       <div className="space-y-2">
-        {practices.map((p) => {
-          const kept = keptThisWeek(entriesByKind[p.kind]);
-          const sabbath = p.kind === "rest" ? primarySabbathDay(user?.restDays) : null;
-          return (
-            <WeeklyCard
-              key={p.kind}
-              practice={p}
-              kept={kept}
-              sabbathDay={sabbath}
-              restWindow={p.kind === "rest" ? restWindow : null}
-              // Every practice opens its sheet — the "Did you …?" ask (or,
-              // for Rest, the planner) — like tapping a custom practice.
-              onClick={() => setOpen(p.kind)}
-            />
-          );
-        })}
+        {(() => {
+          const rows = practices.map((p) => ({
+            practice: p,
+            kept: keptThisWeek(entriesByKind[p.kind]),
+            sabbath: p.kind === "rest" ? primarySabbathDay(user?.restDays) : null,
+          }));
+          // Kept practices sink to the BOTTOM (stable within each group), same
+          // as the daily rhythm's Next → Done split.
+          const ordered = [...rows].sort((a, b) => Number(!!a.kept) - Number(!!b.kept));
+          return ordered.map((r, i) => (
+            // Outer = smooth reorder when a card is kept (layout); inner = the
+            // one-time cascade-in, staggered like the daily cards.
+            <motion.div layout key={r.practice.kind} transition={{ layout: { duration: 0.34, ease: [0.16, 1, 0.3, 1] } }}>
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.08, 0.5) }}
+              >
+                <WeeklyCard
+                  practice={r.practice}
+                  kept={r.kept}
+                  sabbathDay={r.sabbath}
+                  restWindow={r.practice.kind === "rest" ? restWindow : null}
+                  // Every practice opens its sheet — the "Did you …?" ask (or,
+                  // for Rest, the planner) — like tapping a custom practice.
+                  onClick={() => setOpen(r.practice.kind)}
+                />
+              </motion.div>
+            </motion.div>
+          ));
+        })()}
       </div>
 
       <AnimatePresence>
@@ -199,42 +214,50 @@ function WeeklyCard({
     sub = practice.prompt;
   }
   const RGB = practice.rgb;
+  const cta = practice.kind === "rest" ? "Plan" : "Log";
 
+  // EXACTLY the daily rhythm-card shell (DailyProgressBody, non-hero row): the
+  // same rounded-3xl frost, w-1 spine, px-4 py-3.5 padding, text-xl emoji,
+  // 14.5px title / 12px sub, and the small ✓-only pill when kept.
   return (
     <button
       type="button"
       onClick={onClick}
-      className="relative w-full flex rounded-3xl overflow-hidden text-left transition-opacity hover:opacity-95 active:scale-[0.99]"
+      className="relative w-full flex rounded-3xl overflow-hidden text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
       style={{
-        background: "rgba(22,46,32, 0.330)",
+        background: "rgba(26,52,36,0.27)",
         backdropFilter: "blur(11.34px)",
         WebkitBackdropFilter: "blur(11.34px)",
-        border: kept ? "1px solid rgba(126,210,140,0.4)" : "1px solid rgba(200,212,192,0.35)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        border: "1px solid rgba(200,212,192,0.35)",
       }}
     >
-      {/* The daily cards' colored spine. */}
-      <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${RGB},0.9)` }} />
-      <div className="flex-1 px-5 py-4 flex items-center gap-3.5 min-w-0">
-        <span className="text-[28px] leading-none flex-shrink-0" aria-hidden>
-          {practice.emoji}
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[16px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
-            {practice.label}
-          </p>
-          <p className="text-[13px] mt-0.5 leading-snug truncate" style={{ color: SAGE, fontFamily: FONT }}>
-            {sub}
-          </p>
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${RGB},0.7)` }} />
+      <div className="flex-1 min-w-0 px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="text-xl flex-shrink-0" aria-hidden>{practice.emoji}</span>
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>
+              {practice.label}
+            </p>
+            <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE, fontFamily: FONT }}>
+              {sub}
+            </p>
+          </div>
+          {kept ? (
+            <span
+              className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+              style={{ background: `rgba(${RGB},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${RGB},0.45)` }}
+              aria-label="Kept this week"
+            >✓</span>
+          ) : (
+            <span
+              className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
+              style={{ minWidth: 84, background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT }}
+            >
+              {cta} <span aria-hidden>→</span>
+            </span>
+          )}
         </div>
-        <span
-          className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-          style={kept
-            ? { background: "rgba(46,107,64,0.3)", color: "rgba(220,232,214,0.9)", border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }
-            : { background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT }}
-        >
-          {kept ? "✓ Kept" : practice.kind === "rest" ? <>Plan <span aria-hidden>→</span></> : <>Log <span aria-hidden>→</span></>}
-        </span>
       </div>
     </button>
   );
