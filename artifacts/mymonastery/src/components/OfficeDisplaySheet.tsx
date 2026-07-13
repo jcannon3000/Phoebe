@@ -30,6 +30,7 @@ import {
   type OfficePrayingMode,
 } from "@/lib/officeDisplay";
 import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 const WARM_TEXT = "#F0EDE6";
 const MUTED_GREEN = "#8FAF96";
@@ -75,7 +76,13 @@ const IS_IOS_WEBKIT = (() => {
  *  narrower measure instead of overflowing. `maxWidthPx` is the column's
  *  usual max-width (672 = Tailwind max-w-2xl). */
 export function fontScaleWrapStyle(scale: number, maxWidthPx = 672): React.CSSProperties {
-  if (IS_IOS_WEBKIT) {
+  // The native shell is iOS-only, so treat it as WebKit even when the UA sniff
+  // misses (some WKWebView builds report a UA that fails the iPhone/iPad test —
+  // that fell through to the `zoom` path, whose width-compensation + mx-auto
+  // CENTERED the column into a narrow band with the text pushed off the left
+  // edge, since zoom doesn't scale WebKit glyphs anyway). text-size-adjust
+  // keeps the column full-width and left-aligned.
+  if (IS_IOS_WEBKIT || isNativeShell()) {
     return { maxWidth: maxWidthPx, WebkitTextSizeAdjust: `${Math.round(scale * 100)}%` };
   }
   if (scale === 1) return { maxWidth: maxWidthPx };

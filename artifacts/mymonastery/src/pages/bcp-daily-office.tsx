@@ -209,6 +209,20 @@ const SAID_BY: Partial<Record<string, { en: string; es: string }>> = {
 };
 const pickLoc = (v: { en: string; es: string }): string => (i18n.language?.startsWith("es") ? v.es : v.en);
 
+// Communal absolution — the BCP's priest form. Praying alone, the Absolution
+// reads in the lay "us/our" form (a deacon or lay person substitutes them);
+// when a priest presides at a gathering it's said over the People in the
+// "you/your" form (BCP p. 80 / p. 117). Communal mode swaps the specific
+// pronoun phrases (leaving "our Lord Jesus Christ" untouched). Phrase-scoped so
+// it no-ops on the Spanish text and never mangles an unexpected string.
+function communalAbsolutionText(content: string): string {
+  return content
+    .replace(/mercy on us\b/g, "mercy on you")
+    .replace(/forgive us all our sins/g, "forgive you all your sins")
+    .replace(/strengthen us in all goodness/g, "strengthen you in all goodness")
+    .replace(/keep us in eternal life/g, "keep you in eternal life");
+}
+
 // The salutation slide (BCP p. 97 MP / p. 121 EP) spliced before the Lord's
 // Prayer in communal mode — "The Lord be with you" is a dialogue that only
 // exists with a People to answer it.
@@ -794,6 +808,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             initialIdx = state.slideIdx;
           }
         }
+        // Coming back from the intercessions handoff (?seamlessReturn=1), land
+        // on the FIRST General Thanksgiving — the slide that always sits right
+        // after the intercessions in the office. The numeric ?slide=N is stamped
+        // against the deck at handoff time; if the returning deck differs (e.g.
+        // the portal is no longer emitted), that index slips forward and skips
+        // GT part 1 onto part 2. Anchoring by TYPE keeps the prayer whole.
+        if (search.get("seamlessReturn") === "1") {
+          const firstThanks = fetched.findIndex((s) => s.type === "general_thanksgiving");
+          if (firstThanks >= 0) initialIdx = firstThanks;
+        }
         setSlideIdx(initialIdx);
         // Opening chime — the chapel exhaling as the office opens, the
         // same chime every slide turn plays. Once per open (guarded so a
@@ -1103,6 +1127,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }
 
   const currentSlide = slides[slideIdx];
+  // Communal mode reads the Absolution in the priest "you/your" form; alone it
+  // stays the lay "us/our" text the server ships.
+  const slideBody =
+    communal && currentSlide.type === "absolution" && currentSlide.content
+      ? communalAbsolutionText(currentSlide.content)
+      : currentSlide.content;
   const atStart = slideIdx === 0;
   const atEnd = slideIdx === slides.length - 1;
   const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
@@ -2770,7 +2800,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               // spaces. For everything else: render as one block
               // with pre-wrap so structural line breaks survive.
               if (isProse) {
-                const paragraphs = fixQuoteDirection(currentSlide.content)
+                const paragraphs = fixQuoteDirection(slideBody)
                   .split(/\n\s*\n/)
                   .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
                   .filter((p) => p.length > 0);
@@ -2810,7 +2840,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     maxWidth: 600,
                   }}
                 >
-                  {fixQuoteDirection(currentSlide.content)}
+                  {fixQuoteDirection(slideBody)}
                 </p>
               );
             })()
