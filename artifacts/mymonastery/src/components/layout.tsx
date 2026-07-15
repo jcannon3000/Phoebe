@@ -341,17 +341,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
             )}
 
-            {/* Daily progress — the TOP navigation option (the header pill that
-                used to open this was removed) — plus Shape your routine (the
-                rule-of-life / customizer). Same visibility as the old pill: not
-                the offices-only tier, Jardín shell, or pilot. */}
+            {/* Shape your routine (the rule-of-life / customizer). Daily progress
+                is reached from the header pill again, so it's no longer a menu
+                row. Same visibility: not the offices-only tier, Jardín, or pilot. */}
             {!officesOnly && !jardinShell && !isPilot && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <MenuRow
-                  emoji="🙏🏽"
-                  label={t("menu.daily_progress", { defaultValue: "Daily progress" })}
-                  onClick={() => navigate("/daily-progress")}
-                />
                 <MenuRow
                   emoji="📜"
                   label={t("menu.shape_routine", { defaultValue: "Shape your routine" })}
@@ -1706,9 +1700,9 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
             them needs the account. */}
         {(user || PHOEBE_GUEST_ENABLED) && (
           <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-            {/* The Daily-progress pill (with the four rhythm dots) was removed
-                from the header per owner — "Daily progress" now lives as the
-                top row of the Menu drawer instead. */}
+            {/* Daily-progress pill (the "Daily Progress" label + the row of
+                rhythm dots, one per anchor). Back in the header per owner. */}
+            <DailyProgressPill />
             {/* Menu pill — opens the side drawer. */}
             {(
               <button
