@@ -1326,15 +1326,25 @@ export default function WayOfLoveRuleFlow({
     // Silence (the daily-minutes goal, i.e. the silent sit) comes FIRST, then the
     // other contemplative options — each of which becomes its own card.
     "contemplation-goal",
+    // The other contemplative practices — Audio Divina, Lectio, a Contemplative
+    // Walk, Listen to Scripture, the Examen — as a MULTI-SELECT (pick any; each
+    // becomes its own home card). NONE are mutually exclusive: with each other,
+    // with the silent sit, or with a "Create your own" custom practice. Every
+    // selected one gets a "what time of day?" slide so it slots into the rhythm.
+    // (Restored for full accounts per owner — "I should be able to have as many
+    // as possible.") Creation Prayer is NOT here: it's chosen per side as a
+    // side's contemplation style, so its toggle would have no card here.
+    "contemplative",
+    ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
+    ...(contemplative.lectio ? (["lectio-when"] as Step[]) : []),
+    ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
+    ...(contemplative.scripture ? (["scripture-when"] as Step[]) : []),
+    ...(contemplative.examen ? (["examen-when"] as Step[]) : []),
     // Daily steps — its own optional slide (iOS only; Apple Health).
     ...(isNativeShell() ? (["steps-goal"] as Step[]) : []),
-    // Limited customizer (owner): the "extra practices" — the contemplative
-    // multi-select (Co-Breathe / Audio Divina / Lectio / Scripture / Walk, each
-    // with its own time-of-day slide) and the "extras" step (Examen, Gratitude,
-    // Reading, Podcasts, Prayer List) — are no longer offered here, so ALL
-    // accounts get the same limited flow. Existing cards a user already has are
-    // preserved by commit (the extras/contemplative state seeds from the saved
-    // layout); this only stops the customizer from ADDING more.
+    // "Add to your day" — Gratitude, Journaling, Reading, Podcasts (multi-select,
+    // each its own card, none exclusive with anything else).
+    "extras",
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -1462,7 +1472,8 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(contemplative.scripture, `📖 ${t("wol_rule.cp_scripture", { defaultValue: "Listen to Scripture" })}`, t("wol_rule.cp_scripture_sub", { defaultValue: "The day's appointed readings, heard aloud." }), () => toggleContemplative("scripture"))}
-          {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths, a prayer with all creation." }), () => toggleContemplative("cobreathe"))}
+          {/* Creation Prayer is chosen per SIDE (a side's contemplation IS the
+              breath), so it's not offered here as a standalone toggle. */}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {choiceRow(contemplative.lectio, `📖 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Sacred reading." }), () => toggleContemplative("lectio"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
