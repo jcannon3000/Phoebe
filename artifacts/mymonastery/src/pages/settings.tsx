@@ -723,7 +723,7 @@ function ResetRoutineSettings() {
     if (busy) return;
     setBusy(true);
     try {
-      await resetRoutineToDefault({ realUser, invalidate: () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }) });
+      await resetRoutineToDefault({ realUser, applyAuth: (u) => qc.setQueryData(["/api/auth/me"], u) });
     } catch { /* still land on the fresh home below */ }
     // Full reload onto the home so every view re-hydrates from the reset state.
     window.location.href = "/dashboard";

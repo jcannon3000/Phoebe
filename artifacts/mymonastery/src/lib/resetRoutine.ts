@@ -10,7 +10,7 @@
 // default sticks and re-syncs to their other devices.
 import { apiRequest } from "@/lib/queryClient";
 import { clearRoutineKeys, pushRoutineConfig, ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
-import { clearCustomAnchors } from "@/lib/customAnchors";
+import { clearCustomAnchors, syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
 import { clearHomeLayoutCache, saveHomeLayout, HOME_LAYOUT_VERSION } from "@/lib/homeLayoutCache";
 import { clearGuestSeed, seedGuestRule } from "@/lib/guestSeed";
 import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
@@ -23,10 +23,17 @@ const DEFAULT_HIDDEN_MODULES = [
   "examen", "journaling", "cac", "ssje", "ncmp", "podcasts", "contemplation",
 ];
 
-export async function resetRoutineToDefault(opts: { realUser: boolean; invalidate?: () => void }): Promise<void> {
-  // 1. Wipe the device-local rule structure (NOT the daily logs). Custom
-  //    anchors are AWAITED — they need a tombstoned server push to land before
-  //    the reload, or the union sync-down resurrects them.
+export async function resetRoutineToDefault(opts: {
+  realUser: boolean;
+  // Write the given fresh /auth/me object into the query cache (qc.setQueryData).
+  // Custom anchors sync FROM /auth/me on every load, so the cache — in memory AND
+  // the persisted blob the reload re-hydrates — must carry the tombstoned truth,
+  // or the union sync resurrects a just-deleted practice.
+  applyAuth?: (freshUser: unknown) => void;
+}): Promise<void> {
+  // 1. Wipe the device-local rule structure (NOT the daily logs). Custom anchors
+  //    are AWAITED — they need a tombstoned server push to land first, or the
+  //    union sync resurrects them.
   clearRoutineKeys();
   await clearCustomAnchors();
   clearHomeLayoutCache();
@@ -50,18 +57,24 @@ export async function resetRoutineToDefault(opts: { realUser: boolean; invalidat
     // Sync the re-seeded per-side levels / slots up into rule_config.
     pushRoutineConfig();
   }
-  // 4. Drop the PERSISTED React Query cache so the reset's reload can't
-  //    re-hydrate a STALE /auth/me — whose old customAnchors snapshot would
-  //    resurrect a just-tombstoned practice (the union sync-down keeps a
-  //    server-unknown local anchor) before the fresh network fetch lands. With
-  //    the cache gone the reload cold-fetches /auth/me = the reset truth.
+  // 4. Re-read /auth/me — now carrying the anchor tombstones our PUT set — and
+  //    (a) reconcile the LOCAL anchor list against it (drops the tombstoned ones
+  //    that the union sync would otherwise keep) and (b) seat it in the query
+  //    cache so the reload's re-hydrated /auth/me is the reset truth, not the
+  //    stale pre-reset snapshot the persister would otherwise flush on pagehide.
+  try {
+    const me = await apiRequest("GET", "/api/auth/me");
+    syncCustomAnchorsFromServer((me as { customAnchors?: CustomAnchorSnapshot } | null)?.customAnchors ?? null);
+    opts.applyAuth?.(me);
+  } catch { /* best-effort — the reload still cold-fetches below */ }
+  // 5. Drop the persisted RQ blob too, so even if the pagehide flush is skipped
+  //    the reload cold-fetches /auth/me instead of re-hydrating anything stale.
   try { localStorage.removeItem("phoebe:rq-daily"); } catch { /* ignore */ }
-  // 5. Broadcast so an already-open home / customizer re-reads immediately. The
+  // 6. Broadcast so an already-open home / customizer re-reads immediately. The
   //    caller also does a full reload as belt-and-suspenders.
   try {
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     window.dispatchEvent(new Event(ROUTINE_SYNCED_EVENT));
     window.dispatchEvent(new Event("phoebe:prefs-changed"));
   } catch { /* ignore */ }
-  opts.invalidate?.();
 }
