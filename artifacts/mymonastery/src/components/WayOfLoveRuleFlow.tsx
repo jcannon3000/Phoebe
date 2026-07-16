@@ -1879,6 +1879,37 @@ export default function WayOfLoveRuleFlow({
             </div>
           </>
         )}
+        {/* Daily reminder — a gentle push to pray this side, at the time you set
+            (or off). Restored per owner. The commit writes the office-reminder
+            pref + time the server's daily push reads. */}
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 10px", fontFamily: FONT }}>
+          {t("wol_rule.reminder_label", { defaultValue: "Daily reminder" })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(
+            reminderOnBySide[side],
+            `🔔 ${t("wol_rule.reminder_on", { defaultValue: "Remind me" })}`,
+            t("wol_rule.reminder_on_sub", { side: cap.toLowerCase(), defaultValue: `A gentle nudge to pray in the ${cap.toLowerCase()}.` }),
+            () => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [side]: true })); },
+          )}
+          {reminderOnBySide[side] && (
+            <div style={{ position: "relative", margin: "-2px 0 2px" }}>
+              <input
+                type="time"
+                value={timeBySide[side]}
+                onChange={(e) => { touchedRef.current = true; setTimeBySide((tv) => ({ ...tv, [side]: e.target.value })); }}
+                aria-label={t("wol_rule.reminder_time", { defaultValue: "Reminder time" })}
+                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
+              />
+            </div>
+          )}
+          {choiceRow(
+            !reminderOnBySide[side],
+            `🔕 ${t("wol_rule.reminder_off", { defaultValue: "No reminder" })}`,
+            t("wol_rule.reminder_off_sub", { defaultValue: "No daily nudge — pray when you like." }),
+            () => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [side]: false })); },
+          )}
+        </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
