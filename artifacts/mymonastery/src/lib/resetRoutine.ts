@@ -50,7 +50,13 @@ export async function resetRoutineToDefault(opts: { realUser: boolean; invalidat
     // Sync the re-seeded per-side levels / slots up into rule_config.
     pushRoutineConfig();
   }
-  // 4. Broadcast so an already-open home / customizer re-reads immediately. The
+  // 4. Drop the PERSISTED React Query cache so the reset's reload can't
+  //    re-hydrate a STALE /auth/me — whose old customAnchors snapshot would
+  //    resurrect a just-tombstoned practice (the union sync-down keeps a
+  //    server-unknown local anchor) before the fresh network fetch lands. With
+  //    the cache gone the reload cold-fetches /auth/me = the reset truth.
+  try { localStorage.removeItem("phoebe:rq-daily"); } catch { /* ignore */ }
+  // 5. Broadcast so an already-open home / customizer re-reads immediately. The
   //    caller also does a full reload as belt-and-suspenders.
   try {
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
