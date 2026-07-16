@@ -261,6 +261,16 @@ function pruneDeletedIds(acknowledged: Set<string>): void {
   } catch { /* ignore */ }
 }
 
+// Wipe ALL custom practices + their delete tombstones (Settings → "Reset
+// routine to default"). Fires the change event so the home/customizer re-read.
+export function clearCustomAnchors(): void {
+  try {
+    localStorage.removeItem(DEFS_KEY);
+    localStorage.removeItem(DELETED_KEY);
+    window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
+  } catch { /* private mode */ }
+}
+
 export function removeCustomAnchor(id: string): void {
   // Record the tombstone FIRST so the next push tells the server to retire it
   // (absence alone never deletes — that's what makes accidental wipes impossible).

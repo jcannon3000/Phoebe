@@ -67,6 +67,16 @@ function setLocalUpdatedAt(t: number): void {
   try { localStorage.setItem(UPDATED_AT_KEY, String(t)); } catch { /* private mode */ }
 }
 
+// Wipe every routine-STRUCTURE key from this device (Settings → "Reset routine
+// to default"). Daily completion logs (done/read) are NOT touched — only the
+// rule's shape. Callers re-seed the default + sync afterward.
+export function clearRoutineKeys(): void {
+  try {
+    for (const k of ROUTINE_KEYS) localStorage.removeItem(k);
+    localStorage.removeItem(UPDATED_AT_KEY);
+  } catch { /* private mode */ }
+}
+
 // Snapshot the routine keys currently set in localStorage.
 export function collectRoutineValues(): Record<string, string> {
   const out: Record<string, string> = {};

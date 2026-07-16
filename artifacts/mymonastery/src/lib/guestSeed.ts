@@ -25,6 +25,17 @@ export function guestSeededYmd(): string | null {
   try { return localStorage.getItem(SEED_KEY); } catch { return null; }
 }
 
+// Forget the seed (Settings → "Reset routine to default") so the NEXT
+// seedGuestRule() re-writes the precoded default from scratch. Also clears the
+// device-local silence + step goals so they return to their defaults.
+export function clearGuestSeed(): void {
+  try {
+    localStorage.removeItem(SEED_KEY);
+    localStorage.removeItem(GUEST_GOAL_KEY);
+    localStorage.removeItem(GUEST_STEP_GOAL_KEY);
+  } catch { /* private mode */ }
+}
+
 /** Seed the precoded guest rule once (no-op if the device already has ANY
  *  explicit rule or has seeded before). Safe to call on every guest boot. */
 export function seedGuestRule(): void {

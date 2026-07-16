@@ -24,6 +24,7 @@ import {
   type OfficeAudioSource,
 } from "@/lib/officePrefs";
 import { getOfficePrayingMode, setOfficePrayingMode, type OfficePrayingMode } from "@/lib/officeDisplay";
+import { resetRoutineToDefault } from "@/lib/resetRoutine";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -702,6 +703,76 @@ function OfficePrayingModeSettings() {
             </button>
           );
         })}
+      </SettingsCard>
+    </>
+  );
+}
+
+// ── Reset routine to default ──────────────────────────────────────────────
+// Wipes the customized rule (office method/slots/reflection, custom practices,
+// home layout, contemplation goal, weekly practices) and re-seeds the precoded
+// default. Daily completion logs are kept. Two-tap confirm; a real account also
+// resets its server copy so the default holds across devices.
+function ResetRoutineSettings() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const realUser = !!user && !user.isAnonymous;
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await resetRoutineToDefault({ realUser, invalidate: () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }) });
+    } catch { /* still land on the fresh home below */ }
+    // Full reload onto the home so every view re-hydrates from the reset state.
+    window.location.href = "/dashboard";
+  };
+  return (
+    <>
+      <SectionHeader label="Your routine" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        Start over with the standard daily rhythm — Morning &amp; Evening Prayer, Forward Day by Day, and five minutes of silence. Your custom practices and any changes are cleared; what you&rsquo;ve already prayed stays.
+      </p>
+      <SettingsCard>
+        {!confirming ? (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="w-full text-left py-2.5"
+            style={{ background: "transparent", cursor: "pointer" }}
+          >
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              Reset routine to default
+            </p>
+          </button>
+        ) : (
+          <div className="py-1.5">
+            <p className="text-[13px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 10px" }}>
+              This clears your custom practices and any changes to your rhythm. Reset to the standard routine?
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={run}
+                className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{ background: "rgba(46,107,64,0.85)", border: "1px solid rgba(46,107,64,0.6)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}
+              >
+                {busy ? "Resetting…" : "Reset"}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirming(false)}
+                className="flex-1 py-2.5 rounded-xl text-[14px]"
+                style={{ background: "transparent", border: "1px solid rgba(200,212,192,0.2)", color: "rgba(143,175,150,0.9)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </SettingsCard>
     </>
   );
@@ -1996,6 +2067,11 @@ export default function SettingsPage() {
         {/* ── Home display — header daily-progress dots on/off ── */}
         <div className="mb-8">
           <HomeDisplaySettings />
+        </div>
+
+        {/* ── Reset routine to default ── */}
+        <div className="mb-8">
+          <ResetRoutineSettings />
         </div>
 
         {/* ── Office reminders — only where a push can actually arrive (the

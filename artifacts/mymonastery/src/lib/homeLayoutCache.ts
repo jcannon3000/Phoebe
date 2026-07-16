@@ -87,6 +87,16 @@ export function flushHomeLayout(invalidate?: () => void): void {
     .catch(() => { /* stays dirty; retried next app-active */ });
 }
 
+// Wipe the cached home layout + its dirty flag (Settings → "Reset routine to
+// default"). With no cached layout, a guest's home falls back to the default
+// (FDD) rhythm; a signed-in account re-reads the server layout the reset PUT set.
+export function clearHomeLayoutCache(): void {
+  try {
+    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(DIRTY_KEY);
+  } catch { /* private mode */ }
+}
+
 // Recovery for a short-lived bug: the basic /customize editor briefly wrote a
 // home layout containing only "cobreathe" for the Creation Prayer pick. Any
 // present home layout disables the "un-set-up user falls back to Forward Day by
