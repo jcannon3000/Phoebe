@@ -24,9 +24,11 @@ const DEFAULT_HIDDEN_MODULES = [
 ];
 
 export async function resetRoutineToDefault(opts: { realUser: boolean; invalidate?: () => void }): Promise<void> {
-  // 1. Wipe the device-local rule structure (NOT the daily logs).
+  // 1. Wipe the device-local rule structure (NOT the daily logs). Custom
+  //    anchors are AWAITED — they need a tombstoned server push to land before
+  //    the reload, or the union sync-down resurrects them.
   clearRoutineKeys();
-  clearCustomAnchors();
+  await clearCustomAnchors();
   clearHomeLayoutCache();
   clearGuestSeed();
   // 2. Re-seed the precoded default. seedGuestRule no-ops if a rule already

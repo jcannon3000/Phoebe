@@ -261,14 +261,31 @@ function pruneDeletedIds(acknowledged: Set<string>): void {
   } catch { /* ignore */ }
 }
 
-// Wipe ALL custom practices + their delete tombstones (Settings → "Reset
-// routine to default"). Fires the change event so the home/customizer re-read.
-export function clearCustomAnchors(): void {
+// Wipe ALL custom practices (Settings → "Reset routine to default"). Absence
+// never deletes — the server unions by id and a sync-down would resurrect them
+// — so we TOMBSTONE every current anchor and PUT the empty+tombstoned snapshot
+// up (awaited), so a post-reset /auth/me sync can't bring them back. Also drops
+// each anchor's per-day completion / reading logs. Returns the push promise so a
+// reset can await it before reloading. Best-effort: a guest with no real account
+// just gets a harmless response.
+export async function clearCustomAnchors(): Promise<void> {
+  let payload: CustomAnchorSnapshot | null = null;
   try {
-    localStorage.removeItem(DEFS_KEY);
-    localStorage.removeItem(DELETED_KEY);
-    window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
+    for (const a of getCustomAnchors()) {
+      addDeletedId(a.id);
+      try {
+        localStorage.removeItem(DONE_PREFIX + a.id);
+        localStorage.removeItem(SKIP_PREFIX + a.id);
+        localStorage.removeItem(READ_TODAY_PREFIX + a.id);
+        localStorage.removeItem(READ_TOTAL_PREFIX + a.id);
+      } catch { /* ignore */ }
+    }
+    saveDefs([]); // empty the local defs + fire the change event
+    payload = exportCustomAnchorSnapshot(); // { defs: [], deletedIds: [...] }
   } catch { /* private mode */ }
+  if (payload && (payload.deletedIds?.length ?? 0) > 0) {
+    try { await apiRequest("PUT", "/api/me/custom-anchors", payload); } catch { /* best-effort */ }
+  }
 }
 
 export function removeCustomAnchor(id: string): void {
