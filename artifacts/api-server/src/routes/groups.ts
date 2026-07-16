@@ -5103,10 +5103,12 @@ router.get("/groups/:slug/rule", async (req, res): Promise<void> => {
     label: prescribedRoutinesTable.label,
     spec: prescribedRoutinesTable.spec,
     acceptCount: prescribedRoutinesTable.acceptCount,
+    token: prescribedRoutinesTable.token,
   }).from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
   if (!row) { res.json({ rule: null, isAdmin: isAdminRole(result.member.role) }); return; }
   res.json({
-    rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount },
+    // `token` powers the printable QR invite sign (/sign/:token) for admins.
+    rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount, token: row.token },
     isAdmin: isAdminRole(result.member.role),
   });
 });

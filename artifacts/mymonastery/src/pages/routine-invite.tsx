@@ -13,6 +13,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { adoptRoutineConfig } from "@/lib/routineSync";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { ensureAnonymousUser } from "@/lib/guestProvision";
+import { cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
+import { setGuestSilenceGoalMin } from "@/lib/guestSeed";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -112,6 +116,35 @@ export default function RoutineInvitePage() {
     }
   };
 
+  // Write the FULL rule onto THIS device — office levels/slots (ruleConfig), the
+  // practice cards (home layout), and the silence goal. A guest's home reads all
+  // of these from localStorage, so this alone makes them start praying the rule;
+  // the server accept just persists it to their anon account and counts it.
+  const applyDeviceLocal = (spec: RoutineSpec) => {
+    try { adoptRoutineConfig(spec.ruleConfig); } catch { /* ignore */ }
+    try { cacheHomeLayoutLocalOnly(spec.homeLayout); } catch { /* ignore */ }
+    try { setGuestSilenceGoalMin(spec.officePrefs.contemplationGoalMinutes || 0); } catch { /* ignore */ }
+  };
+
+  // NO SIGN-UP — the heart of the QR parish sign. Provision an anonymous device
+  // user, apply the rule locally + server-side, and drop them on the home
+  // already praying this rhythm. A cold-scanned newcomer never touches sign-in.
+  const beginNoLogin = async () => {
+    if (applying || !data) return;
+    setApplying(true); setError(null);
+    // Provision the anonymous session (idempotent) so the accept below persists
+    // + syncs. Offline / rate-limited → the device-local apply still works.
+    try { await ensureAnonymousUser(); } catch { /* non-fatal */ }
+    applyDeviceLocal(data.spec);
+    try { await apiRequest("POST", `/api/prescribed-routines/${token}/accept`, {}); } catch { /* non-fatal — already live on device */ }
+    qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
+    qc.invalidateQueries({ queryKey: ["/api/me/silence-ladder"] });
+    setApplied(true);
+    setTimeout(() => setLocation("/dashboard"), 1000);
+    setApplying(false);
+  };
+
   const leafBg = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0] : null;
   const wrap: React.CSSProperties = {
     position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column",
@@ -182,25 +215,44 @@ export default function RoutineInvitePage() {
       </p>
 
       {!user ? (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              // Stash the token so App.tsx's pending-invite redirect brings
-              // them straight back here once they're signed in (same
-              // round-trip the fellow/companion invites use) — without it the
-              // link silently dies for every brand-new invitee.
-              try { sessionStorage.setItem("phoebe:routine-token", token ?? ""); } catch { /* ignore */ }
-              setLocation("/signin");
-            }}
-            style={primaryBtn}
-          >
-            Sign in to add this rhythm
-          </button>
-          <p style={{ fontSize: 12, color: SAGE, fontFamily: FONT, textAlign: "center" }}>
-            We'll bring you back here after you sign in.
-          </p>
-        </>
+        PHOEBE_GUEST_ENABLED ? (
+          // Public no-login app: a newcomer (e.g. someone who just scanned the
+          // parish QR sign) begins RIGHT HERE — no account. We provision an
+          // anonymous device user behind the scenes and apply the rhythm.
+          applied ? (
+            <button type="button" disabled style={{ ...primaryBtn, opacity: 0.7 }}>Beginning… ✓</button>
+          ) : (
+            <>
+              {error && <p style={{ color: "#E5A3A3", fontSize: 13, fontFamily: FONT, textAlign: "center" }}>{error}</p>}
+              <button type="button" onClick={beginNoLogin} disabled={applying} style={{ ...primaryBtn, opacity: applying ? 0.6 : 1 }}>
+                {applying ? "Beginning…" : `Begin praying${data.groupName ? ` with ${data.groupName}` : ""}`}
+              </button>
+              <p style={{ fontSize: 12, color: SAGE, fontFamily: FONT, textAlign: "center" }}>
+                No account needed — start in seconds. You can make one later to keep it across devices.
+              </p>
+            </>
+          )
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                // Stash the token so App.tsx's pending-invite redirect brings
+                // them straight back here once they're signed in (same
+                // round-trip the fellow/companion invites use) — without it the
+                // link silently dies for every brand-new invitee.
+                try { sessionStorage.setItem("phoebe:routine-token", token ?? ""); } catch { /* ignore */ }
+                setLocation("/signin");
+              }}
+              style={primaryBtn}
+            >
+              Sign in to add this rhythm
+            </button>
+            <p style={{ fontSize: 12, color: SAGE, fontFamily: FONT, textAlign: "center" }}>
+              We'll bring you back here after you sign in.
+            </p>
+          </>
+        )
       ) : applied ? (
         <button type="button" disabled style={{ ...primaryBtn, opacity: 0.7 }}>Added to your day ✓</button>
       ) : (

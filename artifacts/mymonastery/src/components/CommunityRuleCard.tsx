@@ -29,7 +29,7 @@ type RuleSpec = {
   ruleConfig: Record<string, string>;
 };
 type RuleData = {
-  rule: { label: string | null; spec: RuleSpec; adoptCount: number } | null;
+  rule: { label: string | null; spec: RuleSpec; adoptCount: number; token: string | null } | null;
   isAdmin: boolean;
 };
 
@@ -161,6 +161,12 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
               >
                 {adopted ? "This is your rhythm now ✓" : adopting ? "Taking it up…" : "Take up this rhythm"}
               </button>
+              {data.isAdmin && data.rule.token && (
+                <button type="button" onClick={() => setLocation(`/sign/${data.rule!.token}`)}
+                  className="text-[12px]" style={{ color: "#8FAF96" }}>
+                  🖨 Invite sign
+                </button>
+              )}
               {data.isAdmin && (
                 <button type="button" onClick={() => setLocation(`/communities/${slug}/rule-of-life/set`)}
                   className="text-[12px]" style={{ color: "#8FAF96" }}>

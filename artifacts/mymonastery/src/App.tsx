@@ -462,6 +462,7 @@ const CommunityWeeklyPlanDeckPage = lazy(() => import("./pages/community-weekly-
 const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const CommunityRuleSetPage = lazy(() => import("./pages/community-rule-set"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
+const SignPage = lazy(() => import("./pages/sign"));
 const CreatorStudioPage = lazy(() => import("./pages/creator-studio"));
 const SeasonPage = lazy(() => import("./pages/season"));
 const CompanionInvitePage = lazy(() => import("./pages/companion-invite"));
@@ -870,6 +871,9 @@ const GUEST_ALLOWED_PREFIX = [
   // account; a truly session-less visitor still sees the landing and the
   // accept simply asks them to try again after the app provisions one.
   "/routine/",
+  // Printable parish/community invite SIGN (/sign/:token) — a leader prints the
+  // QR poster; it shows the community name + the routine QR, all public info.
+  "/sign/",
   // Creator-season links (/season/:token) — the one-tap "take the practice
   // home" from a video description; the same no-account-wall rule applies.
   "/season/",
@@ -1187,6 +1191,7 @@ function Router() {
       <Route path="/invite/:token" component={InvitePage} />
       <Route path="/fellow/:token" component={FellowInvitePage} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
+      <Route path="/sign/:token" component={SignPage} />
       {/* Creator seasons — /creator (studio: super admins create, beta can see)
           + /season/:token (public landing → join → the cohort's day view). */}
       <Route path="/creator" component={CreatorStudioPage} />
