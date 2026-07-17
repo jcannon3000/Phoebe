@@ -107,9 +107,16 @@ function RingCluster({ box, outerLit, innerLit }: { box: number; outerLit: boole
         <circle ref={sessRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round"
           style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, opacity: innerLit ? 1 : 0.32, transition: "opacity 0.5s", filter: innerLit ? LIT_GLOW : "none" }} />
       </svg>
-      <div aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", filter: "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))" }}>
-        <span style={{ fontSize: Math.round(box * 0.5), lineHeight: 1 }}>🌍</span>
-      </div>
+      {/* The globe, centered on the SAME 64,64 point as the rings. An emoji in a
+          flex box centers its LINE BOX, not the glyph — Apple Color Emoji sits
+          low/left within that box, so it lands off-center. SVG <text> with
+          text-anchor=middle + dominant-baseline=central centers the glyph box
+          itself, on the exact ring center. (This SVG is NOT rotated, unlike the
+          ring SVG, so the globe stays upright.) */}
+      <svg aria-hidden="true" width={box} height={box} viewBox="0 0 128 128"
+        style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", filter: "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))" }}>
+        <text x={64} y={64} textAnchor="middle" dominantBaseline="central" fontSize={64}>🌍</text>
+      </svg>
     </div>
   );
 }
