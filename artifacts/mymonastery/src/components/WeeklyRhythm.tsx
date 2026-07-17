@@ -274,6 +274,13 @@ function WeeklyCard({
   );
 }
 
+// YYYY-MM-DD → "Mon, Jul 14" (noon avoids any tz/DST day roll). For the log.
+function formatLogDate(ymd: string): string {
+  try {
+    return new Date(`${ymd}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  } catch { return ymd; }
+}
+
 function LogSheet({
   practice,
   entries,
@@ -290,6 +297,12 @@ function LogSheet({
   const qc = useQueryClient();
   const [closing, setClosing] = useState(false);
   const kept = keptThisWeek(entries);
+  // A private qualitative note for the week ("what did you do / how did it go").
+  // Stored in the entry's `what` field; seeded from this week's entry and
+  // re-seeded whenever it changes (e.g. after a save refetch).
+  const [note, setNote] = useState(kept?.what ?? "");
+  useEffect(() => { setNote(kept?.what ?? ""); }, [kept?.id]);
+  const [showLog, setShowLog] = useState(false);
   // The optional TIME WINDOW — rest held like an appointment. Persisted the
   // moment both ends are set (and synced across devices via the routine keys).
   const [win, setWin] = useState<RestWindow | null>(() => getRestWindow());
@@ -299,13 +312,20 @@ function LogSheet({
     pushRoutineConfig();
   };
 
+  // Save (upsert) this week's entry with its note. The practice-log route has
+  // no PUT, so an edit = delete the existing entry + re-post with the same day
+  // (keeps the week attribution + log date stable). Marking kept with no note
+  // still works — the note is optional.
   const logMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", `/api/practice-log/${practice.kind}`, {
-        day: todayISO(),
-        what: "",
+    mutationFn: async () => {
+      const what = note.trim().slice(0, 200);
+      if (kept) await apiRequest("DELETE", `/api/practice-log/${practice.kind}/${kept.id}`);
+      await apiRequest("POST", `/api/practice-log/${practice.kind}`, {
+        day: kept?.day ?? todayISO(),
+        what,
         notes: "",
-      }),
+      });
+    },
     onSuccess: () => {
       swellHaptic();
       onLogged();
@@ -483,20 +503,89 @@ function LogSheet({
         </div>
         )}
 
-        {/* One-tap mark, one-tap undo — a log, not a journal. */}
-        <button
-          type="button"
-          disabled={logMutation.isPending || deleteMutation.isPending}
-          onClick={() => (kept ? deleteMutation.mutate(kept.id) : logMutation.mutate())}
-          className="w-full rounded-xl py-3.5 text-[15px] font-semibold transition-opacity active:opacity-80 disabled:opacity-45"
-          style={kept
-            ? { background: "rgba(46,107,64,0.3)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }
-            : { background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }}
-        >
-          {kept
-            ? `${practice.keptLabel} ✓ — tap to undo`
-            : practice.kind === "rest" ? "I rested — mark the week kept" : "✓ Yes — mark the week kept"}
-        </button>
+        {/* A private note — qualitative reflection for the week. Optional; the
+            week can still be marked kept with nothing written. */}
+        <p className="text-[12px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
+          A note {kept ? "" : "(optional)"}
+        </p>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value.slice(0, 200))}
+          rows={3}
+          placeholder={practice.kind === "rest" ? "How did you rest?…" : "What did you do? A word for yourself…"}
+          className="w-full rounded-xl px-3 py-2.5 text-[15px] outline-none mb-1"
+          style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, resize: "vertical" }}
+        />
+        <p className="text-[11px] mb-4" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
+          Private — only you can see this.
+        </p>
+
+        {(() => {
+          const noteChanged = note.trim() !== (kept?.what ?? "").trim();
+          return (
+            <button
+              type="button"
+              disabled={logMutation.isPending || deleteMutation.isPending}
+              onClick={() => logMutation.mutate()}
+              className="w-full rounded-xl py-3.5 text-[15px] font-semibold transition-opacity active:opacity-80 disabled:opacity-45"
+              style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(126,210,140,0.4)", fontFamily: FONT }}
+            >
+              {kept
+                ? (noteChanged ? "Save note ✓" : `${practice.keptLabel} ✓`)
+                : practice.kind === "rest" ? "I rested — mark the week kept" : "✓ Mark the week kept"}
+            </button>
+          );
+        })()}
+        {kept && (
+          <button
+            type="button"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate(kept.id)}
+            className="w-full mt-2 rounded-xl py-2.5 text-[13px] font-medium transition-opacity active:opacity-70 disabled:opacity-45"
+            style={{ background: "transparent", color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
+          >
+            Undo this week
+          </button>
+        )}
+
+        {/* Private log — the running history of this practice: every week you've
+            marked, with whatever you wrote. Yours alone. */}
+        {entries.length > 0 && (
+          <div className="mt-5 pt-4" style={{ borderTop: "1px solid rgba(46,107,64,0.22)" }}>
+            <button
+              type="button"
+              onClick={() => setShowLog((v) => !v)}
+              className="text-[12px] uppercase tracking-[0.14em] font-semibold"
+              style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer" }}
+            >
+              Your log ({entries.length}) {showLog ? "▲" : "▼"}
+            </button>
+            {showLog && (
+              <div className="mt-3 flex flex-col gap-3.5">
+                {entries.map((e) => (
+                  <div key={e.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[12px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>{formatLogDate(e.day)}</p>
+                      {(e.what || e.notes) ? (
+                        <p className="text-[14px] mt-0.5" style={{ color: WARM, fontFamily: FONT, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{e.what || e.notes}</p>
+                      ) : (
+                        <p className="text-[13px] mt-0.5 italic" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>Kept — no note</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deleteMutation.mutate(e.id)}
+                      className="text-[11px] shrink-0"
+                      style={{ color: "rgba(196,122,101,0.85)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer" }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
