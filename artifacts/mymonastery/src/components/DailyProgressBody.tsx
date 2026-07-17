@@ -38,6 +38,11 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+// The most minutes a single contemplation SESSION should default to. The daily
+// minutes goal (which can be 60+) is a whole-day accumulation target, never a
+// per-sit length — so any card that launches the timer with a pre-filled length
+// clamps to this. Users can still choose longer explicitly in the timer.
+const SESSION_SIT_CAP = 20;
 // Shared card outline — matches the home "+" FAB ring (dashboard.tsx), so every
 // home card reads with the same soft sage edge rather than per-practice tints.
 const CARD_BORDER = "rgba(200,212,192,0.35)";
@@ -631,12 +636,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // minutes goal + ladder still set the timer length; they no longer gate the
   // per-side card (so evening stays inviting after the morning sit met the goal).
   // Each side's card carries its OWN sit length (the customizer's per-side
-  // picker, 5–30) — never the daily minutes goal (a 90-minute goal must not
-  // read "90 minutes" on each card — owner). Out-of-range stored values are
-  // legacy goal-splash artifacts and fall back to a gentle 15.
+  // picker) — never the daily minutes goal (a 90-minute goal must not read
+  // "90 minutes" on each card — owner). A single sit defaults to at most
+  // SESSION_SIT_CAP (20): sensible stored values are clamped down to it, and
+  // clearly-out-of-range values (legacy goal-splash artifacts) fall back to a
+  // gentle 15.
   const sideSitMin = (side: "morning" | "evening"): number => {
     const raw = getSideMinutes(side);
-    return raw >= 5 && raw <= 30 ? raw : 15;
+    if (raw >= 5 && raw <= 30) return Math.min(raw, SESSION_SIT_CAP);
+    return 15;
   };
   const contemplationBlurbFor = (done: boolean, mins: number) => done
     ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
@@ -852,7 +860,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ) ? [{
       key: "silence", slot: "anytime" as CustomSlot, emoji: "🕯️", rgb: "62,124,122",
       done: contemplationMin >= contemplationGoalMin,
-      href: `/contemplation?begin=1&sit=${contemplationGoalMin}`,
+      // The daily goal is an accumulation target for the whole day — NOT the
+      // length of a single sit. A 60-min goal must never open a 60-min timer;
+      // a session's default length is capped at SESSION_SIT_CAP (20). The user
+      // can still pick longer explicitly in the timer's own length dropdown.
+      href: `/contemplation?begin=1&sit=${Math.min(contemplationGoalMin, SESSION_SIT_CAP)}`,
       title: t("rhythm.card_silence", { defaultValue: "Contemplation" }),
       blurb: contemplationMin >= contemplationGoalMin
         ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })

@@ -1872,7 +1872,7 @@ export default function WayOfLoveRuleFlow({
                   aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
                   style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
                 >
-                  {[5, 10, 15, 20, 30].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
+                  {[5, 10, 15, 20].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
                 </select>
               )}
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>

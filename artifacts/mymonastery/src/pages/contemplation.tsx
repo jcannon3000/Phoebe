@@ -579,7 +579,10 @@ export default function ContemplationPage() {
   const [chosenMin, setChosenMin] = useState<number>(() => {
     try {
       const v = parseInt(localStorage.getItem(LAST_MIN_KEY) ?? "", 10);
-      if (Number.isFinite(v) && v >= 5 && v <= 60 && v % 5 === 0) return v;
+      // Seed the picker from the last length chosen, but never default to more
+      // than 20 — a stale 60 (e.g. a legacy goal-as-length bug) must not become
+      // the standing default. Longer sits remain available in the dropdown.
+      if (Number.isFinite(v) && v >= 5 && v <= 20 && v % 5 === 0) return v;
     } catch { /* private mode */ }
     return 10;
   });
