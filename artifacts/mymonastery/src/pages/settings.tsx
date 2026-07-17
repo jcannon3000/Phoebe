@@ -6,6 +6,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { notificationsSupportedHere } from "@/lib/notifSupport";
+import { getEnabledWeekly, setEnabledWeekly, WEEKLY_ENABLED_EVENT, type WeeklyKind } from "@/lib/weeklyRhythm";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -547,6 +548,65 @@ function NotificationsSettings() {
 // The in-app twin of the "Unsubscribe" link at the bottom of every bulk email
 // (both flip users.email_enabled). Transactional mail — password resets, magic
 // links — is never affected.
+// Weekly practices — the Way of Love weekly rhythm (Commune · Go · Bless · Rest).
+// One On/Off control: it's ALL FOUR or nothing (owner). Available to everyone,
+// including light users — reads/writes the local `phoebe:weekly-practices` set
+// (all four kinds when on, empty when off) that the home "This week" band reads.
+const WEEKLY_ALL: WeeklyKind[] = ["commune", "go", "bless", "rest"];
+function WeeklyPracticesSettings() {
+  const { t } = useTranslation();
+  const [on, setOn] = useState<boolean>(() => getEnabledWeekly().length > 0);
+  useEffect(() => {
+    const sync = () => setOn(getEnabledWeekly().length > 0);
+    window.addEventListener(WEEKLY_ENABLED_EVENT, sync);
+    return () => window.removeEventListener(WEEKLY_ENABLED_EVENT, sync);
+  }, []);
+  const set = (next: boolean) => {
+    setEnabledWeekly(next ? WEEKLY_ALL : []);
+    setOn(next);
+  };
+  const options: Array<{ value: boolean; label: string; sub: string }> = [
+    { value: true, label: t("settings.weekly_on", { defaultValue: "Weekly practices on" }), sub: t("settings.weekly_on_sub", { defaultValue: "Commune · Go · Bless · Rest — a quiet weekly band on your home you tap to log. Private; no sharing, no streak." }) },
+    { value: false, label: t("settings.weekly_off", { defaultValue: "Weekly practices off" }), sub: t("settings.weekly_off_sub", { defaultValue: "The “This week” band is hidden. Your daily rhythm is unaffected." }) },
+  ];
+  return (
+    <>
+      <SectionHeader label={t("settings.weekly_practices", { defaultValue: "Weekly practices" })} />
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = on === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => set(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{ borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.4 }}>
+                  {opt.sub}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
 function EmailSettings() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -2067,6 +2127,11 @@ export default function SettingsPage() {
         {/* ── Home display — header daily-progress dots on/off ── */}
         <div className="mb-8">
           <HomeDisplaySettings />
+        </div>
+
+        {/* ── Weekly practices on/off (all four or nothing) ── */}
+        <div className="mb-8">
+          <WeeklyPracticesSettings />
         </div>
 
         {/* ── Reset routine to default ── */}

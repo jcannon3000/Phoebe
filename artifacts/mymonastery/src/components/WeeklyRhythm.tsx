@@ -73,7 +73,6 @@ function logKey(kind: WeeklyKind): string[] {
 export function WeeklyRhythm() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { rawIsBeta } = useBetaStatus();
   const [open, setOpen] = useState<WeeklyKind | null>(null);
   // The optional rest window — re-read when the planner (or a device sync /
   // rule adopt) changes it.
@@ -91,13 +90,13 @@ export function WeeklyRhythm() {
   }, []);
 
 
-  // BETA — hold the rest window like an appointment: (re)schedule the native
-  // weekly local notification ("Your rest begins now 🌙") whenever the rest
-  // days or window change. The native shell listens (wireRestReminders) and
-  // no-ops on web. Rest must be enabled; clearing the window cancels.
+  // Hold the rest window like an appointment: (re)schedule the native weekly
+  // local notification ("Your rest begins now 🌙") whenever the rest days or
+  // window change. Available to everyone now (un-beta-gated). The native shell
+  // listens (wireRestReminders) and no-ops on web. Rest must be enabled;
+  // clearing the window cancels.
   const restDaysKey = JSON.stringify(user?.restDays ?? []);
   useEffect(() => {
-    if (!rawIsBeta) return;
     const enabled = getEnabledWeekly().includes("rest");
     const days: number[] = enabled ? (JSON.parse(restDaysKey) as number[]) : [];
     try {
@@ -105,7 +104,7 @@ export function WeeklyRhythm() {
         detail: { days, start: restWindow?.start ?? null },
       }));
     } catch { /* non-fatal */ }
-  }, [rawIsBeta, restDaysKey, restWindow?.start]);
+  }, [restDaysKey, restWindow?.start]);
 
   // Only the practices the user has turned on in the customizer appear here.
   const enabled = useEnabledWeekly();

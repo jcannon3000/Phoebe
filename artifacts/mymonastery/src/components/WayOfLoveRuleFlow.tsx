@@ -567,11 +567,11 @@ export default function WayOfLoveRuleFlow({
     podcasts: homeCardOn(user?.homeLayout, "podcasts"),
     prayerList: homeCardOn(user?.homeLayout, "prayer-list"),
   }));
-  // Beta-only: the weekly Way of Love rhythm (Commune · Go · Bless · Rest),
-  // turned on here and kept in the "This week" home band. Persisted on its own
-  // localStorage key the moment it's toggled — DELIBERATELY separate from the
-  // home layout this flow's commit() writes, so it can't be lost on a re-save.
-  const { rawIsBeta } = useBetaStatus();
+  // The weekly Way of Love rhythm (Commune · Go · Bless · Rest) — available to
+  // everyone now (un-beta-gated), all-four-or-nothing. Turned on here and kept
+  // in the "This week" home band. Persisted on its own localStorage key the
+  // moment it's toggled — DELIBERATELY separate from the home layout this flow's
+  // commit() writes, so it can't be lost on a re-save.
   const [weekly, setWeekly] = useState<Record<WeeklyKind, boolean>>(() => {
     const on = getEnabledWeekly();
     return { commune: on.includes("commune"), go: on.includes("go"), bless: on.includes("bless"), rest: on.includes("rest") };
@@ -2223,8 +2223,19 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 16px", lineHeight: 1.5 }}>
           {t("wol_rule.weekly_note", { defaultValue: "Each adds a card to the “This week” band on your home. No sharing, no streak — just a quiet log." })}
         </p>
+        {/* All four or nothing (owner) — one toggle for the whole weekly rhythm. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {WEEKLY_PRACTICES.map((p) => choiceRow(weekly[p.kind], `${p.emoji} ${p.label}`, p.prompt, () => toggleWeekly(p.kind)))}
+          {choiceRow(
+            WEEKLY_PRACTICES.some((p) => weekly[p.kind]),
+            t("wol_rule.weekly_all_label", { defaultValue: "Keep the weekly practices" }),
+            t("wol_rule.weekly_all_sub", { defaultValue: "🤝 Commune · 🕊️ Go · 💛 Bless · 🌙 Rest — all four together" }),
+            () => {
+              const turnOn = !WEEKLY_PRACTICES.some((p) => weekly[p.kind]);
+              const next = { commune: turnOn, go: turnOn, bless: turnOn, rest: turnOn };
+              setWeekly(next);
+              setEnabledWeekly(turnOn ? (Object.keys(next) as WeeklyKind[]) : []);
+            },
+          )}
         </div>
         <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
           <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
