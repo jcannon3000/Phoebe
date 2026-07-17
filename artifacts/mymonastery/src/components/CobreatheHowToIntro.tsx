@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CYCLE_MS } from "@/components/CobreatheBreath";
+import { CenteredGlobe } from "@/components/CenteredGlobe";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -107,19 +108,12 @@ function RingCluster({ box, outerLit, innerLit }: { box: number; outerLit: boole
         <circle ref={sessRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round"
           style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, opacity: innerLit ? 1 : 0.32, transition: "opacity 0.5s", filter: innerLit ? LIT_GLOW : "none" }} />
       </svg>
-      {/* The globe, centered on the SAME 64,64 point as the rings. An emoji in a
-          flex box centers its LINE BOX, not the glyph — Apple Color Emoji sits
-          low/left within that box, so it lands off-center. SVG <text> with
-          text-anchor=middle + dominant-baseline=central centers the glyph box
-          itself, on the exact ring center. (This SVG is NOT rotated, unlike the
-          ring SVG, so the globe stays upright.) */}
-      <svg aria-hidden="true" width={box} height={box} viewBox="0 0 128 128"
-        style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", filter: "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))" }}>
-        {/* y=67.25 (not 64): the globe emoji's INK sits ~3.25 units high in its
-            box even with central baseline; nudge down so the visible globe
-            centres on the rings. Measured via the glyph's rasterized ink bbox. */}
-        <text x={64} y={67.25} textAnchor="middle" dominantBaseline="central" fontSize={64}>🌍</text>
-      </svg>
+      {/* Self-centering canvas globe — measures the actual rendered emoji ink and
+          centres it on the rings' centre, so it's correct on any platform's emoji
+          font (Apple / Noto / Segoe each place the globe differently). */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", filter: "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))" }}>
+        <CenteredGlobe px={box} glyph="🌍" />
+      </div>
     </div>
   );
 }

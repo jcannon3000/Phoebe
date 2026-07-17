@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { CenteredGlobe } from "@/components/CenteredGlobe";
 import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
@@ -1131,6 +1132,7 @@ export function CobreatheBreath({
           aria-hidden="true"
           style={{
             position: "absolute", inset: 0, pointerEvents: "none",
+            display: "flex", alignItems: "center", justifyContent: "center",
             // Symmetric glow (no downward Y offset) so the shadow doesn't pull the
             // globe's visual weight below the rings' centre.
             filter: reachedNow
@@ -1139,19 +1141,11 @@ export function CobreatheBreath({
             transition: reachedNow ? "filter 1.2s ease" : "none",
           }}
         >
-          {/* Centre the globe on the rings' 64,64 point. A flex-centred emoji
-              span centres its LINE BOX, not the glyph — the globe emoji sits
-              low/left within that box, so it drifted off-centre. SVG <text> with
-              text-anchor=middle AND dominant-baseline=central centres the glyph
-              box itself (an earlier attempt used a bare <text x y>, whose baseline
-              anchoring is what pushed it up-left). Not rotated, so it stays upright. */}
-          <svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 128 128" style={{ overflow: "visible" }}>
-            {/* y=67.25 (not 64): even with dominant-baseline=central the globe
-                emoji's INK sits ~3.25 units high in its box, so nudge it down to
-                land the visible globe on the rings' true centre. Measured by
-                rasterizing the glyph and finding its ink bbox centre. */}
-            <text x={64} y={67.25} textAnchor="middle" dominantBaseline="central" fontSize={64}>{globe}</text>
-          </svg>
+          {/* Self-centering canvas globe — measures the actual rendered emoji
+              ink and centres it, so it lands on the rings' centre regardless of
+              which platform's emoji font is in use (Apple vs Noto vs Segoe all
+              place the globe differently). */}
+          <CenteredGlobe px={globePx} glyph={globe} />
         </div>
       </div>
       )}
