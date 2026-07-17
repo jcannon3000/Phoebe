@@ -68,6 +68,14 @@ export const prayerFeedsTable = pgTable(
     // recap push for this parish. Idempotency for the bell-scheduler
     // tick; only used when kind="parish".
     parishEveningRecapSentDate: text("parish_evening_recap_sent_date"),
+    // Parish standing rule of life — the always-on daily rhythm the priest sets
+    // for the whole congregation (kind="parish" only). Points at a
+    // prescribed_routines row; parishioners adopt it in one tap and then get a
+    // "you prayed with your parish this week" signal. PLAIN integer (no drizzle
+    // FK — prescribed_routines already imports groups; the FK constraint lives
+    // in migrate SQL, placed after the prescribed_routines table, mirroring
+    // groups.rule_routine_id).
+    ruleRoutineId: integer("rule_routine_id"),
     subscriberCount: integer("subscriber_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

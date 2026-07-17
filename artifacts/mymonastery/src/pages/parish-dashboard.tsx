@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { apiRequest } from "@/lib/queryClient";
+import { adoptRoutineConfig } from "@/lib/routineSync";
 import { Layout } from "@/components/layout";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import {
@@ -658,6 +659,8 @@ export default function ParishDashboard() {
             (the priest / pastor). The card is intentionally quieter
             than the office buttons: this is for when something is
             on your heart, not the daily rhythm. */}
+        {data?.parish && <ParishRuleCard parishId={data.parish.id} />}
+
         {data?.parish && <ParishSeasonCard parishId={data.parish.id} />}
 
         {data?.parish && <GetInvolvedCard parishId={data.parish.id} />}
@@ -673,6 +676,60 @@ export default function ParishDashboard() {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Parish standing-rhythm card (member side) ──────────────────────────────
+// The always-on rhythm the priest keeps for the parish: take it up in one tap,
+// then a quiet "you prayed with your parish this week" signal — praying WITH the
+// congregation, top-down.
+function ParishRuleCard({ parishId }: { parishId: number }) {
+  const ruleQ = useQuery<{ rule: { label: string | null; adoptCount: number } | null; parishTitle: string | null }>({
+    queryKey: ["/api/parish/rule", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/rule?parishId=${parishId}`),
+  });
+  const prayedQ = useQuery<{ count: number; viewerPracticed: boolean }>({
+    queryKey: ["/api/parish/prayed-with-week", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/prayed-with-week?parishId=${parishId}`),
+  });
+  const [adopted, setAdopted] = useState(false);
+  const adopt = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/parish/rule/adopt", { parishId }) as Promise<{ ruleConfig?: Record<string, string> }>,
+    onSuccess: (res) => { adoptRoutineConfig(res?.ruleConfig); setAdopted(true); },
+  });
+
+  const rule = ruleQ.data?.rule ?? null;
+  if (!rule) return null;
+  const pw = prayedQ.data;
+
+  return (
+    <div style={{ marginTop: 20, background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.28)", borderRadius: 16, padding: 16 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: SAGE, margin: 0, fontWeight: 600 }}>
+        🕊️ Your parish's rhythm
+      </p>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 700, color: WARM_TEXT, margin: "6px 0 0" }}>
+        {rule.label || `${ruleQ.data?.parishTitle ?? "Your parish"}'s daily rhythm`}
+      </p>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12.5, color: SAGE, margin: "4px 0 0" }}>
+        A daily rhythm your parish keeps together.
+      </p>
+      {adopted ? (
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: WARM_TEXT, margin: "12px 0 0" }}>This is your rhythm now ✓</p>
+      ) : (
+        <button
+          type="button" onClick={() => adopt.mutate()} disabled={adopt.isPending}
+          style={{ marginTop: 12, background: "rgba(46,107,64,0.85)", color: WARM_TEXT, border: "1px solid rgba(126,210,140,0.5)", borderRadius: 999, padding: "9px 18px", fontSize: 13, fontWeight: 600, fontFamily: SPACE_GROTESK, cursor: "pointer" }}>
+          {adopt.isPending ? "Taking it up…" : "Take up this rhythm"}
+        </button>
+      )}
+      {pw && (pw.viewerPracticed || pw.count > 0) && (
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: "rgba(143,175,150,0.8)", margin: "12px 0 0", borderTop: "1px solid rgba(46,107,64,0.18)", paddingTop: 10 }}>
+          {pw.viewerPracticed
+            ? `You prayed with ${pw.count} ${pw.count === 1 ? "other" : "others"} in your parish this week 🌿`
+            : `${pw.count} in your parish prayed this week`}
+        </p>
+      )}
     </div>
   );
 }

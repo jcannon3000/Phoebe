@@ -5273,7 +5273,7 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
 //   • prayer_request_amens — praying the list
 // Timestamp signals are BOUNDED to [weekStart−14h, weekStart+7d+14h] so a past
 // weekStart returns THAT week, not cumulative-since (±14h absorbs any tz).
-async function practicedThisWeek(memberIds: number[], weekStart: string): Promise<Set<number>> {
+export async function practicedThisWeek(memberIds: number[], weekStart: string): Promise<Set<number>> {
   const sinceUtc = new Date(`${weekStart}T00:00:00Z`);
   sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
   const untilUtc = new Date(`${weekStart}T00:00:00Z`);

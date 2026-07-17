@@ -34,12 +34,15 @@ import {
   parishAdminsTable,
   parishOpportunitiesTable,
   parishOpportunityInterestsTable,
+  prescribedRoutinesTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import { isUserBeta } from "../lib/parishGate";
 import { todayInZone } from "../lib/tz";
 import { perUserRateLimit } from "../lib/rate-limit";
 import { sendPushToUsers } from "../lib/pushSender";
+import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
+import { practicedThisWeek } from "./groups";
 
 const router: IRouter = Router();
 
@@ -1288,6 +1291,122 @@ router.delete("/parish/opportunities/:id/interest", async (req, res): Promise<vo
   } catch (err) {
     console.error("[parish] withdraw interest failed:", err);
     res.status(500).json({ error: "Failed." });
+  }
+});
+
+// ═══ Parish standing rule of life — the always-on parish rhythm ══════════════
+//
+// The priest sets ONE daily rhythm for the whole congregation (prayer_feeds
+// .rule_routine_id → a prescribed_routines row). Parishioners adopt it in one
+// tap (applies it to their account, same machinery as a routine link) and then
+// see a "you prayed with your parish this week" signal — praying WITH the
+// congregation, top-down. Mirrors the community rule of life, parish-scoped.
+
+// GET /api/parish/rule?parishId= — the parish's rhythm (subscriber or admin).
+router.get("/parish/rule", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = Number(req.query.parishId);
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  try {
+    const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
+    const isSubscriber = !!user && user.parishFeedId === parishId;
+    const isAdmin = (await canManageParish(session.id, parishId)).allowed;
+    if (!isSubscriber && !isAdmin) { res.status(403).json({ error: "Not subscribed to this parish." }); return; }
+    const [feed] = await db.select({ ruleRoutineId: prayerFeedsTable.ruleRoutineId, title: prayerFeedsTable.title })
+      .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));
+    const ruleId = feed?.ruleRoutineId ?? null;
+    if (!ruleId) { res.json({ rule: null, isAdmin, parishTitle: feed?.title ?? null }); return; }
+    const [row] = await db.select({
+      label: prescribedRoutinesTable.label, spec: prescribedRoutinesTable.spec, acceptCount: prescribedRoutinesTable.acceptCount,
+    }).from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
+    if (!row) { res.json({ rule: null, isAdmin, parishTitle: feed?.title ?? null }); return; }
+    res.json({ rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount }, isAdmin, parishTitle: feed?.title ?? null });
+  } catch (err) {
+    console.error("[parish] get rule failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// PUT /api/parish/rule — the priest sets (or replaces) the parish rhythm. Mints
+// a NEW prescribed_routines row and moves the pointer (adopt count starts fresh).
+router.put("/parish/rule", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const body = (req.body ?? {}) as { parishId?: unknown; spec?: unknown; label?: unknown };
+  const parishId = typeof body.parishId === "number" ? body.parishId : NaN;
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  const { allowed } = await canManageParish(session.id, parishId);
+  if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+  const spec = sanitizeSpec(body.spec);
+  if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
+  const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) || null : null;
+  try {
+    const token = crypto.randomBytes(16).toString("hex");
+    const [inserted] = await db.insert(prescribedRoutinesTable).values({
+      token, groupId: null, createdByUserId: session.id, label, spec,
+    }).returning({ id: prescribedRoutinesTable.id });
+    if (!inserted) { res.status(500).json({ error: "internal_error" }); return; }
+    await db.update(prayerFeedsTable).set({ ruleRoutineId: inserted.id, updatedAt: new Date() }).where(eq(prayerFeedsTable.id, parishId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] set rule failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// POST /api/parish/rule/adopt — a parishioner takes up the parish rhythm.
+router.post("/parish/rule/adopt", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = typeof (req.body as { parishId?: unknown })?.parishId === "number" ? (req.body as { parishId: number }).parishId : NaN;
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  try {
+    const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
+    if (!user || user.parishFeedId !== parishId) { res.status(403).json({ error: "Not subscribed to this parish." }); return; }
+    const [feed] = await db.select({ ruleRoutineId: prayerFeedsTable.ruleRoutineId }).from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));
+    const ruleId = feed?.ruleRoutineId ?? null;
+    if (!ruleId) { res.status(404).json({ error: "This parish has no rhythm yet" }); return; }
+    const [row] = await db.select({ id: prescribedRoutinesTable.id, spec: prescribedRoutinesTable.spec })
+      .from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
+    const spec = row ? sanitizeSpec(row.spec) : null;
+    if (!row || !spec) { res.status(422).json({ error: "Rhythm is no longer valid" }); return; }
+    await applyRoutineSpecToUser(session.id, spec);
+    await db.update(prescribedRoutinesTable).set({ acceptCount: sql`${prescribedRoutinesTable.acceptCount} + 1` }).where(eq(prescribedRoutinesTable.id, row.id));
+    res.json({ ok: true, ruleConfig: spec.ruleConfig });
+  } catch (err) {
+    console.error("[parish] adopt rule failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/parish/prayed-with-week?parishId=&weekStart= — "you prayed with N
+// from your parish this week." AGGREGATE ONLY: N = distinct OTHER subscribers of
+// this parish with ≥1 practice signal this week; never names/ids. Same signals
+// + privacy posture as the community version (reuses practicedThisWeek).
+router.get("/parish/prayed-with-week", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = Number(req.query.parishId);
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  const weekStartRaw = typeof req.query.weekStart === "string" ? req.query.weekStart : "";
+  const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(weekStartRaw)
+    ? weekStartRaw
+    : (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d.toISOString().slice(0, 10); })();
+  try {
+    const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
+    if (!user || user.parishFeedId !== parishId) { res.json({ count: 0, viewerPracticed: false }); return; }
+    const subs = await db.select({ userId: prayerFeedSubscriptionsTable.userId })
+      .from(prayerFeedSubscriptionsTable).where(eq(prayerFeedSubscriptionsTable.feedId, parishId));
+    const ids = [...new Set(subs.map((s) => s.userId).filter((n): n is number => n != null))];
+    if (ids.length <= 1) { res.json({ count: 0, viewerPracticed: false }); return; }
+    const practiced = await practicedThisWeek(ids, weekStart);
+    const viewerPracticed = practiced.has(session.id);
+    practiced.delete(session.id);
+    res.json({ count: practiced.size, viewerPracticed });
+  } catch (err) {
+    console.error("[parish] prayed-with-week failed:", err);
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

@@ -442,6 +442,10 @@ export default function ParishAdmin() {
                 tap "I'm interested" and the admin sees who raised their hand. */}
             {parishId !== null && <OpportunitiesManager parishId={parishId} />}
 
+            {/* The parish's always-on daily rhythm — the priest sets it, the
+                whole congregation takes it up and prays it together. */}
+            {parishId !== null && <ParishRuleManager parishId={parishId} />}
+
             {/* Season — the priest designs a rhythm the parish prays together
                 for a few weeks ("pray with your priest"), with occasional notes. */}
             {parishId !== null && <ParishSeasonManager parishId={parishId} />}
@@ -668,6 +672,46 @@ function InterestList({ opportunityId }: { opportunityId: number }) {
           {r.name || "Someone"}{r.email ? ` · ${r.email}` : ""}{r.note ? ` — "${r.note}"` : ""}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Parish standing-rhythm manager (admin side) ────────────────────────────
+function ParishRuleManager({ parishId }: { parishId: number }) {
+  const q = useQuery<{ rule: { label: string | null; adoptCount: number } | null }>({
+    queryKey: ["/api/parish/rule", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/rule?parishId=${parishId}`),
+  });
+  const rule = q.data?.rule ?? null;
+  return (
+    <div style={{ marginTop: 28 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: "0 0 12px" }}>
+        Your parish's daily rhythm
+      </p>
+      {rule ? (
+        <div style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.28)", borderRadius: 14, padding: "14px 16px" }}>
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>{rule.label || "Your parish rhythm"}</p>
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: SAGE, margin: "4px 0 0" }}>
+            Taken up by {rule.adoptCount} {rule.adoptCount === 1 ? "parishioner" : "parishioners"}
+          </p>
+          <Link href={`/parish/rule/new?parishId=${parishId}`}>
+            <span style={{ display: "inline-block", marginTop: 10, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, textDecoration: "underline", textUnderlineOffset: 4, cursor: "pointer" }}>
+              Update the rhythm →
+            </span>
+          </Link>
+        </div>
+      ) : (
+        <div>
+          <Link href={`/parish/rule/new?parishId=${parishId}`}>
+            <button style={{ background: "none", border: `1px solid ${BORDER}`, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, padding: "9px 16px", borderRadius: 999, cursor: "pointer", width: "100%" }}>
+              + Set the parish's daily rhythm
+            </button>
+          </Link>
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: FAINT_GREEN, margin: "8px 0 0", lineHeight: 1.5 }}>
+            An always-on rhythm your whole parish prays together — parishioners take it up in one tap and see they're praying with you.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

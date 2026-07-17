@@ -2519,6 +2519,12 @@ export async function migrate() {
       ALTER TABLE groups ADD COLUMN IF NOT EXISTS rule_routine_id
       INTEGER REFERENCES prescribed_routines(id) ON DELETE SET NULL
     `);
+    // Parish standing rule of life — the always-on daily rhythm a priest sets
+    // for the whole congregation. Same FK-after-prescribed_routines reasoning.
+    await run(client, `
+      ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS rule_routine_id
+      INTEGER REFERENCES prescribed_routines(id) ON DELETE SET NULL
+    `);
     await run(client, `
       CREATE INDEX IF NOT EXISTS prescribed_routines_by_group
       ON prescribed_routines (group_id)

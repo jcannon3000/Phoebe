@@ -493,6 +493,7 @@ const ParishSettings = lazy(() => import("./pages/parish-settings"));
 const ParishCelebration = lazy(() => import("./pages/parish-celebration"));
 const ParishAdmin = lazy(() => import("./pages/parish-admin"));
 const ParishSeasonNewPage = lazy(() => import("./pages/parish-season-new"));
+const ParishRuleNewPage = lazy(() => import("./pages/parish-rule-new"));
 const ParishNewPage = lazy(() => import("./pages/parish-new"));
 const ParishConcernsPage = lazy(() => import("./pages/parish-concerns"));
 const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"));
@@ -1157,6 +1158,8 @@ function Router() {
       {/* Start a parish season — the priest designs the rhythm, names it, and
           begins it ("pray with your priest"). Admin-gated by the server. */}
       <Route path="/parish/season/new" component={ParishSeasonNewPage} />
+      {/* Set the parish's always-on standing rhythm (priest designs it). */}
+      <Route path="/parish/rule/new" component={ParishRuleNewPage} />
       {/* /parish/new — self-serve parish creation (beta-gated; page
           re-checks). The creator becomes the first admin and gets
           dropped on /parish/admin to start authoring. */}
