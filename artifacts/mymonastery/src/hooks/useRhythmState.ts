@@ -439,9 +439,18 @@ export function useRhythmState(): RhythmState {
   const serverDone = (section: string) =>
     !!completions?.completions?.some((c) => c.section === section && c.localDate === day);
 
+  // Local midnight of `day` (which is recomputed from the wall clock on every
+  // render), NOT a value frozen at mount. If the app stays alive across midnight
+  // — backgrounded overnight on iOS, then reopened — a mount-time `useMemo([])`
+  // would keep yesterday's date in BOTH the query key and the server's
+  // `todaySince` param, so contemplation-stats would keep serving/counting
+  // yesterday's minutes ("residual minutes from yesterday on today's routine").
+  // Deriving from `day` re-keys + refetches with today's boundary the moment the
+  // date rolls over (a `recheck` re-render on app resume triggers it).
   const todaySince = useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
-  }, []);
+    const [y, mo, d] = day.split("-").map(Number);
+    return new Date(y, mo - 1, d, 0, 0, 0, 0).toISOString();
+  }, [day]);
   const tz = useMemo(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   }, []);
