@@ -39,6 +39,7 @@ export default function AdminParishesPage() {
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("⛪");
   const [copied, setCopied] = useState<string | null>(null);
+  const [adminsOpen, setAdminsOpen] = useState<string | null>(null);
 
   const parishesQ = useQuery<{ parishes: Parish[] }>({
     queryKey: ["/api/prayer-feeds/admin/parishes"],
@@ -144,28 +145,36 @@ export default function AdminParishesPage() {
             {parishes.map((p) => {
               const st = STATE_LABEL[p.state];
               return (
-                <div key={p.id} className="rounded-2xl px-4 py-3 flex items-center gap-3" style={{ ...FROST, border: "1px solid rgba(46,107,64,0.22)" }}>
-                  <span className="text-xl leading-none flex-shrink-0">{p.coverEmoji || "⛪"}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{p.title}</p>
-                      <span className="text-[9px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: st.bg, border: `1px solid ${st.border}`, color: WARM }}>{st.label}</span>
+                <div key={p.id} className="rounded-2xl" style={{ ...FROST, border: "1px solid rgba(46,107,64,0.22)" }}>
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <span className="text-xl leading-none flex-shrink-0">{p.coverEmoji || "⛪"}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{p.title}</p>
+                        <span className="text-[9px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: st.bg, border: `1px solid ${st.border}`, color: WARM }}>{st.label}</span>
+                      </div>
+                      <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
+                        {p.visibility === "public" ? "In Explore" : "Private"} · {p.subscriberCount} subscriber{p.subscriberCount === 1 ? "" : "s"}
+                      </p>
                     </div>
-                    <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
-                      {p.visibility === "public" ? "In Explore" : "Private"} · {p.subscriberCount} subscriber{p.subscriberCount === 1 ? "" : "s"}
-                    </p>
+                    <button type="button" onClick={() => setAdminsOpen((s) => (s === p.slug ? null : p.slug))}
+                      className="text-[12px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
+                      style={{ background: adminsOpen === p.slug ? "rgba(46,107,64,0.85)" : "transparent", color: adminsOpen === p.slug ? WARM : SAGE, border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}>
+                      Priest
+                    </button>
+                    <button type="button" onClick={() => copyShare(p.slug)}
+                      className="text-[12px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
+                      style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}>
+                      {copied === p.slug ? "Copied ✓" : "Link"}
+                    </button>
+                    <button type="button" onClick={() => setLocation(`/prayer-feeds/${p.slug}/manage`)}
+                      className="text-[12px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
+                      style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT }}>
+                      Manage
+                    </button>
                   </div>
-                  <button type="button" onClick={() => copyShare(p.slug)}
-                    className="text-[12px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
-                    style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}>
-                    {copied === p.slug ? "Copied ✓" : "Link"}
-                  </button>
-                  <button type="button" onClick={() => setLocation(`/prayer-feeds/${p.slug}/manage`)}
-                    className="text-[12px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
-                    style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT }}>
-                    Manage
-                  </button>
+                  {adminsOpen === p.slug && <ParishAdminsInline slug={p.slug} />}
                 </div>
               );
             })}
@@ -173,5 +182,74 @@ export default function AdminParishesPage() {
         )}
       </div>
     </Layout>
+  );
+}
+
+// Per-parish admin roster on the STAFF surface — the super admin hands a parish
+// to its priest here: add the priest by email (they become a parish admin and
+// get the full /parish/admin toolkit — programming, events, season, get-
+// involved). The creator is shown but can't be removed here.
+type AdminsResponse = {
+  creator: { userId: number; name: string | null; email: string } | null;
+  coAdmins: { userId: number; name: string | null; email: string; addedAt: string }[];
+};
+function ParishAdminsInline({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const q = useQuery<AdminsResponse>({
+    queryKey: [`/api/parishes/${slug}/admins`],
+    queryFn: () => apiRequest("GET", `/api/parishes/${slug}/admins`),
+  });
+  const add = useMutation({
+    mutationFn: (e: string) => apiRequest("POST", `/api/parishes/${slug}/admins`, { email: e }),
+    onSuccess: () => { setEmail(""); setErr(null); qc.invalidateQueries({ queryKey: [`/api/parishes/${slug}/admins`] }); },
+    onError: () => setErr("No Phoebe account for that email (they need to sign up first), or they're already an admin."),
+  });
+  const remove = useMutation({
+    mutationFn: (userId: number) => apiRequest("DELETE", `/api/parishes/${slug}/admins/${userId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/parishes/${slug}/admins`] }),
+  });
+
+  const canAdd = /\S+@\S+/.test(email) && !add.isPending;
+  return (
+    <div className="px-4 pb-4 pt-1" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
+      <p className="text-[11px] uppercase tracking-[0.14em] font-semibold mb-2 mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
+        Priest / admins
+      </p>
+      {q.data?.creator && (
+        <p className="text-[12px]" style={{ color: WARM, fontFamily: FONT }}>
+          {q.data.creator.name || q.data.creator.email} <span style={{ color: "rgba(143,175,150,0.6)" }}>· owner</span>
+        </p>
+      )}
+      {(q.data?.coAdmins ?? []).map((a) => (
+        <div key={a.userId} className="flex items-center justify-between mt-1.5">
+          <p className="text-[12px]" style={{ color: WARM, fontFamily: FONT }}>{a.name || a.email}</p>
+          <button onClick={() => remove.mutate(a.userId)} className="text-[11px]" style={{ color: "rgba(196,122,101,0.9)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer" }}>Remove</button>
+        </div>
+      ))}
+      <div className="flex gap-2 mt-3">
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Priest's email"
+          onKeyDown={(e) => { if (e.key === "Enter" && canAdd) add.mutate(email.trim().toLowerCase()); }}
+          className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none"
+          style={{ background: "rgba(0,0,0,0.25)", color: WARM, fontFamily: FONT, border: "1px solid rgba(46,107,64,0.3)" }}
+        />
+        <button
+          type="button" disabled={!canAdd}
+          onClick={() => add.mutate(email.trim().toLowerCase())}
+          className="text-[12px] font-semibold px-4 rounded-full disabled:opacity-40"
+          style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT, cursor: canAdd ? "pointer" : "default" }}
+        >
+          {add.isPending ? "…" : "Assign"}
+        </button>
+      </div>
+      {err && <p className="text-[11px] mt-2" style={{ color: "rgba(220,150,150,0.9)", fontFamily: FONT }}>{err}</p>}
+      <p className="text-[11px] mt-2 leading-snug" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
+        The priest gets the full parish toolkit — program the daily prayer &amp; events, set a season the parish prays together, and post ways to get involved.
+      </p>
+    </div>
   );
 }
