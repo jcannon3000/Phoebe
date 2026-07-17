@@ -31,7 +31,7 @@ interface Celebration {
   parish: { id: number; slug: string; title: string };
   prayedTodayCount: number;
   prayedWeekCount: number;
-  faces: Array<{ userId: number; name: string; avatarUrl: string | null }>;
+  faces: Array<{ name: string; avatarUrl: string | null }>;
   surface: string | null;
 }
 
@@ -144,9 +144,9 @@ export default function ParishCelebration() {
         {/* Avatar rail — up to 7 of today's other parishioners */}
         {data && data.faces.length > 0 && (
           <div className="flex items-center justify-center -space-x-2">
-            {data.faces.slice(0, 7).map((p) => (
+            {data.faces.slice(0, 7).map((p, i) => (
               <div
-                key={p.userId}
+                key={i}
                 title={p.name}
                 style={{
                   width: 36,
@@ -175,7 +175,7 @@ export default function ParishCelebration() {
                       fontFamily: SPACE_GROTESK,
                     }}
                   >
-                    {p.name
+                    {(p.name ?? "?")
                       .split(/\s+/)
                       .slice(0, 2)
                       .map((w) => w[0]?.toUpperCase() ?? "")

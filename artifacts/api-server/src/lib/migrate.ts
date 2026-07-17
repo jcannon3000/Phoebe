@@ -2180,6 +2180,34 @@ export async function migrate() {
     // is unchanged — only the nullability is relaxed.
     await run(client, `ALTER TABLE prayer_feeds ALTER COLUMN creator_user_id DROP NOT NULL`);
 
+    // Switch prayer_feeds.creator_user_id from ON DELETE CASCADE → SET NULL.
+    // A parish/feed is a SHARED object: if the creating priest deletes their
+    // account, CASCADE would destroy the entire congregation's feed (and, via
+    // their own cascades, every subscription/opportunity/season). SET NULL
+    // orphans it instead — a staff admin can reassign a new priest. Idempotent:
+    // only rewrites the FK when it isn't already SET NULL (confdeltype 'n').
+    await run(client, `
+      DO $$
+      DECLARE cname text;
+      BEGIN
+        SELECT conname INTO cname
+          FROM pg_constraint
+         WHERE conrelid = 'prayer_feeds'::regclass
+           AND contype  = 'f'
+           AND confrelid = 'users'::regclass
+           AND conkey = ARRAY[(SELECT attnum FROM pg_attribute
+                                 WHERE attrelid = 'prayer_feeds'::regclass
+                                   AND attname = 'creator_user_id')]
+           AND confdeltype <> 'n';
+        IF cname IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE prayer_feeds DROP CONSTRAINT %I', cname);
+          ALTER TABLE prayer_feeds
+            ADD CONSTRAINT prayer_feeds_creator_user_id_fkey
+            FOREIGN KEY (creator_user_id) REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
+
     // ── Column backfill ──────────────────────────────────────────────────
     // These columns exist in the Drizzle schema but were never given an
     // ALTER here, so a from-scratch deploy (new env / disaster recovery)

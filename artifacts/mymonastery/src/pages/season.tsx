@@ -62,13 +62,15 @@ const OFFICE_LABEL: Record<string, string> = { devotion: "Daily Devotion", offic
 
 function summarize(spec: RoutineSpec): string[] {
   const out: string[] = [];
-  const op = spec.officePrefs;
-  if (op.morning !== "none") out.push(`Morning — ${OFFICE_LABEL[op.morning]}${op.morningTime ? ` at ${op.morningTime}` : ""}`);
-  if (op.evening !== "none") out.push(`Evening — ${OFFICE_LABEL[op.evening]}${op.eveningTime ? ` at ${op.eveningTime}` : ""}`);
-  if (spec.silenceLadderEnabled) out.push("Silence — a growing daily practice");
-  else if (op.contemplationGoalMinutes > 0) out.push(`Silence — ${op.contemplationGoalMinutes} min a day`);
-  const hidden = new Set(spec.homeLayout.hidden);
-  const cards = spec.homeLayout.order.filter((k) => CARD_LABELS[k] && !hidden.has(k)).map((k) => CARD_LABELS[k]);
+  // Defensive: a partial/truncated spec (missing officePrefs/homeLayout) must
+  // not white-screen the member's /season/:token landing.
+  const op = spec?.officePrefs ?? ({} as RoutineSpec["officePrefs"]);
+  if (op.morning && op.morning !== "none") out.push(`Morning — ${OFFICE_LABEL[op.morning]}${op.morningTime ? ` at ${op.morningTime}` : ""}`);
+  if (op.evening && op.evening !== "none") out.push(`Evening — ${OFFICE_LABEL[op.evening]}${op.eveningTime ? ` at ${op.eveningTime}` : ""}`);
+  if (spec?.silenceLadderEnabled) out.push("Silence — a growing daily practice");
+  else if ((op.contemplationGoalMinutes ?? 0) > 0) out.push(`Silence — ${op.contemplationGoalMinutes} min a day`);
+  const hidden = new Set(spec?.homeLayout?.hidden ?? []);
+  const cards = (spec?.homeLayout?.order ?? []).filter((k) => CARD_LABELS[k] && !hidden.has(k)).map((k) => CARD_LABELS[k]);
   if (cards.length) out.push(`Practices — ${cards.join(" · ")}`);
   return out;
 }
@@ -133,10 +135,15 @@ export default function SeasonPage() {
     swellHaptic();
     try {
       await apiRequest("POST", `/api/creator/seasons/${token}/checkin`, { ymd });
-    } catch {
-      /* refetch below reconciles */
-    } finally {
       qc.invalidateQueries({ queryKey: [`/api/creator/seasons/${token}`, ymd] });
+    } catch {
+      // Roll the optimistic patch back on failure — otherwise, if the refetch
+      // also fails (offline), the button keeps showing "Kept today ✓" for a
+      // check-in that never registered.
+      qc.setQueryData<SeasonData>([`/api/creator/seasons/${token}`, ymd], (old) => old && old.today
+        ? { ...old, today: { ...old.today, checkedIn: false, keptCount: Math.max(0, old.today.keptCount - 1) } }
+        : old);
+      setError("Couldn't check in. Please try again.");
     }
   };
 

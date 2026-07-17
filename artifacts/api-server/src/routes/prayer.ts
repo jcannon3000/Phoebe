@@ -285,7 +285,12 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     eventTitle: r.eventTitle ?? null,
     eventUpdate: r.eventUpdate ?? null,
     eventUpdatedAt: r.eventUpdatedAt ? r.eventUpdatedAt.toISOString() : null,
-    ownerId: r.ownerId,
+    // Honor anonymity fully: suppress the author's stable id too, not just the
+    // name/avatar. A parish admin (or garden viewer) is allowed to OPEN an
+    // anonymous request, and a raw ownerId defeats anonymity on its own — it can
+    // be mapped to a name via other surfaces, and links this row to the same
+    // author's non-anonymous posts. The owner still gets their own id back.
+    ownerId: (r.isAnonymous && !viewerIsOwner) ? null : r.ownerId,
     // Honor anonymity. Every other surface (feed list at ~531, the
     // slideshow, push copy) suppresses the author's name + avatar for an
     // anonymous request; this detail endpoint must too — otherwise a garden
@@ -2710,6 +2715,7 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
         isAnswered: prayerRequestsTable.isAnswered,
         createdAt: prayerRequestsTable.createdAt,
         directOnly: prayerRequestsTable.directOnly,
+        parishFeedId: prayerRequestsTable.parishFeedId,
       })
       .from(prayerRequestsTable)
       .where(eq(prayerRequestsTable.shareToken, token));
@@ -2722,6 +2728,10 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
     }
     // A directed ("to a fellow") request is private — never publicly shareable.
     if (row.directOnly) { res.status(404).json({ error: "Not found" }); return; }
+    // A parish "pastoral concern" is private to the requester + parish admins and
+    // must NEVER be world-readable by token — defense-in-depth so a concern that
+    // ever acquires a shareToken (future path / data copy) can't leak its body.
+    if (row.parishFeedId != null) { res.status(404).json({ error: "Not found" }); return; }
 
     // Owner display fields. Anonymous requests redact name + avatar.
     const [owner] = await db

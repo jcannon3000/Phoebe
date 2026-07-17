@@ -238,8 +238,23 @@ router.post("/creator/seasons/:token/join", async (req, res): Promise<void> => {
     const [season] = await db.select({
       id: creatorSeasonsTable.id, spec: creatorSeasonsTable.spec,
       startYmd: creatorSeasonsTable.startYmd, durationDays: creatorSeasonsTable.durationDays,
+      groupId: creatorSeasonsTable.groupId, parishFeedId: creatorSeasonsTable.parishFeedId,
     }).from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
     if (!season) { res.status(404).json({ error: "Not found" }); return; }
+    // Community/parish seasons are NOT open by token: only the group's members /
+    // the parish's subscribers may join. Otherwise a leaked link (poster, forward)
+    // lets an outsider into the cohort — inflating the count and, once joined,
+    // reading the day's check-in first-names of every member. Creator seasons
+    // (both null) stay open by design.
+    if (season.groupId != null) {
+      const [member] = await db.select({ joinedAt: groupMembersTable.joinedAt })
+        .from(groupMembersTable)
+        .where(and(eq(groupMembersTable.groupId, season.groupId), eq(groupMembersTable.userId, me)));
+      if (!member || !member.joinedAt) { res.status(403).json({ error: "Join the group first" }); return; }
+    } else if (season.parishFeedId != null) {
+      const [u] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, me));
+      if (!u || u.parishFeedId !== season.parishFeedId) { res.status(403).json({ error: "Join the parish first" }); return; }
+    }
     // Finite is the point — once the season has ended, the link stops joining
     // (and stops overwriting routines).
     if (dayNumber(season.startYmd, new Date().toISOString().slice(0, 10)) > season.durationDays) {

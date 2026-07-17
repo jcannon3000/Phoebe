@@ -20,7 +20,16 @@ const HOME_MODULE_KEYS = [
 
 const ALLOWED_PREFS = new Set(["none", "office", "devotion"]);
 const ALLOWED_LEVELS = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"]);
-const TIME_RE = /^\d{2}:\d{2}$/;
+// A real clock time (00:00–23:59). The old /^\d{2}:\d{2}$/ accepted "99:99",
+// which sailed through to the reminder cron and silently disabled that side's
+// notifications for everyone who adopted the spec.
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+// A designed spec is authored by a more-privileged actor (priest / leader /
+// super-admin) and then applied to EVERY adopter's account. Cap the total
+// rule-config size so a hostile/compromised author can't write a ~512 KB blob
+// onto every congregant's row (DB bloat + bandwidth amplification). Mirrors the
+// self-service /me/rule-config guard (prayer.ts).
+const RULE_CONFIG_MAX_BYTES = 32_000;
 
 export function sanitizeSpec(raw: unknown): PrescribedRoutineSpec | null {
   if (!raw || typeof raw !== "object") return null;
@@ -37,18 +46,33 @@ export function sanitizeSpec(raw: unknown): PrescribedRoutineSpec | null {
   const morningTime = typeof op.morningTime === "string" && TIME_RE.test(op.morningTime) ? op.morningTime : null;
   const eveningTime = typeof op.eveningTime === "string" && TIME_RE.test(op.eveningTime) ? op.eveningTime : null;
 
-  const order = Array.isArray(hl.order) ? hl.order.filter((k): k is string => typeof k === "string") : [];
-  const hidden = Array.isArray(hl.hidden) ? hl.hidden.filter((k): k is string => typeof k === "string") : [];
+  // Home layout is whitelisted to known module keys AND length-bounded right
+  // here (not only in cleanHomeLayout at apply time) — the stored spec is served
+  // raw to every viewer of a rule card / season landing, so an unbounded order[]
+  // would be a multi-MB payload fan-out.
+  const HOME_KEYS = new Set<string>(HOME_MODULE_KEYS);
+  const order = Array.isArray(hl.order)
+    ? hl.order.filter((k): k is string => typeof k === "string" && HOME_KEYS.has(k)).slice(0, HOME_MODULE_KEYS.length)
+    : [];
+  const hidden = Array.isArray(hl.hidden)
+    ? hl.hidden.filter((k): k is string => typeof k === "string" && HOME_KEYS.has(k)).slice(0, HOME_MODULE_KEYS.length)
+    : [];
   if (order.length === 0) return null;
 
-  // rule-config values: string→string, bounded like /me/rule-config.
+  // rule-config values: string→string, bounded like /me/rule-config — per-entry
+  // (key ≤80, value ≤8000, ≤64 keys) AND in aggregate (≤32 KB total).
   const rcRaw = (s.ruleConfig && typeof s.ruleConfig === "object" && !Array.isArray(s.ruleConfig))
     ? (s.ruleConfig as Record<string, unknown>) : {};
   const ruleConfig: Record<string, string> = {};
   let n = 0;
+  let rcBytes = 0;
   for (const [k, v] of Object.entries(rcRaw)) {
     if (n >= 64) break;
-    if (typeof k === "string" && k.length <= 80 && typeof v === "string" && v.length <= 8000) { ruleConfig[k] = v; n++; }
+    if (typeof k === "string" && k.length <= 80 && typeof v === "string" && v.length <= 8000) {
+      rcBytes += k.length + v.length;
+      if (rcBytes > RULE_CONFIG_MAX_BYTES) break;
+      ruleConfig[k] = v; n++;
+    }
   }
 
   return {

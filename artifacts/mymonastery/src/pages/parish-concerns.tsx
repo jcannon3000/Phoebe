@@ -15,7 +15,7 @@
  * keeps this inbox the only place they can be read.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,8 +89,14 @@ export default function ParishConcernsPage() {
     },
   });
 
-  if (isLoading) return null;
-  if (!user) { setLocation("/"); return null; }
+  // Redirect logged-out users from an EFFECT, not the render body — calling
+  // setLocation() during render triggers React's "update while rendering"
+  // warning and can loop. Matches the sibling parish pages.
+  useEffect(() => {
+    if (!isLoading && !user) setLocation("/");
+  }, [isLoading, user, setLocation]);
+
+  if (isLoading || !user) return null;
 
   const parishes = parishesQuery.data?.parishes ?? [];
   const noAccess = !parishesQuery.isLoading && parishes.length === 0;
@@ -213,7 +219,7 @@ export default function ParishConcernsPage() {
               <div className="flex justify-end">
                 <button
                   onClick={() => closeMutation.mutate(c.id)}
-                  disabled={closeMutation.isPending}
+                  disabled={closeMutation.isPending && closeMutation.variables === c.id}
                   className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
                   style={{
                     background: "rgba(143,175,150,0.12)",

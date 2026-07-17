@@ -3,6 +3,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
+  prayerFeedsTable,
   groupMembersTable,
   momentUserTokensTable,
   momentPostsTable,
@@ -149,10 +150,25 @@ router.delete("/users/me", async (req, res): Promise<void> => {
       .set({ userId: null })
       .where(eq(correspondenceMembersTable.userId, user.id));
 
+    // Capture the parish this user belongs to BEFORE the delete — the cascade
+    // drops their prayer_feed_subscriptions row, and the denormalized
+    // prayer_feeds.subscriber_count would otherwise stay permanently inflated
+    // (it's only recomputed on subscribe/unsubscribe, never on account delete).
+    const [meRow] = await db.select({ parishFeedId: usersTable.parishFeedId })
+      .from(usersTable).where(eq(usersTable.id, user.id));
+
     // 4) Finally drop the user — cascades handle the rest (prayer
     //    requests/words/amens, device tokens, etc. all declare
-    //    ON DELETE CASCADE).
+    //    ON DELETE CASCADE). prayer_feeds.creator_user_id is ON DELETE SET NULL,
+    //    so a priest deleting their account orphans (not destroys) the parish.
     await db.delete(usersTable).where(eq(usersTable.id, user.id));
+
+    // Recompute the parish's subscriber count now that the subscription row is gone.
+    if (meRow?.parishFeedId != null) {
+      await db.update(prayerFeedsTable)
+        .set({ subscriberCount: sql`(SELECT COUNT(*) FROM prayer_feed_subscriptions WHERE feed_id = ${meRow.parishFeedId})` })
+        .where(eq(prayerFeedsTable.id, meRow.parishFeedId));
+    }
   } catch (err) {
     console.error("[users:delete-me] delete failed:", err);
     res.status(500).json({ error: "delete_failed" });

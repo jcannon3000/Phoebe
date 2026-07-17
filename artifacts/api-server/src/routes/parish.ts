@@ -370,8 +370,11 @@ router.get("/parish/celebration", async (req, res) => {
 
     const prayedTodayCount = Number(todayRows.rows[0]?.count ?? "0");
     const prayedWeekCount = Number(weekRows.rows[0]?.count ?? "0");
+    // Faces show WHO prayed today (the intended communal-glow feature), but we
+    // deliberately omit the raw userId — the UI never needs it, and exposing a
+    // stable userId→name map would let a member correlate identities across
+    // surfaces (e.g. de-anonymize a pastoral concern's author).
     const faces = todayFaceRows.rows.map((r) => ({
-      userId: r.user_id,
       name: r.name ?? "Someone",
       avatarUrl: r.avatar_url,
     }));
@@ -728,7 +731,10 @@ router.post("/parish/concerns", perUserRateLimit("parish_concern", { max: 30, wi
       parishFeedId: parishId,
       body,
       isAnonymous,
-      createdByName: user.name ?? null,
+      // Don't even persist the name on an anonymous concern — anonymity should
+      // be a property of the stored row, not just a read-time mask that one
+      // future reader-bug could strip.
+      createdByName: isAnonymous ? null : (user.name ?? null),
       // Concerns don't auto-expire — the parish admin can mark them
       // resolved manually. Leaving expiresAt null mirrors the
       // existing "no expiry" path used by long-running asks.
@@ -940,7 +946,12 @@ router.post("/parishes", perUserRateLimit("parish_create", { max: 10, windowMs: 
       userId: session.id,
     }).onConflictDoNothing();
     await db.update(prayerFeedsTable)
-      .set({ subscriberCount: 1, updatedAt: new Date() })
+      .set({
+        // Derive the count rather than trusting a blind literal 1 — if the
+        // creator auto-subscribe above ever no-ops, this stays honest.
+        subscriberCount: sql`(SELECT COUNT(*) FROM prayer_feed_subscriptions WHERE feed_id = ${parish.id})`,
+        updatedAt: new Date(),
+      })
       .where(eq(prayerFeedsTable.id, parish.id));
 
     res.status(201).json({ parish });
@@ -963,7 +974,7 @@ router.post("/parishes/:slug/admins", perUserRateLimit("parish_add_admin", { max
   const { allowed } = await canManageParish(session.id, parish.id);
   if (!allowed) { res.status(403).json({ error: "Admin only." }); return; }
   const email = String((req.body as { email?: unknown } | undefined)?.email ?? "")
-    .trim().toLowerCase();
+    .trim().toLowerCase().slice(0, 320);
   if (!email || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required." });
     return;

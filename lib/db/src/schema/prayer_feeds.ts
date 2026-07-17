@@ -40,8 +40,12 @@ export const prayerFeedsTable = pgTable(
     coverImageUrl: text("cover_image_url"),
     // Nullable: platform-owned feeds (e.g. phoebe-climate) have no human
     // creator. User-created feeds set this to the creator's user id.
+    // SET NULL, not CASCADE: a parish/feed is a SHARED object owned by many.
+    // If the creating priest deletes their account, the feed must ORPHAN (a
+    // staff admin can reassign a new priest), never be destroyed out from under
+    // its whole congregation. The actual FK is switched to SET NULL in migrate.
     creatorUserId: integer("creator_user_id")
-      .references(() => usersTable.id, { onDelete: "cascade" }),
+      .references(() => usersTable.id, { onDelete: "set null" }),
     // Timezone the creator uses for scheduling — all entry dates are
     // interpreted as calendar days in this zone, so "today's entry" is
     // stable regardless of where subscribers live.
