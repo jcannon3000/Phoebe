@@ -1146,7 +1146,11 @@ export function CobreatheBreath({
               box itself (an earlier attempt used a bare <text x y>, whose baseline
               anchoring is what pushed it up-left). Not rotated, so it stays upright. */}
           <svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 128 128" style={{ overflow: "visible" }}>
-            <text x={64} y={64} textAnchor="middle" dominantBaseline="central" fontSize={64}>{globe}</text>
+            {/* y=67.25 (not 64): even with dominant-baseline=central the globe
+                emoji's INK sits ~3.25 units high in its box, so nudge it down to
+                land the visible globe on the rings' true centre. Measured by
+                rasterizing the glyph and finding its ink bbox centre. */}
+            <text x={64} y={67.25} textAnchor="middle" dominantBaseline="central" fontSize={64}>{globe}</text>
           </svg>
         </div>
       </div>

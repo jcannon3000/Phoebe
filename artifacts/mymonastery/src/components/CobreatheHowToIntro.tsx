@@ -115,7 +115,10 @@ function RingCluster({ box, outerLit, innerLit }: { box: number; outerLit: boole
           ring SVG, so the globe stays upright.) */}
       <svg aria-hidden="true" width={box} height={box} viewBox="0 0 128 128"
         style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", filter: "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))" }}>
-        <text x={64} y={64} textAnchor="middle" dominantBaseline="central" fontSize={64}>🌍</text>
+        {/* y=67.25 (not 64): the globe emoji's INK sits ~3.25 units high in its
+            box even with central baseline; nudge down so the visible globe
+            centres on the rings. Measured via the glyph's rasterized ink bbox. */}
+        <text x={64} y={67.25} textAnchor="middle" dominantBaseline="central" fontSize={64}>🌍</text>
       </svg>
     </div>
   );
