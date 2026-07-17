@@ -1323,28 +1323,20 @@ export default function WayOfLoveRuleFlow({
     // FDD medium choice — asked AFTER the reflection/prayer is picked, so it
     // covers FDD-as-reflection too (applies wherever FDD is used: both sides).
     ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
-    // Silence (the daily-minutes goal, i.e. the silent sit) comes FIRST, then the
-    // other contemplative options — each of which becomes its own card.
+    // Silence (the daily-minutes goal, i.e. the silent sit).
     "contemplation-goal",
-    // The other contemplative practices — Audio Divina, Lectio, a Contemplative
-    // Walk, Listen to Scripture, the Examen — as a MULTI-SELECT (pick any; each
-    // becomes its own home card). NONE are mutually exclusive: with each other,
-    // with the silent sit, or with a "Create your own" custom practice. Every
-    // selected one gets a "what time of day?" slide so it slots into the rhythm.
-    // (Restored for full accounts per owner — "I should be able to have as many
-    // as possible.") Creation Prayer is NOT here: it's chosen per side as a
-    // side's contemplation style, so its toggle would have no card here.
-    "contemplative",
-    ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
-    ...(contemplative.lectio ? (["lectio-when"] as Step[]) : []),
-    ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
-    ...(contemplative.scripture ? (["scripture-when"] as Step[]) : []),
-    ...(contemplative.examen ? (["examen-when"] as Step[]) : []),
     // Daily steps — its own optional slide (iOS only; Apple Health).
     ...(isNativeShell() ? (["steps-goal"] as Step[]) : []),
-    // "Add to your day" — Gratitude, Journaling, Reading, Podcasts (multi-select,
-    // each its own card, none exclusive with anything else).
-    "extras",
+    // NOTE (owner): the "Contemplative Practices" multi-select ("contemplative"
+    // + its audio/lectio/walk/scripture/examen "-when" detail steps) and the
+    // "Add to your day" extras step are intentionally NOT in the customizer.
+    // Those practices — Audio Divina, Lectio, Contemplative Walk, Listen to
+    // Scripture, the Examen, Gratitude, Journaling, Reading, Podcasts — are
+    // added/toggled on the Practices page instead. The commit still reads the
+    // contemplative/extras state, which is seeded from the user's CURRENT home
+    // layout (homeCardOn), so re-running this flow PRESERVES whatever they
+    // already have on rather than turning it off. The review screen drops any
+    // row whose edit-step isn't in orderedSteps (see the filter below).
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
