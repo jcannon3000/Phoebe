@@ -624,8 +624,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     staleTime: 60_000,
     enabled: listeningActive,
   });
+  // What you put on for today's Audio Divina (song / album / artist) — shown as
+  // the card's second line once it's done. A day can hold several sittings, so
+  // list them all, de-duped and in log order.
   const listeningWhat = listeningActive
-    ? ((listeningLogData?.entries ?? []).find((e) => e.day === new Date().toLocaleDateString("en-CA"))?.what ?? "").trim()
+    ? Array.from(new Set(
+        (listeningLogData?.entries ?? [])
+          .filter((e) => e.day === new Date().toLocaleDateString("en-CA"))
+          .map((e) => (e.what ?? "").trim())
+          .filter(Boolean),
+      )).join(" · ")
     : "";
   // Office/devotion subtitle leads with the descriptive line, then flips
   // between the two things you carry in.
