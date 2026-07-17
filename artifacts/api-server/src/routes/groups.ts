@@ -2305,7 +2305,11 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   // user IDs, and every non-closed prayer request in the db that
   // should-or-shouldn't match. Takes the loop out of "push and hope"
   // when a community home appears empty.
-  if (req.query["debug"] === "1") {
+  // STAFF ONLY: the dump includes `allOpenPrayerRequests` — every open
+  // request's BODY + owner across the whole database — so it must never be
+  // reachable by an ordinary member (a guest can join a public group). Gate it
+  // behind the super-admin check the other admin diagnostics use.
+  if (req.query["debug"] === "1" && (await isBetaAdmin(user.id))) {
     const allOpen = await db
       .select({
         id: prayerRequestsTable.id,
@@ -3036,13 +3040,19 @@ router.post("/groups/:slug/focus", async (req, res): Promise<void> => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
-  // If subjectUserId is given, sanity-check the user exists so we don't
-  // store a dangling FK-style id (the column is ON DELETE SET NULL, but
-  // catching at insert-time surfaces a clearer error).
+  // If subjectUserId is given, it must be a MEMBER of this circle — you may
+  // only link an actual account as a focus subject when they're in the group.
+  // Otherwise a member could name any Phoebe user id and pull that stranger's
+  // profile (name/avatar, surfaced by GET /focus) into the circle without
+  // consent — an enumeration/harvest vector. To pray for a non-member by name,
+  // use the free-text subjectText field instead.
   if (parsed.data.subjectUserId != null) {
-    const [u] = await db.select({ id: usersTable.id }).from(usersTable)
-      .where(eq(usersTable.id, parsed.data.subjectUserId));
-    if (!u) { res.status(400).json({ error: "Subject not found" }); return; }
+    const [m] = await db.select({ id: groupMembersTable.id }).from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, result.group.id),
+        eq(groupMembersTable.userId, parsed.data.subjectUserId),
+      ));
+    if (!m) { res.status(400).json({ error: "Subject must be a member of this circle" }); return; }
   }
 
   const tz = await userTimezone(user.id);
@@ -4517,7 +4527,10 @@ router.get("/groups/public", async (req, res): Promise<void> => {
 // POST /api/groups/:slug/request-join — submit a request to join a
 // public community. Idempotent on (group_id, user_id) — re-tapping
 // doesn't create duplicates. Pushes every admin of the group.
-router.post("/groups/:slug/request-join", async (req, res): Promise<void> => {
+router.post("/groups/:slug/request-join", perUserRateLimit("groups_request_join", {
+  max: 20, windowMs: 60 * 60 * 1000,
+  message: "You've sent a lot of join requests. Please try again later.",
+}), async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
@@ -4546,6 +4559,20 @@ router.post("/groups/:slug/request-join", async (req, res): Promise<void> => {
       return;
     }
 
+    // Is there already a PENDING request? If so, re-tapping is a no-op and
+    // must NOT re-notify admins — otherwise a user could spam every admin's
+    // lock screen by hammering this endpoint. We only push when the request is
+    // genuinely new, or transitions out of a decided state (rejected/approved)
+    // back to pending.
+    const [existingRequest] = await db
+      .select({ decision: groupJoinRequestsTable.decision })
+      .from(groupJoinRequestsTable)
+      .where(and(
+        eq(groupJoinRequestsTable.groupId, group.id),
+        eq(groupJoinRequestsTable.userId, user.id),
+      ));
+    const wasAlreadyPending = existingRequest != null && existingRequest.decision == null;
+
     // Insert the request — idempotent on the unique (group_id, user_id)
     // index. If a row already exists we just leave it; if the existing
     // decision was "rejected" we reset it to pending so the user can try
@@ -4562,6 +4589,12 @@ router.post("/groups/:slug/request-join", async (req, res): Promise<void> => {
           decidedByUserId: null,
         },
       });
+
+    // Already-pending re-tap: acknowledge without re-notifying admins.
+    if (wasAlreadyPending) {
+      res.json({ ok: true, status: "pending", groupSlug: group.slug });
+      return;
+    }
 
     // Push every admin so they can act on it from anywhere.
     const adminMembers = await db
@@ -5204,12 +5237,23 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
       .from(groupsTable).where(inArray(groupsTable.id, groupIds));
     const nameById = new Map(groupNames.map((g) => [g.id, g.name]));
     const perGroup = new Map<number, number>();
+    // Total OTHER joined members per group — the pool a count is drawn from.
+    const othersByGroup = new Map<number, number>();
     for (const row of memberRows) {
       if (row.userId == null || row.userId === user.id) continue;
+      othersByGroup.set(row.groupId, (othersByGroup.get(row.groupId) ?? 0) + 1);
       if (!practiced.has(row.userId)) continue;
       perGroup.set(row.groupId, (perGroup.get(row.groupId) ?? 0) + 1);
     }
+    // Privacy floor (k-anonymity): only surface a NAMED per-group line when the
+    // group has enough other members that a count can't finger a specific
+    // person. In a 2–3 person circle, "you prayed with 1 from St. Mark's" would
+    // identify exactly who practiced. Members of smaller groups still count
+    // toward the aggregate `count` headline above — they're just not broken out
+    // by community name.
+    const PER_GROUP_MIN_OTHERS = 4;
     const groups = [...perGroup.entries()]
+      .filter(([gid]) => (othersByGroup.get(gid) ?? 0) >= PER_GROUP_MIN_OTHERS)
       .map(([gid, count]) => ({ name: nameById.get(gid) ?? "your community", count }))
       .sort((a, b) => b.count - a.count);
 

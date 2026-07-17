@@ -18,7 +18,7 @@
 import { db, prayerFeedsTable, prayerFeedEventsTable, ministrySourcesTable, sharedMomentsTable } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import crypto from "crypto";
-import { assertPublicHttpUrl } from "./ssrfGuard";
+import { safeFetch } from "./ssrfGuard";
 import type { MinistrySource } from "@workspace/db";
 
 const FETCH_TIMEOUT_MS = 9000;
@@ -271,18 +271,16 @@ export function parseNews(html: string, baseUrl: string): ParsedArticle[] {
 }
 
 async function fetchPage(url: string): Promise<string> {
-  // SSRF guard — url is an admin-configured ministry_sources page; still
-  // reject internal/non-routable hosts before the server fetches it.
-  await assertPublicHttpUrl(url);
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: ctrl.signal });
-    if (!res.ok) throw new Error(`Site returned ${res.status}`);
-    return await res.text();
-  } finally {
-    clearTimeout(timer);
-  }
+  // SSRF guard — url is an admin-configured ministry_sources page, but a
+  // 30x redirect could still steer the fetch at an internal host. safeFetch
+  // re-validates every hop with assertPublicHttpUrl (not just the initial url)
+  // and owns the timeout.
+  const res = await safeFetch(url, {
+    timeoutMs: FETCH_TIMEOUT_MS,
+    headers: { "User-Agent": UA, Accept: "text/html" },
+  });
+  if (!res.ok) throw new Error(`Site returned ${res.status}`);
+  return await res.text();
 }
 
 function slugify(name: string): string {

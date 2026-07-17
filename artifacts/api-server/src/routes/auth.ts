@@ -1368,8 +1368,13 @@ router.post(
   const token = randomBytes(32).toString("hex");
   const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
+  // Store only the SHA-256 HASH of the token, never the token itself. The raw
+  // token is a live ~1-hour account-takeover credential; keeping just its hash
+  // at rest means a leaked DB backup (or a read-only SQL leak) can't be used to
+  // reset anyone's password. The raw token goes to the user's email only, and
+  // reset-password below re-hashes the incoming token to look the row up.
   await db.update(usersTable)
-    .set({ resetToken: token, resetTokenExpiry: expiry } as Record<string, unknown>)
+    .set({ resetToken: hashToken(token), resetTokenExpiry: expiry } as Record<string, unknown>)
     .where(eq(usersTable.id, user.id));
 
   const resetUrl = `${getInviteBaseUrl()}/reset-password?token=${token}`;
@@ -1412,7 +1417,9 @@ router.post(
     res.status(400).json({ error: "Password must be at least 6 characters." }); return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.resetToken, token));
+  // Look up by the token's hash — the DB stores only the hash (see
+  // forgot-password above). A 256-bit random token means no collision risk.
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.resetToken, hashToken(token)));
 
   if (!user || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
     res.status(400).json({ error: "This reset link has expired or is invalid." }); return;

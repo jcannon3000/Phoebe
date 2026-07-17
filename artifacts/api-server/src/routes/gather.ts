@@ -14,6 +14,7 @@ import crypto from "node:crypto";
 import { sendPushToUser, sendPushToUsers } from "../lib/pushSender";
 import { rateLimit, perUserRateLimit, getClientIp } from "../lib/rate-limit";
 import { sendGatherEmail } from "../lib/gatherEmail";
+import { getGardenUserIds } from "../lib/garden";
 
 // ── Gather — propose a get-together, collect availability, converge, confirm ──
 //
@@ -134,9 +135,19 @@ router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60
   );
 
   // Optional invite list — members (push them the link) + guest emails.
-  const inviteeUserIds = Array.isArray(body.inviteeUserIds)
-    ? body.inviteeUserIds.filter((n): n is number => typeof n === "number" && n !== userId)
+  // Restrict the push targets to people the organizer is actually connected to
+  // (Fellows or group co-members) and cap the count. inviteeUserIds is
+  // attacker-controlled; without this it's a lock-screen spam vector — any
+  // client could push "X wants to get together" at thousands of arbitrary user
+  // ids. Guest emails stay open (that's how you invite someone off-app) but are
+  // separately capped + daily-budgeted below.
+  const rawInviteeUserIds = Array.isArray(body.inviteeUserIds)
+    ? Array.from(new Set(body.inviteeUserIds.filter((n): n is number => typeof n === "number" && n !== userId)))
     : [];
+  const gardenIds = rawInviteeUserIds.length > 0
+    ? new Set(await getGardenUserIds(userId))
+    : new Set<number>();
+  const inviteeUserIds = rawInviteeUserIds.filter((n) => gardenIds.has(n)).slice(0, 30);
   const inviteeEmailsRaw = (Array.isArray(body.inviteeEmails)
     ? body.inviteeEmails.map((e) => str(e, 160)).filter((e): e is string => !!e)
     : []

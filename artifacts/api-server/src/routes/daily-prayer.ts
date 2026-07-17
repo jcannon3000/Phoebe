@@ -352,10 +352,15 @@ router.get("/prayer-partner/invite-link/:token", async (req, res): Promise<void>
     .from(usersTable).where(eq(usersTable.prayerPartnerInviteToken, token));
   if (!owner) { res.status(404).json({ error: "Link not found" }); return; }
   const card = await loadUserCard(owner.id);
+  // This is a PRE-AUTH endpoint — anyone holding the link hits it without a
+  // session. Never expose the inviter's email here; the landing page only needs
+  // their name + avatar to show who invited you. (loadUserCard includes email
+  // for the authenticated partner-card paths, so strip it just for this one.)
+  const inviter = card ? { id: card.id, name: card.name, avatarUrl: card.avatarUrl } : null;
   // viewerIsOwner lets the client show "this is your own link" instead of an
   // accept button when you open your own link.
   const viewerIsOwner = uidOf(req) === owner.id;
-  res.json({ inviter: card, viewerIsOwner });
+  res.json({ inviter, viewerIsOwner });
 });
 
 // ACCEPT via link — auth required. Opening the link IS mutual consent, so the

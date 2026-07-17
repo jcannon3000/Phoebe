@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
-import { and, eq, sql, isNull } from "drizzle-orm";
+import { and, eq, ne, sql, isNull } from "drizzle-orm";
 import { db, deviceTokensTable, webPushSubscriptionsTable } from "@workspace/db";
 import { sendPushToUser } from "../lib/pushSender";
 
@@ -227,6 +227,16 @@ router.post("/push/web-subscription", async (req, res): Promise<void> => {
           invalidatedAt: null,
         },
       });
+
+    // Retire the same endpoint under any OTHER user. A browser's push
+    // endpoint is one physical delivery channel; a PushSubscription survives
+    // logout, so if a shared browser switches accounts the previous owner's
+    // row would otherwise keep delivering their private bells to whoever now
+    // uses that browser. Only the most recently authenticated user may own it.
+    await db.delete(webPushSubscriptionsTable).where(and(
+      eq(webPushSubscriptionsTable.endpoint, parsed.data.endpoint),
+      ne(webPushSubscriptionsTable.userId, user.id),
+    ));
 
     console.log(
       `[push] web-subscription registered: userId=${user.id} ` +

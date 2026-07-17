@@ -3,6 +3,7 @@ import { pool, db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./auth";
 import { rateLimit } from "../lib/rate-limit";
+import { loginFreshSession } from "../lib/session";
 
 const router: IRouter = Router();
 
@@ -50,7 +51,8 @@ router.post(
       onboardingCompleted: true,
     }).returning();
 
-    req.login(user as Express.User, (err) => {
+    // Regenerate the session id on auth to defeat session fixation.
+    loginFreshSession(req, user as Express.User, (err) => {
       if (err) { res.status(500).json({ error: "Login failed after signup." }); return; }
       req.session.save(() => res.json({ ok: true }));
     });

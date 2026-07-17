@@ -4,6 +4,7 @@ import { db, prayersForTable, usersTable, userMutesTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPrayerForYouPush } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
+import { getGardenUserIds } from "../lib/garden";
 
 const router: IRouter = Router();
 
@@ -173,6 +174,20 @@ router.post("/prayers-for", perUserRateLimit("prayers_for_create", {
 
   if (parsed.data.recipientUserId === sessionUserId) {
     res.status(400).json({ error: "You can't start a prayer for yourself here." });
+    return;
+  }
+
+  // Relationship gate. You may only start a private prayer for someone you're
+  // actually connected to (a Fellow, or a co-member of one of your groups) —
+  // the same visibility set that governs whose prayers you can see. Without
+  // this, POSTing arbitrary recipientUserIds and then reading GET /mine back
+  // turns this endpoint into a user-directory / email harvest, and lets anyone
+  // spray "someone is praying for you" pushes at strangers' lock screens.
+  // A single 403 for both "not connected" and "no such user" also removes the
+  // existence oracle. This mirrors the amen/word-route garden checks.
+  const gardenIds = await getGardenUserIds(sessionUserId);
+  if (!gardenIds.includes(parsed.data.recipientUserId)) {
+    res.status(403).json({ error: "You can only start a prayer for someone you're connected to." });
     return;
   }
 

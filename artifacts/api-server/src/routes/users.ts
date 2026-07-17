@@ -288,6 +288,22 @@ router.post("/users/me/phone/start", rateLimit({
     return u?.id ? `u:${u.id}` : null;
   },
   message: "Too many code requests — please wait a few minutes and try again.",
+}), rateLimit({
+  // Per-DESTINATION-NUMBER cap, across ALL accounts. The per-user limit above
+  // only bounds one account; without this, an attacker rotating accounts (or a
+  // buggy client) could pump SMS at a single victim's number (SMS bombing) or
+  // drive toll fraud to a premium destination. 5/hour per number is generous
+  // for a real verify while cutting the abuse curve. A null key (no/invalid
+  // phone in the body) skips this limit; the handler 400s on it anyway.
+  name: "phone_verify_start_number",
+  max: 5,
+  windowMs: 60 * 60 * 1000,
+  keyFn: (req) => {
+    const raw = String((req.body as { phone?: unknown } | null)?.phone ?? "");
+    const n = normalizePhone(raw);
+    return n ? `p:${n}` : null;
+  },
+  message: "This number has received several codes recently. Please wait a bit before requesting another.",
 }), async (req, res): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }

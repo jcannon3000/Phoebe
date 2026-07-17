@@ -21,6 +21,14 @@ export interface LetterAuth {
   userId: number | null;
   email: string;
   name: string;
+  /**
+   * When the caller authenticated via an invite `?token=`, this is the
+   * correspondence that token belongs to — the token is a capability for
+   * THAT correspondence only, not a global identity. `null` means a real
+   * logged-in session (unrestricted, may act on any correspondence they
+   * belong to). getMembership enforces the scope.
+   */
+  correspondenceScope: number | null;
 }
 
 /**
@@ -34,10 +42,13 @@ export async function resolveLetterAuth(req: Request): Promise<LetterAuth | null
   // Session auth first.
   if (req.user) {
     const u = req.user as { id: number; email: string; name: string };
-    return { userId: u.id, email: u.email, name: u.name };
+    return { userId: u.id, email: u.email, name: u.name, correspondenceScope: null };
   }
   // Token-based auth — the invite token doubles as a capability for
-  // not-yet-registered recipients reading / replying via a link.
+  // not-yet-registered recipients reading / replying via a link. It is
+  // scoped to the ONE correspondence it was minted for: a leaked token
+  // must not authenticate the same person against their OTHER
+  // correspondences (getMembership rejects a mismatched :id).
   const token = req.query.token as string | undefined;
   if (token) {
     const [member] = await db
@@ -46,7 +57,12 @@ export async function resolveLetterAuth(req: Request): Promise<LetterAuth | null
       .where(eq(correspondenceMembersTable.inviteToken, token))
       .limit(1);
     if (member && member.joinedAt) {
-      return { userId: member.userId, email: member.email, name: member.name || "Anonymous" };
+      return {
+        userId: member.userId,
+        email: member.email,
+        name: member.name || "Anonymous",
+        correspondenceScope: member.correspondenceId,
+      };
     }
   }
   return null;
@@ -83,7 +99,7 @@ export function requireSessionAuth(
       return;
     }
     const u = req.user as { id: number; email: string; name: string };
-    await handler(req, res, { userId: u.id, email: u.email, name: u.name });
+    await handler(req, res, { userId: u.id, email: u.email, name: u.name, correspondenceScope: null });
   };
 }
 
@@ -94,6 +110,12 @@ export function requireSessionAuth(
  * lowercased address).
  */
 export async function getMembership(correspondenceId: number, auth: LetterAuth) {
+  // A token-scoped caller may only act on the one correspondence the token
+  // was minted for. Refuse (as a non-member) for any other :id, so a leaked
+  // invite link can't be replayed against the invitee's other correspondences.
+  if (auth.correspondenceScope != null && auth.correspondenceScope !== correspondenceId) {
+    return { member: undefined, members: [] };
+  }
   const members = await db
     .select()
     .from(correspondenceMembersTable)

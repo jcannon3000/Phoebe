@@ -18,7 +18,7 @@ import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers } from "./groups";
 import { getGardenUserIds } from "../lib/garden";
 import { sendNewGroupMomentPushToMany, sendIntercessionGoalReachedPush } from "../lib/pushSender";
-import { perUserRateLimit } from "../lib/rate-limit";
+import { perUserRateLimit, rateLimit } from "../lib/rate-limit";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
@@ -3972,8 +3972,13 @@ const JoinSchema = z.object({
   personalTimezone: z.string().optional(),
 });
 
-router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
-  const { momentToken } = req.params;
+router.post("/moments/:momentToken/join", rateLimit({
+  name: "moment_join",
+  max: 30,
+  windowMs: 60 * 60 * 1000,
+  message: "Too many join attempts. Please try again later.",
+}), async (req, res): Promise<void> => {
+  const momentToken = String(req.params.momentToken ?? "");
 
   const parsed = JoinSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }

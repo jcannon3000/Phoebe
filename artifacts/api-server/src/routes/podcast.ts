@@ -32,6 +32,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, fddAudioMarksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { safeFetch } from "../lib/ssrfGuard";
 
 const router: IRouter = Router();
 
@@ -431,41 +432,40 @@ const FEED_TIMEOUT_MS = 10_000;
 const FEED_MAX_BYTES = 8 * 1024 * 1024;
 
 export async function fetchFeedText(url: string): Promise<string> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FEED_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml, text/html" },
-    });
-    if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
-    // Reject early when the server declares an oversized body…
-    const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > FEED_MAX_BYTES) {
-      throw new Error(`feed too large: ${declared} bytes`);
-    }
-    // …and bound the actual read too, since Content-Length can be absent
-    // (chunked) or lie. Stream the body and stop once the cap is exceeded.
-    const reader = res.body?.getReader();
-    if (!reader) return await res.text();
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        total += value.byteLength;
-        if (total > FEED_MAX_BYTES) {
-          await reader.cancel();
-          throw new Error("feed exceeded size cap");
-        }
-        chunks.push(value);
-      }
-    }
-    return Buffer.concat(chunks).toString("utf-8");
-  } finally {
-    clearTimeout(timer);
+  // SSRF-safe: follow redirects manually, re-validating each hop against the
+  // public-address allowlist. Feeds can be user-supplied (weekly-plan episode
+  // resolve), so a 30x to 169.254.169.254 / 127.0.0.1 / an internal host must
+  // never be followed. safeFetch enforces assertPublicHttpUrl on every hop and
+  // owns the request timeout.
+  const res = await safeFetch(url, {
+    timeoutMs: FEED_TIMEOUT_MS,
+    headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml, text/html" },
+  });
+  if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
+  // Reject early when the server declares an oversized body…
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > FEED_MAX_BYTES) {
+    throw new Error(`feed too large: ${declared} bytes`);
   }
+  // …and bound the actual read too, since Content-Length can be absent
+  // (chunked) or lie. Stream the body and stop once the cap is exceeded.
+  const reader = res.body?.getReader();
+  if (!reader) return await res.text();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      total += value.byteLength;
+      if (total > FEED_MAX_BYTES) {
+        await reader.cancel();
+        throw new Error("feed exceeded size cap");
+      }
+      chunks.push(value);
+    }
+  }
+  return Buffer.concat(chunks).toString("utf-8");
 }
 
 function parseDurationSeconds(raw: string | null): number | null {

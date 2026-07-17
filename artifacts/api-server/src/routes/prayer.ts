@@ -1282,6 +1282,27 @@ router.post("/prayer-requests/:id/word", rateLimit({
     ));
     if (!tag) { res.status(403).json({ error: "Forbidden" }); return; }
   }
+  // A PUBLIC (non-parish, non-directed) request is still only visible to the
+  // owner's garden — mirror the amen route's gate so a guessed/enumerated id
+  // can't attach a word + forge an amen + push a stranger's request.
+  if (request.ownerId !== sessionUserId && request.parishFeedId == null && !request.directOnly) {
+    const [tag] = await db.select({ id: prayerRequestTagsTable.id }).from(prayerRequestTagsTable).where(and(
+      eq(prayerRequestTagsTable.requestId, id),
+      eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
+      isNull(prayerRequestTagsTable.removedAt),
+    ));
+    let canSee = !!tag;
+    if (!canSee) {
+      const gardenIds = await getGardenUserIds(sessionUserId);
+      canSee = gardenIds.includes(request.ownerId);
+    }
+    if (!canSee) {
+      const [adopted] = await db.select({ id: adoptedPrayersTable.id }).from(adoptedPrayersTable)
+        .where(and(eq(adoptedPrayersTable.requestId, id), eq(adoptedPrayersTable.adopterUserId, sessionUserId)));
+      canSee = !!adopted;
+    }
+    if (!canSee) { res.status(404).json({ error: "Not found" }); return; }
+  }
 
   const [author] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
   const authorName = author?.name ?? "Someone";
