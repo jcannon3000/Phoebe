@@ -53,7 +53,6 @@ export default function MenuPage() {
   const isCommunityAdmin = (groupsData?.groups ?? []).some(
     (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
   );
-  const showLetters = isCommunityAdmin;
   const showAdminTools = rawIsBeta || rawIsAdmin || (myFeedsData?.feeds.length ?? 0) > 0 || isCommunityAdmin;
 
   const go = (p: string) => setLocation(p);
@@ -132,8 +131,6 @@ export default function MenuPage() {
   // every signed-in tier, including offices-only — but NOT the no-login guest
   // (subscribing needs an account; the public version carries no feeds).
   if (!isPilot && !isGuest) explore.items.push({ emoji: "🌍", label: t("menu.prayer_feeds", { defaultValue: "Prayer Feeds" }), sub: t("menu.prayer_feeds_sub", { defaultValue: "Pray for the world, one day at a time" }), onClick: () => go("/prayer-feeds") });
-  if (showLetters) explore.items.push({ emoji: "📮", label: t("menu.letters"), badge: t("menu.beta_badge"), onClick: () => go("/letters") });
-  if (rawIsBeta) explore.items.push({ emoji: "✉️", label: t("menu.messages"), badge: t("menu.beta_badge"), onClick: () => go("/messages") });
   groups.push(explore);
 
   // Account.

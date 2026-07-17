@@ -30,7 +30,6 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
-import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import {
@@ -53,26 +52,6 @@ import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/componen
 import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks, differenceInCalendarDays } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
-
-type Correspondence = {
-  id: number;
-  name: string;
-  groupType: string;
-  letterCount: number;
-  unreadCount: number;
-  myTurn: boolean;
-  turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
-  windowOpenDate?: string | null;
-  members: Array<{ name: string | null; email: string }>;
-  recentLetters: Array<{ authorName: string; sentAt: string }>;
-  currentPeriod: {
-    periodNumber: number;
-    periodLabel: string;
-    hasWrittenThisPeriod: boolean;
-    isLastThreeDays: boolean;
-    membersWritten: Array<{ name: string; email?: string; hasWritten: boolean }>;
-  };
-};
 
 export type Moment = {
   id: number;
@@ -421,7 +400,6 @@ function formatServiceTime(hhmm: string): string {
 // ─── Dashboard item union type ──────────────────────────────────────────────
 
 type DashboardItem =
-  | { kind: "letter"; data: Correspondence }
   | { kind: "moment"; data: Moment; nextWindow?: string }
   | { kind: "gathering"; data: any; badge?: string }
   | { kind: "service"; data: ServiceSchedule; nextDate: Date; isOnDate: boolean }
@@ -941,239 +919,6 @@ export function SectionHeader({ label, right, onOpen }: { label: string; right?:
       <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
       {right}
     </div>
-  );
-}
-
-// ─── Letter summary card (multiple letters collapsed) ────────────────────────
-
-function LetterSummaryCard({
-  correspondences,
-  userEmail,
-}: {
-  correspondences: Correspondence[];
-  userEmail: string;
-}) {
-  const otherNames = correspondences.map(c =>
-    (c.members.find(m => m.email !== userEmail)?.name ?? "Someone").split(" ")[0]
-  );
-  const title = otherNames.length === 2
-    ? `Dialogues with ${otherNames[0]} & ${otherNames[1]}`
-    : `Dialogues with ${otherNames.length} people`;
-
-  const anyNeedWrite = correspondences.some(c => {
-    const ts = c.turnState;
-    return c.groupType === "one_to_one"
-      ? (ts === "OPEN" || ts === "OVERDUE")
-      : !(c.currentPeriod.membersWritten.find(m => m.email === userEmail)?.hasWritten ?? false);
-  });
-  const anyUnread = correspondences.some(c => c.unreadCount > 0);
-  const shouldPulse = anyNeedWrite || anyUnread;
-
-  const statusText = anyUnread
-    ? "New letters waiting 📮"
-    : anyNeedWrite
-    ? "Your turn to write 🖋️"
-    : "Waiting for others to respond";
-
-  return (
-    <BarCard href="/letters" pulse={shouldPulse} category="letters">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-          📮 {title}
-        </span>
-        <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-          View All
-        </span>
-      </div>
-      <div className="mt-1.5">
-        <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0 }}>
-          {statusText}
-        </p>
-      </div>
-    </BarCard>
-  );
-}
-
-// ─── Letter card ─────────────────────────────────────────────────────────────
-
-function LetterCard({
-  c,
-  userEmail,
-  userName,
-  keyPrefix,
-}: {
-  c: Correspondence;
-  userEmail: string;
-  userName: string;
-  keyPrefix: string;
-}) {
-  const { t } = useTranslation();
-  const [, setLocation] = useLocation();
-  const isOneToOne = c.groupType === "one_to_one";
-  const otherMembers = c.members
-    .filter(m => m.email !== userEmail)
-    .map(m => m.name || m.email.split("@")[0])
-    .join(", ");
-  const displayName = isOneToOne && otherMembers
-    ? t("letters.dialogue_with", { name: otherMembers })
-    : (c.name?.replace(/^Letters with\b/, "Dialogue with")) || t("letters.sharing_with", { names: otherMembers });
-
-  // Local-TZ override of the OPEN verdict. The server computes windowOpen
-  // in UTC; a letter sent late-evening in the user's local time lands on
-  // the next UTC date, which pushes the open window one calendar day past
-  // what the user perceives. Trust the local computation when it says the
-  // window has opened: read the latest letter's sentAt with local
-  // getDate()/getMonth()/getFullYear() (browser uses local TZ), add 7
-  // calendar days, and compare against today's local calendar date.
-  const localWindowOpenForMe = (() => {
-    if (!isOneToOne) return false;
-    const lastLetter = c.recentLetters?.[0] ?? null;
-    if (!lastLetter || !lastLetter.sentAt) return false;
-    if (lastLetter.authorName === userName) return false; // not my turn
-    const sent = new Date(lastLetter.sentAt);
-    const sentLocal = new Date(sent.getFullYear(), sent.getMonth(), sent.getDate());
-    const opens = new Date(sentLocal.getFullYear(), sentLocal.getMonth(), sentLocal.getDate() + 7);
-    const n = new Date();
-    const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
-    return today.getTime() >= opens.getTime();
-  })();
-  const ts: Correspondence["turnState"] = (localWindowOpenForMe && c.turnState === "WAITING")
-    ? "OPEN"
-    : c.turnState;
-  const hasUnread = c.unreadCount > 0;
-
-  // For one-to-one: drive everything from the state machine
-  const needsWrite = isOneToOne
-    ? (ts === "OPEN" || ts === "OVERDUE")
-    : !(c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false);
-  const theyWrote = isOneToOne
-    ? false // not used for one-to-one status
-    : (c.currentPeriod.membersWritten.find(m => m.name !== userName)?.hasWritten ?? false);
-  const iWrote = isOneToOne ? !needsWrite : !needsWrite;
-  const shouldPulse = needsWrite || hasUnread;
-
-  const windowOpenAt = (isOneToOne && c.windowOpenDate) ? new Date(c.windowOpenDate) : null;
-  // Count calendar-day boundaries between today and the open date so the
-  // user-perceived "days remaining" lines up with the calendar. Naive
-  // hour-math + ceil overcounts when the letter's timestamp sits later
-  // in the day than "now": April 23 22:00 + 7 days = April 30 22:00,
-  // and on April 25 11:00 the raw diff is ~5.46d → ceil = 6, but the
-  // user (looking at calendar dates) expects 5.
-  //
-  // We keep zero in the result here (instead of Math.max(1, …)) so the
-  // statusText branch below can say "Opens today" when the window flips
-  // open later this calendar day. The API normalizes windowOpenDate to
-  // midnight server-time, but a user east of the server can see a
-  // calendar-diff of 0 with windowOpenAt still in the future — the old
-  // floor-to-1 made that case read "Reply opens in 1 day" which is
-  // wrong.
-  const daysUntilOpen = (windowOpenAt && windowOpenAt.getTime() > Date.now())
-    ? Math.max(0, differenceInCalendarDays(windowOpenAt, new Date()))
-    : null;
-
-  let statusText = "";
-  if (hasUnread) {
-    statusText = t("letter_card.wrote_to_you", { name: otherMembers });
-  } else if (isOneToOne) {
-    if (ts === "OVERDUE") statusText = t("letters.overdue_message");
-    else if (ts === "OPEN") statusText = t("letters.your_turn_to_write");
-    else if (daysUntilOpen === 0) statusText = t("letter_card.opens_today");
-    else if (daysUntilOpen) statusText = t("letter_card.reply_opens_in", { count: daysUntilOpen });
-    else statusText = t("letter_card.waiting_for", { name: otherMembers });
-  } else if (iWrote && !theyWrote) {
-    statusText = t("letter_card.your_update_is_in");
-  } else if (needsWrite) {
-    statusText = t("read_letter.share_update_prompt");
-  } else {
-    statusText = t("letter_card.all_written");
-  }
-
-  const lastLetter = c.recentLetters?.[0] ?? null;
-  const lastLetterFromMe = lastLetter?.authorName === userName;
-  const lastLetterDateLine = lastLetter?.sentAt
-    ? (lastLetterFromMe
-        ? t("letter_card.letter_sent_on", { date: format(parseISO(lastLetter.sentAt), "MMMM d") })
-        : t("letter_card.letter_received_on", { date: format(parseISO(lastLetter.sentAt), "MMMM d") }))
-    : null;
-  const flapLines = [statusText, ...(lastLetterDateLine ? [lastLetterDateLine] : [])].filter(Boolean);
-  // When it's the user's turn to write the next letter, label the chip
-  // with that *next* number (Letter N+1) — the in-progress letter, not
-  // the count of already-sent ones. Otherwise show the count of letters
-  // already in the dialogue.
-  const letterLabel = isOneToOne
-    ? t("letters.letter_n", { n: needsWrite ? c.letterCount + 1 : Math.max(1, c.letterCount) })
-    : t("letters.week_n", { n: c.currentPeriod.periodNumber });
-
-  return (
-    <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse} category="letters">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-            📮 {displayName}
-          </span>
-          {hasUnread && (
-            <span className="ml-2 inline-block w-2 h-2 rounded-full align-middle" style={{ background: "#C8D4C0" }} />
-          )}
-        </div>
-        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-          {letterLabel}
-        </span>
-      </div>
-      <div className="flex items-center justify-between gap-2 mt-1.5 -mr-2">
-        <SplitFlapLine lines={flapLines} />
-        {hasUnread && !needsWrite && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); }}
-            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); } }}
-            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
-            style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0" }}
-          >
-            {t("letter_card.read_pill")}
-          </span>
-        )}
-        {needsWrite && (
-          // Use an onClick-driven span instead of a nested wouter <Link>.
-          // BarCard already wraps its contents in a <Link> (<a>), and nested
-          // anchors are invalid HTML — Safari was rendering a phantom second
-          // rounded shape behind this pill. Navigating via setLocation keeps
-          // the click target inside the outer anchor without creating one.
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setLocation(`/letters/${c.id}/write`);
-            }}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                setLocation(`/letters/${c.id}/write`);
-              }
-            }}
-            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
-            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-          >
-            {t("letter_card.write_pill")}
-          </span>
-        )}
-        {!hasUnread && !needsWrite && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); }}
-            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); } }}
-            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
-            style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0" }}
-          >
-            {t("letter_card.view_pill")}
-          </span>
-        )}
-      </div>
-    </BarCard>
   );
 }
 
@@ -5321,44 +5066,10 @@ function TimeSection({
   // drops to last when its date is later in the week. Earlier this
   // function bucketed by `kind` (services → gatherings → moments → …),
   // which threw the chronological order out the window.
-  const isPassiveLetter = (item: DashboardItem): boolean =>
-    item.kind === "letter" &&
-    !(item.data.unreadCount > 0 || item.data.turnState === "OPEN" || item.data.turnState === "OVERDUE");
-  const passiveLetters = items.filter(
-    (i): i is Extract<DashboardItem, { kind: "letter" }> => i.kind === "letter" && isPassiveLetter(i),
-  );
-  const showPassiveAsSummary = passiveLetters.length >= 2;
-
-  // Walk the items in chronological order. When the summary collapse
-  // is active, drop passive letters from their inline slot and emit
-  // ONE summary card at the position of the earliest passive letter.
-  let summaryEmitted = false;
+  // Walk the items in chronological order.
   const renderedNodes: React.ReactNode[] = [];
   for (const item of items) {
-    if (item.kind === "letter" && isPassiveLetter(item) && showPassiveAsSummary) {
-      if (!summaryEmitted) {
-        summaryEmitted = true;
-        renderedNodes.push(
-          <LetterSummaryCard
-            key={`${label}-l-summary`}
-            correspondences={passiveLetters.map(i => i.data)}
-            userEmail={userEmail}
-          />,
-        );
-      }
-      continue;
-    }
-    if (item.kind === "letter") {
-      renderedNodes.push(
-        <LetterCard
-          key={`${label}-l-${item.data.id}`}
-          c={item.data}
-          userEmail={userEmail}
-          userName={userName}
-          keyPrefix={label}
-        />,
-      );
-    } else if (item.kind === "service") {
+    if (item.kind === "service") {
       renderedNodes.push(
         <ServiceCard
           key={`${label}-s-${item.data.id}`}
@@ -6005,14 +5716,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // unreadCount > 0 AND the viewer hasn't already dismissed that particular
   // set this session. Dismiss stores the current set of unread correspondence
   // ids so subsequent visits are quiet until a new one arrives.
-  const [newLetterPopup, setNewLetterPopup] = useState<{
-    correspondenceId: number;
-    correspondenceName: string;
-    fromAuthor: string | null;
-    sentAt: string | null;
-    totalUnread: number;
-  } | null>(null);
-  const newLetterHandledThisSessionRef = useRef(false);
 
   useEffect(() => {
     const reset = () => setFilter(null);
@@ -6279,17 +5982,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // removed at the user's request. dashCircleIntentions / dashPrayersFor /
   // dashPrayerRequests stay because the dashboard cards and the
   // PrayerListCard partial-progress count still consume them.
-
-  // Correspondences — drives both the "you have a new letter" popup and
-  // the letter cards mixed into the Today / This week / This month buckets.
-  // Gated on LETTERS_MESSAGES_ENABLED: with letters turned off the query never
-  // runs, so the home letter cards + the "you have a new letter" popup never
-  // appear (all downstream letter rendering reads from this one query).
-  const { data: dashCorrespondences, isLoading: dashCorrespondencesLoading } = useQuery<Correspondence[]>({
-    queryKey: ["/api/phoebe/correspondences"],
-    queryFn: () => apiRequest("GET", "/api/phoebe/correspondences"),
-    enabled: !!user && LETTERS_MESSAGES_ENABLED,
-  });
 
   // Service schedules — one card per schedule on the dashboard; each schedule
   // can hold many service times but surfaces as a single card. Click the
@@ -6676,71 +6368,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     };
   }, [newPrayersCount]);
 
-  // Detect new unread letters. Runs once per session. The localStorage key
-  // stores the *set* of correspondence ids that were already shown unread
-  // on last dismiss — a new unread correspondence id (or a previously-read
-  // one that has new mail again) re-triggers the popup.
-  useEffect(() => {
-    if (!user) return;
-    if (newLetterHandledThisSessionRef.current) return;
-    if (dashCorrespondencesLoading) return;
-
-    const seenIds = (() => {
-      try {
-        const raw = localStorage.getItem("phoebe:letters-seen-unread-ids");
-        if (!raw) return new Set<number>();
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return new Set<number>(parsed.filter((n): n is number => typeof n === "number"));
-      } catch { /* ignore */ }
-      return new Set<number>();
-    })();
-
-    const withUnread = (dashCorrespondences ?? []).filter(c => c.unreadCount > 0);
-    if (withUnread.length === 0) {
-      newLetterHandledThisSessionRef.current = true;
-      return;
-    }
-
-    // Pick the most recent unread correspondence that hasn't been seen yet.
-    // Sort by most recent letter so the popup highlights the newest arrival.
-    const unseen = withUnread.filter(c => !seenIds.has(c.id));
-    if (unseen.length === 0) {
-      newLetterHandledThisSessionRef.current = true;
-      return;
-    }
-
-    const pickLatestLetter = (c: Correspondence): number => {
-      const stamps = (c.recentLetters ?? [])
-        .map(p => Date.parse(p.sentAt))
-        .filter(ms => Number.isFinite(ms));
-      return stamps.length ? Math.max(...stamps) : 0;
-    };
-    unseen.sort((a, b) => pickLatestLetter(b) - pickLatestLetter(a));
-    const primary = unseen[0];
-    const latestLetter = (primary.recentLetters ?? [])
-      .slice()
-      .sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt))[0] ?? null;
-
-    newLetterHandledThisSessionRef.current = true;
-    setNewLetterPopup({
-      correspondenceId: primary.id,
-      correspondenceName: primary.name,
-      fromAuthor: latestLetter?.authorName ?? null,
-      sentAt: latestLetter?.sentAt ?? null,
-      totalUnread: withUnread.reduce((acc, c) => acc + c.unreadCount, 0),
-    });
-  }, [user, dashCorrespondences, dashCorrespondencesLoading]);
-
-  const dismissNewLetterPopup = useCallback(() => {
-    setNewLetterPopup(null);
-    try {
-      const unreadIds = (dashCorrespondences ?? [])
-        .filter(c => c.unreadCount > 0)
-        .map(c => c.id);
-      localStorage.setItem("phoebe:letters-seen-unread-ids", JSON.stringify(unreadIds));
-    } catch { /* ignore quota / private-mode */ }
-  }, [dashCorrespondences]);
-
   const isLoading = momentsLoading;
 
   // ── Goal-reached celebration — creator only, max 2 days, once per day
@@ -6952,53 +6579,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // Small-group correspondences keep the looser "any actionable state
     // → Today" rule because they don't have a single windowOpenDate to
     // bucket against.
-    const dashUserName = user?.name ?? "";
-    // Letters never surface on the HOME schedule for anyone — they live on the
-    // dedicated /letters page (and may appear on the Events page). Keeps the home
-    // focused on prayer. Gating the injection here empties every downstream home
-    // letter surface (inline cards + the passive-letters summary roll-up).
-    if (eventsOnly) for (const c of (dashCorrespondences ?? [])) {
-      // Read prompt — always visible while there's something unread.
-      if (c.unreadCount > 0) {
-        todayItems.push({ kind: "letter", data: c });
-        continue;
-      }
-
-      if (c.groupType === "one_to_one") {
-        // If the last letter was from me, it's their turn; nothing for
-        // me to write yet.
-        const lastLetterFromMe = c.recentLetters?.[0]?.authorName === dashUserName;
-        if (lastLetterFromMe) continue;
-        if (!c.windowOpenDate) continue;
-
-        const daysAhead = differenceInCalendarDays(
-          new Date(c.windowOpenDate),
-          new Date(),
-        );
-        if (daysAhead === 1) {
-          // Day BEFORE the window opens — heads up.
-          tomorrowItems.push({ kind: "letter", data: c });
-        } else if (daysAhead === 0 || daysAhead === -1) {
-          // Day OF and day AFTER the window opens — active prompt.
-          todayItems.push({ kind: "letter", data: c });
-        }
-        // daysAhead >= 2 (more than a day out) or <= -2 (more than a
-        // day past the open date): card is hidden. Reminder pushes
-        // carry the load from here.
-        continue;
-      }
-
-      // Small-group correspondences — keep the original "actionable →
-      // Today" bucketing.
-      const actionable =
-        c.myTurn ||
-        c.turnState === "OPEN" ||
-        c.turnState === "OVERDUE";
-      if (actionable) {
-        todayItems.push({ kind: "letter", data: c });
-      }
-    }
-
     // ── Service schedules placement
     // Next occurrence today → Today. Tomorrow → Tomorrow. Else within
     // the current "Sunday week" (Sunday-aligned boundary computed at
@@ -7161,10 +6741,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       if (item.kind === "action" || item.kind === "plan") {
         return item.nextDate ? item.nextDate.getTime() : Number.POSITIVE_INFINITY;
       }
-      if (item.kind === "letter") {
-        const ms = item.data.windowOpenDate ? new Date(item.data.windowOpenDate).getTime() : NaN;
-        return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
-      }
       if (item.kind === "moment") {
         // Lectio doesn't use the generic practiceDays field — its cadence
         // is fixed at Mon/Wed/Fri (lectio/meditatio/oratio). Compute the
@@ -7193,7 +6769,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
 
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly, hasGroup]);
+  }, [momentsData, user, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly, hasGroup]);
 
   useEffect(() => {
     // PUBLIC no-login version: guests LIVE here — no bounce to the welcome
@@ -7241,71 +6817,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       {/* Daily prayer-slideshow invite — shown once per calendar day when
           The daily "N prayers waiting for you" popup was removed —
           the always-visible PrayerListCard already invites the user. */}
-
-      {/* "You have a new letter" popup — queued after the beta-welcome
-          so only one modal ever shows at a time. */}
-      <AnimatePresence>
-        {newLetterPopup && !betaWelcomeVisible && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-6"
-            style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
-            onClick={dismissNewLetterPopup}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 8 }}
-              transition={{ duration: 0.25 }}
-              className="rounded-2xl px-8 py-8 text-center max-w-sm w-full"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
-              onClick={e => e.stopPropagation()}
-            >
-              <p className="text-4xl mb-4">📮</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                {newLetterPopup.totalUnread > 1 ? `${newLetterPopup.totalUnread} new letters` : "A new letter"}
-              </p>
-              <h2
-                className="text-xl font-bold mb-4"
-                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                {newLetterPopup.fromAuthor
-                  ? `From ${newLetterPopup.fromAuthor}`
-                  : newLetterPopup.correspondenceName}
-              </h2>
-
-              {newLetterPopup.sentAt && (
-                <p className="text-[12px] mb-5" style={{ color: "rgba(143,175,150,0.65)" }}>
-                  {format(new Date(newLetterPopup.sentAt), "MMM d")}
-                </p>
-              )}
-
-              <div className="flex flex-col gap-2.5">
-                <button
-                  onClick={() => {
-                    const id = newLetterPopup.correspondenceId;
-                    dismissNewLetterPopup();
-                    setLocation(`/letters/${id}`);
-                  }}
-                  className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  Read letter →
-                </button>
-                <button
-                  onClick={dismissNewLetterPopup}
-                  className="px-6 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
-                  style={{ color: "rgba(143,175,150,0.7)" }}
-                >
-                  Later
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Beta welcome popup — one-time */}
       <AnimatePresence>

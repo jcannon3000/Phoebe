@@ -191,9 +191,6 @@ if (runInWeb) {
   import("./lib/bellSender").then(({ startBellScheduler }) => startBellScheduler()).catch((err) => {
     logger.error({ err }, "[bell-scheduler] failed to boot");
   });
-  import("./lib/letterWindowSender").then(({ startLetterWindowScheduler }) => startLetterWindowScheduler()).catch((err) => {
-    logger.error({ err }, "[letter-window-scheduler] failed to boot");
-  });
 }
 
 // ─── Shared server clock ───────────────────────────────────────────────────
@@ -248,12 +245,6 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
               // /prayer-requests/share/...) and the deep-link push
               // landing (/prayer-requests/:id) live under this prefix.
               { "/": "/prayer-requests/*" },
-              // ── Letters ──────────────────────────────────────────
-              // /letter/:id is the share-link landing (LetterSplash);
-              // /letters/* covers the index, correspondence detail,
-              // and write surfaces.
-              { "/": "/letter/*" },
-              { "/": "/letters/*" },
               // ── Communities ──────────────────────────────────────
               { "/": "/communities/join/*" },
               { "/": "/communities/*" },
@@ -300,21 +291,8 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
     });
 });
 
-// Serve letters-app at /mail (must come before the main app catch-all)
-const lettersDist = path.resolve(__dirname, "../../letters-app/dist/public");
-if (fs.existsSync(lettersDist)) {
-  app.use("/mail/assets", express.static(path.join(lettersDist, "assets"), { maxAge: "1y", immutable: true }));
-  // Missing hashed assets must 404, not fall through to the /mail catch-all
-  // as index.html — see the matching guard on the main app's /assets below.
-  app.use("/mail/assets", (_req, res) => {
-    res.status(404).type("text").send("Not found");
-  });
-  app.use("/mail", express.static(lettersDist, { maxAge: 0 }));
-  app.get("/mail/{*path}", (_req, res) => {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.sendFile(path.join(lettersDist, "index.html"));
-  });
-}
+// (The standalone letters-app formerly served at /mail was removed with the
+// Letters feature.)
 
 // Serve main app static files (catch-all — must come last)
 const frontendDist = path.resolve(__dirname, "../../mymonastery/dist/public");

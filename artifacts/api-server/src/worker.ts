@@ -13,8 +13,6 @@
 //     parish office reminders, gathering reminders, feed reminders,
 //     action reminders, weekly digests, parish weekly recap, sunday
 //     reflection, etc. — ~15 senders gated by their own time windows)
-//   • letterWindowSender (15-min tick → letter period-open + respond
-//     reminders)
 //   • goalCleanup (hourly tick → cancel calendar events for stale
 //     goals)
 //   • prayerHeldScanner (10-min tick → batched "held in prayer" push)
@@ -36,7 +34,6 @@
 import { logger } from "./lib/logger";
 import { initSentry, captureError } from "./lib/sentry";
 import { startBellScheduler } from "./lib/bellSender";
-import { startLetterWindowScheduler } from "./lib/letterWindowSender";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
 import { startMinistrySyncScheduler } from "./lib/ministryScraper";
@@ -62,7 +59,6 @@ process.on("uncaughtException", (err) => {
 
 logger.info("[worker] starting schedulers");
 startBellScheduler();
-startLetterWindowScheduler();
 startGoalCleanupScheduler();
 startPrayerHeldScanner();
 startMinistrySyncScheduler();

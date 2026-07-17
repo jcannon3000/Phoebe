@@ -323,17 +323,6 @@ const ReportUserPage = lazy(() => import("./pages/report-user"));
 const ReportsAdminPage = lazy(() => import("./pages/reports-admin"));
 const FindFriendsPage = lazy(() => import("./pages/find-friends"));
 const TraditionNew = lazy(() => import("./pages/tradition-new"));
-const LettersPage = lazy(() => import("./pages/Letters/LettersPage"));
-const MessagesPage = lazy(() => import("./pages/messages"));
-const MessageNewPage = lazy(() => import("./pages/message-new"));
-const MessageThreadPage = lazy(() => import("./pages/message-thread"));
-const MessageWritePage = lazy(() => import("./pages/message-write"));
-const CorrespondencePage = lazy(() => import("./pages/Letters/CorrespondencePage"));
-const WriteLetter = lazy(() => import("./pages/Letters/WriteLetter"));
-const ReadLetter = lazy(() => import("./pages/Letters/ReadLetter"));
-const LetterInvitePage = lazy(() => import("./pages/Letters/InvitePage"));
-const LetterNew = lazy(() => import("./pages/Letters/LetterNew"));
-const LetterSplash = lazy(() => import("./pages/Letters/LetterSplash"));
 const ForgotPassword = lazy(() => import("./pages/forgot-password"));
 const ResetPassword = lazy(() => import("./pages/reset-password"));
 const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
@@ -441,7 +430,6 @@ const BcpPsalterPage = lazy(() => import("./pages/bcp-psalter"));
 const BcpCollectsPage = lazy(() => import("./pages/bcp-collects"));
 const PublicPrayerPage = lazy(() => import("./pages/public-prayer"));
 const PublicPrayerRequestPage = lazy(() => import("./pages/public-prayer-request"));
-const PublicLettersPage = lazy(() => import("./pages/public-letters"));
 const PublicFeedPage = lazy(() => import("./pages/public-feed"));
 const CommunitiesPage = lazy(() => import("./pages/communities"));
 const CommunitiesBrowsePage = lazy(() => import("./pages/communities-browse"));
@@ -730,8 +718,6 @@ const PARISH_DENIED_PATHS = [
   "/dashboard",
   "/people",
   "/people/find",
-  "/letters",
-  "/letter",
   "/communities",
   "/community",
   "/prayer-list",
@@ -1197,24 +1183,8 @@ function Router() {
       <Route path="/creator" component={CreatorStudioPage} />
       <Route path="/season/:token" component={SeasonPage} />
       <Route path="/companion/:token" component={CompanionInvitePage} />
-      <Route path="/letter/:id" component={LetterSplash} />
-      <Route path="/letters" component={LettersPage} />
-      <Route path="/letters/new" component={LetterNew} />
-      {/* Compose the first letter to a known person. No correspondence
-          exists yet — WriteLetter runs in "new" mode and the dialogue
-          is created atomically when the letter is sent. */}
-      <Route path="/letters/compose" component={WriteLetter} />
-      <Route path="/letters/invite/:token" component={LetterInvitePage} />
-      <Route path="/i/:token" component={LetterInvitePage} />
-      <Route path="/letters/:id/write" component={WriteLetter} />
-      <Route path="/letters/:id/read/:letterId" component={ReadLetter} />
-      <Route path="/letters/:id" component={CorrespondencePage} />
-      {/* Beta Messages — unlimited 1:1 messaging. /new before /:id so
-          "new" isn't captured as a conversation id. */}
-      <Route path="/messages/new" component={MessageNewPage} />
-      <Route path="/messages/:id/write" component={MessageWritePage} />
-      <Route path="/messages/:id" component={MessageThreadPage} />
-      <Route path="/messages" component={MessagesPage} />
+      {/* Letters & Messages removed (owner) — the correspondence/letter-writing
+          and 1:1 messaging features are no longer part of the experience. */}
       <Route path="/people" component={People} />
       <Route path="/fellows" component={FellowsPage} />
       <Route path="/thanks" component={ThanksPage} />
@@ -1308,7 +1278,6 @@ function Router() {
           with the owner. Lives outside any tier gate (no auth
           required to render). */}
       <Route path="/p/:token" component={PublicPrayerRequestPage} />
-      <Route path="/write" component={PublicLettersPage} />
       {/* /feed/:slug — public, no-login landing for a single prayer feed.
           Logged-in users are redirected by the page to /prayer-feeds/:slug. */}
       <Route path="/feed/:slug" component={PublicFeedPage} />

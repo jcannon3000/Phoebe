@@ -7,7 +7,6 @@ import { usePersonProfile } from "@/hooks/usePeople";
 import { Layout } from "@/components/layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { Settings } from "lucide-react";
 import { PrayForThemButton } from "@/components/pray-for-them";
 import { useTranslation } from "react-i18next";
@@ -51,21 +50,6 @@ function daysRemaining(expiresAt: string | null): number | null {
   if (!expiresAt) return null;
   const ms = new Date(expiresAt).getTime() - Date.now();
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-}
-
-// ─── Correspondence type (mirrors LettersPage) ────────────────────────────────
-interface CorrespondenceItem {
-  id: number;
-  name: string;
-  groupType: string;
-  members: Array<{ name: string | null; email: string; lastLetterAt: string | null }>;
-  letterCount: number;
-  unreadCount: number;
-  myTurn: boolean;
-  currentPeriod: {
-    periodNumber: number;
-    hasWrittenThisPeriod: boolean;
-  };
 }
 
 // ─── BarCard ──────────────────────────────────────────────────────────────────
@@ -131,27 +115,6 @@ export default function PersonProfile() {
   const [wordJustSent, setWordJustSent] = useState(false);
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
-
-  // Fetch all correspondences and filter to ones that include this person
-  const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
-    queryKey: ["/api/phoebe/correspondences"],
-    queryFn: () => apiRequest("GET", "/api/phoebe/correspondences"),
-    enabled: !!user && !!email,
-  });
-
-  // Correspondences with this person. Zero-letter ones are filtered
-  // out: a dialogue with no letters yet isn't a relationship surface —
-  // it's either a stale row from the old "create then write" flow or
-  // a group setup the creator hasn't opened. Dropping them here means
-  // the "Write a letter" CTA still shows (and no empty card appears).
-  // Letters feature off (LETTERS_MESSAGES_ENABLED) → no shared letters, which
-  // hides the "Letters with …" section and zeroes its contribution to counts.
-  const sharedLetters = LETTERS_MESSAGES_ENABLED
-    ? (correspondencesData ?? []).filter(c =>
-        c.letterCount > 0 &&
-        c.members.some(m => m.email.toLowerCase() === (email ?? "").toLowerCase())
-      )
-    : [];
 
   const muteMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/mutes/${(person as any)?.userId}`),
@@ -265,7 +228,6 @@ export default function PersonProfile() {
     (person as any).sharedGroups ?? [];
 
   const totalTogether =
-    sharedLetters.length +
     (person.sharedPractices?.length ?? 0) +
     (person.sharedRituals?.length ?? 0) +
     sharedGroups.length;
@@ -522,53 +484,6 @@ export default function PersonProfile() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.08 }}
           >
-            {/* Letters */}
-            {sharedLetters.length > 0 && (
-              <>
-                <SectionHeader label={t("person.section_letters")} />
-                <div className="space-y-3">
-                  {sharedLetters.map(c => {
-                    const isOneToOne = c.groupType === "one_to_one";
-                    const needsLetter = c.myTurn && !c.currentPeriod.hasWrittenThisPeriod;
-                    const hasUnread = c.unreadCount > 0;
-                    const statusText = c.currentPeriod.hasWrittenThisPeriod
-                      ? t("person.status_sent_awaiting")
-                      : c.myTurn
-                      ? t("person.status_your_turn")
-                      : hasUnread
-                      ? t("person.status_new_letter")
-                      : t("person.status_letter_n", { number: c.currentPeriod.periodNumber });
-                    const href = needsLetter
-                      ? `/letters/${c.id}/write`
-                      : `/letters/${c.id}`;
-                    return (
-                      <BarCard
-                        key={c.id}
-                        href={href}
-                        barColor={CATEGORY.letters.bar}
-                        borderColor={CATEGORY.letters.border}
-                        pulse={needsLetter}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
-                            📮 {isOneToOne ? t("person.letters_with", { name: firstName }) : c.name}
-                          </p>
-                          {c.letterCount > 0 && (
-                            <span className="text-[10px] shrink-0 mt-0.5" style={{ color: "rgba(200,212,192,0.4)" }}>
-                              {t("person.letter_count", { count: c.letterCount })}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs mt-1" style={{ color: needsLetter ? "#C8D4C0" : "#8FAF96", fontWeight: needsLetter ? 500 : 400 }}>
-                          {statusText}
-                        </p>
-                      </BarCard>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
             {/* Practices */}
             {person.sharedPractices && person.sharedPractices.length > 0 && (
               <>
@@ -727,23 +642,6 @@ export default function PersonProfile() {
               </>
             )}
 
-            {/* CTA — only when there's no letter correspondence yet.
-                Once one exists, the dialogue is the relationship and the
-                profile shouldn't push another channel on top of it.
-                Goes straight to composing — the recipient is known, so
-                /letters/compose skips the type + who pickers entirely.
-                The dialogue is created when this first letter sends. */}
-            {LETTERS_MESSAGES_ENABLED && sharedLetters.length === 0 && email && (
-              <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
-                <Link
-                  href={`/letters/compose?to=${encodeURIComponent(email)}${person?.name ? `&toName=${encodeURIComponent(person.name)}` : ""}`}
-                  className="text-sm font-medium transition-opacity hover:opacity-70"
-                  style={{ color: "#8FAF96" }}
-                >
-                  + {t("person.write_a_letter", { name: firstName })} 📮
-                </Link>
-              </div>
-            )}
           </motion.div>
         )}
       </div>
