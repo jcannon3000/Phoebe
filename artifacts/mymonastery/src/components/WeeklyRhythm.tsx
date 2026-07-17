@@ -383,7 +383,11 @@ function LogSheet({
               The day
             </p>
             <div className="flex gap-1.5 flex-wrap">
-              {WEEKDAY_LABELS.map((label, idx) => {
+              {/* Monday-first display order (the weekly rhythm runs Mon→Sun).
+                  The iterated value IS the day's getDay() index (0=Sun..6=Sat) —
+                  reorder the DISPLAY only, never the stored values in restDays. */}
+              {[1, 2, 3, 4, 5, 6, 0].map((idx) => {
+                const label = WEEKDAY_LABELS[idx];
                 const selected = restDays.includes(idx);
                 return (
                   <button

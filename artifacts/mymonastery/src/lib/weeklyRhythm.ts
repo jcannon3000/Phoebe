@@ -84,12 +84,17 @@ export const WEEKLY_PRACTICES: WeeklyPractice[] = [
   },
 ];
 
-// Sunday on-or-before today, local time, YYYY-MM-DD — the same week boundary
-// the daily rhythm uses (lib/practiceCompletion.ts weekStartLocalISO).
+// MONDAY on-or-before today, local time, YYYY-MM-DD. The weekly practices run
+// Monday → Sunday and reset each Monday (owner). NOTE: this is deliberately a
+// DIFFERENT boundary from the daily rhythm's Sunday-based week
+// (lib/practiceCompletion.ts weekStartLocalISO), which must stay Sunday to match
+// the server's prayed-with week — only the Way of Love weekly band uses this.
 export function weekStartISO(): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay()); // 0 = Sunday
+  // getDay(): 0=Sun..6=Sat. Days since the most recent Monday: Mon→0 … Sun→6.
+  const sinceMonday = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - sinceMonday);
   return d.toLocaleDateString("en-CA");
 }
 
@@ -107,7 +112,7 @@ export type PracticeLogEntry = {
 };
 
 // A weekly practice counts as kept if it has any entry dated within the current
-// week (Sunday → today). `day` is a zero-padded ISO date, so a lexical compare
+// week (Monday → today). `day` is a zero-padded ISO date, so a lexical compare
 // works. Entries arrive newest-first, so the first match is the most recent.
 // The upper bound (<= today) guards against a future-dated entry — clock skew
 // or a direct API write — falsely marking the week kept.
