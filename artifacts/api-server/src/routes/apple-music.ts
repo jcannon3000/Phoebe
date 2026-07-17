@@ -95,7 +95,12 @@ router.get("/apple-music/search", async (req: Request, res: Response): Promise<v
   try {
     const url = `https://api.music.apple.com/v1/catalog/${storefront}/search`
       + `?term=${encodeURIComponent(term)}&types=artists,songs,albums,playlists&limit=5`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      // Bound the outbound call so a hung Apple endpoint can't tie up the
+      // request (peers cac.ts / ncmp.ts / weekly-plan-content.ts do the same).
+      signal: AbortSignal.timeout(8000),
+    });
     if (!r.ok) { res.json({ results: [], reason: `apple-${r.status}` }); return; }
     const j = await r.json() as { results?: { artists?: { data?: AppleData[] }; songs?: { data?: AppleData[] }; albums?: { data?: AppleData[] }; playlists?: { data?: AppleData[] } } };
     // Interleave the kinds round-robin so the dropdown shows a MIX (song, album,

@@ -903,7 +903,7 @@ router.post(
     message: "Too many signup attempts from your network. Please try again in an hour.",
   }),
   async (req, res): Promise<void> => {
-  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly, subscribeToFeedSlug, anonAmenSessionId } = req.body as {
+  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly, subscribeToFeedSlug, anonAmenSessionId } = (req.body ?? {}) as {
     email?: string; name?: string; password?: string;
     groupSlug?: string; groupInviteToken?: string;
     // Honeypot: a hidden field no real browser user will ever fill in.
@@ -1283,7 +1283,7 @@ router.post(
     message: "Too many login attempts for this account. Please try again in a few minutes.",
   }),
   async (req, res): Promise<void> => {
-  const { email, password } = req.body as { email?: string; password?: string };
+  const { email, password } = (req.body ?? {}) as { email?: string; password?: string };
 
   if (!email || !password) {
     res.status(400).json({ error: "Email and password are required." }); return;

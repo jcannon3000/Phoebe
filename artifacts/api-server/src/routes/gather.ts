@@ -174,7 +174,7 @@ router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60
       body: `Help pick a time for "${title}"`,
       path: `/gather/${gather!.shareToken}`,
       threadId: "gather", collapseId: `gather-invite-${gather!.id}`,
-    });
+    }).catch((err) => console.warn("[gather] invite push failed:", err));
   }
   for (const email of inviteeEmails) {
     void sendGatherEmail({
@@ -187,7 +187,7 @@ router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60
       // guest who responds without re-typing their email is counted a
       // non-responder and re-nudged.
       ctaLabel: "Mark your availability", ctaUrl: `${link}?e=${encodeURIComponent(email)}`,
-    });
+    }).catch((err) => console.warn("[gather] invite email failed:", err));
   }
 
   res.json({ id: gather!.id, shareToken: gather!.shareToken });

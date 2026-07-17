@@ -120,7 +120,7 @@ router.delete("/push/device-token", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const { token, platform } = req.body as { token?: string; platform?: string };
+  const { token, platform } = (req.body ?? {}) as { token?: string; platform?: string };
   if (!token || (platform !== "ios" && platform !== "android")) {
     res.status(400).json({ error: "token and platform required" });
     return;
@@ -273,7 +273,7 @@ router.delete("/push/web-subscription", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const { endpoint } = req.body as { endpoint?: string };
+  const { endpoint } = (req.body ?? {}) as { endpoint?: string };
   if (!endpoint) {
     res.status(400).json({ error: "endpoint required" });
     return;

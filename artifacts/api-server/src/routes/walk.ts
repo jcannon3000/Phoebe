@@ -344,6 +344,12 @@ router.post("/walk/reached-three", perUserRateLimit("walk_reached_three", { max:
   const [u] = await db.select({ tz: usersTable.timezone, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, me));
   const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: u?.tz || "UTC" }).format(new Date());
   if (reachedThreePinged.get(me) === ymd) { res.json({ ok: true, alreadySent: true }); return; }
+  // Reap stale entries so the per-process dedup Map can't grow without bound:
+  // once it's large, drop every entry whose ymd isn't today (yesterday's pings
+  // are irrelevant — the guard only cares about "already pinged TODAY").
+  if (reachedThreePinged.size > 5000) {
+    for (const [uid, d] of reachedThreePinged) if (d !== ymd) reachedThreePinged.delete(uid);
+  }
   reachedThreePinged.set(me, ymd);
   const first = (u?.name || "Someone").split(/\s+/)[0];
   // The viewer's fellows — each an active walking companion.

@@ -319,7 +319,10 @@ export function WeeklyGridCard() {
   // edge rolling the day). Today is the last column.
   const dayInitials = days.map((d) => {
     const wd = new Date(`${d.ymd}T12:00:00`).getDay();
-    return ["S", "M", "T", "W", "T", "F", "S"][wd];
+    // A malformed d.ymd yields NaN → the letters lookup would be undefined and
+    // the header column blanks. Fall back to an empty string rather than render
+    // "undefined".
+    return Number.isNaN(wd) ? "" : ["S", "M", "T", "W", "T", "F", "S"][wd];
   });
   const LABEL_W = 104;
 

@@ -734,10 +734,12 @@ const StandalonePlantSchema = z.object({
   intention: z.string().min(1).max(500),
   loggingType: z.enum(["photo", "reflection", "both", "checkin"]),
   reflectionPrompt: z.string().max(300).optional(),
-  templateType: z.string().optional(),
+  templateType: z.string().max(60).optional(),
   intercessionTopic: z.string().max(300).optional(),
   intercessionSource: z.enum(["bcp", "custom", "action"]).optional(),
-  intercessionFullText: z.string().optional(),
+  // Cap the free text (the EDIT schema already caps at 4000) so an unbounded
+  // string can't be written straight to the DB on the create path.
+  intercessionFullText: z.string().max(4000).optional(),
   // Optional outbound URL — set when an admin creates an "action"
   // intercession (a prayer + a link to learn more / take action).
   // Slideshow renders this as a "Take action →" pill on the slide.
