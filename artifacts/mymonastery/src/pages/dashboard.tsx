@@ -7166,7 +7166,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 case "gratitude":
                   return <GratitudeHomeCard />;
                 case "prayer-list":
-                  return <PrayerListHomeCard />;
+                  // Prayer list removed from the home screen (owner) — reachable
+                  // from the side menu / deep links instead.
+                  return null;
                 case "examen":
                   return <ExamenHomeCard />;
                 case "cac":
@@ -7293,32 +7295,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 {/* Heart to Heart (one-to-one prayer partners) is hidden for
                     now — the PartnerExchange home card was removed. */}
 
-                {/* Prayer List — the requests carousel (title + divider +
-                    "View all", "Pray through the whole list" at its foot), then
-                    a wide "New prayer request" CTA. Leads the home, above the
-                    events schedule. Hidden in guest SHAPE (public close-off):
-                    a widened signed-in guest may have request data, but the
-                    public home carries no prayer list. */}
-                {filter === null && !eventsOnly && !isGuestShape && (() => {
-                  // One source of truth (see homeCarouselRows above) — own +
-                  // others' requests AND community intercessions, already sorted.
-                  const carouselRows = homeCarouselRows;
-                  if (carouselRows.length === 0) return null;
-                  const carouselFrom = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
-                  return (
-                    <div style={{ marginTop: carouselRows.length > 0 ? -12 : 4 }}>
-                      {carouselRows.length > 0 && (
-                        <PrayerListCarousel
-                          requests={carouselRows}
-                          viewerName={userName || null}
-                          viewerAvatarUrl={user?.avatarUrl ?? null}
-                          cascadeFrom={carouselFrom}
-                          tight
-                        />
-                      )}
-                    </div>
-                  );
-                })()}
+                {/* Prayer List removed from the home screen (owner) — the
+                    requests carousel + "New prayer request" compose no longer
+                    lead the home. Still reachable via the side menu / deep
+                    links (/prayer-list, /my-prayer-requests, /intentions). */}
 
                 {/* Your prayer requests — the viewer's OWN open requests, with an
                     overlapped stack of the people who've prayed for them lately on
@@ -7328,84 +7308,28 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     SHAPE: the public home carries no prayer-request composer
                     and no community events. */}
                 {filter === null && !eventsOnly && !!user && !isGuestShape && (() => {
-                  // The upcoming EVENTS render below the prayer list. The "Add
-                  // prayer" button always sits directly under the list (your own
-                  // requests now live in that list too, with the 🙏/✓ pill), so
-                  // you can start a new request from the home at any time.
-                  const evToday = fToday.filter(isEventItem);
-                  const evTomorrow = fTomorrow.filter(isEventItem);
-                  const evWeek = fWeek.filter(isEventItem);
-                  const evMonth = fMonth.filter(isEventItem);
-                  const hasEvents = evToday.length + evTomorrow.length + evWeek.length + evMonth.length > 0;
-                  // Cascade base for the events schedule: after the rhythm cards
-                  // and the prayer-list carousel (which now also holds your own
-                  // requests).
-                  // Resume the cascade exactly one step after the WHOLE carousel
-                  // (own + others' requests AND intercessions) — same rows the
-                  // carousel renders, so the count can never drift and an event
-                  // can't rise alongside the last prayer card.
-                  const carouselCount = homeCarouselRows.length;
-                  // The "Add a prayer" pill cascades in like a card, right after
-                  // the carousel; the events then resume one step after the pill.
-                  const addPrayerFrom = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1 + carouselCount;
-                  const evBase = addPrayerFrom + 1;
-                  const cTomorrow = evBase + evToday.length;
-                  const cWeek = cTomorrow + evTomorrow.length;
-                  const cMonth = cWeek + evWeek.length;
-                  // Two pills, side by side: "Add" (new request) and "Edit"
-                  // (manage your own personal prayer list — /intentions).
-                  const pillStyle = { padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 } as const;
-                  const addPill = isAdminOfAny ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPrayerChoice(true)}
-                      className="flex-1 rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                      style={pillStyle}
-                    >
-                      {t("dashboard.add_prayer_short", { defaultValue: "Add" })}
-                    </button>
-                  ) : (
-                    <Link href="/pray-request/new" className="flex-1 block">
-                      <div
-                        className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                        style={pillStyle}
-                      >
-                        {t("dashboard.add_prayer_short", { defaultValue: "Add" })}
-                      </div>
-                    </Link>
-                  );
-                  const newRequestBtn = (
-                    <div className="flex" style={{ gap: 10 }}>
-                      {addPill}
-                      <Link href="/intentions" className="flex-1 block">
-                        <div
-                          className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                          style={pillStyle}
-                        >
-                          {t("dashboard.edit_prayers", { defaultValue: "Edit" })}
-                        </div>
-                      </Link>
-                    </div>
-                  );
+                  // Events on the home — ONE "Events" section, no time sub-headers
+                  // (owner). All upcoming events across today→month, already in
+                  // chronological order (the buckets are date-sorted), rendered
+                  // under a single "Events" header. Cascades in right after the
+                  // rhythm cards (the prayer list that used to sit between them is
+                  // gone).
+                  const allEvents = [...fToday, ...fTomorrow, ...fWeek, ...fMonth].filter(isEventItem);
+                  if (allEvents.length === 0) return null;
+                  const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
                   return (
-                    <div style={{ marginTop: 12 }}>
-                      {/* The pill fades up with the cascade, like a card — at the
-                          index right after the prayer-list carousel. */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min(addPrayerFrom * 0.1, 1.5) }}
-                      >
-                        {newRequestBtn}
-                      </motion.div>
-                      {hasEvents && (
-                        <div style={{ marginTop: 20 }}>
-                          <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={evBase} />
-                          <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cTomorrow} />
-                          <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cWeek} />
-                          <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade cascadeFrom={cMonth} />
-                        </div>
-                      )}
+                    <div style={{ marginTop: 20 }}>
+                      <TimeSection
+                        label={t("dashboard.events_title", { defaultValue: "Events" })}
+                        items={allEvents}
+                        userEmail={userEmail}
+                        userName={userName}
+                        onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                        onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
+                        onOpenGathering={(r) => setOpenGathering(r)}
+                        cascade
+                        cascadeFrom={evBase}
+                      />
                     </div>
                   );
                 })()}
