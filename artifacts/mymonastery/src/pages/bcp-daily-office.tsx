@@ -2565,11 +2565,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
               {parsePsalmContent(fixQuoteDirection(currentSlide.content)).map((v, i) => (
                 v.kind === "verse" ? (
-                  <div key={i} style={{ display: "flex", gap: 10 }}>
+                  <div key={i} style={{ display: "flex", gap: 7 }}>
                     <span
                       style={{
                         flex: "0 0 auto",
-                        minWidth: 22,
+                        minWidth: 16,
                         color: FAINT_GREEN,
                         fontSize: 13,
                         fontFamily: SPACE_GROTESK,
@@ -2589,7 +2589,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                             lineHeight: 1.6,
                             color: WARM_TEXT,
                             margin: 0,
-                            paddingLeft: ln.indented ? 24 : 0,
+                            paddingLeft: ln.indented ? 16 : 0,
                             fontFamily: SPACE_GROTESK,
                             whiteSpace: "pre-wrap",
                           }}
@@ -2731,7 +2731,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                             lineHeight: 1.6,
                             color: WARM_TEXT,
                             margin: 0,
-                            paddingLeft: indented ? 32 : 0,
+                            paddingLeft: indented ? 18 : 0,
                             fontFamily: SPACE_GROTESK,
                           }}
                         />

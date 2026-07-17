@@ -490,14 +490,14 @@ export default function PsalmsPage() {
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {slide.verses.map((v, i) => (
-                <div key={i} style={{ display: "flex", gap: 10 }}>
-                  <span style={{ flex: "0 0 auto", minWidth: 22, textAlign: "left", color: "rgba(var(--ot-sage, 143,175,150),0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
+                <div key={i} style={{ display: "flex", gap: 7 }}>
+                  <span style={{ flex: "0 0 auto", minWidth: 16, textAlign: "left", color: "rgba(var(--ot-sage, 143,175,150),0.45)", fontFamily: FONT, fontSize: 13, lineHeight: 1.6, paddingTop: 2 }}>{v.num}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {v.lines.map((ln, j) => (
                       <PointedLine
                         key={j}
                         text={ln.text}
-                        style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 19, lineHeight: 1.6, paddingLeft: ln.indented ? 24 : 0, whiteSpace: "pre-wrap" }}
+                        style={{ margin: 0, color: WARM, fontFamily: FONT, fontSize: 19, lineHeight: 1.6, paddingLeft: ln.indented ? 16 : 0, whiteSpace: "pre-wrap" }}
                       />
                     ))}
                   </div>
