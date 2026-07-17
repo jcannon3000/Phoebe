@@ -1131,11 +1131,6 @@ export function CobreatheBreath({
           aria-hidden="true"
           style={{
             position: "absolute", inset: 0, pointerEvents: "none",
-            // Flex-centre the emoji over the rings box. SVG <text> positioning
-            // follows the glyph's FONT metrics (which sit off-centre for the
-            // globe emoji), so it drifted up-left of the rings; flex centring of
-            // the line box reads as truly concentric, as it did originally.
-            display: "flex", alignItems: "center", justifyContent: "center",
             // Symmetric glow (no downward Y offset) so the shadow doesn't pull the
             // globe's visual weight below the rings' centre.
             filter: reachedNow
@@ -1144,7 +1139,15 @@ export function CobreatheBreath({
             transition: reachedNow ? "filter 1.2s ease" : "none",
           }}
         >
-          <span style={{ fontSize: Math.round(globePx * 0.5), lineHeight: 1 }}>{globe}</span>
+          {/* Centre the globe on the rings' 64,64 point. A flex-centred emoji
+              span centres its LINE BOX, not the glyph — the globe emoji sits
+              low/left within that box, so it drifted off-centre. SVG <text> with
+              text-anchor=middle AND dominant-baseline=central centres the glyph
+              box itself (an earlier attempt used a bare <text x y>, whose baseline
+              anchoring is what pushed it up-left). Not rotated, so it stays upright. */}
+          <svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 128 128" style={{ overflow: "visible" }}>
+            <text x={64} y={64} textAnchor="middle" dominantBaseline="central" fontSize={64}>{globe}</text>
+          </svg>
         </div>
       </div>
       )}
