@@ -437,6 +437,11 @@ export default function ParishAdmin() {
               </div>
             )}
 
+            {/* Ways to get involved — the priest publishes opportunities
+                (worship roles, service ministries, community groups); members
+                tap "I'm interested" and the admin sees who raised their hand. */}
+            {parishId !== null && <OpportunitiesManager parishId={parishId} />}
+
             {/* Parish admin roster — creator + any co-admins the
                 creator has granted access to. Adding goes by email
                 (the recipient must already have a Phoebe account). */}
@@ -511,6 +516,158 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
 // Adds another admin by email (the recipient must already have a
 // Phoebe account). The creator is shown but not removable from this
 // surface — they'd need to transfer ownership first.
+// ─── "Ways to get involved" manager (admin side) ────────────────────────────
+type AdminOpportunity = {
+  id: number;
+  title: string;
+  description: string | null;
+  category: string;
+  scheduleNote: string | null;
+  contact: string | null;
+  interestCount: number;
+  viewerInterested: boolean;
+};
+const OPP_CATS: { value: string; label: string }[] = [
+  { value: "worship", label: "🕊️ Worship & liturgy" },
+  { value: "serve", label: "🤝 Serve" },
+  { value: "community", label: "👥 Community" },
+  { value: "other", label: "✨ Other" },
+];
+
+function OpportunitiesManager({ parishId }: { parishId: number }) {
+  const qc = useQueryClient();
+  const listQ = useQuery<{ opportunities: AdminOpportunity[] }>({
+    queryKey: ["/api/parish/opportunities", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/opportunities?parishId=${parishId}`),
+  });
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("worship");
+  const [scheduleNote, setScheduleNote] = useState("");
+  const [description, setDescription] = useState("");
+  const [contact, setContact] = useState("");
+  const [viewing, setViewing] = useState<number | null>(null);
+
+  const resetForm = () => {
+    setTitle(""); setCategory("worship"); setScheduleNote("");
+    setDescription(""); setContact(""); setEditId(null); setShowForm(false);
+  };
+
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        parishId, title: title.trim(), category,
+        scheduleNote: scheduleNote.trim() || undefined,
+        description: description.trim() || undefined,
+        contact: contact.trim() || undefined,
+      };
+      return editId
+        ? apiRequest("PUT", `/api/parish/admin/opportunities/${editId}`, body)
+        : apiRequest("POST", "/api/parish/admin/opportunities", body);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/parish/opportunities", parishId] });
+      resetForm();
+    },
+  });
+  const archive = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/parish/admin/opportunities/${id}/archive`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/parish/opportunities", parishId] }),
+  });
+
+  const startEdit = (o: AdminOpportunity) => {
+    setEditId(o.id); setTitle(o.title); setCategory(o.category);
+    setScheduleNote(o.scheduleNote ?? ""); setDescription(o.description ?? "");
+    setContact(o.contact ?? ""); setShowForm(true);
+  };
+
+  const opps = listQ.data?.opportunities ?? [];
+  const input: React.CSSProperties = {
+    width: "100%", background: "#0F2818", border: `1px solid ${BORDER}`, color: WARM_TEXT,
+    fontFamily: SPACE_GROTESK, fontSize: 14, padding: "10px 12px", borderRadius: 10, marginBottom: 8,
+  };
+
+  return (
+    <div style={{ marginTop: 28, marginBottom: 20 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: "0 0 12px" }}>
+        Ways to get involved
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {opps.map((o) => (
+          <div key={o.id} style={{ background: "#0F2818", border: `1px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>{o.title}</p>
+                <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, color: FAINT_GREEN, margin: "3px 0 0" }}>
+                  {OPP_CATS.find((c) => c.value === o.category)?.label ?? o.category}{o.scheduleNote ? ` · ${o.scheduleNote}` : ""}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+                <button onClick={() => startEdit(o)} style={{ background: "none", border: "none", color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 12, cursor: "pointer" }}>Edit</button>
+                <button onClick={() => { if (window.confirm("Remove this opportunity?")) archive.mutate(o.id); }} style={{ background: "none", border: "none", color: "rgba(196,122,101,0.9)", fontFamily: SPACE_GROTESK, fontSize: 12, cursor: "pointer" }}>Remove</button>
+              </div>
+            </div>
+            <button
+              onClick={() => setViewing(viewing === o.id ? null : o.id)}
+              style={{ marginTop: 8, background: "none", border: "none", color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 12, cursor: "pointer", padding: 0 }}
+            >
+              {o.interestCount} interested{o.interestCount > 0 ? (viewing === o.id ? " ▲" : " ▼") : ""}
+            </button>
+            {viewing === o.id && o.interestCount > 0 && <InterestList opportunityId={o.id} />}
+          </div>
+        ))}
+        {opps.length === 0 && (
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, color: FAINT_GREEN, margin: 0 }}>
+            No opportunities yet — add one so your parish can get involved.
+          </p>
+        )}
+      </div>
+
+      {showForm ? (
+        <div style={{ marginTop: 12, background: "rgba(46,107,64,0.08)", border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (e.g. Lector, Food pantry)" style={input} />
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ ...input, colorScheme: "dark" }}>
+            {OPP_CATS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+          <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="When (optional) — e.g. Sundays" style={input} />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" rows={3} style={{ ...input, resize: "vertical" }} />
+          <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Contact (optional) — e.g. Talk to Fr. James" style={input} />
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button onClick={() => save.mutate()} disabled={!title.trim() || save.isPending}
+              style={{ flex: 1, background: "rgba(46,107,64,0.85)", border: "1px solid rgba(126,210,140,0.5)", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, padding: "10px", borderRadius: 999, cursor: "pointer", opacity: !title.trim() ? 0.5 : 1 }}>
+              {editId ? "Save" : "Add"}
+            </button>
+            <button onClick={resetForm} style={{ background: "none", border: `1px solid ${BORDER}`, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 14, padding: "10px 16px", borderRadius: 999, cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowForm(true)} style={{ marginTop: 10, background: "none", border: `1px solid ${BORDER}`, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, padding: "9px 16px", borderRadius: 999, cursor: "pointer", width: "100%" }}>
+          + Add an opportunity
+        </button>
+      )}
+    </div>
+  );
+}
+
+function InterestList({ opportunityId }: { opportunityId: number }) {
+  const q = useQuery<{ interests: { name: string | null; email: string | null; note: string | null; at: string }[] }>({
+    queryKey: ["/api/parish/admin/opportunities", opportunityId, "interests"],
+    queryFn: () => apiRequest("GET", `/api/parish/admin/opportunities/${opportunityId}/interests`),
+  });
+  const rows = q.data?.interests ?? [];
+  return (
+    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: "rgba(200,212,192,0.85)" }}>
+          {r.name || "Someone"}{r.email ? ` · ${r.email}` : ""}{r.note ? ` — "${r.note}"` : ""}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ParishAdminsManager({ slug }: { slug: string }) {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");

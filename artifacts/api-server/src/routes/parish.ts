@@ -21,7 +21,7 @@
  */
 
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql, inArray, isNull } from "drizzle-orm";
 import {
   db,
   prayerFeedsTable,
@@ -32,10 +32,14 @@ import {
   betaUsersTable,
   prayerSessionsTable,
   parishAdminsTable,
+  parishOpportunitiesTable,
+  parishOpportunityInterestsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import { isUserBeta } from "../lib/parishGate";
 import { todayInZone } from "../lib/tz";
+import { perUserRateLimit } from "../lib/rate-limit";
+import { sendPushToUsers } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -1009,6 +1013,282 @@ router.get("/parishes/:slug/admins", async (req, res): Promise<void> => {
       addedAt: c.createdAt.toISOString(),
     })),
   });
+});
+
+// ─── "Ways to get involved" opportunities ──────────────────────────────────
+// A priest (parish admin) publishes opportunities — worship roles, service
+// ministries, community groups — and parishioners tap "I'm interested", which
+// notifies the admins. Writes gated by canManageParish; reads require the
+// caller to be subscribed to that parish (users.parish_feed_id) OR an admin.
+
+const OPP_CATEGORIES = ["worship", "serve", "community", "other"] as const;
+
+const OpportunityBodySchema = z.object({
+  parishId: z.number().int().positive(),
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(2000).optional(),
+  category: z.enum(OPP_CATEGORIES).default("other"),
+  scheduleNote: z.string().trim().max(120).optional(),
+  contact: z.string().trim().max(200).optional(),
+});
+
+// The user ids of everyone who can manage a parish: the feed creator plus any
+// parish_admins rows. Used to notify admins when someone raises their hand.
+async function parishAdminUserIds(parishId: number): Promise<number[]> {
+  const [feed] = await db
+    .select({ creatorUserId: prayerFeedsTable.creatorUserId })
+    .from(prayerFeedsTable)
+    .where(eq(prayerFeedsTable.id, parishId));
+  const rows = await db
+    .select({ userId: parishAdminsTable.userId })
+    .from(parishAdminsTable)
+    .where(eq(parishAdminsTable.parishFeedId, parishId));
+  const ids = new Set<number>(rows.map((r) => r.userId));
+  if (feed?.creatorUserId) ids.add(feed.creatorUserId);
+  return [...ids];
+}
+
+// GET /api/parish/opportunities?parishId= — the parishioner's "get involved"
+// board: every non-archived opportunity for their parish, with a count of how
+// many have raised their hand and whether the viewer has.
+router.get("/parish/opportunities", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = Number(req.query.parishId);
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    // Subscribers see their own parish; admins can preview any parish they manage.
+    const isSubscriber = user.parishFeedId === parishId;
+    const isAdmin = (await canManageParish(session.id, parishId)).allowed;
+    if (!isSubscriber && !isAdmin) { res.status(403).json({ error: "Not subscribed to this parish." }); return; }
+
+    const opps = await db
+      .select()
+      .from(parishOpportunitiesTable)
+      .where(and(
+        eq(parishOpportunitiesTable.parishFeedId, parishId),
+        isNull(parishOpportunitiesTable.archivedAt),
+      ))
+      .orderBy(asc(parishOpportunitiesTable.createdAt));
+
+    const oppIds = opps.map((o) => o.id);
+    const counts = new Map<number, number>();
+    const mine = new Set<number>();
+    if (oppIds.length > 0) {
+      const countRows = await db
+        .select({ opportunityId: parishOpportunityInterestsTable.opportunityId, n: sql<number>`count(*)::int` })
+        .from(parishOpportunityInterestsTable)
+        .where(inArray(parishOpportunityInterestsTable.opportunityId, oppIds))
+        .groupBy(parishOpportunityInterestsTable.opportunityId);
+      for (const r of countRows) counts.set(r.opportunityId, r.n);
+      const mineRows = await db
+        .select({ opportunityId: parishOpportunityInterestsTable.opportunityId })
+        .from(parishOpportunityInterestsTable)
+        .where(and(
+          inArray(parishOpportunityInterestsTable.opportunityId, oppIds),
+          eq(parishOpportunityInterestsTable.userId, session.id),
+        ));
+      for (const r of mineRows) mine.add(r.opportunityId);
+    }
+
+    res.json({
+      isAdmin,
+      opportunities: opps.map((o) => ({
+        id: o.id,
+        title: o.title,
+        description: o.description,
+        category: o.category,
+        scheduleNote: o.scheduleNote,
+        contact: o.contact,
+        interestCount: counts.get(o.id) ?? 0,
+        viewerInterested: mine.has(o.id),
+      })),
+    });
+  } catch (err) {
+    console.error("[parish] list opportunities failed:", err);
+    res.status(500).json({ error: "Failed to load opportunities." });
+  }
+});
+
+// POST /api/parish/admin/opportunities — create (admin only).
+router.post("/parish/admin/opportunities", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = OpportunityBodySchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { parishId, title, description, category, scheduleNote, contact } = parsed.data;
+  try {
+    const { allowed } = await canManageParish(session.id, parishId);
+    if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+    const [created] = await db.insert(parishOpportunitiesTable).values({
+      parishFeedId: parishId,
+      title,
+      description: description || null,
+      category,
+      scheduleNote: scheduleNote || null,
+      contact: contact || null,
+      createdByUserId: session.id,
+    }).returning();
+    res.status(201).json({ ok: true, id: created.id });
+  } catch (err) {
+    console.error("[parish] create opportunity failed:", err);
+    res.status(500).json({ error: "Failed to create." });
+  }
+});
+
+// PUT /api/parish/admin/opportunities/:id — edit (admin only).
+router.put("/parish/admin/opportunities/:id", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = OpportunityBodySchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { parishId, title, description, category, scheduleNote, contact } = parsed.data;
+  try {
+    const [opp] = await db.select().from(parishOpportunitiesTable).where(eq(parishOpportunitiesTable.id, id));
+    if (!opp || opp.parishFeedId !== parishId) { res.status(404).json({ error: "Not found" }); return; }
+    const { allowed } = await canManageParish(session.id, parishId);
+    if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+    await db.update(parishOpportunitiesTable).set({
+      title, description: description || null, category,
+      scheduleNote: scheduleNote || null, contact: contact || null,
+      updatedAt: new Date(),
+    }).where(eq(parishOpportunitiesTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] edit opportunity failed:", err);
+    res.status(500).json({ error: "Failed to save." });
+  }
+});
+
+// POST /api/parish/admin/opportunities/:id/archive — soft-archive (admin only).
+router.post("/parish/admin/opportunities/:id/archive", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [opp] = await db.select().from(parishOpportunitiesTable).where(eq(parishOpportunitiesTable.id, id));
+    if (!opp) { res.status(404).json({ error: "Not found" }); return; }
+    const { allowed } = await canManageParish(session.id, opp.parishFeedId);
+    if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+    await db.update(parishOpportunitiesTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(parishOpportunitiesTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] archive opportunity failed:", err);
+    res.status(500).json({ error: "Failed to remove." });
+  }
+});
+
+// GET /api/parish/admin/opportunities/:id/interests — who raised their hand.
+router.get("/parish/admin/opportunities/:id/interests", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [opp] = await db.select().from(parishOpportunitiesTable).where(eq(parishOpportunitiesTable.id, id));
+    if (!opp) { res.status(404).json({ error: "Not found" }); return; }
+    const { allowed } = await canManageParish(session.id, opp.parishFeedId);
+    if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+    const rows = await db
+      .select()
+      .from(parishOpportunityInterestsTable)
+      .where(eq(parishOpportunityInterestsTable.opportunityId, id))
+      .orderBy(desc(parishOpportunityInterestsTable.createdAt));
+    res.json({
+      title: opp.title,
+      interests: rows.map((r) => ({
+        name: r.name, email: r.email, note: r.note, at: r.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error("[parish] list interests failed:", err);
+    res.status(500).json({ error: "Failed to load." });
+  }
+});
+
+// POST /api/parish/opportunities/:id/interest — a parishioner raises their hand.
+// Idempotent (unique on (opportunity, user)); notifies parish admins on the
+// FIRST insert only. Rate-limited so the button can't spam admin lock screens.
+router.post(
+  "/parish/opportunities/:id/interest",
+  perUserRateLimit("parish_opportunity_interest", { max: 40, windowMs: 60 * 60 * 1000 }),
+  async (req, res): Promise<void> => {
+    const session = getUser(req);
+    if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const note = typeof (req.body as { note?: unknown })?.note === "string"
+      ? (req.body as { note: string }).note.trim().slice(0, 500) : null;
+    try {
+      const [opp] = await db.select().from(parishOpportunitiesTable).where(eq(parishOpportunitiesTable.id, id));
+      if (!opp || opp.archivedAt) { res.status(404).json({ error: "Not found" }); return; }
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
+      if (!user || user.parishFeedId !== opp.parishFeedId) {
+        res.status(403).json({ error: "Not subscribed to this parish." }); return;
+      }
+      // Was there already an interest row? (For idempotent "don't re-notify".)
+      const [existing] = await db.select({ id: parishOpportunityInterestsTable.id })
+        .from(parishOpportunityInterestsTable)
+        .where(and(
+          eq(parishOpportunityInterestsTable.opportunityId, id),
+          eq(parishOpportunityInterestsTable.userId, session.id),
+        ));
+      await db.insert(parishOpportunityInterestsTable).values({
+        opportunityId: id,
+        userId: session.id,
+        name: user.name ?? null,
+        email: user.email ?? null,
+        note,
+      }).onConflictDoUpdate({
+        target: [parishOpportunityInterestsTable.opportunityId, parishOpportunityInterestsTable.userId],
+        set: { name: user.name ?? null, note },
+      });
+
+      // Notify the parish admins on the first hand-raise only.
+      if (!existing) {
+        const adminIds = (await parishAdminUserIds(opp.parishFeedId)).filter((uid) => uid !== session.id);
+        if (adminIds.length > 0) {
+          const who = (user.name || "Someone").split(/\s+/)[0] || "Someone";
+          void sendPushToUsers(adminIds, {
+            title: `${who} is interested`,
+            body: `"${opp.title}" — tap to see who's raising their hand.`,
+            path: `/parish/admin`,
+            threadId: "parish-opportunity",
+            collapseId: `parish-opp-${id}`,
+          }).catch((err) => console.warn("[parish] interest push failed:", err));
+        }
+      }
+      res.status(201).json({ ok: true });
+    } catch (err) {
+      console.error("[parish] express interest failed:", err);
+      res.status(500).json({ error: "Failed to submit." });
+    }
+  },
+);
+
+// DELETE /api/parish/opportunities/:id/interest — withdraw interest.
+router.delete("/parish/opportunities/:id/interest", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(parishOpportunityInterestsTable).where(and(
+      eq(parishOpportunityInterestsTable.opportunityId, id),
+      eq(parishOpportunityInterestsTable.userId, session.id),
+    ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] withdraw interest failed:", err);
+    res.status(500).json({ error: "Failed." });
+  }
 });
 
 export default router;

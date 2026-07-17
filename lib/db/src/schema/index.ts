@@ -89,3 +89,5 @@ export * from "./prescribed_routines";
 export * from "./rhythm_parties";
 export * from "./group_weekly_plans";
 export * from "./creator_seasons";
+export * from "./parish_opportunities";
+export * from "./parish_opportunity_interests";

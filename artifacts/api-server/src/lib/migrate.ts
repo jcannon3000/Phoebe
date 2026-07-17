@@ -1591,6 +1591,39 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_admins_pair ON parish_admins (parish_feed_id, user_id)`);
 
+    // Parish "ways to get involved" opportunities — a priest publishes worship
+    // roles + service ministries + community groups; parishioners tap
+    // "I'm interested". Schema: lib/db/src/schema/parish_opportunities +
+    // parish_opportunity_interests. Placed after prayer_feeds so the FK resolves.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS parish_opportunities (
+        id SERIAL PRIMARY KEY,
+        parish_feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        category TEXT NOT NULL DEFAULT 'other',
+        schedule_note TEXT,
+        contact TEXT,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        archived_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_parish_opportunities_feed ON parish_opportunities (parish_feed_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS parish_opportunity_interests (
+        id SERIAL PRIMARY KEY,
+        opportunity_id INTEGER NOT NULL REFERENCES parish_opportunities(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT,
+        email TEXT,
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_opp_interest_pair ON parish_opportunity_interests (opportunity_id, user_id)`);
+
     // ── Multi-slot prayer feed entries ─────────────────────────────────────
     // Each (feed_id, entry_date) supports up to three entries — slots
     // 1/2/3. Each slot becomes its own slide on the subscriber side, so

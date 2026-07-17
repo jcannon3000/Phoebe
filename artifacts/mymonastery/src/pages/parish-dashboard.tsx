@@ -658,6 +658,8 @@ export default function ParishDashboard() {
             (the priest / pastor). The card is intentionally quieter
             than the office buttons: this is for when something is
             on your heart, not the daily rhythm. */}
+        {data?.parish && <GetInvolvedCard parishId={data.parish.id} />}
+
         {data?.parish && <PrayerConcernCard parishId={data.parish.id} />}
 
         {/* Footer — quiet links */}
@@ -669,6 +671,94 @@ export default function ParishDashboard() {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── "Ways to get involved" board (member side) ─────────────────────────────
+// The priest publishes opportunities (worship roles, service ministries,
+// community groups); the parishioner taps "I'm interested", which notifies the
+// admins. Renders nothing when the parish hasn't published any.
+type Opportunity = {
+  id: number;
+  title: string;
+  description: string | null;
+  category: string;
+  scheduleNote: string | null;
+  contact: string | null;
+  interestCount: number;
+  viewerInterested: boolean;
+};
+const OPP_CATEGORY_META: Record<string, { label: string; emoji: string }> = {
+  worship: { label: "Worship & liturgy", emoji: "🕊️" },
+  serve: { label: "Serve", emoji: "🤝" },
+  community: { label: "Community", emoji: "👥" },
+  other: { label: "Other ways", emoji: "✨" },
+};
+const OPP_CATEGORY_ORDER = ["worship", "serve", "community", "other"] as const;
+
+function GetInvolvedCard({ parishId }: { parishId: number }) {
+  const oppsQuery = useQuery<{ isAdmin: boolean; opportunities: Opportunity[] }>({
+    queryKey: ["/api/parish/opportunities", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/opportunities?parishId=${parishId}`),
+  });
+  const toggle = useMutation({
+    mutationFn: ({ id, on }: { id: number; on: boolean }) =>
+      apiRequest(
+        on ? "POST" : "DELETE",
+        `/api/parish/opportunities/${id}/interest`,
+        on ? {} : undefined,
+      ),
+    onSuccess: () => { void oppsQuery.refetch(); },
+  });
+
+  const opps = oppsQuery.data?.opportunities ?? [];
+  if (opps.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: SAGE, margin: "0 0 12px", fontWeight: 600 }}>
+        Ways to get involved
+      </p>
+      {OPP_CATEGORY_ORDER.map((cat) => {
+        const items = opps.filter((o) => o.category === cat);
+        if (items.length === 0) return null;
+        const meta = OPP_CATEGORY_META[cat] ?? OPP_CATEGORY_META.other;
+        return (
+          <div key={cat} style={{ marginBottom: 16 }}>
+            <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, color: WARM_TEXT, margin: "0 0 8px", fontWeight: 600 }}>
+              {meta.emoji} {meta.label}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {items.map((o) => (
+                <div key={o.id} style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)", borderRadius: 14, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                    <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>{o.title}</p>
+                    {o.scheduleNote && <span style={{ fontFamily: SPACE_GROTESK, fontSize: 11, color: SAGE, whiteSpace: "nowrap" }}>{o.scheduleNote}</span>}
+                  </div>
+                  {o.description && <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, color: "rgba(200,212,192,0.85)", margin: "6px 0 0", lineHeight: 1.5 }}>{o.description}</p>}
+                  {o.contact && <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: SAGE, margin: "6px 0 0" }}>{o.contact}</p>}
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      onClick={() => toggle.mutate({ id: o.id, on: !o.viewerInterested })}
+                      disabled={toggle.isPending}
+                      style={{
+                        fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+                        borderRadius: 999, padding: "7px 16px", cursor: "pointer",
+                        background: o.viewerInterested ? "rgba(46,107,64,0.85)" : "transparent",
+                        color: o.viewerInterested ? "#F0EDE6" : SAGE,
+                        border: `1px solid ${o.viewerInterested ? "rgba(126,210,140,0.5)" : "rgba(143,175,150,0.35)"}`,
+                      }}
+                    >
+                      {o.viewerInterested ? "✓ You're interested" : "I'm interested"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
