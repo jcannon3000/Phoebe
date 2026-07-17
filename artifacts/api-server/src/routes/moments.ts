@@ -2783,10 +2783,13 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
 
 // ─── POST /api/moments/:id/invite — add new participants ─────────────────────
 const InviteMembersSchema = z.object({
+  // Cap the invite list — each invitee becomes a Google Calendar API call in the
+  // consume loop, so an unbounded array is an amplification/abuse vector (the
+  // participants schema elsewhere already caps at 20; 50 is generous here).
   people: z.array(z.object({
     name: z.string().min(1),
     email: z.string().email(),
-  })).min(1),
+  })).min(1).max(50),
 });
 
 // ─── GET /api/moments/:id/groups — list groups an intercession is shared with

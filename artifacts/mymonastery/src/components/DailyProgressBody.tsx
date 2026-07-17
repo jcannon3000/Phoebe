@@ -175,8 +175,14 @@ function StreakCard() {
   // (The 30-day commitment band, its day-30 review moment, and the shared
   // rhythm-party "with Sarah & Marcus" band are removed per owner — choosing a
   // rhythm just sets it; the card is the plain streak again.)
-  if (!data) return null;
-  const { days, streak, last7 } = data;
+  // Guard the SHAPE, not just presence: a well-formed-but-partial 200 (shape
+  // drift, a captive-portal HTML body that happened to parse, `{}`) would leave
+  // `days` undefined and `days.map` below would throw — and because this card
+  // renders on the home, that throw takes the WHOLE home to the error boundary.
+  if (!data || !Array.isArray(data.days)) return null;
+  const { days } = data;
+  const streak = typeof data.streak === "number" ? data.streak : 0;
+  const last7 = typeof data.last7 === "number" ? data.last7 : 0;
   const GREEN = "46,107,64";
   const GREEN_BRIGHT = "110,180,130";
 

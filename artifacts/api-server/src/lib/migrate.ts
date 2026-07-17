@@ -2980,6 +2980,13 @@ export async function migrate() {
     // add so old environments don't error.
     await run(client, `ALTER TABLE fellows ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'shared_prayer'`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellows_user_id ON fellows (user_id)`);
+    // Fellowship is symmetric and queried both directions: getFellowUserIds
+    // (lib/garden.ts) filters `WHERE user_id = X OR fellow_user_id = X`, hit from
+    // many authenticated reads (prayer list, feed, moments prayed-with) plus push
+    // fan-out. Without an index on the REVERSE column, the OR's second branch
+    // falls back to a full seq scan of fellows on every garden cache miss; this
+    // lets Postgres BitmapOr the two single-column indexes instead.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellows_fellow_user_id ON fellows (fellow_user_id)`);
 
     // ── beta_users.seen_welcome ────────────────────────────────────────────
     // The schema (lib/db/src/schema/groups.ts) declares seen_welcome on

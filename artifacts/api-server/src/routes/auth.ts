@@ -307,73 +307,70 @@ router.get("/auth/me", async (req, res) => {
   // Derived here so every useAuth() consumer re-gates the shell the moment the
   // membership changes — join/leave invalidates /api/auth/me. Reversible:
   // leaving every Jardín group flips this back to false and restores the app.
-  const jardinGroupRows = await db
-    .select({ id: groupMembersTable.id })
-    .from(groupMembersTable)
-    .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
-    .where(and(
-      eq(groupMembersTable.userId, u.id),
-      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-      eq(groupsTable.focus, "jardin"),
-    ))
-    .limit(1);
-  const inJardinGroup = jardinGroupRows.length > 0;
-  // Is this user a MEMBER of any community (any joined group, any role)? Anyone
-  // in a community — plus beta testers, computed client-side — keeps the FULL
-  // app (community features like shared prayer requests); everyone else falls
-  // into the simplified pilot experience (see usePilotMode / PilotGate). Derived
-  // here so /api/auth/me is the single source of truth the client reads on load.
-  const communityMemberRows = await db
-    .select({ id: groupMembersTable.id })
-    .from(groupMembersTable)
-    .where(and(
-      eq(groupMembersTable.userId, u.id),
-      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-    ))
-    .limit(1);
-  const isCommunityMember = communityMemberRows.length > 0;
-  // PUBLIC no-login version: is this user a member of any PILOT GROUP? Pilot-
-  // group members are the ONLY users who keep the FULL app once the guest flag
-  // flips — computed here so useGuestMode reads one source of truth on load.
-  const pilotGroupRows = await db
-    .select({ id: groupMembersTable.id })
-    .from(groupMembersTable)
-    .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
-    .where(and(
-      eq(groupMembersTable.userId, u.id),
-      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-      eq(groupsTable.isPilotGroup, true),
-    ))
-    .limit(1);
-  const inPilotGroup = pilotGroupRows.length > 0;
-  // App SUPER ADMIN (beta_users.is_admin) — always keeps the FULL app (an
-  // operator must be able to reach the pilot-group toggle even before any
-  // pilot group exists; without this the flip would lock everyone out).
-  let isSuperAdmin = false;
-  try {
-    const [beta] = await db
-      .select({ isAdmin: betaUsersTable.isAdmin })
+  // These six lookups are INDEPENDENT — none uses another's result — yet this is
+  // the hottest authenticated endpoint (every app/PWA open). Running them
+  // sequentially made the handler's latency the SUM of six round-trips; issuing
+  // them together (Promise.all) collapses it to ~one. Flags derived below:
+  //  • inJardinGroup — joined any focus='jardin' group → sealed Jardín shell
+  //  • isCommunityMember — joined any group → keeps the FULL app
+  //  • inPilotGroup — joined a pilot group → keeps FULL app when guest flag flips
+  //  • isSuperAdmin — beta_users.is_admin (table may be absent in a fresh env)
+  //  • hasFellowConnection — an accepted fellow OR a pending invite → FULL app
+  const [
+    jardinGroupRows,
+    communityMemberRows,
+    pilotGroupRows,
+    betaRow,
+    fellowRows,
+    fellowInviteRows,
+  ] = await Promise.all([
+    db.select({ id: groupMembersTable.id })
+      .from(groupMembersTable)
+      .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
+      .where(and(
+        eq(groupMembersTable.userId, u.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        eq(groupsTable.focus, "jardin"),
+      ))
+      .limit(1),
+    db.select({ id: groupMembersTable.id })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.userId, u.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ))
+      .limit(1),
+    db.select({ id: groupMembersTable.id })
+      .from(groupMembersTable)
+      .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
+      .where(and(
+        eq(groupMembersTable.userId, u.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        eq(groupsTable.isPilotGroup, true),
+      ))
+      .limit(1),
+    // beta_users can be absent in a fresh env — swallow to "not super admin".
+    db.select({ isAdmin: betaUsersTable.isAdmin })
       .from(betaUsersTable)
-      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
-    isSuperAdmin = beta?.isAdmin === true;
-  } catch { /* table missing in a fresh env — not super admin */ }
-  // Does this user have a fellow connection — an accepted 1:1 fellow, OR a
-  // pending fellow invite waiting for them? If so they keep the FULL app (so
-  // they can still see + reach Fellows), even in the simplified pilot
-  // experience. Same single-source-of-truth pattern as isCommunityMember.
-  const fellowRows = await db
-    .select({ id: fellowsTable.id })
-    .from(fellowsTable)
-    .where(eq(fellowsTable.userId, u.id))
-    .limit(1);
-  const fellowInviteRows = await db
-    .select({ id: fellowInvitesTable.id })
-    .from(fellowInvitesTable)
-    .where(and(
-      eq(fellowInvitesTable.recipientId, u.id),
-      eq(fellowInvitesTable.status, "pending"),
-    ))
-    .limit(1);
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()))
+      .then((rows) => rows[0])
+      .catch(() => undefined),
+    db.select({ id: fellowsTable.id })
+      .from(fellowsTable)
+      .where(eq(fellowsTable.userId, u.id))
+      .limit(1),
+    db.select({ id: fellowInvitesTable.id })
+      .from(fellowInvitesTable)
+      .where(and(
+        eq(fellowInvitesTable.recipientId, u.id),
+        eq(fellowInvitesTable.status, "pending"),
+      ))
+      .limit(1),
+  ]);
+  const inJardinGroup = jardinGroupRows.length > 0;
+  const isCommunityMember = communityMemberRows.length > 0;
+  const inPilotGroup = pilotGroupRows.length > 0;
+  const isSuperAdmin = betaRow?.isAdmin === true;
   const hasFellowConnection = fellowRows.length > 0 || fellowInviteRows.length > 0;
   res.json({
     isCommunityMember,

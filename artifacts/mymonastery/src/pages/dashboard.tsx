@@ -7140,7 +7140,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     const itemSortMs = (item: DashboardItem): number => {
       if (item.kind === "service" && item.nextDate) {
         const base = startOfDay(item.nextDate).getTime();
-        const hhmm = item.data.times[0]?.time;
+        // Optional-chain `times` too: a malformed schedule row (no times array)
+        // would otherwise throw inside this comparator, and since it runs in the
+        // home useMemo the throw blanks the whole home via the error boundary.
+        const hhmm = item.data.times?.[0]?.time;
         if (hhmm) {
           const [hStr, mStr] = hhmm.split(":");
           const h = parseInt(hStr, 10);
