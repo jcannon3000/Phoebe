@@ -34,6 +34,7 @@ import {
   parishAdminsTable,
   parishOpportunitiesTable,
   parishOpportunityInterestsTable,
+  parishRuleAdoptionsTable,
   prescribedRoutinesTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
@@ -72,6 +73,10 @@ router.get("/parishes/public", async (req, res) => {
       .where(and(
         eq(prayerFeedsTable.kind, "parish"),
         eq(prayerFeedsTable.state, "live"),
+        // Only PUBLIC parishes are discoverable. Private-by-default means a
+        // parish stays off the picker (and unjoinable) until its priest
+        // publishes it from the manage page.
+        eq(prayerFeedsTable.visibility, "public"),
       ))
       .orderBy(desc(prayerFeedsTable.subscriberCount), asc(prayerFeedsTable.title));
     res.json({ parishes: rows });
@@ -122,6 +127,18 @@ router.post("/parish/subscribe", async (req, res) => {
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+    // A private parish isn't openly joinable: only its own admins (previewing)
+    // or someone already subscribed may pass. Public parishes are open to any
+    // beta user who found them in the picker. This backs the private-by-default
+    // guarantee — without it, anyone could join a private parish by id and read
+    // its members / post to its pastoral inbox.
+    if (parish.visibility !== "public"
+      && user.parishFeedId !== parishId
+      && !(await canManageParish(session.id, parishId)).allowed) {
+      res.status(403).json({ error: "This parish isn't open to join." });
+      return;
+    }
 
     if (user.parishFeedId !== null && user.parishFeedId !== parishId) {
       res.status(409).json({
@@ -506,6 +523,7 @@ router.get("/parish/admin/parishes", async (req, res) => {
             title: prayerFeedsTable.title,
             timezone: prayerFeedsTable.timezone,
             state: prayerFeedsTable.state,
+            visibility: prayerFeedsTable.visibility,
             subscriberCount: prayerFeedsTable.subscriberCount,
           })
           .from(prayerFeedsTable)
@@ -521,6 +539,7 @@ router.get("/parish/admin/parishes", async (req, res) => {
             title: prayerFeedsTable.title,
             timezone: prayerFeedsTable.timezone,
             state: prayerFeedsTable.state,
+            visibility: prayerFeedsTable.visibility,
             subscriberCount: prayerFeedsTable.subscriberCount,
           })
           .from(prayerFeedsTable)
@@ -672,7 +691,7 @@ const SubmitConcernSchema = z.object({
   isAnonymous: z.boolean().optional().default(false),
 });
 
-router.post("/parish/concerns", async (req, res) => {
+router.post("/parish/concerns", perUserRateLimit("parish_concern", { max: 30, windowMs: 60 * 60 * 1000 }), async (req, res) => {
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = SubmitConcernSchema.safeParse(req.body);
@@ -844,6 +863,17 @@ function slugifyParishName(name: string): string {
     .slice(0, 60) || "parish";
 }
 
+// A real IANA zone name — guards against a bad timezone being stored and later
+// blowing up the AT TIME ZONE queries on the parish dashboard/metrics.
+function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const createParishSchema = z.object({
   title: z.string().trim().min(1).max(80),
   tagline: z.string().trim().max(200).optional(),
@@ -851,7 +881,7 @@ const createParishSchema = z.object({
   timezone: z.string().trim().max(60).optional(),
 });
 
-router.post("/parishes", async (req, res): Promise<void> => {
+router.post("/parishes", perUserRateLimit("parish_create", { max: 10, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
   const session = req.user ? (req.user as { id: number }) : null;
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
   // Beta-gated for now. The schema-level capacity is built but the
@@ -866,6 +896,10 @@ router.post("/parishes", async (req, res): Promise<void> => {
     return;
   }
   const { title, tagline, coverEmoji, timezone } = parsed.data;
+  if (timezone && !isValidTimeZone(timezone)) {
+    res.status(400).json({ error: "Invalid timezone" });
+    return;
+  }
 
   // Mint a unique slug. First try the slugified title; if taken, suffix
   // a short random hex segment until we land on a fresh one. (Two
@@ -919,7 +953,7 @@ router.post("/parishes", async (req, res): Promise<void> => {
 // Add another admin to a parish — by email so a creator doesn't need
 // to know the user's id. Allowed for any caller who already manages
 // the parish (creator or existing co-admin).
-router.post("/parishes/:slug/admins", async (req, res): Promise<void> => {
+router.post("/parishes/:slug/admins", perUserRateLimit("parish_add_admin", { max: 20, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
   const session = req.user ? (req.user as { id: number }) : null;
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
   const slug = String(req.params.slug);
@@ -979,6 +1013,32 @@ router.delete("/parishes/:slug/admins/:userId", async (req, res): Promise<void> 
     eq(parishAdminsTable.userId, targetUserId),
   ));
   res.json({ ok: true });
+});
+
+// PUT /api/parishes/:slug/visibility — publish or unpublish a parish. Public =
+// discoverable in the onboarding picker + openly joinable; private = off the
+// picker and joinable only by admins/existing members. Admin only.
+router.put("/parishes/:slug/visibility", async (req, res): Promise<void> => {
+  const session = req.user ? (req.user as { id: number }) : null;
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const slug = String(req.params.slug);
+  const raw = (req.body as { visibility?: unknown } | undefined)?.visibility;
+  const visibility = raw === "public" ? "public" : raw === "private" ? "private" : null;
+  if (!visibility) { res.status(400).json({ error: "visibility must be 'public' or 'private'" }); return; }
+  const [parish] = await db.select().from(prayerFeedsTable)
+    .where(and(eq(prayerFeedsTable.slug, slug), eq(prayerFeedsTable.kind, "parish")));
+  if (!parish) { res.status(404).json({ error: "Parish not found" }); return; }
+  const { allowed } = await canManageParish(session.id, parish.id);
+  if (!allowed) { res.status(403).json({ error: "Admin only." }); return; }
+  try {
+    await db.update(prayerFeedsTable)
+      .set({ visibility, updatedAt: new Date() })
+      .where(eq(prayerFeedsTable.id, parish.id));
+    res.json({ ok: true, visibility });
+  } catch (err) {
+    console.error("[/parishes/:slug/visibility PUT] failed:", err);
+    res.status(500).json({ error: "Couldn't update visibility." });
+  }
 });
 
 // List the admins of a parish for the manage UI: creator + co-admins.
@@ -1321,7 +1381,11 @@ router.get("/parish/rule", async (req, res): Promise<void> => {
       label: prescribedRoutinesTable.label, spec: prescribedRoutinesTable.spec, acceptCount: prescribedRoutinesTable.acceptCount,
     }).from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
     if (!row) { res.json({ rule: null, isAdmin, parishTitle: feed?.title ?? null }); return; }
-    res.json({ rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount }, isAdmin, parishTitle: feed?.title ?? null });
+    const [adoption] = await db.select({ id: parishRuleAdoptionsTable.id })
+      .from(parishRuleAdoptionsTable)
+      .where(and(eq(parishRuleAdoptionsTable.ruleId, ruleId), eq(parishRuleAdoptionsTable.userId, session.id)))
+      .limit(1);
+    res.json({ rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount }, isAdmin, viewerAdopted: !!adoption, parishTitle: feed?.title ?? null });
   } catch (err) {
     console.error("[parish] get rule failed:", err);
     res.status(500).json({ error: "internal_error" });
@@ -1356,7 +1420,7 @@ router.put("/parish/rule", async (req, res): Promise<void> => {
 });
 
 // POST /api/parish/rule/adopt — a parishioner takes up the parish rhythm.
-router.post("/parish/rule/adopt", async (req, res): Promise<void> => {
+router.post("/parish/rule/adopt", perUserRateLimit("parish_rule_adopt", { max: 30, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parishId = typeof (req.body as { parishId?: unknown })?.parishId === "number" ? (req.body as { parishId: number }).parishId : NaN;
@@ -1372,7 +1436,16 @@ router.post("/parish/rule/adopt", async (req, res): Promise<void> => {
     const spec = row ? sanitizeSpec(row.spec) : null;
     if (!row || !spec) { res.status(422).json({ error: "Rhythm is no longer valid" }); return; }
     await applyRoutineSpecToUser(session.id, spec);
-    await db.update(prescribedRoutinesTable).set({ acceptCount: sql`${prescribedRoutinesTable.acceptCount} + 1` }).where(eq(prescribedRoutinesTable.id, row.id));
+    // Record the adoption idempotently; only bump the parish-wide count the
+    // FIRST time this member takes up this rhythm (re-tapping re-applies the
+    // spec but can't inflate the count).
+    const inserted = await db.insert(parishRuleAdoptionsTable)
+      .values({ ruleId: row.id, userId: session.id })
+      .onConflictDoNothing()
+      .returning({ id: parishRuleAdoptionsTable.id });
+    if (inserted.length > 0) {
+      await db.update(prescribedRoutinesTable).set({ acceptCount: sql`${prescribedRoutinesTable.acceptCount} + 1` }).where(eq(prescribedRoutinesTable.id, row.id));
+    }
     res.json({ ok: true, ruleConfig: spec.ruleConfig });
   } catch (err) {
     console.error("[parish] adopt rule failed:", err);

@@ -2525,6 +2525,19 @@ export async function migrate() {
       ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS rule_routine_id
       INTEGER REFERENCES prescribed_routines(id) ON DELETE SET NULL
     `);
+    // Who has taken up a parish's standing rhythm — one row per (rule, user).
+    // The unique index makes /parish/rule/adopt idempotent (no count inflation)
+    // and lets each member's card know if they've already adopted. FK needs
+    // prescribed_routines, so it lives here (after that table is created).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS parish_rule_adoptions (
+        id SERIAL PRIMARY KEY,
+        rule_id INTEGER NOT NULL REFERENCES prescribed_routines(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_rule_adoption_pair ON parish_rule_adoptions (rule_id, user_id)`);
     await run(client, `
       CREATE INDEX IF NOT EXISTS prescribed_routines_by_group
       ON prescribed_routines (group_id)

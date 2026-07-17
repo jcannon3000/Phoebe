@@ -18,7 +18,6 @@ import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { ROUTINE_SYNCED_EVENT, pushRoutineConfig } from "@/lib/routineSync";
 import {
@@ -300,7 +299,15 @@ function LogSheet({
   // Stored in the entry's `what` field; seeded from this week's entry and
   // re-seeded whenever it changes (e.g. after a save refetch).
   const [note, setNote] = useState(kept?.what ?? "");
-  useEffect(() => { setNote(kept?.what ?? ""); }, [kept?.id]);
+  // Adopt a refetched server value ONLY if the user hasn't diverged from what we
+  // last seeded — otherwise a save's refetch (which mints a new entry id, so this
+  // effect always re-fires) would wipe keystrokes typed in the meantime.
+  const seededNoteRef = useRef<string>(kept?.what ?? "");
+  useEffect(() => {
+    const incoming = kept?.what ?? "";
+    setNote((cur) => (cur === seededNoteRef.current ? incoming : cur));
+    seededNoteRef.current = incoming;
+  }, [kept?.id]);
   const [showLog, setShowLog] = useState(false);
   // The optional TIME WINDOW — rest held like an appointment. Persisted the
   // moment both ends are set (and synced across devices via the routine keys).
@@ -312,18 +319,26 @@ function LogSheet({
   };
 
   // Save (upsert) this week's entry with its note. The practice-log route has
-  // no PUT, so an edit = delete the existing entry + re-post with the same day
-  // (keeps the week attribution + log date stable). Marking kept with no note
-  // still works — the note is optional.
+  // no PUT, so an edit = re-post with the same day, THEN delete the old entry.
+  // Post-first is deliberate: if the delete fails (network drop, 5xx), we're left
+  // with a harmless in-week duplicate — the week stays kept and the newest entry
+  // (this note) wins keptThisWeek — instead of losing the kept mark entirely.
   const logMutation = useMutation({
     mutationFn: async () => {
       const what = note.trim().slice(0, 200);
-      if (kept) await apiRequest("DELETE", `/api/practice-log/${practice.kind}/${kept.id}`);
+      const oldId = kept?.id;
       await apiRequest("POST", `/api/practice-log/${practice.kind}`, {
         day: kept?.day ?? todayISO(),
         what,
         notes: "",
       });
+      if (oldId != null) {
+        try {
+          await apiRequest("DELETE", `/api/practice-log/${practice.kind}/${oldId}`);
+        } catch {
+          // A leftover duplicate is cosmetic; the kept mark is safe.
+        }
+      }
     },
     onSuccess: () => {
       swellHaptic();

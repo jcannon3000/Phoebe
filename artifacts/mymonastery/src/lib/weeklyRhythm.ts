@@ -18,6 +18,8 @@
 // `kind`); "kept this week" is derived from an entry's `day`. See the server
 // allow-list in artifacts/api-server/src/routes/practice-log.ts.
 
+import { pushRoutineConfig } from "./routineSync";
+
 export type WeeklyKind = "commune" | "go" | "bless" | "rest";
 
 export type WeeklyPractice = {
@@ -213,6 +215,10 @@ export function setEnabledWeekly(kinds: WeeklyKind[]): void {
   try {
     localStorage.setItem(ENABLED_KEY, JSON.stringify(clean));
     window.dispatchEvent(new Event(WEEKLY_ENABLED_EVENT));
+    // The enabled set is a ROUTINE_KEY, so push it to the account now — otherwise
+    // toggling weekly practices on/off wouldn't reach the user's other devices
+    // until some unrelated routine change happened to flush.
+    void pushRoutineConfig();
   } catch {
     /* private mode / quota — non-fatal */
   }

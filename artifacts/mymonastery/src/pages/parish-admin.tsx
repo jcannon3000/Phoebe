@@ -37,6 +37,7 @@ interface ParishCard {
   title: string;
   timezone: string;
   state: string;
+  visibility: string;
   subscriberCount: number;
 }
 
@@ -450,6 +451,14 @@ export default function ParishAdmin() {
                 for a few weeks ("pray with your priest"), with occasional notes. */}
             {parishId !== null && <ParishSeasonManager parishId={parishId} />}
 
+            {/* Publish / unpublish — a parish is private by default (off the
+                onboarding picker, joinable only by admins/existing members).
+                Publishing lists it for discovery + open join. */}
+            <ParishVisibilityManager
+              slug={m.parish.slug}
+              visibility={parishesQuery.data?.parishes.find((p) => p.id === parishId)?.visibility ?? "private"}
+            />
+
             {/* Parish admin roster — creator + any co-admins the
                 creator has granted access to. Adding goes by email
                 (the recipient must already have a Phoebe account). */}
@@ -769,6 +778,46 @@ function ParishSeasonManager({ parishId }: { parishId: number }) {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ParishVisibilityManager({ slug, visibility }: { slug: string; visibility: string }) {
+  const queryClient = useQueryClient();
+  const isPublic = visibility === "public";
+  const setVisibility = useMutation<{ ok: boolean; visibility: string }, Error, "public" | "private">({
+    mutationFn: (v) => apiRequest("PUT", `/api/parishes/${slug}/visibility`, { visibility: v }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/parish/admin/parishes"] }),
+  });
+  return (
+    <div style={{ marginTop: 28 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, marginBottom: 10 }}>
+        Discovery
+      </p>
+      <div style={{ background: "#0F2818", border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 16px" }}>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>
+          {isPublic ? "Published" : "Private"}
+        </p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12.5, color: SAGE, margin: "6px 0 12px", lineHeight: 1.5 }}>
+          {isPublic
+            ? "Anyone can find this parish in the app's picker and join it."
+            : "This parish is hidden from the picker. Only people you add can join. Publish it when you're ready for parishioners to find it."}
+        </p>
+        <button
+          type="button"
+          onClick={() => setVisibility.mutate(isPublic ? "private" : "public")}
+          disabled={setVisibility.isPending}
+          style={{
+            fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+            borderRadius: 999, padding: "8px 18px", cursor: "pointer",
+            background: isPublic ? "transparent" : "rgba(46,107,64,0.85)",
+            color: isPublic ? SAGE : WARM_TEXT,
+            border: `1px solid ${isPublic ? "rgba(143,175,150,0.35)" : "rgba(126,210,140,0.5)"}`,
+          }}
+        >
+          {setVisibility.isPending ? "Saving…" : isPublic ? "Make private" : "Publish parish"}
+        </button>
+      </div>
     </div>
   );
 }

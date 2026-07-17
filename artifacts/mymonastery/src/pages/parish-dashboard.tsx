@@ -685,7 +685,7 @@ export default function ParishDashboard() {
 // then a quiet "you prayed with your parish this week" signal — praying WITH the
 // congregation, top-down.
 function ParishRuleCard({ parishId }: { parishId: number }) {
-  const ruleQ = useQuery<{ rule: { label: string | null; adoptCount: number } | null; parishTitle: string | null }>({
+  const ruleQ = useQuery<{ rule: { label: string | null; adoptCount: number } | null; viewerAdopted?: boolean; parishTitle: string | null }>({
     queryKey: ["/api/parish/rule", parishId],
     queryFn: () => apiRequest("GET", `/api/parish/rule?parishId=${parishId}`),
   });
@@ -693,11 +693,14 @@ function ParishRuleCard({ parishId }: { parishId: number }) {
     queryKey: ["/api/parish/prayed-with-week", parishId],
     queryFn: () => apiRequest("GET", `/api/parish/prayed-with-week?parishId=${parishId}`),
   });
-  const [adopted, setAdopted] = useState(false);
+  // Just-adopted (this session) OR the server remembers I've adopted before —
+  // so the card doesn't offer "Take up this rhythm" again on every remount.
+  const [adoptedLocal, setAdoptedLocal] = useState(false);
   const adopt = useMutation({
     mutationFn: () => apiRequest("POST", "/api/parish/rule/adopt", { parishId }) as Promise<{ ruleConfig?: Record<string, string> }>,
-    onSuccess: (res) => { adoptRoutineConfig(res?.ruleConfig); setAdopted(true); },
+    onSuccess: (res) => { adoptRoutineConfig(res?.ruleConfig); setAdoptedLocal(true); },
   });
+  const adopted = adoptedLocal || !!ruleQ.data?.viewerAdopted;
 
   const rule = ruleQ.data?.rule ?? null;
   if (!rule) return null;
@@ -798,6 +801,9 @@ function GetInvolvedCard({ parishId }: { parishId: number }) {
         on ? {} : undefined,
       ),
     onSuccess: () => { void oppsQuery.refetch(); },
+    // On failure, resync to server truth so the button label doesn't lie about
+    // whether the tap registered.
+    onError: () => { void oppsQuery.refetch(); },
   });
 
   const opps = oppsQuery.data?.opportunities ?? [];
@@ -829,7 +835,7 @@ function GetInvolvedCard({ parishId }: { parishId: number }) {
                   <div style={{ marginTop: 10 }}>
                     <button
                       onClick={() => toggle.mutate({ id: o.id, on: !o.viewerInterested })}
-                      disabled={toggle.isPending}
+                      disabled={toggle.isPending && toggle.variables?.id === o.id}
                       style={{
                         fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
                         borderRadius: 999, padding: "7px 16px", cursor: "pointer",
