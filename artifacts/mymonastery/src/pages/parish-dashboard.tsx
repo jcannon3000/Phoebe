@@ -658,6 +658,8 @@ export default function ParishDashboard() {
             (the priest / pastor). The card is intentionally quieter
             than the office buttons: this is for when something is
             on your heart, not the daily rhythm. */}
+        {data?.parish && <ParishSeasonCard parishId={data.parish.id} />}
+
         {data?.parish && <GetInvolvedCard parishId={data.parish.id} />}
 
         {data?.parish && <PrayerConcernCard parishId={data.parish.id} />}
@@ -672,6 +674,35 @@ export default function ParishDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Parish season card (member side) — "pray with your priest" ─────────────
+// When the priest is running a season, the parishioner sees the shared Day-N
+// clock + how many are praying, and taps in to the /season/:token player (which
+// takes up the rhythm on first open + carries the priest's notes).
+function ParishSeasonCard({ parishId }: { parishId: number }) {
+  const q = useQuery<{ season: { token: string; title: string; day: number; durationDays: number; memberCount: number; joined: boolean } | null }>({
+    queryKey: ["/api/parish/season", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/season?parishId=${parishId}`),
+  });
+  const s = q.data?.season ?? null;
+  if (!s) return null;
+  return (
+    <Link href={`/season/${s.token}`}>
+      <div style={{ marginTop: 20, background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.30)", borderRadius: 16, padding: 16, cursor: "pointer" }}>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: SAGE, margin: 0, fontWeight: 600 }}>
+          🕊️ Pray with your parish
+        </p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 700, color: WARM_TEXT, margin: "6px 0 0" }}>{s.title}</p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12.5, color: SAGE, margin: "4px 0 0" }}>
+          Day {s.day} of {s.durationDays} · {s.memberCount} {s.memberCount === 1 ? "person" : "people"} praying
+        </p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: WARM_TEXT, margin: "10px 0 0" }}>
+          {s.joined ? "Continue the season →" : "Take up the rhythm →"}
+        </p>
+      </div>
+    </Link>
   );
 }
 

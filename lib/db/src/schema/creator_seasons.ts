@@ -1,6 +1,7 @@
 import { pgTable, serial, integer, text, jsonb, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 import { groupsTable } from "./groups";
+import { prayerFeedsTable } from "./prayer_feeds";
 import type { PrescribedRoutineSpec } from "./prescribed_routines";
 
 // Creator seasons — a creator turns the practice their content inspired into a
@@ -35,11 +36,18 @@ export const creatorSeasonsTable = pgTable("creator_seasons", {
   // original creator-audience shape. A community season snapshots the group's
   // rule of life as its spec, so joining = taking up the rule for the season.
   groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
+  // PARISH seasons — a season a priest runs for the whole congregation ("we pray
+  // this rhythm together for these three weeks"). NULL = a creator or community
+  // (group) season. Mutually exclusive with groupId. The priest DESIGNS the
+  // season's spec (a parish has no standing rule of life), so joining takes up
+  // the rhythm the priest set for the season. Gated by canManageParish.
+  parishFeedId: integer("parish_feed_id").references(() => prayerFeedsTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   byToken: uniqueIndex("creator_seasons_token").on(t.token),
   byCreator: index("creator_seasons_by_creator").on(t.createdByUserId),
   byGroup: index("creator_seasons_by_group").on(t.groupId),
+  byParish: index("creator_seasons_by_parish").on(t.parishFeedId),
 }));
 
 export const creatorSeasonMembersTable = pgTable("creator_season_members", {

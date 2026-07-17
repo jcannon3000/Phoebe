@@ -22,9 +22,11 @@ import {
   groupsTable,
   groupMembersTable,
   prescribedRoutinesTable,
+  prayerFeedsTable,
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { isSuperAdminUser } from "../lib/superAdmin";
+import { canManageParish } from "./parish";
 import { betaUsersTable } from "@workspace/db";
 
 // Beta user OR super admin — the studio-list gate. (The seasons list carries
@@ -295,17 +297,21 @@ router.post("/creator/seasons/:token/notes", async (req, res): Promise<void> => 
   const token = req.params.token;
   if (!TOKEN_RE.test(token)) { res.status(404).json({ error: "Not found" }); return; }
   try {
-    const [season] = await db.select({ id: creatorSeasonsTable.id, createdByUserId: creatorSeasonsTable.createdByUserId, groupId: creatorSeasonsTable.groupId })
+    const [season] = await db.select({ id: creatorSeasonsTable.id, createdByUserId: creatorSeasonsTable.createdByUserId, groupId: creatorSeasonsTable.groupId, parishFeedId: creatorSeasonsTable.parishFeedId })
       .from(creatorSeasonsTable).where(eq(creatorSeasonsTable.token, token)).limit(1);
     if (!season) { res.status(404).json({ error: "Not found" }); return; }
     // The season's creator, any super admin — or, for a COMMUNITY season, any
-    // leader of the group it belongs to (leaders share the shepherding).
+    // leader of the group it belongs to; for a PARISH season, any parish admin
+    // (leaders / priests share the shepherding).
     let allowed = season.createdByUserId === me || (await isSuperAdminUser(me));
     if (!allowed && season.groupId != null) {
       const [member] = await db.select({ role: groupMembersTable.role, joinedAt: groupMembersTable.joinedAt })
         .from(groupMembersTable)
         .where(and(eq(groupMembersTable.groupId, season.groupId), eq(groupMembersTable.userId, me)));
       allowed = !!member && !!member.joinedAt && isGroupAdminRole(member.role);
+    }
+    if (!allowed && season.parishFeedId != null) {
+      allowed = (await canManageParish(me, season.parishFeedId)).allowed;
     }
     if (!allowed) {
       res.status(403).json({ error: "Only the creator can post notes" }); return;
@@ -414,6 +420,97 @@ router.get("/groups/:slug/season", async (req, res): Promise<void> => {
     });
   } catch (err) {
     console.error("[community-season] get failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ═══ PARISH seasons — a priest runs a bounded season for the congregation ════
+//
+// "Pray with your priest." Unlike a community season (which snapshots the
+// group's standing rule of life), a parish has no rule, so the priest DESIGNS
+// the season's rhythm with the customizer and posts its spec here. Everything
+// else is identical: the /season/:token player, Day-N clock, check-ins, and the
+// priest's occasional notes. Gated by canManageParish.
+
+// POST /api/parish/season — a priest starts a season with a designed spec.
+router.post("/parish/season", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const body = (req.body ?? {}) as {
+    parishId?: unknown; spec?: unknown; title?: unknown; durationDays?: unknown; startYmd?: unknown;
+  };
+  const parishId = typeof body.parishId === "number" ? body.parishId : NaN;
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  const { allowed, parish } = await canManageParish(me, parishId);
+  if (!allowed || !parish) { res.status(403).json({ error: "Not a parish admin." }); return; }
+
+  const spec = sanitizeSpec(body.spec);
+  if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
+  const durationDays = typeof body.durationDays === "number" && Number.isFinite(body.durationDays)
+    ? Math.max(7, Math.min(28, Math.round(body.durationDays))) : 21;
+  const startYmd = typeof body.startYmd === "string" && YMD_RE.test(body.startYmd)
+    ? body.startYmd : new Date().toISOString().slice(0, 10);
+  const title = typeof body.title === "string" && body.title.trim()
+    ? body.title.trim().slice(0, 120) : "A season together";
+
+  try {
+    // One ACTIVE season per parish (finite is the point — no overlapping clocks).
+    const existing = await db.select({
+      startYmd: creatorSeasonsTable.startYmd, durationDays: creatorSeasonsTable.durationDays,
+    }).from(creatorSeasonsTable).where(eq(creatorSeasonsTable.parishFeedId, parishId));
+    const today = new Date().toISOString().slice(0, 10);
+    if (existing.find((s) => dayNumber(s.startYmd, today) <= s.durationDays)) {
+      res.status(409).json({ error: "A season is already running" }); return;
+    }
+    const token = crypto.randomBytes(16).toString("hex");
+    await db.insert(creatorSeasonsTable).values({
+      token, title, creatorName: parish.title ?? "Your parish", description: null,
+      spec, durationDays, startYmd, createdByUserId: me, parishFeedId: parishId,
+    });
+    res.json({ ok: true, token, url: `https://withphoebe.app/season/${token}` });
+  } catch (err) {
+    console.error("[parish-season] create failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/parish/season?parishId= — the parish's current season, for the
+// parishioner's dashboard card + the admin manager. Subscriber OR admin.
+router.get("/parish/season", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = Number(req.query.parishId);
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  try {
+    const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, me));
+    const isSubscriber = !!user && user.parishFeedId === parishId;
+    const isAdmin = (await canManageParish(me, parishId)).allowed;
+    if (!isSubscriber && !isAdmin) { res.status(403).json({ error: "Not subscribed to this parish." }); return; }
+
+    const rows = await db.select({
+      id: creatorSeasonsTable.id, token: creatorSeasonsTable.token, title: creatorSeasonsTable.title,
+      startYmd: creatorSeasonsTable.startYmd, durationDays: creatorSeasonsTable.durationDays,
+    }).from(creatorSeasonsTable)
+      .where(eq(creatorSeasonsTable.parishFeedId, parishId))
+      .orderBy(desc(creatorSeasonsTable.createdAt)).limit(1);
+    const season = rows[0];
+    if (!season) { res.json({ season: null, isAdmin }); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    const day = dayNumber(season.startYmd, today);
+    if (day > season.durationDays) { res.json({ season: null, isAdmin }); return; }
+    const [countRow] = await db.select({ n: sql<number>`count(*)::int` })
+      .from(creatorSeasonMembersTable).where(eq(creatorSeasonMembersTable.seasonId, season.id));
+    const [mine] = await db.select({ id: creatorSeasonMembersTable.id }).from(creatorSeasonMembersTable)
+      .where(and(eq(creatorSeasonMembersTable.seasonId, season.id), eq(creatorSeasonMembersTable.userId, me)));
+    res.json({
+      season: {
+        token: season.token, title: season.title, startYmd: season.startYmd,
+        durationDays: season.durationDays, day, memberCount: Number(countRow?.n ?? 0), joined: !!mine,
+      },
+      isAdmin,
+    });
+  } catch (err) {
+    console.error("[parish-season] get failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

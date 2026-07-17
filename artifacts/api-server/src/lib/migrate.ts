@@ -2621,6 +2621,15 @@ export async function migrate() {
     await run(client, `
       CREATE INDEX IF NOT EXISTS creator_seasons_by_group ON creator_seasons (group_id)
     `);
+    // Parish seasons — a priest runs a bounded season for the whole
+    // congregation. NULL keeps the creator/community shape.
+    await run(client, `
+      ALTER TABLE creator_seasons ADD COLUMN IF NOT EXISTS parish_feed_id
+      INTEGER REFERENCES prayer_feeds(id) ON DELETE CASCADE
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS creator_seasons_by_parish ON creator_seasons (parish_feed_id)
+    `);
     await run(client, `
       CREATE TABLE IF NOT EXISTS creator_season_members (
         id SERIAL PRIMARY KEY,

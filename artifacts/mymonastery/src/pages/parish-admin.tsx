@@ -442,6 +442,10 @@ export default function ParishAdmin() {
                 tap "I'm interested" and the admin sees who raised their hand. */}
             {parishId !== null && <OpportunitiesManager parishId={parishId} />}
 
+            {/* Season — the priest designs a rhythm the parish prays together
+                for a few weeks ("pray with your priest"), with occasional notes. */}
+            {parishId !== null && <ParishSeasonManager parishId={parishId} />}
+
             {/* Parish admin roster — creator + any co-admins the
                 creator has granted access to. Adding goes by email
                 (the recipient must already have a Phoebe account). */}
@@ -664,6 +668,63 @@ function InterestList({ opportunityId }: { opportunityId: number }) {
           {r.name || "Someone"}{r.email ? ` · ${r.email}` : ""}{r.note ? ` — "${r.note}"` : ""}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Parish season manager (admin side) ─────────────────────────────────────
+function ParishSeasonManager({ parishId }: { parishId: number }) {
+  const seasonQ = useQuery<{ season: { token: string; title: string; day: number; durationDays: number; memberCount: number } | null; isAdmin: boolean }>({
+    queryKey: ["/api/parish/season", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/season?parishId=${parishId}`),
+  });
+  const [note, setNote] = useState("");
+  const [noteSent, setNoteSent] = useState(false);
+  const season = seasonQ.data?.season ?? null;
+  const postNote = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/creator/seasons/${season!.token}/notes`, { body: note.trim() }),
+    onSuccess: () => { setNote(""); setNoteSent(true); setTimeout(() => setNoteSent(false), 2200); },
+  });
+
+  return (
+    <div style={{ marginTop: 28, marginBottom: 20 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: "0 0 12px" }}>
+        Pray with your parish
+      </p>
+
+      {season ? (
+        <div style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.28)", borderRadius: 14, padding: "14px 16px" }}>
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>{season.title}</p>
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: SAGE, margin: "4px 0 0" }}>
+            Day {season.day} of {season.durationDays} · {season.memberCount} {season.memberCount === 1 ? "person" : "people"} praying
+          </p>
+          <Link href={`/season/${season.token}`}>
+            <span style={{ display: "inline-block", marginTop: 10, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, textDecoration: "underline", textUnderlineOffset: 4, cursor: "pointer" }}>
+              Open the season →
+            </span>
+          </Link>
+          <div style={{ marginTop: 12, borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
+            <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: FAINT_GREEN, margin: "0 0 6px" }}>Post a note to your parish</p>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="A short word to walk with them…" maxLength={2000}
+              style={{ width: "100%", background: "#0F2818", border: `1px solid ${BORDER}`, color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, padding: "10px 12px", borderRadius: 10, resize: "vertical" }} />
+            <button onClick={() => postNote.mutate()} disabled={!note.trim() || postNote.isPending}
+              style={{ marginTop: 6, background: "rgba(46,107,64,0.85)", border: "1px solid rgba(126,210,140,0.5)", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, padding: "8px 18px", borderRadius: 999, cursor: "pointer", opacity: !note.trim() ? 0.5 : 1 }}>
+              {noteSent ? "Posted ✓" : "Post note"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Link href={`/parish/season/new?parishId=${parishId}`}>
+            <button style={{ background: "none", border: `1px solid ${BORDER}`, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, padding: "9px 16px", borderRadius: 999, cursor: "pointer", width: "100%" }}>
+              + Start a season
+            </button>
+          </Link>
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: FAINT_GREEN, margin: "8px 0 0", lineHeight: 1.5 }}>
+            Design a daily rhythm your parish prays together for a few weeks — a shared Day-count, and your notes along the way.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
