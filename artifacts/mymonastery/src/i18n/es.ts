@@ -552,7 +552,7 @@ export const es: Translations = {
   header: {
     home: "Inicio",
     prayer_list: "Lista de oración",
-    daily_progress: "Progreso diario",
+    daily_progress: "Caminar diario",
     people: "Personas",
     menu: "Menú",
     way_of_love: "Camino del Amor",
@@ -581,10 +581,11 @@ export const es: Translations = {
     reply_failed: "No se pudo publicar tu respuesta — inténtalo de nuevo.",
   },
 
-  // ── Página de progreso diario (detrás de la píldora del encabezado) ──────
+  // ── Página de Caminar diario (detrás de la píldora del encabezado) ───────
   daily_progress: {
-    title: "Progreso diario",
-    subtitle: "Dónde estás en el ritmo de hoy — y qué sigue.",
+    title: "Caminar diario",
+    subtitle: "Tu caminar de hoy — dónde estás y qué sigue.",
+    subtitle_parish: "Tu caminar de hoy — paso a paso junto a tu parroquia.",
     practices_heading: "Prácticas de hoy",
     next_heading: "Siguiente",
     done_heading: "Hecho",

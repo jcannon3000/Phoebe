@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { useAuth } from "@/hooks/useAuth";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -23,6 +24,10 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  // In a parish, the walk is kept alongside the leader and congregation — frame
+  // the subtitle that way; otherwise it's the solo "where you are today" line.
+  const inParish = !!user?.parishFeedId;
   const bgPhoto = useMemo(
     () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
@@ -39,7 +44,7 @@ export default function DailyProgressPage() {
 
         <div className="flex items-center justify-between gap-3 mb-1">
           <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: FONT }}>
-            {t("daily_progress.title", { defaultValue: "Daily progress" })}
+            {t("daily_progress.title", { defaultValue: "Daily Walk" })}
           </h1>
           {/* Customize — shape which practices make up your rhythm. Top-right,
               vertically aligned with the title. */}
@@ -59,7 +64,9 @@ export default function DailyProgressPage() {
           </Link>
         </div>
         <p className="text-sm mb-3" style={{ color: SAGE }}>
-          {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
+          {inParish
+            ? t("daily_progress.subtitle_parish", { defaultValue: "Your walk today — kept step by step with your parish." })
+            : t("daily_progress.subtitle", { defaultValue: "Your walk today — where you are, and what's next." })}
         </p>
 
         {/* Paper version — print / save the weekly rhythm as a PDF, for anyone

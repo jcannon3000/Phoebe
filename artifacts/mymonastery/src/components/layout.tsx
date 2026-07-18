@@ -884,9 +884,9 @@ function DailyProgressPill() {
         color: "#C8D4C0",
         border: "1px solid rgba(200,212,192,0.18)",
       }}
-      aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
+      aria-label={t("header.daily_progress", { defaultValue: "Daily Walk" })}
     >
-      {t("header.daily_progress", { defaultValue: "Daily Progress" })}
+      {t("header.daily_progress", { defaultValue: "Daily Walk" })}
       {(() => {
         // Past 8 anchors a single row gets cramped — shrink the dots and wrap
         // them into two balanced rows so the pill stays tidy.
