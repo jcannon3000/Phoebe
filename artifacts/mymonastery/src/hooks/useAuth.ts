@@ -8,6 +8,7 @@ import {
 import { clearIdbCache } from "@/lib/idbCache";
 import { clearCustomAnchorStorage } from "@/lib/customAnchors";
 import { resetDeviceRuleForLogout } from "@/lib/guestSeed";
+import { flushRoutineConfig } from "@/lib/routineSync";
 import { applyCachedHomeLayout } from "@/lib/homeLayoutCache";
 
 // Phoebe Parish — derived server-side from beta_users + group_members
@@ -198,6 +199,11 @@ export function useLogout() {
     // signed-out user's customizations. The rule is safe on the server, so the
     // SAME user re-signing-in gets it restored in full (blank device + zeroed
     // clock → routineSync adopts the server config).
+    // Durably flush any un-pushed routine edit to the server BEFORE wiping the
+    // device (keepalive survives the navigation below) — otherwise a
+    // customization made within the 800ms push debounce is lost, and the same
+    // user re-logging-in would find their method blank.
+    try { flushRoutineConfig(); } catch { /* ignore */ }
     try { resetDeviceRuleForLogout(); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.

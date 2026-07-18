@@ -128,6 +128,37 @@ export function pushRoutineConfig(): void {
   }, 800);
 }
 
+// Cancel any queued push. Used on a user switch (a push scheduled for the
+// PREVIOUS owner must never land on the account we're switching TO — the PUT is
+// session-scoped server-side, so a late timer would corrupt the new account's
+// routine) and before a synchronous flush.
+function cancelPush(): void {
+  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+}
+
+// Synchronously flush this device's routine to the server, bypassing the 800ms
+// debounce, and survive a navigation/unload (keepalive). Called on logout BEFORE
+// the device rule is wiped: a customization made within 800ms of logging out
+// would otherwise have its debounced push cancelled by the page teardown, so the
+// server rule_config would never receive it and the SAME user re-logging-in would
+// find the method blank. Best-effort; no-op if nothing to send.
+export function flushRoutineConfig(): void {
+  cancelPush();
+  const values = collectRoutineValues();
+  if (Object.keys(values).length === 0) return;
+  const at = getLocalUpdatedAt() || Date.now();
+  setLocalUpdatedAt(at);
+  try {
+    void fetch("/api/me/rule-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values, updatedAt: at }),
+      credentials: "include",
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
+  } catch { /* ignore */ }
+}
+
 // Reconcile with the server config on login / app-active. Last-write-wins by
 // `updatedAt`; an empty/absent server config migrates THIS device's routine up.
 export function syncRoutineFromServer(server: RoutineConfig | null | undefined, userId?: number | string | null): void {
@@ -146,11 +177,21 @@ export function syncRoutineFromServer(server: RoutineConfig | null | undefined, 
   let owner: string | null = null;
   try { owner = localStorage.getItem(OWNER_KEY); } catch { /* ignore */ }
   if (uid != null && uid !== owner) {
+    // A push queued for the PREVIOUS owner must not land on this account.
+    cancelPush();
     try { localStorage.setItem(OWNER_KEY, uid); } catch { /* ignore */ }
-    if (serverVals && Object.keys(serverVals).length > 0) {
+    const localHasVals = Object.keys(collectRoutineValues()).length > 0;
+    // Normally the account's server config is the truth and we adopt it. The one
+    // exception: a device whose owner was UNSET (pre-owner-guard build, or a
+    // fresh device that edited offline) may hold a routine NEWER than the server
+    // — blind-adopting would silently drop that edit. So when the local edit is
+    // strictly newer AND non-empty, keep it and push it up instead.
+    if (owner == null && localHasVals && localAt > serverAt) {
+      pushRoutineConfig();
+    } else if (serverVals && Object.keys(serverVals).length > 0) {
       applyRoutineValues(serverVals);
       setLocalUpdatedAt(serverAt);
-    } else if (Object.keys(collectRoutineValues()).length > 0) {
+    } else if (localHasVals) {
       pushRoutineConfig();
     }
     return;
@@ -193,6 +234,7 @@ export function adoptRoutineConfig(values: Record<string, string> | null | undef
 // Reset the sync clock on logout so the next user re-syncs from scratch (the
 // routine keys themselves are cleared by their own modules / on a fresh login).
 export function clearRoutineSyncClock(): void {
+  cancelPush();
   try {
     localStorage.removeItem(UPDATED_AT_KEY);
     // Also forget which user the (now-cleared) routine belonged to, so the next
