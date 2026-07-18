@@ -10,8 +10,9 @@
  * not multi-select, and the back-end rejects a second pick if the
  * column already has a value.
  *
- * Phoebe staff approve / provision parishes (no self-serve creation
- * surface here) — the public list is filtered to state="live".
+ * Parishes are created self-serve (private by default); a parish only
+ * becomes public/listed here after Phoebe staff review it (see the
+ * visibility route). The public list is filtered to live + public.
  */
 
 import { useState, useEffect } from "react";

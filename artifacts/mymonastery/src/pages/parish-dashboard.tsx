@@ -18,7 +18,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
@@ -693,16 +693,34 @@ function ParishRuleCard({ parishId }: { parishId: number }) {
     queryKey: ["/api/parish/rule", parishId],
     queryFn: () => apiRequest("GET", `/api/parish/rule?parishId=${parishId}`),
   });
+  const qc = useQueryClient();
+  // "This week" must be the VIEWER'S local week (Sun-start), matching where each
+  // member's practice was logged — a UTC week would be off by one at the Sat→Sun
+  // boundary and silently drop the whole prior week. Same computation the group
+  // PrayedWithWeek uses.
+  const weekStart = (() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay());
+    return d.toLocaleDateString("en-CA");
+  })();
   const prayedQ = useQuery<{ count: number; viewerPracticed: boolean; leaderName?: string | null }>({
-    queryKey: ["/api/parish/prayed-with-week", parishId],
-    queryFn: () => apiRequest("GET", `/api/parish/prayed-with-week?parishId=${parishId}`),
+    queryKey: ["/api/parish/prayed-with-week", parishId, weekStart],
+    queryFn: () => apiRequest("GET", `/api/parish/prayed-with-week?parishId=${parishId}&weekStart=${weekStart}`),
   });
   // Just-adopted (this session) OR the server remembers I've adopted before —
   // so the card doesn't offer "Take up this rhythm" again on every remount.
   const [adoptedLocal, setAdoptedLocal] = useState(false);
   const adopt = useMutation({
     mutationFn: () => apiRequest("POST", "/api/parish/rule/adopt", { parishId }) as Promise<{ ruleConfig?: Record<string, string> }>,
-    onSuccess: (res) => { adoptRoutineConfig(res?.ruleConfig); setAdoptedLocal(true); },
+    onSuccess: (res) => {
+      adoptRoutineConfig(res?.ruleConfig);
+      setAdoptedLocal(true);
+      // The spec's office prefs + home layout are applied SERVER-side and read
+      // via these queries — invalidate them so the adopted card set / office type
+      // reflect immediately instead of after the next background refetch.
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
+      qc.invalidateQueries({ queryKey: ["/api/parish/rule", parishId] });
+    },
   });
   const adopted = adoptedLocal || !!ruleQ.data?.viewerAdopted;
 

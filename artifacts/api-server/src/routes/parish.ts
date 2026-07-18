@@ -220,6 +220,32 @@ router.delete("/parish/subscribe", async (req, res) => {
       })
       .where(eq(prayerFeedsTable.id, oldParishId));
 
+    // Clean up the rule adoption too — leaving shouldn't leave the user counted
+    // among those keeping the parish's rhythm. Delete their adoption row for the
+    // parish's current rule and decrement the denormalized accept count (floored
+    // at 0), so "taken up by N" doesn't drift high with departed members. (The
+    // adopted rhythm stays applied to their own account — leaving a parish
+    // doesn't reset a routine they chose; Settings → Reset routine does that.)
+    const [oldParish] = await db
+      .select({ ruleRoutineId: prayerFeedsTable.ruleRoutineId })
+      .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, oldParishId));
+    const ruleId = oldParish?.ruleRoutineId ?? null;
+    if (ruleId != null) {
+      const removed = await db
+        .delete(parishRuleAdoptionsTable)
+        .where(and(
+          eq(parishRuleAdoptionsTable.ruleId, ruleId),
+          eq(parishRuleAdoptionsTable.userId, session.id),
+        ))
+        .returning({ id: parishRuleAdoptionsTable.id });
+      if (removed.length > 0) {
+        await db
+          .update(prescribedRoutinesTable)
+          .set({ acceptCount: sql`GREATEST(0, ${prescribedRoutinesTable.acceptCount} - 1)` })
+          .where(eq(prescribedRoutinesTable.id, ruleId));
+      }
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error("[parish] unsubscribe failed:", err);
@@ -282,14 +308,18 @@ router.get("/parish/today", async (req, res) => {
 
     // Parishioners praying this week — distinct users who:
     //  (a) belong to this parish (subscription row), AND
-    //  (b) have a prayer_sessions row in the last 7 days
-    // Capped at 7 days of activity to keep the line meaningful.
+    //  (b) REALLY practiced in the last 7 days — a completed office (the
+    //      app-wide office invariant) or any ≥60s practice; a sub-minute glance
+    //      or a prayer-list open (which logs a session on sight) does NOT count.
+    // Same predicate as the shared `practicedThisWeek` helper, so this marquee
+    // agrees with the rule card's "prayed with your parish" line beneath it.
     const weekRows = await db.execute<{ count: string }>(sql`
       SELECT COUNT(DISTINCT ps.user_id)::text AS count
       FROM prayer_sessions ps
       INNER JOIN prayer_feed_subscriptions pfs
         ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
       WHERE ps.ended_at > NOW() - INTERVAL '7 days'
+        AND (ps.completed = true OR (ps.surface <> 'prayer-list' AND ps.duration_seconds >= 60))
     `);
     const parishionersPrayingThisWeek = Number(weekRows.rows[0]?.count ?? "0");
 
@@ -1062,6 +1092,20 @@ router.put("/parishes/:slug/visibility", async (req, res): Promise<void> => {
   if (!parish) { res.status(404).json({ error: "Parish not found" }); return; }
   const { allowed } = await canManageParish(session.id, parish.id);
   if (!allowed) { res.status(403).json({ error: "Admin only." }); return; }
+  // PUBLISHING a parish (making it public + openly joinable) requires Phoebe
+  // staff review — a real congregation shouldn't be listed on a name that no one
+  // vetted (impersonation risk: a fake "St. Mark's" could collect pastoral
+  // concerns). A parish admin can create + run their parish and UNPUBLISH it
+  // themselves, but only staff can flip it public.
+  if (visibility === "public" && parish.visibility !== "public") {
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, session.id));
+    const [staff] = u ? await db.select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase())) : [];
+    if (!staff?.isAdmin) {
+      res.status(403).json({ error: "A parish is listed publicly only after Phoebe reviews it. Ask us to publish yours." });
+      return;
+    }
+  }
   try {
     await db.update(prayerFeedsTable)
       .set({ visibility, updatedAt: new Date() })
@@ -1581,6 +1625,11 @@ router.put("/parish/rule", async (req, res): Promise<void> => {
   if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
   const label = typeof body.label === "string" ? body.label.trim().slice(0, 80) || null : null;
   try {
+    // Remember the rule being REPLACED so we can nudge the people who adopted it.
+    const [prev] = await db.select({ ruleRoutineId: prayerFeedsTable.ruleRoutineId })
+      .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));
+    const prevRuleId = prev?.ruleRoutineId ?? null;
+
     const token = crypto.randomBytes(16).toString("hex");
     const [inserted] = await db.insert(prescribedRoutinesTable).values({
       token, groupId: null, createdByUserId: session.id, label, spec,
@@ -1588,6 +1637,35 @@ router.put("/parish/rule", async (req, res): Promise<void> => {
     if (!inserted) { res.status(500).json({ error: "internal_error" }); return; }
     await db.update(prayerFeedsTable).set({ ruleRoutineId: inserted.id, updatedAt: new Date() }).where(eq(prayerFeedsTable.id, parishId));
     res.json({ ok: true });
+
+    // Notify + re-prompt (product decision): when a rhythm is REPLACED, the
+    // people who had taken up the old one keep it applied but are no longer
+    // counted (adoption is keyed on the rule id), and their dashboard card now
+    // re-offers "Take up this rhythm." Nudge them so the change isn't silent —
+    // they choose whether to move to the new rhythm. Best-effort, after the
+    // response; never nudge the editor themselves.
+    if (prevRuleId != null && prevRuleId !== inserted.id) {
+      void (async () => {
+        try {
+          const adopters = await db.select({ userId: parishRuleAdoptionsTable.userId })
+            .from(parishRuleAdoptionsTable).where(eq(parishRuleAdoptionsTable.ruleId, prevRuleId));
+          const ids = [...new Set(adopters.map((a) => a.userId).filter((n): n is number => n != null))]
+            .filter((uid) => uid !== session.id);
+          if (ids.length > 0) {
+            const [feed] = await db.select({ title: prayerFeedsTable.title })
+              .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));
+            const where = feed?.title ? `${feed.title} updated its daily rhythm` : "Your parish updated its daily rhythm";
+            await sendPushToUsers(ids, {
+              title: where,
+              body: "Take another look and choose whether to walk the new rhythm.",
+              path: "/parish",
+              threadId: "parish-rule",
+              collapseId: `parish-rule-${parishId}`,
+            });
+          }
+        } catch (err) { console.warn("[parish] rule-change nudge failed:", err); }
+      })();
+    }
   } catch (err) {
     console.error("[parish] set rule failed:", err);
     res.status(500).json({ error: "internal_error" });
