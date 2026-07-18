@@ -689,7 +689,7 @@ function ParishRuleCard({ parishId }: { parishId: number }) {
     queryKey: ["/api/parish/rule", parishId],
     queryFn: () => apiRequest("GET", `/api/parish/rule?parishId=${parishId}`),
   });
-  const prayedQ = useQuery<{ count: number; viewerPracticed: boolean }>({
+  const prayedQ = useQuery<{ count: number; viewerPracticed: boolean; leaderName?: string | null }>({
     queryKey: ["/api/parish/prayed-with-week", parishId],
     queryFn: () => apiRequest("GET", `/api/parish/prayed-with-week?parishId=${parishId}`),
   });
@@ -726,13 +726,30 @@ function ParishRuleCard({ parishId }: { parishId: number }) {
           {adopt.isPending ? "Taking it up…" : "Take up this rhythm"}
         </button>
       )}
-      {pw && (pw.viewerPracticed || pw.count > 0) && (
-        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: "rgba(143,175,150,0.8)", margin: "12px 0 0", borderTop: "1px solid rgba(46,107,64,0.18)", paddingTop: 10 }}>
-          {pw.viewerPracticed
-            ? `You prayed with ${pw.count} ${pw.count === 1 ? "other" : "others"} in your parish this week 🌿`
-            : `${pw.count} in your parish prayed this week`}
-        </p>
-      )}
+      {(() => {
+        if (!pw) return null;
+        const lead = pw.leaderName?.trim() || null;
+        const n = pw.count;
+        const ppl = `${n} ${n === 1 ? "person" : "people"}`;
+        const others = `${n} ${n === 1 ? "other" : "others"}`;
+        let msg: string | null = null;
+        if (pw.viewerPracticed) {
+          // Name the priest/leader you prayed with, then everyone else in aggregate.
+          if (lead && n > 0) msg = `You prayed with ${lead} and ${ppl} in your parish this week 🌿`;
+          else if (lead) msg = `You prayed with ${lead} in your parish this week 🌿`;
+          else if (n > 0) msg = `You prayed with ${others} in your parish this week 🌿`;
+        } else {
+          if (lead && n > 0) msg = `${lead} and ${ppl} in your parish prayed this week`;
+          else if (lead) msg = `${lead} prayed in your parish this week`;
+          else if (n > 0) msg = `${n} in your parish prayed this week`;
+        }
+        if (!msg) return null;
+        return (
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: "rgba(143,175,150,0.8)", margin: "12px 0 0", borderTop: "1px solid rgba(46,107,64,0.18)", paddingTop: 10 }}>
+            {msg}
+          </p>
+        );
+      })()}
     </div>
   );
 }

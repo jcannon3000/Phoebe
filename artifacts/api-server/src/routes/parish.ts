@@ -1464,10 +1464,11 @@ router.post("/parish/rule/adopt", perUserRateLimit("parish_rule_adopt", { max: 3
   }
 });
 
-// GET /api/parish/prayed-with-week?parishId=&weekStart= — "you prayed with N
-// from your parish this week." AGGREGATE ONLY: N = distinct OTHER subscribers of
-// this parish with ≥1 practice signal this week; never names/ids. Same signals
-// + privacy posture as the community version (reuses practicedThisWeek).
+// GET /api/parish/prayed-with-week?parishId=&weekStart= — "you prayed with
+// {the priest} and N others from your parish this week." Top-down parish, so we
+// deliberately NAME the parish's leader (the priest — its creator, or an admin)
+// when they prayed this week; everyone else stays an aggregate count. N = distinct
+// OTHER subscribers with ≥1 practice signal this week, EXCLUDING the named leader.
 router.get("/parish/prayed-with-week", async (req, res): Promise<void> => {
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -1479,15 +1480,33 @@ router.get("/parish/prayed-with-week", async (req, res): Promise<void> => {
     : (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d.toISOString().slice(0, 10); })();
   try {
     const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
-    if (!user || user.parishFeedId !== parishId) { res.json({ count: 0, viewerPracticed: false }); return; }
+    if (!user || user.parishFeedId !== parishId) { res.json({ count: 0, viewerPracticed: false, leaderName: null }); return; }
     const subs = await db.select({ userId: prayerFeedSubscriptionsTable.userId })
       .from(prayerFeedSubscriptionsTable).where(eq(prayerFeedSubscriptionsTable.feedId, parishId));
     const ids = [...new Set(subs.map((s) => s.userId).filter((n): n is number => n != null))];
-    if (ids.length <= 1) { res.json({ count: 0, viewerPracticed: false }); return; }
+    if (ids.length <= 1) { res.json({ count: 0, viewerPracticed: false, leaderName: null }); return; }
     const practiced = await practicedThisWeek(ids, weekStart);
     const viewerPracticed = practiced.has(session.id);
     practiced.delete(session.id);
-    res.json({ count: practiced.size, viewerPracticed });
+
+    // Name the parish leader who prayed with them — prefer the priest (creator),
+    // else any admin who prayed. Only when it isn't the viewer, and they have a
+    // name to show; then pull them out of the anonymous "others" count.
+    let leaderName: string | null = null;
+    const [feedRow] = await db.select({ creatorUserId: prayerFeedsTable.creatorUserId })
+      .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));
+    const leaderIds = await parishAdminUserIds(parishId);
+    const creatorId = feedRow?.creatorUserId ?? null;
+    const namedLeaderId = (creatorId != null && practiced.has(creatorId))
+      ? creatorId
+      : (leaderIds.find((id) => practiced.has(id)) ?? null);
+    if (namedLeaderId != null) {
+      const [lu] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, namedLeaderId));
+      const nm = (lu?.name ?? "").trim();
+      if (nm) { leaderName = nm; practiced.delete(namedLeaderId); }
+    }
+
+    res.json({ count: practiced.size, viewerPracticed, leaderName });
   } catch (err) {
     console.error("[parish] prayed-with-week failed:", err);
     res.status(500).json({ error: "internal_error" });
