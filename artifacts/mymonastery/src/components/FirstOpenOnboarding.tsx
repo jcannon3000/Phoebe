@@ -22,6 +22,7 @@ import {
   type HomeLayout,
 } from "@/lib/homeLayoutCache";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { shouldShowFirstOpenOnboarding, markFirstOpenOnboardingDone } from "@/lib/firstOpenOnboarding";
 
@@ -67,49 +68,66 @@ const NEWSLETTERS: Newsletter[] = [
 const SIDES: OfficeSide[] = ["morning", "evening"];
 const NEWS_KEYS = ["cac", "fdd", "ssje"];
 
+// Turn a home-layout card on/off. A card shows only when its key is in `order`
+// AND not in `hidden` — so "off" keeps it in order but adds it to hidden.
+function setCard(order: string[], hidden: string[], key: string, on: boolean, after?: string): [string[], string[]] {
+  const o = order.filter((k) => k !== key);
+  const h = hidden.filter((k) => k !== key);
+  if (on) {
+    const ai = after ? o.indexOf(after) : -1;
+    if (ai >= 0) o.splice(ai + 1, 0, key);
+    else o.push(key);
+  } else {
+    o.push(key);
+    h.push(key);
+  }
+  return [o, h];
+}
+
 function applyChoices(
   method: Method,
   newsletter: ReflectionSource,
   user: { homeLayout?: HomeLayout | null; isAnonymous?: boolean } | null | undefined,
   invalidateAuth: () => void,
 ): void {
-  // 1. Prayer method → office level (both sides), plus the contemplation flag.
+  const isContemplation = method.key === "contemplation";
+  const isCreation = method.key === "creation";
+  // Office LEVEL is the picked BCP form for office/psalms/devotion; OFF ("ask")
+  // for Contemplative + Creation — those aren't office anchors, they get their own
+  // card (the silence sit / the Co-Breathe card). Setting BOTH a level and the
+  // contemplation add-on would render duplicate cards.
+  const officeLevel: OfficeLevel = (isContemplation || isCreation) ? "ask" : method.level;
   for (const side of SIDES) {
-    setSideLevel(side, method.level);
-    setSideContemplation(side, !!method.contemplation);
-    if (method.contemplation) setSideMinutes(side, 10);
+    setSideLevel(side, officeLevel);
+    setSideContemplation(side, isContemplation);
+    if (isContemplation) setSideMinutes(side, 10);
     setSideReflection(side, newsletter);
   }
   setReflectionSource(newsletter);
 
-  // 2. Home layout: the chosen reading ON (right after the office card), the
-  //    other two OFF. A reflection card only shows when its key is in `order` and
-  //    not in `hidden`, so we set all three explicitly.
-  const base: HomeLayout =
-    (user?.homeLayout as HomeLayout | undefined) ??
-    readCachedHomeLayout() ??
-    { order: ["requests", "office", "contemplation", "feeds"], hidden: [] };
-  let order = base.order.filter((k) => !NEWS_KEYS.includes(k));
-  let hidden = base.hidden.filter((k) => !NEWS_KEYS.includes(k));
-  if (newsletter !== "none") {
-    const oi = order.indexOf("office");
-    if (oi >= 0) order.splice(oi + 1, 0, newsletter);
-    else order.unshift(newsletter);
-  }
-  for (const k of NEWS_KEYS) {
-    if (k === newsletter) continue;
-    order.push(k);
-    hidden.push(k);
-  }
-  const layout: HomeLayout = { order, hidden, v: HOME_LAYOUT_VERSION };
+  const guest = isDeviceLocalGuest(user);
+  // The guest silence goal drives the standalone Silence card. Seed it only for
+  // the Contemplative method; clear the seeded default (5 min) for every other
+  // method so the chosen prayer is the routine, not a stray silence card.
+  if (guest) setGuestSilenceGoalMin(isContemplation ? 10 : 0);
 
-  if (isDeviceLocalGuest(user)) {
-    cacheHomeLayoutLocalOnly(layout);
-  } else {
-    void saveHomeLayout(layout);
-    invalidateAuth();
-    void pushRoutineConfig();
+  // Home layout: chosen reading ON (after the office card) + the other two OFF;
+  // the Co-Breathe card ON only for Creation Prayer. Don't FABRICATE a layout for
+  // a signed-in user whose real layout isn't loaded — overwriting it with a stub
+  // would drop their cards. Only mutate when we have a base, or for a guest.
+  const base = (user?.homeLayout as HomeLayout | undefined) ?? readCachedHomeLayout();
+  if (base || guest) {
+    let order = (base?.order ?? ["office"]).slice();
+    let hidden = (base?.hidden ?? []).slice();
+    [order, hidden] = setCard(order, hidden, "cobreathe", isCreation, "office");
+    for (const k of NEWS_KEYS) {
+      [order, hidden] = setCard(order, hidden, k, k === newsletter, "office");
+    }
+    const layout: HomeLayout = { order, hidden, v: HOME_LAYOUT_VERSION };
+    if (guest) cacheHomeLayoutLocalOnly(layout);
+    else { void saveHomeLayout(layout); invalidateAuth(); }
   }
+  if (!guest) void pushRoutineConfig();
   // Nudge every home reader to re-read (the setters already fire this, but fire
   // once more AFTER the layout write so the guest path picks up the new cache).
   try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
@@ -183,6 +201,12 @@ export function FirstOpenOnboarding() {
     () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
   );
+  // `?firstrun=1` is a PREVIEW: walk the flow visually but write nothing and
+  // don't mark it done, so opening a link with the param can never overwrite a
+  // real (possibly signed-in) user's routine.
+  const preview = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get("firstrun") === "1"; } catch { return false; }
+  }, []);
 
   // The "setting up your home" loading beat, then into the tutorial.
   useEffect(() => {
@@ -197,13 +221,15 @@ export function FirstOpenOnboarding() {
   // loading beat (done is stamped here so a force-quit during the tutorial won't
   // re-run the picker — they've already chosen).
   const applyAndContinue = (reading: ReflectionSource) => {
-    const chosen = METHODS.find((m) => m.key === method) ?? METHODS[0]!;
-    try {
-      applyChoices(chosen, reading, user, () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
-    } catch {
-      /* never trap the user on the splash if a write fails */
+    if (!preview) {
+      const chosen = METHODS.find((m) => m.key === method) ?? METHODS[0]!;
+      try {
+        applyChoices(chosen, reading, user, () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
+      } catch {
+        /* never trap the user on the splash if a write fails */
+      }
+      markFirstOpenOnboardingDone();
     }
-    markFirstOpenOnboardingDone();
     setStep("loading");
   };
   const dismiss = () => setVisible(false);
