@@ -160,6 +160,22 @@ function dayKey(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
+// Local YYYY-MM-DD (zero-padded) — matches the day key Apple Health minutes are
+// stored under server-side, so a session's day can look up that day's Health total.
+function ymdLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-CA");
+}
+// Whole-day diff from today for a local YYYY-MM-DD string (parsed as LOCAL, not
+// UTC, so it doesn't drift a day for users behind UTC).
+function dayDiffYmd(ymd: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return Infinity;
+  const that = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((today.getTime() - that.getTime()) / 86400000);
+}
 
 // <input type="datetime-local"> wants LOCAL "YYYY-MM-DDTHH:mm".
 function localDatetimeValue(d: Date): string {
@@ -731,6 +747,16 @@ export default function ContemplationPage() {
     queryFn: () => apiRequest("GET", "/api/me/contemplation-sessions") as Promise<Session[]>,
   });
 
+  // External Apple Health mindful minutes PER LOCAL DAY (YYYY-MM-DD → minutes),
+  // synced from other apps. The condensed older-day history cards only sum
+  // Phoebe's own sits, so a day mostly kept in Calm/Insight Timer/Apple
+  // Mindfulness read far too low; we fold these in below so a condensed day
+  // matches the Stats totals (which already include Health).
+  const { data: healthDays = {} } = useQuery<Record<string, number>>({
+    queryKey: ["/api/me/contemplation-health-days"],
+    queryFn: async () => (await apiRequest("GET", "/api/me/contemplation-health-days") as { days?: Record<string, number> })?.days ?? {},
+  });
+
   // Today's mindful sessions read from Apple Health (iOS only). We surface
   // only EXTERNAL ones (Calm, Insight Timer, Apple Mindfulness) as history
   // cards — Phoebe's own sits already appear above as logged sits, so showing
@@ -751,8 +777,9 @@ export default function ContemplationPage() {
   // minutes). Sessions arrive newest-first, so day groups land newest-first.
   const historyGroups = useMemo(() => {
     const recent: Session[] = [];
-    const olderDays: Array<{ key: string; iso: string; totalSeconds: number; count: number }> = [];
+    const olderDays: Array<{ key: string; iso: string; ymd: string; totalSeconds: number; healthMinutes: number; count: number }> = [];
     const seen = new Map<string, number>();
+    const usedYmd = new Set<string>();
     for (const s of sessions) {
       const w = s.startedAt ?? s.endedAt;
       if (!w || dayDiff(w) <= 1) { recent.push(s); continue; }
@@ -761,13 +788,27 @@ export default function ContemplationPage() {
       if (idx === undefined) {
         idx = olderDays.length;
         seen.set(k, idx);
-        olderDays.push({ key: k, iso: w, totalSeconds: 0, count: 0 });
+        const ymd = ymdLocal(w);
+        usedYmd.add(ymd);
+        olderDays.push({ key: k, iso: w, ymd, totalSeconds: 0, healthMinutes: 0, count: 0 });
       }
       olderDays[idx].totalSeconds += s.durationSeconds ?? 0;
       olderDays[idx].count += 1;
     }
+    // Fold in that day's external Apple Health minutes (Calm / Insight Timer /
+    // Apple Mindfulness) so a condensed day matches the Stats totals — otherwise
+    // a day mostly kept in another app read far too low.
+    for (const g of olderDays) g.healthMinutes = healthDays[g.ymd] ?? 0;
+    // Days kept ENTIRELY in another app (no Phoebe sit) would otherwise vanish
+    // from the history — surface them as health-only condensed cards.
+    for (const [ymd, minutes] of Object.entries(healthDays)) {
+      if (minutes <= 0 || usedYmd.has(ymd) || dayDiffYmd(ymd) <= 1) continue;
+      olderDays.push({ key: `h-${ymd}`, iso: `${ymd}T12:00:00`, ymd, totalSeconds: 0, healthMinutes: minutes, count: 0 });
+    }
+    // Newest day first (Phoebe + health-only interleaved by date).
+    olderDays.sort((a, b) => (a.ymd < b.ymd ? 1 : a.ymd > b.ymd ? -1 : 0));
     return { recent, olderDays };
-  }, [sessions]);
+  }, [sessions, healthDays]);
 
   // Manual-log form state.
   const queryClient = useQueryClient();
@@ -1317,13 +1358,18 @@ export default function ContemplationPage() {
                       {formatSessionDate(g.iso, t)}
                     </p>
                     <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
-                      {g.count === 1
-                        ? t("contemplation.day_one_sit", { defaultValue: "1 sit" })
-                        : t("contemplation.day_n_sits", { count: g.count, defaultValue: `${g.count} sits` })}
+                      {g.count === 0
+                        ? `🍎 ${t("contemplation.health_title", { defaultValue: "Apple Health" })}`
+                        : g.count === 1
+                          ? t("contemplation.day_one_sit", { defaultValue: "1 sit" })
+                          : t("contemplation.day_n_sits", { count: g.count, defaultValue: `${g.count} sits` })}
+                      {g.count > 0 && g.healthMinutes > 0
+                        ? ` · 🍎 ${t("contemplation.plus_health", { minutes: g.healthMinutes, defaultValue: `+${g.healthMinutes} min from Apple Health` })}`
+                        : ""}
                     </p>
                   </div>
                   <span className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                    {humanMinutes(g.totalSeconds)}
+                    {humanMinutes(g.totalSeconds + g.healthMinutes * 60)}
                   </span>
                 </div>
               ))}

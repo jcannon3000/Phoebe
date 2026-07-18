@@ -585,6 +585,33 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/me/contemplation-health-days — external Apple Health mindful minutes
+// the iOS client synced, broken out PER LOCAL DAY (YYYY-MM-DD → minutes). The
+// History list's condensed older-day cards sum only Phoebe's own logged sits, so
+// a day where most of the silence was kept in Calm / Insight Timer / Apple
+// Mindfulness read far too low; the client folds these in so a condensed day
+// matches the Stats totals (which already include Health). Bounded to ~14 months.
+router.get("/me/contemplation-health-days", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const rows = await db
+      .select({ day: contemplationHealthMinutesTable.day, minutes: contemplationHealthMinutesTable.minutes })
+      .from(contemplationHealthMinutesTable)
+      .where(eq(contemplationHealthMinutesTable.userId, sessionUserId))
+      .orderBy(desc(contemplationHealthMinutesTable.day))
+      .limit(430);
+    const days: Record<string, number> = {};
+    for (const r of rows) {
+      if (r.day && typeof r.minutes === "number" && r.minutes > 0) days[r.day] = r.minutes;
+    }
+    res.json({ days });
+  } catch (err) {
+    console.error("[/me/contemplation-health-days GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /api/me/contemplation-companions?startedAt=…&endedAt=… —
 // "who was sitting with me?" for a SINGLE contemplation window, used by
 // the ContemplationTimer summary screen the moment a sit ends. Two
