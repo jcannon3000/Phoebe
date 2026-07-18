@@ -517,16 +517,17 @@ function LogSheet({
         </div>
         )}
 
-        {/* A private note — qualitative reflection for the week. Optional; the
-            week can still be marked kept with nothing written. */}
+        {/* A private note — practice-specific ("Who did you commune with?",
+            "Where did you go?", …). Optional; the week can still be marked kept
+            with nothing written. */}
         <p className="text-[12px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
-          A note {kept ? "" : "(optional)"}
+          {practice.askLabel} {kept ? "" : "(optional)"}
         </p>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value.slice(0, 200))}
           rows={3}
-          placeholder={practice.kind === "rest" ? "How did you rest?…" : "What did you do? A word for yourself…"}
+          placeholder={practice.askPlaceholder}
           className="w-full rounded-xl px-3 py-2.5 text-[15px] outline-none mb-1"
           style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: FONT, resize: "vertical" }}
         />

@@ -221,15 +221,21 @@ export function FirstOpenOnboarding() {
   // loading beat (done is stamped here so a force-quit during the tutorial won't
   // re-run the picker — they've already chosen).
   const applyAndContinue = (reading: ReflectionSource) => {
-    if (!preview) {
+    // A returning signed-in user (real account with an existing home layout) who
+    // lands on a fresh browser also trips the first-open gate — show them the
+    // intro, but DON'T rewrite their rhythm. (Guests + brand-new signups have no
+    // layout yet, so they get the real apply.) `?firstrun=1` is read-only too.
+    const readOnly = preview || (!!user && !isDeviceLocalGuest(user) && !!user.homeLayout);
+    if (!readOnly) {
       const chosen = METHODS.find((m) => m.key === method) ?? METHODS[0]!;
       try {
         applyChoices(chosen, reading, user, () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
       } catch {
         /* never trap the user on the splash if a write fails */
       }
-      markFirstOpenOnboardingDone();
     }
+    // Mark done except in the explicit ?firstrun preview (which stays repeatable).
+    if (!preview) markFirstOpenOnboardingDone();
     setStep("loading");
   };
   const dismiss = () => setVisible(false);
