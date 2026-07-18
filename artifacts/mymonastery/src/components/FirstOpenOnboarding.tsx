@@ -188,41 +188,100 @@ function Choice({
 
 // ── Little live-looking MOCKS of the real home so the tutorial SHOWS what it's
 //    describing (like the Co-Breathe intro shows the breath ring). ──────────────
-function MiniCard({ emoji, rgb, title, blurb, cta, kept, dim }: { emoji: string; rgb: string; title: string; blurb?: string; cta?: string; kept?: boolean; dim?: boolean }) {
+// The frosted-green card tint — a copy of DailyProgressBody's cardTintBg so the
+// mocks share the EXACT background ramp of the real home cards (top lighter →
+// bottom darker). Kept in lockstep with that helper.
+function cardTintBg(tint: number): string {
+  const t = Math.max(0, Math.min(1, tint));
+  const r = Math.round(26 - 16 * t);
+  const g = Math.round(52 - 24 * t);
+  const b = Math.round(36 - 18 * t);
+  const a = (0.27 + 0.09 * t).toFixed(3);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// HERO card — a 1:1 mock of PracticeCard's `hero` layout (the top "Next" card):
+// 6px spine, 34px emoji, 22px bold title, and a FULL-WIDTH CTA button below.
+function HeroCard({ emoji, rgb, title, blurb, cta, tint = 0 }: { emoji: string; rgb: string; title: string; blurb: string; cta: string; tint?: number }) {
   return (
-    <div style={{ display: "flex", width: "100%", borderRadius: 18, overflow: "hidden", background: CARD_BG, border: `1px solid ${CARD_BORDER}`, opacity: dim ? 0.55 : 1 }}>
-      <div style={{ width: 5, flexShrink: 0, background: `rgba(${rgb},0.72)` }} />
-      <div style={{ flex: 1, minWidth: 0, padding: "11px 13px", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 23, flexShrink: 0 }} aria-hidden>{emoji}</span>
-        <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-          <p style={{ fontSize: 14.5, fontWeight: 700, color: WARM, fontFamily: FONT, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</p>
-          {blurb && <p style={{ fontSize: 11, color: SAGE, fontFamily: FONT, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{blurb}</p>}
+    <div style={{ position: "relative", display: "flex", borderRadius: 24, overflow: "hidden", background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}` }}>
+      <div style={{ width: 6, flexShrink: 0, background: `rgba(${rgb},0.72)` }} />
+      <div style={{ flex: 1, minWidth: 0, padding: "20px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <span style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }} aria-hidden>{emoji}</span>
+          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+            <p style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15, color: WARM, fontFamily: FONT, margin: 0 }}>{title}</p>
+            <p style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.35, color: SAGE, fontFamily: FONT }}>{blurb}</p>
+          </div>
         </div>
-        {kept ? (
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(126,210,140,0.95)", fontFamily: FONT, flexShrink: 0 }}>✓ kept</span>
-        ) : cta ? (
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: WARM, fontFamily: FONT, background: `rgba(${rgb},0.85)`, borderRadius: 999, padding: "6px 13px", flexShrink: 0 }}>{cta}</span>
-        ) : null}
+        <div style={{ marginTop: 16, width: "100%", textAlign: "center", borderRadius: 999, fontSize: 15, fontWeight: 600, padding: "12px 0", background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
+          {cta} <span aria-hidden style={{ marginLeft: 4 }}>→</span>
+        </div>
       </div>
     </div>
   );
 }
 
-function RoutineRow({ emoji, title, on }: { emoji: string; title: string; on: boolean }) {
+// COMPACT card — a 1:1 mock of PracticeCard's default row: 4px spine, 20px emoji,
+// 14.5px semibold title. A not-done card shows the CTA pill; a DONE card shows the
+// practice-colored ✓ chip (NOT dimmed, NOT green "kept" text — matching the app).
+function MiniCard({ emoji, rgb, title, blurb, cta, done, tint = 0.5 }: { emoji: string; rgb: string; title: string; blurb: string; cta?: string; done?: boolean; tint?: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 14, padding: "10px 12px" }}>
-      <span style={{ color: "rgba(143,175,150,0.45)", fontSize: 15, letterSpacing: "-2px", flexShrink: 0 }} aria-hidden>⠿</span>
-      <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden>{emoji}</span>
-      <span style={{ flex: 1, textAlign: "left", fontSize: 14, fontWeight: 600, color: WARM, fontFamily: FONT }}>{title}</span>
-      <span style={{ width: 34, height: 20, borderRadius: 999, flexShrink: 0, background: on ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-        <span style={{ position: "absolute", top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: 999, background: "#F0EDE6", transition: "left 0.2s" }} />
+    <div style={{ position: "relative", display: "flex", borderRadius: 24, overflow: "hidden", background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}` }}>
+      <div style={{ width: 4, flexShrink: 0, background: `rgba(${rgb},0.7)` }} />
+      <div style={{ flex: 1, minWidth: 0, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
+        <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+          <p style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.15, color: WARM, fontFamily: FONT, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</p>
+          <p style={{ fontSize: 12, marginTop: 2, lineHeight: 1.35, color: SAGE, fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{blurb}</p>
+        </div>
+        {done ? (
+          <span style={{ flexShrink: 0, borderRadius: 999, fontSize: 12, fontWeight: 600, padding: "6px 14px", background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)`, fontFamily: FONT }}>✓</span>
+        ) : (
+          <span style={{ flexShrink: 0, minWidth: 84, textAlign: "center", borderRadius: 999, fontSize: 12, fontWeight: 600, padding: "6px 14px", background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>{cta} <span aria-hidden>→</span></span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A vertical grip glyph matching lucide's GripVertical (two columns of dots).
+function Grip() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(143,175,150,0.5)" style={{ flexShrink: 0 }} aria-hidden>
+      <circle cx="9" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" />
+      <circle cx="15" cy="6" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+    </svg>
+  );
+}
+
+// Reorder row — a 1:1 mock of the /customize-home Reorder.Item: grip + emoji +
+// label/sub + a REMOVE (×) button. There is no per-row toggle in the real editor.
+function RoutineRow({ emoji, title, sub }: { emoji: string; title: string; sub: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)", borderRadius: 12, padding: "12px" }}>
+      <Grip />
+      <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
+      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: WARM, fontFamily: FONT, margin: 0 }}>{title}</p>
+        <p style={{ fontSize: 12, color: SAGE, fontFamily: FONT, margin: "2px 0 0" }}>{sub}</p>
+      </div>
+      <span style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 5, borderRadius: 999, color: "rgba(143,175,150,0.7)", background: "rgba(143,175,150,0.10)", border: "1px solid rgba(143,175,150,0.20)" }} aria-hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </span>
     </div>
   );
 }
 
+// Section header — a 1:1 mock of DailyProgressBody's sectionHeader: an 18px
+// semibold title with a hairline rule trailing to the right.
 function SectionLabel({ text }: { text: string }) {
-  return <p style={{ fontSize: 12, fontWeight: 700, color: WARM, fontFamily: FONT, margin: "0 0 8px", textAlign: "left", width: "100%" }}>{text}</p>;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, width: "100%" }}>
+      <span style={{ fontSize: 18, fontWeight: 600, color: WARM, fontFamily: FONT }}>{text}</span>
+      <span style={{ flex: 1, height: 1, background: "rgba(200,212,192,0.15)" }} />
+    </div>
+  );
 }
 
 function TutorialMock({ idx }: { idx: number }) {
@@ -231,26 +290,29 @@ function TutorialMock({ idx }: { idx: number }) {
     return (
       <div style={wrap}>
         <SectionLabel text="Next" />
-        <MiniCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="The office to begin your day" cta="Begin →" />
-        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Today's reading" cta="Read →" />
+        <HeroCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="The office to begin your day" cta="Begin" tint={0} />
+        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Today's reading" cta="Read" tint={0.6} />
       </div>
     );
   }
   if (idx === 1) {
     return (
       <div style={wrap}>
-        <MiniCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="Prayed this morning" kept dim />
-        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Read today" kept dim />
-        <MiniCard emoji="🌙" rgb="124,116,196" title="Evening Prayer" blurb="Close the day" cta="Begin →" />
+        <SectionLabel text="Next" />
+        <HeroCard emoji="🌙" rgb="124,116,196" title="Evening Prayer" blurb="Close the day" cta="Begin" tint={0} />
+        <div style={{ height: 6 }} />
+        <SectionLabel text="Done" />
+        <MiniCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="Prayed this morning" done tint={0.6} />
+        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Read today" done tint={1} />
       </div>
     );
   }
   return (
     <div style={wrap}>
       <SectionLabel text="Your routine" />
-      <RoutineRow emoji="🕊️" title="Morning Prayer" on />
-      <RoutineRow emoji="🕯️" title="Contemplative Prayer" on />
-      <RoutineRow emoji="🌍" title="Creation Prayer" on={false} />
+      <RoutineRow emoji="🕊️" title="Morning Prayer" sub="The office to begin your day" />
+      <RoutineRow emoji="🕯️" title="Contemplative Prayer" sub="A silent sit, morning and evening" />
+      <RoutineRow emoji="📖" title="CAC Daily Meditation" sub="Today's reading" />
     </div>
   );
 }
@@ -260,8 +322,8 @@ function TutorialMock({ idx }: { idx: number }) {
 // body → Next pill + counter + Skip). Teaches what's-next, progress, and shaping.
 const TUTORIAL: Array<{ eyebrow: string; title: string; body: string }> = [
   { eyebrow: "Your daily rhythm", title: "See what's next", body: "Phoebe always shows you the next thing to pray, right at the top. Tap the card and begin — no hunting, no guilt about what you missed." },
-  { eyebrow: "Your daily rhythm", title: "Watch it come together", body: "Each practice you keep slips to “kept,” and your day fills in as you pray — a quiet picture of the rhythm you're keeping." },
-  { eyebrow: "Your daily rhythm", title: "Shape it your way", body: "Reorder, toggle, add practices, change how you pray, set reminders. Your rhythm is yours — reshape it anytime." },
+  { eyebrow: "Your daily rhythm", title: "Watch it come together", body: "Each practice you pray drops into “Done,” and your day fills in as you go — a quiet picture of the rhythm you're keeping." },
+  { eyebrow: "Your daily rhythm", title: "Shape it your way", body: "Reorder, remove, add practices, change how you pray, set reminders. Your rhythm is yours — reshape it anytime." },
 ];
 
 export function FirstOpenOnboarding() {
