@@ -102,11 +102,24 @@ export function collectRoutineValues(): Record<string, string> {
   return out;
 }
 
+// ADDITIVE keys: applied from the server when present, but NEVER deleted just
+// because an incoming config omits them. Course progress is genuinely per-device
+// (you complete lessons on your phone) and only piggybacks on the rule_config
+// blob — so a routine-only push from a course-less device, or adopting a
+// community/season rule (whose spec has no course keys), must not wipe the
+// lessons you've kept. Restore on a true user-switch still works: the account's
+// server config carries the course keys, so they're applied; a fresh device just
+// keeps its (already-wiped-on-logout) empty set.
+const ADDITIVE_KEYS = new Set<string>([
+  "phoebe:course:spiritual-journey:v1",
+  "phoebe:course:centering-prayer:v1",
+  "phoebe:course:way-of-love:v1",
+]);
+
 // Mirror an authoritative server config into localStorage: set the keys it
 // carries, and clear routine keys it OMITS (those are at their default on the
-// source device). Only ever called with a NON-EMPTY, newer config, so a partial
-// / empty config can't wipe a device. Fires ROUTINE_SYNCED_EVENT so the UI
-// re-reads (getSideLevel / getPracticeSlot read straight from localStorage).
+// source device) — EXCEPT additive keys, which are only ever added/updated,
+// never removed on absence. Fires ROUTINE_SYNCED_EVENT so the UI re-reads.
 function applyRoutineValues(values: Record<string, string>): void {
   let changed = false;
   try {
@@ -115,7 +128,7 @@ function applyRoutineValues(values: Record<string, string>): void {
       const cur = localStorage.getItem(k);
       if (typeof v === "string") {
         if (cur !== v) { localStorage.setItem(k, v); changed = true; }
-      } else if (cur != null) {
+      } else if (cur != null && !ADDITIVE_KEYS.has(k)) {
         localStorage.removeItem(k); changed = true;
       }
     }
@@ -143,27 +156,27 @@ function cancelPush(): void {
   if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
 }
 
-// Synchronously flush this device's routine to the server, bypassing the 800ms
-// debounce, and survive a navigation/unload (keepalive). Called on logout BEFORE
-// the device rule is wiped: a customization made within 800ms of logging out
-// would otherwise have its debounced push cancelled by the page teardown, so the
-// server rule_config would never receive it and the SAME user re-logging-in would
-// find the method blank. Best-effort; no-op if nothing to send.
-export function flushRoutineConfig(): void {
+// Flush this device's routine to the server NOW, bypassing the 800ms debounce.
+// AWAITABLE + keepalive so the caller can complete it BEFORE the logout POST
+// destroys the session (an un-awaited/late flush would hit the now-invalid
+// session and 401, losing a customization made within the push debounce). Called
+// first in useLogout, while the cookie is still valid. Best-effort; resolves
+// immediately when there's nothing to send.
+export async function flushRoutineConfig(): Promise<void> {
   cancelPush();
   const values = collectRoutineValues();
   if (Object.keys(values).length === 0) return;
   const at = getLocalUpdatedAt() || Date.now();
   setLocalUpdatedAt(at);
   try {
-    void fetch("/api/me/rule-config", {
+    await fetch("/api/me/rule-config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ values, updatedAt: at }),
       credentials: "include",
       keepalive: true,
-    }).catch(() => { /* best-effort */ });
-  } catch { /* ignore */ }
+    });
+  } catch { /* best-effort */ }
 }
 
 // Reconcile with the server config on login / app-active. Last-write-wins by
@@ -187,18 +200,17 @@ export function syncRoutineFromServer(server: RoutineConfig | null | undefined, 
     // A push queued for the PREVIOUS owner must not land on this account.
     cancelPush();
     try { localStorage.setItem(OWNER_KEY, uid); } catch { /* ignore */ }
-    const localHasVals = Object.keys(collectRoutineValues()).length > 0;
-    // Normally the account's server config is the truth and we adopt it. The one
-    // exception: a device whose owner was UNSET (pre-owner-guard build, or a
-    // fresh device that edited offline) may hold a routine NEWER than the server
-    // — blind-adopting would silently drop that edit. So when the local edit is
-    // strictly newer AND non-empty, keep it and push it up instead.
-    if (owner == null && localHasVals && localAt > serverAt) {
-      pushRoutineConfig();
-    } else if (serverVals && Object.keys(serverVals).length > 0) {
+    // The account's server config is the truth — adopt it. We do NOT keep a
+    // "newer" local routine here even when owner was unset: the local clock can
+    // be bumped by a GUEST seed / a leftover session (course completion, weekly
+    // toggle, custom anchor — none of which set the owner), and preferring it
+    // would push that over the account's real saved routine (the CRITICAL
+    // logout→login data-loss bug). Only when the account has NOTHING saved yet do
+    // we migrate this device's current routine up as its starting point.
+    if (serverVals && Object.keys(serverVals).length > 0) {
       applyRoutineValues(serverVals);
       setLocalUpdatedAt(serverAt);
-    } else if (localHasVals) {
+    } else if (Object.keys(collectRoutineValues()).length > 0) {
       pushRoutineConfig();
     }
     return;

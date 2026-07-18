@@ -5054,6 +5054,8 @@ function TimeSection({
   // matching the rhythm cards in DailyProgressBody. Immediate on web.
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    // Hold the events cascade + haptics behind the first-open intro too.
+    if (shouldShowFirstOpenOnboarding()) return false;
     if (isFirstOpen()) return true; // first launch shows no splash → paint instantly
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
@@ -5061,12 +5063,17 @@ function TimeSection({
     if (splashCleared) return;
     const clear = () => setSplashCleared(true);
     window.addEventListener("phoebe:splash-done", clear);
-    const id = window.setTimeout(clear, 12000);
-    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+    window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
+    let id = window.setTimeout(function fb() {
+      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      clear();
+    }, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
   }, [splashCleared]);
   const evtHaptedRef = useRef(false);
   useEffect(() => {
     if (!cascade || !splashCleared || evtHaptedRef.current) return;
+    if (isFirstOpenOnboardingActive()) return; // never tick behind the intro
     evtHaptedRef.current = true;
     return scheduleCascadeHaptics(cascadeFrom, items.length);
   }, [cascade, splashCleared, cascadeFrom, items.length]);
@@ -5575,6 +5582,7 @@ function GoalReachedModal({
 function useSplashCleared(): boolean {
   const [cleared, setCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    if (shouldShowFirstOpenOnboarding()) return false; // hold behind the first-open intro
     if (isFirstOpen()) return true; // first launch shows no splash → nothing to wait for
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
@@ -5582,8 +5590,12 @@ function useSplashCleared(): boolean {
     if (cleared) return;
     const clear = () => setCleared(true);
     window.addEventListener("phoebe:splash-done", clear);
-    const id = window.setTimeout(clear, 12000);
-    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+    window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
+    let id = window.setTimeout(function fb() {
+      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      clear();
+    }, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
   }, [cleared]);
   return cleared;
 }

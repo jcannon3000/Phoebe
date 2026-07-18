@@ -163,6 +163,11 @@ export function useAuth() {
 export function useLogout() {
   const queryClient = useQueryClient();
   return async () => {
+    // Durably flush any un-pushed routine/course edit to the server FIRST —
+    // while the session cookie is still valid. The logout POST below destroys
+    // the session, so a flush after it would 401 and lose an edit made within
+    // the 800ms push debounce. Awaited so it completes before the session dies.
+    try { await flushRoutineConfig(); } catch { /* best-effort */ }
     // Send our device's persistent token so the server can revoke just
     // this device. Other signed-in devices keep their tokens; only this
     // one stops being able to recover its session.
@@ -198,12 +203,8 @@ export function useLogout() {
     // flags) so the next person sees the STANDARD seeded rule — not the
     // signed-out user's customizations. The rule is safe on the server, so the
     // SAME user re-signing-in gets it restored in full (blank device + zeroed
-    // clock → routineSync adopts the server config).
-    // Durably flush any un-pushed routine edit to the server BEFORE wiping the
-    // device (keepalive survives the navigation below) — otherwise a
-    // customization made within the 800ms push debounce is lost, and the same
-    // user re-logging-in would find their method blank.
-    try { flushRoutineConfig(); } catch { /* ignore */ }
+    // clock → routineSync adopts the server config). (The routine/course flush
+    // already ran at the TOP of logout, while the session was still valid.)
     try { resetDeviceRuleForLogout(); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
