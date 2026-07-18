@@ -54,7 +54,6 @@ const METHODS: Method[] = [
   { key: "office", level: "office", emoji: "🕊️", rgb: "46,107,64", title: "The Daily Office", blurb: "Morning & Evening Prayer from the Book of Common Prayer." },
   { key: "devotion", level: "devotion", emoji: "📖", rgb: "96,141,209", title: "Daily Devotions", blurb: "A shorter form of the office, for busy days." },
   { key: "contemplation", level: "reflect-sit", contemplation: true, emoji: "🕯️", rgb: "62,124,122", title: "Contemplative Prayer", blurb: "Rest in silence with God." },
-  { key: "intercessions", level: "intercessions", emoji: "🙏", rgb: "150,120,180", title: "The Prayer List", blurb: "Pray the community's daily intercessions." },
   { key: "creation", level: "creation", emoji: "🌍", rgb: "90,150,110", title: "Creation Prayer", blurb: "A daily breath prayer with all creation." },
 ];
 
@@ -120,16 +119,24 @@ function Choice({
   emoji, rgb, title, blurb, selected, onClick,
 }: { emoji: string; rgb: string; title: string; blurb: string; selected: boolean; onClick: () => void }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
       className="w-full text-left relative flex rounded-3xl overflow-hidden active:scale-[0.99] transition-transform"
+      // The selected card's border opacity gently pulses; unselected is static.
+      animate={selected
+        ? { borderColor: [`rgba(${rgb},0.35)`, `rgba(${rgb},0.95)`, `rgba(${rgb},0.35)`] }
+        : { borderColor: CARD_BORDER }}
+      transition={selected
+        ? { duration: 1.9, repeat: Infinity, ease: "easeInOut" }
+        : { duration: 0.25 }}
       style={{
         background: CARD_BG,
         backdropFilter: "blur(11.34px)",
         WebkitBackdropFilter: "blur(11.34px)",
-        border: selected ? `1.5px solid rgba(${rgb},0.95)` : `1px solid ${CARD_BORDER}`,
-        boxShadow: selected ? `0 0 0 3px rgba(${rgb},0.18)` : "none",
+        borderWidth: 1.5,
+        borderStyle: "solid",
+        boxShadow: selected ? `0 0 0 3px rgba(${rgb},0.16)` : "none",
       }}
     >
       <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.72)` }} />
@@ -151,7 +158,7 @@ function Choice({
           {selected ? "✓" : ""}
         </span>
       </div>
-    </button>
+    </motion.button>
   );
 }
 
