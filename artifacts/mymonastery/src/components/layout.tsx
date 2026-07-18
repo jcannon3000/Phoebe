@@ -886,7 +886,7 @@ function DailyProgressPill() {
       }}
       aria-label={t("header.daily_progress", { defaultValue: "Daily Walk" })}
     >
-      {t("header.daily_progress", { defaultValue: "Daily Walk" })}
+      <span className="whitespace-nowrap">{t("header.daily_progress", { defaultValue: "Daily Walk" })}</span>
       {(() => {
         // Past 8 anchors a single row gets cramped — shrink the dots and wrap
         // them into two balanced rows so the pill stays tidy.
@@ -1691,7 +1691,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
             onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
           >
-            <span className="text-3xl font-bold transition-colors" style={{ fontSize: "2.0625rem", letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+            <span className="font-bold transition-colors" style={{ fontSize: "clamp(1.5rem, 7vw, 2.0625rem)", letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe
             </span>
           </Link>
