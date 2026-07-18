@@ -193,7 +193,7 @@ export function FirstOpenOnboarding() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [visible, setVisible] = useState(() => shouldShowFirstOpenOnboarding());
-  const [step, setStep] = useState<"pray" | "read" | "loading" | "tutorial">("pray");
+  const [step, setStep] = useState<"welcome" | "pray" | "read" | "loading" | "tutorial">("welcome");
   const [method, setMethod] = useState<string>("psalms");
   const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
   const [tut, setTut] = useState(0);
@@ -268,7 +268,20 @@ export function FirstOpenOnboarding() {
         style={{ zIndex: 1, minHeight: "100dvh", padding: "clamp(28px,6dvh,56px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)" }}
       >
         <AnimatePresence mode="wait">
-          {step === "pray" ? (
+          {step === "welcome" ? (
+            <motion.div key="welcome" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col items-center justify-center text-center">
+              <div aria-hidden style={{ fontSize: 52, marginBottom: 22, filter: "drop-shadow(0 0 14px rgba(90,150,110,0.5))" }}>🕊️</div>
+              <h1 className="text-[30px] font-bold leading-tight mb-4" style={{ color: WARM, fontFamily: FONT }}>
+                Welcome to Phoebe
+              </h1>
+              <p className="text-[16px] leading-relaxed px-3" style={{ color: "rgba(240,237,230,0.86)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 360 }}>
+                A gentle rhythm of prayer, kept a day at a time. Let's set yours up — it takes a moment, and you can change everything later.
+              </p>
+              <button type="button" onClick={() => setStep("pray")} className={`${pillBase} px-12 mt-10`} style={pillStyle}>
+                Begin
+              </button>
+            </motion.div>
+          ) : step === "pray" ? (
             <motion.div key="pray" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex flex-col">
               <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
                 Welcome to Phoebe · 1 of 2
