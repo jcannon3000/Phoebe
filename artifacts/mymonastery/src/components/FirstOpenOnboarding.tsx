@@ -50,11 +50,12 @@ type Method = {
 };
 
 const METHODS: Method[] = [
+  { key: "psalms", level: "psalms", emoji: "📜", rgb: "120,150,170", title: "The Psalms", blurb: "Pray through the psalter, a portion each day." },
   { key: "office", level: "office", emoji: "🕊️", rgb: "46,107,64", title: "The Daily Office", blurb: "Morning & Evening Prayer from the Book of Common Prayer." },
   { key: "devotion", level: "devotion", emoji: "📖", rgb: "96,141,209", title: "Daily Devotions", blurb: "A shorter form of the office, for busy days." },
-  { key: "psalms", level: "psalms", emoji: "📜", rgb: "120,150,170", title: "The Psalms", blurb: "Pray through the psalter, a portion each day." },
   { key: "contemplation", level: "reflect-sit", contemplation: true, emoji: "🕯️", rgb: "62,124,122", title: "Contemplative Prayer", blurb: "Rest in silence with God." },
   { key: "intercessions", level: "intercessions", emoji: "🙏", rgb: "150,120,180", title: "The Prayer List", blurb: "Pray the community's daily intercessions." },
+  { key: "creation", level: "creation", emoji: "🌍", rgb: "90,150,110", title: "Creation Prayer", blurb: "A daily breath prayer with all creation." },
 ];
 
 type Newsletter = { key: ReflectionSource; emoji: string; rgb: string; title: string; blurb: string };
@@ -159,7 +160,7 @@ export function FirstOpenOnboarding() {
   const qc = useQueryClient();
   const [visible, setVisible] = useState(() => shouldShowFirstOpenOnboarding());
   const [step, setStep] = useState<0 | 1>(0);
-  const [method, setMethod] = useState<string>("office");
+  const [method, setMethod] = useState<string>("psalms");
   const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
   const bgPhoto = useMemo(
     () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
