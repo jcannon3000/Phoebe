@@ -92,34 +92,40 @@ function applyChoices(
 ): void {
   const isContemplation = method.key === "contemplation";
   const isCreation = method.key === "creation";
-  // We EDIT the default rhythm (Morning + Evening office + a short silence) rather
-  // than stripping it to one card. BCP forms (office/psalms/devotion) set the
-  // office form for BOTH sides. Contemplative replaces the office with a silent
-  // sit on both sides. Creation Prayer is a single daily breath practice, so it
-  // KEEPS the twice-daily office + silence and ADDS the Co-Breathe card.
-  const officeLevel: OfficeLevel = isContemplation ? "ask" : isCreation ? "office" : method.level;
+  // Contemplative AND Creation Prayer both ride the PER-SIDE contemplation cards
+  // (Morning + Evening), exactly like the customizer — they differ only by
+  // contemplation-style: "silent" = a silent sit, "cobreathe" = Co-Breathe, which
+  // renders those two cards as "Morning/Evening Creation Prayer". So both are
+  // twice-daily. BCP forms (office/psalms/devotion) are the twice-daily office.
+  const contemplativeCard = isContemplation || isCreation;
+  const officeLevel: OfficeLevel = contemplativeCard ? "ask" : method.level;
   for (const side of SIDES) {
     setSideLevel(side, officeLevel);
-    setSideContemplation(side, isContemplation);
+    setSideContemplation(side, contemplativeCard);
     if (isContemplation) setSideMinutes(side, 10);
     setSideReflection(side, newsletter);
   }
   setReflectionSource(newsletter);
+  // Style the per-side contemplation cards: Co-Breathe for Creation Prayer, a
+  // silent sit for Contemplative.
+  if (contemplativeCard) {
+    try { localStorage.setItem("phoebe:contemplation-style", isCreation ? "cobreathe" : "silent"); } catch { /* ignore */ }
+  }
 
   const guest = isDeviceLocalGuest(user);
-  // Keep the default silence card (the seeded 5-min goal) for every method — it's
-  // part of the daily rhythm. Contemplative deepens it a little (10).
-  if (guest && isContemplation) setGuestSilenceGoalMin(10);
+  // For Contemplative/Creation the per-side cards ARE the practice, so no separate
+  // standalone silence card; BCP forms keep the default short silence in the rhythm.
+  if (guest) setGuestSilenceGoalMin(contemplativeCard ? 0 : 5);
 
-  // Home layout: chosen reading ON (after the office card) + the other two OFF;
-  // the Co-Breathe card ON only for Creation Prayer. Don't FABRICATE a layout for
-  // a signed-in user whose real layout isn't loaded — overwriting it with a stub
-  // would drop their cards. Only mutate when we have a base, or for a guest.
+  // Home layout: only the daily reading (chosen ON after the office card, the other
+  // two OFF). Creation Prayer needs NO layout card — it rides the per-side
+  // contemplation cards above. Don't FABRICATE a layout for a signed-in user whose
+  // real layout isn't loaded (would drop their cards) — only mutate with a base or
+  // for a guest.
   const base = (user?.homeLayout as HomeLayout | undefined) ?? readCachedHomeLayout();
   if (base || guest) {
     let order = (base?.order ?? ["office"]).slice();
     let hidden = (base?.hidden ?? []).slice();
-    [order, hidden] = setCard(order, hidden, "cobreathe", isCreation, "office");
     for (const k of NEWS_KEYS) {
       [order, hidden] = setCard(order, hidden, k, k === newsletter, "office");
     }
