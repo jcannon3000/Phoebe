@@ -6,8 +6,8 @@
  *   • Big number: parishioners who prayed today (including the viewer)
  *   • Smaller line: "N from <parish> this week"
  *
- * Plus an avatar rail of up to 7 faces of OTHERS who prayed today, and
- * a "Done" button back to /parish.
+ * Plus a top-down presence line — the parish LEADER named if they prayed
+ * with you today (never other members by name/face) — and a "Done" button.
  *
  * Modeled on the existing prayer-mode closing slide, but parish-scoped.
  * The office viewer's handleEnd routes parish-only users here when the
@@ -31,7 +31,10 @@ interface Celebration {
   parish: { id: number; slug: string; title: string };
   prayedTodayCount: number;
   prayedWeekCount: number;
-  faces: Array<{ name: string; avatarUrl: string | null }>;
+  // Top-down presence: the leader (priest) named ONLY when they prayed with you
+  // today; fellow parishioners are never named/pictured to each other.
+  leaderName: string | null;
+  leaderAvatarUrl: string | null;
   surface: string | null;
 }
 
@@ -141,49 +144,36 @@ export default function ParishCelebration() {
           </p>
         </div>
 
-        {/* Avatar rail — up to 7 of today's other parishioners */}
-        {data && data.faces.length > 0 && (
-          <div className="flex items-center justify-center -space-x-2">
-            {data.faces.slice(0, 7).map((p, i) => (
-              <div
-                key={i}
-                title={p.name}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  border: `2px solid ${BG}`,
-                  background: "#1A4A2E",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {p.avatarUrl ? (
-                  <img
-                    src={p.avatarUrl}
-                    alt=""
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      color: "#A8C5A0",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      fontFamily: SPACE_GROTESK,
-                    }}
-                  >
-                    {(p.name ?? "?")
-                      .split(/\s+/)
-                      .slice(0, 2)
-                      .map((w) => w[0]?.toUpperCase() ?? "")
-                      .join("")}
-                  </span>
-                )}
-              </div>
-            ))}
+        {/* Leader presence — the priest named when they prayed with you today.
+            Deliberately the ONLY named person: fellow parishioners stay an
+            anonymous count above, never faces shown to each other. */}
+        {data?.leaderName && (
+          <div className="flex items-center justify-center" style={{ gap: 10 }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                border: `2px solid ${BG}`,
+                background: "#1A4A2E",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              {data.leaderAvatarUrl ? (
+                <img src={data.leaderAvatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ color: "#A8C5A0", fontSize: 12, fontWeight: 600, fontFamily: SPACE_GROTESK }}>
+                  {data.leaderName.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
+                </span>
+              )}
+            </div>
+            <span style={{ fontFamily: SPACE_GROTESK, fontSize: 14, color: SAGE }}>
+              You prayed with {data.leaderName} today
+            </span>
           </div>
         )}
 

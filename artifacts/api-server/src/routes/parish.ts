@@ -333,6 +333,7 @@ router.get("/parish/celebration", async (req, res) => {
         slug: prayerFeedsTable.slug,
         title: prayerFeedsTable.title,
         timezone: prayerFeedsTable.timezone,
+        creatorUserId: prayerFeedsTable.creatorUserId,
       })
       .from(prayerFeedsTable)
       .where(eq(prayerFeedsTable.id, user.parishFeedId));
@@ -346,8 +347,9 @@ router.get("/parish/celebration", async (req, res) => {
 
     // Parish today + this-week counts — distinct user_ids who logged a
     // prayer_session in (today, last 7 days). Joined to subscriptions
-    // so non-parishioners can't pad the count.
-    const [todayRows, weekRows, todayFaceRows] = await Promise.all([
+    // so non-parishioners can't pad the count. Plus the distinct set who
+    // prayed TODAY, so we can name the LEADER if they prayed alongside you.
+    const [todayRows, weekRows, todayIdRows] = await Promise.all([
       db.execute<{ count: string }>(sql`
         SELECT COUNT(DISTINCT ps.user_id)::text AS count
         FROM prayer_sessions ps
@@ -363,32 +365,41 @@ router.get("/parish/celebration", async (req, res) => {
           ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
         WHERE ps.ended_at > NOW() - INTERVAL '7 days'
       `),
-      // Up to 7 faces of distinct parishioners who prayed today
-      // (not counting the viewer — the slide is "who else carried
-      // this with me", not a self-portrait).
-      db.execute<{ user_id: number; name: string | null; avatar_url: string | null }>(sql`
-        SELECT DISTINCT ON (u.id) u.id AS user_id, u.name, u.avatar_url
+      db.execute<{ user_id: number }>(sql`
+        SELECT DISTINCT ps.user_id
         FROM prayer_sessions ps
         INNER JOIN prayer_feed_subscriptions pfs
           ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
-        INNER JOIN users u ON u.id = ps.user_id
         WHERE (ps.ended_at AT TIME ZONE ${parish.timezone})::date = ${today}::date
-          AND ps.user_id != ${session.id}
-        ORDER BY u.id, ps.ended_at DESC
-        LIMIT 7
       `),
     ]);
 
     const prayedTodayCount = Number(todayRows.rows[0]?.count ?? "0");
     const prayedWeekCount = Number(weekRows.rows[0]?.count ?? "0");
-    // Faces show WHO prayed today (the intended communal-glow feature), but we
-    // deliberately omit the raw userId — the UI never needs it, and exposing a
-    // stable userId→name map would let a member correlate identities across
-    // surfaces (e.g. de-anonymize a pastoral concern's author).
-    const faces = todayFaceRows.rows.map((r) => ({
-      name: r.name ?? "Someone",
-      avatarUrl: r.avatar_url,
-    }));
+
+    // Parish presence is TOP-DOWN: name the LEADER when they prayed with you
+    // today (priest/creator preferred, else any admin), and count everyone else
+    // anonymously. We deliberately do NOT expose fellow parishioners' names or
+    // faces to each other — that would identify who prays (and when) to peers,
+    // and in a small parish a single face is an exact identification.
+    const prayedToday = new Set(
+      todayIdRows.rows.map((r) => Number(r.user_id)).filter((n) => Number.isFinite(n)),
+    );
+    prayedToday.delete(session.id);
+    let leaderName: string | null = null;
+    let leaderAvatarUrl: string | null = null;
+    const leaderIds = await parishAdminUserIds(parish.id);
+    const creatorId = parish.creatorUserId ?? null;
+    const namedLeaderId = (creatorId != null && prayedToday.has(creatorId))
+      ? creatorId
+      : (leaderIds.find((id) => prayedToday.has(id)) ?? null);
+    if (namedLeaderId != null) {
+      const [lu] = await db
+        .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable).where(eq(usersTable.id, namedLeaderId));
+      const nm = (lu?.name ?? "").trim();
+      if (nm) { leaderName = nm; leaderAvatarUrl = lu?.avatarUrl ?? null; }
+    }
 
     res.json({
       parish: {
@@ -398,7 +409,8 @@ router.get("/parish/celebration", async (req, res) => {
       },
       prayedTodayCount,
       prayedWeekCount,
-      faces,
+      leaderName,
+      leaderAvatarUrl,
       surface,
     });
   } catch (err) {
