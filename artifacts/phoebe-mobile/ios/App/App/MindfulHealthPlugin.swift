@@ -38,7 +38,6 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "requestStepAuthorization", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "mindfulMinutesToday", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "mindfulSessionsToday", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "writeMindfulSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openApp", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "enableBackgroundDelivery", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stepsToday", returnType: CAPPluginReturnPromise),
@@ -64,13 +63,14 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["requested": false])
             return
         }
-        // Read AND write mindful sessions: read pulls in minutes logged by other
-        // apps (Calm, Insight Timer); write lets Phoebe save its own sits back to
-        // Apple Health so they show in the user's Mindful Minutes too.
+        // READ-ONLY: pull in mindful minutes logged by OTHER apps (Calm, Insight
+        // Timer, Apple Mindfulness) so silence kept elsewhere counts toward the
+        // daily contemplation goal. Phoebe does NOT write its own sits back to
+        // Apple Health, so we never ask for write (share) access.
         // Step count is REQUESTED SEPARATELY (requestStepAuthorization) so a user
         // who only set up Contemplation is never asked for their step data — we
         // only prompt for steps once they choose the Daily steps practice.
-        healthStore.requestAuthorization(toShare: [type], read: [type]) { success, error in
+        healthStore.requestAuthorization(toShare: [], read: [type]) { success, error in
             if let error = error {
                 call.reject("Authorization failed: \(error.localizedDescription)")
                 return
@@ -194,40 +194,6 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["steps": Int(steps.rounded())])
         }
         healthStore.execute(query)
-    }
-
-    // Write a finished Phoebe sit to Apple Health as a Mindful Session so it
-    // counts toward the user's Mindful Minutes (same as Calm/Insight Timer do).
-    // start/end are epoch MILLISECONDS (Date.getTime() on the JS side) to avoid
-    // ISO-8601 fractional-second parsing pitfalls. Best-effort: a save needs
-    // write authorization, so it silently no-ops (written:false) until the user
-    // has connected Apple Health.
-    @objc func writeMindfulSession(_ call: CAPPluginCall) {
-        guard HKHealthStore.isHealthDataAvailable(), let type = mindfulType else {
-            call.resolve(["written": false])
-            return
-        }
-        guard let startMs = call.getDouble("startMs"),
-              let endMs = call.getDouble("endMs"),
-              endMs > startMs else {
-            call.reject("Missing or invalid startMs/endMs")
-            return
-        }
-        let start = Date(timeIntervalSince1970: startMs / 1000.0)
-        let end = Date(timeIntervalSince1970: endMs / 1000.0)
-        let sample = HKCategorySample(
-            type: type,
-            value: HKCategoryValue.notApplicable.rawValue,
-            start: start,
-            end: end
-        )
-        healthStore.save(sample) { success, error in
-            if let error = error {
-                call.reject("Save failed: \(error.localizedDescription)")
-                return
-            }
-            call.resolve(["written": success])
-        }
     }
 
     // Launch a companion meditation app (Calm, Hallow, Insight Timer, Headspace,
