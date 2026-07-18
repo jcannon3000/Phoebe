@@ -172,8 +172,10 @@ function CustomAnchorServerSync() {
     lastSyncedRef.current = key;
     syncCustomAnchorsFromServer(snap as unknown as CustomAnchorSnapshot | null);
     // Routine settings (office levels, slots, etc.) — same migrate-up-or-adopt
-    // sync, so the rhythm matches phone ↔ web (lib/routineSync).
-    syncRoutineFromServer(rc);
+    // sync, so the rhythm matches phone ↔ web (lib/routineSync). Pass the user id
+    // so a user SWITCH (logout→login / guest→account) adopts this account's saved
+    // routine instead of letting a locally-bumped clock overwrite it.
+    syncRoutineFromServer(rc, user.id);
     // One-time: carry a guest's device-local DAILY STEP goal up to the real
     // account on conversion. The anon→account upgrade preserves server data, but
     // the step goal lived in localStorage (phoebe:guest-step-goal) and would be

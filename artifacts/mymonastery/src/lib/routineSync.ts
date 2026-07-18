@@ -59,6 +59,12 @@ const ROUTINE_KEYS: string[] = [
 ];
 
 const UPDATED_AT_KEY = "phoebe:routine:updated-at";
+// Which user the routine keys currently in localStorage belong to. The LWW clock
+// is only meaningful WITHIN one account — so on a user SWITCH (logout→login, a
+// guest→account, a different account) we must NOT let the device's clock decide,
+// or the previous session's routine (or the seeded default) would overwrite the
+// account's saved routine. Instead we adopt the account's server config.
+const OWNER_KEY = "phoebe:routine:owner";
 
 function getLocalUpdatedAt(): number {
   try { const n = parseInt(localStorage.getItem(UPDATED_AT_KEY) ?? "0", 10); return Number.isFinite(n) ? n : 0; } catch { return 0; }
@@ -124,10 +130,33 @@ export function pushRoutineConfig(): void {
 
 // Reconcile with the server config on login / app-active. Last-write-wins by
 // `updatedAt`; an empty/absent server config migrates THIS device's routine up.
-export function syncRoutineFromServer(server: RoutineConfig | null | undefined): void {
+export function syncRoutineFromServer(server: RoutineConfig | null | undefined, userId?: number | string | null): void {
   const serverVals = (server && typeof server.values === "object" && server.values) ? server.values : null;
   const serverAt = (server && typeof server.updatedAt === "number") ? server.updatedAt : 0;
   const localAt = getLocalUpdatedAt();
+
+  // ── User-switch guard (fixes routine loss on logout→login) ──────────────────
+  // If the routine keys on this device belong to a DIFFERENT user than the one we
+  // now hold (owner mismatch), the LWW clock is meaningless: the local keys are
+  // from a previous session (a guest, the seeded default, another account). This
+  // account's server config is the truth — adopt it. If the account has no saved
+  // routine yet, keep the device's current rule as its starting point and push it
+  // up. Either way, DON'T let a locally-bumped clock overwrite the account's rule.
+  const uid = userId != null ? String(userId) : null;
+  let owner: string | null = null;
+  try { owner = localStorage.getItem(OWNER_KEY); } catch { /* ignore */ }
+  if (uid != null && uid !== owner) {
+    try { localStorage.setItem(OWNER_KEY, uid); } catch { /* ignore */ }
+    if (serverVals && Object.keys(serverVals).length > 0) {
+      applyRoutineValues(serverVals);
+      setLocalUpdatedAt(serverAt);
+    } else if (Object.keys(collectRoutineValues()).length > 0) {
+      pushRoutineConfig();
+    }
+    return;
+  }
+
+  // ── Same user across devices → last-write-wins ──────────────────────────────
   if (!serverVals || Object.keys(serverVals).length === 0) {
     // Server has nothing yet → migrate this device's local routine up.
     if (Object.keys(collectRoutineValues()).length > 0) pushRoutineConfig();
@@ -164,5 +193,10 @@ export function adoptRoutineConfig(values: Record<string, string> | null | undef
 // Reset the sync clock on logout so the next user re-syncs from scratch (the
 // routine keys themselves are cleared by their own modules / on a fresh login).
 export function clearRoutineSyncClock(): void {
-  try { localStorage.removeItem(UPDATED_AT_KEY); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(UPDATED_AT_KEY);
+    // Also forget which user the (now-cleared) routine belonged to, so the next
+    // login is treated as a switch and adopts that account's server config.
+    localStorage.removeItem(OWNER_KEY);
+  } catch { /* ignore */ }
 }

@@ -2223,20 +2223,58 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 16px", lineHeight: 1.5 }}>
           {t("wol_rule.weekly_note", { defaultValue: "Each adds a card to the “This week” band on your home. No sharing, no streak — just a quiet log." })}
         </p>
-        {/* All four or nothing (owner) — one toggle for the whole weekly rhythm. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(
-            WEEKLY_PRACTICES.some((p) => weekly[p.kind]),
-            t("wol_rule.weekly_all_label", { defaultValue: "Keep the weekly practices" }),
-            t("wol_rule.weekly_all_sub", { defaultValue: "🤝 Commune · 🕊️ Go · 💛 Bless · 🌙 Rest — all four together" }),
-            () => {
-              const turnOn = !WEEKLY_PRACTICES.some((p) => weekly[p.kind]);
-              const next = { commune: turnOn, go: turnOn, bless: turnOn, rest: turnOn };
-              setWeekly(next);
-              setEnabledWeekly(turnOn ? (Object.keys(next) as WeeklyKind[]) : []);
-            },
-          )}
-        </div>
+        {/* All four or nothing (owner) — one toggle, with the four practices shown. */}
+        {(() => {
+          const on = WEEKLY_PRACTICES.some((p) => weekly[p.kind]);
+          const toggle = () => {
+            const turnOn = !on;
+            setWeekly({ commune: turnOn, go: turnOn, bless: turnOn, rest: turnOn });
+            setEnabledWeekly(turnOn ? (["commune", "go", "bless", "rest"] as WeeklyKind[]) : []);
+          };
+          return (
+            <button
+              type="button"
+              onClick={toggle}
+              style={{
+                width: "100%", textAlign: "left", cursor: "pointer",
+                background: on ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+                border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 14,
+                transition: "background 0.2s, border-color 0.2s",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
+                    {t("wol_rule.weekly_all_label", { defaultValue: "Keep the weekly practices" })}
+                  </p>
+                  <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
+                    {t("wol_rule.weekly_all_sub2", { defaultValue: "Commune, Go, Bless & Rest — all four together" })}
+                  </p>
+                </div>
+                <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: on ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+                  <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {WEEKLY_PRACTICES.map((p) => (
+                  <div
+                    key={p.kind}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 12,
+                      background: on ? "rgba(46,107,64,0.18)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${on ? "rgba(126,210,140,0.3)" : CARD_B}`,
+                      opacity: on ? 1 : 0.5, transition: "opacity 0.2s, background 0.2s",
+                    }}
+                  >
+                    <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{p.emoji}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: CREAM, fontFamily: FONT }}>{p.label}</span>
+                  </div>
+                ))}
+              </div>
+            </button>
+          );
+        })()}
         <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
           <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.finish_weekly", { defaultValue: "Save my rhythm" })}
