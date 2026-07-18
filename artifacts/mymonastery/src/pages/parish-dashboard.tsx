@@ -661,6 +661,10 @@ export default function ParishDashboard() {
             on your heart, not the daily rhythm. */}
         {data?.parish && <ParishRuleCard parishId={data.parish.id} />}
 
+        {/* The leader's prayer list — the priest's ongoing intentions the parish
+            prays WITH them (tap "Pray" on each). */}
+        {data?.parish && <ParishPrayerListCard parishId={data.parish.id} />}
+
         {data?.parish && <ParishSeasonCard parishId={data.parish.id} />}
 
         {data?.parish && <GetInvolvedCard parishId={data.parish.id} />}
@@ -804,6 +808,60 @@ const OPP_CATEGORY_META: Record<string, { label: string; emoji: string }> = {
   other: { label: "Other ways", emoji: "✨" },
 };
 const OPP_CATEGORY_ORDER = ["worship", "serve", "community", "other"] as const;
+
+// The leader's prayer list — the priest's ongoing intentions the parish prays
+// WITH them. Each item has a "Pray" toggle + a "praying" count. Renders nothing
+// until the priest has added at least one.
+function ParishPrayerListCard({ parishId }: { parishId: number }) {
+  const q = useQuery<{ isAdmin: boolean; items: Array<{ id: number; body: string; prayedCount: number; viewerPrayed: boolean }> }>({
+    queryKey: ["/api/parish/prayer-list", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/prayer-list?parishId=${parishId}`),
+  });
+  const pray = useMutation({
+    mutationFn: ({ id, on }: { id: number; on: boolean }) =>
+      apiRequest(on ? "POST" : "DELETE", `/api/parish/prayer-list/${id}/pray`, on ? {} : undefined),
+    onSuccess: () => { void q.refetch(); },
+    onError: () => { void q.refetch(); },
+  });
+  const items = q.data?.items ?? [];
+  if (items.length === 0) return null;
+  return (
+    <div style={{ marginTop: 20, background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.28)", borderRadius: 16, padding: 16 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: SAGE, margin: 0, fontWeight: 600 }}>
+        🙏 Pray with your priest
+      </p>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12.5, color: SAGE, margin: "4px 0 0" }}>
+        Prayers your parish carries together.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {items.map((it) => (
+          <div key={it.id} style={{ marginTop: 12, borderTop: "1px solid rgba(46,107,64,0.18)", paddingTop: 12 }}>
+            <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14.5, color: WARM_TEXT, margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{it.body}</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 10 }}>
+              <span style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: "rgba(143,175,150,0.8)" }}>
+                {it.prayedCount > 0 ? `${it.prayedCount} ${it.prayedCount === 1 ? "person" : "people"} praying` : "Be the first to pray"}
+              </span>
+              <button
+                type="button"
+                onClick={() => pray.mutate({ id: it.id, on: !it.viewerPrayed })}
+                disabled={pray.isPending && pray.variables?.id === it.id}
+                style={{
+                  fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+                  borderRadius: 999, padding: "7px 18px", cursor: "pointer", flexShrink: 0,
+                  background: it.viewerPrayed ? "rgba(46,107,64,0.85)" : "transparent",
+                  color: it.viewerPrayed ? "#F0EDE6" : SAGE,
+                  border: `1px solid ${it.viewerPrayed ? "rgba(126,210,140,0.5)" : "rgba(143,175,150,0.35)"}`,
+                }}
+              >
+                {it.viewerPrayed ? "✓ Praying" : "Pray"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function GetInvolvedCard({ parishId }: { parishId: number }) {
   const oppsQuery = useQuery<{ isAdmin: boolean; opportunities: Opportunity[] }>({

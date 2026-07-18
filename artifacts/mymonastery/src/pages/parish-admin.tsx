@@ -443,6 +443,10 @@ export default function ParishAdmin() {
                 tap "I'm interested" and the admin sees who raised their hand. */}
             {parishId !== null && <OpportunitiesManager parishId={parishId} />}
 
+            {/* The leader's prayer list — the priest's ongoing intentions the
+                whole parish prays WITH them. */}
+            {parishId !== null && <ParishPrayerListManager parishId={parishId} />}
+
             {/* The parish's always-on daily rhythm — the priest sets it, the
                 whole congregation takes it up and prays it together. */}
             {parishId !== null && <ParishRuleManager parishId={parishId} />}
@@ -550,6 +554,73 @@ const OPP_CATS: { value: string; label: string }[] = [
   { value: "community", label: "👥 Community" },
   { value: "other", label: "✨ Other" },
 ];
+
+function ParishPrayerListManager({ parishId }: { parishId: number }) {
+  const qc = useQueryClient();
+  const listQ = useQuery<{ items: Array<{ id: number; body: string; prayedCount: number }> }>({
+    queryKey: ["/api/parish/prayer-list", parishId],
+    queryFn: () => apiRequest("GET", `/api/parish/prayer-list?parishId=${parishId}`),
+  });
+  const [body, setBody] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const add = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/parish/admin/prayer-list", { parishId, body: body.trim() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/parish/prayer-list", parishId] }); setBody(""); setShowForm(false); },
+  });
+  const archive = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/parish/admin/prayer-list/${id}/archive`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/parish/prayer-list", parishId] }),
+  });
+  const items = listQ.data?.items ?? [];
+  const input: React.CSSProperties = {
+    width: "100%", background: "#0F2818", border: `1px solid ${BORDER}`, color: WARM_TEXT,
+    fontFamily: SPACE_GROTESK, fontSize: 14, padding: "10px 12px", borderRadius: 10, marginBottom: 8,
+  };
+  return (
+    <div style={{ marginTop: 28, marginBottom: 20 }}>
+      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: "0 0 4px" }}>
+        Your prayer list
+      </p>
+      <p style={{ fontFamily: GEORGIA, fontStyle: "italic", fontSize: 13, color: "rgba(143,175,150,0.8)", margin: "0 0 12px" }}>
+        Prayers your parish carries with you.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map((it) => (
+          <div key={it.id} style={{ background: "#0F2818", border: `1px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+              <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14, color: WARM_TEXT, margin: 0, whiteSpace: "pre-wrap", flex: 1, minWidth: 0 }}>{it.body}</p>
+              <button onClick={() => { if (window.confirm("Remove this from your prayer list?")) archive.mutate(it.id); }} style={{ background: "none", border: "none", color: "rgba(196,122,101,0.9)", fontFamily: SPACE_GROTESK, fontSize: 12, cursor: "pointer", flexShrink: 0 }}>Remove</button>
+            </div>
+            <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11.5, color: SAGE, margin: "8px 0 0" }}>
+              🙏 {it.prayedCount} {it.prayedCount === 1 ? "person is" : "people are"} praying with you
+            </p>
+          </div>
+        ))}
+        {items.length === 0 && (
+          <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, color: FAINT_GREEN, margin: 0 }}>
+            No prayers yet — add one your parish can pray with you.
+          </p>
+        )}
+      </div>
+      {showForm ? (
+        <div style={{ marginTop: 12, background: "rgba(46,107,64,0.08)", border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="A prayer to carry together…" rows={3} style={{ ...input, resize: "vertical" }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button onClick={() => add.mutate()} disabled={!body.trim() || add.isPending}
+              style={{ flex: 1, background: "rgba(46,107,64,0.85)", border: "1px solid rgba(126,210,140,0.5)", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, padding: "10px", borderRadius: 999, cursor: "pointer", opacity: !body.trim() ? 0.5 : 1 }}>
+              Add
+            </button>
+            <button onClick={() => { setBody(""); setShowForm(false); }} style={{ background: "none", border: `1px solid ${BORDER}`, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 14, padding: "10px 16px", borderRadius: 999, cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowForm(true)} style={{ marginTop: 10, background: "none", border: `1px solid ${BORDER}`, color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, padding: "9px 16px", borderRadius: 999, cursor: "pointer", width: "100%" }}>
+          + Add a prayer
+        </button>
+      )}
+    </div>
+  );
+}
 
 function OpportunitiesManager({ parishId }: { parishId: number }) {
   const qc = useQueryClient();

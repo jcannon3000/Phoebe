@@ -1624,6 +1624,30 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_opp_interest_pair ON parish_opportunity_interests (opportunity_id, user_id)`);
 
+    // The leader's prayer list — the priest's ongoing intentions the parish prays
+    // WITH them (parish_prayer_list) + who prayed each (parish_prayer_list_prayers,
+    // one row per (item,user) for an idempotent "prayed with N" count).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS parish_prayer_list (
+        id SERIAL PRIMARY KEY,
+        parish_feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        archived_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_parish_prayer_list_feed ON parish_prayer_list (parish_feed_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS parish_prayer_list_prayers (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER NOT NULL REFERENCES parish_prayer_list(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_prayer_list_prayer_pair ON parish_prayer_list_prayers (item_id, user_id)`);
+
     // ── Multi-slot prayer feed entries ─────────────────────────────────────
     // Each (feed_id, entry_date) supports up to three entries — slots
     // 1/2/3. Each slot becomes its own slide on the subscriber side, so

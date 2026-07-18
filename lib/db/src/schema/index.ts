@@ -92,3 +92,5 @@ export * from "./creator_seasons";
 export * from "./parish_opportunities";
 export * from "./parish_opportunity_interests";
 export * from "./parish_rule_adoptions";
+export * from "./parish_prayer_list";
+export * from "./parish_prayer_list_prayers";

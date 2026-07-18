@@ -35,6 +35,8 @@ import {
   parishOpportunitiesTable,
   parishOpportunityInterestsTable,
   parishRuleAdoptionsTable,
+  parishPrayerListTable,
+  parishPrayerListPrayersTable,
   prescribedRoutinesTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
@@ -1359,6 +1361,149 @@ router.delete("/parish/opportunities/:id/interest", async (req, res): Promise<vo
     res.json({ ok: true });
   } catch (err) {
     console.error("[parish] withdraw interest failed:", err);
+    res.status(500).json({ error: "Failed." });
+  }
+});
+
+// ═══ Leader's prayer list — the priest's ongoing intentions the parish prays
+//     WITH them ═══════════════════════════════════════════════════════════════
+// Top-down + participatory: the priest keeps a list of prayer intentions and the
+// congregation taps "Pray" on each (idempotent), so the priest sees how many are
+// praying alongside them. Distinct from the day-scoped intercession slots and the
+// private pastoral concerns.
+
+// GET /api/parish/prayer-list?parishId= — active items + prayedCount + viewerPrayed.
+router.get("/parish/prayer-list", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = Number(req.query.parishId);
+  if (!Number.isFinite(parishId)) { res.status(400).json({ error: "parishId required" }); return; }
+  try {
+    const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
+    const isSubscriber = !!user && user.parishFeedId === parishId;
+    const isAdmin = (await canManageParish(session.id, parishId)).allowed;
+    if (!isSubscriber && !isAdmin) { res.status(403).json({ error: "Not subscribed to this parish." }); return; }
+    const items = await db.select()
+      .from(parishPrayerListTable)
+      .where(and(eq(parishPrayerListTable.parishFeedId, parishId), isNull(parishPrayerListTable.archivedAt)))
+      .orderBy(asc(parishPrayerListTable.createdAt));
+    const ids = items.map((i) => i.id);
+    const counts = new Map<number, number>();
+    const mine = new Set<number>();
+    if (ids.length > 0) {
+      const countRows = await db
+        .select({ itemId: parishPrayerListPrayersTable.itemId, n: sql<number>`count(*)::int` })
+        .from(parishPrayerListPrayersTable)
+        .where(inArray(parishPrayerListPrayersTable.itemId, ids))
+        .groupBy(parishPrayerListPrayersTable.itemId);
+      for (const r of countRows) counts.set(r.itemId, r.n);
+      const mineRows = await db
+        .select({ itemId: parishPrayerListPrayersTable.itemId })
+        .from(parishPrayerListPrayersTable)
+        .where(and(inArray(parishPrayerListPrayersTable.itemId, ids), eq(parishPrayerListPrayersTable.userId, session.id)));
+      for (const r of mineRows) mine.add(r.itemId);
+    }
+    res.json({
+      isAdmin,
+      items: items.map((i) => ({
+        id: i.id,
+        body: i.body,
+        prayedCount: counts.get(i.id) ?? 0,
+        viewerPrayed: mine.has(i.id),
+      })),
+    });
+  } catch (err) {
+    console.error("[parish] prayer-list get failed:", err);
+    res.status(500).json({ error: "Failed to load the prayer list." });
+  }
+});
+
+const PrayerListBodySchema = z.object({
+  parishId: z.number().int(),
+  body: z.string().trim().min(1).max(2000),
+});
+
+// POST /api/parish/admin/prayer-list — add an item (admin only).
+router.post("/parish/admin/prayer-list", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = PrayerListBodySchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { parishId, body } = parsed.data;
+  try {
+    const { allowed } = await canManageParish(session.id, parishId);
+    if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+    const [created] = await db.insert(parishPrayerListTable).values({
+      parishFeedId: parishId,
+      body,
+      createdByUserId: session.id,
+    }).returning({ id: parishPrayerListTable.id });
+    res.status(201).json({ ok: true, id: created?.id });
+  } catch (err) {
+    console.error("[parish] prayer-list add failed:", err);
+    res.status(500).json({ error: "Failed to add." });
+  }
+});
+
+// POST /api/parish/admin/prayer-list/:id/archive — soft-archive (admin only).
+router.post("/parish/admin/prayer-list/:id/archive", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [item] = await db.select().from(parishPrayerListTable).where(eq(parishPrayerListTable.id, id));
+    if (!item) { res.status(404).json({ error: "Not found" }); return; }
+    const { allowed } = await canManageParish(session.id, item.parishFeedId);
+    if (!allowed) { res.status(403).json({ error: "Not a parish admin." }); return; }
+    await db.update(parishPrayerListTable).set({ archivedAt: new Date() }).where(eq(parishPrayerListTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] prayer-list archive failed:", err);
+    res.status(500).json({ error: "Failed to remove." });
+  }
+});
+
+// POST /api/parish/prayer-list/:id/pray — a parishioner prays WITH the leader.
+// Idempotent (unique on (item, user)); rate-limited.
+router.post(
+  "/parish/prayer-list/:id/pray",
+  perUserRateLimit("parish_prayer_list_pray", { max: 120, windowMs: 60 * 60 * 1000 }),
+  async (req, res): Promise<void> => {
+    const session = getUser(req);
+    if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    try {
+      const [item] = await db.select().from(parishPrayerListTable).where(eq(parishPrayerListTable.id, id));
+      if (!item || item.archivedAt) { res.status(404).json({ error: "Not found" }); return; }
+      const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
+      if (!user || user.parishFeedId !== item.parishFeedId) { res.status(403).json({ error: "Not subscribed to this parish." }); return; }
+      await db.insert(parishPrayerListPrayersTable)
+        .values({ itemId: id, userId: session.id })
+        .onConflictDoNothing();
+      res.status(201).json({ ok: true });
+    } catch (err) {
+      console.error("[parish] prayer-list pray failed:", err);
+      res.status(500).json({ error: "Failed." });
+    }
+  },
+);
+
+// DELETE /api/parish/prayer-list/:id/pray — stop praying it.
+router.delete("/parish/prayer-list/:id/pray", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(parishPrayerListPrayersTable).where(and(
+      eq(parishPrayerListPrayersTable.itemId, id),
+      eq(parishPrayerListPrayersTable.userId, session.id),
+    ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] prayer-list unpray failed:", err);
     res.status(500).json({ error: "Failed." });
   }
 });
