@@ -1198,10 +1198,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // long-body slides (psalms, lessons, canticles). Threshold of 50px
   // filters out small palm tremors.
   function handleSwipeTouchStart(e: React.TouchEvent) {
+    if (displayOpen) return; // an overlay sheet is open — don't page the office
     swipeTouchStartXRef.current = e.touches[0].clientX;
     swipeTouchStartYRef.current = e.touches[0].clientY;
   }
   function handleSwipeTouchEnd(e: React.TouchEvent) {
+    if (displayOpen) { swipeTouchStartXRef.current = null; swipeTouchStartYRef.current = null; return; }
     if (swipeTouchStartXRef.current === null || swipeTouchStartYRef.current === null) return;
     const dx = e.changedTouches[0].clientX - swipeTouchStartXRef.current;
     const dy = e.changedTouches[0].clientY - swipeTouchStartYRef.current;
@@ -1219,6 +1221,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // link, the Back/Next nav, inline word fields) are left alone so
   // the control's own handler runs instead of paging.
   function handleTapNavigate(e: React.MouseEvent) {
+    if (displayOpen) return; // an overlay sheet is open — a tap dismisses it, not paging
     const target = e.target as HTMLElement | null;
     if (target?.closest("button, a, input, textarea, select, label")) return;
     if (e.clientX < window.innerWidth / 2) prev();

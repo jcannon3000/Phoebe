@@ -4067,10 +4067,14 @@ export default function PrayerModePage() {
   // We only fire when horizontal movement dominates vertical so
   // we don't interfere with any scroll areas inside a slide.
   const handleSwipeTouchStart = (e: React.TouchEvent) => {
+    // Don't navigate the slideshow while an overlay sheet is open — a
+    // tap/swipe there is meant to dismiss the sheet, not advance the office.
+    if (displayOpen || contemplationOpen || cobreatheOpen) return;
     swipeTouchStartXRef.current = e.touches[0].clientX;
     swipeTouchStartYRef.current = e.touches[0].clientY;
   };
   const handleSwipeTouchEnd = (e: React.TouchEvent) => {
+    if (displayOpen || contemplationOpen || cobreatheOpen) { swipeTouchStartXRef.current = null; swipeTouchStartYRef.current = null; return; }
     if (swipeTouchStartXRef.current === null || swipeTouchStartYRef.current === null) return;
     const dx = e.changedTouches[0].clientX - swipeTouchStartXRef.current;
     const dy = e.changedTouches[0].clientY - swipeTouchStartYRef.current;

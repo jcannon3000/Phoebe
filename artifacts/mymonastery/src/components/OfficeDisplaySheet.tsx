@@ -136,7 +136,10 @@ export function OfficeDisplaySheet({
           style={{ zIndex: 80, background: "rgba(4,12,7,0.45)" }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          onClick={onClose}
+          // Close on backdrop tap — but STOP the click from bubbling to whatever
+          // is behind the sheet (the office deck's tap-to-advance / swipe nav),
+          // so dismissing the menu stays on the SAME slide instead of paging.
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
         >
           <motion.div
             onClick={(e) => e.stopPropagation()}

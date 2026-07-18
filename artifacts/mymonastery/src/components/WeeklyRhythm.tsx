@@ -428,17 +428,9 @@ function LogSheet({
                     key={idx}
                     type="button"
                     disabled={sabbathMutation.isPending}
-                    // Toggle this day WITHIN the existing rest-days set — never
-                    // replace it. restDays is shared with the phone-sabbath
-                    // (Settings / Walking Together), so clobbering it would wipe
-                    // any other days the user configured there.
-                    onClick={() =>
-                      sabbathMutation.mutate(
-                        selected
-                          ? restDays.filter((d) => d !== idx)
-                          : [...restDays, idx].sort((a, b) => a - b),
-                      )
-                    }
+                    // Single-select — one rest day. Tapping a day makes it the
+                    // ONLY rest day; tapping the selected one again clears it.
+                    onClick={() => sabbathMutation.mutate(selected ? [] : [idx])}
                     className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:opacity-75 disabled:opacity-50"
                     style={selected
                       ? { background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(126,210,140,0.5)", fontFamily: FONT }
