@@ -676,8 +676,6 @@ router.get("/parish/admin/metrics", async (req, res) => {
   }
 });
 
-void prayerSessionsTable;
-
 // ─── Parish "pastoral concerns" ────────────────────────────────────────
 //
 // A parishioner submits a prayer request privately to their parish
@@ -1510,6 +1508,46 @@ router.get("/parish/prayed-with-week", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[parish] prayed-with-week failed:", err);
     res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/parish/breathed-with-leader-today — for the Co-Breathe close: name
+// the viewer's parish leader (the priest — its creator, else an admin) IF they
+// also co-breathed today, so the close can say "you breathe with {priest} and N
+// others today." Returns { leaderName, leaderAvatarUrl } (both null when the
+// viewer has no parish, or no leader breathed today). Fails soft (never blocks
+// the close screen).
+router.get("/parish/breathed-with-leader-today", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.json({ leaderName: null, leaderAvatarUrl: null }); return; }
+  try {
+    const [user] = await db.select({ parishFeedId: usersTable.parishFeedId }).from(usersTable).where(eq(usersTable.id, session.id));
+    const parishId = user?.parishFeedId ?? null;
+    if (parishId == null) { res.json({ leaderName: null, leaderAvatarUrl: null }); return; }
+    const [parish] = await db.select({ timezone: prayerFeedsTable.timezone, creatorUserId: prayerFeedsTable.creatorUserId })
+      .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));
+    if (!parish) { res.json({ leaderName: null, leaderAvatarUrl: null }); return; }
+    const leaderIds = (await parishAdminUserIds(parishId)).filter((id) => id !== session.id);
+    if (leaderIds.length === 0) { res.json({ leaderName: null, leaderAvatarUrl: null }); return; }
+    const today = todayInZone(parish.timezone);
+    const rows = await db.select({ userId: prayerSessionsTable.userId })
+      .from(prayerSessionsTable)
+      .where(and(
+        inArray(prayerSessionsTable.userId, leaderIds),
+        eq(prayerSessionsTable.source, "cobreathe"),
+        sql`(${prayerSessionsTable.endedAt} AT TIME ZONE ${parish.timezone})::date = ${today}::date`,
+      ));
+    const breathed = new Set(rows.map((r) => r.userId).filter((n): n is number => n != null));
+    const namedId = (parish.creatorUserId != null && breathed.has(parish.creatorUserId))
+      ? parish.creatorUserId
+      : (leaderIds.find((id) => breathed.has(id)) ?? null);
+    if (namedId == null) { res.json({ leaderName: null, leaderAvatarUrl: null }); return; }
+    const [lu] = await db.select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl }).from(usersTable).where(eq(usersTable.id, namedId));
+    const nm = (lu?.name ?? "").trim();
+    res.json({ leaderName: nm || null, leaderAvatarUrl: nm ? (lu?.avatarUrl ?? null) : null });
+  } catch (err) {
+    console.error("[parish] breathed-with-leader-today failed:", err);
+    res.json({ leaderName: null, leaderAvatarUrl: null });
   }
 });
 
