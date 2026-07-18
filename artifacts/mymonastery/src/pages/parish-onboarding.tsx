@@ -43,6 +43,14 @@ export default function ParishOnboarding() {
   const queryClient = useQueryClient();
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [selected, setSelected] = useState<number | null>(null);
+  // Name search over the parish directory. Debounced so we don't hit the server
+  // on every keystroke; a query < 2 chars falls back to the full listed set.
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => window.clearTimeout(id);
+  }, [query]);
 
   useEffect(() => {
     if (authLoading || betaLoading) return;
@@ -56,9 +64,10 @@ export default function ParishOnboarding() {
     if (user.accessTier === "full" && !rawIsBeta) { setLocation("/dashboard"); return; }
   }, [user, authLoading, betaLoading, rawIsBeta, setLocation]);
 
+  const searching = debouncedQuery.length >= 2;
   const parishesQuery = useQuery<{ parishes: ParishCard[] }>({
-    queryKey: ["/api/parishes/public"],
-    queryFn: () => apiRequest("GET", "/api/parishes/public"),
+    queryKey: ["/api/parishes/public", searching ? debouncedQuery : ""],
+    queryFn: () => apiRequest("GET", `/api/parishes/public${searching ? `?q=${encodeURIComponent(debouncedQuery)}` : ""}`),
     enabled: !!user,
   });
 
@@ -113,6 +122,52 @@ export default function ParishOnboarding() {
           You can change this later.
         </p>
 
+        <div style={{ position: "relative", marginBottom: 20 }}>
+          <span
+            aria-hidden
+            style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: FAINT_GREEN, fontSize: 15, pointerEvents: "none" }}
+          >
+            🔍
+          </span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search parishes by name…"
+            aria-label="Search parishes by name"
+            autoCorrect="off"
+            autoCapitalize="words"
+            spellCheck={false}
+            style={{
+              width: "100%",
+              background: "#0F2818",
+              border: "1px solid rgba(200,212,192,0.15)",
+              borderRadius: 999,
+              padding: "13px 40px 13px 44px",
+              color: WARM_TEXT,
+              fontFamily: SPACE_GROTESK,
+              fontSize: 15,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          {query && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              style={{
+                position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                background: "rgba(143,175,150,0.14)", border: "none", borderRadius: 999,
+                width: 24, height: 24, color: SAGE, cursor: "pointer", fontSize: 13, lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         {parishesQuery.isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -141,8 +196,9 @@ export default function ParishOnboarding() {
               textAlign: "center",
             }}
           >
-            No parishes are available yet — Phoebe staff are still
-            approving congregations. Check back soon.
+            {searching
+              ? `No parishes match "${debouncedQuery}". Try another name, or ask your clergy to reach out.`
+              : "No parishes are available yet — Phoebe staff are still approving congregations. Check back soon."}
           </div>
         ) : (
           <div className="space-y-2 mb-6">

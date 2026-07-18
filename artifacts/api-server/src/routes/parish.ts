@@ -62,6 +62,13 @@ function getUser(req: { user?: unknown }): { id: number } | null {
 router.get("/parishes/public", async (req, res) => {
   if (!getUser(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    // Optional name search: `?q=` filters the directory by parish title. A short
+    // query (< 2 chars) is ignored so the picker still shows the full list. LIKE
+    // wildcards are escaped so a typed %/_ can't widen the match set.
+    const q = ((req.query.q as string) || "").trim();
+    const nameFilter = q.length >= 2
+      ? sql`${prayerFeedsTable.title} ILIKE ${`%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`}`
+      : undefined;
     const rows = await db
       .select({
         id: prayerFeedsTable.id,
@@ -79,8 +86,10 @@ router.get("/parishes/public", async (req, res) => {
         // parish stays off the picker (and unjoinable) until its priest
         // publishes it from the manage page.
         eq(prayerFeedsTable.visibility, "public"),
+        ...(nameFilter ? [nameFilter] : []),
       ))
-      .orderBy(desc(prayerFeedsTable.subscriberCount), asc(prayerFeedsTable.title));
+      .orderBy(desc(prayerFeedsTable.subscriberCount), asc(prayerFeedsTable.title))
+      .limit(60);
     res.json({ parishes: rows });
   } catch (err) {
     console.error("[parish] list public failed:", err);
