@@ -1,0 +1,274 @@
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
+import {
+  setSideLevel,
+  setSideContemplation,
+  setSideMinutes,
+  setReflectionSource,
+  setSideReflection,
+  OFFICE_PREFS_EVENT,
+  type OfficeSide,
+  type OfficeLevel,
+  type ReflectionSource,
+} from "@/lib/officePrefs";
+import {
+  saveHomeLayout,
+  cacheHomeLayoutLocalOnly,
+  readCachedHomeLayout,
+  HOME_LAYOUT_VERSION,
+  type HomeLayout,
+} from "@/lib/homeLayoutCache";
+import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { pushRoutineConfig } from "@/lib/routineSync";
+import { shouldShowFirstOpenOnboarding, markFirstOpenOnboardingDone } from "@/lib/firstOpenOnboarding";
+
+// First-open prayer-setup splash — the look of the home "what's next" hero card
+// (frosted-green card, left accent spine, emoji → title → blurb, over the leaf
+// backdrop), used as a two-step picker: (1) which of five prayer methods to make
+// your daily prayer, (2) which daily reading (newsletter) to carry. On finish it
+// writes the same routine prefs the customizer's commit() does for those choices,
+// so the home lands already set up. iOS/native, once, on first open.
+
+const WARM = "#F0EDE6";
+const SAGE = "#8FAF96";
+const FONT = "'Space Grotesk', system-ui, sans-serif";
+const CARD_BORDER = "rgba(200,212,192,0.35)";
+// The home hero card's frosted-green fill at its flat tint (≈0.4).
+const CARD_BG = "rgba(20,42,29,0.31)";
+
+type Method = {
+  key: string;
+  level: OfficeLevel;
+  contemplation?: boolean;
+  emoji: string;
+  rgb: string;
+  title: string;
+  blurb: string;
+};
+
+const METHODS: Method[] = [
+  { key: "office", level: "office", emoji: "🕊️", rgb: "46,107,64", title: "The Daily Office", blurb: "Morning & Evening Prayer from the Book of Common Prayer." },
+  { key: "devotion", level: "devotion", emoji: "📖", rgb: "96,141,209", title: "Daily Devotions", blurb: "A shorter form of the office, for busy days." },
+  { key: "psalms", level: "psalms", emoji: "📜", rgb: "120,150,170", title: "The Psalms", blurb: "Pray through the psalter, a portion each day." },
+  { key: "contemplation", level: "reflect-sit", contemplation: true, emoji: "🕯️", rgb: "62,124,122", title: "Contemplative Prayer", blurb: "Rest in silence with God." },
+  { key: "intercessions", level: "intercessions", emoji: "🙏", rgb: "150,120,180", title: "The Prayer List", blurb: "Pray the community's daily intercessions." },
+];
+
+type Newsletter = { key: ReflectionSource; emoji: string; rgb: string; title: string; blurb: string };
+const NEWSLETTERS: Newsletter[] = [
+  { key: "fdd", emoji: "📖", rgb: "96,141,209", title: "Forward Day by Day", blurb: "A daily meditation from Forward Movement." },
+  { key: "ssje", emoji: "✍🏽", rgb: "62,124,122", title: "Brother, Give Us a Word", blurb: "A word a day from the Society of St. John the Evangelist." },
+  { key: "cac", emoji: "🌅", rgb: "150,120,180", title: "CAC Daily Meditation", blurb: "From the Center for Action & Contemplation." },
+];
+
+const SIDES: OfficeSide[] = ["morning", "evening"];
+const NEWS_KEYS = ["cac", "fdd", "ssje"];
+
+function applyChoices(
+  method: Method,
+  newsletter: ReflectionSource,
+  user: { homeLayout?: HomeLayout | null; isAnonymous?: boolean } | null | undefined,
+  invalidateAuth: () => void,
+): void {
+  // 1. Prayer method → office level (both sides), plus the contemplation flag.
+  for (const side of SIDES) {
+    setSideLevel(side, method.level);
+    setSideContemplation(side, !!method.contemplation);
+    if (method.contemplation) setSideMinutes(side, 10);
+    setSideReflection(side, newsletter);
+  }
+  setReflectionSource(newsletter);
+
+  // 2. Home layout: the chosen reading ON (right after the office card), the
+  //    other two OFF. A reflection card only shows when its key is in `order` and
+  //    not in `hidden`, so we set all three explicitly.
+  const base: HomeLayout =
+    (user?.homeLayout as HomeLayout | undefined) ??
+    readCachedHomeLayout() ??
+    { order: ["requests", "office", "contemplation", "feeds"], hidden: [] };
+  let order = base.order.filter((k) => !NEWS_KEYS.includes(k));
+  let hidden = base.hidden.filter((k) => !NEWS_KEYS.includes(k));
+  if (newsletter !== "none") {
+    const oi = order.indexOf("office");
+    if (oi >= 0) order.splice(oi + 1, 0, newsletter);
+    else order.unshift(newsletter);
+  }
+  for (const k of NEWS_KEYS) {
+    if (k === newsletter) continue;
+    order.push(k);
+    hidden.push(k);
+  }
+  const layout: HomeLayout = { order, hidden, v: HOME_LAYOUT_VERSION };
+
+  if (isDeviceLocalGuest(user)) {
+    cacheHomeLayoutLocalOnly(layout);
+  } else {
+    void saveHomeLayout(layout);
+    invalidateAuth();
+    void pushRoutineConfig();
+  }
+  // Nudge every home reader to re-read (the setters already fire this, but fire
+  // once more AFTER the layout write so the guest path picks up the new cache).
+  try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
+}
+
+function Choice({
+  emoji, rgb, title, blurb, selected, onClick,
+}: { emoji: string; rgb: string; title: string; blurb: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left relative flex rounded-3xl overflow-hidden active:scale-[0.99] transition-transform"
+      style={{
+        background: CARD_BG,
+        backdropFilter: "blur(11.34px)",
+        WebkitBackdropFilter: "blur(11.34px)",
+        border: selected ? `1.5px solid rgba(${rgb},0.95)` : `1px solid ${CARD_BORDER}`,
+        boxShadow: selected ? `0 0 0 3px rgba(${rgb},0.18)` : "none",
+      }}
+    >
+      <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.72)` }} />
+      <div className="flex-1 min-w-0 px-4 py-4 flex items-center gap-3">
+        <span className="text-[28px] flex-shrink-0" aria-hidden>{emoji}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[17px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+          <p className="text-[12.5px] mt-0.5 leading-snug" style={{ color: SAGE, fontFamily: FONT }}>{blurb}</p>
+        </div>
+        <span
+          className="flex-shrink-0 rounded-full flex items-center justify-center"
+          style={{
+            width: 22, height: 22, fontSize: 13, fontWeight: 800,
+            border: `1.5px solid ${selected ? `rgba(${rgb},0.95)` : "rgba(200,212,192,0.35)"}`,
+            background: selected ? `rgba(${rgb},0.95)` : "transparent",
+            color: "#0A1C14",
+          }}
+        >
+          {selected ? "✓" : ""}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+export function FirstOpenOnboarding() {
+  const { user, isLoading } = useAuth();
+  const qc = useQueryClient();
+  const [visible, setVisible] = useState(() => shouldShowFirstOpenOnboarding());
+  const [step, setStep] = useState<0 | 1>(0);
+  const [method, setMethod] = useState<string>("office");
+  const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
+  const bgPhoto = useMemo(
+    () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
+    [],
+  );
+
+  if (!visible || isLoading) return null;
+
+  const finish = (reading: ReflectionSource) => {
+    const chosen = METHODS.find((m) => m.key === method) ?? METHODS[0]!;
+    try {
+      applyChoices(chosen, reading, user, () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
+    } catch {
+      /* never trap the user on the splash if a write fails */
+    }
+    markFirstOpenOnboardingDone();
+    setVisible(false);
+  };
+
+  const pillBase = "rounded-full px-9 py-3.5 text-sm font-semibold tracking-wide transition-opacity active:scale-[0.98]";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
+      style={{
+        position: "fixed", inset: 0, zIndex: 90,
+        background: "#091A10", isolation: "isolate",
+        paddingTop: "var(--safe-top)",
+        overflowY: "auto", overflowX: "hidden",
+      }}
+    >
+      {bgPhoto && (
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+          <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.42 }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.62) 0%, rgba(9,26,16,0.82) 55%, rgba(9,26,16,0.94) 100%)" }} />
+        </div>
+      )}
+
+      <div
+        className="relative w-full max-w-md mx-auto flex flex-col"
+        style={{ zIndex: 1, minHeight: "100dvh", padding: "clamp(28px,7dvh,64px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)" }}
+      >
+        <AnimatePresence mode="wait">
+          {step === 0 ? (
+            <motion.div key="pray" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
+              <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                Welcome to Phoebe · 1 of 2
+              </p>
+              <h1 className="text-[26px] font-bold leading-tight mb-1.5" style={{ color: WARM, fontFamily: FONT }}>
+                How would you like to pray?
+              </h1>
+              <p className="text-[14px] mb-6" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                Choose your daily prayer. You can change it, or add more, anytime.
+              </p>
+              <div className="flex flex-col gap-2.5 flex-1">
+                {METHODS.map((m) => (
+                  <Choice key={m.key} emoji={m.emoji} rgb={m.rgb} title={m.title} blurb={m.blurb} selected={method === m.key} onClick={() => setMethod(m.key)} />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className={`${pillBase} w-full mt-7`}
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: FONT, cursor: "pointer" }}
+              >
+                Continue
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div key="read" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
+              <button type="button" onClick={() => setStep(0)} className="self-start text-[13px] font-semibold mb-3" style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                ← Back
+              </button>
+              <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                Welcome to Phoebe · 2 of 2
+              </p>
+              <h1 className="text-[26px] font-bold leading-tight mb-1.5" style={{ color: WARM, fontFamily: FONT }}>
+                A daily reading to carry
+              </h1>
+              <p className="text-[14px] mb-6" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                Pick a reflection to read each day — or skip for now.
+              </p>
+              <div className="flex flex-col gap-2.5 flex-1">
+                {NEWSLETTERS.map((n) => (
+                  <Choice key={n.key} emoji={n.emoji} rgb={n.rgb} title={n.title} blurb={n.blurb} selected={newsletter === n.key} onClick={() => setNewsletter(n.key)} />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => finish(newsletter)}
+                className={`${pillBase} w-full mt-7`}
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: FONT, cursor: "pointer" }}
+              >
+                Begin
+              </button>
+              <button
+                type="button"
+                onClick={() => finish("none")}
+                className="mt-3 self-center text-[13px] font-semibold"
+                style={{ color: "rgba(200,212,192,0.7)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: "4px 10px" }}
+              >
+                Skip for now
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}

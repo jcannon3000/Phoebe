@@ -15,6 +15,7 @@ import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
+import { FirstOpenOnboarding } from "@/components/FirstOpenOnboarding";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
@@ -1630,6 +1631,10 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10", isolation: "isolate" }}>
       <LoadReveal />
       <OpeningSplash />
+      {/* First-open (iOS) prayer-setup splash — picks a prayer method + a daily
+          reading and seeds the routine, then dismisses onto the home. Self-gates
+          (native + first launch); renders nothing otherwise. */}
+      <FirstOpenOnboarding />
       {/* Optional full-bleed page backdrop — fixed (edge to edge, behind the header
           AND the content gutters), z-index:-1 within this isolation:isolate root so
           it renders reliably (never position:fixed without isolation — that flashes
