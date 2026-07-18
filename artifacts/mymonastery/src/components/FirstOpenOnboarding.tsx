@@ -92,11 +92,12 @@ function applyChoices(
 ): void {
   const isContemplation = method.key === "contemplation";
   const isCreation = method.key === "creation";
-  // Office LEVEL is the picked BCP form for office/psalms/devotion; OFF ("ask")
-  // for Contemplative + Creation — those aren't office anchors, they get their own
-  // card (the silence sit / the Co-Breathe card). Setting BOTH a level and the
-  // contemplation add-on would render duplicate cards.
-  const officeLevel: OfficeLevel = (isContemplation || isCreation) ? "ask" : method.level;
+  // We EDIT the default rhythm (Morning + Evening office + a short silence) rather
+  // than stripping it to one card. BCP forms (office/psalms/devotion) set the
+  // office form for BOTH sides. Contemplative replaces the office with a silent
+  // sit on both sides. Creation Prayer is a single daily breath practice, so it
+  // KEEPS the twice-daily office + silence and ADDS the Co-Breathe card.
+  const officeLevel: OfficeLevel = isContemplation ? "ask" : isCreation ? "office" : method.level;
   for (const side of SIDES) {
     setSideLevel(side, officeLevel);
     setSideContemplation(side, isContemplation);
@@ -106,10 +107,9 @@ function applyChoices(
   setReflectionSource(newsletter);
 
   const guest = isDeviceLocalGuest(user);
-  // The guest silence goal drives the standalone Silence card. Seed it only for
-  // the Contemplative method; clear the seeded default (5 min) for every other
-  // method so the chosen prayer is the routine, not a stray silence card.
-  if (guest) setGuestSilenceGoalMin(isContemplation ? 10 : 0);
+  // Keep the default silence card (the seeded 5-min goal) for every method — it's
+  // part of the daily rhythm. Contemplative deepens it a little (10).
+  if (guest && isContemplation) setGuestSilenceGoalMin(10);
 
   // Home layout: chosen reading ON (after the office card) + the other two OFF;
   // the Co-Breathe card ON only for Creation Prayer. Don't FABRICATE a layout for
@@ -180,13 +180,82 @@ function Choice({
   );
 }
 
+// ── Little live-looking MOCKS of the real home so the tutorial SHOWS what it's
+//    describing (like the Co-Breathe intro shows the breath ring). ──────────────
+function MiniCard({ emoji, rgb, title, blurb, cta, kept, dim }: { emoji: string; rgb: string; title: string; blurb?: string; cta?: string; kept?: boolean; dim?: boolean }) {
+  return (
+    <div style={{ display: "flex", width: "100%", borderRadius: 18, overflow: "hidden", background: CARD_BG, border: `1px solid ${CARD_BORDER}`, opacity: dim ? 0.55 : 1 }}>
+      <div style={{ width: 5, flexShrink: 0, background: `rgba(${rgb},0.72)` }} />
+      <div style={{ flex: 1, minWidth: 0, padding: "11px 13px", display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 23, flexShrink: 0 }} aria-hidden>{emoji}</span>
+        <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+          <p style={{ fontSize: 14.5, fontWeight: 700, color: WARM, fontFamily: FONT, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</p>
+          {blurb && <p style={{ fontSize: 11, color: SAGE, fontFamily: FONT, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{blurb}</p>}
+        </div>
+        {kept ? (
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(126,210,140,0.95)", fontFamily: FONT, flexShrink: 0 }}>✓ kept</span>
+        ) : cta ? (
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: WARM, fontFamily: FONT, background: `rgba(${rgb},0.85)`, borderRadius: 999, padding: "6px 13px", flexShrink: 0 }}>{cta}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function RoutineRow({ emoji, title, on }: { emoji: string; title: string; on: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 14, padding: "10px 12px" }}>
+      <span style={{ color: "rgba(143,175,150,0.45)", fontSize: 15, letterSpacing: "-2px", flexShrink: 0 }} aria-hidden>⠿</span>
+      <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden>{emoji}</span>
+      <span style={{ flex: 1, textAlign: "left", fontSize: 14, fontWeight: 600, color: WARM, fontFamily: FONT }}>{title}</span>
+      <span style={{ width: 34, height: 20, borderRadius: 999, flexShrink: 0, background: on ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+        <span style={{ position: "absolute", top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: 999, background: "#F0EDE6", transition: "left 0.2s" }} />
+      </span>
+    </div>
+  );
+}
+
+function SectionLabel({ text }: { text: string }) {
+  return <p style={{ fontSize: 12, fontWeight: 700, color: WARM, fontFamily: FONT, margin: "0 0 8px", textAlign: "left", width: "100%" }}>{text}</p>;
+}
+
+function TutorialMock({ idx }: { idx: number }) {
+  const wrap: React.CSSProperties = { width: "100%", maxWidth: 320, margin: "0 auto 26px", display: "flex", flexDirection: "column", gap: 8 };
+  if (idx === 0) {
+    return (
+      <div style={wrap}>
+        <SectionLabel text="Next" />
+        <MiniCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="The office to begin your day" cta="Begin →" />
+        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Today's reading" cta="Read →" />
+      </div>
+    );
+  }
+  if (idx === 1) {
+    return (
+      <div style={wrap}>
+        <MiniCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="Prayed this morning" kept dim />
+        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Read today" kept dim />
+        <MiniCard emoji="🌙" rgb="124,116,196" title="Evening Prayer" blurb="Close the day" cta="Begin →" />
+      </div>
+    );
+  }
+  return (
+    <div style={wrap}>
+      <SectionLabel text="Your routine" />
+      <RoutineRow emoji="🕊️" title="Morning Prayer" on />
+      <RoutineRow emoji="🕯️" title="Contemplative Prayer" on />
+      <RoutineRow emoji="🌍" title="Creation Prayer" on={false} />
+    </div>
+  );
+}
+
 // The daily-routine tutorial — three slides after the loading screen, in the
-// SAME shape as the Co-Breathe how-it-works intro (eyebrow → big title → body →
-// Next pill + counter + Skip). Teaches what's-next, progress, and shaping.
-const TUTORIAL: Array<{ eyebrow: string; title: string; body: string; emoji: string }> = [
-  { eyebrow: "Your daily rhythm", emoji: "🕊️", title: "See what's next", body: "Phoebe always shows you the next thing to pray, right at the top. Tap the card and begin — no hunting, no guilt about what you missed." },
-  { eyebrow: "Your daily rhythm", emoji: "🌿", title: "Watch it come together", body: "Each practice you keep slips down to “done,” and your day fills in as you pray — a quiet picture of the rhythm you're keeping." },
-  { eyebrow: "Your daily rhythm", emoji: "✨", title: "Shape it your way", body: "Add practices, change how you pray, set reminders. Your rhythm is yours — reshape it anytime from your routine." },
+// SAME shape as the Co-Breathe how-it-works intro (mock → eyebrow → big title →
+// body → Next pill + counter + Skip). Teaches what's-next, progress, and shaping.
+const TUTORIAL: Array<{ eyebrow: string; title: string; body: string }> = [
+  { eyebrow: "Your daily rhythm", title: "See what's next", body: "Phoebe always shows you the next thing to pray, right at the top. Tap the card and begin — no hunting, no guilt about what you missed." },
+  { eyebrow: "Your daily rhythm", title: "Watch it come together", body: "Each practice you keep slips to “kept,” and your day fills in as you pray — a quiet picture of the rhythm you're keeping." },
+  { eyebrow: "Your daily rhythm", title: "Shape it your way", body: "Reorder, toggle, add practices, change how you pray, set reminders. Your rhythm is yours — reshape it anytime." },
 ];
 
 export function FirstOpenOnboarding() {
@@ -197,6 +266,7 @@ export function FirstOpenOnboarding() {
   const [method, setMethod] = useState<string>("psalms");
   const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
   const [tut, setTut] = useState(0);
+  const [closing, setClosing] = useState(false);
   const bgPhoto = useMemo(
     () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
@@ -238,7 +308,8 @@ export function FirstOpenOnboarding() {
     if (!preview) markFirstOpenOnboardingDone();
     setStep("loading");
   };
-  const dismiss = () => setVisible(false);
+  // Dissolve INTO the home (fade the opaque overlay out) rather than hard-cutting.
+  const dismiss = () => setClosing(true);
   const nextTutorial = () => { if (tut >= TUTORIAL.length - 1) dismiss(); else setTut((n) => n + 1); };
 
   const pillBase = "rounded-full px-9 py-3.5 text-sm font-semibold tracking-wide transition-opacity active:scale-[0.98]";
@@ -247,8 +318,9 @@ export function FirstOpenOnboarding() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      animate={{ opacity: closing ? 0 : 1 }}
+      transition={{ duration: closing ? 0.55 : 0.3, ease: "easeInOut" }}
+      onAnimationComplete={() => { if (closing) setVisible(false); }}
       style={{
         position: "fixed", inset: 0, zIndex: 90,
         background: "#091A10", isolation: "isolate",
@@ -349,9 +421,7 @@ export function FirstOpenOnboarding() {
               onClick={nextTutorial}
               style={{ cursor: "pointer" }}
             >
-              <div aria-hidden style={{ fontSize: 52, marginBottom: 20, filter: "drop-shadow(0 0 14px rgba(90,150,110,0.5))" }}>
-                {TUTORIAL[tut]!.emoji}
-              </div>
+              <TutorialMock idx={tut} />
               <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-3.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
                 {TUTORIAL[tut]!.eyebrow}
               </p>
