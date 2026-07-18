@@ -401,6 +401,7 @@ router.get("/parish/celebration", async (req, res) => {
         INNER JOIN prayer_feed_subscriptions pfs
           ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
         WHERE (ps.ended_at AT TIME ZONE ${parish.timezone})::date = ${today}::date
+          ${surface ? sql`AND ps.surface = ${surface}` : sql``}
       `),
     ]);
 
@@ -1650,7 +1651,8 @@ router.put("/parish/rule", async (req, res): Promise<void> => {
           const adopters = await db.select({ userId: parishRuleAdoptionsTable.userId })
             .from(parishRuleAdoptionsTable).where(eq(parishRuleAdoptionsTable.ruleId, prevRuleId));
           const ids = [...new Set(adopters.map((a) => a.userId).filter((n): n is number => n != null))]
-            .filter((uid) => uid !== session.id);
+            .filter((uid) => uid !== session.id)
+            .slice(0, 2000); // safety cap on the fan-out for a very large parish
           if (ids.length > 0) {
             const [feed] = await db.select({ title: prayerFeedsTable.title })
               .from(prayerFeedsTable).where(eq(prayerFeedsTable.id, parishId));

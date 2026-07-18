@@ -997,7 +997,16 @@ router.put("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> =
     res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
     return;
   }
-  const patch: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
+  const data = { ...parsed.data };
+  // A PARISH's public listing is staff-reviewed — its visibility (and kind) may
+  // ONLY change through the vetted PUT /api/parishes/:slug/visibility gate, not
+  // this generic editor route (else a non-staff priest-creator, who passes
+  // canEditFeed, could flip their own parish public and bypass the review).
+  if (feed.kind === "parish") {
+    delete (data as { visibility?: unknown }).visibility;
+    delete (data as { kind?: unknown }).kind;
+  }
+  const patch: Record<string, unknown> = { ...data, updatedAt: new Date() };
   const [row] = await db.update(prayerFeedsTable).set(patch as any)
     .where(eq(prayerFeedsTable.id, feed.id))
     .returning();

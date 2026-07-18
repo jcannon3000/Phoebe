@@ -598,7 +598,12 @@ router.get("/me/contemplation-health-days", async (req, res): Promise<void> => {
     const rows = await db
       .select({ day: contemplationHealthMinutesTable.day, minutes: contemplationHealthMinutesTable.minutes })
       .from(contemplationHealthMinutesTable)
-      .where(eq(contemplationHealthMinutesTable.userId, sessionUserId))
+      .where(and(
+        eq(contemplationHealthMinutesTable.userId, sessionUserId),
+        // Only days with real minutes — so the 430-row cap counts meaningful days,
+        // not zero rows that could push a real older day out of the window.
+        gt(contemplationHealthMinutesTable.minutes, 0),
+      ))
       .orderBy(desc(contemplationHealthMinutesTable.day))
       .limit(430);
     const days: Record<string, number> = {};

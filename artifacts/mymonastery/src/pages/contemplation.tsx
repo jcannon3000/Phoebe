@@ -800,9 +800,11 @@ export default function ContemplationPage() {
     // a day mostly kept in another app read far too low.
     for (const g of olderDays) g.healthMinutes = healthDays[g.ymd] ?? 0;
     // Days kept ENTIRELY in another app (no Phoebe sit) would otherwise vanish
-    // from the history — surface them as health-only condensed cards.
+    // from the history — surface them as health-only cards. Only TODAY is skipped
+    // (it already shows via the live HealthKit read `externalHealthSessions`);
+    // YESTERDAY's health-only minutes were being dropped, so include dayDiff >= 1.
     for (const [ymd, minutes] of Object.entries(healthDays)) {
-      if (minutes <= 0 || usedYmd.has(ymd) || dayDiffYmd(ymd) <= 1) continue;
+      if (minutes <= 0 || usedYmd.has(ymd) || dayDiffYmd(ymd) < 1) continue;
       olderDays.push({ key: `h-${ymd}`, iso: `${ymd}T12:00:00`, ymd, totalSeconds: 0, healthMinutes: minutes, count: 0 });
     }
     // Newest day first (Phoebe + health-only interleaved by date).
