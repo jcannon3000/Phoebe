@@ -449,11 +449,6 @@ function LogSheet({
                 );
               })}
             </div>
-            <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-              {restDays.length > 0
-                ? `On ${restDays.map((d) => WEEKDAY_FULL[d]).join(" & ")} you'll see a calm sabbath, not a behind.`
-                : "Tap a day to set your weekly sabbath."}
-            </p>
           </div>
         )}
 
