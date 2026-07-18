@@ -133,8 +133,10 @@ export function resetDeviceRuleForLogout(): void {
       "phoebe:slot:",             // practice time-of-day slots
       "phoebe:guest-",            // guest silence/step goals, seed marker, welcome, migrated
       "phoebe:home-layout",       // cached home card order/visibility
-      "phoebe:routine",           // routine sync clock (UPDATED_AT)
+      "phoebe:routine",           // routine sync clock (UPDATED_AT) + owner
       "phoebe:health-",           // Apple Health connect/step flags
+      "phoebe:course:",           // course progress (rides rule_config; flushed
+                                  // on logout, restored from the server on re-login)
     ];
     const EXACT = new Set([
       "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:scripture-scope",

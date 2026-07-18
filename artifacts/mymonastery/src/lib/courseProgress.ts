@@ -10,6 +10,7 @@
 // last-write-wins reconciliation without a schema change here.
 
 import { useSyncExternalStore, useCallback, useMemo } from "react";
+import { pushRoutineConfig, ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 
 const EVENT = "phoebe:course-progress";
 const keyFor = (courseId: string) => `phoebe:course:${courseId}:v1`;
@@ -66,6 +67,27 @@ function commit(courseId: string, next: CourseProgress) {
   } catch {
     /* non-fatal */
   }
+  // Mirror to the account so course progress survives logout→login and matches
+  // across devices (the course keys ride the rule_config blob — see
+  // lib/routineSync ROUTINE_KEYS). Debounced + best-effort; a no-op for guests.
+  try { pushRoutineConfig(); } catch { /* non-fatal */ }
+}
+
+// When the routine sync ADOPTS the account's config on login / app-active, it
+// writes the course keys straight to localStorage (bypassing commit) and fires
+// ROUTINE_SYNCED_EVENT. Re-read every cached course snapshot so mounted course
+// pages + the home Learn band reflect the restored progress without a reload.
+if (typeof window !== "undefined") {
+  window.addEventListener(ROUTINE_SYNCED_EVENT, () => {
+    for (const courseId of snapshots.keys()) {
+      const fresh = read(courseId);
+      const prev = snapshots.get(courseId);
+      if (JSON.stringify(fresh) !== JSON.stringify(prev)) {
+        snapshots.set(courseId, fresh);
+        try { window.dispatchEvent(new CustomEvent(EVENT, { detail: courseId })); } catch { /* non-fatal */ }
+      }
+    }
+  });
 }
 
 function subscribe(courseId: string, cb: () => void): () => void {

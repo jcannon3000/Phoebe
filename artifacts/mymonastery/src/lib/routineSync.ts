@@ -56,6 +56,13 @@ const ROUTINE_KEYS: string[] = [
   // The optional rest WINDOW ("an event to rest" — day lives in users.restDays,
   // the time window here). Rides rules so a community's rule can carry it.
   "phoebe:rest-window",
+  // Course progress (lib/courseProgress.ts) — which lessons are completed + the
+  // last one opened, per course. Device-local like the office method was, so it
+  // was lost on logout→login; now it rides the rule_config too. One key per
+  // course (a small fixed set); the value is the course's JSON progress blob.
+  "phoebe:course:spiritual-journey:v1",
+  "phoebe:course:centering-prayer:v1",
+  "phoebe:course:way-of-love:v1",
 ];
 
 const UPDATED_AT_KEY = "phoebe:routine:updated-at";
