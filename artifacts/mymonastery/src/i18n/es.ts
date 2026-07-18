@@ -1320,6 +1320,7 @@ export const es: Translations = {
     office_tradition_aria: "Tradición del libro de oración",
     office_source_fm: "Forward Movement",
     office_source_coe: "Iglesia de Inglaterra",
+    office_source_gregory: "Gregory",
     office_listen: "Escuchar",
     office_resume: "Reanudar",
     office_pause: "Pausar",
@@ -1327,6 +1328,8 @@ export const es: Translations = {
     office_blurb_fm_evening: "El orden completo de la Oración vespertina del Libro de Oración Común, leído en voz alta. Un episodio nuevo cada tarde.",
     office_blurb_coe_morning: "La Oración matutina de Common Worship de la Iglesia de Inglaterra, leída en voz alta. Una grabación nueva cada día.",
     office_blurb_coe_evening: "La Oración vespertina de Common Worship de la Iglesia de Inglaterra, leída en voz alta. Una grabación nueva cada día.",
+    office_blurb_gregory_morning: "La Oración matutina del Libro de Oración Común, cantada en canto llano. Una grabación nueva cada día.",
+    office_blurb_gregory_evening: "La Oración vespertina del Libro de Oración Común, cantada en canto llano. Una grabación nueva cada día.",
   },
   // Beta Messages (pages/messages*.tsx).
   messages: {

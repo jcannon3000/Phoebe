@@ -1012,6 +1012,7 @@ function OfficeAudioSourceSettings() {
   const options: Array<{ value: OfficeAudioSource; label: string; sub: string; emoji: string }> = [
     { value: "forward-movement", label: "Forward Movement", sub: "The US 1979 Book of Common Prayer offices, read aloud.", emoji: "📖" },
     { value: "church-of-england", label: "Church of England", sub: "Common Worship Morning & Evening Prayer.", emoji: "⛪" },
+    { value: "gregory", label: "Gregory", sub: "The Daily Office sung in plainchant.", emoji: "🎵" },
   ];
   return (
     <>

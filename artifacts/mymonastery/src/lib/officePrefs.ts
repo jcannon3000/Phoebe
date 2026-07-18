@@ -60,8 +60,8 @@ const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "none";
 const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
 
-export type OfficeAudioSource = "forward-movement" | "church-of-england";
-const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england"];
+export type OfficeAudioSource = "forward-movement" | "church-of-england" | "gregory";
+const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england", "gregory"];
 
 export type DefaultOfficeEntry = "read" | "listen" | "watch" | "book";
 const DEFAULT_OFFICE_ENTRIES: DefaultOfficeEntry[] = ["read", "listen", "watch", "book"];

@@ -1041,9 +1041,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       const ep: { audioUrl: string | null; title: string | null; imageUrl: string | null; feedTitle: string | null; durationSeconds: number | null; publishedAt: string | null } =
         await apiRequest("GET", `/api/podcast/${apiSlug}/today?source=${encodeURIComponent(newSource)}`);
       if (ep?.audioUrl) {
+        const sideLabel = side === "evening" ? "Evening" : "Morning";
         const blurb = newSource === "church-of-england"
-          ? `Common Worship ${side === "evening" ? "Evening" : "Morning"} Prayer from the Church of England, read aloud. A new recording every day.`
-          : `The full order of ${side === "evening" ? "Evening" : "Morning"} Prayer from the Book of Common Prayer, read aloud. A new episode every ${side === "evening" ? "evening" : "morning"}.`;
+          ? `Common Worship ${sideLabel} Prayer from the Church of England, read aloud. A new recording every day.`
+          : newSource === "gregory"
+          ? `${sideLabel} Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.`
+          : `The full order of ${sideLabel} Prayer from the Book of Common Prayer, read aloud. A new episode every ${side === "evening" ? "evening" : "morning"}.`;
         play({
           ...current,
           audioUrl: ep.audioUrl,
@@ -1490,14 +1493,16 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               )}
 
               {officeSide !== null ? (
-                /* Forward Movement ↔ Church of England — offices only */
+                /* Forward Movement ↔ Church of England ↔ Gregory — offices only */
                 <div
                   role="tablist"
                   aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
-                  style={{ display: "inline-flex", gap: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
+                  style={{ display: "inline-flex", flexWrap: "wrap", justifyContent: "center", gap: 4, maxWidth: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
                 >
-                  {(["forward-movement", "church-of-england"] as const).map((s) => {
+                  {(["forward-movement", "church-of-england", "gregory"] as const).map((s) => {
                     const active = officeAudioSource === s;
+                    const i18nKey = s === "gregory" ? "podcasts.office_source_gregory" : s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm";
+                    const label = s === "gregory" ? "Gregory" : s === "church-of-england" ? "Church of England" : "Forward Movement";
                     return (
                       <button key={s} type="button" role="tab" aria-selected={active}
                         onClick={() => switchOfficeSource(s)} disabled={sourceSwitching}
@@ -1509,8 +1514,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                           color: active ? "#FFFFFF" : "rgba(246,240,230,0.6)",
                           transition: "background 0.15s, color 0.15s",
                         }}>
-                        {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm",
-                          { defaultValue: s === "church-of-england" ? "Church of England" : "Forward Movement" })}
+                        {t(i18nKey, { defaultValue: label })}
                       </button>
                     );
                   })}

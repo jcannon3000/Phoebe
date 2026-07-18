@@ -73,6 +73,19 @@ const SOURCE_META: Record<OfficeAudioSource, {
     blurb: (side) =>
       `Common Worship ${side === "evening" ? "Evening" : "Morning"} Prayer from the Church of England, read aloud. A new recording every day.`,
   },
+  "gregory": {
+    label: "Gregory",
+    provider: "The Daily Office Chanted",
+    blurb: (side) =>
+      `${side === "evening" ? "Evening" : "Morning"} Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.`,
+  },
+};
+
+// Short key each source uses in its i18n blurb keys (office_blurb_<key>_<side>).
+const SOURCE_BLURB_KEY: Record<OfficeAudioSource, string> = {
+  "forward-movement": "fm",
+  "church-of-england": "coe",
+  "gregory": "gregory",
 };
 
 const PALETTE = {
@@ -99,8 +112,7 @@ export default function OfficePodcastPage() {
   const { officeAudioSource } = useOfficePrefs();
   const sourceMeta = SOURCE_META[officeAudioSource];
   const { t } = useTranslation();
-  const isCoE = officeAudioSource === "church-of-england";
-  const blurb = t(`podcasts.office_blurb_${isCoE ? "coe" : "fm"}_${show.side}`, { defaultValue: sourceMeta.blurb(show.side) });
+  const blurb = t(`podcasts.office_blurb_${SOURCE_BLURB_KEY[officeAudioSource]}_${show.side}`, { defaultValue: sourceMeta.blurb(show.side) });
 
   const { data: episode, isLoading } = useQuery<Episode>({
     queryKey: [`/api/podcast/${show.apiSlug}/today`, officeAudioSource],

@@ -647,6 +647,28 @@ const COE_SHOW: Show = {
   artwork: null,
 };
 
+// "Gregory" — The Daily Office Chanted: the Episcopal Daily Office sung in
+// plainchant. Like the Church of England feed, ONE combined feed carries all
+// the day's offices (Morning Prayer ~3am, Evening Prayer ~3pm, Compline ~6pm),
+// each episode titled by its office, so we load the feed and filter by title.
+const GREGORY_FEED = "https://feed.podbean.com/thedailyofficechanted/feed.xml";
+const GREGORY_SHOW: Show = {
+  slug: "gregory-daily-office",
+  title: "The Daily Office Chanted",
+  artist: "The Daily Office Chanted",
+  publisher: "forward-movement",
+  feedUrl: GREGORY_FEED,
+  artwork: "https://pbcdn1.podbean.com/imglogo/image-logo/21622684/Logo_2048x2048.jpg",
+};
+
+// Sources whose feed carries BOTH offices in one channel, filtered by episode
+// title (vs Forward Movement's separate feed per office). Keyed by the client's
+// ?source= value.
+const COMBINED_OFFICE_SOURCES: Record<string, { show: Show; feedTitle: string }> = {
+  "church-of-england": { show: COE_SHOW, feedTitle: "Daily Prayer · Church of England" },
+  "gregory": { show: GREGORY_SHOW, feedTitle: "The Daily Office Chanted" },
+};
+
 // ── GET /api/podcast/:show/today — newest episode (offices) ──────────────
 // ?source=church-of-england swaps the Forward Movement office feed for
 // the Church of England's Common Worship audio for the same office. Any
@@ -660,15 +682,17 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
 
   const source = String(req.query.source ?? "forward-movement");
   const isOffice = slug === "morning-office" || slug === "evening-office";
-  if (source === "church-of-england" && isOffice) {
-    // Pull a handful of the newest episodes and pick the first whose
-    // title names this office — robust to the morning/evening ordering
-    // within the day (today's evening sits above today's morning).
-    const feed = await loadFeed(COE_SHOW, 10);
+  const combined = COMBINED_OFFICE_SOURCES[source];
+  if (combined && isOffice) {
+    // Combined-feed sources (Church of England, Gregory) carry both offices in
+    // one channel. Pull a handful of the newest episodes and pick the first
+    // whose title names this office — robust to the morning/evening/compline
+    // ordering within the day (today's later offices sit above today's morning).
+    const feed = await loadFeed(combined.show, 10);
     const want = slug === "morning-office" ? "morning prayer" : "evening prayer";
     const ep = feed.episodes.find((e) => (e.title ?? "").toLowerCase().includes(want)) ?? null;
     res.json({
-      feedTitle: "Daily Prayer · Church of England",
+      feedTitle: combined.feedTitle,
       title: ep?.title ?? null,
       audioUrl: ep?.audioUrl ?? null,
       durationSeconds: ep?.durationSeconds ?? null,

@@ -1326,6 +1326,7 @@ export const en = {
     office_tradition_aria: "Prayer book tradition",
     office_source_fm: "Forward Movement",
     office_source_coe: "Church of England",
+    office_source_gregory: "Gregory",
     office_listen: "Listen",
     office_resume: "Resume",
     office_pause: "Pause",
@@ -1333,6 +1334,8 @@ export const en = {
     office_blurb_fm_evening: "The full order of Evening Prayer from the Book of Common Prayer, read aloud. A new episode every evening.",
     office_blurb_coe_morning: "Common Worship Morning Prayer from the Church of England, read aloud. A new recording every day.",
     office_blurb_coe_evening: "Common Worship Evening Prayer from the Church of England, read aloud. A new recording every day.",
+    office_blurb_gregory_morning: "Morning Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.",
+    office_blurb_gregory_evening: "Evening Prayer from the Book of Common Prayer, sung in plainchant. A new recording every day.",
   },
   // Beta Messages (pages/messages*.tsx).
   messages: {
