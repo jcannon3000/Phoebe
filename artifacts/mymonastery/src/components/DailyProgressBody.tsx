@@ -25,6 +25,7 @@ import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
+import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -1053,6 +1054,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // has finished this session, cascade immediately.
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    // The first-open intro renders OVER the home. Hold the cards (and their
+    // cascade haptics) until it dissolves, so nothing loads/ticks behind it.
+    if (shouldShowFirstOpenOnboarding()) return false;
     // First launch shows no splash (see OpeningSplash), so there's nothing to
     // wait for — paint the cards instantly instead of holding them out.
     if (isFirstOpen()) return true;
@@ -1062,10 +1066,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (splashCleared) return;
     const clear = () => setSplashCleared(true);
     window.addEventListener("phoebe:splash-done", clear);
+    window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
     // Fallback only if the event is somehow missed — must outlast the splash
-    // (~7.5s hold + ~1.4s fade), so it never un-gates the cascade mid-splash.
-    const id = window.setTimeout(clear, 12000);
-    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+    // (~7.5s hold + ~1.4s fade). While the first-open intro is still up (a slow
+    // read), keep waiting rather than un-gating the cascade behind it.
+    let id = window.setTimeout(function fb() {
+      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      clear();
+    }, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
   }, [splashCleared]);
 
   // A haptic ticks under EACH card as it cascades in (native only, once per
@@ -1074,6 +1083,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const cascadeHaptedRef = useRef(false);
   useEffect(() => {
     if (!ready || !splashCleared || cascadeHaptedRef.current) return;
+    // Never tick under cards while the first-open intro is still up (they're
+    // behind the overlay). The dissolve flips splashCleared → this re-runs.
+    if (isFirstOpenOnboardingActive()) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
     // Count the office HERO card too (it leads the Next list at enterUp(0)), so

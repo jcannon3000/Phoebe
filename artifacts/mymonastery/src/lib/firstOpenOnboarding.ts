@@ -38,3 +38,15 @@ export function markFirstOpenOnboardingDone(): void {
     /* private mode / quota — non-fatal */
   }
 }
+
+// While the first-open intro is on screen, the home renders BEHIND it. The home
+// must not cascade its cards in (or fire the per-card cascade haptics) under the
+// opaque overlay — so it holds its cards until the intro dissolves. This module
+// flag lets the home's splash gate know the intro is still up even after the
+// DONE flag is stamped (which happens a few slides before the dissolve).
+let onboardingActive = false;
+export function isFirstOpenOnboardingActive(): boolean { return onboardingActive; }
+export function markFirstOpenOnboardingActive(active: boolean): void { onboardingActive = active; }
+// Fired the moment the intro begins dissolving, so the home un-gates and
+// cascades its cards in as the overlay fades (reusing the splash-done path).
+export const FIRST_OPEN_ONBOARDING_CLOSED_EVENT = "phoebe:first-open-onboarding-closed";

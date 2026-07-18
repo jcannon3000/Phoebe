@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { swellHaptic } from "@/lib/swellHaptic";
 import {
   setSideLevel,
   setSideContemplation,
@@ -24,7 +25,7 @@ import {
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
-import { shouldShowFirstOpenOnboarding, markFirstOpenOnboardingDone } from "@/lib/firstOpenOnboarding";
+import { shouldShowFirstOpenOnboarding, markFirstOpenOnboardingDone, markFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 
 // First-open prayer-setup splash — the look of the home "what's next" hero card
 // (frosted-green card, left accent spine, emoji → title → blurb, over the leaf
@@ -186,159 +187,15 @@ function Choice({
   );
 }
 
-// ── Little live-looking MOCKS of the real home so the tutorial SHOWS what it's
-//    describing (like the Co-Breathe intro shows the breath ring). ──────────────
-// The frosted-green card tint — a copy of DailyProgressBody's cardTintBg so the
-// mocks share the EXACT background ramp of the real home cards (top lighter →
-// bottom darker). Kept in lockstep with that helper.
-function cardTintBg(tint: number): string {
-  const t = Math.max(0, Math.min(1, tint));
-  const r = Math.round(26 - 16 * t);
-  const g = Math.round(52 - 24 * t);
-  const b = Math.round(36 - 18 * t);
-  const a = (0.27 + 0.09 * t).toFixed(3);
-  return `rgba(${r},${g},${b},${a})`;
-}
-
-// HERO card — a 1:1 mock of PracticeCard's `hero` layout (the top "Next" card):
-// 6px spine, 34px emoji, 22px bold title, and a FULL-WIDTH CTA button below.
-function HeroCard({ emoji, rgb, title, blurb, cta, tint = 0 }: { emoji: string; rgb: string; title: string; blurb: string; cta: string; tint?: number }) {
-  return (
-    <div style={{ position: "relative", display: "flex", borderRadius: 24, overflow: "hidden", background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}` }}>
-      <div style={{ width: 6, flexShrink: 0, background: `rgba(${rgb},0.72)` }} />
-      <div style={{ flex: 1, minWidth: 0, padding: "20px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <span style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }} aria-hidden>{emoji}</span>
-          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-            <p style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15, color: WARM, fontFamily: FONT, margin: 0 }}>{title}</p>
-            <p style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.35, color: SAGE, fontFamily: FONT }}>{blurb}</p>
-          </div>
-        </div>
-        <div style={{ marginTop: 16, width: "100%", textAlign: "center", borderRadius: 999, fontSize: 15, fontWeight: 600, padding: "12px 0", background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
-          {cta} <span aria-hidden style={{ marginLeft: 4 }}>→</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// COMPACT card — a 1:1 mock of PracticeCard's default row: 4px spine, 20px emoji,
-// 14.5px semibold title. A not-done card shows the CTA pill; a DONE card shows the
-// practice-colored ✓ chip (NOT dimmed, NOT green "kept" text — matching the app).
-function MiniCard({ emoji, rgb, title, blurb, cta, done, tint = 0.5 }: { emoji: string; rgb: string; title: string; blurb: string; cta?: string; done?: boolean; tint?: number }) {
-  return (
-    <div style={{ position: "relative", display: "flex", borderRadius: 24, overflow: "hidden", background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}` }}>
-      <div style={{ width: 4, flexShrink: 0, background: `rgba(${rgb},0.7)` }} />
-      <div style={{ flex: 1, minWidth: 0, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
-        <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-          <p style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.15, color: WARM, fontFamily: FONT, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</p>
-          <p style={{ fontSize: 12, marginTop: 2, lineHeight: 1.35, color: SAGE, fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{blurb}</p>
-        </div>
-        {done ? (
-          <span style={{ flexShrink: 0, borderRadius: 999, fontSize: 12, fontWeight: 600, padding: "6px 14px", background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)`, fontFamily: FONT }}>✓</span>
-        ) : (
-          <span style={{ flexShrink: 0, minWidth: 84, textAlign: "center", borderRadius: 999, fontSize: 12, fontWeight: 600, padding: "6px 14px", background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>{cta} <span aria-hidden>→</span></span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// A vertical grip glyph matching lucide's GripVertical (two columns of dots).
-function Grip() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(143,175,150,0.5)" style={{ flexShrink: 0 }} aria-hidden>
-      <circle cx="9" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" />
-      <circle cx="15" cy="6" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="15" cy="18" r="1.6" />
-    </svg>
-  );
-}
-
-// Reorder row — a 1:1 mock of the /customize-home Reorder.Item: grip + emoji +
-// label/sub + a REMOVE (×) button. There is no per-row toggle in the real editor.
-function RoutineRow({ emoji, title, sub }: { emoji: string; title: string; sub: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)", borderRadius: 12, padding: "12px" }}>
-      <Grip />
-      <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{emoji}</span>
-      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: WARM, fontFamily: FONT, margin: 0 }}>{title}</p>
-        <p style={{ fontSize: 12, color: SAGE, fontFamily: FONT, margin: "2px 0 0" }}>{sub}</p>
-      </div>
-      <span style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 5, borderRadius: 999, color: "rgba(143,175,150,0.7)", background: "rgba(143,175,150,0.10)", border: "1px solid rgba(143,175,150,0.20)" }} aria-hidden>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-      </span>
-    </div>
-  );
-}
-
-// Section header — a 1:1 mock of DailyProgressBody's sectionHeader: an 18px
-// semibold title with a hairline rule trailing to the right.
-function SectionLabel({ text }: { text: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, width: "100%" }}>
-      <span style={{ fontSize: 18, fontWeight: 600, color: WARM, fontFamily: FONT }}>{text}</span>
-      <span style={{ flex: 1, height: 1, background: "rgba(200,212,192,0.15)" }} />
-    </div>
-  );
-}
-
-function TutorialMock({ idx }: { idx: number }) {
-  const wrap: React.CSSProperties = { width: "100%", maxWidth: 320, margin: "0 auto 26px", display: "flex", flexDirection: "column", gap: 8 };
-  if (idx === 0) {
-    return (
-      <div style={wrap}>
-        <SectionLabel text="Next" />
-        <HeroCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="The office to begin your day" cta="Begin" tint={0} />
-        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Today's reading" cta="Read" tint={0.6} />
-      </div>
-    );
-  }
-  if (idx === 1) {
-    return (
-      <div style={wrap}>
-        <SectionLabel text="Next" />
-        <HeroCard emoji="🌙" rgb="124,116,196" title="Evening Prayer" blurb="Close the day" cta="Begin" tint={0} />
-        <div style={{ height: 6 }} />
-        <SectionLabel text="Done" />
-        <MiniCard emoji="🕊️" rgb="46,107,64" title="Morning Prayer" blurb="Prayed this morning" done tint={0.6} />
-        <MiniCard emoji="📖" rgb="96,141,209" title="CAC Daily Meditation" blurb="Read today" done tint={1} />
-      </div>
-    );
-  }
-  return (
-    <div style={wrap}>
-      <SectionLabel text="Your routine" />
-      <RoutineRow emoji="🕊️" title="Morning Prayer" sub="The office to begin your day" />
-      <RoutineRow emoji="🕯️" title="Contemplative Prayer" sub="A silent sit, morning and evening" />
-      <RoutineRow emoji="📖" title="CAC Daily Meditation" sub="Today's reading" />
-    </div>
-  );
-}
-
-// The daily-routine tutorial — three slides after the loading screen, in the
-// SAME shape as the Co-Breathe how-it-works intro (mock → eyebrow → big title →
-// body → Next pill + counter + Skip). Teaches what's-next, progress, and shaping.
-const TUTORIAL: Array<{ eyebrow: string; title: string; body: string }> = [
-  { eyebrow: "Your daily rhythm", title: "See what's next", body: "Phoebe always shows you the next thing to pray, right at the top. Tap the card and begin — no hunting, no guilt about what you missed." },
-  { eyebrow: "Your daily rhythm", title: "Watch it come together", body: "Each practice you pray drops into “Done,” and your day fills in as you go — a quiet picture of the rhythm you're keeping." },
-  { eyebrow: "Your daily rhythm", title: "Shape it your way", body: "Reorder, remove, add practices, change how you pray, set reminders. Your rhythm is yours — reshape it anytime." },
-];
 
 export function FirstOpenOnboarding() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [visible, setVisible] = useState(() => shouldShowFirstOpenOnboarding());
-  const [step, setStep] = useState<"welcome" | "pray" | "read" | "loading" | "tutorial">("welcome");
+  const [step, setStep] = useState<"welcome" | "pray" | "read" | "loading">("welcome");
   const [method, setMethod] = useState<string>("psalms");
   const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
-  const [tut, setTut] = useState(0);
   const [closing, setClosing] = useState(false);
-  const bgPhoto = useMemo(
-    () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
-    [],
-  );
   // `?firstrun=1` is a PREVIEW: walk the flow visually but write nothing and
   // don't mark it done, so opening a link with the param can never overwrite a
   // real (possibly signed-in) user's routine.
@@ -346,11 +203,23 @@ export function FirstOpenOnboarding() {
     try { return new URLSearchParams(window.location.search).get("firstrun") === "1"; } catch { return false; }
   }, []);
 
-  // The "setting up your home" loading beat, then into the tutorial.
+  // Mark the intro ACTIVE for its whole lifetime so the home (rendered behind
+  // this overlay) holds its cards + cascade haptics until we dissolve. And fire
+  // ONE sustained smooth swell haptic as the intro opens — the app's welcome.
+  const swelledRef = useRef(false);
+  useEffect(() => {
+    if (!visible) return;
+    markFirstOpenOnboardingActive(true);
+    if (!swelledRef.current) { swelledRef.current = true; try { swellHaptic(); } catch { /* ignore */ } }
+    return () => markFirstOpenOnboardingActive(false);
+  }, [visible]);
+
+  // The "setting up your home" loading beat, then dissolve straight into the home.
   useEffect(() => {
     if (step !== "loading") return;
-    const id = window.setTimeout(() => setStep("tutorial"), 1700);
+    const id = window.setTimeout(() => dismiss(), 1900);
     return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   if (!visible) return null;
@@ -377,8 +246,18 @@ export function FirstOpenOnboarding() {
     setStep("loading");
   };
   // Dissolve INTO the home (fade the opaque overlay out) rather than hard-cutting.
-  const dismiss = () => setClosing(true);
-  const nextTutorial = () => { if (tut >= TUTORIAL.length - 1) dismiss(); else setTut((n) => n + 1); };
+  // As the fade BEGINS, tell the home to un-gate and cascade its cards in (so
+  // they rise under the fading overlay), and clear the active flag so no cascade
+  // haptic was suppressed a moment too long.
+  const dismiss = () => {
+    markFirstOpenOnboardingActive(false);
+    try {
+      sessionStorage.setItem("phoebe:splash-done-once", "1");
+      window.dispatchEvent(new CustomEvent("phoebe:splash-done"));
+      window.dispatchEvent(new CustomEvent(FIRST_OPEN_ONBOARDING_CLOSED_EVENT));
+    } catch { /* ignore */ }
+    setClosing(true);
+  };
 
   const pillBase = "rounded-full px-9 py-3.5 text-sm font-semibold tracking-wide transition-opacity active:scale-[0.98]";
   const pillStyle = { background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: FONT, cursor: "pointer" } as const;
@@ -391,17 +270,16 @@ export function FirstOpenOnboarding() {
       onAnimationComplete={() => { if (closing) setVisible(false); }}
       style={{
         position: "fixed", inset: 0, zIndex: 90,
-        background: "#091A10", isolation: "isolate",
+        background: "var(--oh-bg, #0C1F12)", isolation: "isolate",
         paddingTop: "var(--safe-top)",
         overflowY: "auto", overflowX: "hidden",
       }}
     >
-      {bgPhoto && (
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-          <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.42 }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.62) 0%, rgba(9,26,16,0.82) 55%, rgba(9,26,16,0.94) 100%)" }} />
-        </div>
-      )}
+      {/* The same slow drifting-green backdrop the office slideshow prays over,
+          so the whole intro shares the liturgy's visual language. */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+        <AnimatedBackground base="var(--oh-bg, #0C1F12)" variant="subtle" fadeTop />
+      </div>
 
       <div
         className="relative w-full max-w-md mx-auto flex flex-col"
@@ -409,12 +287,19 @@ export function FirstOpenOnboarding() {
       >
         <AnimatePresence mode="wait">
           {step === "welcome" ? (
-            <motion.div key="welcome" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col items-center justify-center text-center">
-              <div aria-hidden style={{ fontSize: 52, marginBottom: 22, filter: "drop-shadow(0 0 14px rgba(90,150,110,0.5))" }}>🕊️</div>
-              <h1 className="text-[30px] font-bold leading-tight mb-4" style={{ color: WARM, fontFamily: FONT }}>
+            <motion.div key="welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.5 }} className="flex-1 flex flex-col items-center justify-center text-center">
+              <motion.div
+                aria-hidden
+                animate={{ scale: [1, 1.06, 1], opacity: [0.86, 1, 0.86] }}
+                transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+                style={{ fontSize: 56, marginBottom: 26, filter: "drop-shadow(0 0 22px rgba(150,205,170,0.55))" }}
+              >
+                🕊️
+              </motion.div>
+              <h1 className="title-glow-breathe text-[32px] font-bold leading-tight mb-4" style={{ color: WARM, fontFamily: FONT }}>
                 Welcome to Phoebe
               </h1>
-              <p className="text-[16px] leading-relaxed px-3" style={{ color: "rgba(240,237,230,0.86)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 360 }}>
+              <p className="text-[16px] leading-relaxed px-3" style={{ color: "rgba(182,210,188,0.82)", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", maxWidth: 360, textShadow: "0 2px 16px rgba(8,30,18,0.6)" }}>
                 A gentle rhythm of prayer, kept a day at a time. Let's set yours up — it takes a moment, and you can change everything later.
               </p>
               <button type="button" onClick={() => setStep("pray")} className={`${pillBase} px-12 mt-10`} style={pillStyle}>
@@ -467,51 +352,27 @@ export function FirstOpenOnboarding() {
                 Skip for now
               </button>
             </motion.div>
-          ) : step === "loading" ? (
-            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col items-center justify-center text-center">
-              <motion.div
-                aria-hidden
-                animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                style={{ fontSize: 44, marginBottom: 18 }}
+          ) : (
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col items-center justify-center text-center">
+              {/* The office "gathering" screen — a breathing radial orb over the
+                  drifting green backdrop, so setting up the home feels like the
+                  start of prayer, not a buffering app. */}
+              <div
+                className="intercession-loader-orb"
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle at 50% 38%, rgba(150,205,170,0.55) 0%, rgba(46,107,64,0.35) 55%, rgba(46,107,64,0.08) 100%)",
+                  boxShadow: "0 0 36px rgba(46,107,64,0.55), inset 0 0 18px rgba(140,205,160,0.35)",
+                }}
+              />
+              <p
+                className="intercession-loader-copy mt-7 text-center"
+                style={{ color: "rgba(182,210,188,0.82)", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 16, lineHeight: 1.5, textShadow: "0 2px 16px rgba(8,30,18,0.6)", maxWidth: 320 }}
               >
-                🌿
-              </motion.div>
-              <p className="text-[15px]" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
                 Setting up your home…
               </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              key={`tut-${tut}`}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35 }}
-              className="flex-1 flex flex-col items-center justify-center text-center"
-              onClick={nextTutorial}
-              style={{ cursor: "pointer" }}
-            >
-              <TutorialMock idx={tut} />
-              <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-3.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
-                {TUTORIAL[tut]!.eyebrow}
-              </p>
-              <h1 className="text-[28px] font-bold leading-tight mb-4 px-2" style={{ color: WARM, fontFamily: FONT }}>
-                {TUTORIAL[tut]!.title}
-              </h1>
-              <p className="text-[16px] leading-relaxed px-3" style={{ color: "rgba(240,237,230,0.86)", fontFamily: FONT, maxWidth: 360 }}>
-                {TUTORIAL[tut]!.body}
-              </p>
-              <div className="mt-10 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-                <p className="text-xs mb-4" style={{ color: "rgba(143,175,150,0.4)", letterSpacing: "0.06em", fontFamily: FONT }}>
-                  {tut + 1} of {TUTORIAL.length}
-                </p>
-                <button type="button" onClick={nextTutorial} className={`${pillBase} px-12`} style={pillStyle}>
-                  {tut >= TUTORIAL.length - 1 ? "Enter Phoebe" : "Next"}
-                </button>
-                {tut < TUTORIAL.length - 1 && (
-                  <button type="button" onClick={dismiss} className="mt-3 text-[13px] font-semibold" style={{ color: "rgba(200,212,192,0.65)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: "4px 10px" }}>
-                    Skip
-                  </button>
-                )}
-              </div>
             </motion.div>
           )}
         </AnimatePresence>

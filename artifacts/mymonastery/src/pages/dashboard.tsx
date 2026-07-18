@@ -29,6 +29,7 @@ import { seedGuestRule } from "@/lib/guestSeed";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
+import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -4179,6 +4180,8 @@ function CascadeHapticTrigger({ cascadeFrom, count, splashCleared }: { cascadeFr
   const hapted = useRef(false);
   useEffect(() => {
     if (!splashCleared || hapted.current || count <= 0) return;
+    // Never tick under cards while the first-open intro is still up.
+    if (isFirstOpenOnboardingActive()) return;
     hapted.current = true;
     return scheduleCascadeHaptics(cascadeFrom, count);
   }, [splashCleared, cascadeFrom, count]);
@@ -4245,6 +4248,9 @@ function PrayerListCarousel({
   // Hold the row cascade + haptics until the app-open splash has faded (native).
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
+    // The first-open intro renders OVER the home — hold the cascade + haptics
+    // until it dissolves so nothing loads/ticks behind the overlay.
+    if (shouldShowFirstOpenOnboarding()) return false;
     if (isFirstOpen()) return true; // first launch shows no splash → paint instantly
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
@@ -4252,8 +4258,14 @@ function PrayerListCarousel({
     if (splashCleared) return;
     const clear = () => setSplashCleared(true);
     window.addEventListener("phoebe:splash-done", clear);
-    const id = window.setTimeout(clear, 12000);
-    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+    window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
+    // While the first-open intro is still up (a slow read), keep waiting rather
+    // than un-gating the cascade behind it.
+    let id = window.setTimeout(function fb() {
+      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      clear();
+    }, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
   }, [splashCleared]);
   // The cascade runs once the splash has faded, on the SAME timeline as the
   // rhythm cards above (each card's delay is its global cascadeFrom index), so
