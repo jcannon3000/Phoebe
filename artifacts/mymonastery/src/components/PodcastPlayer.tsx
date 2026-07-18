@@ -1502,7 +1502,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                   {(["forward-movement", "church-of-england", "gregory"] as const).map((s) => {
                     const active = officeAudioSource === s;
                     const i18nKey = s === "gregory" ? "podcasts.office_source_gregory" : s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm";
-                    const label = s === "gregory" ? "Gregory" : s === "church-of-england" ? "Church of England" : "Forward Movement";
+                    const label = s === "gregory" ? "Gregorian" : s === "church-of-england" ? "Church of England" : "Forward Movement";
                     return (
                       <button key={s} type="button" role="tab" aria-selected={active}
                         onClick={() => switchOfficeSource(s)} disabled={sourceSwitching}

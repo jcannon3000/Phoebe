@@ -1326,7 +1326,7 @@ export const en = {
     office_tradition_aria: "Prayer book tradition",
     office_source_fm: "Forward Movement",
     office_source_coe: "Church of England",
-    office_source_gregory: "Gregory",
+    office_source_gregory: "Gregorian",
     office_listen: "Listen",
     office_resume: "Resume",
     office_pause: "Pause",

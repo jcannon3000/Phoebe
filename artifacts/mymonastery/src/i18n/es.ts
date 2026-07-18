@@ -1320,7 +1320,7 @@ export const es: Translations = {
     office_tradition_aria: "Tradición del libro de oración",
     office_source_fm: "Forward Movement",
     office_source_coe: "Iglesia de Inglaterra",
-    office_source_gregory: "Gregory",
+    office_source_gregory: "Gregoriano",
     office_listen: "Escuchar",
     office_resume: "Reanudar",
     office_pause: "Pausar",
