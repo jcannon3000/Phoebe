@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -155,21 +155,41 @@ function Choice({
   );
 }
 
+// The daily-routine tutorial — three slides after the loading screen, in the
+// SAME shape as the Co-Breathe how-it-works intro (eyebrow → big title → body →
+// Next pill + counter + Skip). Teaches what's-next, progress, and shaping.
+const TUTORIAL: Array<{ eyebrow: string; title: string; body: string; emoji: string }> = [
+  { eyebrow: "Your daily rhythm", emoji: "🕊️", title: "See what's next", body: "Phoebe always shows you the next thing to pray, right at the top. Tap the card and begin — no hunting, no guilt about what you missed." },
+  { eyebrow: "Your daily rhythm", emoji: "🌿", title: "Watch it come together", body: "Each practice you keep slips down to “done,” and your day fills in as you pray — a quiet picture of the rhythm you're keeping." },
+  { eyebrow: "Your daily rhythm", emoji: "✨", title: "Shape it your way", body: "Add practices, change how you pray, set reminders. Your rhythm is yours — reshape it anytime from your routine." },
+];
+
 export function FirstOpenOnboarding() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [visible, setVisible] = useState(() => shouldShowFirstOpenOnboarding());
-  const [step, setStep] = useState<0 | 1>(0);
+  const [step, setStep] = useState<"pray" | "read" | "loading" | "tutorial">("pray");
   const [method, setMethod] = useState<string>("psalms");
   const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
+  const [tut, setTut] = useState(0);
   const bgPhoto = useMemo(
     () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
   );
 
-  if (!visible || isLoading) return null;
+  // The "setting up your home" loading beat, then into the tutorial.
+  useEffect(() => {
+    if (step !== "loading") return;
+    const id = window.setTimeout(() => setStep("tutorial"), 1700);
+    return () => window.clearTimeout(id);
+  }, [step]);
 
-  const finish = (reading: ReflectionSource) => {
+  if (!visible) return null;
+
+  // Apply the two choices to the routine, mark onboarding done, and move to the
+  // loading beat (done is stamped here so a force-quit during the tutorial won't
+  // re-run the picker — they've already chosen).
+  const applyAndContinue = (reading: ReflectionSource) => {
     const chosen = METHODS.find((m) => m.key === method) ?? METHODS[0]!;
     try {
       applyChoices(chosen, reading, user, () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }));
@@ -177,16 +197,19 @@ export function FirstOpenOnboarding() {
       /* never trap the user on the splash if a write fails */
     }
     markFirstOpenOnboardingDone();
-    setVisible(false);
+    setStep("loading");
   };
+  const dismiss = () => setVisible(false);
+  const nextTutorial = () => { if (tut >= TUTORIAL.length - 1) dismiss(); else setTut((n) => n + 1); };
 
   const pillBase = "rounded-full px-9 py-3.5 text-sm font-semibold tracking-wide transition-opacity active:scale-[0.98]";
+  const pillStyle = { background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: FONT, cursor: "pointer" } as const;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: 0.3 }}
       style={{
         position: "fixed", inset: 0, zIndex: 90,
         background: "#091A10", isolation: "isolate",
@@ -203,37 +226,32 @@ export function FirstOpenOnboarding() {
 
       <div
         className="relative w-full max-w-md mx-auto flex flex-col"
-        style={{ zIndex: 1, minHeight: "100dvh", padding: "clamp(28px,7dvh,64px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)" }}
+        style={{ zIndex: 1, minHeight: "100dvh", padding: "clamp(28px,6dvh,56px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)" }}
       >
         <AnimatePresence mode="wait">
-          {step === 0 ? (
-            <motion.div key="pray" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
+          {step === "pray" ? (
+            <motion.div key="pray" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex flex-col">
               <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
                 Welcome to Phoebe · 1 of 2
               </p>
               <h1 className="text-[26px] font-bold leading-tight mb-1.5" style={{ color: WARM, fontFamily: FONT }}>
                 How would you like to pray?
               </h1>
-              <p className="text-[14px] mb-6" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+              <p className="text-[14px] mb-5" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
                 Choose your daily prayer. You can change it, or add more, anytime.
               </p>
-              <div className="flex flex-col gap-2.5 flex-1">
+              <div className="flex flex-col gap-2.5">
                 {METHODS.map((m) => (
                   <Choice key={m.key} emoji={m.emoji} rgb={m.rgb} title={m.title} blurb={m.blurb} selected={method === m.key} onClick={() => setMethod(m.key)} />
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className={`${pillBase} w-full mt-7`}
-                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: FONT, cursor: "pointer" }}
-              >
+              <button type="button" onClick={() => setStep("read")} className={`${pillBase} w-full mt-6`} style={pillStyle}>
                 Continue
               </button>
             </motion.div>
-          ) : (
-            <motion.div key="read" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
-              <button type="button" onClick={() => setStep(0)} className="self-start text-[13px] font-semibold mb-3" style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          ) : step === "read" ? (
+            <motion.div key="read" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }} className="flex flex-col">
+              <button type="button" onClick={() => setStep("pray")} className="self-start text-[13px] font-semibold mb-3" style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 ← Back
               </button>
               <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
@@ -242,30 +260,68 @@ export function FirstOpenOnboarding() {
               <h1 className="text-[26px] font-bold leading-tight mb-1.5" style={{ color: WARM, fontFamily: FONT }}>
                 A daily reading to carry
               </h1>
-              <p className="text-[14px] mb-6" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+              <p className="text-[14px] mb-5" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
                 Pick a reflection to read each day — or skip for now.
               </p>
-              <div className="flex flex-col gap-2.5 flex-1">
+              <div className="flex flex-col gap-2.5">
                 {NEWSLETTERS.map((n) => (
                   <Choice key={n.key} emoji={n.emoji} rgb={n.rgb} title={n.title} blurb={n.blurb} selected={newsletter === n.key} onClick={() => setNewsletter(n.key)} />
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => finish(newsletter)}
-                className={`${pillBase} w-full mt-7`}
-                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: FONT, cursor: "pointer" }}
-              >
+              <button type="button" onClick={() => applyAndContinue(newsletter)} className={`${pillBase} w-full mt-6`} style={pillStyle}>
                 Begin
               </button>
-              <button
-                type="button"
-                onClick={() => finish("none")}
-                className="mt-3 self-center text-[13px] font-semibold"
-                style={{ color: "rgba(200,212,192,0.7)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: "4px 10px" }}
-              >
+              <button type="button" onClick={() => applyAndContinue("none")} className="mt-3 self-center text-[13px] font-semibold" style={{ color: "rgba(200,212,192,0.7)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: "4px 10px" }}>
                 Skip for now
               </button>
+            </motion.div>
+          ) : step === "loading" ? (
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col items-center justify-center text-center">
+              <motion.div
+                aria-hidden
+                animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                style={{ fontSize: 44, marginBottom: 18 }}
+              >
+                🌿
+              </motion.div>
+              <p className="text-[15px]" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                Setting up your home…
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`tut-${tut}`}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35 }}
+              className="flex-1 flex flex-col items-center justify-center text-center"
+              onClick={nextTutorial}
+              style={{ cursor: "pointer" }}
+            >
+              <div aria-hidden style={{ fontSize: 52, marginBottom: 20, filter: "drop-shadow(0 0 14px rgba(90,150,110,0.5))" }}>
+                {TUTORIAL[tut]!.emoji}
+              </div>
+              <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-3.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                {TUTORIAL[tut]!.eyebrow}
+              </p>
+              <h1 className="text-[28px] font-bold leading-tight mb-4 px-2" style={{ color: WARM, fontFamily: FONT }}>
+                {TUTORIAL[tut]!.title}
+              </h1>
+              <p className="text-[16px] leading-relaxed px-3" style={{ color: "rgba(240,237,230,0.86)", fontFamily: FONT, maxWidth: 360 }}>
+                {TUTORIAL[tut]!.body}
+              </p>
+              <div className="mt-10 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+                <p className="text-xs mb-4" style={{ color: "rgba(143,175,150,0.4)", letterSpacing: "0.06em", fontFamily: FONT }}>
+                  {tut + 1} of {TUTORIAL.length}
+                </p>
+                <button type="button" onClick={nextTutorial} className={`${pillBase} px-12`} style={pillStyle}>
+                  {tut >= TUTORIAL.length - 1 ? "Enter Phoebe" : "Next"}
+                </button>
+                {tut < TUTORIAL.length - 1 && (
+                  <button type="button" onClick={dismiss} className="mt-3 text-[13px] font-semibold" style={{ color: "rgba(200,212,192,0.65)", fontFamily: FONT, background: "none", border: "none", cursor: "pointer", padding: "4px 10px" }}>
+                    Skip
+                  </button>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
