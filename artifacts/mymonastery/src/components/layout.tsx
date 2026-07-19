@@ -884,9 +884,9 @@ function DailyProgressPill() {
         color: "#C8D4C0",
         border: "1px solid rgba(200,212,192,0.18)",
       }}
-      aria-label={t("header.daily_progress", { defaultValue: "Daily Walk" })}
+      aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
-      <span className="whitespace-nowrap">{t("header.daily_progress", { defaultValue: "Daily Walk" })}</span>
+      <span className="whitespace-nowrap">{t("header.daily_progress", { defaultValue: "Daily Progress" })}</span>
       {(() => {
         // Past 8 anchors a single row gets cramped — shrink the dots and wrap
         // them into two balanced rows so the pill stays tidy.
@@ -1691,7 +1691,13 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
             onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
           >
-            <span className="font-bold transition-colors" style={{ fontSize: "clamp(1.5rem, 7vw, 2.0625rem)", letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+            {/* Full 2.0625rem (33px) on normal phones and up; only genuinely
+                narrow widths (≲390px — iPhone SE/mini, small Android, where the
+                daily-progress pill starts to crowd) shrink it. 8.5vw keeps the
+                wordmark pinned at the 33px cap down to ~388px, then eases down
+                (never below 1.5rem). Was a flat 7vw, which shrank it on EVERY
+                phone (7vw only reaches 33px at a 471px viewport). */}
+            <span className="font-bold transition-colors" style={{ fontSize: "clamp(1.5rem, 8.5vw, 2.0625rem)", letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe
             </span>
           </Link>

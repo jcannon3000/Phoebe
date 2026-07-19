@@ -76,7 +76,7 @@ export default function MenuPage() {
       // Also here in the menu so it's reachable when the pill doesn't fit the
       // header (small phones), or when it's turned off in Settings. Hidden in
       // pilot — the full daily-progress dashboard is replaced by /pilot/home.
-      ...(!isPilot ? [{ emoji: "📿", label: t("menu.daily_progress", { defaultValue: "Daily Walk" }), sub: t("menu.daily_progress_sub", { defaultValue: "Today's rhythm at a glance" }), onClick: () => go("/daily-progress") }] : []),
+      ...(!isPilot ? [{ emoji: "📿", label: t("menu.daily_progress", { defaultValue: "Daily Progress" }), sub: t("menu.daily_progress_sub", { defaultValue: "Today's rhythm at a glance" }), onClick: () => go("/daily-progress") }] : []),
       // Basic 4-dropdown customizer — guests only (device-local, no account
       // needed); it has its own "Customize more fully" link into the real
       // wizard for anyone who wants to sign in and go deeper.

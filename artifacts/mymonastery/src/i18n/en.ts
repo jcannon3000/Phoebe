@@ -557,7 +557,7 @@ export const en = {
   header: {
     home: "Home",
     prayer_list: "Prayer list",
-    daily_progress: "Daily Walk",
+    daily_progress: "Daily Progress",
     people: "Fellows",
     menu: "Menu",
     way_of_love: "Way of Love",
@@ -586,9 +586,9 @@ export const en = {
     reply_failed: "Couldn't post your reply — try again.",
   },
 
-  // ── Daily Walk page (behind the header pill) ─────────────────────────────
+  // ── Daily Progress page (behind the header pill) ─────────────────────────────
   daily_progress: {
-    title: "Daily Walk",
+    title: "Daily Progress",
     subtitle: "Your walk today — where you are, and what's next.",
     // Shown when the user belongs to a parish: the walk is kept alongside their
     // leader and congregation, not alone.
@@ -1064,7 +1064,7 @@ export const en = {
     extras_eyebrow: "Add to your day",
     extras_title: "Add to your day",
     extras_body: "Optional practices you can keep each day.",
-    extras_note: "Each adds a card on your home and a checkmark to your Daily Walk.",
+    extras_note: "Each adds a card on your home and a checkmark to your Daily Progress.",
     extra_gratitude: "Gratitude",
     extra_gratitude_sub: "Name one gift from the day.",
     extra_examen: "The Examen",
@@ -1075,7 +1075,7 @@ export const en = {
     reminder_note: "We'll send a gentle notification. Change the time or turn it off anytime in Settings.",
     finish: "Save my daily rhythm",
     done_title: "This is the shape of your days",
-    done_sub: "Your home and Daily Walk now lead with your prayer, your contemplation, and your reflections. Come back any time to change it.",
+    done_sub: "Your home and Daily Progress now lead with your prayer, your contemplation, and your reflections. Come back any time to change it.",
     done_reminder_hint: "Not seeing reminders? Turn on notifications for Phoebe in your phone's Settings.",
     done_cta: "Keep this rhythm",
   },
@@ -3911,8 +3911,8 @@ export const en = {
     mock_reminder_title: "Time for Morning Prayer",
     mock_reminder_body: "Your daily rhythm is waiting — a few quiet minutes to begin the day.",
     habit_streak_headline: "Watch the rhythm take hold",
-    habit_streak_body: "Every day you pray, your rhythm grows. The Daily Walk screen keeps an honest record — what you've kept today, your day-streak, and the others keeping it with you. A record of returning, not a score to defend.",
-    mock_progress_title: "Daily Walk",
+    habit_streak_body: "Every day you pray, your rhythm grows. The Daily Progress screen keeps an honest record — what you've kept today, your day-streak, and the others keeping it with you. A record of returning, not a score to defend.",
+    mock_progress_title: "Daily Progress",
     mock_progress_subtitle: "Where you are in today's rhythm — and what's next.",
     mock_progress_next: "Next",
     mock_progress_done: "Earlier today",
@@ -3939,7 +3939,7 @@ export const en = {
     mock_formats_watch: "Watch",
     // ── Home-screen mock (matches the current dashboard) ──
     mock_home_menu: "Menu",
-    mock_home_progress: "Daily Walk",
+    mock_home_progress: "Daily Progress",
     mock_home_date: "Sunday, 12 April",
     mock_home_tagline: "A Daily Rhythm of Prayer",
     mock_home_office_eyebrow: "Book of Common Prayer",

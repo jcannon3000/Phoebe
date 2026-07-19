@@ -215,7 +215,7 @@ export default function RoutinePrintPage() {
 
         {items.length === 0 ? (
           <p style={{ textAlign: "center", color: "#55665C", fontFamily: "'Space Grotesk', sans-serif", marginTop: 32 }}>
-            Your rhythm is empty. Shape it first under Daily Walk → Shape your rhythm.
+            Your rhythm is empty. Shape it first under Daily Progress → Shape your rhythm.
           </p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'Space Grotesk', sans-serif" }}>

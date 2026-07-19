@@ -44,7 +44,7 @@ export default function DailyProgressPage() {
 
         <div className="flex items-center justify-between gap-3 mb-1">
           <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: FONT }}>
-            {t("daily_progress.title", { defaultValue: "Daily Walk" })}
+            {t("daily_progress.title", { defaultValue: "Daily Progress" })}
           </h1>
           {/* Customize — shape which practices make up your rhythm. Top-right,
               vertically aligned with the title. */}

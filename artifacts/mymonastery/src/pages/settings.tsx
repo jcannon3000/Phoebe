@@ -1277,7 +1277,7 @@ function HomeDisplaySettings() {
         >
           <div className="text-left">
             <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-              Daily Walk dots
+              Daily Progress dots
             </p>
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
               The little row of rhythm dots in the header. Turn it off for a quieter top bar.
