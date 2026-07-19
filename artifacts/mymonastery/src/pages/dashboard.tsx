@@ -7055,7 +7055,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           in a finished day is exactly when you'd log Bless or
                           Rest. (It self-hides when no weekly practice is on.)
                           Sits ABOVE the Learn band (owner). */}
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}><WeeklyRhythm /></motion.div>
+                      {/* No outer block-fade wrapper — WeeklyRhythm runs its
+                          OWN splash-gated per-card cascade; wrapping it would
+                          multiply opacities and mask the stagger into one fade. */}
+                      <WeeklyRhythm />
                       {/* An in-flight course stays reachable after the day's
                           rhythm is done — the Learn band renders on the
                           finished-day view too, UNDER the weekly practices. */}
@@ -7099,7 +7102,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
-                    <motion.div {...enterUp(2)}><WeeklyRhythm /></motion.div>
+                    {/* Bare — WeeklyRhythm owns its per-card cascade (see the
+                        no-events branch note); an outer fade would mask it. */}
+                    <WeeklyRhythm />
                     {/* Same finished-day Learn band as the no-events branch,
                         under the weekly practices. */}
                     <motion.div {...enterUp(3)}><HomeLearnSection /></motion.div>

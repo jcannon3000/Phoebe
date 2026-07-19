@@ -20,6 +20,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { ROUTINE_SYNCED_EVENT, pushRoutineConfig } from "@/lib/routineSync";
+import { isNativeShell } from "@/lib/isNativeShell";
+import { isFirstOpen } from "@/lib/firstOpen";
+import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import {
   WEEKLY_PRACTICES,
   WEEKDAY_LABELS,
@@ -133,15 +136,50 @@ export function WeeklyRhythm() {
   // exactly like HomeLearnSection. Hooks stay ABOVE the early return so the
   // hook order never changes when the enabled set is empty.
   const rootRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(rootRef, { once: true, amount: 0.2 });
+  // LIVE (not `once`): at first mount the daily cards above haven't loaded yet,
+  // so the band momentarily sits high enough to be "in view" — a `once` latch
+  // would fire the cascade there, behind the opening splash, and by the time
+  // the day's cards push the band below the fold the stagger has already played
+  // unseen (the reported "not cascading"). Keeping it live lets `inView` fall
+  // back to false as the band drops, so the latch below only trips when it's
+  // ACTUALLY on screen after the splash.
+  const inView = useInView(rootRef, { amount: 0.2 });
+  // Mirror DailyProgressBody: hold the cascade until the native first-open
+  // splash has faded, so it never runs behind the overlay. Web / already-cleared
+  // sessions start true.
+  const [splashCleared, setSplashCleared] = useState<boolean>(() => {
+    if (!isNativeShell()) return true;
+    if (shouldShowFirstOpenOnboarding()) return false;
+    if (isFirstOpen()) return true;
+    try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
+  });
+  useEffect(() => {
+    if (splashCleared) return;
+    const clear = () => setSplashCleared(true);
+    window.addEventListener("phoebe:splash-done", clear);
+    window.addEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear);
+    // Fallback only if the event is missed — must outlast the splash, and keep
+    // waiting while the first-open intro is still up.
+    let id = window.setTimeout(function fb() {
+      if (isFirstOpenOnboardingActive()) { id = window.setTimeout(fb, 4000); return; }
+      clear();
+    }, 12000);
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
+  }, [splashCleared]);
+  // One-way latch: fire the stagger the first time the band is genuinely seen
+  // (in view AND the splash gone), and keep it shown when scrolled back away.
+  const [played, setPlayed] = useState(false);
+  useEffect(() => {
+    if (!played && inView && splashCleared) setPlayed(true);
+  }, [played, inView, splashCleared]);
 
   // Nothing turned on → no band at all.
   if (practices.length === 0) return null;
 
-  // Header rises first, each card a beat behind (delay by index), once in view.
+  // Header rises first, each card a beat behind (delay by index), once played.
   const enterUp = (i: number) => ({
     initial: { opacity: 0, y: 10 },
-    animate: inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+    animate: played ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
     transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.08, 0.6) },
   });
 
