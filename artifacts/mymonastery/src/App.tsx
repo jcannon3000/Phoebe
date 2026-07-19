@@ -4,6 +4,7 @@ import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-q
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { ApiError, apiRequest } from "@/lib/queryClient";
+import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
 // Side-effect import: warms the server-clock offset on app load (re-syncs on
 // foreground / every 5 min) so the Cobreathe communal breath is already aligned
@@ -231,12 +232,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
         return;
       }
     }
-    // Frontend audit: this is the only client-side crash signal today.
-    // console.error keeps it in the device console / Safari Web
-    // Inspector; wire a browser error reporter (Sentry) here so
-    // white-screen crashes on real phones become visible — currently
-    // they're invisible to the team.
+    // Keep it in the device console / Safari Web Inspector for local
+    // debugging, AND forward it so white-screen crashes on real phones
+    // become visible to the team (relayed through our server to Sentry —
+    // see lib/reportClientError + routes/health.ts).
     console.error("React render error:", error, info);
+    reportClientError({
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      componentStack: info.componentStack ?? undefined,
+    });
   }
   render() {
     if (this.state.recovering) {

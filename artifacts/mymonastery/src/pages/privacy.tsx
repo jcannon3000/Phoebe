@@ -137,10 +137,12 @@ export function PrivacyBody() {
             </li>
             <li>
               <strong>Sentry</strong> — error monitoring (Functional Software, Inc., dba Sentry). When the
-              Service hits a server error, we send Sentry the technical details needed to diagnose and fix it:
-              the error and its stack trace, the route involved, the app version, and an internal account ID
-              where relevant. We do <strong>not</strong> send Sentry your prayer content, messages, letters, or
-              your IP address. Sentry runs only when we have it configured.
+              Service hits a server error, or the app crashes on your device, we send Sentry the technical
+              details needed to diagnose and fix it: the error and its stack trace, the screen or route
+              involved, the app version, and an internal account ID where relevant. App crashes are relayed
+              through our own server rather than a third-party tracker embedded in the app. We do
+              <strong>not</strong> send Sentry your prayer content, messages, letters, or your IP address.
+              Sentry runs only when we have it configured.
             </li>
           </ul>
           <p>

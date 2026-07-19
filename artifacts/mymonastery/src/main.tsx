@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { recoverFromStaleChunk } from "./lib/staleChunk";
+import { installGlobalErrorReporting } from "./lib/reportClientError";
 // Boot i18next before mounting the tree so the very first render
 // reads from the resource tables. Fallback to English if Spanish
 // hasn't been activated. Runs as a side-effect import — there's no
@@ -18,6 +19,10 @@ window.addEventListener("vite:preloadError", (event) => {
   event.preventDefault(); // we handle it ourselves by reloading
   recoverFromStaleChunk("vite:preloadError");
 });
+
+// Forward uncaught errors + unhandled promise rejections (the ones that never
+// reach a React ErrorBoundary) to our server → Sentry. See lib/reportClientError.
+installGlobalErrorReporting();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
