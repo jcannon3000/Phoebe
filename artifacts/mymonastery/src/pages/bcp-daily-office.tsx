@@ -986,10 +986,51 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     setShowCreationBreath(true);
   }, [slides, slideIdx]);
 
-  if (loading || !minLoadDone) {
-    // Re-entry (already opened today — e.g. back from the intercessions): show a
-    // quiet plain spinner only while the fetch is still in flight, never the
-    // psalm versicle again. A cache hit makes this invisible (loading is false).
+  // Held-breath opening — the office's classic opening versicle (Morning: Ps
+  // 51:15; Evening: Ps 141:2; Compline: a quiet-night blessing) over the same
+  // bundled forest photo the app-open splash uses. Shown as the full-page load
+  // state while the deck fetches, and then kept as a FADING OVERLAY on top of the
+  // office (see the office return below) so the office fades up UNDER it and is
+  // revealed by the veil's slow fade-out — a true crossfade, never a blink to
+  // black. Both uses share `veilInner`, and it carries no office-enter animation,
+  // so the early-return → overlay handoff (when the deck finishes loading) is
+  // seamless rather than a re-fade.
+  const veilOpening =
+    (resolvedMode === "evening" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening")
+      ? { text: "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice.", cite: "Psalm 141:2" }
+      : resolvedMode === "compline"
+        ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
+        : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
+  const veilStyle: CSSProperties = {
+    position: "fixed", inset: 0, background: BG, isolation: "isolate",
+    display: "flex", flexDirection: "column", alignItems: "center",
+    justifyContent: "center", padding: "0 40px", overflow: "hidden",
+  };
+  const veilInner = (
+    <>
+      {/* The same fixed, bundled forest-path leaf photo the splash uses, under a
+          darkened wash so the versicle reads clearly — a held breath into the
+          office, on the same image as the app open. */}
+      <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(var(--ot-green, 46,107,64),0.20) 0%, rgba(var(--ot-green, 46,107,64),0.12) 28%, rgba(var(--ot-green, 46,107,64),0.05) 54%, rgba(var(--ot-green, 46,107,64),0) 82%)" }} />
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+        <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 24, lineHeight: 1.55, color: "var(--oh-ink2, #E8E4D8)", textAlign: "center", maxWidth: 460, margin: 0 }}>
+          {veilOpening.text}
+        </p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: MUTED_GREEN, margin: 0 }}>
+          {veilOpening.cite}
+        </p>
+      </div>
+      <div aria-hidden className="animate-spin" style={{ position: "absolute", bottom: "calc(env(safe-area-inset-bottom, 0px) + 44px)", width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.75)" }} />
+    </>
+  );
+
+  // Slides not ready yet → the load screen fills the page. Re-entry (already
+  // opened today — e.g. back from the intercessions) gets a quiet spinner, never
+  // the versicle again; a fresh open gets the held-breath versicle. Once the deck
+  // is ready the office renders and the versicle becomes the fading overlay.
+  if (loading) {
     if (alreadyOpenedToday) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -999,73 +1040,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         </div>
       );
     }
-    // The office opens on its classic opening versicle (Morning: Ps 51:15;
-    // Evening: Ps 141:2; Compline: a quiet-night blessing), set on a soft
-    // gradient and faded in — a held breath into the office rather than a
-    // flashing spinner. Stays until BOTH the slides have loaded and the minimum
-    // ~2.8s has passed, then the office fades up over it.
-    const opening =
-      (resolvedMode === "evening" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening")
-        ? { text: "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice.", cite: "Psalm 141:2" }
-        : resolvedMode === "compline"
-          ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
-          : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
-    return (
-      <div style={{ minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
-        {/* The same fixed, bundled forest-path leaf photo the splash uses — set,
-            not loaded — under a darkened wash so the versicle reads clearly.
-            A held breath into the office, on the same image as the app open. */}
-        <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
-        {/* A soft single-hue glow — fades only its alpha to 0 over several stops
-            so it reads as a smooth wash, not a banded ring. */}
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(var(--ot-green, 46,107,64),0.20) 0%, rgba(var(--ot-green, 46,107,64),0.12) 28%, rgba(var(--ot-green, 46,107,64),0.05) 54%, rgba(var(--ot-green, 46,107,64),0) 82%)" }} />
-        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "office-enter 1s ease backwards" }}>
-          <p
-            style={{
-              fontFamily: "Georgia, 'Times New Roman', serif",
-              fontStyle: "italic",
-              fontSize: 24,
-              lineHeight: 1.55,
-              color: "var(--oh-ink2, #E8E4D8)",
-              textAlign: "center",
-              maxWidth: 460,
-              margin: 0,
-            }}
-          >
-            {opening.text}
-          </p>
-          <p
-            style={{
-              fontFamily: SPACE_GROTESK,
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: MUTED_GREEN,
-              margin: 0,
-            }}
-          >
-            {opening.cite}
-          </p>
-        </div>
-        {/* Quiet loading indicator at the foot — signals the office is still
-            preparing without competing with the versicle above. */}
-        <div
-          aria-hidden
-          className="animate-spin"
-          style={{
-            position: "absolute",
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 44px)",
-            width: 22,
-            height: 22,
-            borderRadius: "50%",
-            border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)",
-            borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.75)",
-          }}
-        />
-      </div>
-    );
+    return <div style={veilStyle}>{veilInner}</div>;
   }
 
   if (error || slides.length === 0) {
@@ -1601,6 +1576,26 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       {showCreationBreath && (
         <CobreatheOverlay open immediateClose onClose={() => { setShowCreationBreath(false); next(); }} />
       )}
+      {/* Held-breath load veil — the versicle screen stays on TOP of the office
+          and fades out once the deck is ready and the minimum hold (~2.8s) has
+          elapsed, so the office (already mounted + settled underneath) is
+          revealed by the veil's fade rather than the versicle blinking to black
+          and the office fading up from dark. On re-entry minLoadDone is already
+          true, so this never shows — matching the old plain-spinner behaviour. */}
+      <AnimatePresence>
+        {!minLoadDone && (
+          <motion.div
+            key="office-load-veil"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55, ease: "easeInOut" }}
+            style={{ ...veilStyle, zIndex: 60 }}
+          >
+            {veilInner}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Landscape behind the slideshow that CHANGES per section, cross-fading
           down then up as each new title slide arrives, under a multi-stop dark
           wash for legibility. */}
