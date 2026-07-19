@@ -700,10 +700,9 @@ export async function buildIntercessionSlides(
           parishFeedId: parish.id,
           parishionersPrayingThisWeek: parishWeekCount,
           parishionersPrayingToday: parishTodayCount,
-          // BCP slot → the renderer wraps `content` in the frosted BCP
-          // prayer card and adds the attribution caption.
+          // BCP slot → the renderer wraps `content` (the full prayer text)
+          // in the frosted BCP prayer card and adds the attribution caption.
           isBcp,
-          bcpFullText: isBcp ? (body.length > 0 ? body : e.title) : null,
         },
       });
     }

@@ -4578,7 +4578,10 @@ export const en = {
   },
   // Parish dashboard (pages/parish-dashboard.tsx) — offices-only home.
   parish: {
-    no_intentions_today: "No intentions published for today yet — check back soon.",
+    no_intentions_today: "Your parish hasn't shared any intercessions yet — check back soon.",
+    our_parish_prays: "Our parish prays",
+    bcp_label: "Book of Common Prayer",
+    intercession_label: "Intercession",
     pray_with_parish: "Pray with your parish",
     full_daily_office: "The full Daily Office",
     browse_bcp: "Browse the Book of Common Prayer →",

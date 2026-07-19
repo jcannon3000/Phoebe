@@ -20,7 +20,7 @@
  *   • DELETE /api/prayer-feeds/:slug/recurring/:id    (remove)
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -429,6 +429,16 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const isEs = !!i18n.language?.startsWith("es");
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // A11y: close on Escape and move focus into the dialog on open (keyboard /
+  // screen-reader users can't reach the backdrop click or X otherwise).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    panelRef.current?.querySelector("input")?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   // Group the (locale-aware) prayers by category, filtered by the search.
   const grouped = useMemo(() => {
@@ -470,6 +480,10 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
       onClick={onClose}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isEs ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
         className="w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col"
         style={{ background: "#0C1F12", border: "1px solid rgba(46,107,64,0.3)", maxHeight: "82vh" }}
         onClick={(e) => e.stopPropagation()}

@@ -523,7 +523,7 @@ export default function ParishDashboard() {
             marginBottom: 8,
           }}
         >
-          Our parish prays
+          {t("parish.our_parish_prays")}
         </p>
         {data?.todayEntries && data.todayEntries.length > 0 ? (
           <div className="space-y-2 mb-6">
@@ -547,7 +547,7 @@ export default function ParishDashboard() {
                     margin: 0,
                   }}
                 >
-                  {e.isBcp ? "Book of Common Prayer" : "Intercession"}
+                  {e.isBcp ? t("parish.bcp_label") : t("parish.intercession_label")}
                 </p>
                 <p
                   style={{

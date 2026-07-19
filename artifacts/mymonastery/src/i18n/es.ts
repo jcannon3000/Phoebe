@@ -4458,7 +4458,10 @@ export const es: Translations = {
     learn_more: "Más información →",
   },
   parish: {
-    no_intentions_today: "Aún no hay intenciones publicadas para hoy — vuelve pronto.",
+    no_intentions_today: "Tu parroquia aún no ha compartido intercesiones — vuelve pronto.",
+    our_parish_prays: "Nuestra parroquia ora",
+    bcp_label: "Libro de Oración Común",
+    intercession_label: "Intercesión",
     pray_with_parish: "Ora con tu parroquia",
     full_daily_office: "El Oficio diario completo",
     browse_bcp: "Explora el Libro de Oración Común →",

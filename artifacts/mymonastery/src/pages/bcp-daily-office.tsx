@@ -543,11 +543,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       const salIdx = prev.findIndex((s) => s.type === "salutation");
       const lp = prev.findIndex((s) => s.type === "lords_prayer");
       if (communal && salIdx < 0 && lp >= 0) {
-        setSlideIdx((cur) => (cur >= lp ? cur + 1 : cur));
+        setSlideIdx((cur) => {
+          const next = cur >= lp ? cur + 1 : cur;
+          // This is a programmatic re-index to keep the reader on the SAME
+          // content when the salutation splices in from a ⚙ Praying-mode
+          // toggle — NOT a slide turn. Advance the chime's dedupe ref to the
+          // landing index so the slide-turn swell doesn't strike for it.
+          chimedSlideRef.current = next;
+          return next;
+        });
         return [...prev.slice(0, lp), buildSalutationSlide(resolvedMode as "morning" | "evening"), ...prev.slice(lp)];
       }
       if (!communal && salIdx >= 0) {
-        setSlideIdx((cur) => (cur > salIdx ? cur - 1 : cur));
+        setSlideIdx((cur) => {
+          const next = cur > salIdx ? cur - 1 : cur;
+          // Same: removing the salutation on a Praying-mode toggle re-indexes
+          // to keep the reader in place — suppress the chime for it.
+          chimedSlideRef.current = next;
+          return next;
+        });
         return prev.filter((s) => s.type !== "salutation");
       }
       return prev;
