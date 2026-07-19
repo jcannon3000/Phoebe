@@ -210,7 +210,15 @@ export function syncRoutineFromServer(server: RoutineConfig | null | undefined, 
     if (serverVals && Object.keys(serverVals).length > 0) {
       applyRoutineValues(serverVals);
       setLocalUpdatedAt(serverAt);
-    } else if (Object.keys(collectRoutineValues()).length > 0) {
+    } else if (localAt > 0 && Object.keys(collectRoutineValues()).length > 0) {
+      // Only migrate a GENUINELY-EDITED device routine up to a fresh account —
+      // never an untouched guest seed. seedGuestRule zeroes the sync clock after
+      // seeding, so a pure seed has localAt === 0 and is skipped here; a real
+      // customization (via the setters) bumps the clock and still migrates.
+      // Without this, reinstalling → the psalms guest default → signing into an
+      // account whose method lived only in office-prefs (empty rule_config)
+      // pushed "psalms" up and clobbered it, so the morning office reminder
+      // went out worded for psalms instead of the office.
       pushRoutineConfig();
     }
     return;

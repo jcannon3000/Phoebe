@@ -13,6 +13,7 @@
 
 import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, setPsalmCycle, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
+import { clearRoutineSyncClock } from "@/lib/routineSync";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
@@ -64,6 +65,16 @@ export function seedGuestRule(): void {
     // (server contemplationGoalMinutes needs an account).
     localStorage.setItem(GUEST_GOAL_KEY, "5");
     localStorage.setItem(SEED_KEY, todayYmd());
+    // The precoded seed is NOT a user-authored routine, so it must never migrate
+    // up to an account on sign-in. The setters above bumped the routine sync
+    // clock (via OFFICE_PREFS_EVENT → pushRoutineConfig); zero it back out — and
+    // cancel that queued (session-less, doomed) guest push — so a pure seed has
+    // localAt === 0. The owner-switch guard in routineSync then skips migrating
+    // it, and a genuine later customization re-bumps the clock and migrates
+    // normally. (Without this, reinstall → psalms seed → sign in → the seed
+    // clobbered an office account whose method lived only in office-prefs, and
+    // the morning reminder went out worded for psalms.)
+    clearRoutineSyncClock();
   } catch { /* private mode — the starter defaults still apply */ }
 }
 
