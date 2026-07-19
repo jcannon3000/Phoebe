@@ -1064,14 +1064,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     finally { sourceSwitchingRef.current = false; setSourceSwitching(false); }
   }, [current, play]);
 
-  const closePlayer = () => {
+  const closePlayer = useCallback(() => {
     const a = audioRef.current;
     if (a && current) savePos(current, a.currentTime);
     wasPlayingRef.current = false;
     commitSession();
     if (a) a.pause();
     setCurrent(null); setIsPlaying(false); setCurrentTime(0); setDuration(0); setExpanded(false);
-  };
+  }, [current, commitSession]);
 
   const isCurrent = useCallback(
     (slug: string, id: string) => !!current && current.showSlug === slug && current.episodeId === id,
@@ -1292,8 +1292,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     </div>
   );
 
+  // Memoized context value. Deliberately does NOT depend on currentTime/
+  // scrub/etc. — only the fields it actually exposes — so the ~4×/sec
+  // timeupdate re-renders of this provider during playback DON'T change the
+  // value identity, and every consumer (the whole Daily Office deck included)
+  // stops re-rendering + re-parsing psalms on each audio tick. All the exposed
+  // functions are useCallback-stable, so the value only changes when `current`
+  // or `isPlaying` actually change.
+  const ctxValue = useMemo<PlayerCtx>(
+    () => ({ current, isPlaying, play, playQueue, toggle, isCurrent, close: closePlayer }),
+    [current, isPlaying, play, playQueue, toggle, isCurrent, closePlayer],
+  );
+
   return (
-    <Ctx.Provider value={{ current, isPlaying, play, playQueue, toggle, isCurrent, close: closePlayer }}>
+    <Ctx.Provider value={ctxValue}>
       {children}
 
       {/* One persistent audio element for the whole app. */}
