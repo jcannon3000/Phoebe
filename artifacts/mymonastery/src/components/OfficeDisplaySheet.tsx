@@ -82,10 +82,17 @@ export function fontScaleWrapStyle(scale: number, maxWidthPx = 672): React.CSSPr
   // CENTERED the column into a narrow band with the text pushed off the left
   // edge, since zoom doesn't scale WebKit glyphs anyway). text-size-adjust
   // keeps the column full-width and left-aligned.
+  // width:100% is REQUIRED here, not just maxWidth. The column is a flex
+  // child with `mx-auto`; margin-auto makes a flex item size to its CONTENT
+  // (not stretch), so without an explicit width a short-line slide (the
+  // Lord's Prayer, a Lesson) shrink-wraps to a narrow band and mx-auto
+  // centers it — the text then reads as indented, inconsistently per slide
+  // type. width:100% fills to maxWidth (centered on wide screens, flush-left
+  // on phones), so every slide starts at the same left edge.
   if (IS_IOS_WEBKIT || isNativeShell()) {
-    return { maxWidth: maxWidthPx, WebkitTextSizeAdjust: `${Math.round(scale * 100)}%` };
+    return { width: "100%", maxWidth: maxWidthPx, WebkitTextSizeAdjust: `${Math.round(scale * 100)}%` };
   }
-  if (scale === 1) return { maxWidth: maxWidthPx };
+  if (scale === 1) return { width: "100%", maxWidth: maxWidthPx };
   return { zoom: scale, width: `${100 / scale}%`, maxWidth: `${maxWidthPx / scale}px` };
 }
 
