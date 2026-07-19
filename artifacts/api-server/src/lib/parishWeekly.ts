@@ -190,6 +190,13 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
           eq(prayerRequestsTable.isAnonymous, false),
           eq(prayerRequestsTable.isAnswered, false),
           isNull(prayerRequestsTable.closedAt),
+          // A pastoral concern submitted privately to clergy (parish_feed_id set)
+          // and a request directed to a single fellow (directOnly) must NEVER
+          // fan out to group peers — the same two predicates every other wall
+          // surface applies. Their omission here leaked illness/grief/marital
+          // concerns to peers who were never authorized to see them.
+          isNull(prayerRequestsTable.parishFeedId),
+          eq(prayerRequestsTable.directOnly, false),
           or(
             isNull(prayerRequestsTable.expiresAt),
             sql`${prayerRequestsTable.expiresAt} > NOW()`,

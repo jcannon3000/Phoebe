@@ -682,6 +682,14 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // directed request) — the spread above would otherwise leak every listed
       // request's shareToken to every garden viewer. Matches the by-id route.
       shareToken: (isOwnRequest && !r.directOnly) ? (r.shareToken ?? null) : null,
+      // Honor anonymity FULLY, exactly like the by-id route (~293): the spread
+      // above carries the raw `ownerId` (stable account id) and `createdByName`
+      // (the author's real name, set unconditionally at creation) — both defeat
+      // anonymity on their own from dev tools / the network log even though the
+      // UI hides them. Null them for anonymous requests seen by non-owners; the
+      // owner still gets their own values back.
+      ownerId: (r.isAnonymous && !isOwnRequest) ? null : r.ownerId,
+      createdByName: (r.isAnonymous && !isOwnRequest) ? null : r.createdByName,
       ownerName: r.isAnonymous ? null : (owner?.name ?? null),
       // Anonymous requests suppress the avatar too — the feed UI
       // renders an initials bubble when avatarUrl is null.
@@ -2623,7 +2631,13 @@ router.put("/me/rule-config", async (req, res): Promise<void> => {
     if (n >= 64) break;
     if (typeof k === "string" && k.length <= 80 && typeof v === "string" && v.length <= 8000) { values[k] = v; n++; }
   }
-  const updatedAt = typeof body.updatedAt === "number" && Number.isFinite(body.updatedAt) ? body.updatedAt : Date.now();
+  const clientAt = typeof body.updatedAt === "number" && Number.isFinite(body.updatedAt) ? body.updatedAt : Date.now();
+  // Clamp to server time. A device whose clock is set to the future would
+  // otherwise stamp a far-future updatedAt that permanently wins last-write-wins:
+  // thereafter every legitimate push (now < stored) is rejected and the frozen
+  // blob is re-adopted, leaving the routine un-syncable across devices until that
+  // wall-clock time actually arrives. Never trust a client timestamp ahead of now.
+  const updatedAt = Math.min(clientAt, Date.now());
   try {
     // Last-write-wins: a stale push from an older device can't clobber a newer
     // stored config. If stored is newer, keep it and echo it back to reconcile.

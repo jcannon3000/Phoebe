@@ -2595,16 +2595,30 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
   const windowOpen = computeWindowOpen(moment);
   const minsLeft = minutesRemaining(moment);
 
+  // Feed/platform intercessions (e.g. Phoebe Climate) auto-enroll a token minted
+  // from EVERY subscriber's real email, and that roster is never pruned — so
+  // returning each member's email + free-text reflection to any single subscriber
+  // is a mass PII leak (the public /moment share page already withholds these).
+  // On a feed moment expose only a non-PII presence row: name/avatar/loggedAt,
+  // with email withheld and reflectionText kept to the VIEWER's own row. Group
+  // moments (invite-based, members chose each other) keep the fuller view.
+  const isFeedMoment = moment.prayerFeedId != null;
+  const viewerEmailLower = (user.email ?? "").toLowerCase();
+  // Never fall a missing name back to the email on a feed moment — that would
+  // re-leak the address we're withholding.
+  const presenceName = (member: { name: string | null; email: string }) =>
+    member.name ?? (isFeedMoment ? "Someone" : member.email);
   // Per-member today log status — match by guestName
   const todayLogs = allMembers.map(member => {
     const memberName = (member.name ?? member.email).toLowerCase();
     const post = todayPosts.find(p => (p.guestName ?? "").toLowerCase() === memberName);
+    const isOwn = member.email.toLowerCase() === viewerEmailLower;
     return {
-      name: member.name ?? member.email,
-      email: member.email,
+      name: presenceName(member),
+      email: isFeedMoment ? null : member.email,
       avatarUrl: avatarByEmail.get(member.email.toLowerCase()) ?? null,
       loggedAt: post?.createdAt?.toISOString() ?? null,
-      reflectionText: post?.reflectionText ?? null,
+      reflectionText: (isFeedMoment && !isOwn) ? null : (post?.reflectionText ?? null),
       isCheckin: post ? post.isCheckin === 1 : false,
     };
   });
@@ -2625,8 +2639,8 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const mostRecent = memberPosts[0];
     return {
-      name: member.name ?? member.email,
-      email: member.email,
+      name: presenceName(member),
+      email: isFeedMoment ? null : member.email,
       avatarUrl: avatarByEmail.get(member.email.toLowerCase()) ?? null,
       loggedAt: mostRecent?.createdAt?.toISOString() ?? null,
     };
@@ -3533,8 +3547,11 @@ router.post("/moment/:momentToken/:userToken/post", async (req, res): Promise<vo
       memberCount,
     });
 
-    // Broadcast log notification to connected clients (only for new posts, not updates)
-    if (!myExisting) {
+    // Broadcast log notification to the moment's MEMBERS (only for new posts).
+    // Skip platform-feed intercessions entirely: their roster is the whole
+    // subscriber base, so a per-post ping to thousands is neither wanted nor
+    // safe to fan out.
+    if (!myExisting && moment.prayerFeedId == null) {
       const latestPost = await db.select().from(momentPostsTable)
         .where(and(eq(momentPostsTable.momentId, moment.id), eq(momentPostsTable.userToken, userToken)))
         .limit(1);
@@ -3543,14 +3560,23 @@ router.post("/moment/:momentToken/:userToken/post", async (req, res): Promise<vo
       // client only uses it to suppress its OWN log.
       const [posterUser] = await db.select({ id: usersTable.id }).from(usersTable)
         .where(sql`LOWER(${usersTable.email}) = LOWER(${userTokenRow.email})`);
+      // Resolve the moment's member user ids so the ping reaches ONLY members,
+      // never every connected socket (see broadcastLog).
+      const memberEmailsLower = [...new Set(allMembers.map(m => m.email.toLowerCase()))];
+      const memberUserRows = memberEmailsLower.length > 0
+        ? await db.select({ id: usersTable.id }).from(usersTable)
+            .where(inArray(sql`LOWER(${usersTable.email})`, memberEmailsLower))
+        : [];
       broadcastLog({
         momentId: moment.id,
         postId: latestPost[0]?.id ?? 0,
         momentName: moment.name,
         templateType: moment.templateType,
-        guestName,
+        // Name only — never the poster's email (guestName falls back to email
+        // when the member has no name; that address must not cross the wire).
+        guestName: userTokenRow.name ?? "Someone",
         userId: posterUser?.id ?? null,
-      });
+      }, memberUserRows.map(r => r.id));
     }
 
     // Evaluate window: either the window has closed, OR 50% of group has logged (bloom condition met)

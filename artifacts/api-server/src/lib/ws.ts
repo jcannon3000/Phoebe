@@ -56,8 +56,15 @@ const cobreatheSessions = new Map<WebSocket, CobreatheSession>();
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Broadcast a log notification to all connected clients.
- * Each client filters on their own (only shows logs for practices they're in).
+ * Broadcast a "new log" notification to the sockets of the moment's OWN members.
+ *
+ * It must NOT fan out to every connected socket: the payload carries the moment
+ * name (user free text, can name a person/situation) and the poster's name, so a
+ * global broadcast let any connected client — including anonymous device users —
+ * harvest a real-time who-posted-to-which-practice graph across practices they
+ * don't belong to. `memberUserIds` is the moment's member user ids; we send only
+ * to sockets whose authenticated user is in that set. (Account-less guests have
+ * no userId and simply pick the post up on their next poll.)
  */
 export function broadcastLog(payload: {
   momentId: number;
@@ -69,12 +76,14 @@ export function broadcastLog(payload: {
   // ONLY to suppress its own log. Replaces the poster's email, which used to be
   // broadcast to every client in the moment (a PII leak).
   userId: number | null;
-}) {
+}, memberUserIds: number[]) {
+  if (memberUserIds.length === 0) return;
+  const allow = new Set(memberUserIds);
   const msg = JSON.stringify({ type: "new-log", payload });
-  for (const [ws] of clients) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(msg);
-    }
+  for (const [ws, state] of clients) {
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    if (state.userId == null || !allow.has(state.userId)) continue;
+    ws.send(msg);
   }
 }
 

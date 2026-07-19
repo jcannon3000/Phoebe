@@ -55,6 +55,20 @@ import {
   lectioReflectionsTable,
   userConnectionsCacheTable,
   waitlistTable,
+  // Previously-omitted user-keyed PII tables — a portability/access export must
+  // include the user's journals, imported Apple Health data, practice history,
+  // and community chat, not just their social graph.
+  journalEntriesTable,
+  contemplationHealthMinutesTable,
+  dailyHealthStepsTable,
+  prayerSessionsTable,
+  breathSessionsTable,
+  listeningEntriesTable,
+  reflectionThoughtsTable,
+  groupMessagesTable,
+  dailyPrayersTable,
+  prayerAttentionsTable,
+  walkPairingsTable,
 } from "@workspace/db";
 
 export async function exportUserData(userId: number, email: string): Promise<Record<string, unknown>> {
@@ -116,6 +130,17 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     lectioReflections,
     userConnectionsCache,
     waitlistEntries,
+    journalEntries,
+    contemplationHealthMinutes,
+    dailyHealthSteps,
+    prayerSessions,
+    breathSessions,
+    listeningEntries,
+    reflectionThoughts,
+    groupMessages,
+    dailyPrayersAuthored,
+    prayerAttentions,
+    walkPairings,
   ] = await Promise.all([
     db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.ownerId, userId)),
     db.select().from(prayerWordsTable).where(eq(prayerWordsTable.authorUserId, userId)),
@@ -154,6 +179,17 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     db.select().from(lectioReflectionsTable).where(sql`LOWER(${lectioReflectionsTable.userEmail}) = ${emailLower}`).catch(() => []),
     db.select().from(userConnectionsCacheTable).where(sql`LOWER(${userConnectionsCacheTable.userEmail}) = ${emailLower} OR LOWER(${userConnectionsCacheTable.contactEmail}) = ${emailLower}`),
     db.select().from(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`),
+    db.select().from(journalEntriesTable).where(eq(journalEntriesTable.userId, userId)).catch(() => []),
+    db.select().from(contemplationHealthMinutesTable).where(eq(contemplationHealthMinutesTable.userId, userId)).catch(() => []),
+    db.select().from(dailyHealthStepsTable).where(eq(dailyHealthStepsTable.userId, userId)).catch(() => []),
+    db.select().from(prayerSessionsTable).where(eq(prayerSessionsTable.userId, userId)).catch(() => []),
+    db.select().from(breathSessionsTable).where(eq(breathSessionsTable.userId, userId)).catch(() => []),
+    db.select().from(listeningEntriesTable).where(eq(listeningEntriesTable.userId, userId)).catch(() => []),
+    db.select().from(reflectionThoughtsTable).where(eq(reflectionThoughtsTable.userId, userId)).catch(() => []),
+    db.select().from(groupMessagesTable).where(eq(groupMessagesTable.senderUserId, userId)).catch(() => []),
+    db.select().from(dailyPrayersTable).where(eq(dailyPrayersTable.authorId, userId)).catch(() => []),
+    db.select().from(prayerAttentionsTable).where(eq(prayerAttentionsTable.viewerId, userId)).catch(() => []),
+    db.select().from(walkPairingsTable).where(or(eq(walkPairingsTable.userLoId, userId), eq(walkPairingsTable.userHiId, userId))).catch(() => []),
   ]);
 
   // moment_posts is keyed by userToken (string), not userId. We have to
@@ -204,5 +240,16 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     lectioReflections,
     userConnectionsCache,
     waitlistEntries,
+    journalEntries,
+    contemplationHealthMinutes,
+    dailyHealthSteps,
+    prayerSessions,
+    breathSessions,
+    listeningEntries,
+    reflectionThoughts,
+    groupMessages,
+    dailyPrayersAuthored,
+    prayerAttentions,
+    walkPairings,
   };
 }

@@ -10,6 +10,13 @@ import {
   lettersTable,
   letterDraftsTable,
   correspondenceMembersTable,
+  correspondencesTable,
+  morningPrayerCacheTable,
+  userConnectionsCacheTable,
+  waitlistTable,
+  lectioReflectionsTable,
+  scheduleResponsesTable,
+  ritualTimeSuggestionsTable,
 } from "@workspace/db";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
@@ -106,69 +113,98 @@ router.delete("/users/me", async (req, res): Promise<void> => {
   }
 
   try {
-    // 1) Remove every group_members row for this user — BOTH rows with
-    //    a user_id FK (already joined) AND rows identified only by
-    //    email (invited but never joined).
-    await db.delete(groupMembersTable).where(
-      sql`${groupMembersTable.userId} = ${user.id} OR LOWER(${groupMembersTable.email}) = ${emailLower}`,
-    );
+    // The entire cleanup + final delete runs in ONE transaction so it is
+    // all-or-nothing. Before this, ~8 independent deletes ran unwrapped and any
+    // failure part-way (an FK violation, a transient error, a dropped
+    // connection) left an unrecoverable HALF-deleted account the user could
+    // still log into. A throw inside rolls everything back.
+    await db.transaction(async (tx) => {
+      // 1) Remove every group_members row for this user — BOTH rows with
+      //    a user_id FK (already joined) AND rows identified only by
+      //    email (invited but never joined).
+      await tx.delete(groupMembersTable).where(
+        sql`${groupMembersTable.userId} = ${user.id} OR LOWER(${groupMembersTable.email}) = ${emailLower}`,
+      );
 
-    // 2) Find every moment_user_tokens row for this user, then delete
-    //    the posts keyed off those tokens before dropping the tokens
-    //    themselves. Order matters because moment_posts has no FK to
-    //    moment_user_tokens — the token is a string.
-    const participantRows = await db
-      .select({ userToken: momentUserTokensTable.userToken })
-      .from(momentUserTokensTable)
-      .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
-    const userTokens = participantRows.map(r => r.userToken);
-    if (userTokens.length > 0) {
-      await db.delete(momentPostsTable).where(inArray(momentPostsTable.userToken, userTokens));
-    }
-    await db.delete(momentUserTokensTable)
-      .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
+      // 2) Find every moment_user_tokens row for this user, then delete
+      //    the posts keyed off those tokens before dropping the tokens
+      //    themselves. Order matters because moment_posts has no FK to
+      //    moment_user_tokens — the token is a string.
+      const participantRows = await tx
+        .select({ userToken: momentUserTokensTable.userToken })
+        .from(momentUserTokensTable)
+        .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
+      const userTokens = participantRows.map(r => r.userToken);
+      if (userTokens.length > 0) {
+        await tx.delete(momentPostsTable).where(inArray(momentPostsTable.userToken, userTokens));
+      }
+      await tx.delete(momentUserTokensTable)
+        .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
 
-    // 3) Letters (privacy audit #3 + DB audit #4). letters.author_user_id
-    //    and correspondence_members.user_id reference users(id) with NO
-    //    onDelete clause, so the bare `DELETE FROM users` below would
-    //    throw a foreign-key violation for anyone who has ever written
-    //    a letter or joined a correspondence — i.e. account deletion was
-    //    silently BROKEN for letter-writers (it 500'd and rolled back).
-    //
-    //    We UNLINK rather than hard-delete letter bodies: a 1:1 letter
-    //    has two parties, and the surviving correspondent legitimately
-    //    keeps their copy of the exchange. author_email + author_name
-    //    stay on the row for display; only the account link is severed.
-    //    Drafts are the deleting user's own private unsent WIP, so those
-    //    DO get hard-deleted.
-    await db.update(lettersTable)
-      .set({ authorUserId: null })
-      .where(eq(lettersTable.authorUserId, user.id));
-    await db.delete(letterDraftsTable)
-      .where(sql`${letterDraftsTable.authorUserId} = ${user.id} OR LOWER(${letterDraftsTable.authorEmail}) = ${emailLower}`);
-    await db.update(correspondenceMembersTable)
-      .set({ userId: null })
-      .where(eq(correspondenceMembersTable.userId, user.id));
+      // 3) FK columns that REFERENCE users(id) with NO onDelete clause would
+      //    make the final `DELETE FROM users` throw an FK violation — i.e.
+      //    account deletion was silently BROKEN (500 + rollback) for whole
+      //    classes of ordinary users. Null the account link BEFORE the delete.
+      //    - letters.author_user_id / correspondence_members.user_id (the
+      //      Letters feature is retired; we ALSO scrub the retained author
+      //      email/name here — dead PII with no UI reading it — since keeping
+      //      it defeated erasure).
+      //    - correspondences.created_by_user_id (a sibling FK the earlier fix
+      //      missed — every correspondence creator FK-blocked their own delete).
+      //    - morning_prayer_cache.assembled_by_user_id (whoever opened the
+      //      day's first Morning Prayer is stamped assembler → blocked delete).
+      await tx.update(lettersTable)
+        .set({ authorUserId: null, authorEmail: "[deleted]", authorName: "Deleted user" })
+        .where(eq(lettersTable.authorUserId, user.id));
+      await tx.delete(letterDraftsTable)
+        .where(sql`${letterDraftsTable.authorUserId} = ${user.id} OR LOWER(${letterDraftsTable.authorEmail}) = ${emailLower}`);
+      await tx.update(correspondenceMembersTable)
+        .set({ userId: null })
+        .where(eq(correspondenceMembersTable.userId, user.id));
+      await tx.update(correspondencesTable)
+        .set({ createdByUserId: null })
+        .where(eq(correspondencesTable.createdByUserId, user.id));
+      await tx.update(morningPrayerCacheTable)
+        .set({ assembledByUserId: null })
+        .where(eq(morningPrayerCacheTable.assembledByUserId, user.id));
 
-    // Capture the parish this user belongs to BEFORE the delete — the cascade
-    // drops their prayer_feed_subscriptions row, and the denormalized
-    // prayer_feeds.subscriber_count would otherwise stay permanently inflated
-    // (it's only recomputed on subscribe/unsubscribe, never on account delete).
-    const [meRow] = await db.select({ parishFeedId: usersTable.parishFeedId })
-      .from(usersTable).where(eq(usersTable.id, user.id));
+      // 3b) Residual PII in tables keyed by email/text with NO user_id FK, so
+      //     the users-row cascade never touches them. Clearing them by
+      //     lowercased email is the erasure the user expects (Apple 5.1.1(v) /
+      //     GDPR). Matches how moment_user_tokens is already cleared above.
+      await tx.delete(userConnectionsCacheTable).where(
+        sql`LOWER(${userConnectionsCacheTable.userEmail}) = ${emailLower} OR LOWER(${userConnectionsCacheTable.contactEmail}) = ${emailLower}`,
+      );
+      await tx.delete(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`);
+      await tx.delete(ritualTimeSuggestionsTable)
+        .where(sql`LOWER(${ritualTimeSuggestionsTable.suggestedByEmail}) = ${emailLower}`);
+      await tx.update(lectioReflectionsTable)
+        .set({ userEmail: null })
+        .where(sql`LOWER(${lectioReflectionsTable.userEmail}) = ${emailLower}`);
+      await tx.update(scheduleResponsesTable)
+        .set({ guestEmail: null })
+        .where(sql`LOWER(${scheduleResponsesTable.guestEmail}) = ${emailLower}`);
 
-    // 4) Finally drop the user — cascades handle the rest (prayer
-    //    requests/words/amens, device tokens, etc. all declare
-    //    ON DELETE CASCADE). prayer_feeds.creator_user_id is ON DELETE SET NULL,
-    //    so a priest deleting their account orphans (not destroys) the parish.
-    await db.delete(usersTable).where(eq(usersTable.id, user.id));
+      // Capture the parish this user belongs to BEFORE the delete — the cascade
+      // drops their prayer_feed_subscriptions row, and the denormalized
+      // prayer_feeds.subscriber_count would otherwise stay permanently inflated
+      // (it's only recomputed on subscribe/unsubscribe, never on account delete).
+      const [meRow] = await tx.select({ parishFeedId: usersTable.parishFeedId })
+        .from(usersTable).where(eq(usersTable.id, user.id));
 
-    // Recompute the parish's subscriber count now that the subscription row is gone.
-    if (meRow?.parishFeedId != null) {
-      await db.update(prayerFeedsTable)
-        .set({ subscriberCount: sql`(SELECT COUNT(*) FROM prayer_feed_subscriptions WHERE feed_id = ${meRow.parishFeedId})` })
-        .where(eq(prayerFeedsTable.id, meRow.parishFeedId));
-    }
+      // 4) Finally drop the user — cascades handle the rest (prayer
+      //    requests/words/amens, device tokens, etc. all declare
+      //    ON DELETE CASCADE). prayer_feeds.creator_user_id is ON DELETE SET NULL,
+      //    so a priest deleting their account orphans (not destroys) the parish.
+      await tx.delete(usersTable).where(eq(usersTable.id, user.id));
+
+      // Recompute the parish's subscriber count now that the subscription row is gone.
+      if (meRow?.parishFeedId != null) {
+        await tx.update(prayerFeedsTable)
+          .set({ subscriberCount: sql`(SELECT COUNT(*) FROM prayer_feed_subscriptions WHERE feed_id = ${meRow.parishFeedId})` })
+          .where(eq(prayerFeedsTable.id, meRow.parishFeedId));
+      }
+    });
   } catch (err) {
     console.error("[users:delete-me] delete failed:", err);
     res.status(500).json({ error: "delete_failed" });
