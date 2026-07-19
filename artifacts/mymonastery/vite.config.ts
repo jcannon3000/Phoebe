@@ -53,15 +53,23 @@ export default defineConfig({
         // motion / radix again. Matters most for a daily-habit app
         // where repeat opens dominate.
         //
-        // Conservative on purpose: only framer-motion and @radix-ui
-        // get carved out. Both are leaf libraries (they depend on
+        // framer-motion and @radix-ui are leaf libraries (they depend on
         // react, nothing depends on them) so there's no chunk-ordering
-        // risk. React itself stays in the default vendor chunk so its
-        // load order is never in question.
+        // risk. The React runtime (react + react-dom + scheduler + the JSX
+        // runtime) is carved into ONE chunk — grouped so it's never SPLIT
+        // apart, which is the only load-order hazard; the whole unit loads
+        // before app code that imports it, exactly as before. React and
+        // @tanstack/react-query change far less often than app code, so on
+        // a repeat open after a routine deploy the browser re-downloads
+        // only the small app chunk, not ~55–60 KB gzip of framework.
         manualChunks(id: string) {
           if (!id.includes("node_modules")) return undefined;
           if (id.includes("framer-motion")) return "vendor-motion";
           if (id.includes("@radix-ui")) return "vendor-radix";
+          if (id.includes("@tanstack")) return "vendor-query";
+          if (id.includes("/react-dom/") || id.includes("/scheduler/") || /\/react\//.test(id)) {
+            return "vendor-react";
+          }
           return undefined;
         },
       },

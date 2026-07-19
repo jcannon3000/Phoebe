@@ -2471,19 +2471,28 @@ router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
         : eq(sharedMomentsTable.groupId, group.id),
     ));
 
-  const enriched = await Promise.all(practices.map(async (p) => {
-    const members = await db.select().from(momentUserTokensTable)
-      .where(eq(momentUserTokensTable.momentId, p.id));
-    return {
-      id: p.id,
-      name: p.name,
-      templateType: p.templateType,
-      intention: p.intention,
-      frequency: p.frequency,
-      memberCount: members.length,
-      state: p.state,
-      createdAt: p.createdAt,
-    };
+  // Member counts in ONE grouped query instead of N+1 (was: a full
+  // SELECT of moment_user_tokens per practice, counted in JS via
+  // members.length). Index: moment_user_tokens(moment_id).
+  const practiceIds = practices.map((p) => p.id);
+  const countRows = practiceIds.length > 0
+    ? await db
+        .select({ momentId: momentUserTokensTable.momentId, cnt: count() })
+        .from(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.momentId, practiceIds))
+        .groupBy(momentUserTokensTable.momentId)
+    : [];
+  const countByMoment = new Map(countRows.map((r) => [r.momentId, Number(r.cnt)]));
+
+  const enriched = practices.map((p) => ({
+    id: p.id,
+    name: p.name,
+    templateType: p.templateType,
+    intention: p.intention,
+    frequency: p.frequency,
+    memberCount: countByMoment.get(p.id) ?? 0,
+    state: p.state,
+    createdAt: p.createdAt,
   }));
 
   res.json({ practices: enriched });
@@ -2685,10 +2694,22 @@ router.get("/groups/:slug/announcements", async (req, res): Promise<void> => {
     .where(eq(groupAnnouncementsTable.groupId, result.group.id))
     .orderBy(desc(groupAnnouncementsTable.createdAt));
 
-  // Enrich with author name
-  const enriched = await Promise.all(announcements.map(async (a) => {
-    const [author] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, a.authorUserId));
-    return { ...a, authorName: author?.name ?? "Admin" };
+  // Enrich with author name in ONE query instead of N+1 (was: a SELECT
+  // per announcement). Index: users primary key on id.
+  const authorIds = [...new Set(
+    announcements
+      .map((a) => a.authorUserId)
+      .filter((id): id is number => typeof id === "number"),
+  )];
+  const authorRows = authorIds.length > 0
+    ? await db.select({ id: usersTable.id, name: usersTable.name })
+        .from(usersTable)
+        .where(inArray(usersTable.id, authorIds))
+    : [];
+  const nameById = new Map(authorRows.map((r) => [r.id, r.name]));
+  const enriched = announcements.map((a) => ({
+    ...a,
+    authorName: (a.authorUserId != null ? nameById.get(a.authorUserId) : undefined) ?? "Admin",
   }));
 
   res.json({ announcements: enriched });
@@ -4209,7 +4230,11 @@ router.get("/groups/:slug/prayer-activity", async (req, res): Promise<void> => {
 
     // Hidden admins don't count as group participants — their prayer
     // activity is hidden from the "Prayed this week" ticker just like
-    // their prayer requests are hidden from the community wall.
+    // their prayer requests are hidden from the community wall. Scoped to
+    // THIS group: cross-community hidden status must not leak, or a member
+    // who is a hidden_admin in some OTHER community would be wrongly
+    // suppressed from this ticker (and the unscoped scan read every
+    // hidden_admin row in the DB). Mirrors the community-wall query above.
     const hiddenAdminActivityRows = await db
       .select({
         rowUserId: groupMembersTable.userId,
@@ -4220,7 +4245,10 @@ router.get("/groups/:slug/prayer-activity", async (req, res): Promise<void> => {
         usersTable,
         sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
       )
-      .where(eq(groupMembersTable.role, "hidden_admin"));
+      .where(and(
+        eq(groupMembersTable.groupId, groupId),
+        eq(groupMembersTable.role, "hidden_admin"),
+      ));
     const hiddenAdminActivityIds = new Set(
       hiddenAdminActivityRows
         .map(r => r.rowUserId ?? r.emailUserId)

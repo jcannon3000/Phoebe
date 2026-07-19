@@ -653,6 +653,11 @@ export function CobreatheBreath({
   // A slow tick drives the phase word + counter and fires onReachTarget once
   // the target set is complete. (The circle itself is rAF-smooth above.)
   const [, setTick] = useState(0);
+  // Gate re-renders on a CHANGE in what's actually displayed — see the tick
+  // body. The 150ms interval keeps the presence/completion LOGIC responsive,
+  // but the whole portaled breath tree only re-renders when a visible value
+  // steps, not 6.7×/sec through a multi-minute idle sit.
+  const lastDisplayKeyRef = useRef<string>("");
   useEffect(() => {
     const id = setInterval(() => {
       const now = syncedNow();
@@ -700,7 +705,18 @@ export function CobreatheBreath({
         try { playBreathTone(); } catch { /* audio locked — non-fatal */ }
         onReachTarget?.(Math.round((now - startRef.current) / 1000));
       }
-      setTick((n) => n + 1);
+      // Re-render only when a VISIBLE value steps. Computed the SAME way the
+      // render body does: while counting, the phase word (phaseAt, every
+      // INHALE_MS) and the breath counter (every CYCLE_MS); during the pre-roll,
+      // the "Syncing…" ellipsis (Math.floor(now/450), matching syncDots). Idle
+      // ticks in between no longer re-render the whole portaled breath tree.
+      const displayKey = since >= 0
+        ? `c:${completed}:${phaseAt(now % CYCLE_MS)}`
+        : `s:${Math.floor(now / 450)}`;
+      if (displayKey !== lastDisplayKeyRef.current) {
+        lastDisplayKeyRef.current = displayKey;
+        setTick((n) => n + 1);
+      }
     }, 150);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

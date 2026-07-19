@@ -87,11 +87,10 @@ export async function ensureClockSynced(): Promise<void> {
   await syncClock();
 }
 
-// Keep the offset warm: sync on load, on return-to-foreground, and periodically,
-// so it's ready before a Cobreathe session ever starts.
-if (typeof window !== "undefined") {
-  void syncClock();
-  window.addEventListener("phoebe:appactive", () => { void syncClock(); });
-  window.addEventListener("focus", () => { if (!isClockFresh()) void syncClock(); });
-  setInterval(() => { void syncClock(); }, FRESH_MS);
-}
+// No eager boot sync and no background polling. The server offset is read by
+// exactly one feature — the Cobreathe global breath — which awaits
+// ensureClockSynced() at session start (CobreatheBreath.tsx). Syncing at module
+// load fired 3 /api/time round-trips that contended with first paint, and the
+// old 5-minute setInterval polled forever for an offset most sessions never
+// use. The sessionStorage seed above keeps a warm reload aligned until that
+// on-demand sync lands.

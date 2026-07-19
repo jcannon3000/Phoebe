@@ -6652,7 +6652,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // feed content reaches the user through the prayer-list slideshow
     // and the dedicated /climate hub. Surfacing it here was crowding
     // the home with a card that didn't drive engagement on its own.
-    void subscribedFeeds;
+    // (Deliberately NOT referenced here, and NOT a dependency of this memo:
+    // subscribedFeeds is a fresh .filter() array every render, so listing it
+    // as a dep re-ran this whole ~380-line bucketing + double sort on every
+    // render for a value the body doesn't use.)
 
     // ── Gatherings / traditions placement
     // Bucket by nextMeetupDate: today → Today, tomorrow → Tomorrow,
@@ -6793,7 +6796,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
 
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly, hasGroup]);
+  }, [momentsData, user, serviceSchedules, rituals, actions, fellowPlans, isBeta, eventsOnly, hasGroup]);
 
   useEffect(() => {
     // PUBLIC no-login version: guests LIVE here — no bounce to the welcome

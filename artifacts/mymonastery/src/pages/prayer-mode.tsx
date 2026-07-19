@@ -4261,7 +4261,23 @@ export default function PrayerModePage() {
         }));
       }
     } catch { /* non-fatal */ }
-    queryClient.invalidateQueries();
+    // Refresh only the prayer-related state the home reflects after a
+    // session — the same set the mount effect and handleDone touch. The
+    // old bare queryClient.invalidateQueries() refetched EVERY query in the
+    // app (podcasts, settings, saints, feeds detail, …) on every X-out,
+    // an app-wide refetch storm on return-home.
+    for (const queryKey of [
+      ["/api/moments"],
+      ["/api/prayer-requests"],
+      ["/api/prayer-requests/last-mine"],
+      ["/api/prayers-for/mine"],
+      ["/api/groups/me/circle-intentions"],
+      ["/api/prayer-streak"],
+      ["/api/prayer-streak/co-prayers-week"],
+      ["/api/prayer-feeds/subscribed"],
+    ]) {
+      queryClient.invalidateQueries({ queryKey });
+    }
     setLocation(finishHref);
   };
 
