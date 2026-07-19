@@ -1,5 +1,3 @@
-import { isFirstOpen } from "@/lib/firstOpen";
-
 // Gate for the first-open prayer-setup splash: show it once, on the user's very
 // first visit (native app OR website), and keep it "pending" until they actually
 // finish — so a force-quit mid-flow re-shows it next time rather than dropping
@@ -17,14 +15,12 @@ const PENDING = "phoebe:first-open-onboarding-pending";
 export function shouldShowFirstOpenOnboarding(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    if (new URLSearchParams(window.location.search).get("firstrun") === "1") return true;
-    if (localStorage.getItem(DONE)) return false;
-    if (localStorage.getItem(PENDING)) return true;
-    // isFirstOpen() is memoized per session (and shared with the OpeningSplash),
-    // so calling it here doesn't disturb that gate — it just tells us this is the
-    // first open. Mark pending so we re-show until finished.
-    if (isFirstOpen()) { localStorage.setItem(PENDING, "1"); return true; }
-    return false;
+    // RETIRED (owner: no intro slides on first download). New users land
+    // straight on the seeded default home — Psalms morning & evening + Forward
+    // Day by Day, from guestSeed.seedGuestRule() — and customize from there.
+    // The ?firstrun=1 escape hatch still force-shows the flow for previewing;
+    // it writes nothing (see the `preview` guard in FirstOpenOnboarding).
+    return new URLSearchParams(window.location.search).get("firstrun") === "1";
   } catch {
     return false;
   }
