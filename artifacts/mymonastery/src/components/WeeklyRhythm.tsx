@@ -14,7 +14,7 @@
  * is the spine; this rides alongside it). See lib/weeklyRhythm.ts.
  */
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
@@ -72,7 +72,7 @@ function logKey(kind: WeeklyKind): string[] {
   return [`/api/practice-log/${kind}`];
 }
 
-export function WeeklyRhythm() {
+export function WeeklyRhythm({ cascadeBaseDelay = 0 }: { cascadeBaseDelay?: number } = {}) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState<WeeklyKind | null>(null);
@@ -129,24 +129,12 @@ export function WeeklyRhythm() {
 
   const openPractice = practices.find((p) => p.kind === open) ?? null;
 
-  // The band cascades in when it SCROLLS INTO VIEW — it sits below the fold on
-  // mobile, so a page-load timer fired off-screen and the stagger was never
-  // seen. framer's useInView + motion.div drives the fade-up in JS (NOT a CSS
-  // keyframe on a style-swap, which the iOS WebView would not reliably start),
-  // exactly like HomeLearnSection. Hooks stay ABOVE the early return so the
-  // hook order never changes when the enabled set is empty.
-  const rootRef = useRef<HTMLDivElement>(null);
-  // LIVE (not `once`): at first mount the daily cards above haven't loaded yet,
-  // so the band momentarily sits high enough to be "in view" — a `once` latch
-  // would fire the cascade there, behind the opening splash, and by the time
-  // the day's cards push the band below the fold the stagger has already played
-  // unseen (the reported "not cascading"). Keeping it live lets `inView` fall
-  // back to false as the band drops, so the latch below only trips when it's
-  // ACTUALLY on screen after the splash.
-  const inView = useInView(rootRef, { amount: 0.2 });
-  // Mirror DailyProgressBody: hold the cascade until the native first-open
-  // splash has faded, so it never runs behind the overlay. Web / already-cleared
-  // sessions start true.
+  // The band cascades in as a CONTINUATION of the home's daily Next→Done
+  // cascade: its stagger starts at `cascadeBaseDelay` (the home passes a value
+  // that lands "This week" just after the Done section) instead of restarting
+  // from zero. Gate on the native first-open splash so the stagger never runs
+  // behind the overlay — web / already-cleared sessions start true. (Hooks stay
+  // ABOVE the early return so the hook order never changes when empty.)
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
     if (shouldShowFirstOpenOnboarding()) return false;
@@ -166,25 +154,20 @@ export function WeeklyRhythm() {
     }, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.removeEventListener(FIRST_OPEN_ONBOARDING_CLOSED_EVENT, clear); window.clearTimeout(id); };
   }, [splashCleared]);
-  // One-way latch: fire the stagger the first time the band is genuinely seen
-  // (in view AND the splash gone), and keep it shown when scrolled back away.
-  const [played, setPlayed] = useState(false);
-  useEffect(() => {
-    if (!played && inView && splashCleared) setPlayed(true);
-  }, [played, inView, splashCleared]);
 
   // Nothing turned on → no band at all.
   if (practices.length === 0) return null;
 
-  // Header rises first, each card a beat behind (delay by index), once played.
+  // Header rises first, each card a beat behind (delay by index) — the whole
+  // band offset by cascadeBaseDelay so it lands after the daily section.
   const enterUp = (i: number) => ({
     initial: { opacity: 0, y: 10 },
-    animate: played ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
-    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.08, 0.6) },
+    animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: cascadeBaseDelay + Math.min(i * 0.08, 0.6) },
   });
 
   return (
-    <div className="mt-7" ref={rootRef}>
+    <div className="mt-7">
       {/* Same header treatment as the daily sections (Next / Done). */}
       <motion.div className="flex items-center gap-3 mb-2" {...enterUp(0)}>
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>

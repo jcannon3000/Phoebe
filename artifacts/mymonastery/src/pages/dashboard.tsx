@@ -7057,8 +7057,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           Sits ABOVE the Learn band (owner). */}
                       {/* No outer block-fade wrapper — WeeklyRhythm runs its
                           OWN splash-gated per-card cascade; wrapping it would
-                          multiply opacities and mask the stagger into one fade. */}
-                      <WeeklyRhythm />
+                          multiply opacities and mask the stagger into one fade.
+                          Base delay continues after keptHeader (0) +
+                          contemplationAgain (0.1) above. */}
+                      <WeeklyRhythm cascadeBaseDelay={0.3} />
                       {/* An in-flight course stays reachable after the day's
                           rhythm is done — the Learn band renders on the
                           finished-day view too, UNDER the weekly practices. */}
@@ -7103,8 +7105,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
                     {/* Bare — WeeklyRhythm owns its per-card cascade (see the
-                        no-events branch note); an outer fade would mask it. */}
-                    <WeeklyRhythm />
+                        no-events branch note); an outer fade would mask it.
+                        Continues after keptHeader (0) + contemplationAgain (0.1). */}
+                    <WeeklyRhythm cascadeBaseDelay={0.3} />
                     {/* Same finished-day Learn band as the no-events branch,
                         under the weekly practices. */}
                     <motion.div {...enterUp(3)}><HomeLearnSection /></motion.div>
@@ -7135,8 +7138,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
                     private self-logs, a separate band below the daily spine.
                     Self-hides until the customizer's weekly step enables one.
-                    Sits ABOVE the Learn band (owner). */}
-                <WeeklyRhythm />
+                    Sits ABOVE the Learn band (owner). cascadeBaseDelay lands it
+                    just AFTER the Next→Done cascade above (which caps at 0.7s),
+                    so it reads as one continuous home cascade. */}
+                <WeeklyRhythm cascadeBaseDelay={0.7} />
                 {/* Learn — continue (or start) a course, UNDER the weekly
                     practices: next episode + play + progress. Video courses are
                     web-only; the iOS shell shows only the Way of Love (audio).
