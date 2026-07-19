@@ -25,7 +25,6 @@ import { and, asc, desc, eq, sql, inArray, isNull } from "drizzle-orm";
 import {
   db,
   prayerFeedsTable,
-  prayerFeedEntriesTable,
   prayerFeedSubscriptionsTable,
   prayerRequestsTable,
   usersTable,
@@ -46,6 +45,7 @@ import { perUserRateLimit } from "../lib/rate-limit";
 import { sendPushToUsers } from "../lib/pushSender";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { practicedThisWeek } from "./groups";
+import { readParishStandingIntercessions } from "../lib/assembleIntercessions";
 
 const router: IRouter = Router();
 
@@ -286,25 +286,24 @@ router.get("/parish/today", async (req, res) => {
       return;
     }
 
-    const today = todayInZone(parish.timezone);
-
-    const todayEntries = await db
-      .select({
-        id: prayerFeedEntriesTable.id,
-        slot: prayerFeedEntriesTable.slot,
-        title: prayerFeedEntriesTable.title,
-        body: prayerFeedEntriesTable.body,
-        scriptureRef: prayerFeedEntriesTable.scriptureRef,
-        state: prayerFeedEntriesTable.state,
-        prayCount: prayerFeedEntriesTable.prayCount,
-      })
-      .from(prayerFeedEntriesTable)
-      .where(and(
-        eq(prayerFeedEntriesTable.feedId, parish.id),
-        eq(prayerFeedEntriesTable.entryDate, today),
-        eq(prayerFeedEntriesTable.state, "published"),
-      ))
-      .orderBy(asc(prayerFeedEntriesTable.slot));
+    // Parish intercessions are a STANDING list (up to 7 dateless
+    // templates the priest programs once), carried every day — not a
+    // per-day slate. Read the same set the office surfaces. `isBcp`
+    // marks a slot whose body is a full Book of Common Prayer prayer.
+    // (prayCount/scriptureRef are kept in the shape for client
+    // back-compat; the standing list doesn't track per-slot pray counts
+    // — solidarity is the aggregate parishionersPrayingThisWeek below.)
+    const standing = await readParishStandingIntercessions(parish.id, parish.timezone);
+    const todayEntries = standing.map((e) => ({
+      id: e.id,
+      slot: e.slot,
+      title: e.title,
+      body: e.body,
+      scriptureRef: null as string | null,
+      state: "published" as const,
+      prayCount: 0,
+      isBcp: e.source === "bcp",
+    }));
 
     // Parishioners praying this week — distinct users who:
     //  (a) belong to this parish (subscription row), AND

@@ -62,14 +62,15 @@ interface ParishToday {
     scriptureRef: string | null;
     state: "draft" | "scheduled" | "published";
     prayCount: number;
+    // A "bcp" slot's body is the full text of a Book of Common Prayer
+    // prayer the priest chose; captioned as such.
+    isBcp?: boolean;
   }>;
   // Rolling 7-day count of distinct parishioners who've prayed any
   // office/devotion. Powers the soft "your parish is praying" line
   // under the header.
   parishionersPrayingThisWeek: number;
 }
-
-const SLOT_LABEL: Record<number, string> = { 1: "First", 2: "Second", 3: "Third" };
 
 export default function ParishDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -522,7 +523,7 @@ export default function ParishDashboard() {
             marginBottom: 8,
           }}
         >
-          Today's intercessions
+          Our parish prays
         </p>
         {data?.todayEntries && data.todayEntries.length > 0 ? (
           <div className="space-y-2 mb-6">
@@ -546,7 +547,7 @@ export default function ParishDashboard() {
                     margin: 0,
                   }}
                 >
-                  {SLOT_LABEL[e.slot] ?? "Intercession"}
+                  {e.isBcp ? "Book of Common Prayer" : "Intercession"}
                 </p>
                 <p
                   style={{

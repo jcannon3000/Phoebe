@@ -7,7 +7,6 @@ import {
   groupMembersTable,
   circleIntentionsTable,
   prayerFeedSubscriptionsTable,
-  prayerFeedEntriesTable,
   prayerFeedRecurringEntriesTable,
   prayerFeedsTable,
   prayerSessionsTable,
@@ -62,6 +61,41 @@ async function parishionersPrayingCount(
     .where(sql`${prayerSessionsTable.endedAt} > NOW() - (${intervalHours}::int * INTERVAL '1 hour')
                AND ${prayerSessionsTable.isPrivate} = false`);
   return row?.count ?? 0;
+}
+
+// A parish's STANDING intercessions — up to 7 dateless templates the
+// priest programs once (prayer_feed_recurring_entries), carried by the
+// parish EVERY day rather than a per-day slate the general feeds use.
+// "weekly" templates are filtered to today's weekday in the parish tz;
+// "daily" (mask 127) always shows. Returns them in slot order. `source`
+// rides along so a "bcp" slot can render its body as a full Book of
+// Common Prayer prayer downstream.
+export async function readParishStandingIntercessions(
+  parishFeedId: number,
+  timezone: string,
+): Promise<Array<{ id: number; slot: number; title: string; body: string; source: string }>> {
+  const rows = await db
+    .select({
+      id: prayerFeedRecurringEntriesTable.id,
+      slot: prayerFeedRecurringEntriesTable.slot,
+      title: prayerFeedRecurringEntriesTable.title,
+      body: prayerFeedRecurringEntriesTable.body,
+      source: prayerFeedRecurringEntriesTable.source,
+      recurrenceKind: prayerFeedRecurringEntriesTable.recurrenceKind,
+      weekdaysMask: prayerFeedRecurringEntriesTable.weekdaysMask,
+    })
+    .from(prayerFeedRecurringEntriesTable)
+    .where(and(
+      eq(prayerFeedRecurringEntriesTable.feedId, parishFeedId),
+      eq(prayerFeedRecurringEntriesTable.state, "live"),
+    ))
+    .orderBy(asc(prayerFeedRecurringEntriesTable.slot));
+  // Weekday of "today" in the parish tz (0 = Sunday). Noon-UTC on the
+  // resolved calendar date sidesteps any DST edge.
+  const weekday = new Date(`${todayInTz(timezone)}T12:00:00Z`).getUTCDay();
+  return rows
+    .filter((e) => e.recurrenceKind === "daily" || (e.weekdaysMask & (1 << weekday)) !== 0)
+    .map((e) => ({ id: e.id, slot: e.slot, title: e.title, body: e.body ?? "", source: e.source ?? "custom" }));
 }
 
 // Build the "Intercessions" slide for the Daily Office.
@@ -240,20 +274,7 @@ export async function buildIntercessionsSlide(
     .limit(1);
   const parish = parishRow[0] ?? null;
   const parishEntries = parish
-    ? await db
-        .select({
-          slot: prayerFeedEntriesTable.slot,
-          title: prayerFeedEntriesTable.title,
-          body: prayerFeedEntriesTable.body,
-          scriptureRef: prayerFeedEntriesTable.scriptureRef,
-        })
-        .from(prayerFeedEntriesTable)
-        .where(and(
-          eq(prayerFeedEntriesTable.feedId, parish.id),
-          eq(prayerFeedEntriesTable.entryDate, todayInTz(parish.timezone)),
-          eq(prayerFeedEntriesTable.state, "published"),
-        ))
-        .orderBy(asc(prayerFeedEntriesTable.slot))
+    ? await readParishStandingIntercessions(parish.id, parish.timezone)
     : [];
 
   // Compose the body text. Each source becomes its own section if
@@ -519,20 +540,7 @@ export async function buildIntercessionSlides(
     .limit(1);
   const parish = parishRow[0] ?? null;
   const parishEntries = parish
-    ? await db
-        .select({
-          slot: prayerFeedEntriesTable.slot,
-          title: prayerFeedEntriesTable.title,
-          body: prayerFeedEntriesTable.body,
-          scriptureRef: prayerFeedEntriesTable.scriptureRef,
-        })
-        .from(prayerFeedEntriesTable)
-        .where(and(
-          eq(prayerFeedEntriesTable.feedId, parish.id),
-          eq(prayerFeedEntriesTable.entryDate, todayInTz(parish.timezone)),
-          eq(prayerFeedEntriesTable.state, "published"),
-        ))
-        .orderBy(asc(prayerFeedEntriesTable.slot))
+    ? await readParishStandingIntercessions(parish.id, parish.timezone)
     : [];
   const parishWeekCount = parish && parishEntries.length > 0
     ? await parishionersPrayingCount(parish.id, 24 * 7)
@@ -667,16 +675,23 @@ export async function buildIntercessionSlides(
   if (parish) {
     for (const e of parishEntries) {
       const body = (e.body ?? "").trim();
+      // A "bcp" slot's body IS the full text of a Book of Common Prayer
+      // prayer the priest chose from the library. The office/prayer-mode
+      // renderer shows it in a frosted "closing prayer" card captioned
+      // "From the Book of Common Prayer" — the way Co-Breathe closes.
+      const isBcp = e.source === "bcp";
       slides.push({
         id: `dev-parish-${parish.id}-${e.slot}-${dayKey}`,
         type: "intercessions",
-        emoji: "⛪",
-        eyebrow: `TODAY AT ${parish.title.toUpperCase()}`,
+        emoji: isBcp ? "📖" : "⛪",
+        // Standing list, not a daily slate — the eyebrow names the parish
+        // rather than claiming these are "today's" fresh intentions.
+        eyebrow: parish.title.toUpperCase(),
         title: e.title,
         content: body.length > 0 ? body : e.title,
         isCallAndResponse: false,
         callAndResponseLines: null,
-        bcpReference: e.scriptureRef ?? null,
+        bcpReference: null,
         isScrollable: body.length > 280,
         scrollHint: body.length > 280 ? "↓ continue · tap when ready" : null,
         metadata: {
@@ -685,7 +700,10 @@ export async function buildIntercessionSlides(
           parishFeedId: parish.id,
           parishionersPrayingThisWeek: parishWeekCount,
           parishionersPrayingToday: parishTodayCount,
-          scriptureRef: e.scriptureRef ?? null,
+          // BCP slot → the renderer wraps `content` in the frosted BCP
+          // prayer card and adds the attribution caption.
+          isBcp,
+          bcpFullText: isBcp ? (body.length > 0 ? body : e.title) : null,
         },
       });
     }

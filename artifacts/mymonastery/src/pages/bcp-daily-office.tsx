@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { swellHaptic } from "@/lib/swellHaptic";
+import { playBreathTone } from "@/lib/amenFeedback";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Settings2 } from "lucide-react";
@@ -584,9 +585,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
-  // Plays the chapel chime once when the office first opens (a refetch
-  // shouldn't re-strike it), mirroring prayer-mode's opening swell.
-  const openingChimeRef = useRef(false);
+  // Dedupe guard for the slide-turn chime effect below — keeps a
+  // background refetch (which can re-run the effect with an unchanged
+  // slideIdx) from re-striking the swell.
+  const chimedSlideRef = useRef<number>(-1);
   const queryClient = useQueryClient();
   const [, setViewerLocation] = useLocation();
   // Once-per-mount guard so a user who navigates BACK to the
@@ -627,6 +629,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       slidesReachedRef.current = slideIdx + 1;
     }
   }, [slideIdx]);
+
+  // Chapel swell on every slide turn — the same rising open-fifth pad the
+  // Co-Breathe breath plays (playBreathTone). The office used to chime each
+  // turn; the navigation sound was stripped app-wide at one point, and the
+  // owner wants the Co-Breathe swell back on the office slides. Keyed off the
+  // landing slide so the chord climbs 0 → 1 → 2 → 0 … across the deck (the
+  // same octave pattern prayer-mode uses). Fires once the deck first paints
+  // (the opening swell) and on every next/prev/tap/swipe/amen turn. The
+  // dedupe ref keeps a background refetch from re-striking, and the
+  // slides.length gate keeps it quiet until the deck exists. Opening/closing
+  // the ⚙ display sheet leaves slideIdx untouched, so it never chimes.
+  useEffect(() => {
+    if (slides.length === 0) return;
+    if (chimedSlideRef.current === slideIdx) return;
+    chimedSlideRef.current = slideIdx;
+    playBreathTone(slideIdx % 3);
+  }, [slideIdx, slides.length]);
 
   // Persist progress per-mode/per-day so the dashboard PrayerOfficeCard
   // can render "Continue Morning Devotion →" when the user bails partway.
@@ -819,13 +838,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           if (firstThanks >= 0) initialIdx = firstThanks;
         }
         setSlideIdx(initialIdx);
-        // Opening chime — the chapel exhaling as the office opens, the
-        // same chime every slide turn plays. Once per open (guarded so a
-        // background refetch doesn't re-strike it). Mirrors the swell
-        // prayer-mode plays on its first slide.
-        if (!openingChimeRef.current) {
-          openingChimeRef.current = true;
-        }
+        // The opening swell + every slide-turn swell are handled by the
+        // slideIdx effect below (it fires once the deck first paints and
+        // on every subsequent turn), so nothing to strike here.
         // If we're resuming PAST the intercessions portal (a
         // localStorage in-progress index, or a ?slide= deep link that
         // lands beyond it), the user has already crossed the handoff —
@@ -1675,9 +1690,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           paddingTop: isTitleCard
             ? "max(24px, var(--safe-top))"
             : "max(110px, calc(var(--safe-top) + 80px))",
-          paddingBottom: player.current
-            ? "calc(env(safe-area-inset-bottom) + 176px)"
-            : "calc(env(safe-area-inset-bottom) + 112px)",
+          // Bottom clearance is delivered by the spacer child at the end of
+          // this <main>, NOT by padding-bottom here. iOS WKWebView drops a
+          // flex-column scroll container's padding-bottom when a child
+          // overflows, which tucked the end of long communal slides (the
+          // Suffrages call-and-response especially) behind the fixed nav
+          // pill. A real element is counted in scrollHeight on every engine.
+          paddingBottom: 0,
           display: "flex",
           flexDirection: "column",
           // Slight drop shadow on all slide text (inherited) so it stays legible
@@ -2777,6 +2796,54 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             </div>
           ) : currentSlide.content && currentSlide.type !== "lesson" && currentSlide.type !== "office_intro" ? (
             (() => {
+              // Parish BCP intercession — the priest chose this prayer
+              // from the Book of Common Prayer, so its full text shows
+              // in a frosted "closing prayer" card captioned "From the
+              // Book of Common Prayer", the way Co-Breathe closes on its
+              // prayer, rather than as a plain intercession paragraph.
+              const im = currentSlide.metadata as { isBcp?: boolean } | undefined;
+              if (currentSlide.type === "intercessions" && im?.isBcp) {
+                return (
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: 600,
+                      borderRadius: 16,
+                      padding: "20px 24px",
+                      background: "rgba(var(--ot-deep, 9,26,16), 0.297)",
+                      backdropFilter: "blur(11.34px)",
+                      WebkitBackdropFilter: "blur(11.34px)",
+                      border: "1px solid rgba(var(--ot-green, 46,107,64),0.15)",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontStyle: "italic",
+                        color: "var(--oh-mist, #C8D4C0)",
+                        fontFamily: SPACE_GROTESK,
+                        fontSize: 19,
+                        lineHeight: 1.6,
+                        margin: 0,
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {fixQuoteDirection(slideBody)}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 9,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.14em",
+                        color: "rgba(var(--ot-sage, 143,175,150),0.3)",
+                        margin: "12px 0 0",
+                        fontFamily: SPACE_GROTESK,
+                      }}
+                    >
+                      {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+                    </p>
+                  </div>
+                );
+              }
               // Prose prayers (general thanksgiving, confession,
               // absolution, collect, prayer for mission, opening
               // sentence, blessing) read as flowing paragraphs, not
@@ -3062,6 +3129,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             </div>
           )}
         </div>
+        {/* Bottom clearance spacer — see the paddingBottom note above. Being a
+            real box (not container padding), it survives iOS WKWebView's
+            flex-overflow padding-drop, so the last line of a long slide always
+            scrolls clear of the fixed nav pill. On title cards the flex-grow
+            content column simply shrinks by this height, preserving the same
+            vertical centering the old padding produced. */}
+        <div
+          aria-hidden
+          style={{
+            flexShrink: 0,
+            height: player.current
+              ? "calc(env(safe-area-inset-bottom) + 176px)"
+              : "calc(env(safe-area-inset-bottom) + 112px)",
+          }}
+        />
       </main>
 
       {/* Bottom nav pill — Back · section · Next/Done. Mirrors Lectio. */}

@@ -1103,7 +1103,12 @@ const recurringSchema = z.object({
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().max(2000).default(""),
   learnMoreUrl: z.string().trim().url().max(500).nullable().optional(),
-  source: z.enum(["custom", "action"]).default("custom"),
+  // "bcp" marks a slot whose body holds the full text of a Book of
+  // Common Prayer prayer (the leader picked it from the BCP library).
+  // The office/prayer-mode renderers show that body in a frosted
+  // "closing prayer" card captioned "From the Book of Common Prayer",
+  // the way Co-Breathe closes on its prayer.
+  source: z.enum(["custom", "action", "bcp"]).default("custom"),
   state: z.enum(["draft", "live"]).default("live"),
 });
 

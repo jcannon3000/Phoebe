@@ -1,32 +1,44 @@
 /**
- * Phoebe Parish — admin page for publishing today's community
- * intercessions.
+ * Phoebe Parish — admin page for the parish's STANDING intercessions.
  *
- * A parish carries up to 3 published intercession slots per day on
- * /parish (the parishioner-facing dashboard). This admin page lets
- * the priest/pastor write + publish those three slots. Editors
- * see drafts too; non-admins can only see published rows via the
- * regular parishioner endpoints.
+ * Unlike a general prayer feed (which rotates a few slots per day), a
+ * parish carries a STANDING list of up to 7 intercessions: the priest
+ * programs them once and the same set is carried every day — in the
+ * parishioner's Office and on /parish — until the priest edits it. So
+ * these live in prayer_feed_recurring_entries (dateless "daily"
+ * templates), NOT the date-pinned prayer_feed_entries.
  *
- * Powered by the existing prayer-feeds entry endpoints:
- *   • GET  /api/prayer-feeds/:slug/entries?from=&to=  (list)
- *   • POST /api/prayer-feeds/:slug/entries            (upsert)
+ * A slot can either be free text or a prayer chosen from the Book of
+ * Common Prayer. A BCP slot stores the prayer's full text; when a
+ * parishioner reaches it in their Office, the whole prayer is shown in
+ * a frosted card the way Co-Breathe closes on its prayer.
+ *
+ * Powered by the recurring prayer-feeds endpoints:
+ *   • GET    /api/prayer-feeds/:slug/recurring
+ *   • POST   /api/prayer-feeds/:slug/recurring        (create — server picks slot)
+ *   • PUT    /api/prayer-feeds/:slug/recurring/:id    (edit)
+ *   • DELETE /api/prayer-feeds/:slug/recurring/:id    (remove)
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { todayInZone } from "@/lib/tz";
 import { Layout } from "@/components/layout";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, BookOpen, Plus, Trash2, X, Search } from "lucide-react";
+import { BCP_PRAYERS, localizeBcpPrayer } from "@/lib/bcp-prayers";
+import i18n from "@/i18n";
 
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const WARM_TEXT = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FAINT_GREEN = "rgba(143,175,150,0.55)";
+const CARD_BG = "rgba(9,26,16, 0.297)";
+const CARD_BORDER = "1px solid rgba(46,107,64,0.22)";
+
+const MAX_SLOTS = 7;
 
 type AdminParish = {
   id: number;
@@ -35,23 +47,13 @@ type AdminParish = {
   timezone: string;
 };
 
-type FeedEntry = {
+type RecurringEntry = {
   id: number;
-  entryDate: string;
   slot: number;
   title: string;
   body: string;
-  scriptureRef: string | null;
-  state: "draft" | "scheduled" | "published";
-  prayCount: number;
-};
-
-// todayInZone (today's YYYY-MM-DD in an IANA zone) lives in @/lib/tz.
-
-const SLOT_LABEL: Record<number, string> = {
-  1: "First intercession",
-  2: "Second intercession",
-  3: "Third intercession",
+  source: "custom" | "action" | "bcp";
+  state: "draft" | "live";
 };
 
 export default function ParishIntercessionsPage() {
@@ -70,25 +72,23 @@ export default function ParishIntercessionsPage() {
   const selectedParish =
     parishes.find((p) => p.id === selectedId) ?? parishes[0] ?? null;
 
-  // Today, in the selected parish's timezone — so an admin in a
-  // different zone still publishes against the parishioners' "today".
-  const today = useMemo(
-    () => (selectedParish ? todayInZone(selectedParish.timezone) : null),
-    [selectedParish],
-  );
-
-  const entriesQuery = useQuery<{ entries: FeedEntry[] }>({
-    queryKey: ["/api/prayer-feeds", selectedParish?.slug, "entries", today],
+  const recurringQuery = useQuery<{ recurring: RecurringEntry[] }>({
+    queryKey: ["/api/prayer-feeds", selectedParish?.slug, "recurring"],
     queryFn: () =>
-      apiRequest(
-        "GET",
-        `/api/prayer-feeds/${selectedParish!.slug}/entries?from=${today}&to=${today}`,
-      ),
-    enabled: !!selectedParish && !!today,
+      apiRequest("GET", `/api/prayer-feeds/${selectedParish!.slug}/recurring`),
+    enabled: !!selectedParish,
   });
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [addingCustom, setAddingCustom] = useState(false);
 
   if (isLoading) return null;
   if (!user) { setLocation("/"); return null; }
+
+  const entries = (recurringQuery.data?.recurring ?? [])
+    .slice()
+    .sort((a, b) => a.slot - b.slot);
+  const atCapacity = entries.length >= MAX_SLOTS;
 
   return (
     <Layout bgPhoto={bgPhoto}>
@@ -106,13 +106,13 @@ export default function ParishIntercessionsPage() {
           className="text-2xl font-bold mb-1"
           style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}
         >
-          Today's intercessions
+          Your parish's intercessions
         </h1>
         <p
           className="text-sm mb-6"
           style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
         >
-          Up to three prayers your parish carries together today. Publish or save as a draft.
+          The prayers your parish carries together — every day, until you change them. Up to seven.
         </p>
 
         {parishes.length > 1 && (
@@ -142,226 +142,393 @@ export default function ParishIntercessionsPage() {
           </p>
         )}
 
-        {selectedParish && today && (
+        {selectedParish && (
           <>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.18em] mb-3"
-              style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
-            >
-              {new Date(today).toLocaleDateString(undefined, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-
             <div className="flex flex-col gap-4">
-              {[1, 2, 3].map((slot) => {
-                const existing =
-                  entriesQuery.data?.entries.find((e) => e.slot === slot) ?? null;
-                return (
-                  <SlotComposer
-                    key={`${selectedParish.slug}-${today}-${slot}`}
-                    slug={selectedParish.slug}
-                    entryDate={today}
-                    slot={slot}
-                    existing={existing}
-                  />
-                );
-              })}
+              {entries.map((entry) => (
+                <EntryCard
+                  key={entry.id}
+                  slug={selectedParish.slug}
+                  entry={entry}
+                />
+              ))}
+
+              {addingCustom && (
+                <NewCustomCard
+                  slug={selectedParish.slug}
+                  onDone={() => setAddingCustom(false)}
+                />
+              )}
+
+              {entries.length === 0 && !addingCustom && (
+                <p
+                  className="text-sm italic py-2"
+                  style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
+                >
+                  No intercessions yet. Add the prayers your parish carries together.
+                </p>
+              )}
             </div>
+
+            {!atCapacity && !addingCustom && (
+              <div className="flex flex-col sm:flex-row gap-2 mt-5">
+                <button
+                  onClick={() => setAddingCustom(true)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                  style={{
+                    background: "#2D5E3F",
+                    color: WARM_TEXT,
+                    border: "none",
+                    fontFamily: SPACE_GROTESK,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Plus size={15} />
+                  Write an intercession
+                </button>
+                <button
+                  onClick={() => setPickerOpen(true)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                  style={{
+                    background: "rgba(143,175,150,0.12)",
+                    color: SAGE,
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    fontFamily: SPACE_GROTESK,
+                    cursor: "pointer",
+                  }}
+                >
+                  <BookOpen size={15} />
+                  From the Book of Common Prayer
+                </button>
+              </div>
+            )}
+
+            {atCapacity && (
+              <p
+                className="text-xs italic mt-4"
+                style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
+              >
+                Seven intercessions is the most a parish carries at once. Remove one to add another.
+              </p>
+            )}
           </>
         )}
       </div>
+
+      {pickerOpen && selectedParish && (
+        <BcpPickerModal
+          slug={selectedParish.slug}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </Layout>
   );
 }
 
-function SlotComposer({
-  slug,
-  entryDate,
-  slot,
-  existing,
-}: {
-  slug: string;
-  entryDate: string;
-  slot: number;
-  existing: FeedEntry | null;
-}) {
+// ─── An existing standing intercession ────────────────────────────────────
+
+function EntryCard({ slug, entry }: { slug: string; entry: RecurringEntry }) {
   const qc = useQueryClient();
-  const [title, setTitle] = useState(existing?.title ?? "");
-  const [body, setBody] = useState(existing?.body ?? "");
-  const [scriptureRef, setScriptureRef] = useState(existing?.scriptureRef ?? "");
+  const isBcp = entry.source === "bcp";
+  const [title, setTitle] = useState(entry.title);
+  const [body, setBody] = useState(entry.body);
   const [error, setError] = useState<string | null>(null);
 
-  // If the cached entry arrives after the first render (timing race
-  // between the parish list and the entries fetch), backfill the form
-  // once. We deliberately don't keep this in sync after that — if the
-  // admin starts editing we shouldn't yank their text back to the
-  // server value mid-keystroke.
-  useEffect(() => {
-    if (existing && !title && !body) {
-      setTitle(existing.title);
-      setBody(existing.body);
-      setScriptureRef(existing.scriptureRef ?? "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existing?.id]);
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["/api/prayer-feeds", slug, "recurring"] });
 
   const save = useMutation({
-    mutationFn: (state: "draft" | "published") =>
-      apiRequest("POST", `/api/prayer-feeds/${slug}/entries`, {
-        entryDate,
-        slot,
+    mutationFn: () =>
+      apiRequest("PUT", `/api/prayer-feeds/${slug}/recurring/${entry.id}`, {
+        recurrenceKind: "daily",
         title: title.trim(),
         body: body.trim(),
-        scriptureRef: scriptureRef.trim() || null,
-        state,
+        source: entry.source,
+        state: "live",
       }),
-    onSuccess: () => {
-      setError(null);
-      qc.invalidateQueries({ queryKey: ["/api/prayer-feeds", slug, "entries", entryDate] });
-    },
-    onError: (err: Error) => {
-      setError(err.message || "Couldn't save. Try again?");
-    },
+    onSuccess: () => { setError(null); invalidate(); },
+    onError: (err: Error) => setError(err.message || "Couldn't save. Try again?"),
   });
 
-  const canSave = title.trim().length > 0 && body.trim().length > 0;
-  const isPublished = existing?.state === "published";
+  const remove = useMutation({
+    mutationFn: () =>
+      apiRequest("DELETE", `/api/prayer-feeds/${slug}/recurring/${entry.id}`),
+    onSuccess: invalidate,
+    onError: (err: Error) => setError(err.message || "Couldn't remove. Try again?"),
+  });
+
+  const dirty = title.trim() !== entry.title || body.trim() !== entry.body;
+  const canSave = title.trim().length > 0 && body.trim().length > 0 && dirty;
 
   return (
     <div
       className="rounded-xl px-4 py-4"
-      style={{
-        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-        border: "1px solid rgba(46,107,64,0.22)",
-      }}
+      style={{ background: CARD_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: CARD_BORDER }}
     >
       <div className="flex items-center justify-between mb-3">
-        <p
-          className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-          style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
-        >
-          {SLOT_LABEL[slot]}
-        </p>
-        {existing && (
+        {isBcp ? (
           <span
-            className="text-[10px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full"
-            style={{
-              background: isPublished ? "rgba(46,107,64,0.25)" : "rgba(143,175,150,0.12)",
-              color: isPublished ? "#A8C5A0" : SAGE,
-              border: `1px solid ${isPublished ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.22)"}`,
-              fontFamily: SPACE_GROTESK,
-            }}
+            className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.4)", fontFamily: SPACE_GROTESK }}
           >
-            {existing.state}
+            <BookOpen size={11} />
+            Book of Common Prayer
+          </span>
+        ) : (
+          <span
+            className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+            style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
+          >
+            Intercession
           </span>
         )}
+        <button
+          onClick={() => { if (confirm("Remove this intercession?")) remove.mutate(); }}
+          disabled={remove.isPending}
+          aria-label="Remove"
+          className="p-1 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+          style={{ color: FAINT_GREEN, background: "transparent", border: "none", cursor: "pointer" }}
+        >
+          <Trash2 size={15} />
+        </button>
       </div>
 
+      {isBcp ? (
+        // The prayer text is canonical — shown, not edited. The priest
+        // can remove it and pick a different one.
+        <>
+          <p style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, margin: "0 0 8px" }}>
+            {entry.title}
+          </p>
+          <p style={{ color: "rgba(200,212,192,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontStyle: "italic", lineHeight: 1.55, margin: 0, whiteSpace: "pre-wrap" }}>
+            {entry.body}
+          </p>
+        </>
+      ) : (
+        <>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+            placeholder="Title — e.g. For those grieving"
+            style={{ width: "100%", background: "transparent", color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, padding: "6px 0", marginBottom: 8, border: "none", outline: "none" }}
+          />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={4}
+            maxLength={2000}
+            placeholder="The prayer itself…"
+            style={{ width: "100%", background: "transparent", color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.55, border: "none", outline: "none", resize: "none", padding: "4px 0" }}
+          />
+        </>
+      )}
+
+      {error && (
+        <p className="text-xs mt-2" style={{ color: "#F87171", fontFamily: SPACE_GROTESK }}>{error}</p>
+      )}
+
+      {!isBcp && (
+        <div className="flex justify-end mt-3">
+          <button
+            onClick={() => save.mutate()}
+            disabled={!canSave || save.isPending}
+            className="px-4 py-1.5 rounded-full text-xs font-semibold transition-opacity disabled:opacity-40"
+            style={{ background: "#2D5E3F", color: WARM_TEXT, border: "none", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            {save.isPending ? "Saving…" : "Save"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── A brand-new free-text intercession ───────────────────────────────────
+
+function NewCustomCard({ slug, onDone }: { slug: string; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, {
+        recurrenceKind: "daily",
+        title: title.trim(),
+        body: body.trim(),
+        source: "custom",
+        state: "live",
+      }),
+    onSuccess: () => {
+      setError(null);
+      qc.invalidateQueries({ queryKey: ["/api/prayer-feeds", slug, "recurring"] });
+      onDone();
+    },
+    onError: (err: Error) => setError(err.message || "Couldn't add. Try again?"),
+  });
+
+  const canSave = title.trim().length > 0 && body.trim().length > 0;
+
+  return (
+    <div
+      className="rounded-xl px-4 py-4"
+      style={{ background: CARD_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: CARD_BORDER }}
+    >
+      <p
+        className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-3"
+        style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
+      >
+        New intercession
+      </p>
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         maxLength={120}
+        autoFocus
         placeholder="Title — e.g. For those grieving"
-        style={{
-          width: "100%",
-          background: "transparent",
-          color: WARM_TEXT,
-          fontFamily: SPACE_GROTESK,
-          fontSize: 16,
-          fontWeight: 600,
-          padding: "6px 0",
-          marginBottom: 8,
-          border: "none",
-          outline: "none",
-        }}
+        style={{ width: "100%", background: "transparent", color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, padding: "6px 0", marginBottom: 8, border: "none", outline: "none" }}
       />
-
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={4}
         maxLength={2000}
         placeholder="The prayer itself…"
-        style={{
-          width: "100%",
-          background: "transparent",
-          color: WARM_TEXT,
-          fontFamily: SPACE_GROTESK,
-          fontSize: 14,
-          lineHeight: 1.55,
-          border: "none",
-          outline: "none",
-          resize: "none",
-          padding: "4px 0",
-        }}
+        style={{ width: "100%", background: "transparent", color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.55, border: "none", outline: "none", resize: "none", padding: "4px 0" }}
       />
-
-      <input
-        value={scriptureRef}
-        onChange={(e) => setScriptureRef(e.target.value)}
-        maxLength={120}
-        placeholder="Scripture reference (optional) — e.g. Romans 8:38–39"
-        style={{
-          width: "100%",
-          background: "transparent",
-          color: SAGE,
-          fontFamily: SPACE_GROTESK,
-          fontSize: 13,
-          fontStyle: "italic",
-          padding: "4px 0",
-          marginTop: 4,
-          border: "none",
-          outline: "none",
-        }}
-      />
-
-      {existing?.state === "published" && (
-        <p
-          className="text-[12px] mt-2"
-          style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
-        >
-          🌿 {existing.prayCount} {existing.prayCount === 1 ? "person has prayed" : "people have prayed"} this today.
-        </p>
-      )}
-
       {error && (
-        <p className="text-xs mt-2" style={{ color: "#F87171", fontFamily: SPACE_GROTESK }}>
-          {error}
-        </p>
+        <p className="text-xs mt-2" style={{ color: "#F87171", fontFamily: SPACE_GROTESK }}>{error}</p>
       )}
-
       <div className="flex justify-end gap-2 mt-3">
         <button
-          onClick={() => save.mutate("draft")}
-          disabled={!canSave || save.isPending}
-          className="px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity disabled:opacity-40"
-          style={{
-            background: "rgba(143,175,150,0.12)",
-            color: SAGE,
-            border: "1px solid rgba(46,107,64,0.25)",
-            fontFamily: SPACE_GROTESK,
-            cursor: "pointer",
-          }}
+          onClick={onDone}
+          className="px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity"
+          style={{ background: "rgba(143,175,150,0.12)", color: SAGE, border: "1px solid rgba(46,107,64,0.25)", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
         >
-          Save draft
+          Cancel
         </button>
         <button
-          onClick={() => save.mutate("published")}
-          disabled={!canSave || save.isPending}
+          onClick={() => create.mutate()}
+          disabled={!canSave || create.isPending}
           className="px-4 py-1.5 rounded-full text-xs font-semibold transition-opacity disabled:opacity-40"
-          style={{
-            background: "#2D5E3F",
-            color: WARM_TEXT,
-            border: "none",
-            fontFamily: SPACE_GROTESK,
-            cursor: "pointer",
-          }}
+          style={{ background: "#2D5E3F", color: WARM_TEXT, border: "none", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
         >
-          {save.isPending ? "Saving…" : isPublished ? "Update" : "Publish"}
+          {create.isPending ? "Adding…" : "Add"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Book of Common Prayer picker ─────────────────────────────────────────
+
+function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const isEs = !!i18n.language?.startsWith("es");
+
+  // Group the (locale-aware) prayers by category, filtered by the search.
+  const grouped = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const out = new Map<string, Array<{ index: number; title: string; text: string }>>();
+    BCP_PRAYERS.forEach((p, index) => {
+      const loc = localizeBcpPrayer(p, isEs ? "es" : "en");
+      if (q && !loc.title.toLowerCase().includes(q) && !loc.category.toLowerCase().includes(q)) return;
+      const list = out.get(loc.category) ?? [];
+      list.push({ index, title: loc.title, text: loc.text });
+      out.set(loc.category, list);
+    });
+    return out;
+  }, [query, isEs]);
+
+  const add = useMutation({
+    mutationFn: (index: number) => {
+      const p = BCP_PRAYERS[index]!;
+      const loc = localizeBcpPrayer(p, isEs ? "es" : "en");
+      return apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, {
+        recurrenceKind: "daily",
+        title: loc.title,
+        body: loc.text,
+        source: "bcp",
+        state: "live",
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/prayer-feeds", slug, "recurring"] });
+      onClose();
+    },
+    onError: (err: Error) => setError(err.message || "Couldn't add. Try again?"),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+      style={{ background: "rgba(4,12,7,0.6)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col"
+        style={{ background: "#0C1F12", border: "1px solid rgba(46,107,64,0.3)", maxHeight: "82vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.2)" }}>
+          <p className="text-sm font-bold" style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}>
+            {isEs ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+          </p>
+          <button onClick={onClose} aria-label="Close" style={{ color: SAGE, background: "transparent", border: "none", cursor: "pointer" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: "rgba(143,175,150,0.1)" }}>
+            <Search size={15} style={{ color: FAINT_GREEN }} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={isEs ? "Buscar una oración…" : "Search prayers…"}
+              style={{ flex: 1, background: "transparent", color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, border: "none", outline: "none" }}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="px-5 pt-2 text-xs" style={{ color: "#F87171", fontFamily: SPACE_GROTESK }}>{error}</p>
+        )}
+
+        <div className="overflow-y-auto px-5 py-3 flex flex-col gap-4" style={{ WebkitOverflowScrolling: "touch" }}>
+          {[...grouped.entries()].map(([category, prayers]) => (
+            <div key={category}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}>
+                {category}
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {prayers.map((p) => (
+                  <button
+                    key={p.index}
+                    onClick={() => { if (!add.isPending) add.mutate(p.index); }}
+                    disabled={add.isPending}
+                    className="text-left px-3 py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
+                    style={{ background: "rgba(143,175,150,0.08)", border: "1px solid rgba(46,107,64,0.18)", color: WARM_TEXT, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+                  >
+                    <span className="text-sm font-semibold" style={{ display: "block" }}>{p.title}</span>
+                    <span className="text-xs" style={{ color: FAINT_GREEN, display: "block", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {p.text}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {grouped.size === 0 && (
+            <p className="text-sm italic py-4 text-center" style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}>
+              {isEs ? "Ninguna oración coincide." : "No prayers match your search."}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
