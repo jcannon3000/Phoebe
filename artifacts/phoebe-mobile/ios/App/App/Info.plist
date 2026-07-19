@@ -70,6 +70,15 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Phoebe reads your Mindful Minutes from Apple Health so time you spend in meditation or silence — including in apps like Calm or Insight Timer — can count toward your daily contemplation goal.</string>
 
+	<!-- Required by App Store validation whenever the binary references
+	     HealthKit's requestAuthorization(toShare:read:) and carries the
+	     HealthKit entitlement, even though Phoebe requests read-only access
+	     (toShare: []) and never writes. Apple's static analyzer (error 90683)
+	     rejects the upload without this key; the string is never shown to the
+	     user because no write authorization is ever requested. -->
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Phoebe reads your Mindful Minutes from Apple Health to count meditation and silent prayer toward your contemplation goal. It does not write any data to Apple Health.</string>
+
 	<!-- Spotify in-app playback (Listening / audio divina): lets the app detect
 	     and app-remote to the installed Spotify app via the Spotify iOS SDK.
 	     Playback only — never reads listening history. (The matching redirect
