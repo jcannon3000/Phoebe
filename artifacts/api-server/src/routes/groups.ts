@@ -1530,7 +1530,16 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       name: person.name ?? null,
       role: person.role ?? "member",
       inviteToken: generateToken(),
-      joinedAt: new Date(),
+      // Audit #1: an admin-typed email is a PENDING INVITE, not an accepted
+      // membership — leave joinedAt null until the invitee joins via their
+      // invite (the join endpoint stamps it). Previously this stamped joinedAt
+      // immediately, which (a) made someone a full member of a group they never
+      // agreed to join and (b) fanned their open prayers from every OTHER
+      // community + their personal wall onto this admin's wall with no consent
+      // (a prayer-harvesting primitive). Membership TIER is unaffected — the
+      // roster shows them as pending (pending: !joinedAt) and parishGate grants
+      // access by email match. Their prayers surface once they accept.
+      joinedAt: null,
     });
   }
 
@@ -2144,7 +2153,15 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
       usersTable,
       sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
     )
-    .where(eq(groupMembersTable.groupId, group.id));
+    // Audit #1: only ACCEPTED members (joinedAt set by their own join) fan their
+    // prayers onto this wall. A pending admin-typed invite must not pull the
+    // invitee's prayers from their other communities / personal wall here — that
+    // was the prayer-harvesting primitive. Cross-community visibility is
+    // preserved for members who genuinely joined.
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      isNotNull(groupMembersTable.joinedAt),
+    ));
   const memberUserIds = Array.from(
     new Set(
       [
