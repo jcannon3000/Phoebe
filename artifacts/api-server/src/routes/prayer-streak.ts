@@ -23,7 +23,7 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, and, inArray, gte } from "drizzle-orm";
+import { eq, and, inArray, gte, sql } from "drizzle-orm";
 import { db, usersTable, momentUserTokensTable, momentPostsTable, prayerRequestAmensTable, prayerRequestsTable, prayerSessionsTable, breathSessionsTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -64,12 +64,15 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
     const emailLower = u.email.toLowerCase();
 
     // Collect every userToken that belongs to this user across all moments.
+    // Audit #24: scope the read to the caller's rows via the functional index
+    // idx_moment_user_tokens_lower_email (LOWER(email)) instead of pulling every
+    // user's token+email and filtering in JS — the old WHERE-less SELECT was a
+    // full-table scan on this hot path.
     const tokens = await db
-      .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
-      .from(momentUserTokensTable);
-    const myTokens = tokens
-      .filter(t => (t.email || "").toLowerCase() === emailLower)
-      .map(t => t.userToken);
+      .select({ userToken: momentUserTokensTable.userToken })
+      .from(momentUserTokensTable)
+      .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
+    const myTokens = tokens.map(t => t.userToken);
 
     // No tokens = first moment ever = streak 1 after handleDone fires.
     if (myTokens.length === 0) {

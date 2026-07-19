@@ -8,6 +8,7 @@ import {
 import { clearIdbCache } from "@/lib/idbCache";
 import { clearCustomAnchorStorage } from "@/lib/customAnchors";
 import { resetDeviceRuleForLogout } from "@/lib/guestSeed";
+import { clearSpotifyToken } from "@/lib/spotify";
 import { flushRoutineConfig } from "@/lib/routineSync";
 import { applyCachedHomeLayout } from "@/lib/homeLayoutCache";
 
@@ -206,6 +207,10 @@ export function useLogout() {
     // clock → routineSync adopts the server config). (The routine/course flush
     // already ran at the TOP of logout, while the session was still valid.)
     try { resetDeviceRuleForLogout(); } catch { /* ignore */ }
+    // Belt-and-suspenders: explicitly drop the Spotify OAuth token so the next
+    // person on a shared device can't inherit it (audit #19). resetDeviceRuleForLogout's
+    // "phoebe:spotify" prefix already covers this; this is a direct, named call too.
+    try { clearSpotifyToken(); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
     try { await clearIdbCache(); } catch { /* ignore */ }

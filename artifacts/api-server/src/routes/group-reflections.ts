@@ -270,7 +270,8 @@ router.get("/groups/:slug/reflections", requireBeta, async (req, res): Promise<v
     createdAt: groupReflectionsTable.createdAt,
     updatedAt: groupReflectionsTable.updatedAt,
     authorName: usersTable.name,
-    authorEmail: usersTable.email,
+    // Do NOT select the author's email — the client only renders name/avatar,
+    // and app-wide policy is admin-only email exposure (audit finding #7a).
     authorAvatarUrl: usersTable.avatarUrl,
   })
     .from(groupReflectionsTable)
@@ -291,7 +292,7 @@ router.get("/groups/:slug/reflections", requireBeta, async (req, res): Promise<v
     body: groupReflectionCommentsTable.body,
     createdAt: groupReflectionCommentsTable.createdAt,
     authorName: usersTable.name,
-    authorEmail: usersTable.email,
+    // Author email intentionally not selected — admin-only email policy (audit #7a).
     authorAvatarUrl: usersTable.avatarUrl,
   })
     .from(groupReflectionCommentsTable)
@@ -329,7 +330,6 @@ router.get("/groups/:slug/reflections", requireBeta, async (req, res): Promise<v
       id: r.id,
       userId: r.userId,
       authorName: r.authorName,
-      authorEmail: r.authorEmail,
       authorAvatarUrl: r.authorAvatarUrl,
       source: r.source,
       body: r.body,
@@ -340,7 +340,6 @@ router.get("/groups/:slug/reflections", requireBeta, async (req, res): Promise<v
         id: c.id,
         userId: c.userId,
         authorName: c.authorName,
-        authorEmail: c.authorEmail,
         authorAvatarUrl: c.authorAvatarUrl,
         body: c.body,
         createdAt: c.createdAt,
@@ -558,7 +557,7 @@ router.get("/groups/:slug/sunday-reflection", requireBeta, async (req, res): Pro
     createdAt: groupReflectionsTable.createdAt,
     updatedAt: groupReflectionsTable.updatedAt,
     authorName: usersTable.name,
-    authorEmail: usersTable.email,
+    // Author email intentionally not selected — admin-only email policy (audit #7a).
     authorAvatarUrl: usersTable.avatarUrl,
   })
     .from(groupReflectionsTable)
@@ -579,7 +578,7 @@ router.get("/groups/:slug/sunday-reflection", requireBeta, async (req, res): Pro
     body: groupReflectionCommentsTable.body,
     createdAt: groupReflectionCommentsTable.createdAt,
     authorName: usersTable.name,
-    authorEmail: usersTable.email,
+    // Author email intentionally not selected — admin-only email policy (audit #7a).
     authorAvatarUrl: usersTable.avatarUrl,
   })
     .from(groupReflectionCommentsTable)
@@ -610,7 +609,6 @@ router.get("/groups/:slug/sunday-reflection", requireBeta, async (req, res): Pro
       id: r.id,
       userId: r.userId,
       authorName: r.authorName,
-      authorEmail: r.authorEmail,
       authorAvatarUrl: r.authorAvatarUrl,
       source: r.source,
       body: r.body,
@@ -621,7 +619,6 @@ router.get("/groups/:slug/sunday-reflection", requireBeta, async (req, res): Pro
         id: c.id,
         userId: c.userId,
         authorName: c.authorName,
-        authorEmail: c.authorEmail,
         authorAvatarUrl: c.authorAvatarUrl,
         body: c.body,
         createdAt: c.createdAt,

@@ -419,7 +419,12 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
     isCreator,
     members: allMembers.map((m) => ({
       name: m.name ?? m.email.split("@")[0],
-      email: m.email,
+      // Audit finding #7b (privacy): don't leak every member's email to every
+      // token holder. Only the creator's member-management UI needs the email
+      // (to display it and to call the remove-member endpoint); everyone else
+      // just needs the display name + joined state. The `joined` flag is
+      // computed server-side from m.email so no address leaks for non-creators.
+      ...(isCreator ? { email: m.email } : {}),
       isYou: m.userToken === userToken,
       joined: registeredEmails.has(m.email.toLowerCase()),
     })),

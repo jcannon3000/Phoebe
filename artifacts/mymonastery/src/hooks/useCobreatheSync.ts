@@ -233,7 +233,9 @@ export function useCobreatheSync(
       if (!enabled || !u) return;
       const payload: CobreatheSessionMsg = {
         userId: u.id,
-        email: u.email,
+        // Audit #20: don't transmit our email over /ws. The receive side matches
+        // only on userId + fingerprint and no client reads email off the payload,
+        // so sending it was pure over-transmission relying on the server to strip it.
         startEpochMs,
         masterSeed,
         fingerprint: fpRef.current,

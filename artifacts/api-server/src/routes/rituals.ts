@@ -1535,8 +1535,13 @@ router.get("/rituals/:id/connections", async (req, res): Promise<void> => {
   const ritualId = parseInt(req.params.id, 10);
   if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
 
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
+  // Gate on membership like every sibling read on this router. Without it,
+  // diffing this endpoint's output across ritual ids leaks whether a known
+  // contact participates in a stranger's gathering (audit finding #18).
+  const access = await getRitualAccess(ritualId, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can view its connections" }); return; }
+  const ritual = access.ritual;
   const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
   if (!currentUser) { res.status(404).json({ error: "User not found" }); return; }
 

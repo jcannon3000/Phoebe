@@ -2813,7 +2813,16 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
   }
 });
 
-router.post("/prayer-requests/share/:token/amen", async (req, res): Promise<void> => {
+router.post("/prayer-requests/share/:token/amen", rateLimit({
+  // Unauthenticated + client-chosen sessionId: without a cap, a script could
+  // insert unbounded anonymous_amens rows and inflate a share token's
+  // prayedCount. Key by IP (genuine prayers come from many different IPs, so
+  // this only blunts single-source flooding). Generous for real link-sharing.
+  name: "share_amen",
+  max: 40,
+  windowMs: 60 * 60 * 1000,
+  message: "Too many amens from this device. Please try again later.",
+}), async (req, res): Promise<void> => {
   const token = String(req.params.token ?? "").trim();
   if (token.length < 8) { res.status(404).json({ error: "Not found" }); return; }
 

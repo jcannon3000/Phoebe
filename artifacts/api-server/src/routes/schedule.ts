@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { db, ritualsTable, scheduleResponsesTable } from "@workspace/db";
 import { deriveStartDate } from "../lib/scheduleDate";
+import { rateLimit } from "../lib/rate-limit";
 import crypto from "crypto";
 
 const router: IRouter = Router();
@@ -165,8 +166,14 @@ const RespondBody = z.object({
   suggestedTime: z.string().optional(),
 });
 
-router.post("/schedule/:token/respond", async (req, res): Promise<void> => {
-  const { token } = req.params;
+// Audit #22b: this route is unauthenticated and writes attacker-controlled
+// guestName/guestEmail that render into the organizer's calendar view. Cap
+// per-IP request volume so a single client can't flood the responses table.
+router.post(
+  "/schedule/:token/respond",
+  rateLimit({ name: "schedule_respond", max: 30, windowMs: 60 * 60 * 1000 }),
+  async (req, res): Promise<void> => {
+  const token = String(req.params.token ?? "");
   if (!token) {
     res.status(400).json({ error: "Token is required" });
     return;
@@ -194,16 +201,43 @@ router.post("/schedule/:token/respond", async (req, res): Promise<void> => {
         ? `suggest: ${parsed.data.suggestedTime.trim()}`
         : null);
 
-  await db.insert(scheduleResponsesTable).values({
-    ritualId: ritual.id,
-    guestName: parsed.data.guestName.trim(),
-    guestEmail: parsed.data.guestEmail?.trim() ?? null,
-    chosenTime,
-    unavailable: parsed.data.unavailable ? 1 : 0,
-  });
+  const guestName = parsed.data.guestName.trim();
+  const guestEmail = parsed.data.guestEmail?.trim() || null;
+  const unavailable = parsed.data.unavailable ? 1 : 0;
+
+  // Audit #22b: dedup by (ritualId, guestEmail) so a guest re-submitting (or
+  // an attacker replaying) can't spawn unbounded rows in the organizer's view.
+  // No unique constraint exists on the table, so update-existing-or-insert.
+  const [existingResponse] = guestEmail
+    ? await db
+        .select({ id: scheduleResponsesTable.id })
+        .from(scheduleResponsesTable)
+        .where(
+          and(
+            eq(scheduleResponsesTable.ritualId, ritual.id),
+            eq(scheduleResponsesTable.guestEmail, guestEmail),
+          ),
+        )
+    : [];
+
+  if (existingResponse) {
+    await db
+      .update(scheduleResponsesTable)
+      .set({ guestName, chosenTime, unavailable })
+      .where(eq(scheduleResponsesTable.id, existingResponse.id));
+  } else {
+    await db.insert(scheduleResponsesTable).values({
+      ritualId: ritual.id,
+      guestName,
+      guestEmail,
+      chosenTime,
+      unavailable,
+    });
+  }
 
   res.status(201).json({ success: true });
-});
+  },
+);
 
 router.get("/rituals/:id/schedule-responses", async (req, res): Promise<void> => {
   if (!req.user) {

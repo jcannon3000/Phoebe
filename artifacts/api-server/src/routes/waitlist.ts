@@ -48,21 +48,25 @@ router.post("/waitlist", rateLimit({ name: "waitlist_signup", max: 20, windowMs:
   const source = parsed.data.source?.trim() || "homepage";
 
   try {
-    // If they already have a Phoebe account, don't add them to the
-    // waitlist — direct them to sign in instead. Returns 200 (not 400) so
-    // the homepage form can render a friendly "you already have an
-    // account" state without looking like a validation failure.
+    // Privacy (audit #16): this endpoint is unauthenticated, so the response
+    // MUST NOT reveal whether the email already has an account, is already on
+    // the waitlist, or is brand new — otherwise it becomes an account/email
+    // existence oracle for a religious app. All three branches below return
+    // the SAME generic { ok: true } shape and 200 status; only the
+    // server-side write behavior differs.
+
+    // If they already have a Phoebe account, don't add them to the waitlist.
     const [existingUser] = await db.select({ id: usersTable.id })
       .from(usersTable).where(eq(usersTable.email, email));
     if (existingUser) {
-      res.json({ ok: true, alreadyHasAccount: true });
+      res.json({ ok: true });
       return;
     }
 
     const [existing] = await db.select({ id: waitlistTable.id })
       .from(waitlistTable).where(eq(waitlistTable.email, email));
     if (existing) {
-      res.json({ ok: true, alreadyOnList: true });
+      res.json({ ok: true });
       return;
     }
     await db.insert(waitlistTable).values({ email, name, reason, source });
@@ -74,7 +78,7 @@ router.post("/waitlist", rateLimit({ name: "waitlist_signup", max: 20, windowMs:
       console.error("[waitlist] admin notification failed:", err),
     );
 
-    res.json({ ok: true, alreadyOnList: false });
+    res.json({ ok: true });
   } catch (err) {
     console.error("[waitlist] insert failed:", err);
     res.status(500).json({ error: "Couldn't save your spot. Please try again." });

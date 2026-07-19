@@ -8,6 +8,7 @@ import { bustUserCache } from "./routes/auth";
 import { logger } from "./lib/logger";
 import { initSentry, captureError } from "./lib/sentry";
 import { buildCsrfMiddleware } from "./lib/csrf";
+import { perUserRateLimit } from "./lib/rate-limit";
 
 // Initialize Sentry before any Express middleware so errors in cold-
 // start code (DB connect, session store wiring, route registration)
@@ -204,6 +205,16 @@ app.get("/api/time", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({ now: Date.now() });
 });
+
+// Conservative GLOBAL backstop rate limit. The per-route limiters handle the
+// abuse-prone endpoints precisely; this is a fail-open ceiling so a runaway
+// script — or a new endpoint that forgot its own limit — can't hammer the API
+// unbounded. Keyed per USER (falls back to IP for the unauthenticated), so
+// members on a shared network never share a bucket, and set far above any real
+// session's request rate: it only trips on scripted abuse. Registered AFTER
+// passport.session so req.user is populated, and after /api/time so the tiny
+// clock endpoint is never throttled. Fails open on any internal error.
+app.use("/api", perUserRateLimit("global_api", { max: 1000, windowMs: 60_000 }));
 
 app.use("/api", router);
 

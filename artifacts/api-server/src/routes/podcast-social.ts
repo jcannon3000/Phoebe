@@ -32,17 +32,26 @@ const requireAuth: RequestHandler = (req, res, next) => {
   next();
 };
 
+// Snapshot URLs (audio/art) get rendered to the whole community — e.g. the
+// /podcasts recommendations feed shows episodeImageUrl in an <img>. Restrict
+// to http(s) so an attacker can't post a tracking pixel or a javascript:/data:
+// URL that fires for every viewer. (audit finding #14, privacy)
+const httpUrl = z
+  .string()
+  .max(2000)
+  .refine((u) => /^https?:\/\//i.test(u), { message: "Must be an http(s) URL" });
+
 // Episode snapshot the client sends with a listen / recommendation.
 const snapshotSchema = z.object({
   showSlug: z.string().min(1).max(120),
   episodeId: z.string().min(1).max(512),
   episodeTitle: z.string().max(500).optional(),
-  episodeAudioUrl: z.string().max(2000).optional(),
-  episodeImageUrl: z.string().max(2000).optional(),
+  episodeAudioUrl: httpUrl.optional(),
+  episodeImageUrl: httpUrl.optional(),
   durationSeconds: z.number().int().min(0).max(360000).optional(),
   publishedAt: z.string().max(120).optional(),
   showTitle: z.string().max(300).optional(),
-  showArtwork: z.string().max(2000).optional(),
+  showArtwork: httpUrl.optional(),
 });
 
 function snapshotValues(s: z.infer<typeof snapshotSchema>) {

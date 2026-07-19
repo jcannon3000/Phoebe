@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db, contentReportsTable, usersTable, betaUsersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 // Content reporting endpoint — required by App Store Guideline 1.2 for
 // any app with user-generated content. Users can flag a prayer
@@ -25,7 +26,14 @@ const router: IRouter = Router();
 // for forward compatibility, in case we want a per-row Report later.
 const REPORT_KINDS = ["user", "prayer_request", "prayer_word", "letter"] as const;
 
-router.post("/reports", async (req, res): Promise<void> => {
+// Audit finding #22a: any authenticated user (incl. anonymous device
+// users) could POST unbounded reports, flooding the moderation queue.
+// Cap per-user (falling back to IP) at ~20/hour — plenty for a real
+// person flagging content, but it blunts automated spam.
+router.post("/reports", perUserRateLimit("reports_create", {
+  max: 20,
+  windowMs: 60 * 60 * 1000,
+}), async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) {
     res.status(401).json({ error: "Unauthorized" });

@@ -2342,16 +2342,12 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
 
   res.json({ requests });
   } catch (err) {
-    // Surface the real error on this endpoint — the generic
-    // app-level 500 handler obscures what's failing, and this
-    // endpoint has been the subject of repeated "why is it empty /
-    // why does it 500" debugging. The response body exposes the
-    // message so it shows up in the browser directly; the full
-    // stack still goes to the Railway log line.
+    // Log the full error (message + stack) server-side for debugging via
+    // the Railway log line, but return only a generic message to the
+    // client. Audit finding #21: echoing err.message + err.stack into the
+    // 500 body leaks file paths / ORM internals to any authenticated caller.
     console.error("[groups/:slug/prayer-requests] endpoint threw:", err);
-    const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    res.status(500).json({ error: `prayer-requests endpoint failed: ${message}`, stack });
+    res.status(500).json({ error: "Failed to load prayer requests" });
   }
 });
 
@@ -3355,11 +3351,11 @@ router.post("/beta/users", async (req, res): Promise<void> => {
     // (a) FK violation if the admin's own users.id was deleted,
     // (b) UNIQUE collision after a case-mismatched lookup (now
     // patched above), (c) genuine DB outage. We log the full err
-    // server-side and return the message so the admin UI can show
-    // something actionable instead of a generic "Failed."
+    // server-side for debugging but return only a generic message —
+    // audit finding #21: raw err.message leaks ORM/DB internals to the
+    // authenticated caller.
     console.error("POST /api/beta/users error:", err);
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: message || "Couldn't add this pilot user." });
+    res.status(500).json({ error: "Could not add users" });
   }
 });
 

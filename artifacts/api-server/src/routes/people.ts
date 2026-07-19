@@ -70,9 +70,10 @@ router.get("/people", async (req, res): Promise<void> => {
           OR LOWER(${groupMembersTable.email}) = ${ownerEmailLower}`,
     );
   const myGroupIds = Array.from(new Set(myGroupIdRows.map(r => r.groupId)));
+  // Audit finding #8 (privacy): never write emails to operator logs.
+  // Log only the owner id + group ids for empty-garden debugging.
   console.log(
-    `[GET /people] ownerId=${ownerId} email=${ownerEmailLower} ` +
-    `myGroupIds=[${myGroupIds.join(",")}]`,
+    `[GET /people] ownerId=${ownerId} myGroupIds=[${myGroupIds.join(",")}]`,
   );
   if (myGroupIds.length > 0) {
     // Garden = every member of the viewer's groups, excluding
@@ -103,9 +104,11 @@ router.get("/people", async (req, res): Promise<void> => {
         sql`(${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
       ));
+    // Audit finding #8 (privacy): log only non-PII shape of the sample
+    // (presence flags, role, group) — never the actual emails.
     console.log(
       `[GET /people] peerRows=${peerRows.length} ` +
-      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ rowEmail: r.rowEmail, userEmail: r.userEmail, role: r.role, g: r.groupId, j: !!r.joinedAt })))}`,
+      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ hasRowEmail: !!r.rowEmail, hasUserEmail: !!r.userEmail, role: r.role, g: r.groupId, j: !!r.joinedAt })))}`,
     );
     for (const row of peerRows) {
       // Prefer the membership row's email (kept in sync at invite

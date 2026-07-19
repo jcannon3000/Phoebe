@@ -683,7 +683,7 @@ export async function migrate() {
         feast_name TEXT,
         slides_json JSONB NOT NULL,
         assembled_at TIMESTAMPTZ DEFAULT NOW(),
-        assembled_by_user_id INTEGER REFERENCES users(id)
+        assembled_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
       )
     `);
 
@@ -692,7 +692,7 @@ export async function migrate() {
       CREATE TABLE IF NOT EXISTS correspondences (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        created_by_user_id INTEGER REFERENCES users(id),
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         frequency TEXT NOT NULL DEFAULT 'fortnightly',
         group_type TEXT NOT NULL,
         started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -704,7 +704,7 @@ export async function migrate() {
       CREATE TABLE IF NOT EXISTS correspondence_members (
         id SERIAL PRIMARY KEY,
         correspondence_id INTEGER NOT NULL REFERENCES correspondences(id),
-        user_id INTEGER REFERENCES users(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         email TEXT NOT NULL,
         name TEXT,
         invite_token TEXT NOT NULL UNIQUE,
@@ -717,7 +717,7 @@ export async function migrate() {
       CREATE TABLE IF NOT EXISTS letters (
         id SERIAL PRIMARY KEY,
         correspondence_id INTEGER NOT NULL REFERENCES correspondences(id),
-        author_user_id INTEGER REFERENCES users(id),
+        author_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         author_email TEXT NOT NULL,
         author_name TEXT NOT NULL,
         content TEXT NOT NULL,
@@ -733,7 +733,7 @@ export async function migrate() {
       CREATE TABLE IF NOT EXISTS letter_drafts (
         id SERIAL PRIMARY KEY,
         correspondence_id INTEGER NOT NULL REFERENCES correspondences(id),
-        author_user_id INTEGER REFERENCES users(id),
+        author_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         author_email TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
         period_start_date DATE NOT NULL,

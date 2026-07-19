@@ -173,7 +173,10 @@ router.get("/me/garden-week", async (req, res): Promise<void> => {
       db
         .select({ userId: prayerSessionsTable.userId })
         .from(prayerSessionsTable)
-        .where(and(inArray(prayerSessionsTable.userId, gardenIds), gte(prayerSessionsTable.endedAt, sinceUtc))),
+        // Exclude sessions the user marked PRIVATE — a private contemplation sit
+        // must not surface its owner on another member's weekly face rail (audit
+        // finding #13). Mirrors /me/contemplation-sessions + /me/contemplation-companions.
+        .where(and(inArray(prayerSessionsTable.userId, gardenIds), eq(prayerSessionsTable.isPrivate, false), gte(prayerSessionsTable.endedAt, sinceUtc))),
       db
         .select({ userId: breathSessionsTable.userId })
         .from(breathSessionsTable)

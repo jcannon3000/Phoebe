@@ -182,11 +182,12 @@ router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60
       subject: `${organizer} invited you: ${title}`,
       heading: `When can you make it?`,
       intro: `${organizer} is planning "${title}" and would love your availability.`,
-      // Carry the invitee's email in their link so the respond page pre-fills
-      // it and their response is matched back to this invite — otherwise a
-      // guest who responds without re-typing their email is counted a
-      // non-responder and re-nudged.
-      ctaLabel: "Mark your availability", ctaUrl: `${link}?e=${encodeURIComponent(email)}`,
+      // Audit finding #15 (privacy): do NOT put the invitee's raw email in the
+      // link query string — it leaks via browser history, Referer headers,
+      // proxy logs, and link-preview crawlers. There's no per-invitee opaque
+      // token on gather_invitee to swap in, so drop the param entirely; the
+      // respond page collects the email from the guest directly.
+      ctaLabel: "Mark your availability", ctaUrl: link,
     }).catch((err) => console.warn("[gather] invite email failed:", err));
   }
 

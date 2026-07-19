@@ -330,7 +330,11 @@ router.post("/jardin/friends", async (req, res) => {
   if (!user) return res.status(401).json({ error: "Not authenticated" });
   const { username } = req.body as { username?: string };
   if (!username?.trim()) return res.status(400).json({ error: "Username required" });
-  const found = await pool.query(`SELECT id, username, display_name FROM users WHERE LOWER(username)=LOWER($1)`, [username.trim()]);
+  // Audit #17 (privacy): the leaderboard exposes a friend's prayer streak. Scope
+  // the add-by-username lookup to Jardín-enrolled users so you can't target an
+  // arbitrary account across the whole app and read a stranger's devotional
+  // streak — only people already in the Jardín experience are addable.
+  const found = await pool.query(`SELECT id, username, display_name FROM users WHERE LOWER(username)=LOWER($1) AND jardin_enrolled = TRUE`, [username.trim()]);
   if (!found.rows.length) return res.status(404).json({ error: "User not found" });
   const friend = found.rows[0];
   if (friend.id === user.id) return res.status(400).json({ error: "Can't add yourself" });

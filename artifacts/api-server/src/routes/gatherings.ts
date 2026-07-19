@@ -12,6 +12,8 @@ import { eq, and, inArray, or } from "drizzle-orm";
 import { z } from "zod/v4";
 import { parseIcal, normalizeCalendarUrl, type ICalEvent } from "../lib/ical";
 import { assertPublicHttpUrl, safeFetch } from "../lib/ssrfGuard";
+import { getGardenUserIds } from "../lib/garden";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -285,7 +287,10 @@ router.get("/gatherings/:id", async (req, res): Promise<void> => {
 });
 
 // ─── Scheduling: Invite member ────────────────────────────────────────────────
-router.post("/gatherings/:id/members", async (req, res): Promise<void> => {
+router.post("/gatherings/:id/members", perUserRateLimit("gathering_invite", {
+  max: 40, windowMs: 60 * 60 * 1000,
+  message: "You've sent a lot of gathering invites in the last hour. Please try again later.",
+}), async (req, res): Promise<void> => {
   if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
   const userId = (req.user as { id: number }).id;
   const gid = Number(req.params.id);
@@ -297,6 +302,19 @@ router.post("/gatherings/:id/members", async (req, res): Promise<void> => {
 
   const inviteUserId = Number(req.body.userId);
   if (!Number.isFinite(inviteUserId)) { res.status(400).json({ error: "userId required" }); return; }
+
+  // Relationship gate (privacy audit #9). Leader status alone doesn't let you
+  // insert an ARBITRARY userId — without this, iterating userId=1..N harvests
+  // every user's name+avatar (via the member-list read that surfaces them) and
+  // spams strangers' gathering lists. Restrict invitees to the caller's own
+  // connection set (Fellows + co-community members) — the same garden used to
+  // gate prayers-for. A single generic 403 covers both "no such user" and
+  // "not connected" so we don't leak an existence oracle.
+  const gardenIds = await getGardenUserIds(userId);
+  if (!gardenIds.includes(inviteUserId)) {
+    res.status(403).json({ error: "You can only invite someone you're connected to." });
+    return;
+  }
 
   const [member] = await db.insert(gatheringMembersTable).values({
     gatheringId: gid,

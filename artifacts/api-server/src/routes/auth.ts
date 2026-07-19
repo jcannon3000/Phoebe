@@ -12,6 +12,7 @@ import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { getUserAccessTier } from "../lib/parishGate";
 import { PHOEBE_PARISH_ENABLED } from "../lib/parishFlag";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
+import { isSuperAdminUser } from "../lib/superAdmin";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 
@@ -206,7 +207,14 @@ router.get(
 // signed into at the time.)
 const schedulerCallbackURL = callbackURL.replace("/auth/google/callback", "/auth/scheduler/callback");
 
-router.get("/auth/scheduler/setup", (_req, res) => {
+router.get("/auth/scheduler/setup", async (req, res): Promise<void> => {
+  // Audit #23: this route mints Google calendar + gmail.send consent, so it
+  // must not be an open, unauthenticated surface. Require an authenticated
+  // super admin (the operator running the one-time mailbox setup).
+  const userId = (req.user as { id?: number } | undefined)?.id;
+  if (!userId || !(await isSuperAdminUser(userId))) {
+    res.status(403).send("Forbidden."); return;
+  }
   if (!GOOGLE_CONFIGURED) {
     res.status(503).send("Google OAuth not configured."); return;
   }
@@ -227,6 +235,13 @@ router.get("/auth/scheduler/setup", (_req, res) => {
 });
 
 router.get("/auth/scheduler/callback", async (req, res): Promise<void> => {
+  // Audit #23: gate the token exchange behind the same super-admin check as
+  // /setup so an attacker can't drive the OAuth callback (and we never echo
+  // the live refresh_token into an HTML response — see below).
+  const userId = (req.user as { id?: number } | undefined)?.id;
+  if (!userId || !(await isSuperAdminUser(userId))) {
+    res.status(403).send("Forbidden."); return;
+  }
   const code = req.query.code as string;
   if (!code) { res.status(400).send("No code returned from Google."); return; }
 
@@ -244,11 +259,15 @@ router.get("/auth/scheduler/callback", async (req, res): Promise<void> => {
       return;
     }
 
+    // Audit #23: never render the live refresh_token into the HTTP response
+    // (it could leak via history, logs, proxies, or over-the-shoulder). Log it
+    // server-side for the operator to copy from trusted infra logs, and return
+    // a neutral confirmation page.
+    console.log("[scheduler] INVITES_GOOGLE_REFRESH_TOKEN=" + refreshToken);
     res.send(`
       <html><body style="font-family: system-ui; padding: 2rem; max-width: 600px; margin: 0 auto;">
         <h2>✅ Outbound-mail account authorized</h2>
-        <p>Set this as your <code>INVITES_GOOGLE_REFRESH_TOKEN</code> environment variable on Railway:</p>
-        <pre style="background: #f5f5f5; padding: 1rem; border-radius: 8px; word-break: break-all; font-size: 14px;">${refreshToken}</pre>
+        <p>Setup complete. The refresh token has been written to the server logs — copy it from there and set it as your <code>INVITES_GOOGLE_REFRESH_TOKEN</code> environment variable on Railway.</p>
         <p style="color: #666; font-size: 14px;">Once set, Phoebe will send every outbound email (invites, magic links, calendar invitations, letters) from <strong>invites@withphoebe.app</strong>.</p>
       </body></html>
     `);

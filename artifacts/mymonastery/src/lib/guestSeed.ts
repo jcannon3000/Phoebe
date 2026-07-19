@@ -148,6 +148,9 @@ export function resetDeviceRuleForLogout(): void {
       "phoebe:health-",           // Apple Health connect/step flags
       "phoebe:course:",           // course progress (rides rule_config; flushed
                                   // on logout, restored from the server on re-login)
+      "phoebe:spotify",           // Spotify OAuth token/verifier/state (audit #19:
+                                  // otherwise user B inherits user A's Spotify tokens
+                                  // on a shared device)
     ];
     const EXACT = new Set([
       "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:scripture-scope",
