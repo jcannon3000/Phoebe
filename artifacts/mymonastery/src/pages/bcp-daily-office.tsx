@@ -544,23 +544,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       const lp = prev.findIndex((s) => s.type === "lords_prayer");
       if (communal && salIdx < 0 && lp >= 0) {
         setSlideIdx((cur) => {
-          const next = cur >= lp ? cur + 1 : cur;
-          // This is a programmatic re-index to keep the reader on the SAME
-          // content when the salutation splices in from a ⚙ Praying-mode
-          // toggle — NOT a slide turn. Advance the chime's dedupe ref to the
-          // landing index so the slide-turn swell doesn't strike for it.
-          chimedSlideRef.current = next;
-          return next;
+          // Programmatic re-index to keep the reader on the SAME content when
+          // the salutation splices in from a ⚙ Praying-mode toggle — NOT a
+          // slide turn. (The chime keys on the SECTION, which a salutation
+          // splice never changes, so there's nothing to suppress here.)
+          return cur >= lp ? cur + 1 : cur;
         });
         return [...prev.slice(0, lp), buildSalutationSlide(resolvedMode as "morning" | "evening"), ...prev.slice(lp)];
       }
       if (!communal && salIdx >= 0) {
         setSlideIdx((cur) => {
-          const next = cur > salIdx ? cur - 1 : cur;
           // Same: removing the salutation on a Praying-mode toggle re-indexes
-          // to keep the reader in place — suppress the chime for it.
-          chimedSlideRef.current = next;
-          return next;
+          // to keep the reader in place. (Section-keyed chime, so nothing to
+          // suppress.)
+          return cur > salIdx ? cur - 1 : cur;
         });
         return prev.filter((s) => s.type !== "salutation");
       }
@@ -599,10 +596,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
-  // Dedupe guard for the slide-turn chime effect below — keeps a
+  // Dedupe guard for the section-change chime effect below — keeps a
   // background refetch (which can re-run the effect with an unchanged
-  // slideIdx) from re-striking the swell.
-  const chimedSlideRef = useRef<number>(-1);
+  // sectionIndex) from re-striking the swell.
+  const chimedSectionRef = useRef<number>(-1);
   const queryClient = useQueryClient();
   const [, setViewerLocation] = useLocation();
   // Once-per-mount guard so a user who navigates BACK to the
@@ -644,22 +641,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
   }, [slideIdx]);
 
-  // Chapel swell on every slide turn — the same rising open-fifth pad the
-  // Co-Breathe breath plays (playBreathTone). The office used to chime each
-  // turn; the navigation sound was stripped app-wide at one point, and the
-  // owner wants the Co-Breathe swell back on the office slides. Keyed off the
-  // landing slide so the chord climbs 0 → 1 → 2 → 0 … across the deck (the
-  // same octave pattern prayer-mode uses). Fires once the deck first paints
-  // (the opening swell) and on every next/prev/tap/swipe/amen turn. The
-  // dedupe ref keeps a background refetch from re-striking, and the
-  // slides.length gate keeps it quiet until the deck exists. Opening/closing
-  // the ⚙ display sheet leaves slideIdx untouched, so it never chimes.
+  // Chapel swell on each NEW SECTION — the same rising open-fifth pad the
+  // Co-Breathe breath plays (playBreathTone). Owner direction: only sound the
+  // office when the section (and its background photo) changes, not on every
+  // slide turn. `sectionIndex` increments exactly at each section boundary
+  // (psalm/canticle/lesson title + the intercessions), which is also when the
+  // backdrop cross-fades — so keying the chime off it fires once as the reader
+  // crosses into a new section (and once on the opening paint), silent while
+  // they read within a section. The chord climbs 0 → 1 → 2 → 0 … across the
+  // sections. The dedupe ref keeps a background refetch (unchanged sectionIndex)
+  // from re-striking; the slides.length gate keeps it quiet until the deck
+  // exists; opening/closing the ⚙ sheet leaves sectionIndex untouched.
   useEffect(() => {
     if (slides.length === 0) return;
-    if (chimedSlideRef.current === slideIdx) return;
-    chimedSlideRef.current = slideIdx;
-    playBreathTone(slideIdx % 3);
-  }, [slideIdx, slides.length]);
+    if (chimedSectionRef.current === sectionIndex) return;
+    chimedSectionRef.current = sectionIndex;
+    playBreathTone(sectionIndex % 3);
+  }, [sectionIndex, slides.length]);
 
   // Persist progress per-mode/per-day so the dashboard PrayerOfficeCard
   // can render "Continue Morning Devotion →" when the user bails partway.
