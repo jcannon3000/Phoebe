@@ -144,6 +144,33 @@ const RECONCILE_TTL_MS = 60_000;
 const RECONCILE_CACHE_MAX = 50_000;
 const lastReconciledByUser = new Map<number, number>();
 
+// Per-PRACTICE reconcile cooldown (cross-user). The per-user throttle above
+// still let a popular feed/group be reconciled once per minute by EACH of its N
+// members — O(N) full-roster re-reads/min for the SAME practice, i.e. O(N²) for
+// the feed. These guards ensure a given practice is reconciled at most once per
+// TTL across ALL readers; the rest skip. Group- and feed-scoped reconciles are
+// tracked separately so a moment linked to both isn't starved of one. Write
+// paths (join/leave/subscribe/publish) still reconcile synchronously, so this
+// only throttles the read-time freshness safety net. Same bounded-map + prune
+// discipline as lastReconciledByUser.
+const lastReconciledGroupPractice = new Map<number, number>();
+const lastReconciledFeedPractice = new Map<number, number>();
+function practicesDueForReconcile(map: Map<number, number>, ids: number[]): number[] {
+  const nowMs = Date.now();
+  if (map.size > RECONCILE_CACHE_MAX) {
+    const cutoff = nowMs - RECONCILE_TTL_MS;
+    for (const [id, ts] of map) if (ts < cutoff) map.delete(id);
+  }
+  const due: number[] = [];
+  for (const id of ids) {
+    if (nowMs - (map.get(id) ?? 0) > RECONCILE_TTL_MS) {
+      map.set(id, nowMs);
+      due.push(id);
+    }
+  }
+  return due;
+}
+
 function generateToken() {
   return crypto.randomBytes(16).toString("hex");
 }
@@ -1689,7 +1716,10 @@ router.get("/moments", async (req, res): Promise<void> => {
         // than this response. The dedup Set is filled synchronously so the
         // post-pass below still skips these practices.
         for (const id of allPracticeIds) reconciledGroupPracticeIds.add(id);
-        void Promise.all(allPracticeIds.map(id => reconcileGroupPracticeMembers(id)))
+        // Per-practice throttle: only fire for practices no reader has synced
+        // within the TTL, so a shared group isn't re-reconciled once per member.
+        const dueGroup = practicesDueForReconcile(lastReconciledGroupPractice, allPracticeIds);
+        if (dueGroup.length > 0) void Promise.all(dueGroup.map(id => reconcileGroupPracticeMembers(id)))
           .catch(err => console.error("[GET /api/moments] bg group reconcile failed:", err));
       }
 
@@ -1715,7 +1745,8 @@ router.get("/moments", async (req, res): Promise<void> => {
             sql`${sharedMomentsTable.state} != 'archived'`,
           ));
         for (const p of feedPractices) reconciledFeedPracticeIds.add(p.id);
-        void Promise.all(feedPractices.map(p => reconcileFeedPracticeMembers(p.id)))
+        const dueFeed = practicesDueForReconcile(lastReconciledFeedPractice, feedPractices.map(p => p.id));
+        if (dueFeed.length > 0) void Promise.all(dueFeed.map(id => reconcileFeedPracticeMembers(id)))
           .catch(err => console.error("[GET /api/moments] bg feed reconcile failed:", err));
       }
     } catch (err) {
@@ -1837,17 +1868,25 @@ router.get("/moments", async (req, res): Promise<void> => {
     // pre-pass already handled. Gated on the same shouldReconcile flag as
     // the pre-pass so a throttled read does zero reconcile writes.
     if (shouldReconcile) {
-      // Background, like the pre-pass — never block the home GET on member writes.
-      void Promise.all(
+      // Background, like the pre-pass — never block the home GET on member
+      // writes. Same per-practice throttle so the post-pass doesn't re-reconcile
+      // a shared practice another reader just synced.
+      const postGroupIds = practicesDueForReconcile(
+        lastReconciledGroupPractice,
         flatMoments
           .filter(m => m.groupId !== null && m.groupId !== undefined && !reconciledGroupPracticeIds.has(m.id))
-          .map(m => reconcileGroupPracticeMembers(m.id))
-      ).catch(err => console.error("[GET /api/moments] bg post group reconcile failed:", err));
-      void Promise.all(
+          .map(m => m.id),
+      );
+      if (postGroupIds.length > 0) void Promise.all(postGroupIds.map(id => reconcileGroupPracticeMembers(id)))
+        .catch(err => console.error("[GET /api/moments] bg post group reconcile failed:", err));
+      const postFeedIds = practicesDueForReconcile(
+        lastReconciledFeedPractice,
         flatMoments
           .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined && !reconciledFeedPracticeIds.has(m.id))
-          .map(m => reconcileFeedPracticeMembers(m.id))
-      ).catch(err => console.error("[GET /api/moments] bg post feed reconcile failed:", err));
+          .map(m => m.id),
+      );
+      if (postFeedIds.length > 0) void Promise.all(postFeedIds.map(id => reconcileFeedPracticeMembers(id)))
+        .catch(err => console.error("[GET /api/moments] bg post feed reconcile failed:", err));
     }
 
     // Build a set of emails that have actual user accounts (i.e. have signed up).

@@ -1885,9 +1885,10 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   //   2. Third distinct (user, today-in-owner-tz) amen on the request →
   //      "3 people are praying for you today." Once per request per day.
   //
-  // We pull all prior amens for this request before the insert so we
-  // can distinguish "first ever" from "user is back later in the day"
-  // and compute today's distinct-user count without a race.
+  // Before the insert we read (a) the earliest amen ever, (b) the viewer's own
+  // amens, and (c) the last 48h of amens — enough to distinguish "first ever"
+  // from "user is back later in the day" and compute today's distinct-user
+  // count, without loading the request's entire amen history.
   const isOwnerSelfAmen = request.ownerId === sessionUserId;
 
   let firstAmenFire = false;
@@ -1900,33 +1901,53 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   let firstEverAmenWasToday = false;
 
   if (!isOwnerSelfAmen) {
-    const [owner] = await db.select({ timezone: usersTable.timezone })
-      .from(usersTable).where(eq(usersTable.id, request.ownerId));
-    const ownerTz = owner?.timezone || "UTC";
+    // Owner + viewer timezones, the viewer's OWN amens on this request, the
+    // earliest amen ever (indexed asc LIMIT 1), and the last 48h of amens — all
+    // fired concurrently. This replaces a single UNBOUNDED load of every amen
+    // row on the request (which grew without limit on a viral request, on the
+    // per-tap POST path). Each replacement is bounded: the viewer's own rows by
+    // their history; the earliest is one indexed row; and the 48h window fully
+    // covers "today in the owner's tz" (which can't reach further back than
+    // ~38h). The tz math below is byte-for-byte the same, just over these sets.
+    const amenNowMs = Date.now();
+    const [ownerRows, viewerRows, viewerAmenRows, earliestRows, recentAmenRows] = await Promise.all([
+      db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, request.ownerId)),
+      db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, sessionUserId)),
+      db.select({ prayedAt: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(and(
+          eq(prayerRequestAmensTable.requestId, id),
+          eq(prayerRequestAmensTable.userId, sessionUserId),
+        )),
+      db.select({ prayedAt: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(eq(prayerRequestAmensTable.requestId, id))
+        .orderBy(asc(prayerRequestAmensTable.prayedAt))
+        .limit(1),
+      db.select({ userId: prayerRequestAmensTable.userId, prayedAt: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(and(
+          eq(prayerRequestAmensTable.requestId, id),
+          gt(prayerRequestAmensTable.prayedAt, new Date(amenNowMs - 48 * 60 * 60 * 1000)),
+        )),
+    ]);
+
+    const ownerTz = ownerRows[0]?.timezone || "UTC";
     ownerLocalYmd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(new Date());
 
     // The "have I already prayed this today" throttle must be judged on the
     // VIEWER's calendar day — same tz the read (myAmenedToday) uses — or the
     // two disagree across a tz boundary (the throttle blocks the insert while
     // the read still shows "not prayed" → a permanently-uncheckable card).
-    const [viewerRow] = await db.select({ timezone: usersTable.timezone })
-      .from(usersTable).where(eq(usersTable.id, sessionUserId));
-    const viewerTz = viewerRow?.timezone || "UTC";
+    const viewerTz = viewerRows[0]?.timezone || "UTC";
     const viewerYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
-
-    const prior = await db.select({
-      userId: prayerRequestAmensTable.userId,
-      prayedAt: prayerRequestAmensTable.prayedAt,
-    })
-      .from(prayerRequestAmensTable)
-      .where(eq(prayerRequestAmensTable.requestId, id));
 
     // Throttle: skip the insert if this user has already logged an amen on this
     // request today (the viewer's tz). One amen per person per request per day —
     // the client keeps its ✓ regardless; the row just doesn't double-count.
     let myAmensToday = 0;
-    for (const r of prior) {
-      if (r.userId !== sessionUserId || !r.prayedAt) continue;
+    for (const r of viewerAmenRows) {
+      if (!r.prayedAt) continue;
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(r.prayedAt);
       if (ymd === viewerYmd) myAmensToday += 1;
     }
@@ -1936,14 +1957,16 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
       return;
     }
 
-    firstAmenFire = prior.length === 0;
+    // No amen row at all → this insert is the request's first-ever amen.
+    firstAmenFire = earliestRows.length === 0;
 
     // Distinct users who already amened today (in owner's tz) BEFORE
     // this insert. If this insert adds a NEW user-day pair AND the
-    // pre-count was exactly 2, we just hit 3 → fire.
+    // pre-count was exactly 2, we just hit 3 → fire. The 48h window fully
+    // contains the owner's local today, so this set is complete.
     const distinctTodayBefore = new Set<number>();
     let sessionAlreadyToday = false;
-    for (const r of prior) {
+    for (const r of recentAmenRows) {
       if (!r.prayedAt) continue;
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
       if (ymd === ownerLocalYmd) {
@@ -1957,11 +1980,7 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     // to double-tap them with "3 people are praying" the same day.
     // Day two and on, when older amens exist, the third-today push
     // fires as a fresh celebration of the day's care.
-    const earliestPrior = prior.reduce<Date | null>((acc, r) => {
-      if (!r.prayedAt) return acc;
-      if (!acc || r.prayedAt < acc) return r.prayedAt;
-      return acc;
-    }, null);
+    const earliestPrior = earliestRows[0]?.prayedAt ?? null;
     if (earliestPrior) {
       const earliestYmd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(earliestPrior);
       firstEverAmenWasToday = earliestYmd === ownerLocalYmd;
@@ -1975,7 +1994,7 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
       ownerId: request.ownerId,
       ownerTz,
       ownerLocalYmd,
-      priorCount: prior.length,
+      recentAmenCount: recentAmenRows.length,
       distinctTodayBefore: distinctTodayBefore.size,
       sessionAlreadyToday,
       firstEverAmenWasToday,

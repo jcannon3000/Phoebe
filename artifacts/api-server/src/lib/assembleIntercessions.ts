@@ -384,95 +384,8 @@ export async function buildIntercessionSlides(
   // text is identical though, so any future change should land here
   // and in the slide builder above — including excluding the viewer's
   // OWN requests (you don't pray for your own ask in your office/devotion).
-  const gardenIds = await getGardenUserIds(userId);
-  const visibleOwnerIds = gardenIds.filter((id) => id !== userId);
-
-  const requestRows = visibleOwnerIds.length > 0
-    ? await db
-        .select({
-          id: prayerRequestsTable.id,
-          body: prayerRequestsTable.body,
-          ownerId: prayerRequestsTable.ownerId,
-          isAnonymous: prayerRequestsTable.isAnonymous,
-          ownerName: usersTable.name,
-          ownerAvatarUrl: usersTable.avatarUrl,
-        })
-        .from(prayerRequestsTable)
-        .leftJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
-        .where(
-          and(
-            inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
-            eq(prayerRequestsTable.isAnswered, false),
-            isNull(prayerRequestsTable.closedAt),
-            or(
-              isNull(prayerRequestsTable.expiresAt),
-              gt(prayerRequestsTable.expiresAt, new Date()),
-            ),
-            // Parish-scoped pastoral concerns never enter the prayer-
-            // mode slideshow — they're admin-only and live in the
-            // parish concerns inbox.
-            isNull(prayerRequestsTable.parishFeedId),
-            // Directed ("to a fellow") requests are private — never in the office.
-            eq(prayerRequestsTable.directOnly, false),
-          ),
-        )
-        .limit(20)
-    : [];
-
-  const prayersForRows = await db
-    .select({
-      id: prayersForTable.id,
-      prayerText: prayersForTable.prayerText,
-      recipientUserId: prayersForTable.recipientUserId,
-      expiresAt: prayersForTable.expiresAt,
-      recipientName: usersTable.name,
-      recipientAvatarUrl: usersTable.avatarUrl,
-    })
-    .from(prayersForTable)
-    .leftJoin(usersTable, eq(usersTable.id, prayersForTable.recipientUserId))
-    .where(
-      and(
-        eq(prayersForTable.prayerUserId, userId),
-        gt(prayersForTable.expiresAt, new Date()),
-        isNull(prayersForTable.acknowledgedAt),
-      ),
-    )
-    .limit(10);
-
-  const myGroupIds = (
-    await db
-      .select({ groupId: groupMembersTable.groupId })
-      .from(groupMembersTable)
-      .where(eq(groupMembersTable.userId, userId))
-  ).map((r) => r.groupId);
-
-  const circleRows = myGroupIds.length > 0
-    ? await db
-        .select({
-          id: circleIntentionsTable.id,
-          title: circleIntentionsTable.title,
-          groupName: groupsTable.name,
-        })
-        .from(circleIntentionsTable)
-        .leftJoin(groupsTable, eq(groupsTable.id, circleIntentionsTable.groupId))
-        .where(
-          and(
-            inArray(circleIntentionsTable.groupId, myGroupIds),
-            isNull(circleIntentionsTable.archivedAt),
-          ),
-        )
-        .limit(15)
-    : [];
-
-  const feedSubs = await db
-    .select({ feedId: prayerFeedSubscriptionsTable.feedId })
-    .from(prayerFeedSubscriptionsTable)
-    .where(eq(prayerFeedSubscriptionsTable.userId, userId));
-  const subscribedFeedIds = feedSubs.map((s) => s.feedId);
-
-  // Feed intercessions — the flat, ongoing list of every prayer feed
-  // the viewer subscribes to. Newest first, capped so the devotion
-  // stays short. (Feeds used to be day-scheduled; that system was
+  // Feed intercessions row shape — the flat, ongoing list of every prayer feed
+  // the viewer subscribes to. (Feeds used to be day-scheduled; that system was
   // retired — a feed is now just a list of intercessions.)
   type FeedRow = {
     id: number;
@@ -483,32 +396,144 @@ export async function buildIntercessionSlides(
     feedTitle: string | null;
     momentToken: string | null;
   };
-  const feedMomentRows = subscribedFeedIds.length > 0
-    ? await db
-        .select({
-          id: sharedMomentsTable.id,
-          title: sql<string>`coalesce(${sharedMomentsTable.intercessionTopic}, ${sharedMomentsTable.name})`,
-          body: sharedMomentsTable.intercessionFullText,
-          learnMoreUrl: sharedMomentsTable.learnMoreUrl,
-          feedTitle: prayerFeedsTable.title,
-          momentToken: sharedMomentsTable.momentToken,
-        })
-        .from(sharedMomentsTable)
-        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, sharedMomentsTable.prayerFeedId))
-        .where(
-          and(
-            inArray(sharedMomentsTable.prayerFeedId, subscribedFeedIds),
-            eq(sharedMomentsTable.templateType, "intercession"),
-            sql`${sharedMomentsTable.state} <> 'archived'`,
-            // A feed turned "off" (state = paused) contributes nothing to
-            // the office, even for existing subscribers — same full-off
-            // rule as discovery and the /today + /subscribed surfaces.
-            eq(prayerFeedsTable.state, "live"),
-          ),
-        )
-        .orderBy(desc(sharedMomentsTable.createdAt))
-        .limit(6)
-    : [];
+
+  // This block used to run ~11 DB queries strictly SERIALLY on every office
+  // fetch (each waiting for the last). They only have three dependency layers,
+  // so we fire them in three concurrent waves instead — ~11 serial round-trips
+  // → 3 on the office hot path. Behaviour is otherwise identical.
+
+  // Wave 1 — the reads that depend only on userId.
+  const [gardenIds, prayersForRows, myGroupRows, feedSubs, parishRow] = await Promise.all([
+    getGardenUserIds(userId),
+    db
+      .select({
+        id: prayersForTable.id,
+        prayerText: prayersForTable.prayerText,
+        recipientUserId: prayersForTable.recipientUserId,
+        expiresAt: prayersForTable.expiresAt,
+        recipientName: usersTable.name,
+        recipientAvatarUrl: usersTable.avatarUrl,
+      })
+      .from(prayersForTable)
+      .leftJoin(usersTable, eq(usersTable.id, prayersForTable.recipientUserId))
+      .where(
+        and(
+          eq(prayersForTable.prayerUserId, userId),
+          gt(prayersForTable.expiresAt, new Date()),
+          isNull(prayersForTable.acknowledgedAt),
+        ),
+      )
+      .limit(10),
+    db
+      .select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.userId, userId)),
+    db
+      .select({ feedId: prayerFeedSubscriptionsTable.feedId })
+      .from(prayerFeedSubscriptionsTable)
+      .where(eq(prayerFeedSubscriptionsTable.userId, userId)),
+    db
+      .select({
+        id: prayerFeedsTable.id,
+        title: prayerFeedsTable.title,
+        timezone: prayerFeedsTable.timezone,
+      })
+      .from(prayerFeedsTable)
+      .innerJoin(usersTable, eq(usersTable.parishFeedId, prayerFeedsTable.id))
+      .where(and(
+        eq(usersTable.id, userId),
+        eq(prayerFeedsTable.kind, "parish"),
+        eq(prayerFeedsTable.state, "live"),
+      ))
+      .limit(1),
+  ]);
+  const visibleOwnerIds = gardenIds.filter((id) => id !== userId);
+  const myGroupIds = myGroupRows.map((r) => r.groupId);
+  const subscribedFeedIds = feedSubs.map((s) => s.feedId);
+  // Parish intercessions — see the matching block in buildIntercessionsSlide for
+  // the rationale. The two solidarity counts (this-week + today) ride in wave 3.
+  const parish = parishRow[0] ?? null;
+
+  // Wave 2 — reads that depend on wave-1 ids (garden, groups, feed subs, parish).
+  const [requestRows, circleRows, feedMomentRows, parishEntries] = await Promise.all([
+    (async () =>
+      visibleOwnerIds.length > 0
+        ? await db
+            .select({
+              id: prayerRequestsTable.id,
+              body: prayerRequestsTable.body,
+              ownerId: prayerRequestsTable.ownerId,
+              isAnonymous: prayerRequestsTable.isAnonymous,
+              ownerName: usersTable.name,
+              ownerAvatarUrl: usersTable.avatarUrl,
+            })
+            .from(prayerRequestsTable)
+            .leftJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
+            .where(
+              and(
+                inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+                eq(prayerRequestsTable.isAnswered, false),
+                isNull(prayerRequestsTable.closedAt),
+                or(
+                  isNull(prayerRequestsTable.expiresAt),
+                  gt(prayerRequestsTable.expiresAt, new Date()),
+                ),
+                // Parish-scoped pastoral concerns never enter the prayer-mode
+                // slideshow — they're admin-only and live in the parish inbox.
+                isNull(prayerRequestsTable.parishFeedId),
+                // Directed ("to a fellow") requests are private — never in the office.
+                eq(prayerRequestsTable.directOnly, false),
+              ),
+            )
+            .limit(20)
+        : [])(),
+    (async () =>
+      myGroupIds.length > 0
+        ? await db
+            .select({
+              id: circleIntentionsTable.id,
+              title: circleIntentionsTable.title,
+              groupName: groupsTable.name,
+            })
+            .from(circleIntentionsTable)
+            .leftJoin(groupsTable, eq(groupsTable.id, circleIntentionsTable.groupId))
+            .where(
+              and(
+                inArray(circleIntentionsTable.groupId, myGroupIds),
+                isNull(circleIntentionsTable.archivedAt),
+              ),
+            )
+            .limit(15)
+        : [])(),
+    (async () =>
+      subscribedFeedIds.length > 0
+        ? await db
+            .select({
+              id: sharedMomentsTable.id,
+              title: sql<string>`coalesce(${sharedMomentsTable.intercessionTopic}, ${sharedMomentsTable.name})`,
+              body: sharedMomentsTable.intercessionFullText,
+              learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+              feedTitle: prayerFeedsTable.title,
+              momentToken: sharedMomentsTable.momentToken,
+            })
+            .from(sharedMomentsTable)
+            .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, sharedMomentsTable.prayerFeedId))
+            .where(
+              and(
+                inArray(sharedMomentsTable.prayerFeedId, subscribedFeedIds),
+                eq(sharedMomentsTable.templateType, "intercession"),
+                sql`${sharedMomentsTable.state} <> 'archived'`,
+                // A feed turned "off" (state = paused) contributes nothing to the
+                // office, even for existing subscribers — same full-off rule as
+                // discovery and the /today + /subscribed surfaces.
+                eq(prayerFeedsTable.state, "live"),
+              ),
+            )
+            .orderBy(desc(sharedMomentsTable.createdAt))
+            .limit(6)
+        : [])(),
+    parish ? readParishStandingIntercessions(parish.id, parish.timezone) : Promise.resolve([]),
+  ]);
   const feedRows: FeedRow[] = feedMomentRows.map((r, i) => ({
     id: r.id,
     slot: i,
@@ -519,35 +544,13 @@ export async function buildIntercessionSlides(
     momentToken: r.momentToken,
   }));
 
-  // Parish intercessions — see the matching block in
-  // buildIntercessionsSlide for the rationale. We additionally pull
-  // the two solidarity counts (this-week + today) here so each parish
-  // slide can carry them in its metadata; the prayer-mode renderer
-  // shows them as a chip while the parishioner is reading the prayer.
-  const parishRow = await db
-    .select({
-      id: prayerFeedsTable.id,
-      title: prayerFeedsTable.title,
-      timezone: prayerFeedsTable.timezone,
-    })
-    .from(prayerFeedsTable)
-    .innerJoin(usersTable, eq(usersTable.parishFeedId, prayerFeedsTable.id))
-    .where(and(
-      eq(usersTable.id, userId),
-      eq(prayerFeedsTable.kind, "parish"),
-      eq(prayerFeedsTable.state, "live"),
-    ))
-    .limit(1);
-  const parish = parishRow[0] ?? null;
-  const parishEntries = parish
-    ? await readParishStandingIntercessions(parish.id, parish.timezone)
-    : [];
-  const parishWeekCount = parish && parishEntries.length > 0
-    ? await parishionersPrayingCount(parish.id, 24 * 7)
-    : 0;
-  const parishTodayCount = parish && parishEntries.length > 0
-    ? await parishionersPrayingCount(parish.id, 24)
-    : 0;
+  // Wave 3 — the two parish solidarity counts (this-week + today), in parallel.
+  const [parishWeekCount, parishTodayCount] = parish && parishEntries.length > 0
+    ? await Promise.all([
+        parishionersPrayingCount(parish.id, 24 * 7),
+        parishionersPrayingCount(parish.id, 24),
+      ])
+    : [0, 0];
 
   const slides: Slide[] = [];
   const dayKey = cacheDate.toISOString().slice(0, 10);

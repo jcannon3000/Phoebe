@@ -208,12 +208,16 @@ async function loadFeedIntercessions(
   // people praying. A feed intercession is prayed through the ordinary
   // shared-moment check-in path, so moment_posts is the source of truth.
   const momentIds = moments.map((m) => m.id);
-  const checkins = await db
+
+  // Distinct pray-counts per intercession, aggregated IN SQL. This used to
+  // load EVERY check-in row (moment_posts ⋈ tokens, all-time, no limit) for
+  // every intercession into Node and Set-dedupe by email — unbounded work that
+  // grows with a feed's popularity, on a dashboard read path. Now the distinct
+  // count is a single grouped query. Index: moment_posts(moment_id).
+  const countRows = await db
     .select({
       momentId: momentPostsTable.momentId,
-      windowDate: momentPostsTable.windowDate,
-      createdAt: momentPostsTable.createdAt,
-      email: momentUserTokensTable.email,
+      cnt: sql<number>`count(distinct lower(${momentUserTokensTable.email}))`,
     })
     .from(momentPostsTable)
     .innerJoin(
@@ -223,24 +227,41 @@ async function loadFeedIntercessions(
     .where(and(
       inArray(momentPostsTable.momentId, momentIds),
       eq(momentPostsTable.isCheckin, 1),
+    ))
+    .groupBy(momentPostsTable.momentId);
+  const prayCountByMoment = new Map<number, number>(
+    countRows.map((r) => [r.momentId, Number(r.cnt)]),
+  );
+
+  // The VIEWER's own check-ins on these intercessions — bounded by their own
+  // history (at most one row per intercession per day), so no fan-out. Gives
+  // prayedToday / everPrayed / lastPrayedAt without loading everyone's rows.
+  const myCheckins = await db
+    .select({
+      momentId: momentPostsTable.momentId,
+      windowDate: momentPostsTable.windowDate,
+      createdAt: momentPostsTable.createdAt,
+    })
+    .from(momentPostsTable)
+    .innerJoin(
+      momentUserTokensTable,
+      eq(momentUserTokensTable.userToken, momentPostsTable.userToken),
+    )
+    .where(and(
+      inArray(momentPostsTable.momentId, momentIds),
+      eq(momentPostsTable.isCheckin, 1),
+      sql`lower(${momentUserTokensTable.email}) = ${viewerEmail}`,
     ));
 
   const myWindowDates = new Map<number, Set<string>>();
   // Most recent check-in time (epoch ms) by the viewer, per intercession.
   const myLastPrayedAt = new Map<number, number>();
-  const prayerEmails = new Map<number, Set<string>>();
-  for (const c of checkins) {
-    const lc = c.email.toLowerCase();
-    const pe = prayerEmails.get(c.momentId) ?? new Set<string>();
-    pe.add(lc);
-    prayerEmails.set(c.momentId, pe);
-    if (lc === viewerEmail) {
-      const wd = myWindowDates.get(c.momentId) ?? new Set<string>();
-      wd.add(c.windowDate);
-      myWindowDates.set(c.momentId, wd);
-      const t = c.createdAt ? c.createdAt.getTime() : 0;
-      if (t > (myLastPrayedAt.get(c.momentId) ?? 0)) myLastPrayedAt.set(c.momentId, t);
-    }
+  for (const c of myCheckins) {
+    const wd = myWindowDates.get(c.momentId) ?? new Set<string>();
+    wd.add(c.windowDate);
+    myWindowDates.set(c.momentId, wd);
+    const t = c.createdAt ? c.createdAt.getTime() : 0;
+    if (t > (myLastPrayedAt.get(c.momentId) ?? 0)) myLastPrayedAt.set(c.momentId, t);
   }
 
   for (const m of moments) {
@@ -256,7 +277,7 @@ async function loadFeedIntercessions(
       momentToken: m.momentToken,
       createdAt: m.createdAt,
       prayedToday: myWindowDates.get(m.id)?.has(today) ?? false,
-      prayCount: prayerEmails.get(m.id)?.size ?? 0,
+      prayCount: prayCountByMoment.get(m.id) ?? 0,
       everPrayed: (myWindowDates.get(m.id)?.size ?? 0) > 0,
       lastPrayedAt: myLastPrayedAt.get(m.id) ?? null,
     });
