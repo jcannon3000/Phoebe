@@ -940,9 +940,26 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
 
     // The side's practice, for the push copy: the synced routine's per-side
     // level when present, else the flattened reminder pref (office/devotion).
+    //
+    // BUT: the granular rule_config level can be STALE — most commonly the
+    // guest-seed default "psalms" that was pushed once and never overwritten by
+    // the user's real pick. The deliberate reminder pref is the reliable signal
+    // (parish_office_morning_pref: "office" comes ONLY from choosing the full
+    // Daily Office; every other method — psalms, fdd, devotion, contemplation… —
+    // flattens to "devotion"; see PRAY_REMINDER_PREF client-side). So we only
+    // TRUST the granular level when it's CONSISTENT with the pref's family;
+    // otherwise it's stale and we fall back to the pref. This is what stopped an
+    // office user (pref "office") getting a push worded for "Praying the Psalms"
+    // because their rule_config still held the seeded psalms level.
+    const levelPrefFamily = (level: string): "office" | "devotion" =>
+      level === "office" ? "office" : "devotion";
     const sideLevel = (rc: { values?: Record<string, string> } | null, side: "morning" | "evening", pref: string | null): string | null => {
       const v = rc && typeof rc === "object" ? rc.values?.[`phoebe:office:level:${side}`] : undefined;
-      if (typeof v === "string" && v.length > 0 && v !== "ask") return v;
+      if (typeof v === "string" && v.length > 0 && v !== "ask") {
+        if (!pref || pref === "none" || levelPrefFamily(v) === pref) return v;
+        // level contradicts the deliberate pref (e.g. stale "psalms" vs an
+        // "office" pref) → ignore the level, use the pref below.
+      }
       return pref && pref !== "none" ? pref : null;
     };
 
