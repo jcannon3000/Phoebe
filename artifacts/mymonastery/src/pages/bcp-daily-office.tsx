@@ -249,6 +249,35 @@ function buildSalutationSlide(mode: "morning" | "evening"): Slide {
   };
 }
 
+// The Officiant's invitation to the Confession (BCP p. 79 MP / p. 116 EP),
+// spliced before the Confession in communal mode — the bid the BCP appoints for
+// the Officiant, which Phoebe omits when praying alone (you go straight to the
+// confession). One Officiant line, no People response.
+function buildConfessionInvitationSlide(mode: "morning" | "evening"): Slide {
+  const es = !!i18n.language?.startsWith("es");
+  return {
+    id: "confession-invitation",
+    type: "confession_invitation",
+    emoji: "🕊️",
+    eyebrow: es ? "La Confesión" : "The Confession",
+    title: null,
+    content: "",
+    isCallAndResponse: true,
+    callAndResponseLines: [
+      {
+        speaker: "officiant",
+        text: es
+          ? "Confesemos nuestros pecados contra Dios y contra nuestro prójimo."
+          : "Let us confess our sins against God and our neighbor.",
+      },
+    ],
+    bcpReference: mode === "morning" ? "BCP p. 79" : "BCP p. 116",
+    isScrollable: false,
+    scrollHint: null,
+    metadata: {},
+  };
+}
+
 // Parse a 1979 BCP Psalter content blob into a structured list for the
 // renderer. The data file (api-server/src/seeds/bcpPsalter.ts) stores
 // each psalm with:
@@ -564,6 +593,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       return prev;
     });
   }, [communal, canSalute, resolvedMode]);
+  // Mirror the salutation splice for the Confession's Officiant invitation
+  // ("Let us confess our sins against God and our neighbor") — the bid the BCP
+  // appoints for the Officiant, present in communal MP/EP and removed on-my-own.
+  // Only splices when a Confession is actually in this office (it can be turned
+  // off per side), and drops an orphaned invitation if the confession leaves.
+  const canInviteConfession = resolvedMode === "morning" || resolvedMode === "evening";
+  useEffect(() => {
+    if (!canInviteConfession) return;
+    setSlides((prev) => {
+      const invIdx = prev.findIndex((s) => s.type === "confession_invitation");
+      const cf = prev.findIndex((s) => s.type === "confession");
+      if (communal && cf >= 0 && invIdx < 0) {
+        setSlideIdx((cur) => (cur >= cf ? cur + 1 : cur));
+        return [...prev.slice(0, cf), buildConfessionInvitationSlide(resolvedMode as "morning" | "evening"), ...prev.slice(cf)];
+      }
+      if ((!communal || cf < 0) && invIdx >= 0) {
+        setSlideIdx((cur) => (cur > invIdx ? cur - 1 : cur));
+        return prev.filter((s) => s.type !== "confession_invitation");
+      }
+      return prev;
+    });
+  }, [communal, canInviteConfession, resolvedMode]);
   // The chosen photo library: Leaves (default), Planet (the landscape set
   // without the animal photos), or none for Plain (solid dark green below).
   const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;

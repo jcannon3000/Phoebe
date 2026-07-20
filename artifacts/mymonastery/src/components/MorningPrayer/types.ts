@@ -67,6 +67,12 @@ export type SlideType =
   // BCP appoints for group use, omitted when praying alone). Not produced
   // by the server assemblers.
   | "salutation"
+  // The Officiant's invitation to the Confession ("Let us confess our sins
+  // against God and our neighbor.") — spliced in CLIENT-side before the
+  // Confession when Settings → Praying the office is "Together". The BCP has
+  // the Officiant bid the confession; Phoebe omits it when praying alone. Not
+  // produced by the server assemblers.
+  | "confession_invitation"
   | "closing";
 
 export interface CallAndResponseLine {
