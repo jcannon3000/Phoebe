@@ -121,7 +121,7 @@ export default function CommunityRuleSetPage() {
       <div style={wrap}>
         <div>
           <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: SAGE, fontFamily: FONT, marginBottom: 6 }}>
-            Rule ready 📿
+            Rule ready 🕯️
           </p>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>
             Name your community's rule

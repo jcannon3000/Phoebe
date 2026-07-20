@@ -125,7 +125,7 @@ export default function CommunityRuleOfLifePage() {
           className="w-full rounded-2xl mb-3 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
           style={{ background: "rgba(46,107,64,0.16)", color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 15, padding: "14px 20px", border: "1px solid rgba(46,107,64,0.3)" }}
         >
-          📿 Set our community's rule of life →
+          🕯️ Set our community's rule of life →
         </button>
 
         {/* NOT YET PUBLIC (WEEKLY_PLAN_ENABLED) — a checklist of practices the

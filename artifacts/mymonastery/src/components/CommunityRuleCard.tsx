@@ -116,7 +116,7 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
       >
         <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
         <div className="flex-1 px-4 py-3 flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>📿</span>
+          <span className="text-2xl" aria-hidden>🕯️</span>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>Our rule of life</p>
             <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#C8D4C0" }}>
@@ -136,7 +136,7 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
       <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
       <div className="flex-1 px-4 py-3">
         <div className="flex items-start gap-3">
-          <span className="text-2xl" aria-hidden>📿</span>
+          <span className="text-2xl" aria-hidden>🕯️</span>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>Our rule of life</p>
             <p className="text-[14.5px] mt-1 font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
