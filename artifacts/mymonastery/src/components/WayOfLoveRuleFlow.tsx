@@ -59,7 +59,7 @@ import {
   type DefaultOfficeEntry,
 } from "@/lib/officePrefs";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, type WeeklyKind } from "@/lib/weeklyRhythm";
+import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 
 const BG = "#091A10";
 const CREAM = "#F0EDE6";
@@ -1341,7 +1341,9 @@ export default function WayOfLoveRuleFlow({
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
     // Each pick adds a card to the home's "This week" band, logged with a tap.
-    "weekly",
+    // Globally OFF for now (owner) — skip the step while WEEKLY_PRACTICES_ENABLED
+    // is false so the customizer never offers a practice that won't appear.
+    ...(WEEKLY_PRACTICES_ENABLED ? (["weekly"] as Step[]) : []),
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };

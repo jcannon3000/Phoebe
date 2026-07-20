@@ -6,7 +6,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { notificationsSupportedHere } from "@/lib/notifSupport";
-import { getEnabledWeekly, setEnabledWeekly, WEEKLY_ENABLED_EVENT, type WeeklyKind } from "@/lib/weeklyRhythm";
+import { getEnabledWeekly, setEnabledWeekly, WEEKLY_ENABLED_EVENT, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -2130,10 +2130,14 @@ export default function SettingsPage() {
           <HomeDisplaySettings />
         </div>
 
-        {/* ── Weekly practices on/off (all four or nothing) ── */}
-        <div className="mb-8">
-          <WeeklyPracticesSettings />
-        </div>
+        {/* ── Weekly practices on/off (all four or nothing) ──
+            Globally off for now (owner) — hide the whole section so it's not a
+            dead control. Returns when WEEKLY_PRACTICES_ENABLED flips back on. */}
+        {WEEKLY_PRACTICES_ENABLED && (
+          <div className="mb-8">
+            <WeeklyPracticesSettings />
+          </div>
+        )}
 
         {/* ── Reset routine to default ── */}
         <div className="mb-8">

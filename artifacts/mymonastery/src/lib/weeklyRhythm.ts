@@ -198,7 +198,17 @@ const ENABLED_KEY = "phoebe:weekly-practices";
 export const WEEKLY_ENABLED_EVENT = "phoebe:weekly-practices-changed";
 const ALL_KINDS: WeeklyKind[] = WEEKLY_PRACTICES.map((p) => p.kind);
 
+// GLOBAL KILL SWITCH — weekly practices (the home "This week" band: Commune ·
+// Go · Bless · Rest) are turned OFF for everyone for now (owner). Flip to true
+// to bring them back: each user's saved enabled set is left untouched in
+// localStorage, so it returns exactly as they had it. While false,
+// getEnabledWeekly() reports nothing enabled — which hides the band everywhere
+// (WeeklyRhythm, BetaRhythmExtras) since they all derive from it — and the
+// enable UI (settings toggle + customizer "weekly" step) is hidden too.
+export const WEEKLY_PRACTICES_ENABLED = false;
+
 export function getEnabledWeekly(): WeeklyKind[] {
+  if (!WEEKLY_PRACTICES_ENABLED) return [];
   try {
     const raw = localStorage.getItem(ENABLED_KEY);
     if (!raw) return [];
