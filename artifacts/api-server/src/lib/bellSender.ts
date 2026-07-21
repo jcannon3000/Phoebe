@@ -955,12 +955,20 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       level === "office" ? "office" : "devotion";
     const sideLevel = (rc: { values?: Record<string, string> } | null, side: "morning" | "evening", pref: string | null): string | null => {
       const v = rc && typeof rc === "object" ? rc.values?.[`phoebe:office:level:${side}`] : undefined;
+      const hasPref = !!pref && pref !== "none";
       if (typeof v === "string" && v.length > 0 && v !== "ask") {
-        if (!pref || pref === "none" || levelPrefFamily(v) === pref) return v;
-        // level contradicts the deliberate pref (e.g. stale "psalms" vs an
-        // "office" pref) → ignore the level, use the pref below.
+        // ONLY name the granular practice when a deliberate pref corroborates
+        // its family. Without that corroboration the level is unverified — most
+        // often the guest-seed "psalms" that was never overwritten — and naming
+        // it pushes "Praying the Psalms" at someone who set the Daily Office.
+        // (A null pref used to short-circuit straight to the raw level here,
+        // which is how the stale psalms copy kept getting through.)
+        if (hasPref && levelPrefFamily(v) === pref) return v;
       }
-      return pref && pref !== "none" ? pref : null;
+      // No corroboration → fall back to the deliberate pref, or to null, which
+      // gives the neutral "Begin/Close your day in prayer" copy that can never
+      // contradict what the user actually set.
+      return hasPref ? pref : null;
     };
 
     for (const r of rows) {
@@ -972,7 +980,11 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
 
       // Morning side
-      if (r.morningPref !== "none" && r.morningSentDate !== today) {
+      // A NULL pref means the side was never configured — treat it as OFF, the
+      // same way the SQL filter above does (`NULL != 'none'` is NULL, not true).
+      // Without the null check this fired a reminder for a side the user never
+      // turned on, whenever the OTHER side qualified the row.
+      if (r.morningPref && r.morningPref !== "none" && r.morningSentDate !== today) {
         const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
         if (opts.forceNow || isWithinTickWindow(tz, targetTime)) {
           const morningSessions = await db
@@ -1015,7 +1027,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       }
 
       // Evening side
-      if (r.eveningPref !== "none" && r.eveningSentDate !== today) {
+      if (r.eveningPref && r.eveningPref !== "none" && r.eveningSentDate !== today) {
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
         const eveningInWindow = opts.forceNow || isWithinTickWindow(tz, eveningTarget);
         // Diagnostic: on the tick where the evening window matches, record the
