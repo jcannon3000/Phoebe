@@ -9,7 +9,9 @@ import { logger } from "./logger";
 // build). A local structural type avoids needing @types/pg in this
 // package.
 interface MigrateClient {
-  query: (sql: string) => Promise<unknown>;
+  // Params are optional so runOnce can bind its ledger key rather than
+  // interpolating it into SQL; a pg PoolClient satisfies this shape.
+  query: (sql: string, params?: unknown[]) => Promise<{ rowCount?: number | null }>;
   release: () => void;
 }
 
@@ -22,9 +24,47 @@ async function run(client: MigrateClient, sql: string) {
   }
 }
 
+/** Run a ONE-TIME backfill exactly once, ever — recorded in `schema_backfills`.
+ *
+ *  migrate() runs on EVERY boot, so an unguarded `UPDATE … WHERE col = <old>`
+ *  is not a backfill, it is a policy re-imposed on every deploy. The 2026-07-21
+ *  data audit found four of these silently overwriting deliberate user choices:
+ *  a user who turned the Confession off had it switched back on every deploy,
+ *  and likewise for their bell time and bell mute. The comments on all four
+ *  described them as one-time and called them "idempotent" — true in the sense
+ *  that they don't error, false in the sense that matters.
+ *
+ *  Use this for any statement whose intent is "fix the rows that exist TODAY".
+ *  Statements that are genuinely idempotent (CREATE IF NOT EXISTS, ALTER …
+ *  SET DEFAULT, ADD COLUMN IF NOT EXISTS) should keep using `run` directly. */
+export async function runOnce(client: MigrateClient, key: string, sql: string) {
+  try {
+    const seen = await client.query(`SELECT 1 FROM schema_backfills WHERE key = $1`, [key]);
+    if ((seen.rowCount ?? 0) > 0) return;
+    await run(client, sql);
+    await client.query(
+      `INSERT INTO schema_backfills (key) VALUES ($1) ON CONFLICT (key) DO NOTHING`,
+      [key],
+    );
+    logger.info({ key }, "[migrate] one-time backfill applied");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn({ msg, key }, "[migrate] one-time backfill failed");
+  }
+}
+
 export async function migrate() {
   const client = await pool.connect();
   try {
+    // Ledger of one-time backfills already applied — see runOnce above. Created
+    // first so every later backfill can consult it.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_backfills (
+        key TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // ── Core tables ──────────────────────────────────────────────────────────
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_sessions (
@@ -2196,7 +2236,10 @@ export async function migrate() {
     // pastoral hour). Idempotent: re-running this on a DB that's
     // already moved past 07:00 is a no-op since the WHERE clause
     // only catches rows still on the old default.
-    await run(client, `UPDATE users SET daily_bell_time = '09:30' WHERE daily_bell_time = '07:00' OR daily_bell_time IS NULL`);
+    // REMOVED (2026-07-21 data audit): this ran on every boot, so a user who
+    // deliberately chose 07:00 in Settings was moved to 09:30 again on the next
+    // deploy. The comment above called it idempotent — true only for the
+    // IS NULL half. Its one-time work is long done; use runOnce if ever needed.
 
     // Platform-owned feeds: drop NOT NULL on creator_user_id so editorial
     // feeds (phoebe-climate) can exist without a human creator. The
@@ -2288,7 +2331,10 @@ export async function migrate() {
     // bell_enabled=true for everyone currently climate-enrolled — they signed
     // up expecting the push, so we don't want the new gate to silently mute
     // them on the next deploy.
-    await run(client, `UPDATE users SET bell_enabled = true WHERE climate_enrolled = true AND bell_enabled = false`);
+    // REMOVED (2026-07-21 data audit): ran on every boot, so a climate-enrolled
+    // user who muted the bell had it re-enabled on the next deploy — the exact
+    // silent un-muting the comment above set out to avoid, just aimed at the
+    // user's own choice instead. Use runOnce if this is ever needed again.
 
     // Phoebe Climate v2: feed-scoped community intercessions. A
     // shared_moment can now be attached to a prayer_feed instead of a
@@ -2852,7 +2898,11 @@ export async function migrate() {
     // before the flip.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE`);
     await run(client, `ALTER TABLE groups ALTER COLUMN is_public SET DEFAULT TRUE`);
-    await run(client, `UPDATE groups SET is_public = TRUE WHERE is_public = FALSE`);
+    // REMOVED (2026-07-21 data audit): ran on every boot. Inert today only
+    // because nothing sets is_public = false — but it was a landmine: the first
+    // deploy after a "make this community private" control shipped would have
+    // silently flipped every private community public. The defaults above cover
+    // new and legacy rows; use runOnce if a real backfill is ever needed.
     // Last time an admin sent the "How can I pray for you?" community
     // prompt push. Once-per-7-days rate limit enforced server-side. Null
     // = never sent — that's the eligible default.
@@ -3152,7 +3202,13 @@ export async function migrate() {
     //      smaller cohort than the silently-defaulting majority
     //      we're trying to serve.
     await run(client, `ALTER TABLE users ALTER COLUMN bcp_show_confession SET DEFAULT TRUE`);
-    await run(client, `UPDATE users SET bcp_show_confession = TRUE WHERE bcp_show_confession = FALSE`);
+    // The backfill that used to sit here (UPDATE … SET TRUE WHERE FALSE) has
+    // been REMOVED. migrate() runs on every boot, so it wasn't a one-time
+    // backfill — it re-imposed the default on every deploy, switching the
+    // Confession back on for anyone who had deliberately turned it off in
+    // Settings. Its work completed on the first deploy years of boots ago; the
+    // default above is what new rows need. (2026-07-21 data audit. If a
+    // backfill like this is ever needed again, use runOnce.)
 
     // Default prayer level — Settings picker decides which depth the
     // home-screen office card's CTA jumps to. Values: "devotion" (BCP
