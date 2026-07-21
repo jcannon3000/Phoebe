@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from "@t
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
+import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
 import { ApiError, apiRequest } from "@/lib/queryClient";
 import { reportClientError } from "@/lib/reportClientError";
 import { getGuestStepGoal } from "@/lib/guestSeed";
@@ -699,6 +700,10 @@ const rqPersistOptions = {
 // for the app's whole life, so we don't keep its unsubscribe handle.
 attachIdbPersistence(queryClient);
 void hydrateIdbCache(queryClient);
+
+// Retry any prayer-session write that failed while offline. Flushes now, and
+// again whenever the device reconnects or the app comes back to the foreground.
+installSessionOutboxFlush();
 
 // Invalidate every React Query cache when the user taps an iOS push
 // notification. The native shell fires `phoebe:notification-tap` from

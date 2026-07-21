@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { enqueueSession } from "@/lib/sessionOutbox";
 
 /**
  * Track time spent in a prayer surface (slideshow / Office / Devotion)
@@ -139,14 +140,20 @@ export function usePrayerSession(
         // the close to wait on the network. Server drops sessions
         // <5s on its own, so a quick navigate-through doesn't post a
         // useless row.
-        apiRequest("POST", "/api/prayer-sessions", {
+        const sessionBody = {
           surface: surfaceAtCleanup,
           durationSeconds: total,
           slidesCompleted: slidesRef?.current,
           completed: completedRef?.current ?? false,
           startedAt: startedAt.toISOString(),
           endedAt: endedAt.toISOString(),
-        }).catch(() => { /* best-effort */ });
+        };
+        apiRequest("POST", "/api/prayer-sessions", sessionBody).catch(() => {
+          // Offline or flaky: queue it durably rather than dropping it. For an
+          // office this row carries `completed`, which is the ONLY thing that
+          // credits office history — losing it loses the whole office.
+          enqueueSession(sessionBody);
+        });
       }
 
       // Reset for the next mount of the same component instance.

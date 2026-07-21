@@ -11,6 +11,7 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guestSilenceLog";
 import { resolveContemplationSideForSit } from "@/lib/contemplationSideDone";
+import { enqueueSession } from "@/lib/sessionOutbox";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
@@ -440,7 +441,7 @@ export function ContemplationTimer({
     // toggles, we fire a PATCH with the new value rather than waiting
     // for them to dismiss the screen.
     const initialPrivate = isPrivate;
-    apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", {
+    const sessionBody = {
       surface: "contemplation",
       durationSeconds: sat,
       startedAt: startedAt.toISOString(),
@@ -450,7 +451,8 @@ export function ContemplationTimer({
       // attribution applies, so the server can echo done-state to the
       // user's OTHER devices (/me/contemplation-sides-today).
       contemplationSide: resolveContemplationSideForSit() ?? undefined,
-    })
+    };
+    apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", sessionBody)
       .then((data) => {
         if (data?.id) setRecordedSessionId(data.id);
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
@@ -474,7 +476,14 @@ export function ContemplationTimer({
           .then((s) => setDailyTotalSeconds((s?.todaySeconds ?? 0) + (s?.healthMinutesToday ?? 0) * 60))
           .catch(() => { /* non-fatal — the progress line just won't show */ });
       })
-      .catch(() => { /* best-effort — a dropped stat shouldn't break the close */ });
+      .catch(() => {
+        // The sit itself failed to save (offline, flaky network). recordedRef is
+        // already set, so nothing would ever retry it and twenty minutes of
+        // silence would be gone while the closing screen congratulated the user.
+        // Queue it durably instead; the outbox flushes on app start, on
+        // `online`, and on app-active. (2026-07-21 data audit.)
+        enqueueSession(sessionBody);
+      });
 
     // Daily goal (minutes; 0 = off) — fetched in parallel; doesn't depend on
     // the sit being logged.
