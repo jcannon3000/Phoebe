@@ -111,15 +111,32 @@ export function clearIdbCache(): Promise<void> {
 }
 
 /** Restore cached heavy queries into the client once on app start. Skips entries
- *  older than MAX_AGE_MS (let them refetch) and never clobbers fresher data the
- *  current session already fetched. */
+ *  older than MAX_AGE_MS (let them refetch), skips anything cached on an earlier
+ *  LOCAL DAY, and never clobbers fresher data the current session already
+ *  fetched. */
 export function hydrateIdbCache(qc: QueryClient): Promise<void> {
   return idbGetAll().then((entries) => {
     const now = Date.now();
+    // The cached keys are day-scoped but date-less — `/api/office/${side}` and
+    // `/api/prayer-feeds/today` name no date — so within the 24h window an
+    // entry written last night rehydrated this morning and served YESTERDAY's
+    // psalms, lessons and collect as today's office. A refetch is queued behind
+    // it, but it paints wrong first, and offline it stays wrong for the whole
+    // office. Age alone can't express "same calendar day", so compare the day.
+    // (2026-07-21 data audit.)
+    const today = (() => {
+      try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; }
+    })();
     for (const e of entries) {
       if (!e || !Array.isArray(e.key)) continue;
       const updatedAt = e.updatedAt ?? 0;
       if (now - updatedAt > MAX_AGE_MS) continue;
+      if (today) {
+        const cachedDay = (() => {
+          try { return new Date(updatedAt).toLocaleDateString("en-CA"); } catch { return ""; }
+        })();
+        if (cachedDay && cachedDay !== today) continue;
+      }
       const existing = qc.getQueryState(e.key);
       if (existing && existing.dataUpdatedAt >= updatedAt) continue;
       try { qc.setQueryData(e.key, e.data, { updatedAt }); } catch { /* ignore */ }

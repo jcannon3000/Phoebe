@@ -656,8 +656,27 @@ const rqPersister = createSyncStoragePersister({
   key: "phoebe:rq-daily",
   throttleTime: 1000,
 });
+// The persisted cache is scoped to the LOCAL CALENDAR DAY it was written on.
+//
+// Most of the keys above are day-scoped ("did I pray today", this week's grid,
+// today's reflection) but their query keys carry only a timezone, never a date
+// — so a blob written at 9pm Monday rehydrated under the identical key at 7am
+// Tuesday, still inside the 24h maxAge. The home then painted "kept today ✓"
+// and served Monday's reflection as Tuesday's; on a slow or offline morning
+// that is what the user acts on, and it tells them they have already prayed.
+// DayBoundaryRefresh can't save it either — it initialises its "last day" at
+// mount, so a cold boot never observes the crossing. (2026-07-21 data audit.)
+//
+// Passing the local day as the persister's `buster` discards the whole blob on
+// the first open of a new day, which is exactly when stale data is dangerous,
+// while keeping the cold-boot paint within a day. It also covers every
+// day-scoped key automatically, including ones added later.
+const localDayBuster = (() => {
+  try { return new Date().toLocaleDateString("en-CA"); } catch { return "day"; }
+})();
 const rqPersistOptions = {
   persister: rqPersister,
+  buster: localDayBuster,
   maxAge: 24 * 60 * 60 * 1000,
   // Quota guard: if the dehydrated blob ever exceeds the ~5MB localStorage cap,
   // drop the oldest query and retry instead of silently failing to persist (so
