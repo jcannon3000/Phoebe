@@ -29,7 +29,7 @@ import {
   type OfficeFont,
   type OfficePrayingMode,
 } from "@/lib/officeDisplay";
-import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 const WARM_TEXT = "#F0EDE6";
@@ -125,6 +125,8 @@ export function OfficeDisplaySheet({
   const BACKDROPS: Array<{ id: OfficeBackdrop; label: string; swatch: React.ReactNode }> = [
     { id: "leaves", label: "Leaves", swatch: LEAF_PHOTOS.length > 0 ? <img src={LEAF_PHOTOS[0]} alt="" aria-hidden style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span aria-hidden>🍃</span> },
     { id: "planet", label: "Planet", swatch: PLANET_PHOTOS.length > 0 ? <img src={PLANET_PHOTOS[0]} alt="" aria-hidden style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span aria-hidden>🌍</span> },
+    // Water — calm ocean/river imagery paired with a blue-shaded UI (see WATER_THEME_VARS).
+    { id: "water", label: "Water", swatch: WATER_PHOTOS.length > 0 ? <img src={WATER_PHOTOS[0]} alt="" aria-hidden style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span aria-hidden>🌊</span> },
     { id: "plain", label: "Plain", swatch: <div aria-hidden style={{ position: "absolute", inset: 0, background: "#0C1F12" }} /> },
     // Paper — the light mode: a warm letter-writing ground with black ink.
     { id: "paper", label: "Paper", swatch: <div aria-hidden style={{ position: "absolute", inset: 0, background: "#F3ECDC" }} /> },

@@ -41,6 +41,20 @@ export const HOME_LEAF_PHOTOS = (() => {
   return home.length > 0 ? home : LEAF_PHOTOS;
 })();
 
+// The WATER library — calm ocean / river / rain imagery for the office
+// backdrop chooser's "Water" option (paired with a blue-shaded UI theme). Its
+// own bundled set under assets/water; falls back to the leaves if empty.
+export const WATER_PHOTOS = (() => {
+  const water = Object.values(
+    import.meta.glob("@/assets/water/*.{jpg,jpeg,png,avif,webp}", {
+      eager: true,
+      query: "?url",
+      import: "default",
+    }),
+  ) as string[];
+  return water.length > 0 ? water : LEAF_PHOTOS;
+})();
+
 // The ANIMAL photos within the landscape library (matched by their unsplash
 // basename — stable across vite's content-hash suffix). Derived from the
 // owner's curated Pictures/Animals folder. PLANET_PHOTOS below is the

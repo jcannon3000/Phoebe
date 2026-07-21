@@ -15,7 +15,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
@@ -617,7 +617,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, [communal, canInviteConfession, resolvedMode]);
   // The chosen photo library: Leaves (default), Planet (the landscape set
   // without the animal photos), or none for Plain (solid dark green below).
-  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "water" ? WATER_PHOTOS : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
   // Photos behind the whole office / devotion slideshow — holding steady within a
   // section and cross-fading at each section boundary. A per-mount random
   // offset varies which photos a given day draws; reshuffled per backdrop.
@@ -1050,17 +1050,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       : resolvedMode === "compline"
         ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
         : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
+  // The held-breath image + wash follow the chosen backdrop, so a Water user
+  // gets a calm water photo under a blue wash (not the forest splash) all the
+  // way through the load. officeThemeStyle carries the blue token overrides even
+  // on this pre-load early return, which sits outside the main themed deck root.
+  const veilPhoto = display.backdrop === "water" ? (WATER_PHOTOS[0] ?? splashForestPath) : splashForestPath;
   const veilStyle: CSSProperties = {
+    ...officeThemeStyle(display.backdrop, display.font),
     position: "fixed", inset: 0, background: BG, isolation: "isolate",
     display: "flex", flexDirection: "column", alignItems: "center",
     justifyContent: "center", padding: "0 40px", overflow: "hidden",
   };
   const veilInner = (
     <>
-      {/* The same fixed, bundled forest-path leaf photo the splash uses, under a
-          darkened wash so the versicle reads clearly — a held breath into the
-          office, on the same image as the app open. */}
-      <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+      {/* A calm photo under a darkened wash so the versicle reads clearly — a
+          held breath into the office. Follows the backdrop (water for Water). */}
+      <img src={veilPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(var(--ot-green, 46,107,64),0.20) 0%, rgba(var(--ot-green, 46,107,64),0.12) 28%, rgba(var(--ot-green, 46,107,64),0.05) 54%, rgba(var(--ot-green, 46,107,64),0) 82%)" }} />
       <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -1082,8 +1087,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   if (loading) {
     if (alreadyOpenedToday) {
       return (
-        <div style={{ minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+        <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <img src={veilPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
           <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }} />
         </div>

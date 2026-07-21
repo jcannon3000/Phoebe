@@ -42,7 +42,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle } from "@/lib/officeDisplay";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
@@ -4499,7 +4499,7 @@ export default function PrayerModePage() {
   // library follows the reader's backdrop pref: Leaves (default), Planet (the
   // landscape set minus the animals), or none for Plain (the solid base color
   // stands alone). On the prayer slides — closing/blessing keep their look.
-  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "water" ? WATER_PHOTOS : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
   const officePhoto = bgPhotoSet.length > 0 ? bgPhotoSet[index % bgPhotoSet.length]! : null;
 
   return (

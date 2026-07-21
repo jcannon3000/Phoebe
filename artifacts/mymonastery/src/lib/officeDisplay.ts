@@ -8,7 +8,7 @@ import type { CSSProperties } from "react";
 
 export const OFFICE_DISPLAY_EVENT = "phoebe:office-display-changed";
 
-export type OfficeBackdrop = "leaves" | "planet" | "plain" | "paper";
+export type OfficeBackdrop = "leaves" | "planet" | "plain" | "paper" | "water";
 const BACKDROP_KEY = "phoebe:office-backdrop";
 const FONT_KEY = "phoebe:office-font-scale";
 const PRAYING_MODE_KEY = "phoebe:office-praying-mode";
@@ -99,11 +99,50 @@ const PAPER_THEME_VARS: Record<string, string> = {
   "--ot-violet": "94,70,140",
 };
 
+// ── Water (blue) theme ───────────────────────────────────────────────────────
+// A DARK ocean theme paired with the Water backdrop photos: the same token set
+// as Paper, but blue-shaded — the deck's green fallbacks are hue-rotated toward
+// blue at matching lightness, so grounds, the photo wash, frosted cards, and the
+// accents all read blue instead of green while keeping the calm dark feel.
+const WATER_THEME_VARS: Record<string, string> = {
+  // Solid color tokens (deck hex fallbacks were green; these are the blue analogs).
+  "--oh-ink": "#EDF2F6",   // primary text — cool near-white (was #F0EDE6)
+  "--oh-ink2": "#DBE5EE",  // secondary body text
+  "--oh-sage": "#8FADC8",  // muted labels — blue-gray (was sage green)
+  "--oh-fern": "#A0C1DA",  // soft blue text
+  "--oh-green": "#6FA8D6", // accent text — blue (was green)
+  "--oh-pale": "#C6DCEC",
+  "--oh-mist": "#C2D5E6",
+  "--oh-cream": "#D9E0E8", // the "physical book" accents → cool driftwood
+  "--oh-cta": "#2C5C82",   // primary buttons → ocean blue (was green)
+  "--oh-bg": "#0A1826",    // the ground behind the photos — deep ocean
+  "--oh-bg2": "#081320",
+  "--oh-closing": "#0A1826",
+  // RGB triplets (consumed as rgba(var(--ot-x, R,G,B), alpha)).
+  "--ot-green": "46,100,150",   // accent → ocean blue (was 46,107,64)
+  "--ot-sage": "143,172,200",
+  "--ot-deep": "10,24,42",      // frosted card grounds → dark blue
+  "--ot-mist": "194,212,230",
+  "--ot-fern": "160,190,215",
+  "--ot-wash": "8,20,38",       // photo washes / text shadows → dark blue
+  "--ot-wash2": "8,16,32",
+  "--ot-wash3": "6,14,28",
+  "--ot-shadow": "8,24,44",
+  "--ot-card": "16,34,54",
+  "--ot-card2": "20,42,66",
+  "--ot-pale": "178,206,228",
+  "--ot-ink3": "236,240,246",
+  "--ot-mint": "192,220,238",
+  "--ot-brown": "138,150,168",  // warm book accent → cool slate
+  "--ot-violet": "110,110,190", // → cool indigo
+};
+
 /** The style spread every deck root applies: the chosen typeface always, and
- *  the Paper variable set when that backdrop is chosen. */
+ *  the Paper (light) / Water (blue) variable set when that backdrop is chosen. */
 export function officeThemeStyle(backdrop: OfficeBackdrop, font: OfficeFont): CSSProperties {
   const style: Record<string, string> = { "--office-font": OFFICE_FONT_FAMILIES[font] };
   if (backdrop === "paper") Object.assign(style, PAPER_THEME_VARS);
+  else if (backdrop === "water") Object.assign(style, WATER_THEME_VARS);
   return style as CSSProperties;
 }
 
@@ -113,7 +152,7 @@ export const OFFICE_FONT_SCALES = [0.85, 1, 1.15, 1.3] as const;
 export function getOfficeBackdrop(): OfficeBackdrop {
   try {
     const raw = localStorage.getItem(BACKDROP_KEY);
-    if (raw === "planet" || raw === "plain" || raw === "leaves" || raw === "paper") return raw;
+    if (raw === "planet" || raw === "plain" || raw === "leaves" || raw === "paper" || raw === "water") return raw;
   } catch { /* private mode */ }
   return "leaves";
 }
