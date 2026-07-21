@@ -56,12 +56,21 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
      *  the server so the read shows up on the user's other devices too. */
     markRead(): void {
       const ymd = todayLocalISO();
+      // Sync only on the day's FIRST mark. markRead can fire repeatedly for one
+      // practice — paging past the end of a deck re-runs finish(), and several
+      // surfaces mark on both completion and playback — and the psalms tracker's
+      // sync INSERTs a prayer_session, so an unguarded re-mark writes duplicate
+      // rows (observed: six POSTs from one sitting). The server already has the
+      // day stamped after the first call, so skipping is correct for the
+      // reflection trackers too, just less chatty.
+      const alreadySyncedToday = this.getLastReadDay() === ymd;
       try {
         localStorage.setItem(storageKey, ymd);
         window.dispatchEvent(new Event(eventName));
       } catch {
         /* private mode / quota — non-fatal */
       }
+      if (alreadySyncedToday) return;
       // Fire-and-forget; an unauthenticated/offline call just no-ops.
       try { syncRead(ymd); } catch { /* best effort */ }
     },
@@ -82,14 +91,44 @@ const ssjeTracker = makeDailyReadTracker(
   "phoebe:ssje:last-read-day", "phoebe:ssje-read",
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "ssje", ymd }).catch(() => { /* best effort */ }); },
 );
-// Praying the Psalms — local-only done tracker (no server reflection sync; it's
-// a prayer level, not a reflection source). Drives the home Psalms card's done.
+// Praying the Psalms — the done tracker for the psalms office form.
 // SIDE-SCOPED: morning and evening psalms are tracked separately, so praying the
 // morning psalms doesn't mark the evening side done (a user can have psalms on
 // both). Both fire the same event so every listener refreshes.
 export const PSALMS_READ_EVENT = "phoebe:psalms-read";
-const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-read-day", PSALMS_READ_EVENT, () => { /* local-only */ });
-const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => { /* local-only */ });
+
+/** Psalms USED TO BE local-only — the tracker was built with a no-op sync while
+ *  the CAC/FDD/SSJE trackers beside it POSTed. Since guestSeed seeds psalms into
+ *  both sides, that made the DEFAULT practice the one that recorded nothing:
+ *  a month of morning + evening psalms left zero rows on the server, so streak,
+ *  office history, the weekly grid and the parish rollup were all empty, the
+ *  reminder cron never learned the user had prayed, and everything vanished on
+ *  reinstall. (2026-07-21 data audit.)
+ *
+ *  Psalms is one of the three BCP forms a side can take (office / devotion /
+ *  psalms), so it credits that side's office. We deliberately reuse the DEVOTION
+ *  surfaces rather than minting `morning-psalms`: those four surfaces are the
+ *  ones every existing rollup already agrees on (office-history-week, the office
+ *  streak, practice-week, walkProgress), so this counts everywhere with no server
+ *  change and without adding a sixth surface set that disagrees with the other
+ *  five. Which form was actually prayed stays recorded in the routine's per-side
+ *  level. Mirrors markOfficeBookComplete in lib/officeManualLog.ts. */
+function syncPsalmsSession(side: "morning" | "evening"): void {
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60,
+    // Clears the "actually prayed an office" (>=3 slides) filter the community
+    // rollups apply.
+    slidesCompleted: 99,
+    completed: true,
+    startedAt: now.toISOString(),
+    endedAt: now.toISOString(),
+  }).catch(() => { /* best effort — the local flag already credited it today */ });
+}
+
+const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("morning"));
+const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("evening"));
 const psalmsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? psalmsTrackerEvening : psalmsTrackerMorning);
 export function hasPrayedPsalmsToday(side: "morning" | "evening" = "morning"): boolean { return psalmsTrackerFor(side).hasReadToday(); }
 export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); }
