@@ -553,6 +553,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
+  // The held-breath veil's photo fades in once it has actually decoded. Without
+  // this the veil paints its flat background first and the photo POPS in a frame
+  // or two later — the flash on opening the office (worst on Water, whose photos
+  // are larger than the cached forest splash). Declared here, above the deck's
+  // early returns, so the hook order stays stable.
+  const [veilPhotoReady, setVeilPhotoReady] = useState(false);
   // Match the browser toolbar / status bar to the backdrop while the office is
   // open (green default, blue for Water, cream for Paper) — otherwise the top
   // bar keeps the app's default green and clashes with a Water/Paper deck.
@@ -1095,7 +1101,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     <>
       {/* A calm photo under a darkened wash so the versicle reads clearly — a
           held breath into the office. Follows the backdrop (water for Water). */}
-      <img src={veilPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+      <img
+        src={veilPhoto}
+        alt=""
+        aria-hidden
+        decoding="async"
+        onLoad={() => setVeilPhotoReady(true)}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
+      />
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(var(--ot-green, 46,107,64),0.20) 0%, rgba(var(--ot-green, 46,107,64),0.12) 28%, rgba(var(--ot-green, 46,107,64),0.05) 54%, rgba(var(--ot-green, 46,107,64),0) 82%)" }} />
       <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -1118,7 +1131,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (alreadyOpenedToday) {
       return (
         <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <img src={veilPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+          <img
+            src={veilPhoto}
+            alt=""
+            aria-hidden
+            decoding="async"
+            onLoad={() => setVeilPhotoReady(true)}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
+          />
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
           <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }} />
         </div>
