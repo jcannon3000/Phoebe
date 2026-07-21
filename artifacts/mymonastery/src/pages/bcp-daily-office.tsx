@@ -17,7 +17,7 @@ import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
-import { officeThemeStyle } from "@/lib/officeDisplay";
+import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
@@ -553,6 +553,36 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
+  // Match the browser toolbar / status bar to the backdrop while the office is
+  // open (green default, blue for Water, cream for Paper) — otherwise the top
+  // bar keeps the app's default green and clashes with a Water/Paper deck.
+  // Restored to the app default on exit.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? "#102816";
+    meta?.setAttribute("content", themeColorForBackdrop(display.backdrop));
+    return () => { meta?.setAttribute("content", prev); };
+  }, [display.backdrop]);
+  // Desktop: page the office with the left/right arrow keys, mirroring the
+  // tap/swipe navigation (Up/Down keep scrolling long slides). The listener is
+  // bound ONCE here (before the deck's early returns, so hook order is stable)
+  // and calls through keyNavRef, which the render updates below with the current
+  // next()/prev() + whether a sheet is open.
+  const keyNavRef = useRef<{ next: () => void; prev: () => void; blocked: boolean }>({
+    next: () => {}, prev: () => {}, blocked: false,
+  });
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (keyNavRef.current.blocked) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el && el.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); keyNavRef.current.next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); keyNavRef.current.prev(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // Praying TOGETHER (the ⚙ Display sheet's "Praying" row). Only the corporate
   // offices carry the rubrics — the Daily Devotions are explicitly the
   // personal short forms, so they stay label-less either way. isFullOffice
@@ -1250,6 +1280,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     setSlideIdx(prevIdx);
   }
+
+  // Keep the arrow-key handler (bound once above) pointing at the current
+  // next()/prev() and gated while the ⚙ sheet is open. Plain assignment (not a
+  // hook) so it's safe to sit after the deck's early returns.
+  keyNavRef.current = { next, prev, blocked: displayOpen };
 
   // Swipe left → next, swipe right → prev. We check that horizontal
   // movement dominates vertical so we don't hijack scroll gestures on
@@ -2556,7 +2591,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   so the prayer text itself is the centered focus —
                   the proper-name lives in the chrome's date label
                   already, no need to repeat it on the slide. */}
-              {currentSlide.title && currentSlide.type !== "collect" && (
+              {/* Canticles keep only the slim eyebrow (the canticle's name
+                  is already there) — a non-chunked canticle would otherwise
+                  repeat its name as a big headline right above the verses. */}
+              {currentSlide.title && currentSlide.type !== "collect" && currentSlide.type !== "canticle" && (
                 <h2
                   style={{
                     fontSize: 22,

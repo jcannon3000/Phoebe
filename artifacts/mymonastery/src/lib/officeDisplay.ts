@@ -146,6 +146,18 @@ export function officeThemeStyle(backdrop: OfficeBackdrop, font: OfficeFont): CS
   return style as CSSProperties;
 }
 
+// The literal color the browser toolbar / native status bar should paint for a
+// backdrop — the `--oh-bg` ground behind the photos. MUST be a literal hex, not
+// a `var(--oh-bg, …)` string: browsers do NOT resolve CSS variables inside a
+// `<meta name="theme-color">`, so a var() there is ignored and the toolbar keeps
+// the app's default green. Callers set the meta (+ native bar) to this while a
+// themed deck is mounted, then restore on exit.
+export function themeColorForBackdrop(backdrop: OfficeBackdrop): string {
+  if (backdrop === "paper") return PAPER_THEME_VARS["--oh-bg"] ?? "#F3ECDC";
+  if (backdrop === "water") return WATER_THEME_VARS["--oh-bg"] ?? "#0A1826";
+  return "#102816"; // the app's default deep green (matches index.html)
+}
+
 // The stepped text sizes (A− / A+). 1 = today's size.
 export const OFFICE_FONT_SCALES = [0.85, 1, 1.15, 1.3] as const;
 

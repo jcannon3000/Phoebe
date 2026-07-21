@@ -44,7 +44,7 @@ import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
-import { officeThemeStyle } from "@/lib/officeDisplay";
+import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -3895,8 +3895,10 @@ export default function PrayerModePage() {
     body.style.backgroundColor = SLIDE_BG;
     html.style.backgroundColor = SLIDE_BG;
     const meta = document.querySelector('meta[name="theme-color"]');
-    const prevMeta = meta?.getAttribute("content") ?? "var(--oh-bg2, #091A10)";
-    meta?.setAttribute("content", SLIDE_BG);
+    const prevMeta = meta?.getAttribute("content") ?? "#102816";
+    // Literal hex, not SLIDE_BG's var(): browsers ignore CSS var() in a
+    // theme-color meta (only the body/html element styles resolve it).
+    meta?.setAttribute("content", themeColorForBackdrop(display.backdrop));
     // Rising ambient swell — the chapel exhaling as the slideshow opens.
     // First slide always plays the base octave (step 0). Subsequent slide
     // entries cycle to step 1, step 2, then back to 0 — see advance()
@@ -3935,9 +3937,11 @@ export default function PrayerModePage() {
     const phaseBg = phase === "closing" || phase === "blessing" ? "var(--oh-closing, #11291C)" : "var(--oh-bg, #0C1F12)";
     document.body.style.backgroundColor = phaseBg;
     document.documentElement.style.backgroundColor = phaseBg;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", phaseBg);
+    // The meta needs a literal hex (var() is ignored there); backdrop bg is close
+    // enough to the closing tint that one value reads right for both phases.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColorForBackdrop(display.backdrop));
     setNativeStatusBarColor(phaseBg);
-  }, [phase]);
+  }, [phase, display.backdrop]);
 
   // Fade out + navigate to finishHref without showing the closing
   // summary. Used by queue=feed walks: a feed's "Pray the full list"

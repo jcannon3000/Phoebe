@@ -1600,6 +1600,16 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
 
 export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false, onClose, blueShade = false }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number; chromeless?: boolean; onClose?: () => void; blueShade?: boolean }) {
   const { user } = useAuth();
+  // Water home theme: tint the browser toolbar / status bar blue to match the
+  // page (the meta must be a literal hex — CSS var() is ignored there). Restore
+  // the app green when the theme is off / on unmount.
+  useEffect(() => {
+    if (!blueShade) return undefined;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? "#102816";
+    meta?.setAttribute("content", "#0A1826");
+    return () => { meta?.setAttribute("content", prev); };
+  }, [blueShade]);
   // Guest SHAPE — light users get no "+" create FAB (its entries are all
   // full-app prayer features).
   const { isGuest } = useGuestMode();
@@ -1773,13 +1783,28 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           everything in this isolated root; pointer-events:none so it never
           intercepts taps. Modals/drawer paint above it and stay untinted. */}
       {blueShade && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
-            background: "#2E6FB6", mixBlendMode: "color", opacity: 0.55,
-          }}
-        />
+        <>
+          {/* Layer 1 — recolor every hue to a saturated blue (hue+saturation
+              from this wash, luminance kept from below), so greens on cards,
+              buttons, and accents all become blue. */}
+          <div
+            aria-hidden
+            style={{
+              position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
+              background: "#1663DA", mixBlendMode: "color", opacity: 0.9,
+            }}
+          />
+          {/* Layer 2 — a soft-light blue on top adds depth so the frosted cards
+              read as distinct blue panels rather than one flat navy field. */}
+          <div
+            aria-hidden
+            style={{
+              position: "fixed", inset: 0, zIndex: 46, pointerEvents: "none",
+              background: "linear-gradient(180deg, #2B7DE0 0%, #1E5FC8 100%)",
+              mixBlendMode: "soft-light", opacity: 0.5,
+            }}
+          />
+        </>
       )}
     </div>
   );

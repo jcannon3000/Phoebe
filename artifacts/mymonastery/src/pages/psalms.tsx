@@ -7,7 +7,7 @@ import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/l
 import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
-import { officeThemeStyle } from "@/lib/officeDisplay";
+import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
@@ -209,6 +209,14 @@ export default function PsalmsPage() {
   // prefs as the office deck, changed live from the ⚙ sheet.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
+  // Match the browser toolbar / status bar to the backdrop (blue for Water, cream
+  // for Paper) while the psalm deck is open; restore the app green on exit.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? "#102816";
+    meta?.setAttribute("content", themeColorForBackdrop(display.backdrop));
+    return () => { meta?.setAttribute("content", prev); };
+  }, [display.backdrop]);
 
   // A still backdrop, picked once per backdrop choice — Leaves (default),
   // Planet (landscapes minus the animals), or none for Plain (solid green).
@@ -321,6 +329,23 @@ export default function PsalmsPage() {
     if (index > 0) { setIndex((i) => i - 1); return; }
     backToChooser(); // at the first slide → back to the chooser (or out)
   };
+
+  // Desktop: page the psalm slideshow with the left/right arrow keys (only while
+  // reading — not on the intro/chooser/guide), skipped when the ⚙ sheet is open.
+  useEffect(() => {
+    if (step !== "read") return undefined;
+    function onKey(e: KeyboardEvent) {
+      if (displayOpen) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el && el.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); advance(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); back(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, index, slides, displayOpen]);
 
   const eyebrowLabel = office === "evening" ? "The Psalm Appointed For This Evening" : "The Psalm Appointed For This Morning";
   const sourceLabel = cycle === "monthly" ? "From the Monthly Psalter" : "From the Daily Office Lectionary";
