@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
-import { LEAF_PHOTOS, HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, HOME_LEAF_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
+import { useHomeTheme } from "@/lib/homeTheme";
 import { FROST } from "@/lib/frost";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -5605,9 +5606,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // Gate the "Your prayer requests" cards' fade-up on the splash fading, so they
   // cascade in front of the user (not invisibly behind the splash).
   const ownReqSplashCleared = useSplashCleared();
+  // Experimental "Water" home theme (super-admin toggle, Settings). When on, the
+  // home backdrop is a water photo and Layout lays a blue mix-blend wash over
+  // the whole screen (see lib/homeTheme + components/layout.tsx).
+  const homeTheme = useHomeTheme();
   const homeBgPhoto = useMemo(
-    () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
-    [],
+    () => {
+      const set = homeTheme === "water" && WATER_PHOTOS.length > 0
+        ? WATER_PHOTOS
+        : HOME_LEAF_PHOTOS;
+      return set.length > 0 ? set[Math.floor(Math.random() * set.length)]! : null;
+    },
+    [homeTheme],
   );
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -6831,7 +6841,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const userName = user?.name ?? "";
 
   return (
-    <Layout bgPhoto={homeBgPhoto}>
+    <Layout bgPhoto={homeBgPhoto} blueShade={homeTheme === "water"}>
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {

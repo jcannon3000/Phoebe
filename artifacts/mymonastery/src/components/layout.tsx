@@ -1598,7 +1598,7 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
   );
 }
 
-export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false, onClose }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number; chromeless?: boolean; onClose?: () => void }) {
+export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false, onClose, blueShade = false }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number; chromeless?: boolean; onClose?: () => void; blueShade?: boolean }) {
   const { user } = useAuth();
   // Guest SHAPE — light users get no "+" create FAB (its entries are all
   // full-app prayer features).
@@ -1764,6 +1764,23 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           intercession, event) is closed to light users, so they get no dead
           plus button. */}
       {user && !isGuest && <CreateFab />}
+
+      {/* EXPERIMENTAL "Water" home theme (super-admin toggle, see lib/homeTheme).
+          A mix-blend-mode:color wash recolors the whole home's green to blue —
+          hue/saturation from this layer, luminance kept from below — so cards,
+          accents, and the (water) backdrop all read blue without re-theming the
+          dashboard's many hardcoded greens. Last child so it composites over
+          everything in this isolated root; pointer-events:none so it never
+          intercepts taps. Modals/drawer paint above it and stay untinted. */}
+      {blueShade && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
+            background: "#2E6FB6", mixBlendMode: "color", opacity: 0.55,
+          }}
+        />
+      )}
     </div>
   );
 }

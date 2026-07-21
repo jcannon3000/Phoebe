@@ -3,6 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { getHomeTheme, setHomeTheme, type HomeTheme } from "@/lib/homeTheme";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { notificationsSupportedHere } from "@/lib/notifSupport";
@@ -2050,6 +2051,50 @@ function NewsActionsSettings() {
 }
 
 
+// ─── Home theme (EXPERIMENTAL, super-admin only) ────────────────────────────
+// A device-local preview toggle for a "Water" (blue-shaded) home screen. Only
+// super admins see it. See lib/homeTheme + components/layout.tsx (the blue wash)
+// + pages/dashboard.tsx (the water backdrop).
+function HomeThemeSection() {
+  const { user } = useAuth();
+  const [theme, setTheme] = useState<HomeTheme>(() => getHomeTheme());
+  if (!user?.isSuperAdmin) return null;
+  const pick = (next: HomeTheme) => { setTheme(next); setHomeTheme(next); };
+  const options: Array<{ id: HomeTheme; label: string; sub: string }> = [
+    { id: "default", label: "Default", sub: "The green home" },
+    { id: "water", label: "Water", sub: "Blue-shaded, ocean backdrop" },
+  ];
+  return (
+    <div className="mb-8">
+      <SectionHeader label="Home theme (experimental)" />
+      <p className="text-[13px] mb-3" style={{ color: "#8FAF96" }}>
+        Super-admin preview — recolors your home screen. This device only.
+      </p>
+      <div className="flex gap-2">
+        {options.map((o) => {
+          const on = theme === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => pick(o.id)}
+              className="flex-1 rounded-xl px-3 py-3 text-left transition-opacity active:opacity-80"
+              style={{
+                background: on ? "rgba(46,111,182,0.22)" : "rgba(20,42,29,0.30)",
+                border: `1px solid ${on ? "rgba(46,111,182,0.6)" : "rgba(200,212,192,0.18)"}`,
+                cursor: "pointer",
+              }}
+            >
+              <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>{o.label}</p>
+              <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>{o.sub}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Settings Page ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -2124,6 +2169,9 @@ export default function SettingsPage() {
           <div className="mt-8" />
           <OfficePrayingModeSettings />
         </div>
+
+        {/* Experimental home theme — renders only for super admins. */}
+        <HomeThemeSection />
 
         {/* ── Home display — header daily-progress dots on/off ── */}
         <div className="mb-8">
