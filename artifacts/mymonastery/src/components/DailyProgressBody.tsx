@@ -1195,6 +1195,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const doneGapCls = !(upcomingDisplay.length > 0 || heroLeads) ? ""
     : upcomingDisplay.length > 0 ? "mt-4" : "mt-8";
 
+  // Cascade base index for each section — must count the hero card (it leads the
+  // Next list at enterUp(0)), or the Done/Tomorrow sections rise one step early
+  // and overlap the last Next card instead of following it. Matches the haptic
+  // count above so the ticks and the visual cascade stay in the same order.
+  const doneBase = (heroLeads ? 1 : 0) + upcomingDisplay.length;
+  const tomorrowBase = doneBase + (showDoneSection ? completedDisplay.length : 0);
+
   return (
     <div>
       {/* A prayer-requests card leads the whole thing when there's something
@@ -1228,11 +1235,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           home (showDone). */}
       {showDoneSection && (
         <div className={doneGapCls}>
-          <motion.div {...enterUp(upcomingDisplay.length)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
+          <motion.div {...enterUp(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(upcomingDisplay.length + i)}>
-                {renderCard(c, false, tintFor(upcomingDisplay.length + i), blurLand(upcomingDisplay.length + i))}
+              <motion.div key={c.key} {...enterUp(doneBase + i)}>
+                {renderCard(c, false, tintFor(doneBase + i), blurLand(doneBase + i))}
               </motion.div>
             ))}
           </div>
@@ -1243,12 +1250,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           focused on what's left today. Still tappable if you want to do one now. */}
       {showTomorrowSection && (
         <div className={(upcomingDisplay.length > 0 || heroLeads || showDoneSection) ? "mt-8" : ""}>
-          <motion.div {...enterUp(upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0))}>
+          <motion.div {...enterUp(tomorrowBase)}>
             {sectionHeader(t("daily_progress.tomorrow_heading", { defaultValue: "Tomorrow" }))}
           </motion.div>
           <div className="flex flex-col gap-2">
             {tomorrowDisplay.map((c, i) => {
-              const idx = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + i;
+              const idx = tomorrowBase + i;
               return (
                 <motion.div key={c.key} {...enterUp(idx)}>
                   {renderCard(c, false, tintFor(idx), blurLand(idx))}
