@@ -1783,18 +1783,28 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           everything in this isolated root; pointer-events:none so it never
           intercepts taps. Modals/drawer paint above it and stay untinted. */}
       {blueShade && (
-        // Recolor every hue toward the office Water theme's calm, DESATURATED
-        // deep blue (hue+saturation from this wash, luminance kept from below),
-        // so the greens on cards/buttons/accents read blue without going vivid.
-        // A muted overlay + moderate opacity matches the office's quiet navy
-        // rather than a saturated mid-blue.
-        <div
-          aria-hidden
-          style={{
-            position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
-            background: "#33567C", mixBlendMode: "color", opacity: 0.72,
-          }}
-        />
+        <>
+          {/* Recolor every hue toward the office Water theme's calm, DESATURATED
+              deep blue (hue+saturation from this wash, luminance kept from below),
+              so the greens on cards/buttons/accents read blue without going vivid. */}
+          <div
+            aria-hidden
+            style={{
+              position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
+              background: "#33567C", mixBlendMode: "color", opacity: 0.72,
+            }}
+          />
+          {/* Lift the darker accents (buttons, pills) toward a lighter blue.
+              `screen` brightens dark areas far more than already-light text, so
+              the accents lighten while the body copy stays put. */}
+          <div
+            aria-hidden
+            style={{
+              position: "fixed", inset: 0, zIndex: 46, pointerEvents: "none",
+              background: "#5A86BE", mixBlendMode: "screen", opacity: 0.22,
+            }}
+          />
+        </>
       )}
     </div>
   );
