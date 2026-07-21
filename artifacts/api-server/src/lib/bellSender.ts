@@ -938,38 +938,34 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       ))
       .where(sql`(${usersTable.parishOfficeMorningPref} != 'none' OR ${usersTable.parishOfficeEveningPref} != 'none')`);
 
-    // The side's practice, for the push copy: the synced routine's per-side
-    // level when present, else the flattened reminder pref (office/devotion).
+    // THE PUSH NO LONGER NAMES THE PRACTICE. (2026-07-21)
     //
-    // BUT: the granular rule_config level can be STALE — most commonly the
-    // guest-seed default "psalms" that was pushed once and never overwritten by
-    // the user's real pick. The deliberate reminder pref is the reliable signal
-    // (parish_office_morning_pref: "office" comes ONLY from choosing the full
-    // Daily Office; every other method — psalms, fdd, devotion, contemplation… —
-    // flattens to "devotion"; see PRAY_REMINDER_PREF client-side). So we only
-    // TRUST the granular level when it's CONSISTENT with the pref's family;
-    // otherwise it's stale and we fall back to the pref. This is what stopped an
-    // office user (pref "office") getting a push worded for "Praying the Psalms"
-    // because their rule_config still held the seeded psalms level.
-    const levelPrefFamily = (level: string): "office" | "devotion" =>
-      level === "office" ? "office" : "devotion";
-    const sideLevel = (rc: { values?: Record<string, string> } | null, side: "morning" | "evening", pref: string | null): string | null => {
-      const v = rc && typeof rc === "object" ? rc.values?.[`phoebe:office:level:${side}`] : undefined;
-      const hasPref = !!pref && pref !== "none";
-      if (typeof v === "string" && v.length > 0 && v !== "ask") {
-        // ONLY name the granular practice when a deliberate pref corroborates
-        // its family. Without that corroboration the level is unverified — most
-        // often the guest-seed "psalms" that was never overwritten — and naming
-        // it pushes "Praying the Psalms" at someone who set the Daily Office.
-        // (A null pref used to short-circuit straight to the raw level here,
-        // which is how the stale psalms copy kept getting through.)
-        if (hasPref && levelPrefFamily(v) === pref) return v;
-      }
-      // No corroboration → fall back to the deliberate pref, or to null, which
-      // gives the neutral "Begin/Close your day in prayer" copy that can never
-      // contradict what the user actually set.
-      return hasPref ? pref : null;
-    };
+    // It used to, by reconciling two mirrors of the routine — the flattened
+    // pref column and the granular rule_config level — and naming whichever
+    // "corroborated" the other. The 2026-07-21 audit established that BOTH
+    // signals are meaningless for this purpose:
+    //
+    //   • `parish_office_*_pref = "devotion"` is the DB DEFAULT (schema
+    //     users.ts, and migrate.ts backfilled every 'none' row to it), so
+    //     every account starts there without choosing anything.
+    //   • `= "office"` is only an ON/OFF SENTINEL — Settings offers just
+    //     "No reminder" / "Notify me each morning" and writes "office" to
+    //     mean *on* (settings.tsx, office-settings.tsx).
+    //   • the granular level is stale-prone: guestSeed seeds "psalms" into
+    //     both sides, and several routine writers never push an update.
+    //
+    // So a seeded "psalms" sat next to a default "devotion", the two matched
+    // as one family, and users who had set the Daily Office were told
+    // "Praying the Psalms". Two attempted guards failed because they were
+    // built on the false premise above.
+    //
+    // Until the write path is fixed (one helper that updates the pref column
+    // on every setSideLevel, so the level can be trusted outright), we send
+    // the neutral copy: "Begin/Close your day in prayer". It is always true,
+    // and it can never contradict what the user actually set. Passing no
+    // `level` selects that fallback in sendParishOfficeReminderPush; the
+    // per-practice copy map there is intact and returns the moment we have a
+    // trustworthy signal to pass it.
 
     for (const r of rows) {
       const tz = r.parishTimezone || r.userTimezone || "America/New_York";
@@ -1006,7 +1002,6 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
               await sendParishOfficeReminderPush(r.userId, {
                 side: "morning",
                 parishTitle: r.parishTitle,
-                level: sideLevel(r.ruleConfig, "morning", r.morningPref),
               });
               await db
                 .update(usersTable)
@@ -1060,7 +1055,6 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
               await sendParishOfficeReminderPush(r.userId, {
                 side: "evening",
                 parishTitle: r.parishTitle,
-                level: sideLevel(r.ruleConfig, "evening", r.eveningPref),
               });
               logger.info({ userId: r.userId, pref: r.eveningPref }, "[office-reminder] evening push sent");
               await db
