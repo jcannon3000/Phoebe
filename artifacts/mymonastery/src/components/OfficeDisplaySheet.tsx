@@ -177,7 +177,7 @@ export function OfficeDisplaySheet({
                 style={{ width: 44, height: 40, borderRadius: 12, background: "rgba(9,26,16,0.6)", border: `1px solid rgba(46,107,64,0.35)`, color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, cursor: "pointer", opacity: idx === 0 ? 0.4 : 1 }}>
                 A−
               </button>
-              <div className="flex-1 text-center" style={{ color: WARM_TEXT, fontFamily: "Georgia, serif", fontSize: 19 * scale, lineHeight: 1.2 }}>
+              <div className="flex-1 text-center" style={{ color: WARM_TEXT, fontFamily: OFFICE_FONT_FAMILIES[font], fontSize: 19 * scale, lineHeight: 1.2 }}>
                 Be still, and know
               </div>
               <button type="button" onClick={() => step(1)} disabled={idx === scales.length - 1} aria-label="Larger text"
