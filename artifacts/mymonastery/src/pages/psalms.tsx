@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { getPsalmCycle, setPsalmCycle, getSideLevel, type PsalmCycle } from "@/lib/officePrefs";
 import { markPsalmsPrayed } from "@/lib/cacReadState";
-import { LEAF_PHOTOS, PLANET_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle } from "@/lib/officeDisplay";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
@@ -212,7 +212,7 @@ export default function PsalmsPage() {
 
   // A still backdrop, picked once per backdrop choice — Leaves (default),
   // Planet (landscapes minus the animals), or none for Plain (solid green).
-  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
+  const bgPhotoSet = (display.backdrop === "plain" || display.backdrop === "paper") ? [] : display.backdrop === "water" ? WATER_PHOTOS : display.backdrop === "planet" ? PLANET_PHOTOS : LEAF_PHOTOS;
   const leaf = useMemo(
     () => (bgPhotoSet.length > 0 ? bgPhotoSet[Math.floor(Math.random() * bgPhotoSet.length)]! : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
