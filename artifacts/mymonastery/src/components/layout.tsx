@@ -1783,28 +1783,18 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           everything in this isolated root; pointer-events:none so it never
           intercepts taps. Modals/drawer paint above it and stay untinted. */}
       {blueShade && (
-        <>
-          {/* Layer 1 — recolor every hue to a saturated blue (hue+saturation
-              from this wash, luminance kept from below), so greens on cards,
-              buttons, and accents all become blue. */}
-          <div
-            aria-hidden
-            style={{
-              position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
-              background: "#1663DA", mixBlendMode: "color", opacity: 0.9,
-            }}
-          />
-          {/* Layer 2 — a soft-light blue on top adds depth so the frosted cards
-              read as distinct blue panels rather than one flat navy field. */}
-          <div
-            aria-hidden
-            style={{
-              position: "fixed", inset: 0, zIndex: 46, pointerEvents: "none",
-              background: "linear-gradient(180deg, #2B7DE0 0%, #1E5FC8 100%)",
-              mixBlendMode: "soft-light", opacity: 0.5,
-            }}
-          />
-        </>
+        // Recolor every hue toward the office Water theme's calm, DESATURATED
+        // deep blue (hue+saturation from this wash, luminance kept from below),
+        // so the greens on cards/buttons/accents read blue without going vivid.
+        // A muted overlay + moderate opacity matches the office's quiet navy
+        // rather than a saturated mid-blue.
+        <div
+          aria-hidden
+          style={{
+            position: "fixed", inset: 0, zIndex: 45, pointerEvents: "none",
+            background: "#33567C", mixBlendMode: "color", opacity: 0.72,
+          }}
+        />
       )}
     </div>
   );
