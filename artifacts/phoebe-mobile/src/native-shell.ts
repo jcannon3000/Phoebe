@@ -169,15 +169,33 @@ function wireDeepLinks() {
 // yet, brief network blip, backend redeploy in progress, etc.) silently
 // dropped the token forever — and there was no way to ever recover
 // because the listener that owned it was single-shot.
+/** Which native platform this shell is running on, for token registration.
+ *  This used to be hardcoded "ios". On an Android build that made the device
+ *  register itself as an iPhone, so the server routed its reminders to APNs,
+ *  where an FCM token can never be delivered — every notification would fail
+ *  permanently and the token would eventually be retired as dead. The server
+ *  accepts "ios" | "android"; anything else would be rejected by its schema,
+ *  so fall back to "ios" (the only platform shipped before this). */
+function devicePlatform(): "ios" | "android" {
+  try {
+    const p = (window as unknown as { Capacitor?: { getPlatform?: () => string } })
+      .Capacitor?.getPlatform?.();
+    return p === "android" ? "android" : "ios";
+  } catch {
+    return "ios";
+  }
+}
+
 async function postDeviceToken(token: string): Promise<boolean> {
   const ATTEMPTS = 4;
+  const platform = devicePlatform();
   for (let i = 0; i < ATTEMPTS; i++) {
     try {
       const res = await fetch(API_BASE + "/api/push/device-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ token, platform: "ios" }),
+        body: JSON.stringify({ token, platform }),
       });
       if (res.ok) {
         // Stamp success so we don't keep re-POSTing the same token on every

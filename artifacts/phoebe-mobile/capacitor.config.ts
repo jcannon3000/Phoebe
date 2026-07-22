@@ -36,6 +36,18 @@ const config: CapacitorConfig = {
     // the WebView swallow it.
     // (Wired up in Swift via WKUIDelegate; kept here as a documented intent.)
   },
+  // Android-specific configuration. Mirrors the iOS block above: the web
+  // assets ship inside the APK (no `server.url`), and the WebView background
+  // matches Phoebe's dark theme so there's no white flash between the splash
+  // tearing down and the app hydrating.
+  android: {
+    backgroundColor: "#091A10",
+    // Keep the JS bridge on the modern path and let the WebView handle its own
+    // scroll physics, as on iOS.
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
+  },
   plugins: {
     // Route window.fetch through the native HTTP stack so cross-origin
     // requests to withphoebe.app use NSHTTPCookieStorage instead of
