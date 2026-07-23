@@ -414,19 +414,12 @@ export function findBcpPrayer(topic: string): BcpPrayer | undefined {
   );
 }
 
-/** Resolve a prayer's display fields for the active locale. Falls back
- * to the English text when the Spanish translation isn't filled in yet.
+/** Resolve a prayer's display fields. The app is English-only; the `lang`
+ * argument is retained for call-site compatibility but always renders English.
  */
 export function localizeBcpPrayer(
   p: BcpPrayer,
-  lang: string | undefined,
+  _lang?: string | undefined,
 ): { category: string; title: string; text: string } {
-  if (lang?.startsWith("es")) {
-    return {
-      category: BCP_CATEGORY_ES[p.category] ?? p.category,
-      title: p.titleEs || p.title,
-      text: p.textEs || p.text,
-    };
-  }
   return { category: p.category, title: p.title, text: p.text };
 }

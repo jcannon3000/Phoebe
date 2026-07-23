@@ -13,7 +13,6 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, syncMindfulMinutesNow, openHealthApp } from "@/lib/appleHealth";
-import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import {
@@ -243,94 +242,6 @@ function ReminderTimeRow({
 // the reorder / show-hide handles for the rest of the home modules so
 // every home-screen knob lives in one place. The server endpoint
 // (PUT /api/me/feed-first-home) is unchanged; only the surface is.)
-
-// Language toggle — open to EVERYONE, labeled "Beta" in the UI. Phoebe is
-// rolling out a Spanish locale incrementally: the i18n scaffolding + the
-// common keys are translated today, and more surfaces gain Spanish coverage as
-// we wire `t()` through each view (missing keys fall back to English at render
-// time). The toggle persists to `users.locale` via PATCH /api/auth/me/locale
-// and switches i18next + localStorage immediately so the UI flips without
-// waiting for the /me refetch.
-function LanguageSettings() {
-  const { user } = useAuth();
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const save = useMutation({
-    mutationFn: (locale: "en" | "es") =>
-      apiRequest("PATCH", "/api/auth/me/locale", { locale }),
-    onSuccess: (_data, locale) => {
-      // Flip the language in-memory + on disk immediately. LocaleSync will
-      // also reconcile when /api/auth/me refetches, but doing it here
-      // keeps the settings card responsive — the radio fills, the rest of
-      // the visible UI re-renders in the new language on the next tick.
-      try { localStorage.setItem("phoebe:locale", locale); } catch { /* private mode */ }
-      void i18n.changeLanguage(locale);
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    },
-  });
-
-  const current: "en" | "es" = user?.locale ?? "en";
-  // Spanish removed — the app is English-only (owner). Español option dropped.
-  const options: Array<{ value: "en" | "es"; label: string; sub: string }> = [
-    { value: "en", label: t("settings.language_english"), sub: t("settings.language_english_sub") },
-  ];
-
-  return (
-    <>
-      <SectionHeader label={t("settings.language")} />
-      <p
-        className="text-[13px] mb-3"
-        style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
-      >
-        <span
-          className="not-italic text-[9px] font-semibold uppercase rounded-full px-2 py-0.5 mr-1.5 align-middle"
-          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Beta
-        </span>
-        {t("settings.language_blurb")}
-      </p>
-      <SettingsCard>
-        {options.map((opt, i) => {
-          const isSelected = current === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => save.mutate(opt.value)}
-              disabled={save.isPending}
-              className="w-full flex items-center gap-3 py-2.5 text-left disabled:opacity-50"
-              style={{
-                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
-                background: "transparent",
-                cursor: save.isPending ? "wait" : "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-                  background: isSelected ? "#A8C5A0" : "transparent",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                  {opt.label}
-                </p>
-                {opt.sub && (
-                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-                    {opt.sub}
-                  </p>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </SettingsCard>
-    </>
-  );
-}
 
 function WeeklyDigestSettings() {
   const { isBeta } = useBetaStatus();

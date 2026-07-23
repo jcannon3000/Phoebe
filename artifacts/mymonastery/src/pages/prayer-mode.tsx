@@ -1206,7 +1206,7 @@ function SlideContent({
             className="text-[9px] uppercase tracking-[0.14em] mt-3"
             style={{ color: "rgba(var(--ot-sage, 143,175,150),0.3)" }}
           >
-            {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+            From the Book of Common Prayer
           </p>
         </div>
       )}
@@ -1262,7 +1262,7 @@ function SlideContent({
               className="text-[9px] uppercase tracking-[0.14em] mt-3"
               style={{ color: "rgba(var(--ot-sage, 143,175,150),0.3)" }}
             >
-              {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+              From the Book of Common Prayer
             </p>
           )}
         </div>

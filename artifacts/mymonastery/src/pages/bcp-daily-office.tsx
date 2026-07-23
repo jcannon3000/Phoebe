@@ -21,7 +21,6 @@ import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/comp
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
-import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -209,7 +208,7 @@ const SAID_BY: Partial<Record<string, { en: string; es: string }>> = {
   psalm: { en: "Said together", es: "Dicho juntos" },
   psalm_gloria: { en: "Said together", es: "Dicho juntos" },
 };
-const pickLoc = (v: { en: string; es: string }): string => (i18n.language?.startsWith("es") ? v.es : v.en);
+const pickLoc = (v: { en: string; es: string }): string => v.en;
 
 // Communal absolution — the BCP's priest form. Praying alone, the Absolution
 // reads in the lay "us/our" form (a deacon or lay person substitutes them);
@@ -229,19 +228,18 @@ function communalAbsolutionText(content: string): string {
 // Prayer in communal mode — "The Lord be with you" is a dialogue that only
 // exists with a People to answer it.
 function buildSalutationSlide(mode: "morning" | "evening"): Slide {
-  const es = !!i18n.language?.startsWith("es");
   return {
     id: "salutation",
     type: "salutation",
     emoji: "🕊️",
-    eyebrow: es ? "Las Oraciones" : "The Prayers",
+    eyebrow: "The Prayers",
     title: null,
     content: "",
     isCallAndResponse: true,
     callAndResponseLines: [
-      { speaker: "officiant", text: es ? "El Señor sea con ustedes." : "The Lord be with you." },
-      { speaker: "people", text: es ? "Y con tu espíritu." : "And also with you." },
-      { speaker: "officiant", text: es ? "Oremos." : "Let us pray." },
+      { speaker: "officiant", text: "The Lord be with you." },
+      { speaker: "people", text: "And also with you." },
+      { speaker: "officiant", text: "Let us pray." },
     ],
     bcpReference: mode === "morning" ? "BCP p. 97" : "BCP p. 121",
     isScrollable: false,
@@ -255,21 +253,18 @@ function buildSalutationSlide(mode: "morning" | "evening"): Slide {
 // the Officiant, which Phoebe omits when praying alone (you go straight to the
 // confession). One Officiant line, no People response.
 function buildConfessionInvitationSlide(mode: "morning" | "evening"): Slide {
-  const es = !!i18n.language?.startsWith("es");
   return {
     id: "confession-invitation",
     type: "confession_invitation",
     emoji: "🕊️",
-    eyebrow: es ? "La Confesión" : "The Confession",
+    eyebrow: "The Confession",
     title: null,
     content: "",
     isCallAndResponse: true,
     callAndResponseLines: [
       {
         speaker: "officiant",
-        text: es
-          ? "Confesemos nuestros pecados contra Dios y contra nuestro prójimo."
-          : "Let us confess our sins against God and our neighbor.",
+        text: "Let us confess our sins against God and our neighbor.",
       },
     ],
     bcpReference: mode === "morning" ? "BCP p. 79" : "BCP p. 116",
@@ -284,12 +279,11 @@ function buildConfessionInvitationSlide(mode: "morning" | "evening"): Slide {
 // prayer-request feature. The slide itself is a chooser (breathe / silence);
 // the render branch below wires the two paths.
 function buildContemplativePauseSlide(mode: "morning" | "evening" | string): Slide {
-  const es = !!i18n.language?.startsWith("es");
   return {
     id: "contemplative-pause",
     type: "contemplative_pause",
     emoji: "🕊️",
-    eyebrow: es ? "Un momento de quietud" : "A moment of stillness",
+    eyebrow: "A moment of stillness",
     title: null,
     content: "",
     isCallAndResponse: false,
@@ -879,7 +873,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // toggle (Settings → Language) reflects on the next office
         // open without a full page reload. Anything other than "es"
         // resolves to "en" server-side.
-        const locale = i18n.language === "es" ? "es" : "en";
+        const locale = "en";
         const sep = endpoint.includes("?") ? "&" : "?";
         // Per-side confession override (Morning/Evening split) — only full
         // offices have a confession; pass it when this side set one.
@@ -1712,7 +1706,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             padding: "14px 24px",
           }}
         >
-          {i18n.language?.startsWith("es") ? "Comenzar" : "Begin"}
+          Begin
         </button>
       </div>
     );
@@ -2072,16 +2066,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 <>
                   <div aria-hidden className="animate-pulse" style={{ width: 12, height: 12, borderRadius: "50%", background: "rgba(var(--ot-sage, 143,175,150),0.85)" }} />
                   <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 22, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 440, margin: 0 }}>
-                    {i18n.language?.startsWith("es")
-                      ? "Descansa aquí un momento. Cuando estés listo, continúa."
-                      : "Rest here a moment. When you are ready, continue."}
+                    Rest here a moment. When you are ready, continue.
                   </p>
                   <button
                     type="button"
                     onClick={() => { setSilencePauseActive(false); next(); }}
                     style={{ marginTop: 6, padding: "12px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.28)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                   >
-                    {i18n.language?.startsWith("es") ? "Continuar" : "Continue"}
+                    Continue
                   </button>
                 </>
               ) : (
@@ -2090,9 +2082,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     {currentSlide.eyebrow}
                   </p>
                   <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
-                    {i18n.language?.startsWith("es")
-                      ? "Antes de seguir, haz una pausa para orar en el cuerpo — respira, o guarda silencio."
-                      : "Before you go on, pause to pray in the body — take a breath, or keep a moment of silence."}
+                    Before you go on, pause to pray in the body — take a breath, or keep a moment of silence.
                   </p>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
                     <button
@@ -2100,14 +2090,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       onClick={() => setShowCreationBreath(true)}
                       style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      {i18n.language?.startsWith("es") ? "🌿 Respirar" : "🌿 Breathe"}
+                      🌿 Breathe
                     </button>
                     <button
                       type="button"
                       onClick={() => setSilencePauseActive(true)}
                       style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      {i18n.language?.startsWith("es") ? "🕊️ Silencio" : "🕊️ Sit in silence"}
+                      🕊️ Sit in silence
                     </button>
                   </div>
                 </>
@@ -3073,7 +3063,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                         fontFamily: SPACE_GROTESK,
                       }}
                     >
-                      {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+                      From the Book of Common Prayer
                     </p>
                   </div>
                 );
@@ -3843,67 +3833,10 @@ function buildBookSections(slides: Slide[]): BookSection[] {
   return deduped;
 }
 
-// Spanish display strings for the physical-book guide. Keyed by the
-// English source string so the logic in buildBookSections (dedup,
-// suffrages/intercessions placement) keeps comparing English labels;
-// translation happens only at render via gt(). Values are descriptive
-// UI copy (section names, chrome) — NOT copyrighted liturgical text.
-// {name} tokens interpolate via the vars arg.
-const BCP_GUIDE_ES: Record<string, string> = {
-  // Office titles (English source comes from MODE_CONFIG)
-  "Morning Prayer": "Oración Matutina",
-  "Evening Prayer": "Oración Vespertina",
-  Compline: "Completas",
-  "Morning Devotion": "Devoción Matutina",
-  "Early Evening Devotion": "Devoción al Anochecer",
-  // Section labels (must match buildBookSections output exactly)
-  "The Opening Sentence": "La Sentencia de Apertura",
-  "The Confession": "La Confesión",
-  "The Invitatory": "El Invitatorio",
-  "The Psalms Appointed": "Los Salmos Señalados",
-  "The Antiphon": "La Antífona",
-  "First Lesson": "Primera Lectura",
-  "Second Lesson": "Segunda Lectura",
-  "The Gospel": "El Evangelio",
-  "The Canticle": "El Cántico",
-  "The Apostles' Creed": "El Credo de los Apóstoles",
-  "The Lord's Prayer": "El Padrenuestro",
-  "The Suffrages": "Las Súplicas",
-  "The Closing Versicle": "El Versículo de Conclusión",
-  "The Collect of the Day": "La Colecta del Día",
-  "The Collect": "La Colecta",
-  "A Prayer for Mission": "Una Oración por la Misión",
-  "The General Thanksgiving": "La Acción de Gracias General",
-  "The Closing": "La Conclusión",
-  "A Concluding Blessing": "Una Bendición Final",
-  // Chrome
-  "Physical BCP": "BCP físico",
-  "1979 Book of Common Prayer · Rite II": "Libro de Oración Común de 1979 · Rito II",
-  "1979 Book of Common Prayer": "Libro de Oración Común de 1979",
-  "Begin at {page}": "Comienza en {page}",
-  "Read it here instead ↗": "Léela aquí en su lugar ↗",
-  "your Bible": "tu Biblia",
-  "The Intercessions": "Las Intercesiones",
-  "{count} waiting for your prayers — pray them here, then return to your book":
-    "{count} esperan tus oraciones — ora por ellas aquí y luego vuelve a tu libro",
-  "Pray for your people — one at a time, then return to your book":
-    "Ora por tu gente — una a una, y luego vuelve a tu libro",
-  "The Psalter begins at p. 585. Lessons are read from your own Bible.":
-    "El Salterio comienza en la p. 585. Las lecturas se hacen desde tu propia Biblia.",
-  "Log": "Registrar",
-  "🙏 I prayed this office": "🙏 Recé este oficio",
-  "✓ Already logged today — praying it again still counts toward your rhythm.":
-    "✓ Ya registrado hoy — rezarlo de nuevo igual cuenta para tu ritmo.",
-  "Counts toward today's practice — your rhythm, your streak, and the day's reminders.":
-    "Cuenta para la práctica de hoy — tu ritmo, tu racha y los recordatorios del día.",
-};
-
-// Translate a guide string to Spanish when the UI locale is es, else
-// return the English source unchanged. {name} tokens in the string are
-// replaced from vars in both languages.
+// Return the guide string. {name} tokens in the string are replaced from
+// vars. (The app is English-only.)
 function bcpGuideText(en: string, vars?: Record<string, string | number>): string {
-  const isEs = i18n.language?.startsWith("es");
-  let out = (isEs && BCP_GUIDE_ES[en]) || en;
+  let out = en;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       out = out.replace(`{${k}}`, String(v));

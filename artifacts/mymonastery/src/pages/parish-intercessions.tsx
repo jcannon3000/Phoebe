@@ -29,7 +29,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ChevronLeft, BookOpen, Plus, Trash2, X, Search } from "lucide-react";
 import { BCP_PRAYERS, localizeBcpPrayer } from "@/lib/bcp-prayers";
-import i18n from "@/i18n";
 
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const WARM_TEXT = "#F0EDE6";
@@ -428,7 +427,6 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const isEs = !!i18n.language?.startsWith("es");
   const panelRef = useRef<HTMLDivElement>(null);
 
   // A11y: close on Escape and move focus into the dialog on open (keyboard /
@@ -445,19 +443,19 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
     const q = query.trim().toLowerCase();
     const out = new Map<string, Array<{ index: number; title: string; text: string }>>();
     BCP_PRAYERS.forEach((p, index) => {
-      const loc = localizeBcpPrayer(p, isEs ? "es" : "en");
+      const loc = localizeBcpPrayer(p, "en");
       if (q && !loc.title.toLowerCase().includes(q) && !loc.category.toLowerCase().includes(q)) return;
       const list = out.get(loc.category) ?? [];
       list.push({ index, title: loc.title, text: loc.text });
       out.set(loc.category, list);
     });
     return out;
-  }, [query, isEs]);
+  }, [query]);
 
   const add = useMutation({
     mutationFn: (index: number) => {
       const p = BCP_PRAYERS[index]!;
-      const loc = localizeBcpPrayer(p, isEs ? "es" : "en");
+      const loc = localizeBcpPrayer(p, "en");
       return apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, {
         recurrenceKind: "daily",
         title: loc.title,
@@ -483,14 +481,14 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label={isEs ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+        aria-label="From the Book of Common Prayer"
         className="w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col"
         style={{ background: "#0C1F12", border: "1px solid rgba(46,107,64,0.3)", maxHeight: "82vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.2)" }}>
           <p className="text-sm font-bold" style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}>
-            {isEs ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
+            From the Book of Common Prayer
           </p>
           <button onClick={onClose} aria-label="Close" style={{ color: SAGE, background: "transparent", border: "none", cursor: "pointer" }}>
             <X size={18} />
@@ -503,7 +501,7 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={isEs ? "Buscar una oración…" : "Search prayers…"}
+              placeholder="Search prayers…"
               style={{ flex: 1, background: "transparent", color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, border: "none", outline: "none" }}
             />
           </div>
@@ -539,7 +537,7 @@ function BcpPickerModal({ slug, onClose }: { slug: string; onClose: () => void }
           ))}
           {grouped.size === 0 && (
             <p className="text-sm italic py-4 text-center" style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}>
-              {isEs ? "Ninguna oración coincide." : "No prayers match your search."}
+              No prayers match your search.
             </p>
           )}
         </div>

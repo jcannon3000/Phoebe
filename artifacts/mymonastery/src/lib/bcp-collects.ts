@@ -200,19 +200,12 @@ export const BCP_COLLECTS: BcpCollect[] = [
   },
 ];
 
-/** Resolve a collect's display fields for the active locale. Falls
- * back to English when the Spanish translation isn't filled in yet.
+/** Resolve a collect's display fields. The app is English-only; the `lang`
+ * argument is retained for call-site compatibility but always renders English.
  */
 export function localizeBcpCollect(
   c: BcpCollect,
-  lang: string | undefined,
+  _lang?: string | undefined,
 ): { category: string; title: string; text: string } {
-  if (lang?.startsWith("es")) {
-    return {
-      category: BCP_COLLECT_CATEGORY_ES[c.category] ?? c.category,
-      title: c.titleEs || c.title,
-      text: c.textEs || c.text,
-    };
-  }
   return { category: c.category, title: c.title, text: c.text };
 }
