@@ -174,21 +174,13 @@ export default function PsalmsPage() {
     queryFn: () => apiRequest("GET", "/api/podcast/scripture-day-by-day/today"),
     staleTime: 30 * 60_000,
   });
-  const scriptureAlignQ = useQuery<{ status: string; sections: Array<{ id: string; title: string | null; startSeconds: number; endSeconds: number | null }> }>({
-    queryKey: ["/api/podcast/scripture/timestamps"],
-    queryFn: () => apiRequest("GET", "/api/podcast/scripture/timestamps"),
-    staleTime: 5 * 60_000,
-    refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 8000; },
-  });
-  // The podcast psalm segment, but only when it matches a psalm appointed today.
-  const psalmSeg = useMemo(() => {
-    const seg = (scriptureAlignQ.data?.sections ?? []).find((s) => s.id === "psalm");
-    if (!seg || !scriptureEpisodeQ.data?.audioUrl) return null;
-    const podcastNums = psalmNumbersFromCitation(seg.title ?? "");
-    const dayNums = (data?.psalms ?? []).map((p) => p.number);
-    return dayNums.some((n) => podcastNums.includes(n)) ? seg : null;
-  }, [scriptureAlignQ.data, scriptureEpisodeQ.data, data]);
-  const canListen = !!psalmSeg;
+  // The psalm-audio "Listen" relied on the scripture-alignment timestamps,
+  // which were removed with the Listen-to-Scripture feature (and its
+  // transcription automation). With no alignment there's no psalm segment, so
+  // the Listen affordance stays off — and we no longer poll the (deleted)
+  // timestamps endpoint.
+  const psalmSeg: { id: string; title: string | null; startSeconds: number; endSeconds: number | null } | null = null;
+  const canListen = false;
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
   const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
@@ -293,27 +285,6 @@ export default function PsalmsPage() {
   };
   const beginFromIntro = () => {
     setPsalmCycle(cycle); // remember the chosen lectionary
-    if (format === "listen" && psalmSeg && scriptureEpisodeQ.data?.audioUrl) {
-      const ep = scriptureEpisodeQ.data;
-      const audioUrl = ep.audioUrl as string; // guarded above
-      player.play({
-        showSlug: "scripture-day-by-day",
-        episodeId: audioUrl,
-        title: ep.title ?? "Scripture Day by Day",
-        audioUrl,
-        imageUrl: ep.imageUrl ?? null,
-        showTitle: "Scripture Day by Day",
-        showArtwork: ep.imageUrl ?? null,
-        durationSeconds: ep.durationSeconds ?? null,
-        sessionSurface: "scripture-audio",
-        showHref: "/podcasts/show/scripture-day-by-day",
-        startAtSeconds: psalmSeg.startSeconds,
-        stopAtSeconds: psalmSeg.endSeconds ?? undefined,
-        collapseOnStop: true,
-      });
-      markPsalmsPrayed(office); // hearing the day's psalm counts as praying it
-      return;
-    }
     if (format === "book") setStep("guide");
     else { setIndex(0); setStep("read"); }
   };
