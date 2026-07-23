@@ -98,8 +98,6 @@ app.use(
 const allowedOrigins = new Set<string>([
   "https://withphoebe.app",
   "https://www.withphoebe.app",
-  // El Jardín portal subdomain (shares the same API + accounts).
-  "https://eljardin.withphoebe.app",
   "capacitor://localhost",
   "https://localhost",
   ...(process.env["NODE_ENV"] !== "production"

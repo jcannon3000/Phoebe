@@ -108,16 +108,6 @@ export default function MenuPage() {
   learn.items.push({ emoji: "❤️", label: "The Way of Love", sub: "Bishop Budde on a rule of life", onClick: () => go("/way-of-love-course") });
   groups.push(learn);
 
-  // El Jardín — study + formation tools (beta only).
-  if (rawIsBeta) {
-    groups.push({
-      header: "El Jardín",
-      items: [
-        { emoji: "🌿", label: "El Jardín", sub: "Bible study, sermon notes, and more", onClick: () => go("/menu/jardin") },
-      ],
-    });
-  }
-
   // Explore — community + reference content.
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
   // Community + Events — hidden in pilot AND guest (personal-only, no community).

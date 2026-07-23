@@ -57,13 +57,6 @@ export interface AuthUser {
   climateEnrolled: boolean;
   climateOnboardingCompleted: boolean;
   climateOnly: boolean;
-  // El Jardín — jardinOnly accounts are created via the Jardín portal and
-  // see only the Jardín experience; jardinEnrolled is any Jardín user.
-  jardinEnrolled: boolean;
-  jardinOnly: boolean;
-  // Derived server-side: member of at least one focus='jardin' group. Drives
-  // the live Jardín seal for jardinEnrolled accounts (see isJardinSealed).
-  inJardinGroup?: boolean;
   parishId: number | null;
   bellEnabled: boolean;
   // Server-derived: is a MEMBER of at least one community (any joined group,

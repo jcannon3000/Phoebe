@@ -1006,7 +1006,6 @@ export default function CommunityDetailPage() {
 
   const [showInvite, setShowInvite] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [newPrayer, setNewPrayer] = useState("");
   // Admin-only floating action button (bottom-right) — moved here from the
   // home dashboard. Lets a community admin start a practice, fast,
   // event, or prayer feed scoped to *this* community.
@@ -1045,35 +1044,16 @@ export default function CommunityDetailPage() {
     enabled: !!user && !!slug,
   });
 
-  // El Jardín groups are a sealed carve-out: they contain ONLY the Jardín
-  // group features — Forum + Streak Leaderboard (cards above the tabs), shared
-  // studies (posted into the forum), shared Prayer Requests (the "prayer"
-  // tab), and Members. Every general community surface (home feed, gatherings,
-  // announcements, prayer-circle intentions) is hidden. We constrain the active
-  // tab to the Jardín set and drive every "is this section active?" gate off
-  // `effectiveTab`, so the general queries never fire and the general content
-  // never renders for a Jardín group.
-  const isJardinGroup = groupData?.group?.focus === "jardin";
-  const effectiveTab = isJardinGroup
-    ? (activeTab === "prayer" || activeTab === "members" ? activeTab : "members")
-    : activeTab;
-
-  const { data: prayerData } = useQuery<{ requests: PrayerRequest[] }>({
-    queryKey: ["/api/groups", slug, "prayer-requests"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
-    enabled: !!user && !!slug && effectiveTab === "prayer",
-  });
-
   const { data: practicesData } = useQuery<{ practices: Practice[] }>({
     queryKey: ["/api/groups", slug, "practices"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/practices`),
-    enabled: !!user && !!slug && effectiveTab === "practices",
+    enabled: !!user && !!slug && activeTab === "practices",
   });
 
   const { data: gatheringsData } = useQuery<{ gatherings: Gathering[] }>({
     queryKey: ["/api/groups", slug, "gatherings"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
-    enabled: !!user && !!slug && effectiveTab === "gatherings",
+    enabled: !!user && !!slug && activeTab === "gatherings",
   });
 
   // ── Admin "new arrival" popup ──────────────────────────────────────────
@@ -1118,20 +1098,10 @@ export default function CommunityDetailPage() {
     },
   });
 
-  const prayerMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/prayer-requests`, { body: newPrayer }),
-    onSuccess: () => {
-      setNewPrayer("");
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-requests"] });
-    },
-  });
-
   const removeMemberMutation = useMutation({
     mutationFn: (memberId: number) => apiRequest("DELETE", `/api/groups/${slug}/members/${memberId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
-      // Leaving a Jardín group may lift the live Jardín seal — refetch /me so
-      // the app shell reverts to the full app once they leave their last one.
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });
@@ -1243,14 +1213,6 @@ export default function CommunityDetailPage() {
   // unlocks the direct-add form on the Members tab.
   const canInviteByEmail = isAdmin && isBeta;
 
-  // The tab STRIP only renders for Jardín groups (general groups navigate by
-  // hub tiles), and Jardín carries only the Prayer Wall (shared prayer
-  // requests) + Members — Forum + Leaderboard live as cards above.
-  const tabs = [
-    { key: "prayer" as const, label: t("community_detail.tab_prayer", { defaultValue: "Prayer Wall" }), emoji: "🙏🏽" },
-    { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
-  ];
-
   return (
     <Layout>
       <div className="max-w-2xl mx-auto w-full">
@@ -1288,10 +1250,10 @@ export default function CommunityDetailPage() {
                 })()}
               </p>
             </div>
-            {/* On the general-group hub the admin tools live as tiles, so the
-                header icons would be redundant there — keep them only inside a
-                section, and always for El Jardín (which has no hub). */}
-            {isAdmin && (isJardinGroup || activeTab !== "hub") && (
+            {/* On the group hub the admin tools live as tiles, so the header
+                icons would be redundant there — keep them only inside a
+                section. */}
+            {isAdmin && activeTab !== "hub" && (
               <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setLocation(`/communities/${slug}/settings`)}
@@ -1318,19 +1280,19 @@ export default function CommunityDetailPage() {
         {/* Our RULE OF LIFE — the daily rhythm this community keeps together,
             adoptable in one tap (praying WITH each other). Self-gating: shows
             nothing until the leaders set a rule (admins get the doorway). */}
-        {!isJardinGroup && <CommunityRuleCard slug={slug} />}
+        <CommunityRuleCard slug={slug} />
 
         {/* BETA — the leader's aggregate weekly pulse (never names, floored
             under 4 members) and the community SEASON (the rule kept together
             for a bounded few weeks; leaders start it, everyone checks in). */}
-        {!isJardinGroup && rawIsBeta && isAdmin && <CommunityPulseLine slug={slug} />}
-        {!isJardinGroup && rawIsBeta && <CommunitySeasonCard slug={slug} />}
+        {rawIsBeta && isAdmin && <CommunityPulseLine slug={slug} />}
+        {rawIsBeta && <CommunitySeasonCard slug={slug} />}
 
         {/* Beta — rule-of-life: members ask their community's leaders for help
             building a daily prayer routine; leaders see + respond. The app is
             the thread, the discernment is a real conversation. */}
-        {!isJardinGroup && rawIsBeta && !isAdmin && <RuleOfLifeMemberCard slug={slug} />}
-        {!isJardinGroup && rawIsBeta && isAdmin && <RuleOfLifeAdminCard slug={slug} />}
+        {rawIsBeta && !isAdmin && <RuleOfLifeMemberCard slug={slug} />}
+        {rawIsBeta && isAdmin && <RuleOfLifeAdminCard slug={slug} />}
 
         {/* Beta-only — daily reflection entry (CAC / Forward Day by
             Day). Renders for every joined member of a beta-gated
@@ -1339,52 +1301,11 @@ export default function CommunityDetailPage() {
             Hidden for admins, who manage these surfaces from settings
             and don't want the member-facing reflection cards cluttering
             their admin view. */}
-        {!isJardinGroup && rawIsBeta && !isAdmin && <ReflectionEntryCard slug={slug} />}
+        {rawIsBeta && !isAdmin && <ReflectionEntryCard slug={slug} />}
 
         {/* Beta-only — Sunday-service reflection entry. Mirrors the
             daily card pattern. Also hidden for admins (see above). */}
-        {!isJardinGroup && rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
-
-        {/* Group forum — an El Jardín-only feature. Only El Jardín groups
-            (focus === "jardin") get a forum; ordinary communities don't. */}
-        {groupData?.group?.focus === "jardin" && (
-          <Link
-            href={`/communities/${slug}/forum`}
-            className="flex items-center gap-3 rounded-2xl px-4 py-3.5 mb-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
-          >
-            <span className="text-xl flex-shrink-0">💬</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("community_detail.forum", { defaultValue: "Forum" })}
-              </p>
-              <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
-                {t("community_detail.forum_blurb", { defaultValue: "Start a conversation with the group" })}
-              </p>
-            </div>
-            <ChevronRight size={16} style={{ color: "rgba(143,175,150,0.6)", flexShrink: 0 }} />
-          </Link>
-        )}
-
-        {/* Group streak leaderboard — also El Jardín-only. */}
-        {groupData?.group?.focus === "jardin" && (
-          <Link
-            href={`/communities/${slug}/leaderboard`}
-            className="flex items-center gap-3 rounded-2xl px-4 py-3.5 mb-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(193,127,36,0.08)", border: "1px solid rgba(193,127,36,0.28)" }}
-          >
-            <span className="text-xl flex-shrink-0">🔥</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("jardin.leaderboard", { defaultValue: "Streak Leaderboard" })}
-              </p>
-              <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
-                {t("community_detail.leaderboard_blurb", { defaultValue: "See how the group's prayer streaks compare" })}
-              </p>
-            </div>
-            <ChevronRight size={16} style={{ color: "rgba(143,175,150,0.6)", flexShrink: 0 }} />
-          </Link>
-        )}
+        {rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card
@@ -1394,7 +1315,7 @@ export default function CommunityDetailPage() {
             closing note marks the whole stack as circle-beta. Legacy circles
             whose intentions still live on groups.intention are rendered as
             one synthetic card (id=0 from the server fallback). */}
-        {!isJardinGroup && group.isPrayerCircle && (groupData.intentions?.length ?? 0) > 0 && (
+        {group.isPrayerCircle && (groupData.intentions?.length ?? 0) > 0 && (
           <div className="mb-5">
             <p
               className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
@@ -1440,7 +1361,7 @@ export default function CommunityDetailPage() {
             when someone has joined or posted a prayer request since the last
             time this admin visited. Dismissing acknowledges the events
             server-side so they won't reappear on any device. */}
-        {!isJardinGroup && isAdmin && !notifsDismissed && adminNotifs &&
+        {isAdmin && !notifsDismissed && adminNotifs &&
           (adminNotifs.newMembers.length > 0 || adminNotifs.newPrayers.length > 0) && (() => {
           const newMembers = adminNotifs.newMembers;
           const newPrayers = adminNotifs.newPrayers;
@@ -1719,29 +1640,11 @@ export default function CommunityDetailPage() {
           );
         })()}
 
-        {/* Navigation. El Jardín keeps its tab strip; general groups get a
-            simple hub of tiles — Members · Events · Practices, plus admin
-            tools — and tapping one opens that section with a back arrow. The
-            old home-style dashboard is gone (that content lives on the home
-            screen). */}
-        {isJardinGroup ? (
-          <ScrollStrip className="mb-5" contentStyle={{ gap: 8 }}>
-            {tabs.map((tab, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveTab(tab.key)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
-                style={{
-                  background: effectiveTab === tab.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
-                  color: effectiveTab === tab.key ? "#F0EDE6" : "#8FAF96",
-                  border: `1px solid ${effectiveTab === tab.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
-                }}
-              >
-                <span>{tab.emoji}</span> {tab.label}
-              </button>
-            ))}
-          </ScrollStrip>
-        ) : activeTab === "hub" ? (
+        {/* Navigation. Groups get a simple hub of tiles — Members · Events ·
+            Practices, plus admin tools — and tapping one opens that section
+            with a back arrow. The old home-style dashboard is gone (that
+            content lives on the home screen). */}
+        {activeTab === "hub" ? (
           <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
             <div className="flex flex-col" style={{ gap: 10 }}>
               {([
@@ -1798,95 +1701,8 @@ export default function CommunityDetailPage() {
         )}
 
 
-        {/* ─── Prayer Wall ─── */}
-        {isJardinGroup && effectiveTab === "prayer" && (
-          <div>
-            {/* New prayer input */}
-            <div className="flex gap-2 mb-5">
-              <input
-                type="text"
-                value={newPrayer}
-                onChange={e => setNewPrayer(e.target.value)}
-                placeholder={t("community_detail.share_prayer_request")}
-                maxLength={1000}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[#2E6B40]/30 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-                style={{ color: "#F0EDE6" }}
-                onKeyDown={e => { if (e.key === "Enter" && newPrayer.trim()) prayerMutation.mutate(); }}
-              />
-              <button
-                onClick={() => prayerMutation.mutate()}
-                disabled={!newPrayer.trim() || prayerMutation.isPending}
-                className="px-3 py-2.5 rounded-xl text-sm disabled:opacity-40"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                🙏🏽
-              </button>
-            </div>
-
-            {(prayerData?.requests ?? []).length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                {t("community_detail.no_prayer_requests")}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {prayerData!.requests.map(r => {
-                  const displayName = r.isAnonymous
-                    ? t("community_detail.anonymous")
-                    : (r.isOwnRequest ? (user.name ?? t("community_detail.you_name")) : (r.ownerName ?? t("community_detail.someone")));
-                  const displayAvatar = r.isAnonymous
-                    ? null
-                    : (r.isOwnRequest ? (user.avatarUrl ?? null) : r.ownerAvatarUrl);
-                  const initials = displayName
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0]?.toUpperCase() ?? "")
-                    .join("");
-                  return (
-                    <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                      <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
-                      <div className="flex-1 px-4 py-3 flex items-start gap-3">
-                        {displayAvatar ? (
-                          <img
-                            src={displayAvatar}
-                            alt={displayName}
-                            className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                          />
-                        ) : (
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
-                            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                          >
-                            {initials}
-                          </div>
-                        )}
-                        <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                              {r.isOwnRequest ? t("community_detail.your_request") : t("community_detail.from_name", { name: displayName })}
-                            </p>
-                            <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                              {r.body}
-                            </p>
-                          </div>
-                          {r.wordCount > 0 && (
-                            <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
-                              <span className="text-[10px] tabular-nums">{r.wordCount}</span>
-                              <MessageCircle size={12} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* ─── Practices ─── */}
-        {effectiveTab === "practices" && (
+        {activeTab === "practices" && (
           <div>
             {isAdmin && (
               <Link href="/moment/new" className="block mb-4">
@@ -1918,7 +1734,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Gatherings ─── */}
-        {effectiveTab === "gatherings" && (
+        {activeTab === "gatherings" && (
           <div>
             <ServicesSection slug={slug!} isAdmin={isAdmin} />
             {isAdmin && (
@@ -1943,7 +1759,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Members ─── */}
-        {effectiveTab === "members" && (() => {
+        {activeTab === "members" && (() => {
           // "Recently joined" = within the last 7 calendar days. We deliberately
           // use a calendar-day diff so the badge flips off at local midnight
           // on day 8, not 168 hours after the exact join timestamp.

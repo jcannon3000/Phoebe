@@ -1,5 +1,4 @@
 import { Router, type IRouter, type RequestHandler } from "express";
-import jardinRouter from "./jardin";
 import healthRouter from "./health";
 import emailRouter from "./email";
 import statsRouter from "./stats";
@@ -52,7 +51,6 @@ import podcastRouter from "./podcast";
 import podcastSocialRouter from "./podcast-social";
 import newsRouter from "./news";
 import groupReflectionsRouter from "./group-reflections";
-import forumRouter from "./forum";
 import blessRouter from "./bless";
 import gatherRouter from "./gather";
 import officeAlignmentRouter from "./office-alignment";
@@ -194,7 +192,6 @@ router.use(podcastRouter);
 router.use(podcastSocialRouter);
 router.use(newsRouter);
 router.use(groupReflectionsRouter);
-router.use(forumRouter);
 router.use(blessRouter);
 router.use(gatherRouter);
 router.use(officeAlignmentRouter);
@@ -208,6 +205,5 @@ router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(prescribedRoutinesRouter);
 router.use(creatorSeasonsRouter);
-router.use(jardinRouter);
 
 export default router;

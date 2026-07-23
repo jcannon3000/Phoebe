@@ -296,8 +296,6 @@ router.get("/auth/me", async (req, res) => {
     climateEnrolled: boolean;
     climateOnboardingCompleted: boolean;
     climateOnly: boolean;
-    jardinEnrolled: boolean;
-    jardinOnly: boolean;
     parishId: number | null;
     parishFeedId: number | null;
     bellEnabled: boolean;
@@ -321,37 +319,21 @@ router.get("/auth/me", async (req, res) => {
   const access = PHOEBE_PARISH_ENABLED
     ? await getUserAccessTier(u.id)
     : { tier: "full" as const, parishFeedId: null, parishSlug: null };
-  // Live El Jardín seal: a Jardín-origin account that has JOINED any
-  // focus='jardin' group is restricted to the Jardín experience app-wide.
-  // Derived here so every useAuth() consumer re-gates the shell the moment the
-  // membership changes — join/leave invalidates /api/auth/me. Reversible:
-  // leaving every Jardín group flips this back to false and restores the app.
-  // These six lookups are INDEPENDENT — none uses another's result — yet this is
+  // These five lookups are INDEPENDENT — none uses another's result — yet this is
   // the hottest authenticated endpoint (every app/PWA open). Running them
-  // sequentially made the handler's latency the SUM of six round-trips; issuing
+  // sequentially made the handler's latency the SUM of five round-trips; issuing
   // them together (Promise.all) collapses it to ~one. Flags derived below:
-  //  • inJardinGroup — joined any focus='jardin' group → sealed Jardín shell
   //  • isCommunityMember — joined any group → keeps the FULL app
   //  • inPilotGroup — joined a pilot group → keeps FULL app when guest flag flips
   //  • isSuperAdmin — beta_users.is_admin (table may be absent in a fresh env)
   //  • hasFellowConnection — an accepted fellow OR a pending invite → FULL app
   const [
-    jardinGroupRows,
     communityMemberRows,
     pilotGroupRows,
     betaRow,
     fellowRows,
     fellowInviteRows,
   ] = await Promise.all([
-    db.select({ id: groupMembersTable.id })
-      .from(groupMembersTable)
-      .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
-      .where(and(
-        eq(groupMembersTable.userId, u.id),
-        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-        eq(groupsTable.focus, "jardin"),
-      ))
-      .limit(1),
     db.select({ id: groupMembersTable.id })
       .from(groupMembersTable)
       .where(and(
@@ -386,7 +368,6 @@ router.get("/auth/me", async (req, res) => {
       ))
       .limit(1),
   ]);
-  const inJardinGroup = jardinGroupRows.length > 0;
   const isCommunityMember = communityMemberRows.length > 0;
   const inPilotGroup = pilotGroupRows.length > 0;
   const isSuperAdmin = betaRow?.isAdmin === true;
@@ -425,10 +406,6 @@ router.get("/auth/me", async (req, res) => {
     climateEnrolled: u.climateEnrolled ?? false,
     climateOnboardingCompleted: u.climateOnboardingCompleted ?? false,
     climateOnly: u.climateOnly ?? false,
-    jardinEnrolled: u.jardinEnrolled ?? false,
-    jardinOnly: u.jardinOnly ?? false,
-    // Derived (not a column): member of at least one focus='jardin' group.
-    inJardinGroup,
     parishId: u.parishId ?? null,
     bellEnabled: u.bellEnabled ?? false,
     locale: u.locale ?? "en",

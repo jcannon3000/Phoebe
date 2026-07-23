@@ -190,14 +190,6 @@ export default function AdminToolsPage() {
               description="The 'technology of holding' story — Phoebe's why"
               onClick={() => setLocation("/vision-deck")}
             />
-            {rawIsBeta && (
-              <LinkRow
-                emoji="🌿"
-                label="El Jardín"
-                description="The Spanish-language Jardín experience (beta)"
-                onClick={() => setLocation("/menu/jardin")}
-              />
-            )}
             {/* Creator — super admins design seasons; beta users can see them. */}
             {(isAdmin || rawIsBeta) && (
               <LinkRow

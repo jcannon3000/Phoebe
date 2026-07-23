@@ -341,14 +341,6 @@ const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
 const ScriptureReadingsPage = lazy(() => import("./pages/scripture-readings"));
 const MenuPage = lazy(() => import("./pages/menu"));
-const MenuJardinPage = lazy(() => import("./pages/menu-jardin"));
-const JardinSignupPage = lazy(() => import("./pages/jardin-signup"));
-const JardinBiblePage = lazy(() => import("./pages/jardin-bible"));
-const JardinBibleStudyPage = lazy(() => import("./pages/jardin-bible-study"));
-const JardinCharacterStudyPage = lazy(() => import("./pages/jardin-character-study"));
-const JardinSermonNotesPage = lazy(() => import("./pages/jardin-sermon-notes"));
-const JardinNextSundayPage = lazy(() => import("./pages/jardin-next-sunday"));
-const JardinLeaderboardPage = lazy(() => import("./pages/jardin-leaderboard"));
 const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
 const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
 const MenuLearnPage = lazy(() => import("./pages/menu-learn"));
@@ -443,9 +435,6 @@ const CommunityRequestsPage = lazy(() => import("./pages/community-requests"));
 import WelcomePublicPage from "./pages/welcome-public";
 const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
-const ForumPage = lazy(() => import("./pages/forum"));
-const ForumThreadPage = lazy(() => import("./pages/forum-thread"));
-const GroupLeaderboardPage = lazy(() => import("./pages/group-leaderboard"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
@@ -509,7 +498,6 @@ import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
-import { isJardinPath, isJardinSealed } from "@/lib/jardinMode";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
 // /climate*, /climate/admin, /climate/parish routes redirect to the
@@ -777,50 +765,6 @@ const PARISH_DENIED_PATHS = [
   "/ritual",
   "/tradition",
 ];
-
-// El Jardín portal landing. Entirely host-gated: on the main withphoebe.app
-// host isJardinHost() is false and this is a no-op, so the main app's routing
-// is never affected. On eljardin.withphoebe.app it sends visitors into the
-// Jardín experience — signup when logged out, the Jardín hub when logged in.
-// Keeps El Jardín accounts (and the eljardin subdomain / /jardin path) inside
-// the portal: logged-out visitors land on the Spanish signup, and a logged-in
-// Jardín account is bounced off the generic Phoebe roots (/, /dashboard,
-// /welcome) onto the Jardín hub. A jardinOnly account is treated as portal
-// everywhere, so this also fixes the post-login landing (login → /dashboard →
-// hub). Entirely no-op for ordinary Phoebe users on the main app.
-function JardinHostGate() {
-  const [location, setLocation] = useLocation();
-  const { user, isLoading } = useAuthForGate();
-  useEffect(() => {
-    const portal = isJardinPath() || isJardinSealed(user);
-    if (!portal) return; // main app untouched
-    if (isLoading) return;
-    if (!user) {
-      // Logged out → the portal front door (allow login too).
-      if (location !== "/jardin/signup" && location !== "/login") setLocation("/jardin/signup");
-      return;
-    }
-    // Logged in → land on the Jardín hub from the generic roots.
-    if (location === "/" || location === "/dashboard" || location === "/welcome" || location === "/jardin/signup" || location === "/jardin") {
-      setLocation("/menu/jardin");
-    }
-  }, [location, user, isLoading, setLocation]);
-  return null;
-}
-
-// /jardin — the El Jardín portal entry on the main domain
-// (withphoebe.app/jardin). Lands logged-in users on the Jardín hub and
-// logged-out visitors on the Spanish signup — the same front door the
-// eljardin.* subdomain gives via JardinHostGate, but without needing DNS.
-function JardinEntry() {
-  const [, setLocation] = useLocation();
-  const { user, isLoading } = useAuthForGate();
-  useEffect(() => {
-    if (isLoading) return;
-    setLocation(user ? "/menu/jardin" : "/jardin/signup");
-  }, [user, isLoading, setLocation]);
-  return null;
-}
 
 // PilotGate — the simplified public "pilot" shell. Modeled on ParishGate.
 // When a session is in pilot mode (see usePilotMode: pilot is the default for
@@ -1113,8 +1057,6 @@ function Router() {
           mounted at /signin now — /onboarding kept as an alias so any
           older deep links still resolve. */}
       <Route path="/" component={WelcomePublicPage} />
-      <Route path="/jardin/signup" component={JardinSignupPage} />
-      <Route path="/jardin" component={JardinEntry} />
       <Route path="/signin" component={Onboarding} />
       {/* /onboarding is the post-signup UserOnboarding slideshow,
           mounted below. Don't claim it here for the signin form —
@@ -1132,13 +1074,6 @@ function Router() {
       {/* Beta: listen to the day's four readings, each tappable to its segment */}
       <Route path="/scripture/readings" component={ScriptureReadingsPage} />
       <Route path="/menu" component={MenuPage} />
-      <Route path="/menu/jardin" component={MenuJardinPage} />
-      <Route path="/jardin/bible" component={JardinBiblePage} />
-      <Route path="/jardin/bible-study" component={JardinBibleStudyPage} />
-      <Route path="/jardin/character-study" component={JardinCharacterStudyPage} />
-      <Route path="/jardin/sermon-notes" component={JardinSermonNotesPage} />
-      <Route path="/jardin/next-sunday" component={JardinNextSundayPage} />
-      <Route path="/jardin/leaderboard" component={JardinLeaderboardPage} />
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
       <Route path="/menu/learn" component={MenuLearnPage} />
@@ -1357,9 +1292,6 @@ function Router() {
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
       <Route path="/communities/:slug/reflection" component={CommunityReflectionPage} />
       <Route path="/communities/:slug/sunday-reflection" component={CommunitySundayReflectionPage} />
-      <Route path="/communities/:slug/forum/:postId" component={ForumThreadPage} />
-      <Route path="/communities/:slug/forum" component={ForumPage} />
-      <Route path="/communities/:slug/leaderboard" component={GroupLeaderboardPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />
@@ -1561,7 +1493,6 @@ function App() {
             {/* Global podcast player — mounted above the route Switch so
                 audio keeps playing as you navigate. Renders its own
                 persistent <audio> + mini-player bar. */}
-            <JardinHostGate />
             <PodcastPlayerProvider>
               <GuestGate>
                 <PilotGate>

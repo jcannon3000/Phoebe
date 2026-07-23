@@ -25,7 +25,6 @@ import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacRea
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
-import { isJardinSealed } from "@/lib/jardinMode";
 import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
@@ -225,13 +224,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // The full app's content gates already block the routes server-side;
   // this is the visual mirror so the menu doesn't dangle dead links.
   const officesOnly = user?.accessTier === "offices-only";
-  // Sealed El Jardín shell: the user sees only the Jardín experience — the
-  // drawer hides every non-Jardín surface (Communities, Prayer list, BCP,
-  // Practices, Letters, Parish…), leaving El Jardín + Settings + Sign out.
-  // Sealed for the eljardin subdomain, a jardinOnly account, OR a Jardín-origin
-  // (enrolled) account that has joined a Jardín group — that last seal is live
-  // and lifts when they leave. See isJardinSealed.
-  const jardinShell = isJardinSealed(user);
 
   // The drawer is organized into collapsible sections (Communities,
   // Offices, Practices, Resources) plus a footer. These flags gate the
@@ -346,8 +338,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
             {/* Shape your routine (the rule-of-life / customizer). Daily progress
                 is reached from the header pill again, so it's no longer a menu
-                row. Same visibility: not the offices-only tier, Jardín, or pilot. */}
-            {!officesOnly && !jardinShell && !isPilot && (
+                row. Same visibility: not the offices-only tier or pilot. */}
+            {!officesOnly && !isPilot && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <MenuRow
                   emoji="📜"
@@ -372,7 +364,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 multi-community case. */}
             {/* GUESTS have no social section at all — no Community/Fellows, no
                 Prayer list, no Events (the public version carries none). */}
-            {!officesOnly && !jardinShell && !isGuest && (
+            {!officesOnly && !isGuest && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 {/* Community — your fellows (1:1 prayer connections) AND the
                     communities you're in, all on one page. Communities no longer
@@ -426,37 +418,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   contemplative practices are supplemental. */}
               {/* Each category is a single row that navigates to its own
                   list page (MenuHub style) rather than expanding inline. */}
-              {!jardinShell && (
-                <>
-                  <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
-                  <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
-                  <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-                  {/* Learn — the courses tab (Centering Prayer + The Spiritual
-                      Journey on web; The Way of Love everywhere). Everyone sees
-                      it, guests included — courses are part of the light
-                      experience. */}
-                  <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
-                </>
-              )}
-              {/* El Jardín. For a SEALED Jardín account the drawer IS the El
-                  Jardín experience — every Jardín feature is listed directly
-                  (the hub, study tools, the Spanish Morning Prayer podcast,
-                  groups, Bible lookup, leaderboard), since these are the only
-                  surfaces a sealed account can use. A non-sealed beta user just
-                  gets the single entry into the hub. */}
-              {jardinShell ? (
-                <>
-                  <MenuRow emoji="🌿" label={t("jardin.title")} onClick={() => navigate("/menu/jardin")} />
-                  <MenuRow emoji="📖" label={t("jardin.bible_study")} onClick={() => navigate("/jardin/bible-study")} />
-                  <MenuRow emoji="👤" label={t("jardin.character_study")} onClick={() => navigate("/jardin/character-study")} />
-                  <MenuRow emoji="🎤" label={t("jardin.sermon_notes")} onClick={() => navigate("/jardin/sermon-notes")} />
-                  <MenuRow emoji="📅" label={t("jardin.next_sunday")} onClick={() => navigate("/jardin/next-sunday")} />
-                  <MenuRow emoji="🎧" label={t("jardin.podcast")} onClick={() => navigate("/podcasts/show/jardin-oracion-matutina")} />
-                  <MenuRow emoji="👥" label={t("jardin.groups")} onClick={() => navigate("/communities")} />
-                  <MenuRow emoji="🔍" label={t("jardin.bible_lookup")} onClick={() => navigate("/jardin/bible")} />
-                  <MenuRow emoji="🏆" label={t("jardin.leaderboard")} onClick={() => navigate("/jardin/leaderboard")} />
-                </>
-              ) : null}
+              <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
+              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
+              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
+              {/* Learn — the courses tab (Centering Prayer + The Spiritual
+                  Journey on web; The Way of Love everywhere). Everyone sees
+                  it, guests included — courses are part of the light
+                  experience. */}
+              <MenuRow emoji="🎓" label={t("menu.learn", { defaultValue: "Learn" })} onClick={() => goCategory("/menu/learn")} />
             </div>
 
             {/* ── Account + info footer ── */}
@@ -479,7 +448,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   yet, else /parish. */}
               {/* Phoebe Parish hidden from the menu per request. Restore by
                   removing the `false &&` guard. */}
-              {false && rawIsBeta && !jardinShell && (
+              {false && rawIsBeta && (
                 <MenuRow
                   emoji="🏛️"
                   label={t("menu.phoebe_parish")}
@@ -1626,9 +1595,6 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
   // Pilot has no /daily-progress dashboard (replaced by /pilot/home) — the
   // header pill would dead-end, so hide it for pilot.
   const { isPilot: headerIsPilot } = usePilotMode();
-  // Jardín shell — hide Phoebe's daily-progress pill (the office/reflect/
-  // silence rhythm) for portal accounts; it's not part of the Jardín day.
-  const headerJardinShell = isJardinSealed(user);
 
   // Best-effort sync of today's external Apple Health mindful minutes to the
   // server from the app shell (so it runs on nearly every page), giving the

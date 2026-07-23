@@ -6,7 +6,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { isJardinContext } from "@/lib/jardinMode";
 
 export default function CommunityNewPage() {
   const { t } = useTranslation();
@@ -59,17 +58,10 @@ export default function CommunityNewPage() {
       isPrayerCircle,
       intention: isPrayerCircle ? intention.trim() : undefined,
       circleDescription: isPrayerCircle && circleDescription.trim() ? circleDescription.trim() : undefined,
-      // Groups created by a Jardín account (or in the Jardín portal) are
-      // tagged jardin so they get the forum (a Jardín-only feature);
-      // contemplation flavor wins if set.
-      focus: isContemplation
-        ? "contemplation"
-        : (isJardinContext({ jardinOnly: user?.jardinOnly, jardinEnrolled: user?.jardinEnrolled }) ? "jardin" : undefined),
+      focus: isContemplation ? "contemplation" : undefined,
       contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : undefined,
     }),
     onSuccess: (data: any) => {
-      // A Jardín-origin creator becomes a member of the new (jardin) group, so
-      // refetch /me to apply the live Jardín seal; refresh the groups list too.
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       setLocation(`/communities/${data.group.slug}`);
