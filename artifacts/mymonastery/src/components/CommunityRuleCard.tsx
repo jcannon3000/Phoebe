@@ -34,7 +34,7 @@ type RuleData = {
 };
 
 const CARD_LABELS: Record<string, string> = {
-  gratitude: "Gratitude", reading: "Reading",
+  reading: "Reading",
   podcasts: "Podcasts", examen: "Examen", listening: "Audio Divina",
   walk: "Walking prayer",
   cobreathe: "Creation Prayer", cac: "Richard Rohr (CAC)", fdd: "Forward Day by Day", ssje: "SSJE",

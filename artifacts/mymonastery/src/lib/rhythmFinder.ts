@@ -36,7 +36,7 @@ export type FinderAnswers = {
   readingVoice: string;  // cac | fdd | ssje | unsure
   whenSpace: string[];   // morning | midday | evening | night
   season: string;        // beginning | returning | steady | rooted
-  growToward: string[];  // silence | gratitude | examen | music | walking
+  growToward: string[];  // silence | examen | music | walking
 };
 
 export const EMPTY_ANSWERS: FinderAnswers = {
@@ -127,7 +127,6 @@ export const FINDER_QUESTIONS: FinderQuestion[] = [
     sub: "Optional — we'll gently make room for it.",
     options: [
       { id: "silence", emoji: "🕯️", label: "More silence" },
-      { id: "gratitude", emoji: "🌾", label: "Gratitude" },
       { id: "examen", emoji: "🌗", label: "The Examen" },
       { id: "music", emoji: "🎧", label: "Music as prayer" },
       { id: "walking", emoji: "🚶", label: "A daily walk" },
@@ -142,7 +141,6 @@ export type RecommendedRhythm = {
   contemplationMinutes: number;
   reflectionSource: "fdd" | "cac" | "ssje" | null;
   listening: boolean;
-  gratitude: boolean;
   examen: boolean;
   cobreatheInterest: boolean;
   walking: boolean;
@@ -195,12 +193,10 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   const listening = has(a.meet, "music") || has(a.growToward, "music");
   if (listening) reasons.push("Audio Divina — music as a way of prayer — because that's where the music takes you.");
 
-  // Gratitude / Examen — explicit, or sensible by season.
-  let gratitude = has(a.growToward, "gratitude");
+  // Examen — explicit, or sensible by season.
   let examen = has(a.growToward, "examen") || (a.season === "rooted");
   if (examen && !has(a.growToward, "examen")) reasons.push("The Examen, to review each day with God — a depth that fits where you are.");
   else if (has(a.growToward, "examen")) reasons.push("The Examen, since you'd like to review the day with God.");
-  if (gratitude) reasons.push("A daily gratitude, to name one gift from the day.");
 
   const walking = has(a.meet, "nature") || has(a.growToward, "walking");
   if (walking) reasons.push("You meet God in motion — a daily walk would sit beautifully in your rhythm (add it as your own practice in Customize).");
@@ -208,12 +204,12 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   const cobreatheInterest = has(a.meet, "breath");
   if (cobreatheInterest) reasons.push("You meet God in breath — try Creation Prayer from the contemplation screen, a breath prayed with all creation.");
 
-  // Make sure no one leaves with an empty rhythm — a gentle gratitude is the
+  // Make sure no one leaves with an empty rhythm — the Examen is the
   // easiest first practice if nothing else optional was chosen.
-  const anyExtra = listening || gratitude || examen || reflectionSource || contemplationMinutes > 0;
+  const anyExtra = listening || examen || reflectionSource || contemplationMinutes > 0;
   if (!anyExtra && gentle) {
-    gratitude = true;
-    reasons.push("A daily gratitude to begin with — the gentlest way into a rhythm.");
+    examen = true;
+    reasons.push("The Examen to begin with — the gentlest way into a rhythm.");
   }
 
   const morningReminder = has(a.whenSpace, "morning") || a.whenSpace.length === 0;
@@ -221,7 +217,7 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
 
   return {
     morningPrayer, contemplationMinutes, reflectionSource, listening,
-    gratitude, examen, cobreatheInterest, walking, artistsNote: a.artists.trim(),
+    examen, cobreatheInterest, walking, artistsNote: a.artists.trim(),
     morningReminder, eveningReminder, reasons,
   };
 }
@@ -232,7 +228,7 @@ const PRAYER_LEVEL: Record<RecommendedRhythm["morningPrayer"], "intercessions" |
   community: "intercessions", devotion: "devotion", office: "office", contemplation: "reflect-sit",
 };
 const HOME_LAYOUT_VERSION = 2; // keep in sync with WayOfLoveRuleFlow
-const ALL_EXTRAS = ["listening", "gratitude", "examen"] as const;
+const ALL_EXTRAS = ["listening", "examen"] as const;
 
 export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const level = PRAYER_LEVEL[rec.morningPrayer];
@@ -254,7 +250,7 @@ export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const newsletters = rec.reflectionSource ? [rec.reflectionSource] : [];
   const otherReflections = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
   const onMap: Record<(typeof ALL_EXTRAS)[number], boolean> = {
-    listening: rec.listening, gratitude: rec.gratitude, examen: rec.examen,
+    listening: rec.listening, examen: rec.examen,
   };
   const extrasOn = ALL_EXTRAS.filter((e) => onMap[e]);
   const extrasOff = ALL_EXTRAS.filter((e) => !onMap[e]);

@@ -149,7 +149,6 @@ export function useWidgetSync(): void {
       { active: r.prayerListActive, done: r.prayerListDone, slot: "anytime", title: "My Prayer List", eyebrow: "Your intentions", subtitle: "Pray through your list", cta: "Pray", kind: "office" },
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
-      { active: r.gratitudeActive, done: r.gratitudeDone, slot: "evening", title: "Gratitude", eyebrow: "Name a gift", subtitle: "One gift from the day", cta: "Write", kind: "office" },
       { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: "Book of Common Prayer", subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
@@ -233,7 +232,7 @@ export function useWidgetSync(): void {
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
     r.walkActive, r.walkDone,
     r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
-    r.examenActive, r.examenDone, r.gratitudeActive, r.gratitudeDone,
+    r.examenActive, r.examenDone,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
   ]);

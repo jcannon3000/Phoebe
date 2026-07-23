@@ -558,8 +558,7 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; reading: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
-    gratitude: homeCardOn(user?.homeLayout, "gratitude"),
+  const [extras, setExtras] = useState<{ examen: boolean; listening: boolean; reading: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
     examen: homeCardOn(user?.homeLayout, "examen"),
     listening: homeCardOn(user?.homeLayout, "listening"),
     reading: homeCardOn(user?.homeLayout, "reading"),
@@ -630,7 +629,6 @@ export default function WayOfLoveRuleFlow({
     if (extrasHydrated.current || touchedRef.current || !user?.homeLayout) return;
     extrasHydrated.current = true;
     setExtras({
-      gratitude: homeCardOn(user.homeLayout, "gratitude"),
       examen: homeCardOn(user.homeLayout, "examen"),
       listening: homeCardOn(user.homeLayout, "listening"),
       reading: homeCardOn(user.homeLayout, "reading"),
@@ -768,7 +766,7 @@ export default function WayOfLoveRuleFlow({
     setCustomList(getCustomAnchors());
     setAddingCustom(false);
   };
-  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "reading" | "podcasts" | "prayerList") => {
+  const toggleExtra = (k: "examen" | "listening" | "reading" | "podcasts" | "prayerList") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
@@ -943,7 +941,6 @@ export default function WayOfLoveRuleFlow({
     // the side switched back to the Book of Common Prayer.
     const wantCobreathe = contemplationStyle === "cobreathe" && anyContemplation;
     const onKeys = [
-      ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
@@ -953,7 +950,6 @@ export default function WayOfLoveRuleFlow({
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
-      ...(extras.gratitude ? [] : ["gratitude"]),
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
@@ -1081,8 +1077,8 @@ export default function WayOfLoveRuleFlow({
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
-    // Gratitude comes from the "Add to your day" step; Examen, Audio
-    // Divina (listening), and Co-Breathe come from the contemplative step. Every
+    // Examen, Audio Divina (listening), and Co-Breathe come from the
+    // contemplative step. Every
     // selected Co-Breathe gets its own home card. Co-Breathe earns a card from
     // EITHER path: the Contemplation-practices toggle (contemplative.cobreathe) OR
     // choosing Co-Breathe as the contemplative sit's STYLE (contemplationStyle ===
@@ -1095,7 +1091,6 @@ export default function WayOfLoveRuleFlow({
     // the side switched back to the Book of Common Prayer.
     const wantCobreathe = contemplationStyle === "cobreathe" && anyContemplation;
     const onKeys = [
-      ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
@@ -1105,7 +1100,6 @@ export default function WayOfLoveRuleFlow({
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
-      ...(extras.gratitude ? [] : ["gratitude"]),
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
@@ -1214,7 +1208,7 @@ export default function WayOfLoveRuleFlow({
       evening: preset.silence && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
     });
     setNewsletters(preset.reflections);
-    setExtras({ gratitude: false, examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
+    setExtras({ examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
     try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
     setAdoptId(preset.id);
   };
@@ -1302,7 +1296,7 @@ export default function WayOfLoveRuleFlow({
     // + its audio/walk/examen "-when" detail steps) and the
     // "Add to your day" extras step are intentionally NOT in the customizer.
     // Those practices — Audio Divina, Contemplative Walk,
-    // the Examen, Gratitude, Journaling, Reading, Podcasts — are
+    // the Examen, Reading, Podcasts — are
     // added/toggled on the Practices page instead. The commit still reads the
     // contemplative/extras state, which is seeded from the user's CURRENT home
     // layout (homeCardOn), so re-running this flow PRESERVES whatever they
@@ -1936,7 +1930,6 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.extras_note", { defaultValue: "Each adds a card on your home and a checkmark to your Daily progress." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {/* Prayer List removed from "Add to your day" — it now lives inside the
               Prayer list page (the "My list" tab), not as a separate anchor. */}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
@@ -2270,7 +2263,6 @@ export default function WayOfLoveRuleFlow({
     ...(newsletters.length
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),
-    ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
     ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),

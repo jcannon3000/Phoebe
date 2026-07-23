@@ -41,7 +41,7 @@ type LandingData = { label: string | null; groupName: string | null; createdByNa
 
 // Human labels for the home-layout module keys we surface in the summary.
 const CARD_LABELS: Record<string, string> = {
-  gratitude: "Gratitude", reading: "Reading",
+  reading: "Reading",
   podcasts: "Podcasts", examen: "Examen", listening: "Audio Divina",
   walk: "Walking prayer",
   cobreathe: "Creation Prayer", "prayer-list": "Prayer list",

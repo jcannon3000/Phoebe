@@ -97,7 +97,6 @@ export type RhythmState = {
   reflections: Array<{ source: "cac" | "fdd" | "ssje"; done: boolean }>;
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
-  gratitudeActive: boolean;
   examenActive: boolean;
   listeningActive: boolean;
   readingActive: boolean;
@@ -110,7 +109,6 @@ export type RhythmState = {
   stepsToday: number;
   stepsGoal: number;
   stepsDone: boolean;
-  gratitudeDone: boolean;
   examenDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
@@ -255,7 +253,6 @@ export function useRhythmState(): RhythmState {
   // the anchor the moment the user finishes; we re-check on the shared event +
   // return-to-app signals, and OR in the server rows below for cross-device.
   const [practiceLocal, setPracticeLocal] = useState(() => ({
-    gratitude: hasPracticeDoneToday("gratitude"),
     examen: hasPracticeDoneToday("examen"),
     listening: hasPracticeDoneToday("listening"),
     reading: hasPracticeDoneToday("reading"),
@@ -265,7 +262,6 @@ export function useRhythmState(): RhythmState {
   }));
   useEffect(() => {
     const recheck = () => setPracticeLocal({
-      gratitude: hasPracticeDoneToday("gratitude"),
       examen: hasPracticeDoneToday("examen"),
       listening: hasPracticeDoneToday("listening"),
       reading: hasPracticeDoneToday("reading"),
@@ -379,7 +375,6 @@ export function useRhythmState(): RhythmState {
 
   // Server-backed completion rows for the optional practices (cross-device).
   // Only fetched/used for the practices the user has actually added.
-  const gratitudeActive = homeCardActive(hl, "gratitude");
   const examenActive = homeCardActive(hl, "examen");
   // Audio Divina (listening as a way of prayer) is live as a logging-first
   // practice — it appears ONLY when the user selects it in the customizer
@@ -407,7 +402,7 @@ export function useRhythmState(): RhythmState {
   // the menu progress ring, the weekly grid — treats it as inactive at once.
   const prayerRequestsEnabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
   const prayerListActive = prayerRequestsEnabled && homeCardActive(hl, "prayer-list");
-  const anyExtraActive = gratitudeActive || examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
+  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -549,7 +544,6 @@ export function useRhythmState(): RhythmState {
     ? getGuestSilenceGoalMin()
     : ladderLevel != null ? ladderLevel : ((!hl && rawGoalMin === 0) ? 5 : rawGoalMin);
 
-  const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
@@ -730,7 +724,6 @@ export function useRhythmState(): RhythmState {
     ...(readingActive ? [readingDone] : []),
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
-    ...(gratitudeActive ? [gratitudeDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
     ...(stepsActive ? [stepsDone] : []),
@@ -780,7 +773,6 @@ export function useRhythmState(): RhythmState {
     eveningContemplationDone,
     reflectActive,
     reflections,
-    gratitudeActive,
     examenActive,
     listeningActive,
     readingActive,
@@ -792,7 +784,6 @@ export function useRhythmState(): RhythmState {
     stepsToday,
     stepsGoal,
     stepsDone,
-    gratitudeDone,
     examenDone,
     listeningDone,
     readingDone,

@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
-import ReflectionThoughts from "@/components/ReflectionThoughts";
 import { openExternal } from "@/lib/openExternal";
 import { FDD_TODAY_URL, recordFddOpened } from "@/lib/cacReadState";
 import { PracticeIntro } from "@/components/PracticeIntro";
@@ -84,7 +83,6 @@ export default function FddSitPage() {
         </button>
 
         <div style={{ marginTop: 26 }}>
-          <ReflectionThoughts source="fdd" day={today} />
         </div>
 
         <button

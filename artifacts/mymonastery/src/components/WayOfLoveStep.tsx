@@ -271,8 +271,8 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     // current home-layout version so it persists past the reset.
     {
       const otherNewsletters = (["cac", "fdd", "ssje"] as const).filter((n) => n !== reflectionChoice);
-      const order = ["requests", "contemplation", "office", reflectionChoice, "feeds", "gratitude", "examen", "ncmp", "podcasts", ...otherNewsletters];
-      const hidden = ["feeds", "gratitude", "examen", "ncmp", "podcasts", ...otherNewsletters];
+      const order = ["requests", "contemplation", "office", reflectionChoice, "feeds", "examen", "ncmp", "podcasts", ...otherNewsletters];
+      const hidden = ["feeds", "examen", "ncmp", "podcasts", ...otherNewsletters];
       // Durable save (caches locally + retries) so an iOS WebView suspension
       // right after committing can't drop the layout.
       saveHomeLayout({ order, hidden, v: HOME_LAYOUT_VERSION })

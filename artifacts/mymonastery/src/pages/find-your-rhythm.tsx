@@ -81,7 +81,6 @@ export default function FindYourRhythmPage() {
     if (rec.contemplationMinutes > 0) lines.push(`${rec.contemplationMinutes} minutes of silence a day.`);
     if (rec.reflectionSource) lines.push(`A daily reflection — ${SOURCE_LABEL[rec.reflectionSource]}.`);
     if (rec.listening) lines.push("Audio Divina — music as a way of prayer.");
-    if (rec.gratitude) lines.push("A daily gratitude.");
     if (rec.examen) lines.push("The Examen at day's end.");
 
     return (

@@ -134,7 +134,6 @@ export default function RoutinePrintPage() {
     if (!a.skipped) items.push({ emoji: a.emoji || "🌿", label: a.title, slot: a.slot });
   }
   if (r.examenActive) items.push({ emoji: "🌗", label: "The Examen", slot: "evening" });
-  if (r.gratitudeActive) items.push({ emoji: "🙏", label: "Gratitude", slot: "evening" });
   if (r.eveningActive) items.push({ emoji: "🌙", label: eveningGuide?.title ?? "Evening Prayer", slot: "evening" });
   // Group into distinct time-of-day sections (Anytime last — it's not a clock time).
   const SLOT_ORDER: CustomSlot[] = ["morning", "midday", "afternoon", "evening", "anytime"];

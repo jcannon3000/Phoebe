@@ -8,7 +8,6 @@ import {
   bellNotificationsTable,
   appOpensTable,
   breathSessionsTable,
-  gratitudeSeenTable,
   prayerFeedPrayersTable,
   reflectionReadsTable,
   walkNudgesTable,
@@ -90,8 +89,6 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
     // High-churn bookkeeping/event-log tables that otherwise grow forever.
     // All are pure "seen / prayed / read / nudged" records — old rows have no
     // bearing on current streaks or surfaces, so prune conservatively.
-    ["gratitude_seen>90d", () =>
-      db.delete(gratitudeSeenTable).where(lt(gratitudeSeenTable.seenAt, D90))],
     ["prayer_feed_prayers>1y", () =>
       db.delete(prayerFeedPrayersTable).where(lt(prayerFeedPrayersTable.createdAt, YEAR))],
     ["reflection_reads>1y", () =>

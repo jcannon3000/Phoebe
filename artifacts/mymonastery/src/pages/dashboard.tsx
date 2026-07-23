@@ -2442,21 +2442,6 @@ function PracticeHomeCard({
   );
 }
 
-function GratitudeHomeCard() {
-  return (
-    <PracticeHomeCard
-      href="/gratitude"
-      label="Gratitude 🌾"
-      cta="Give thanks"
-      tintBg="rgba(110,152,84,0.12)"
-      tintBorder="rgba(110,152,84,0.35)"
-      pillBg="rgba(110,152,84,0.28)"
-      pillBorder="rgba(110,152,84,0.45)"
-      accentBar="rgba(110,152,84,0.85)"
-    />
-  );
-}
-
 // Personal prayer list — opens straight into "pray through your list" (the
 // slideshow), the action that counts toward the daily Prayer List practice.
 function PrayerListHomeCard() {
@@ -5982,16 +5967,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -7062,8 +7047,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // they're not the reflection hero.
                 case "listening":
                   return null;
-                case "gratitude":
-                  return <GratitudeHomeCard />;
                 case "prayer-list":
                   // Prayer list removed from the home screen (owner) — reachable
                   // from the side menu / deep links instead.

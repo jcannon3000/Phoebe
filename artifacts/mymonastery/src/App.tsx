@@ -324,7 +324,6 @@ const FellowInvitePage = lazy(() => import("./pages/fellow-invite"));
 const People = lazy(() => import("./pages/people"));
 const FellowsPage = lazy(() => import("./pages/fellows"));
 const PsalmsPage = lazy(() => import("./pages/psalms"));
-const ThanksPage = lazy(() => import("./pages/thanks"));
 const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const ContemplationSetupPage = lazy(() => import("./pages/contemplation-setup"));
 const PersonProfile = lazy(() => import("./pages/person"));
@@ -406,7 +405,6 @@ const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
 const CustomizeHomeAddPage = lazy(() =>
   import("./pages/customize-home").then((m) => ({ default: m.CustomizeHomeAddPage })),
 );
-const GratitudePage = lazy(() => import("./pages/gratitude"));
 const IntentionsPage = lazy(() => import("./pages/intentions"));
 const ListeningPage = lazy(() => import("./pages/listening"));
 const ReadingLogPage = lazy(() => import("./pages/reading-log"));
@@ -432,7 +430,6 @@ import WelcomePublicPage from "./pages/welcome-public";
 const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
-const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
 const CommunityWeeklyPlanPage = lazy(() => import("./pages/community-weekly-plan"));
 const CommunityWeeklyPlanEditPage = lazy(() => import("./pages/community-weekly-plan-edit"));
@@ -445,7 +442,6 @@ const SignPage = lazy(() => import("./pages/sign"));
 const CreatorStudioPage = lazy(() => import("./pages/creator-studio"));
 const SeasonPage = lazy(() => import("./pages/season"));
 const CompanionInvitePage = lazy(() => import("./pages/companion-invite"));
-const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
 const CommunityJoinPage = lazy(() => import("./pages/community-join"));
@@ -991,7 +987,6 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/cobreathe/about" ||
         location === "/pray-breath" ||
         location === "/examen" ||
-        location === "/gratitude" ||
         location === "/intentions" ||
         location === "/listening" ||
         location === "/find-your-rhythm" ||
@@ -1158,7 +1153,6 @@ function Router() {
           and 1:1 messaging features are no longer part of the experience. */}
       <Route path="/people" component={People} />
       <Route path="/fellows" component={FellowsPage} />
-      <Route path="/thanks" component={ThanksPage} />
       <Route path="/weekly" component={WeeklyRoutinesPage} />
       <Route path="/contemplation-setup" component={ContemplationSetupPage} />
       <Route path="/people/find" component={FindFriendsPage} />
@@ -1215,7 +1209,6 @@ function Router() {
       <Route path="/pray-breath" component={PrayBreathPage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
-      <Route path="/gratitude" component={GratitudePage} />
       <Route path="/intentions">{() => <PrayerGate><IntentionsPage /></PrayerGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
       <Route path="/reading-log" component={ReadingLogPage} />
@@ -1279,8 +1272,6 @@ function Router() {
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
-      <Route path="/communities/:slug/reflection" component={CommunityReflectionPage} />
-      <Route path="/communities/:slug/sunday-reflection" component={CommunitySundayReflectionPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />

@@ -211,7 +211,6 @@ const PRACTICE_ICON: Record<string, { emoji: string; label: string }> = {
   "evening-prayer": { emoji: "🌙", label: "Evening Prayer" },
   "examen": { emoji: "🕯️", label: "Examen" },
   "rosary": { emoji: "📿", label: "Rosary" },
-  "gratitude": { emoji: "🌿", label: "Gratitude" },
 };
 function iconForPractice(templateType: string | null): { emoji: string; label: string } {
   if (templateType && PRACTICE_ICON[templateType]) return PRACTICE_ICON[templateType];

@@ -30,7 +30,7 @@ const HOME_MODULES = [
   // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
   // missing here, so saving from this page silently stripped it and the server
   // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
-  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "gratitude", "examen",
+  "office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "examen",
   "cac", "fdd", "ssje", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -106,9 +106,9 @@ function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayCh
 // Keep in sync with HOME_LAYOUT_VERSION in dashboard.tsx.
 const HOME_LAYOUT_VERSION = 2;
 // The default home everyone starts at (and resets to on a version bump):
-// requests (pinned) → community prayers (office) → Gratitude →
+// requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
-const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "gratitude", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "ncmp", "podcasts"];
 const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "examen", "cac", "ssje", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
@@ -120,7 +120,6 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathe together, in rhythm" }) },
     reading:      { label: t("rhythm.row_reading", { defaultValue: "Reading" }), emoji: "📚", sub: t("customize_home.module_reading_sub", { defaultValue: "Read by chapter, page, or time" }) },
     walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
-    gratitude:    { label: t("gratitude.title"),                 emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },

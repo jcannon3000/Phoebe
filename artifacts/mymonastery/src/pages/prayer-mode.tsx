@@ -44,7 +44,6 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
-import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -1487,9 +1486,6 @@ function HabitSlide({
   // with pilot view on — same gate as the menu entry.
   const { isBeta } = useBetaStatus();
   const { isPilot } = usePilotMode();
-  // End-of-office gratitude beat — a gentle "name one thing you're
-  // grateful for" the close offers before you leave.
-  const [thanksOpen, setThanksOpen] = useState(false);
   const { t } = useTranslation();
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
@@ -1606,27 +1602,8 @@ function HabitSlide({
         {/* Fellows off: no "prayed with you" community recap on the devotion close. */}
       </motion.div>
 
-      {/* Give-thanks (gratitude) + Ignatian Examen — on the same level. The
-          Examen is evening-only (end-of-day prayer) and pilot-only; gratitude
-          is open to everyone. */}
+      {/* Ignatian Examen — evening-only (end-of-day prayer) and pilot-only. */}
       <div className="flex items-center justify-center flex-wrap" style={{ gap: 10 }}>
-        {/* Gratitude is trimmed in pilot (removed from Practices, /gratitude blocked). */}
-        {!isPilot && (
-        <button
-          type="button"
-          onClick={() => setThanksOpen(true)}
-          className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
-          style={{
-            background: "rgba(var(--ot-green, 46,107,64),0.22)",
-            color: "var(--oh-fern, #A8C5A0)",
-            border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
-            fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
-            cursor: "pointer",
-          }}
-        >
-          🌾 Give thanks
-        </button>
-        )}
         {isEvening && isBeta && (
           <Link href="/examen">
             <button
@@ -1645,7 +1622,6 @@ function HabitSlide({
           </Link>
         )}
       </div>
-      <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
 
       <button
         onClick={onDone}
@@ -2019,7 +1995,7 @@ function ClosingSlide({
     >
       {/* The whole close, simplified to this: who you prayed for this week —
           the count + their faces — and one pill to add a prayer request of
-          your own. (The gratitude / Examen pills and the rhythm grid that
+          your own. (The Examen pill and the rhythm grid that
           used to follow on a second slide were removed.) */}
       {/* Fellows off: no "prayed with you" community recap on the devotion close. */}
 
@@ -2234,7 +2210,6 @@ function PrayerCompletedSlide({
     add(rhythm.prayerListActive, rhythm.prayerListDone, "anytime", { emoji: "🕊️", title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }), blurb: t("rhythm.blurb_prayer_list", { defaultValue: "Pray through your list" }), href: "/intentions?pray=1" });
     add(rhythm.eveningActive, rhythm.eveningDone, "evening", { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" });
     add(rhythm.examenActive, rhythm.examenDone, "evening", { emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), href: "/examen" });
-    add(rhythm.gratitudeActive, rhythm.gratitudeDone, "evening", { emoji: "🌾", title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }), blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name today's gifts" }), href: "/gratitude" });
     if (cands.length === 0) return null;
     return [...cands].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
   })();

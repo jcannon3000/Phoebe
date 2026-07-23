@@ -727,7 +727,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, prayerListActive, prayerListDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, prayerListActive, prayerListDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -772,7 +772,6 @@ function DailyProgressPill() {
     ...(prayerListActive ? [{ key: "prayer-list", done: prayerListDone }] : []),
     ...cDots("anytime"),
     ...cDots("midday"),
-    ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
     // Standalone Co-Breathe only — when per-side Creation Prayer cards replace
     // the standalone card, its dot would have no card (theirs are above).
@@ -1062,9 +1061,8 @@ function OpeningSplash() {
     ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150", logOnly: true })),
     { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "108,140,180", logOnly: true },
     { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
-    // The Examen + Gratitude are end-of-day reflections — evening slot.
+    // The Examen is an end-of-day reflection — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
-    { active: rhythm.gratitudeActive, done: rhythm.gratitudeDone, slot: "evening", emoji: "🙏", label: "Gratitude", blurb: "Name today's gifts", rgb: "108,162,124" },
     { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : "Evening prayer", blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : "Mark the day's end with the office", rgb: "124,116,196" },
   ];
   // From the AFTERNOON on (noon onward), "what's next" LEADS WITH EVENING (owner)

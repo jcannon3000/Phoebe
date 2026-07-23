@@ -23,7 +23,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
 type Anchor = {
-  key: "morning" | "reflect" | "silence" | "evening" | "gratitude" | "examen";
+  key: "morning" | "reflect" | "silence" | "evening" | "examen";
   label: string;
   icon: string;       // emoji glyph
   done: boolean;
@@ -41,7 +41,7 @@ export function TodaysRhythm() {
   const {
     morningDone, reflectDone, silenceDone, eveningDone,
     gardenCount, cobreatheCount, prayerKind: rawPrayerKind,
-    gratitudeActive, examenActive, gratitudeDone, examenDone,
+    examenActive, examenDone,
   } = useRhythmState();
   // Pilot is personal-only: never render the community "pray together" voice or
   // the garden social-proof line (a converted account could still carry them).
@@ -93,12 +93,6 @@ export function TodaysRhythm() {
         : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
     },
     // Optional practices the user added from the Customize flow.
-    ...(gratitudeActive ? [{
-      key: "gratitude" as const, label: t("rhythm.gratitude", { defaultValue: "Gratitude" }), icon: "🙏",
-      done: gratitudeDone, href: "/gratitude",
-      cta: t("rhythm.cta_gratitude", { defaultValue: "Name a gift from today" }),
-      blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
-    }] : []),
     ...(examenActive ? [{
       key: "examen" as const, label: t("rhythm.examen", { defaultValue: "Examen" }), icon: "🌗",
       done: examenDone, href: "/examen",
@@ -112,15 +106,14 @@ export function TodaysRhythm() {
   // evening close leads after 8pm. All done → a benediction.
   const order: Anchor["key"][] = useMemo(() => {
     // Optional practices fall to the end of the next-step order — the core
-    // rhythm leads; gratitude/examen are surfaced once a user has added them.
+    // rhythm leads; the Examen is surfaced once a user has added it.
     const extras: Anchor["key"][] = [
-      ...(gratitudeActive ? ["gratitude" as const] : []),
       ...(examenActive ? ["examen" as const] : []),
     ];
     if (hour < 12) return ["morning", "silence", "reflect", "evening", ...extras];
     if (hour < 20) return ["silence", "reflect", "evening", "morning", ...extras];
     return ["evening", "silence", "reflect", "morning", ...extras];
-  }, [hour, gratitudeActive, examenActive]);
+  }, [hour, examenActive]);
 
   const byKey = (k: Anchor["key"]) => anchors.find((a) => a.key === k)!;
   const next = order.map(byKey).find((a) => !a.done) ?? null;
