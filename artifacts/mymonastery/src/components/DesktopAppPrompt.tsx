@@ -111,13 +111,13 @@ export function DesktopAppPrompt() {
             className="text-[14px] font-semibold leading-tight"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            {t("desktop_prompt.ios_title", { defaultValue: "Phoebe is made for iPhone" })}
+            {t("desktop_prompt.ios_title", { defaultValue: "Phoebe is on iPhone too" })}
           </p>
           <p
             className="text-[12px] mt-0.5 leading-snug"
             style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            {t("desktop_prompt.ios_body", { defaultValue: "The offices, silence, and gentle reminders — in your pocket. Download the app from the App Store." })}
+            {t("desktop_prompt.ios_body", { defaultValue: "You're all set here on the web — and Phoebe's on iPhone too, for the offices, silence, and gentle reminders in your pocket." })}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0 self-center">

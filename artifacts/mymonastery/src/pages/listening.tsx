@@ -54,26 +54,29 @@ const glassRow = {
 type View = "log" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
-type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; shared?: boolean; createdAt: string };
+type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; shared?: boolean; createdAt: string };
 
 export default function ListeningPage() {
   const [view, setView] = useState<View>("log");
+  // `query` is the transient search text (never stored); `what` is the SELECTED
+  // catalog title and is only ever set by tapping a result or a recent — you
+  // can't log free-typed text. This keeps the log to structured Apple Music
+  // catalog references (search-only; there's no playback or library link).
+  const [query, setQuery] = useState("");
   const [what, setWhat] = useState("");
-  // Apple Music (→ Spotify) catalog suggestions for the "what" field: artists,
-  // songs, albums. Debounced; `picked` suppresses re-searching the text we just
-  // filled in from a tap. Falls back to plain typing when no source is available.
+  // Apple Music catalog suggestions for the search field: artists, songs,
+  // albums. Debounced; `picked` suppresses re-searching the text we just filled
+  // in from a tap.
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [picked, setPicked] = useState(false);
-  // Whether the "what" field is focused — drives the recents list that shows
+  // Whether the search field is focused — drives the recents list that shows
   // before any catalog search (your own recent listens, one tap to refill).
   const [searchFocused, setSearchFocused] = useState(false);
-  // Artwork of the picked song/artist/album (shown in the log) + an optional
-  // reflection on the listening.
+  // Artwork of the picked song/artist/album (shown in the log).
   const [artworkUrl, setArtworkUrl] = useState("");
-  const [experience, setExperience] = useState("");
   useEffect(() => {
-    const q = what.trim();
+    const q = query.trim();
     if (picked || q.length < 2) { setResults([]); setSearching(false); return; }
     let cancelled = false;
     setSearching(true);
@@ -82,9 +85,11 @@ export default function ListeningPage() {
       if (!cancelled) { setResults(r); setSearching(false); }
     }, 350);
     return () => { cancelled = true; window.clearTimeout(h); };
-  }, [what, picked]);
+  }, [query, picked]);
   function chooseResult(r: SearchResult) {
-    setWhat(r.subtitle ? `${r.title} — ${r.subtitle}` : r.title);
+    const title = r.subtitle ? `${r.title} — ${r.subtitle}` : r.title;
+    setWhat(title);
+    setQuery(title);
     setArtworkUrl(r.artworkUrl ?? "");
     setPicked(true);
     setResults([]);
@@ -125,6 +130,7 @@ export default function ListeningPage() {
   }, [entries]);
   function chooseRecent(r: { what: string; artworkUrl?: string; medium: ListeningMedium }) {
     setWhat(r.what);
+    setQuery(r.what);
     setArtworkUrl(r.artworkUrl ?? "");
     chooseMedium(r.medium);
     setPicked(true);
@@ -133,7 +139,7 @@ export default function ListeningPage() {
   }
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, experience, shared: false }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({
@@ -141,11 +147,13 @@ export default function ListeningPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
 
-  // The whole log: note what + how, mark it done, then show the log. (No amount.)
+  // The whole log: pick what (from search) + how, mark it done, then show the
+  // log. (No amount.) You must pick a catalog result — no free-typed entries.
   function logToday() {
+    if (!what.trim()) return;
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setWhat(""); setExperience(""); setArtworkUrl("");
+    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
     setView("history");
   }
 
@@ -202,17 +210,17 @@ export default function ListeningPage() {
           What did you listen to?
         </p>
         <input
-          value={what}
-          onChange={(e) => { setWhat(e.target.value); setPicked(false); setArtworkUrl(""); }}
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setPicked(false); setWhat(""); setArtworkUrl(""); }}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-          placeholder="A song, album, or artist…"
+          placeholder="Search a song, album, or artist…"
           className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
           style={glassField}
         />
         {/* Recents — your own recent listens, shown the moment the field is
             focused and before you've typed a search. One tap refills everything. */}
-        {searchFocused && !picked && what.trim().length < 2 && recents.length > 0 && (
+        {searchFocused && !picked && query.trim().length < 2 && recents.length > 0 && (
           <div className="mt-2 flex flex-col gap-1.5 max-h-[44vh] overflow-y-auto">
             <p className="text-[10px] uppercase tracking-[0.18em] px-1 pt-1 pb-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Recent</p>
             {recents.map((r, i) => (
@@ -235,8 +243,8 @@ export default function ListeningPage() {
             ))}
           </div>
         )}
-        {/* Apple Music suggestions — artists, songs, albums. Tap one to fill the
-            field. Stays empty (plain typing) when no catalog source is wired. */}
+        {/* Apple Music suggestions — artists, songs, albums. Tap one to select
+            it; only a tapped result becomes your logged entry (no free typing). */}
         {!picked && (searching || results.length > 0) && (
           <div className="mt-2 flex flex-col gap-1.5 max-h-[44vh] overflow-y-auto">
             {searching && results.length === 0 && (
@@ -263,6 +271,14 @@ export default function ListeningPage() {
             ))}
           </div>
         )}
+        {/* Selection-only: if they've typed a search that found nothing (and
+            haven't picked), nudge them to pick a result — a free-typed line
+            can't be logged. */}
+        {!picked && !searching && query.trim().length >= 2 && results.length === 0 && (
+          <p className="mt-2 text-[12px] px-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+            Pick a result from the search to log it.
+          </p>
+        )}
         <div className="mb-6" />
 
         {/* 2 — How did you listen? (dropdown, 4 options) */}
@@ -280,10 +296,12 @@ export default function ListeningPage() {
           ))}
         </select>
 
-        {/* Log it — frosted, like marking a task done, plus it saves to your log. */}
+        {/* Log it — frosted, like marking a task done, plus it saves to your log.
+            Disabled until you've picked something from search (selection-only). */}
         <button
           onClick={logToday}
-          className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform"
+          disabled={!what.trim()}
+          className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
           style={{ ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK }}
         >
           Log today's listening
@@ -355,9 +373,6 @@ function HistoryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: 
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
         <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{MEDIUM_EMOJI[e.medium] ?? "🎧"} {day}</p>
-        {e.experience?.trim() ? (
-          <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
-        ) : null}
       </div>
       <button
         onClick={() => onDelete(e.id)}

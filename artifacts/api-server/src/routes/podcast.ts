@@ -311,7 +311,7 @@ export const SHOWS: Record<string, Show> = {
   // ── Diocese of Washington — Bishop Mariann Budde ────────────────────
   "experiencing-jesus": {
     slug: "experiencing-jesus",
-    title: "The Way of Love: A Rule of Life",
+    title: "Introduction to The Way of Love",
     artist: "Diocese of Washington",
     publisher: "way-of-love",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",

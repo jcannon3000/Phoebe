@@ -210,8 +210,8 @@ function buildSlides(t: TFunction): Slide[] {
 /* ── Dashboard Mock — the current home screen ── */
 // Rebuilt to match today's dashboard: the app header (Phoebe · Daily progress ·
 // Menu), the date + liturgical tagline, then the module cards in their real
-// order and palette — the "prayer requests waiting" card, the Book-of-Common-
-// Prayer office hero ("Begin prayer"), and the teal Contemplation card.
+// order and palette — the Book-of-Common-Prayer office hero ("Begin prayer")
+// and the teal Contemplation card.
 function DashboardMock() {
   const { t } = useTranslation();
   const avatar = (bg: string, key: number) => (
@@ -241,18 +241,6 @@ function DashboardMock() {
       {/* Date + liturgical tagline */}
       <p className="text-[14px] font-semibold leading-tight" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_date")}</p>
       <p className="text-[7.5px] uppercase tracking-[0.14em] mb-3 mt-0.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_tagline")}</p>
-
-      {/* Prayer requests waiting */}
-      <div className="rounded-xl overflow-hidden flex mb-2" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(111,175,133,0.35)" }}>
-        <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
-        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[11.5px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_requests")} 🙏🏽</p>
-            <div className="flex -space-x-1.5 mt-1.5">{avatar("#8B6F4E", 1)}{avatar("#5A7A8B", 2)}{avatar("#7A5A6B", 3)}</div>
-          </div>
-          <div className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0" style={{ background: "#4A7A5B", color: C.text, border: "1px solid rgba(111,175,133,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_respond")} →</div>
-        </div>
-      </div>
 
       {/* Office hero — Book of Common Prayer */}
       <div className="rounded-xl overflow-hidden flex mb-2" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.4)" }}>
@@ -1780,33 +1768,60 @@ function ClosingSlide({
   slide: Extract<Slide, { kind: "closing" }>;
 }) {
   return (
-    <div className="max-w-3xl mx-auto w-full text-center">
-      <div className="space-y-4 md:space-y-6 mb-10 md:mb-16">
-        {slide.body.map((line, i) => (
-          <p
-            key={i}
-            className="text-base md:text-xl font-light leading-relaxed"
-            style={{ color: C.sage, fontFamily: C.font }}
-          >
-            {line}
-          </p>
-        ))}
-      </div>
+    <div className="max-w-3xl mx-auto w-full flex flex-col items-center text-center">
+      {/* The app icon — the anchor the whole closing rests on. */}
+      <motion.img
+        src="/phoebe-app-icon.png"
+        alt="Phoebe"
+        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="w-24 h-24 md:w-28 md:h-28 rounded-[22%] object-cover mb-6 md:mb-8"
+        style={{
+          border: "1px solid rgba(46,107,64,0.4)",
+          boxShadow: "0 14px 44px rgba(46,107,64,0.35), 0 2px 10px rgba(0,0,0,0.45)",
+        }}
+      />
+      {/* The name. */}
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.25, duration: 0.5 }}
-        className="space-y-1"
+        transition={{ delay: 0.18, duration: 0.5 }}
+        className="space-y-1 mb-8 md:mb-10"
       >
         {slide.featured.map((line, i) => (
           <p
             key={i}
-            className="text-3xl md:text-5xl font-semibold leading-tight"
+            className="text-4xl md:text-6xl font-semibold leading-tight tracking-tight"
             style={{ color: C.text, fontFamily: C.font }}
           >
             {line}
           </p>
         ))}
+      </motion.div>
+      {/* The name's story — and the invitation (last line brightened). */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.32, duration: 0.6 }}
+        className="space-y-3 md:space-y-4 max-w-xl"
+      >
+        {slide.body.map((line, i) => {
+          const isLast = i === slide.body.length - 1;
+          return (
+            <p
+              key={i}
+              className={
+                isLast
+                  ? "text-lg md:text-2xl font-normal leading-relaxed pt-1"
+                  : "text-base md:text-xl font-light leading-relaxed"
+              }
+              style={{ color: isLast ? C.text : C.sage, fontFamily: C.font }}
+            >
+              {line}
+            </p>
+          );
+        })}
       </motion.div>
     </div>
   );

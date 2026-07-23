@@ -134,9 +134,15 @@ export default function MenuPage() {
   groups.push(explore);
 
   // Account.
+  // Settings is only for people who've actually made an account — not the
+  // no-login guest or the anonymous device user. (There's nothing to configure
+  // until you sign up; the rhythm lives in Customize, reachable above.)
+  const signedUp = !!user && !user.isAnonymous;
   const account: MenuHubGroup = {
     header: t("menu.hdr_account"),
-    items: [{ emoji: "⚙️", label: t("menu.settings"), onClick: () => go("/settings") }],
+    items: signedUp
+      ? [{ emoji: "⚙️", label: t("menu.settings"), onClick: () => go("/settings") }]
+      : [],
   };
   if (showAdminTools) account.items.push({ emoji: "🔧", label: t("menu.admin_tools"), onClick: () => go("/admin/tools") });
   if (rawIsBeta) {

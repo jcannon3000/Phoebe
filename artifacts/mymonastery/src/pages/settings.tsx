@@ -2130,7 +2130,15 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.showPresence]);
 
-  if (isLoading || !user) return null;
+  // Settings is for signed-up accounts only. Not-signed-up viewers — logged out
+  // (session gone/expired) or the anonymous device user — have nothing to
+  // configure here, so send them home rather than strand them on the blank
+  // `return null` below. (The menu hides the Settings entry for them too.)
+  useEffect(() => {
+    if (!isLoading && (!user || user.isAnonymous)) setLocation("/");
+  }, [isLoading, user, setLocation]);
+
+  if (isLoading || !user || user.isAnonymous) return null;
   const accountless = !!user.isAnonymous;
 
   return (
