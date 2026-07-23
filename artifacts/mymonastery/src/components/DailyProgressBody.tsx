@@ -833,7 +833,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: creationStyle ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
       blurb: creationStyle ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning")),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      doneCta: creationStyle ? t("rhythm.breathe_again", { defaultValue: "Breathe again" }) : t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // Creation Prayer, once done, just reads as kept (checked) like the other
+      // rhythm cards — no "breathe again" repeat CTA. Silent contemplation keeps
+      // "Sit again" (it has no ceiling).
+      doneCta: creationStyle ? undefined : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     ...(eveningContemplationActive ? [{
       key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: creationStyle ? "🌍" : "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
@@ -841,7 +844,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: creationStyle ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
       blurb: creationStyle ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening")),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      doneCta: creationStyle ? t("rhythm.breathe_again", { defaultValue: "Breathe again" }) : t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // Creation Prayer, once done, just reads as kept (checked) like the other
+      // rhythm cards — no "breathe again" repeat CTA. Silent contemplation keeps
+      // "Sit again" (it has no ceiling).
+      doneCta: creationStyle ? undefined : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     // SOLO "Silence" goal card — ONE card with a PROGRESS BAR of today's
     // minutes toward the daily goal. Shown whenever a goal is set and NEITHER
