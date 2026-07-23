@@ -1736,7 +1736,8 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
           FULL app only — every entry it opens (prayer request, community
           intercession, event) is closed to light users, so they get no dead
           plus button. */}
-      {user && !isGuest && <CreateFab />}
+      {/* The bottom-right "+" create FAB was removed — its primary action was
+          creating a prayer request, which is now off for everyone. */}
 
       {/* EXPERIMENTAL "Water" home theme (super-admin toggle, see lib/homeTheme).
           A mix-blend-mode:color wash recolors the whole home's green to blue —
