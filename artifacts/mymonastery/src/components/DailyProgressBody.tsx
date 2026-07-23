@@ -389,9 +389,13 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
+  /** Small uppercase label ABOVE the title in the hero layout — mirrors the
+   *  office hero's "Book of Common Prayer" eyebrow. Hero-only; ignored on the
+   *  compact row. */
+  eyebrow?: string;
   /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
    *  driving the subtle card-background lightness ramp. */
   tint?: number;
@@ -465,6 +469,14 @@ function PracticeCard({
           <div className="flex items-start gap-3.5">
             {emoji ? <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span> : null}
             <div className="flex-1 min-w-0 overflow-hidden">
+              {eyebrow ? (
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-widest truncate"
+                  style={{ color: "rgba(143,175,150,0.55)", margin: 0, marginBottom: 4, fontFamily: FONT }}
+                >
+                  {eyebrow}
+                </p>
+              ) : null}
               <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
               {useCycle
                 ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
@@ -718,7 +730,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const cobreatheCard = {
     key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone, href: "/cobreathe?start=1",
     title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
-    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths, a prayer with all creation" }),
+    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const listeningCard = {
@@ -766,7 +778,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           : t("rhythm.card_evening_creation", { defaultValue: "Evening Creation Prayer" }))
       : t("rhythm.card_creation", { defaultValue: "Creation Prayer" });
   const creationBlurb = (done: boolean): string =>
-    done ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths, a prayer with all creation" });
+    done ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" });
   const rawCards = [
     // Morning drops off Daily progress once the morning is past (afternoon) and
     // it wasn't prayed — we don't nag about a missed morning in Next; past noon
@@ -1117,10 +1129,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   );
   // The card that LEADS the Next list as a hero: the office hero when there is
   // one, otherwise the morning Contemplation card in the big hero layout.
+  // When Creation Prayer (the breath) is the anchor and it LEADS as the hero,
+  // mirror the office hero exactly: no emoji + a small-caps "CREATION PRAYER"
+  // eyebrow above the title (the office hero shows "BOOK OF COMMON PRAYER" and
+  // no emoji). The compact list card keeps its 🌍.
+  const heroIsCreation = !!contemplationHero && creationStyle
+    && (contemplationHero.key === "contemplation-morning" || contemplationHero.key === "contemplation-evening");
   const heroNode = officeHero ?? (contemplationHero ? (
     <PracticeCard
       href={contemplationHero.href}
-      emoji={contemplationHero.emoji}
+      emoji={heroIsCreation ? "" : contemplationHero.emoji}
+      eyebrow={heroIsCreation ? t("rhythm.creation_eyebrow", { defaultValue: "Creation Prayer" }) : undefined}
       title={contemplationHero.title}
       blurb={contemplationHero.blurb}
       cta={contemplationHero.cta}

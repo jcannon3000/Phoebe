@@ -1965,7 +1965,7 @@ function PrayerCompletedSlide({
       if (active && !done) cands.push({ ...c, slot });
     };
     add(rhythm.silenceActive, rhythm.silenceDone, "morning", { emoji: "🕯️", title: t("rhythm.card_silence", { defaultValue: "Contemplation" }), blurb: t("rhythm.blurb_silence", { defaultValue: "Loving God in silence" }), href: "/contemplation?begin=1" });
-    add(rhythm.cobreatheActive, rhythm.cobreatheDone, getPracticeSlot("cobreathe"), { emoji: "🌍", title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }), blurb: t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths, a prayer with all creation" }), href: "/cobreathe?start=1" });
+    add(rhythm.cobreatheActive, rhythm.cobreatheDone, getPracticeSlot("cobreathe"), { emoji: "🌍", title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }), blurb: t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" }), href: "/cobreathe?start=1" });
     add(rhythm.listeningActive, rhythm.listeningDone, getPracticeSlot("listening"), { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), href: "/listening" });
     add(rhythm.readingActive, rhythm.readingDone, getPracticeSlot("reading"), { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading", { defaultValue: "Log what you read" }), href: "/reading-log" });
     add(rhythm.walkActive, rhythm.walkDone, getPracticeSlot("walk"), { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }), href: "/walk-log" });

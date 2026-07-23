@@ -29,7 +29,7 @@ export default function MenuPracticesPage() {
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
           // Guided courses now live in their own "Learn" menu tab.
-          { emoji: "🌍", label: "Creation Prayer", sub: "12 breaths, a prayer with all creation", onClick: () => go("/cobreathe") },
+          { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
           // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
           // The standalone "Creation Prayer" devotion was removed per owner.
           ...(CREATION_PRAYER_ENABLED && !isGuest ? [

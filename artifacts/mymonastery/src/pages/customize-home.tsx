@@ -75,7 +75,7 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
   community: { emoji: "🙏🏽", label: "Pray Together", sub: "Pray with your community" },
-  cobreathe: { emoji: "🌍", label: "Creation Prayer", sub: "12 breaths, a prayer with all creation" },
+  cobreathe: { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation" },
   devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };
@@ -117,7 +117,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     office:       { label: t("customize_home.module_office"),    emoji: "📖", sub: t("customize_home.module_office_sub") },
     contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
     listening:    { label: t("menu.listening", { defaultValue: "Audio Divina" }), emoji: "🎧", sub: t("customize_home.module_listening_sub", { defaultValue: "Music as a way of prayer" }) },
-    cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathe together, in rhythm" }) },
+    cobreathe:    { label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), emoji: "🌍", sub: t("customize_home.module_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }) },
     reading:      { label: t("rhythm.row_reading", { defaultValue: "Reading" }), emoji: "📚", sub: t("customize_home.module_reading_sub", { defaultValue: "Read by chapter, page, or time" }) },
     walk:         { label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶", sub: t("customize_home.module_walk_sub", { defaultValue: "A prayerful walk, counted as you go" }) },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },

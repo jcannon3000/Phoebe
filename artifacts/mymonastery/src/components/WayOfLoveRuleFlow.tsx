@@ -536,6 +536,14 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setCobreatheBreaths(n);
     try { localStorage.setItem("phoebe:cobreathe-length", String(n)); } catch { /* ignore */ }
+    // phoebe:cobreathe-length is a routine-sync key (LWW by updatedAt). Writing
+    // localStorage alone left the LOCAL clock un-bumped, so the very next
+    // /auth/me refetch's syncRoutineFromServer saw serverAt > localAt and
+    // applied the server's older value — reverting a fresh "24" back to "12".
+    // pushRoutineConfig() stamps the local clock to now (so this device wins the
+    // next reconcile) AND debounce-pushes the new length up. Signed-in users
+    // only; a guest has no account blob to sync against.
+    if (user) pushRoutineConfig();
     // Keep the minutes-based silence goal coherent with the breath length
     // (12s per breath), so a finished Creation Prayer completes the goal.
     chooseSideMinutes(side, Math.max(1, Math.round((n * 12) / 60)));
@@ -1609,7 +1617,7 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(
             contemplationBySide[side] && contemplationStyle === "cobreathe",
             `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`,
-            t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths, a prayer with all creation." }),
+            t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }),
             () => {
               const on = contemplationBySide[side] && contemplationStyle === "cobreathe";
               if (on) return; // already selected — nothing to switch

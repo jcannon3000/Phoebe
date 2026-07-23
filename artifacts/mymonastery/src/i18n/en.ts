@@ -1324,7 +1324,7 @@ export const en = {
     climate_title: "Prayer for the climate",
     climate_blurb: "Pray today's intercession alongside the wider community caring for creation.",
     cobreathe_title: "Creation Prayer",
-    cobreathe_blurb: "12 breaths, a prayer with all creation.",
+    cobreathe_blurb: "Breathing together with God's creation",
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
     learn_title: "Learn about Phoebe",
     learn_blurb: "A quick tour of how Phoebe helps you pray and stay connected.",
