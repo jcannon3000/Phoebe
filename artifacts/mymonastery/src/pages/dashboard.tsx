@@ -14,7 +14,6 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
-import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { CommunityRuleOfferBeta } from "@/components/CommunityRuleOfferBeta";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
@@ -6830,9 +6829,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           {!eventsOnly && (
             <div className="mb-2">
               <LiturgicalDateHeader />
-              {/* Praying WITH each other — "you prayed with N people this
-                  week" (aggregate only; never who did or didn't). */}
-              <PrayedWithWeek />
             </div>
           )}
           {/* A fellow's one-tap 🙌 lands INSIDE the daily loop (it only
