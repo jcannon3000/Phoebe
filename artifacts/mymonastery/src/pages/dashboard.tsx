@@ -14,7 +14,6 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
-import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { CommunityRuleOfferBeta } from "@/components/CommunityRuleOfferBeta";
 import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
@@ -31,7 +30,6 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
-import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
@@ -6717,11 +6715,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               <LiturgicalDateHeader />
             </div>
           )}
-          {/* A fellow's one-tap 🙌 lands INSIDE the daily loop (it only
-              rendered on the People page before, which most users never
-              visit). Self-hides when there's nothing unseen; gated on the
-              fellows flag like every Fellow surface. */}
-          {!eventsOnly && FELLOWS_ENABLED && <EncouragementBanner />}
           {/* PUBLIC first-open welcome — a dismissible "begin here" note under
               the date: names the given rhythm and promises the daily
               walk-through. Guests only. */}

@@ -15,7 +15,7 @@
  * call `getUserAccessTier(userId)` and branch on the result.
  */
 
-import { db, usersTable, betaUsersTable, groupMembersTable, prayerFeedsTable, fellowsTable } from "@workspace/db";
+import { db, usersTable, betaUsersTable, groupMembersTable, prayerFeedsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 
 export type AccessTier =
@@ -69,7 +69,7 @@ export async function getUserAccessTier(userId: number): Promise<UserAccess> {
 
   // Run the secondary queries in parallel — none of them depend
   // on each other.
-  const [betaRows, memberRows, parishRow, fellowRows] = await Promise.all([
+  const [betaRows, memberRows, parishRow] = await Promise.all([
     db
       .select({ email: betaUsersTable.email })
       .from(betaUsersTable)
@@ -96,26 +96,15 @@ export async function getUserAccessTier(userId: number): Promise<UserAccess> {
           ))
           .limit(1)
       : Promise.resolve([] as { slug: string }[]),
-    // Any fellow row (either direction) is enough — a user with at
-    // least one Fellow has signed up via /p/:token Amen and gets the
-    // full app. Limit 1 keeps it cheap; we only care that it exists.
-    db
-      .select({ id: fellowsTable.id })
-      .from(fellowsTable)
-      .where(eq(fellowsTable.userId, userId))
-      .limit(1),
   ]);
 
   const isBeta = betaRows.length > 0;
   const hasCommunityMembership = memberRows.length > 0;
-  const hasFellow = fellowRows.length > 0;
   const parishSlug = parishRow[0]?.slug ?? null;
 
   // Order matters: a community membership ALWAYS wins, so an
   // offices-only account that later joins a community frictionlessly
-  // upgrades to "full". A Fellow link is ALSO a full-app trigger —
-  // the share-link flow lets two people connect outside any community
-  // and they should land in the same full app.
+  // upgrades to "full".
   //
   // The public "/pray" devotion signup sets users.offices_only = true, but
   // per product direction those visitors now get the FULL app too — the whole
@@ -124,7 +113,7 @@ export async function getUserAccessTier(userId: number): Promise<UserAccess> {
   // the full-app trigger. (parish-only / unassigned are unchanged, so the
   // Parish onboarding funnel still applies to genuinely-untiered accounts.)
   let tier: AccessTier;
-  if (isBeta || hasCommunityMembership || hasFellow || user.officesOnly) {
+  if (isBeta || hasCommunityMembership || user.officesOnly) {
     tier = "full";
   } else if (user.parishFeedId !== null) {
     tier = "parish-only";

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -2852,15 +2852,12 @@ router.post("/prayer-requests/share/:token/amen", rateLimit({
 
     if (viewerUserId) {
       // Authenticated viewer — treat this exactly like the in-app
-      // amen endpoint. The viewer also gets fellowed to the owner.
-      // ON CONFLICT DO NOTHING for the amen so a re-tap is a no-op.
+      // amen endpoint. ON CONFLICT DO NOTHING for the amen so a re-tap
+      // is a no-op. (Fellows removed 2026-07-23 — no fellow pair created.)
       await db
         .insert(prayerRequestAmensTable)
         .values({ requestId: row.id, userId: viewerUserId })
         .onConflictDoNothing();
-      if (viewerUserId !== row.ownerId) {
-        await createFellowPair(viewerUserId, row.ownerId, "shared_prayer");
-      }
       res.json({ ok: true, claimed: true });
       return;
     }
@@ -2884,21 +2881,5 @@ router.post("/prayer-requests/share/:token/amen", rateLimit({
     res.status(500).json({ error: "internal_error" });
   }
 });
-
-// Helper — insert both directions of a fellow pair. Idempotent via
-// the UNIQUE (user_id, fellow_user_id) constraint. Kept local so
-// the route file is self-contained; the signup linker has its own
-// copy in routes/auth.ts (small duplication; the surface is so thin
-// it's cheaper than a shared helper file).
-async function createFellowPair(a: number, b: number, source: string) {
-  if (a === b) return;
-  await db
-    .insert(fellowsTable)
-    .values([
-      { userId: a, fellowUserId: b, source },
-      { userId: b, fellowUserId: a, source },
-    ])
-    .onConflictDoNothing();
-}
 
 export default router;

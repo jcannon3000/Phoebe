@@ -1825,7 +1825,9 @@ export default function CommunityDetailPage() {
                     border: isHiddenAdmin ? "1px solid rgba(193,127,36,0.28)" : "1px solid rgba(46,107,64,0.2)",
                   }}
                 >
-                  <Link href={`/people/${encodeURIComponent(m.email)}`} className="flex-1 min-w-0">
+                  {/* Fellows/person-profile removed 2026-07-23 — the member row
+                      is no longer a link to /people/:email (that page is gone). */}
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       {m.avatarUrl ? (
                         <img src={m.avatarUrl} alt={m.name || m.email} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
@@ -1876,7 +1878,7 @@ export default function CommunityDetailPage() {
                       )}
                     </div>
                     <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
-                  </Link>
+                  </div>
                   {/* Admin-only management controls. Split into two gates:
                       - Peer actions (make-admin / demote / remove) stay
                         `!isSelf`. A member can't change their own

@@ -10,7 +10,6 @@ import {
   breathSessionsTable,
   prayerFeedPrayersTable,
   reflectionReadsTable,
-  walkNudgesTable,
 } from "@workspace/db";
 import { logger } from "./logger";
 
@@ -105,8 +104,6 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
           AND u.created_at < ${YEAR}
           AND NOT EXISTS (SELECT 1 FROM app_opens a WHERE a.user_id = u.id)
       `)],
-    ["walk_nudges>1y", () =>
-      db.delete(walkNudgesTable).where(lt(walkNudgesTable.createdAt, YEAR))],
   ];
 
   for (const [label, fn] of steps) {

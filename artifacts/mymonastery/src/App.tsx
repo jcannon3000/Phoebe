@@ -21,7 +21,6 @@ import { LocaleSync } from "@/components/LocaleSync";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
-import { PresenceTurn } from "@/components/PresenceTurn";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
@@ -58,25 +57,15 @@ function ScrollToTopOnNavigate() {
   return null;
 }
 
-// Same pattern for a Fellows invite link: a logged-out visitor who opened
-// /fellow/:token went through the explainer deck, stashed the token, and went
-// off to create an account. Once authenticated, send them back to /fellow/:token
-// — which auto-accepts the stashed invite + applies the fellows settings they
-// chose — so the fellowship actually forms.
-function PendingFellowInviteRedirect() {
+// A prescribed-routine / preset-rule link (/routine/:token): a logged-out
+// visitor who opened it stashes the token before "Sign in to add this rhythm",
+// then once authenticated we send them back to /routine/:token to finish.
+// (Fellows removed 2026-07-23 — the sibling fellow-invite redirect is gone.)
+function PendingRoutineInviteRedirect() {
   const { user, isLoading } = useAuthForGate();
   const [location, setLocation] = useLocation();
   useEffect(() => {
     if (isLoading || !user) return;
-    if (location.startsWith("/fellow/")) return;
-    let token: string | null = null;
-    try { token = localStorage.getItem("phoebe:pending-fellow-invite"); } catch { /* ignore */ }
-    if (token && /^[a-f0-9]{32}$/i.test(token)) {
-      setLocation(`/fellow/${token}`);
-      return;
-    }
-    // And for a prescribed-routine / preset-rule link (/routine/:token) — the
-    // landing stashes the token before "Sign in to add this rhythm".
     if (location.startsWith("/routine/")) return;
     let routine: string | null = null;
     try { routine = sessionStorage.getItem("phoebe:routine-token"); } catch { /* ignore */ }
@@ -289,16 +278,11 @@ const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const RitualSchedule = lazy(() => import("./pages/ritual-schedule"));
 const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
 const InvitePage = lazy(() => import("./pages/invite"));
-const FellowInvitePage = lazy(() => import("./pages/fellow-invite"));
-const People = lazy(() => import("./pages/people"));
-const FellowsPage = lazy(() => import("./pages/fellows"));
 const PsalmsPage = lazy(() => import("./pages/psalms"));
 const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const ContemplationSetupPage = lazy(() => import("./pages/contemplation-setup"));
-const PersonProfile = lazy(() => import("./pages/person"));
 const ReportUserPage = lazy(() => import("./pages/report-user"));
 const ReportsAdminPage = lazy(() => import("./pages/reports-admin"));
-const FindFriendsPage = lazy(() => import("./pages/find-friends"));
 const TraditionNew = lazy(() => import("./pages/tradition-new"));
 const ForgotPassword = lazy(() => import("./pages/forgot-password"));
 const ResetPassword = lazy(() => import("./pages/reset-password"));
@@ -695,8 +679,6 @@ function NotificationTapPrewarm() {
 // surfaces user-generated or community content.
 const PARISH_DENIED_PATHS = [
   "/dashboard",
-  "/people",
-  "/people/find",
   "/communities",
   "/community",
   "/prayer-list",
@@ -801,11 +783,6 @@ const GUEST_ALLOWED_PREFIX = [
   // bouncing to the dashboard before it could render. An invite link someone
   // was HANDED must always open.
   "/communities/join/",
-  // Fellow invites (/fellow/:token) — the page carries its own explainer +
-  // sign-in round-trip (it stashes the token and finishes after signup), but
-  // the guest gate was bouncing public-app visitors to the dashboard before it
-  // could render. Same rule as above: a handed link must always open.
-  "/fellow/",
 ];
 
 // The customizer routes (rule of life / pilot build / the questionnaire) that
@@ -1087,7 +1064,6 @@ function Router() {
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/schedule/:token" component={GuestSchedule} />
       <Route path="/invite/:token" component={InvitePage} />
-      <Route path="/fellow/:token" component={FellowInvitePage} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
       <Route path="/sign/:token" component={SignPage} />
       {/* Seasons — /season/:token (public landing → join → the cohort's day
@@ -1095,11 +1071,8 @@ function Router() {
       <Route path="/season/:token" component={SeasonPage} />
       {/* Letters & Messages removed (owner) — the correspondence/letter-writing
           and 1:1 messaging features are no longer part of the experience. */}
-      <Route path="/people" component={People} />
-      <Route path="/fellows" component={FellowsPage} />
       <Route path="/weekly" component={WeeklyRoutinesPage} />
       <Route path="/contemplation-setup" component={ContemplationSetupPage} />
-      <Route path="/people/find" component={FindFriendsPage} />
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
@@ -1216,7 +1189,6 @@ function Router() {
       <Route path="/vision-deck" component={VisionDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/about-deck" component={AboutDeck} />
-      <Route path="/people/:email" component={PersonProfile} />
       <Route path="/prayer-feeds/new" component={PrayerFeedNewPage} />
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
@@ -1370,7 +1342,6 @@ function App() {
           <GlobalButtonHaptics />
           <LocaleSync />
           <AppOpenTracker />
-          <PresenceTurn />
           <WidgetSync />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
@@ -1385,7 +1356,7 @@ function App() {
           <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
-            <PendingFellowInviteRedirect />
+            <PendingRoutineInviteRedirect />
             <CustomAnchorServerSync />
             <ReflectionReturnRedirect />
             <ReflectionPreheater />

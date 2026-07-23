@@ -33,8 +33,6 @@ import {
   circleIntentionsTable,
   groupAnnouncementsTable,
   prayersForTable,
-  fellowsTable,
-  fellowInvitesTable,
   userMutesTable,
   calendarSubscriptionsTable,
   deviceTokensTable,
@@ -61,7 +59,6 @@ import {
   groupMessagesTable,
   dailyPrayersTable,
   prayerAttentionsTable,
-  walkPairingsTable,
 } from "@workspace/db";
 
 export async function exportUserData(userId: number, email: string): Promise<Record<string, unknown>> {
@@ -99,9 +96,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     groupAnnouncements,
     prayersForGiven,
     prayersForReceived,
-    fellows,
-    fellowInvitesSent,
-    fellowInvitesReceivedByEmail,
     mutesMade,
     mutesReceived,
     calendarSubscriptions,
@@ -126,7 +120,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     groupMessages,
     dailyPrayersAuthored,
     prayerAttentions,
-    walkPairings,
   ] = await Promise.all([
     db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.ownerId, userId)),
     db.select().from(prayerWordsTable).where(eq(prayerWordsTable.authorUserId, userId)),
@@ -141,9 +134,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     db.select().from(groupAnnouncementsTable).where(eq(groupAnnouncementsTable.authorUserId, userId)),
     db.select().from(prayersForTable).where(eq(prayersForTable.prayerUserId, userId)),
     db.select().from(prayersForTable).where(eq(prayersForTable.recipientUserId, userId)),
-    db.select().from(fellowsTable).where(or(eq(fellowsTable.userId, userId), eq(fellowsTable.fellowUserId, userId))),
-    db.select().from(fellowInvitesTable).where(eq(fellowInvitesTable.senderId, userId)),
-    db.select().from(fellowInvitesTable).where(sql`LOWER(${fellowInvitesTable.recipientEmail}) = ${emailLower}`),
     db.select().from(userMutesTable).where(eq(userMutesTable.muterId, userId)),
     db.select().from(userMutesTable).where(eq(userMutesTable.mutedUserId, userId)),
     db.select().from(calendarSubscriptionsTable).where(eq(calendarSubscriptionsTable.userId, userId)),
@@ -168,7 +158,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     db.select().from(groupMessagesTable).where(eq(groupMessagesTable.senderUserId, userId)).catch(() => []),
     db.select().from(dailyPrayersTable).where(eq(dailyPrayersTable.authorId, userId)).catch(() => []),
     db.select().from(prayerAttentionsTable).where(eq(prayerAttentionsTable.viewerId, userId)).catch(() => []),
-    db.select().from(walkPairingsTable).where(or(eq(walkPairingsTable.userLoId, userId), eq(walkPairingsTable.userHiId, userId))).catch(() => []),
   ]);
 
   // moment_posts is keyed by userToken (string), not userId. We have to
@@ -195,9 +184,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     groupAnnouncements,
     prayersForGiven,
     prayersForReceived,
-    fellows,
-    fellowInvitesSent,
-    fellowInvitesReceivedByEmail,
     mutesMade,
     mutesReceived,
     calendarSubscriptions,
@@ -222,6 +208,5 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     groupMessages,
     dailyPrayersAuthored,
     prayerAttentions,
-    walkPairings,
   };
 }

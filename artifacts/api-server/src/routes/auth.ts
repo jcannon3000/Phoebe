@@ -5,7 +5,7 @@ import passport from "passport";
 import { loginFreshSession } from "../lib/session";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
-import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, fellowsTable, fellowInvitesTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
+import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
 import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
@@ -326,13 +326,10 @@ router.get("/auth/me", async (req, res) => {
   //  • isCommunityMember — joined any group → keeps the FULL app
   //  • inPilotGroup — joined a pilot group → keeps FULL app when guest flag flips
   //  • isSuperAdmin — beta_users.is_admin (table may be absent in a fresh env)
-  //  • hasFellowConnection — an accepted fellow OR a pending invite → FULL app
   const [
     communityMemberRows,
     pilotGroupRows,
     betaRow,
-    fellowRows,
-    fellowInviteRows,
   ] = await Promise.all([
     db.select({ id: groupMembersTable.id })
       .from(groupMembersTable)
@@ -356,27 +353,14 @@ router.get("/auth/me", async (req, res) => {
       .where(eq(betaUsersTable.email, u.email.toLowerCase()))
       .then((rows) => rows[0])
       .catch(() => undefined),
-    db.select({ id: fellowsTable.id })
-      .from(fellowsTable)
-      .where(eq(fellowsTable.userId, u.id))
-      .limit(1),
-    db.select({ id: fellowInvitesTable.id })
-      .from(fellowInvitesTable)
-      .where(and(
-        eq(fellowInvitesTable.recipientId, u.id),
-        eq(fellowInvitesTable.status, "pending"),
-      ))
-      .limit(1),
   ]);
   const isCommunityMember = communityMemberRows.length > 0;
   const inPilotGroup = pilotGroupRows.length > 0;
   const isSuperAdmin = betaRow?.isAdmin === true;
-  const hasFellowConnection = fellowRows.length > 0 || fellowInviteRows.length > 0;
   res.json({
     isCommunityMember,
     inPilotGroup,
     isSuperAdmin,
-    hasFellowConnection,
     id: u.id,
     name: u.name,
     email: u.email,
@@ -1149,12 +1133,11 @@ router.post(
   //      after a partial failure stay idempotent.
   //   3. Stamp claimed_by_user_id + claimed_at on the anon row so
   //      a re-run skips them and a future sweep can prune.
-  //   4. For each DISTINCT request owner the visitor amened (and not
-  //      themselves), insert a two-row Fellow pair (A→B, B→A) so the
-  //      connection works as a single-side query on either side.
+  // (Fellows removed 2026-07-23 — the old step 4 that inserted a two-row
+  // Fellow pair for each amened request owner is gone.)
   if (typeof anonAmenSessionId === "string" && anonAmenSessionId.length >= 16) {
     try {
-      const { anonymousAmensTable, prayerRequestAmensTable, prayerRequestsTable, fellowsTable } = await import("@workspace/db");
+      const { anonymousAmensTable, prayerRequestAmensTable, prayerRequestsTable } = await import("@workspace/db");
       const rows = await db
         .select({
           id: anonymousAmensTable.id,
@@ -1185,21 +1168,6 @@ router.post(
           .update(anonymousAmensTable)
           .set({ claimedByUserId: user.id, claimedAt: new Date() })
           .where(inArray(anonymousAmensTable.id, anonIds));
-
-        // Two-row Fellow pairs for each unique owner. Skip self
-        // (an owner could share their own link to themselves while
-        // logged out — degenerate case, just ignore).
-        const distinctOwners = Array.from(new Set(rows.map(r => r.ownerId))).filter(oid => oid !== user.id);
-        if (distinctOwners.length > 0) {
-          const fellowRows = distinctOwners.flatMap(oid => [
-            { userId: user.id, fellowUserId: oid, source: "shared_prayer" },
-            { userId: oid, fellowUserId: user.id, source: "shared_prayer" },
-          ]);
-          await db
-            .insert(fellowsTable)
-            .values(fellowRows)
-            .onConflictDoNothing();
-        }
       }
     } catch (err) {
       console.error("[auth/register] anon-amen claim failed:", err);

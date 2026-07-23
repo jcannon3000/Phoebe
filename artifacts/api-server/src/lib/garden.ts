@@ -17,27 +17,15 @@
 //      community. Mirror of the existing rule that group members
 //      can't see hidden_admins.
 
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { db, groupMembersTable, usersTable, fellowsTable } from "@workspace/db";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { db, groupMembersTable, usersTable } from "@workspace/db";
 
-// Helper — returns the user IDs of the viewer's Fellows. A Fellow pair is
-// MEANT to be stored as two directional rows (A→B, B→A), but legacy/early
-// accounts can have a one-sided row (only ever created forward, never
-// backfilled). Reading BOTH directions (user_id = me OR fellow_user_id = me)
-// makes a one-sided bond still grant visibility either way — this is the fix
-// for "I'm fellows with an early account but get no notifications from them".
-// Exported so other surfaces (push fan-out, /api/people garden union) reuse it.
-export async function getFellowUserIds(userId: number): Promise<number[]> {
-  const rows = await db
-    .select({ a: fellowsTable.userId, b: fellowsTable.fellowUserId })
-    .from(fellowsTable)
-    .where(or(eq(fellowsTable.userId, userId), eq(fellowsTable.fellowUserId, userId)));
-  const ids = new Set<number>();
-  for (const r of rows) {
-    if (r.a !== userId) ids.add(r.a);
-    if (r.b !== userId) ids.add(r.b);
-  }
-  return [...ids];
+// Fellows (the 1:1 social graph) was removed. This helper is retained as a
+// no-op stub returning an empty list so the remaining callers (push fan-out,
+// /api/people garden union, breath/listening feeds) keep compiling and simply
+// behave as "no fellows" — no fellow-derived visibility or notifications.
+export async function getFellowUserIds(_userId: number): Promise<number[]> {
+  return [];
 }
 
 // Short-TTL per-process cache. The computation below runs ~5 queries and is
@@ -149,24 +137,9 @@ async function computeGardenUserIds(userId: number): Promise<number[]> {
     `[garden] viewer=${userId} groups=[${myGroupIds.join(",")}] peerDiag=${JSON.stringify(peerDiag)}`,
   );
 
-  // (Letters feature removed 2026-07-23 — the correspondents-priority
-  // signal that used to expand the garden here is gone; garden now =
-  // group peers + fellows.)
-
-  // Fellows — durable person-to-person link created when someone
-  // signs up via a /p/:token share-link Amen. Fellows see each
-  // other's future prayer requests without needing to share a
-  // community, which is the whole point of the share-link primitive.
-  // Hidden-admin veto below still applies (rule 3): a Fellow who is
-  // hidden_admin in any of the viewer's groups gets dropped, same
-  // as a community peer would. This guards the rare case where two
-  // people are both Fellows AND share a community where one is
-  // hidden — the hidden-admin contract beats the Fellow grant.
-  const fellowIds = await getFellowUserIds(userId);
-  for (const id of fellowIds) {
-    if (id !== userId) groupPeerIds.add(id);
-  }
-  void isNull; // reserved for future "ignore soft-removed fellows" check
+  // (Letters feature removed 2026-07-23 and Fellows removed 2026-07-23 —
+  // the correspondents-priority + fellow expansions that used to widen the
+  // garden here are gone; garden now = group peers only.)
 
   if (vetoLookupGroupIds.length > 0 && groupPeerIds.size > 0) {
     const vetoRows = await db

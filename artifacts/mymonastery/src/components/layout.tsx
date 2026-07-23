@@ -25,7 +25,6 @@ import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacRea
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
-import { FELLOWS_ENABLED } from "@/lib/fellowsFlag";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -166,37 +165,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   });
   const myFeeds = myFeedsData?.feeds ?? [];
 
-  // Incoming fellow requests → a count badge on the People menu row.
-  // Beta-only capability, so gated on rawIsBeta to skip the 403 for everyone else.
-  const { data: fellowReqData } = useQuery<{ count: number }>({
-    queryKey: ["/api/fellows/requests/count"],
-    queryFn: () => apiRequest("GET", "/api/fellows/requests/count"),
-    enabled: FELLOWS_ENABLED && open && !!user && rawIsBeta,
-    staleTime: 30_000,
-  });
-  const fellowRequestCount = fellowReqData?.count ?? 0;
-
-  // Accepted fellows + community membership drive which social rows show. A
-  // brand-new user with neither sees no Prayer list (and "Community" reads
-  // "Fellows" until they're actually in a community).
-  const { data: fellowsListData } = useQuery<{ fellows: Array<{ userId: number }> }>({
-    queryKey: ["/api/fellows"],
-    queryFn: () => apiRequest("GET", "/api/fellows"),
-    enabled: FELLOWS_ENABLED && open && !!user && !earlyOfficesOnly,
-    staleTime: 30_000,
-  });
-  const hasFellows = (fellowsListData?.fellows?.length ?? 0) > 0;
+  // Community membership drives which social rows show. (Fellows removed
+  // 2026-07-23 — the 1:1 fellow graph, its request badge, and the 🙌
+  // encouragement badge are gone; community membership is the only signal now.)
   const hasGroup = (groupsData?.groups?.length ?? 0) > 0;
-
-  // Something new from a friend (an unseen 🙌 encouragement) → adds to the
-  // People row badge so you see there's a new one waiting.
-  const { data: encData } = useQuery<{ encouragements: unknown[] }>({
-    queryKey: ["/api/encouragements"],
-    queryFn: () => apiRequest("GET", "/api/encouragements"),
-    enabled: open && !!user && rawIsBeta,
-    staleTime: 30_000,
-  });
-  const newFromFriends = encData?.encouragements?.length ?? 0;
 
   function navigate(path: string) {
     onClose();
@@ -366,23 +338,20 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 Prayer list, no Events (the public version carries none). */}
             {!officesOnly && !isGuest && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                {/* Community — your fellows (1:1 prayer connections) AND the
-                    communities you're in, all on one page. Communities no longer
-                    have their own menu section; they live inside /people, which
-                    is now the Community page. */}
-                {/* Community + Fellows — hidden entirely in pilot (personal-only). */}
-                {!isPilot && (
+                {/* Community — the communities you're in. Hidden entirely in
+                    pilot (personal-only) and until you've joined one. */}
+                {!isPilot && hasGroup && (
                 <MenuRow
-                  emoji={hasGroup ? "🏘️" : "👥"}
-                  label={hasGroup ? t("menu.community", { defaultValue: "Community" }) : t("menu.fellows", { defaultValue: "Fellows" })}
-                  onClick={() => navigate("/people")}
+                  emoji="🏘️"
+                  label={t("menu.community", { defaultValue: "Community" })}
+                  onClick={() => navigate("/communities")}
                 />
                 )}
                 {/* Prayer list — others' requests to pray through. Hidden until
-                    you have a fellow or a community (a solo new user has none).
-                    Pilot always gets it — it's their personal list. Gated behind
-                    the prayer-requests feature (pilot-group-only, 2026-07-22). */}
-                {prayerRequestsEnabled && (hasFellows || hasGroup || isPilot) && (
+                    you're in a community (a solo new user has none). Pilot always
+                    gets it — it's their personal list. Gated behind the
+                    prayer-requests feature (pilot-group-only, 2026-07-22). */}
+                {prayerRequestsEnabled && (hasGroup || isPilot) && (
                 <MenuRow
                   emoji="🙏"
                   label={t("menu.prayer_list", { defaultValue: "Prayer list" })}
@@ -1009,32 +978,7 @@ function OpeningSplash() {
     } catch { return 0; }
   });
   const hour = new Date().getHours();
-  // The social splash now surfaces FELLOWS who have practiced today — any of the
-  // three coarse presence lights (Turn / Learn / Pray) lit — capped at four,
-  // with the viewer's OWN card beneath them. When no fellow has practiced (or
-  // the list hasn't resolved yet) it falls back to a contemplative quote. This
-  // replaces the old "prayed with you this month" faces / quote alternation.
-  const { data: fellowsResp } = useQuery<{ fellows: Array<{ userId: number; name: string | null; avatarUrl: string | null; turned?: boolean; learned?: boolean; prayed?: boolean }> }>({
-    queryKey: ["/api/fellows"],
-    queryFn: () => apiRequest("GET", "/api/fellows"),
-    staleTime: 60_000,
-    enabled: FELLOWS_ENABLED && phase !== "gone" && !!user && native,
-  });
-  const practicedFellows = useMemo(
-    () => (fellowsResp?.fellows ?? []).filter((f) => f.turned || f.learned || f.prayed).slice(0, 4),
-    [fellowsResp],
-  );
-  // My own three lights today — shown on the card beneath the fellows. Derived
-  // client-side from the rhythm state (+ the local Turn stamp) so it mirrors what
-  // fellows see of me without another round-trip.
   const rhythm = useRhythmState();
-  const myTurned = (() => { try { return localStorage.getItem(`phoebe:turn:${new Date().toLocaleDateString("en-CA")}`) === "1"; } catch { return false; } })();
-  const myLights = { turned: myTurned, learned: rhythm.reflectDone, prayed: rhythm.morningDone || rhythm.eveningDone || rhythm.silenceDone || rhythm.cobreatheDone };
-  const fellowsResolved = fellowsResp !== undefined;
-  // The fellows-faces splash is suppressed — the app-open greeting always shows
-  // the quote, never a row of faces (no "faces header" on mobile). Keep the
-  // fellows query above so re-enabling is a one-line flip.
-  void fellowsResolved; void practicedFellows;
   // The app-open splash shows WHAT'S NEXT in the user's routine — the first
   // still-undone anchor in order. It falls back to a contemplative quote once
   // the day is fully kept (or there's no routine). Both wait for the rhythm to
@@ -1083,7 +1027,6 @@ function OpeningSplash() {
     .sort((a, b) => rankOf(a.slot) - rankOf(b.slot))[0];
   const nextUp: { emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean } | null =
     firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb, logOnly: firstUp.logOnly } : null;
-  const showFellows = false;
   const showWhatsNext = rhythm.ready && !!nextUp;
   const showQuote = rhythm.ready && !nextUp;
   // The faces rail is retired; keep the flag (false) so its now-dormant render +
@@ -1442,64 +1385,6 @@ function OpeningSplash() {
           </div>
         </motion.div>
       )}
-      {/* Fellows who have practiced today — any of the three coarse presence
-          lights (Turn / Learn / Pray) lit — capped at four, with the viewer's
-          OWN card beneath. Presence, not a scoreboard: blue lights, no counts. */}
-      {showFellows && (() => {
-        const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
-        const rowV = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } } };
-        const LIGHTS: Array<{ key: "turned" | "learned" | "prayed"; label: string }> = [
-          { key: "turned", label: "Turn" }, { key: "learned", label: "Learn" }, { key: "prayed", label: "Pray" },
-        ];
-        const lightsTitle = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => LIGHTS.map((l) => `${l.label}: ${v[l.key] ? "today" : "quiet"}`).join("  \u00b7  ");
-        const renderLights = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => {
-          const lit = LIGHTS.filter((l) => !!v[l.key]);
-          if (lit.length === 0) return null;
-          return (
-            <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden title={lightsTitle(v)}>
-              {lit.map((l) => (
-                <span key={l.key} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: "#6CA8E0", boxShadow: "0 0 6px rgba(108,168,224,0.55)" }} />
-              ))}
-            </span>
-          );
-        };
-        const renderAvatar = (url: string | null, name: string | null) => (
-          url ? (
-            <img src={url} alt={fn(name)} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: "1.5px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
-          ) : (
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
-              {(name ?? "?").trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase() || "?"}
-            </div>
-          )
-        );
-        return (
-          <motion.div
-            className="flex flex-col items-stretch w-full relative"
-            style={{ maxWidth: 380 }}
-            initial="hidden"
-            animate="show"
-            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.12 } } }}
-          >
-            <motion.p variants={rowV} className="text-center text-[12px] font-semibold uppercase tracking-[0.16em] mb-4" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {t("splash.fellows_practiced", { defaultValue: "Praying with you today" })}
-            </motion.p>
-            {practicedFellows.map((f) => (
-              <motion.div key={f.userId} variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mb-2" style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.3)" }}>
-                {renderAvatar(f.avatarUrl, f.name)}
-                <span className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(f.name)}</span>
-                {renderLights(f)}
-              </motion.div>
-            ))}
-            {/* Your own card, beneath all the others — only when a fellow has
-                practiced (per the design: never your card on its own). */}
-            <motion.div variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mt-1" style={{ background: "rgba(46,107,64,0.20)", border: "1px solid rgba(108,168,224,0.30)" }}>
-              {renderAvatar(user?.avatarUrl ?? null, user?.name ?? null)}
-              <span className="flex-1 min-w-0 truncate text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("splash.you", { defaultValue: "You" })}</span>
-              {renderLights(myLights)}
-            </motion.div>
-          </motion.div>
-        );
-      })()}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); advanceFromFaces(); }}

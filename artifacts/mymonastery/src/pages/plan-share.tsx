@@ -155,8 +155,8 @@ export default function PlanSharePage() {
           </>
         ) : (
           <>
-            <button onClick={() => setLocation("/people")} className="w-full rounded-full py-3 text-[15px] font-semibold" style={{ background: `rgba(${G},0.9)`, color: WARM, border: `1px solid rgba(${G},0.6)`, fontFamily: FONT }}>Connect with {hostFirst}</button>
-            <p className="text-[12.5px] mt-2.5" style={{ color: SAGE, fontFamily: FONT }}>Become a fellow of {hostFirst} on Phoebe to join their plans.</p>
+            <button onClick={() => setLocation("/")} className="w-full rounded-full py-3 text-[15px] font-semibold" style={{ background: `rgba(${G},0.9)`, color: WARM, border: `1px solid rgba(${G},0.6)`, fontFamily: FONT }}>Open Phoebe</button>
+            <p className="text-[12.5px] mt-2.5" style={{ color: SAGE, fontFamily: FONT }}>Ask {hostFirst} to share the plan with you directly to RSVP.</p>
           </>
         )}
       </div>

@@ -43,7 +43,9 @@ export default function ReportUserPage() {
   if (authLoading || !user) return null;
 
   const firstName = person?.name?.split(" ")[0] ?? "this person";
-  const profileHref = email ? `/people/${encodeURIComponent(email)}` : "/people";
+  // Person profiles (/people/:email) were removed 2026-07-23 with Fellows; this
+  // abuse-report page is now reached only by deep link, so "back" goes home.
+  const profileHref = "/dashboard";
 
   return (
     <Layout>
