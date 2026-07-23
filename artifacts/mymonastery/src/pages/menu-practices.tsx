@@ -7,10 +7,10 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 // their own surfaces; they're just not listed here.)
 export default function MenuPracticesPage() {
   const [, setLocation] = useLocation();
-  // PUBLIC no-login version: guests keep exactly Listen to Scripture ·
-  // Contemplation · Co-Breathe — no Audio Divina anywhere in the public
-  // version (owner re-reversal 2026-07-02), and Creation Prayer stays behind
-  // its own flag. See memory "project_public_no_login".
+  // PUBLIC no-login version: guests keep exactly Contemplation · Co-Breathe —
+  // no Audio Divina anywhere in the public version (owner re-reversal
+  // 2026-07-02), and Creation Prayer stays behind its own flag. See memory
+  // "project_public_no_login".
   const { isGuest } = useGuestMode();
   const go = (p: string) => setLocation(p);
   return (
@@ -24,7 +24,6 @@ export default function MenuPracticesPage() {
         items: [
           // Contemplation leads the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
-          { emoji: "📖", label: "Listen to Scripture", sub: "Hear the day's OT, Psalm, NT & Gospel", onClick: () => go("/scripture/readings") },
           { emoji: "👟", label: "Daily steps", sub: "Walk toward a step goal, counted from Apple Health", onClick: () => go("/daily-steps") },
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },

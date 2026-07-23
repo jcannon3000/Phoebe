@@ -22,7 +22,6 @@
 
 import { buildOfficeAlignment } from "./transcription/buildOfficeAlignment";
 import { buildFddAlignment } from "./transcription/buildFddAlignment";
-import { buildScriptureAlignment } from "./transcription/buildScriptureAlignment";
 import { logger } from "./logger";
 
 const MORNING_UTC_START = 9;
@@ -83,21 +82,6 @@ async function runOfficeAlignment(): Promise<void> {
     }
   } catch (err) {
     logger.error({ err }, "[office-align-sched] FDD alignment failed");
-  }
-
-  // Scripture Day by Day — flag where each reading (OT, Psalm, NT, Gospel)
-  // begins. Publishes ~06:30 ET daily; buildScriptureAlignment is idempotent
-  // on the episode guid, so attempting it on any tick costs a real Whisper
-  // pass only when a new episode appears.
-  try {
-    const scripture = await buildScriptureAlignment();
-    if (scripture.cached) {
-      logger.debug("[office-align-sched] scripture readings already aligned — cached");
-    } else {
-      logger.info({ status: scripture.status, aligner: scripture.aligner }, `[office-align-sched] scripture ${scripture.status}`);
-    }
-  } catch (err) {
-    logger.error({ err }, "[office-align-sched] scripture alignment failed");
   }
 }
 

@@ -72,13 +72,12 @@ export function slotOpensLabel(slot: CustomSlot): string | null {
 // Built-in practices that the customizer places at a chosen time of day
 // (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot.
 // Sensible defaults if the user never picks one.
-export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "scripture" | "reading";
+export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   cobreathe: "morning",
   listening: "midday",
   examen: "evening",
   walk: "afternoon",
-  scripture: "morning",
   reading: "afternoon", // was a hardcoded "afternoon"; now user-choosable
 };
 export function getPracticeSlot(key: SlottedPractice): CustomSlot {
@@ -92,24 +91,6 @@ export function getPracticeSlot(key: SlottedPractice): CustomSlot {
 export function setPracticeSlot(key: SlottedPractice, slot: CustomSlot): void {
   try { localStorage.setItem(`phoebe:slot:${key}`, slot); } catch { /* private mode */ }
   pushRoutineConfig(); // sync the slot change across devices (lib/routineSync)
-}
-
-// Listen-to-Scripture scope — which of the day's readings to play through:
-// just the Psalms, Psalms + Gospel (skipping OT/NT), or all four. Per-device,
-// synced via routineSync like the slots.
-export type ScriptureScope = "psalms" | "psalms-gospel" | "all";
-const SCRIPTURE_SCOPES: ScriptureScope[] = ["psalms", "psalms-gospel", "all"];
-export function getScriptureScope(): ScriptureScope {
-  try {
-    const v = localStorage.getItem("phoebe:scripture-scope") as ScriptureScope | null;
-    return v && SCRIPTURE_SCOPES.includes(v) ? v : "all";
-  } catch {
-    return "all";
-  }
-}
-export function setScriptureScope(scope: ScriptureScope): void {
-  try { localStorage.setItem("phoebe:scripture-scope", scope); } catch { /* private mode */ }
-  pushRoutineConfig();
 }
 
 // A reading ritual is a custom anchor you LOG by an amount rather than a plain

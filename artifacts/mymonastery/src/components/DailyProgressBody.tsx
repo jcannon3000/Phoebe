@@ -587,7 +587,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, gratitudeDone, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -734,15 +734,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
-  const scriptureCard = {
-    key: "scripture", emoji: "📖", rgb: "108,140,180", done: scriptureDone, href: "/scripture/readings",
-    title: t("rhythm.card_scripture", { defaultValue: "Listen to Scripture" }),
-    blurb: scriptureDone ? kept : t("rhythm.blurb_scripture", { defaultValue: "The day's readings, heard aloud" }),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-  };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
-  const scriptureSlot = getPracticeSlot("scripture");
   const walkSlot = getPracticeSlot("walk");
   // The Examen is always an evening practice (no time-of-day picker).
   const examenSlot: CustomSlot = "evening";
@@ -890,7 +883,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Optional practices ride at the time of day the user chose for each.
     ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
-    ...(scriptureActive ? [{ ...scriptureCard, slot: scriptureSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{

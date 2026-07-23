@@ -62,13 +62,13 @@ migrate()
       startPrayerHeldScanner();
       // Daily: re-scrape enabled ministry websites into draft events.
       startMinistrySyncScheduler();
-      // Hourly (morning/evening windows): transcribe + align the day's office,
-      // FDD, and Scripture Day by Day audio so the per-reading markers are
-      // BUILT IN THE MORNING and ready the moment someone opens Listen to
-      // Scripture — rather than being computed on-demand on first open ("◌
-      // Preparing the audio markers…"). Lived only in the (undeployed) worker
-      // before, so it never ran in this web-only deploy. Idempotent on the
-      // episode guid: a real Whisper pass happens once per new episode.
+      // Hourly (morning/evening windows): transcribe + align the day's office
+      // and FDD audio so the read-aloud word-highlighting / skip markers are
+      // BUILT IN THE MORNING and ready the moment someone opens the office —
+      // rather than being computed on-demand on first open. Lived only in the
+      // (undeployed) worker before, so it never ran in this web-only deploy.
+      // Idempotent on the episode guid: a real Whisper pass happens once per
+      // new episode.
       startOfficeAlignmentScheduler();
     }
   })

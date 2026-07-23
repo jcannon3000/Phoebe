@@ -124,7 +124,6 @@ export default function RoutinePrintPage() {
   if (r.morningActive) items.push({ emoji: "🌅", label: morningGuide?.title ?? "Morning Prayer", slot: "morning" });
   for (const refl of r.reflections) items.push({ emoji: "📖", label: REFLECTION_NAME[refl.source], slot: "morning" });
   if (r.silenceActive) items.push({ emoji: "🕯️", label: r.contemplationGoalMin > 0 ? `Silence · ${r.contemplationGoalMin} min/day` : "Silence", slot: "morning" });
-  if (r.scriptureActive) items.push({ emoji: "📖", label: "Listen to Scripture", slot: getPracticeSlot("scripture") });
   // Co-Breathe is intentionally NEVER on the printout (per direction).
   if (r.listeningActive) items.push({ emoji: "🎵", label: "Audio Divina", slot: getPracticeSlot("listening") });
   if (r.readingActive) items.push({ emoji: "📚", label: "Reading", slot: getPracticeSlot("reading") });

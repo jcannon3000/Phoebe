@@ -339,7 +339,6 @@ const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const DevotionWatchPage = lazy(() => import("./pages/devotion-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
-const ScriptureReadingsPage = lazy(() => import("./pages/scripture-readings"));
 const MenuPage = lazy(() => import("./pages/menu"));
 const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
 const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
@@ -776,7 +775,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/intentions", "/pray-request/new",
   "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
-  "/scripture/readings", "/contemplation", "/cobreathe",
+  "/contemplation", "/cobreathe",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",
@@ -784,7 +783,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
 // subpaths, not just the index. Same for /cobreathe (intro → breath).
-const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/scripture", "/settings/", "/podcasts", "/cobreathe"];
+const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/settings/", "/podcasts", "/cobreathe"];
 
 function PilotGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -835,7 +834,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   "/about", "/about-deck", "/privacy", "/terms",
 ]);
 const GUEST_ALLOWED_PREFIX = [
-  "/bcp", "/prayer-mode", "/scripture", "/cobreathe",
+  "/bcp", "/prayer-mode", "/cobreathe",
   "/rule-of-life", "/settings", "/menu/reflections/",
   // Saints index + detail pages (guest Resources → Saints).
   "/saints",
@@ -1071,8 +1070,6 @@ function Router() {
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />
       {/* Beta: the follow-along office (glowing liturgy-part title + podcast bar) */}
       <Route path="/office/:side/pray-along" component={OfficePrayAlongPage} />
-      {/* Beta: listen to the day's four readings, each tappable to its segment */}
-      <Route path="/scripture/readings" component={ScriptureReadingsPage} />
       <Route path="/menu" component={MenuPage} />
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />

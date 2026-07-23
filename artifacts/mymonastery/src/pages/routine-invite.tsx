@@ -43,7 +43,7 @@ type LandingData = { label: string | null; groupName: string | null; createdByNa
 const CARD_LABELS: Record<string, string> = {
   gratitude: "Gratitude", reading: "Reading",
   podcasts: "Podcasts", examen: "Examen", listening: "Audio Divina",
-  scripture: "Scripture audio", walk: "Walking prayer",
+  walk: "Walking prayer",
   cobreathe: "Creation Prayer", "prayer-list": "Prayer list",
   cac: "Richard Rohr (CAC)", fdd: "Forward Day by Day", ssje: "SSJE",
 };

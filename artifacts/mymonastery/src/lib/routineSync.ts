@@ -41,9 +41,7 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:cobreathe-length",
   // Practice time-of-day slots (customAnchors.ts).
   "phoebe:slot:cobreathe", "phoebe:slot:listening", "phoebe:slot:examen",
-  "phoebe:slot:walk", "phoebe:slot:scripture", "phoebe:slot:reading",
-  // Listen-to-Scripture: which readings to play through.
-  "phoebe:scripture-scope",
+  "phoebe:slot:walk", "phoebe:slot:reading",
   // The 30-day commitment's start date (lib/commitment.ts) — synced so
   // "Day N of 30" agrees across the user's devices instead of each device
   // starting its own trial.
