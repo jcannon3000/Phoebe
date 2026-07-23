@@ -7,8 +7,13 @@ export type PracticeIntroKey = "silence" | "office" | "psalms" | "examen" | "fdd
 
 const FLAG = (key: PracticeIntroKey) => `phoebe:intro-seen:${key}`;
 
-export function hasSeenIntro(key: PracticeIntroKey): boolean {
-  try { return !!localStorage.getItem(FLAG(key)); } catch { return true; }
+// RETIRED 2026-07-22 (owner: didn't like them). The first-run practice-intro
+// cards ("what it is / where it comes from / what to do") are off everywhere:
+// this always reports the intro as already-seen, so every `!hasSeenIntro(key)`
+// gate is false and the card never shows. The PracticeIntro component and the
+// PRACTICE_INTROS content are kept, dormant, so it's a one-line revert.
+export function hasSeenIntro(_key: PracticeIntroKey): boolean {
+  return true;
 }
 export function markIntroSeen(key: PracticeIntroKey): void {
   try { localStorage.setItem(FLAG(key), "1"); } catch { /* ignore */ }
