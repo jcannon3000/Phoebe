@@ -10,6 +10,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
@@ -116,6 +117,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const logout = useLogout();
   const [, setLocation] = useLocation();
   const { rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const prayerRequestsEnabled = usePrayerRequestsEnabled();
   const { isPilot } = usePilotMode();
   // PUBLIC no-login version: the guest drawer is the calm shell — no profile
   // block, no Community/Prayer-list/Events section (BCP · Practices ·
@@ -386,8 +388,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 )}
                 {/* Prayer list — others' requests to pray through. Hidden until
                     you have a fellow or a community (a solo new user has none).
-                    Pilot always gets it — it's their personal list. */}
-                {(hasFellows || hasGroup || isPilot) && (
+                    Pilot always gets it — it's their personal list. Gated behind
+                    the prayer-requests feature (pilot-group-only, 2026-07-22). */}
+                {prayerRequestsEnabled && (hasFellows || hasGroup || isPilot) && (
                 <MenuRow
                   emoji="🙏"
                   label={t("menu.prayer_list", { defaultValue: "Prayer list" })}

@@ -417,8 +417,12 @@ export function useRhythmState(): RhythmState {
   // Co-Breathe — it appears only if their customizer adds it to the layout.
   const cobreatheActive = homeCardActive(hl, "cobreathe") || (!guest && !user?.homeLayout);
   // Personal prayer list — a logging-first practice (prayed through its
-  // slideshow); appears only when selected in the customizer.
-  const prayerListActive = homeCardActive(hl, "prayer-list");
+  // slideshow); appears only when selected in the customizer AND only when the
+  // prayer-request feature is available to this account (pilot-group-only,
+  // 2026-07-22). Gated here at the source so every consumer — the home card,
+  // the menu progress ring, the weekly grid — treats it as inactive at once.
+  const prayerRequestsEnabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
+  const prayerListActive = prayerRequestsEnabled && homeCardActive(hl, "prayer-list");
   // Listen to Scripture — the day's appointed readings, heard one passage at a
   // time (Scripture Day by Day); a slotted contemplative practice.
   const scriptureActive = homeCardActive(hl, "scripture");

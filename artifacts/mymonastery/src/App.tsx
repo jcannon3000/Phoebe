@@ -524,6 +524,19 @@ function RedirectTo({ to }: { to: string }) {
   return null;
 }
 
+// Renders its child page only when the prayer-request feature is available to
+// this account (pilot-group-only, 2026-07-22); otherwise sends the user home.
+// Guards deep links + back-button navigation to /prayer-* for accounts that
+// have no prayer surface. Waits for /auth/me before deciding so a pilot-group
+// member's deep link isn't bounced during the auth round-trip.
+function PrayerGate({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuthForGate();
+  const enabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
+  if (isLoading) return null;
+  if (!enabled) return <RedirectTo to="/dashboard" />;
+  return <>{children}</>;
+}
+
 // Retry policy tuned for flaky / captive-portal Wi-Fi (libraries, hotels,
 // coffee shops): a single TLS reset or TCP RST on the first fetch after
 // waking shouldn't dump the user onto a blank screen. We retry network
@@ -1112,7 +1125,7 @@ function Router() {
           here would shadow the real slideshow. */}
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
-      <Route path="/prayer-chooser" component={PrayerChooserPage} />
+      <Route path="/prayer-chooser">{() => <PrayerGate><PrayerChooserPage /></PrayerGate>}</Route>
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
       <Route path="/devotion/watch" component={DevotionWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
@@ -1204,9 +1217,9 @@ function Router() {
       <Route path="/gatherings/:id/settings" component={GatheringSettings} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
-      <Route path="/moment/new" component={MomentNew} />
+      <Route path="/moment/new">{() => <PrayerGate><MomentNew /></PrayerGate>}</Route>
       <Route path="/m/:userToken" component={MomentRedirect} />
-      <Route path="/moment/:momentToken/:userToken" component={MomentPostPage} />
+      <Route path="/moment/:momentToken/:userToken"><PrayerGate><MomentPostPage /></PrayerGate></Route>
       <Route path="/lectio/:momentToken/:userToken" component={LectioPage} />
       <Route path="/moments/:id" component={MomentDetail} />
       <Route path="/practices" component={MomentsDashboard} />
@@ -1238,24 +1251,24 @@ function Router() {
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
-      <Route path="/prayer-list" component={PrayerListPage} />
+      <Route path="/prayer-list">{() => <PrayerGate><PrayerListPage /></PrayerGate>}</Route>
       {/* Heart to Heart hidden for now — redirect old deep-links / notification
           taps to the home rather than dead-ending on a hidden surface. */}
       <Route path="/prayer-partner">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/prayer-partner/:partnerId">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
-      <Route path="/prayers-for-me" component={PrayersForMePage} />
-      <Route path="/prayer-mode" component={PrayerModePage} />
+      <Route path="/prayers-for-me">{() => <PrayerGate><PrayersForMePage /></PrayerGate>}</Route>
+      <Route path="/prayer-mode">{() => <PrayerGate><PrayerModePage /></PrayerGate>}</Route>
       <Route path="/begin-prayer" component={BeginPrayerPage} />
-      <Route path="/prayer-start" component={PrayerStartPage} />
-      <Route path="/prayer-requests/:id" component={PrayerRequestDetailPage} />
+      <Route path="/prayer-start">{() => <PrayerGate><PrayerStartPage /></PrayerGate>}</Route>
+      <Route path="/prayer-requests/:id"><PrayerGate><PrayerRequestDetailPage /></PrayerGate></Route>
       <Route path="/actions/new" component={ActionNewPage} />
       <Route path="/actions/:id" component={ActionDetailPage} />
       {/* /pray-for/new (no email) must sit above the two /pray-for/:email
           routes, otherwise "new" would match as an email param. */}
       <Route path="/pray-for/new" component={PrayerForNew} />
       <Route path="/pray-for/new/:email" component={PrayerForNew} />
-      <Route path="/pray-request/new" component={PrayerRequestNew} />
+      <Route path="/pray-request/new">{() => <PrayerGate><PrayerRequestNew /></PrayerGate>}</Route>
       <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/daily-practice" component={DailyPracticePage} />
@@ -1284,7 +1297,7 @@ function Router() {
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
-      <Route path="/intentions" component={IntentionsPage} />
+      <Route path="/intentions">{() => <PrayerGate><IntentionsPage /></PrayerGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
       <Route path="/lectio-divina" component={LectioDivinaPage} />
       <Route path="/reading-log" component={ReadingLogPage} />

@@ -1,4 +1,9 @@
 export type SlideType =
+  // A contemplative pause offered in the Prayers, in place of the community
+  // intercessions, for accounts without the prayer-request feature
+  // (pilot-group-only). Renders a choice: breathe (Co-Breathe) or sit in
+  // silence. Client-spliced in the office deck; never sent by the server.
+  | "contemplative_pause"
   // Intro / threshold slide shown before the office or devotion
   // begins — names the liturgy and the tradition it belongs to.
   | "office_intro"

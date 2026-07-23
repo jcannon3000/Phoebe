@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
@@ -278,6 +279,28 @@ function buildConfessionInvitationSlide(mode: "morning" | "evening"): Slide {
   };
 }
 
+// A contemplative pause offered in the Prayers, where the community
+// intercessions would otherwise hand off, for accounts without the
+// prayer-request feature. The slide itself is a chooser (breathe / silence);
+// the render branch below wires the two paths.
+function buildContemplativePauseSlide(mode: "morning" | "evening" | string): Slide {
+  const es = !!i18n.language?.startsWith("es");
+  return {
+    id: "contemplative-pause",
+    type: "contemplative_pause",
+    emoji: "🕊️",
+    eyebrow: es ? "Un momento de quietud" : "A moment of stillness",
+    title: null,
+    content: "",
+    isCallAndResponse: false,
+    callAndResponseLines: [],
+    bcpReference: null,
+    isScrollable: false,
+    scrollHint: null,
+    metadata: { side: mode },
+  };
+}
+
 // Parse a 1979 BCP Psalter content blob into a structured list for the
 // renderer. The data file (api-server/src/seeds/bcpPsalter.ts) stores
 // each psalm with:
@@ -510,7 +533,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // no-community-handoff treatment as pilot (portal slide dropped from the
   // deck + the auto-fire and tap handoffs dead), folded into one flag below.
   const { isGuest } = useGuestMode();
-  const noCommunityHandoff = isPilot || isGuest;
+  // Prayer requests / community intercessions are pilot-group-only (2026-07-22).
+  // Everyone else gets the same no-community-handoff treatment as pilot/guest —
+  // the intercessions_portal slide is dropped and the handoff is dead — and the
+  // office offers a contemplative pause in its place (see the pause slide below).
+  const prayerRequestsEnabled = usePrayerRequestsEnabled();
+  const noCommunityHandoff = isPilot || isGuest || !prayerRequestsEnabled;
   const parishOnly = viewerUser?.accessTier === "parish-only";
   // Offices-only accounts (public /pray sign-ups) have no parish
   // celebration and no /prayer-mode access — they finish back on
@@ -699,6 +727,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // Breathed once per office session; closing the breath advances the office.
   const breathedRef = useRef(false);
   const [showCreationBreath, setShowCreationBreath] = useState(false);
+  // Silence path of the contemplative pause: once the user chooses to sit, the
+  // pause slide swaps to a resting view until they continue.
+  const [silencePauseActive, setSilencePauseActive] = useState(false);
   // Warmed promise for the community-intercession data, so /prayer-mode can open
   // straight onto the first intercession instead of its "Gathering…" loader.
   const intercessionPrefetchRef = useRef<Promise<unknown> | null>(null);
@@ -875,6 +906,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // too). The handoff is already gated below, but the slide would then
         // sit as an orphan transition card, so drop it from the deck entirely.
         if (noCommunityHandoff) fetched = fetched.filter((s) => s.type !== "intercessions_portal");
+        // Accounts without the prayer-request feature (pilot-group-only) get a
+        // contemplative pause in the Prayers where the intercessions would have
+        // been — a moment to breathe or sit in silence rather than a community
+        // hand-off. Anchor it right before the General Thanksgiving, the same
+        // seat the intercessions held; if there's no Thanksgiving (short
+        // devotions), skip it rather than tack it awkwardly onto the end.
+        if (!prayerRequestsEnabled && isFullOffice) {
+          const gtIdx = fetched.findIndex((s) => s.type === "general_thanksgiving");
+          if (gtIdx > 0) {
+            fetched = [
+              ...fetched.slice(0, gtIdx),
+              buildContemplativePauseSlide(resolvedMode),
+              ...fetched.slice(gtIdx),
+            ];
+          }
+        }
         if (fetched.length === 0) throw new Error("No slides returned");
         // The daily reflection (FDD / SSJE / CAC) is no longer
         // appended as an in-office slide. It's surfaced instead as a
@@ -983,7 +1030,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     load();
     return () => { cancelled = true; };
-  }, [endpoint, officeTitle, resolvedMode]);
+    // prayerRequestsEnabled decides whether the deck carries the contemplative
+    // pause; re-fetch if it resolves after the office opened.
+  }, [endpoint, officeTitle, resolvedMode, prayerRequestsEnabled]);
 
   // Prefetch the SAME queries the intercession slideshow reads, so handing off
   // hits a warm React Query cache (no loader). Returns a single promise (built
@@ -1039,6 +1088,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     try { await prefetchIntercessions(); } catch { /* navigate anyway */ }
     setViewerLocation(url);
   }
+
+  // Reset the silence view whenever the reader isn't on the pause slide, so
+  // paging back to it (via the footer) shows the chooser again rather than a
+  // stale resting screen.
+  useEffect(() => {
+    if (slides[slideIdx]?.type !== "contemplative_pause" && silencePauseActive) {
+      setSilencePauseActive(false);
+    }
+  }, [slideIdx, slides, silencePauseActive]);
 
   // Auto-fire the handoff when the user lands on the intercessions
   // portal — but with a ~4s grace window so the glowing
@@ -1335,6 +1393,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // the control's own handler runs instead of paging.
   function handleTapNavigate(e: React.MouseEvent) {
     if (displayOpen) return; // an overlay sheet is open — a tap dismisses it, not paging
+    // The contemplative pause is a chooser — a stray background tap shouldn't
+    // page past it (forward) or out of it (back); the person picks breathe or
+    // silence, or uses the footer Back/Next deliberately.
+    if (currentSlide.type === "contemplative_pause") return;
     const target = e.target as HTMLElement | null;
     if (target?.closest("button, a, input, textarea, select, label")) return;
     if (e.clientX < window.innerWidth / 2) prev();
@@ -1998,6 +2060,57 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   📕 {bcpGuideText("Physical BCP")}
                 </button>
               </div>
+              )}
+            </div>
+          ) : currentSlide.type === "contemplative_pause" ? (
+            // Contemplative pause — the moment in the Prayers that replaces the
+            // community intercessions for accounts without the prayer-request
+            // feature. A chooser: breathe (Co-Breathe) or sit in silence. The
+            // silence path swaps this card for a resting view with Continue.
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", textAlign: "center", gap: 22, padding: "0 8px" }}>
+              {silencePauseActive ? (
+                <>
+                  <div aria-hidden className="animate-pulse" style={{ width: 12, height: 12, borderRadius: "50%", background: "rgba(var(--ot-sage, 143,175,150),0.85)" }} />
+                  <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 22, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 440, margin: 0 }}>
+                    {i18n.language?.startsWith("es")
+                      ? "Descansa aquí un momento. Cuando estés listo, continúa."
+                      : "Rest here a moment. When you are ready, continue."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setSilencePauseActive(false); next(); }}
+                    style={{ marginTop: 6, padding: "12px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.28)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    {i18n.language?.startsWith("es") ? "Continuar" : "Continue"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0 }}>
+                    {currentSlide.eyebrow}
+                  </p>
+                  <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
+                    {i18n.language?.startsWith("es")
+                      ? "Antes de seguir, haz una pausa para orar en el cuerpo — respira, o guarda silencio."
+                      : "Before you go on, pause to pray in the body — take a breath, or keep a moment of silence."}
+                  </p>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreationBreath(true)}
+                      style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      {i18n.language?.startsWith("es") ? "🌿 Respirar" : "🌿 Breathe"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSilencePauseActive(true)}
+                      style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      {i18n.language?.startsWith("es") ? "🕊️ Silencio" : "🕊️ Sit in silence"}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           ) : currentSlide.type === "intercessions_portal" ? (
