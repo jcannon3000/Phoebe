@@ -397,7 +397,11 @@ export function useRhythmState(): RhythmState {
   // practice — it appears ONLY when the user selects it in the customizer
   // (homeCardActive reads the saved home layout).
   const listeningActive = homeCardActive(hl, "listening");
-  const journalingActive = homeCardActive(hl, "journaling");
+  // Journaling removed (2026-07-22): the free-text journal was taken out to keep
+  // the app free of plaintext personal-content inputs. Forced inactive here so
+  // the card, the menu ring and the weekly grid all drop it at once; the
+  // customizer no longer offers it.
+  const journalingActive = false;
   // Lectio Divina — sacred reading as a logging-first practice (same shape as
   // Audio Divina); appears only when selected in the customizer.
   const lectioActive = homeCardActive(hl, "lectio");

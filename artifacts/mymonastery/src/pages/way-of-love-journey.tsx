@@ -4,7 +4,7 @@
  * Walks the EDOW devotional (wayOfLoveDevotions): each day is a tiny office —
  * a centering invitation, a Scripture passage (italic on the drifting
  * green ground), a reflection question you can carry into your journal (reusing
- * FddJournalSheet — the same sheet the office's Forward Day by Day reflection
+ * a reflection question to carry into the day (the in-app journal was removed
  * uses), and a Prayer for Today. Completing a day credits the daily Learn & Pray
  * (which feeds Turn); finishing a practice-week invites that practice into your
  * Rule of Life. Progress is gentle + local — an invitation, never a ledger.
@@ -16,7 +16,6 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import FddJournalSheet from "@/components/FddJournalSheet";
 import { apiRequest } from "@/lib/queryClient";
 import {
   WOL_DEVOTIONS, WOL_INVITATION, WOL_TOTAL_DAYS,
@@ -47,7 +46,6 @@ export default function WayOfLoveJourneyPage() {
   const [done, setDone] = useState<Set<string>>(() => new Set(loadWolProgress().done));
   const start = useMemo(() => nextWolDay(done), []); // where "Continue" lands, fixed on mount
   const [pos, setPos] = useState<{ week: number; day: number }>(start);
-  const [journalOpen, setJournalOpen] = useState(false);
 
   const week = WOL_DEVOTIONS.find((w) => w.week === pos.week)!;
   const entry = week.days.find((d) => d.day === pos.day)!;
@@ -56,7 +54,7 @@ export default function WayOfLoveJourneyPage() {
   const isWeekDone = (w: number) => WOL_DEVOTIONS.find((x) => x.week === w)!.days.every((d) => done.has(dayKey(w, d.day)));
   const completedCount = done.size;
 
-  function go(week: number, day: number) { setJournalOpen(false); setPos({ week, day }); window.scrollTo(0, 0); }
+  function go(week: number, day: number) { setPos({ week, day }); window.scrollTo(0, 0); }
   function nextDay() {
     const i = week.days.findIndex((d) => d.day === pos.day);
     if (i < week.days.length - 1) { go(pos.week, week.days[i + 1].day); return; }
@@ -133,12 +131,8 @@ export default function WayOfLoveJourneyPage() {
             <p style={{ color: WARM, fontSize: 18, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.6, margin: 0 }}>{entry.scriptureText}</p>
           </div>
 
-          {/* Reflection question → journal */}
+          {/* Reflection question to carry into the day */}
           <p style={{ color: WARM, fontSize: 16.5, fontFamily: SERIF, lineHeight: 1.55, margin: "22px 2px 12px" }}>{entry.question}</p>
-          <button type="button" onClick={() => setJournalOpen(true)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(46,107,64,0.18)", border: `1px solid ${CARD_B}`, color: WARM, borderRadius: 12, padding: "10px 16px", fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            ✎ {t("wol_journey.reflect", { defaultValue: "Reflect in your journal" })}
-          </button>
 
           {/* Prayer for Today */}
           <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, fontFamily: FONT, margin: "26px 0 6px" }}>{t("wol_journey.prayer_label", { defaultValue: "A Prayer for Today" })}</p>
@@ -182,14 +176,6 @@ export default function WayOfLoveJourneyPage() {
           </div>
         </div>
       </div>
-
-      {journalOpen && (
-        <FddJournalSheet
-          promptTag={`Way of Love · ${week.title} · ${entry.question}`}
-          onClose={() => setJournalOpen(false)}
-          onSaved={() => setJournalOpen(false)}
-        />
-      )}
     </Layout>
   );
 }

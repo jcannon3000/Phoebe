@@ -371,7 +371,6 @@ const PodcastPublisherPage = lazy(() => import("./pages/podcast-publisher"));
 const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
 const FddSitPage = lazy(() => import("./pages/fdd-sit"));
 const ReflectCacPage = lazy(() => import("./pages/reflect-cac"));
-const JournalPage = lazy(() => import("./pages/journal"));
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
 const GatheringNewPage = lazy(() => import("./pages/gathering-new"));
 const GatheringDetailPage = lazy(() => import("./pages/gathering-detail"));
@@ -1157,7 +1156,6 @@ function Router() {
           publisher slug. */}
       <Route path="/reflect/fdd" component={FddSitPage} />
       <Route path="/reflect/cac" component={ReflectCacPage} />
-      <Route path="/journal" component={JournalPage} />
       <Route path="/podcasts/show/:slug" component={PodcastShowPage} />
       <Route path="/news" component={NewsPage} />
       <Route path="/building-faith" component={BuildingFaithPage} />
@@ -1507,17 +1505,6 @@ function AndroidBackButton() {
   return null;
 }
 
-// The in-app browser's bottom-bar Journal button dismisses the browser and
-// fires `phoebe:open-journal` from native; take the reader to the journal.
-function NativeJournalOpener() {
-  const [, setLocation] = useLocation();
-  useEffect(() => {
-    const onOpen = () => setLocation("/journal");
-    window.addEventListener("phoebe:open-journal", onOpen);
-    return () => window.removeEventListener("phoebe:open-journal", onOpen);
-  }, [setLocation]);
-  return null;
-}
 
 function App() {
   return (
@@ -1566,7 +1553,6 @@ function App() {
             <CustomAnchorServerSync />
             <ReflectionReturnRedirect />
             <ReflectionPreheater />
-            <NativeJournalOpener />
             <OfficeAudioPreloader />
             {/* Bottom-anchored prompt cards (live broadcast banner + App
                 Store download), stacked so they never overlap. Inside the

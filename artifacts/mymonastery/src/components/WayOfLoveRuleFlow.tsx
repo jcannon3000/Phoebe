@@ -1987,40 +1987,8 @@ export default function WayOfLoveRuleFlow({
           {/* Prayer List removed from "Add to your day" — it now lives inside the
               Prayer list page (the "My list" tab), not as a separate anchor. */}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
-          {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {choiceRow(extras.reading, `📚 ${t("wol_rule.extra_reading", { defaultValue: "Reading" })}`, t("wol_rule.extra_reading_sub", { defaultValue: "Log what you read." }), () => toggleExtra("reading"))}
           {choiceRow(extras.podcasts, `🎙️ ${t("wol_rule.extra_podcasts", { defaultValue: "Podcasts" })}`, t("wol_rule.extra_podcasts_sub", { defaultValue: "Log what you listened to." }), () => toggleExtra("podcasts"))}
-          {/* When they journal — so the card slots into the rhythm at that time. */}
-          {extras.journaling && (
-            <div style={{ margin: "-4px 0 4px", padding: "0 2px" }}>
-              <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
-                {t("wol_rule.journaling_when", { defaultValue: "When do you journal?" })}
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
-                {CUSTOM_SLOTS.map((s) => {
-                  const on = journalingSlot === s;
-                  const label = SLOT_LABEL[s];
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => chooseJournalingSlot(s)}
-                      style={{
-                        ...FROST_BLUR,
-                        background: on ? CARD_ACTIVE : CARD,
-                        border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-                        color: on ? CREAM : SAGE,
-                        borderRadius: 10, padding: "9px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
-                        fontFamily: FONT, cursor: "pointer", textAlign: "center",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           {/* When they read — so the Reading card slots into the rhythm at that
               time of day (mirrors journaling above). */}
           {extras.reading && (
@@ -2352,7 +2320,6 @@ export default function WayOfLoveRuleFlow({
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
     ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
-    ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
     ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),
     // Drop any row whose edit target is no longer in the flow (e.g. an existing

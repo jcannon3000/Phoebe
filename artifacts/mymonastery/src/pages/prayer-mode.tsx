@@ -15,7 +15,6 @@ import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback, primeAudi
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
-import FddJournalSheet from "@/components/FddJournalSheet";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import {
   CAC_TODAY_URL,
@@ -1698,7 +1697,6 @@ function ReflectionSlide({
 
   // A quick reflection-journal popup, opened from the bottom bar so the
   // reader can jot today's reflection without leaving the office.
-  const [journalOpen, setJournalOpen] = useState(false);
 
   // The embed runs full-bleed (edge-to-edge) in the native app, but keeps a
   // padded, rounded card on web where the surrounding chrome has room.
@@ -1835,16 +1833,9 @@ function ReflectionSlide({
         </div>
       )}
 
-      {/* Bottom bar — Journal (jot today's reflection) + Continue to the summary. */}
+      {/* Bottom bar — Continue to the summary. (The in-app journal was removed
+          2026-07-22 to keep the app free of plaintext personal-content inputs.) */}
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 10, padding: "14px 16px max(16px, env(safe-area-inset-bottom))" }}>
-        <button
-          type="button"
-          onClick={() => setJournalOpen(true)}
-          className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "rgba(var(--ot-green, 46,107,64),0.25)", color: "var(--oh-fern, #A8C5A0)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.5)", fontFamily: RFONT }}
-        >
-          {t("fdd_journal.button", { defaultValue: "✎ Journal" })}
-        </button>
         <button
           type="button"
           onClick={onContinue}
@@ -1854,14 +1845,6 @@ function ReflectionSlide({
           {t("common.continue", { defaultValue: "Continue" })} →
         </button>
       </div>
-
-      {journalOpen && (
-        <FddJournalSheet
-          promptTag={`Reflecting on ${heading}`}
-          onClose={() => setJournalOpen(false)}
-          onSaved={() => { setJournalOpen(false); onContinue(); }}
-        />
-      )}
     </div>
   );
 }
