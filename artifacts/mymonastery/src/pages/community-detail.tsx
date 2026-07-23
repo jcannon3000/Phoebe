@@ -17,7 +17,6 @@ import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkl
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { MomentCard, type Moment } from "@/pages/dashboard";
-import { RsvpBlock } from "@/components/RsvpBlock";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -895,16 +894,6 @@ function CommunityGatheringDetailModal({
               >
                 {description}
               </p>
-            )}
-
-            {/* RSVP block — "Going / Interested" pills + lists of
-                attendees for each. Only renders when the gathering has
-                a known next meetup (otherwise there's nothing to RSVP
-                to). Mirrors the dashboard's gathering modal. */}
-            {typeof g.nextMeetupId === "number" && g.nextMeetupId > 0 && (
-              <div className="mt-2 pt-3" style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}>
-                <RsvpBlock meetupId={g.nextMeetupId} />
-              </div>
             )}
 
             {/* Read-only "Shared with" chips so any member can see who

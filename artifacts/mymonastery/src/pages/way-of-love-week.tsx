@@ -152,15 +152,6 @@ export default function WayOfLoveWeekPage() {
     [svcQ.data, ritualsQ.data],
   );
 
-  // Confirmed get-togethers the user organized or replied to → event cards.
-  const gatherEventsQ = useQuery<{ events: Array<{ id: number; name: string; place: string | null; nextMeetupDate: string; shareToken: string; organizer: boolean }> }>({
-    queryKey: ["/api/gather/mine/events"],
-    queryFn: () => apiRequest("GET", "/api/gather/mine/events"),
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-  const gatherEvents = gatherEventsQ.data?.events ?? [];
-
   const today = ymd(new Date());
   const thisWeekStart = ymd(sundayStart(new Date()));
   const [openSvc, setOpenSvc] = useState<{ schedules: ServiceSchedule[]; nextDate: Date } | null>(null);
@@ -403,16 +394,7 @@ export default function WayOfLoveWeekPage() {
             {/* Worship & gather */}
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
               {sectionHeaderRow("worship")}
-              {/* Confirmed get-togethers (Gather) surface as event cards. */}
-              {gatherEvents.map((ev) => (
-                <GatheringCard
-                  key={`gev-${ev.id}`}
-                  r={{ id: ev.id, name: ev.name, nextMeetupDate: ev.nextMeetupDate, location: ev.place }}
-                  keyPrefix="wol-gather"
-                  onOpen={() => setLocation(ev.organizer ? `/gather/${ev.id}/manage` : `/gather/${ev.shareToken}`)}
-                />
-              ))}
-              {worshipItems.length === 0 && gatherEvents.length === 0 ? (
+              {worshipItems.length === 0 ? (
                 <button type="button" onClick={() => setLocation("/communities")} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: "14px 16px", color: SAGE, fontSize: 13.5, fontFamily: FONT, textAlign: "left", cursor: "pointer" }}>
                   {t("home_beta.worship_empty", { defaultValue: "Find a community to worship with →" })}
                 </button>
@@ -423,10 +405,6 @@ export default function WayOfLoveWeekPage() {
                   return <GatheringCard key={`gath-${item.r.id ?? i}`} r={item.r} keyPrefix="wol-week" onOpen={() => setLocation(`/gatherings/${item.r.id}`)} />;
                 })
               )}
-              {/* The actuator for the "gather with someone" intention. */}
-              <button type="button" onClick={() => setLocation("/gather/new")} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(46,107,64,0.18)", border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px", color: WARM, fontSize: 13.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer", textAlign: "left" }}>
-                🤝 {t("gather.organize_cta", { defaultValue: "Organize a gathering →" })}
-              </button>
             </div>
 
             {/* Bless — the weekly intention cycle, inline */}

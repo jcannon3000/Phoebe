@@ -11,9 +11,7 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import crypto from "node:crypto";
-import { sendPushToUser, sendPushToUsers } from "../lib/pushSender";
 import { rateLimit, perUserRateLimit, getClientIp } from "../lib/rate-limit";
-import { sendGatherEmail } from "../lib/gatherEmail";
 import { getGardenUserIds } from "../lib/garden";
 
 // ── Gather — propose a get-together, collect availability, converge, confirm ──
@@ -165,31 +163,8 @@ router.post("/gather", perUserRateLimit("gather_create", { max: 10, windowMs: 60
   ];
   if (inviteeRows.length > 0) await db.insert(gatherInviteeTable).values(inviteeRows);
 
-  const [me] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
-  const organizer = firstName(me?.name);
-  const link = `${APP_BASE_URL}/gather/${gather!.shareToken}`;
-  if (inviteeUserIds.length > 0) {
-    void sendPushToUsers(inviteeUserIds, {
-      title: `${organizer} wants to get together`,
-      body: `Help pick a time for "${title}"`,
-      path: `/gather/${gather!.shareToken}`,
-      threadId: "gather", collapseId: `gather-invite-${gather!.id}`,
-    }).catch((err) => console.warn("[gather] invite push failed:", err));
-  }
-  for (const email of inviteeEmails) {
-    void sendGatherEmail({
-      to: email,
-      subject: `${organizer} invited you: ${title}`,
-      heading: `When can you make it?`,
-      intro: `${organizer} is planning "${title}" and would love your availability.`,
-      // Audit finding #15 (privacy): do NOT put the invitee's raw email in the
-      // link query string — it leaks via browser history, Referer headers,
-      // proxy logs, and link-preview crawlers. There's no per-invitee opaque
-      // token on gather_invitee to swap in, so drop the param entirely; the
-      // respond page collects the email from the guest directly.
-      ctaLabel: "Mark your availability", ctaUrl: link,
-    }).catch((err) => console.warn("[gather] invite email failed:", err));
-  }
+  // Social invite/notify layer removed: gatherings are recorded and shared
+  // by link, but no push or email invitations are sent to invitees.
 
   res.json({ id: gather!.id, shareToken: gather!.shareToken });
 });
@@ -343,19 +318,9 @@ router.post(
       await db.insert(gatherResponseOptionTable).values(avail.map((a) => ({ responseId, optionId: a.optionId, availability: a.availability })));
     }
 
-    // Notify the organizer on each NEW response (collapsed so it never spams).
-    if (isNew) {
-      if (userId !== null) {
-        const [u] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
-        responderName = firstName(u?.name);
-      }
-      void sendPushToUser(gather.organizerUserId, {
-        title: `New reply for "${gather.title}"`,
-        body: `${responderName} marked their availability`,
-        path: `/gather/${gather.id}/manage`,
-        threadId: "gather", collapseId: `gather-resp-${gather.id}`,
-      });
-    }
+    // Social invite/notify layer removed: no organizer push on new responses.
+    void isNew;
+    void responderName;
 
     res.json({ responseToken });
   },
@@ -424,34 +389,10 @@ router.post("/gather/:id/confirm", async (req: Request, res: Response): Promise<
 
   await db.update(gatherTable).set({ status: "confirmed", confirmedOptionId: optionId }).where(eq(gatherTable.id, id));
 
-  const [organizer] = await db.select({ name: usersTable.name, timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, userId));
-  const tz = organizer?.timezone || "America/New_York";
-  const whenStr = fmtWhen(option.datetime, tz);
-  const detailLines = [`🗓 ${whenStr}`, gather.place ? `📍 ${gather.place}` : ""].filter(Boolean);
-
+  // Social invite/notify layer removed: no confirmation push or email is
+  // sent to members or guests. The confirmed time is still recorded and
+  // surfaces as a read-only event card via /gather/mine/events.
   const responses = await db.select().from(gatherResponseTable).where(eq(gatherResponseTable.gatherId, id));
-  // Members → push; guests with email → email.
-  const memberIds = responses.map((r) => r.respondentUserId).filter((n): n is number => typeof n === "number");
-  if (memberIds.length > 0) {
-    void sendPushToUsers(memberIds, {
-      title: `"${gather.title}" is set`,
-      body: detailLines.join(" · "),
-      path: `/gather/${gather.shareToken}`,
-      threadId: "gather", collapseId: `gather-confirm-${id}`,
-    });
-  }
-  for (const r of responses) {
-    if (r.respondentUserId === null && r.guestEmail) {
-      void sendGatherEmail({
-        to: r.guestEmail,
-        subject: `"${gather.title}" is confirmed`,
-        heading: `It's set — ${gather.title}`,
-        intro: `${firstName(organizer?.name)} confirmed a time. Hope you can make it!`,
-        detailLines,
-        ctaLabel: "See the details", ctaUrl: `${APP_BASE_URL}/gather/${gather.shareToken}`,
-      });
-    }
-  }
 
   // Credit Worship & gather (+ Turn) for the organizer + members who said yes
   // to the confirmed option.
@@ -465,48 +406,7 @@ router.post("/gather/:id/confirm", async (req: Request, res: Response): Promise<
   res.json({ ok: true });
 });
 
-// ── Nudge non-responders (auth, organizer) ──────────────────────────────────
-router.post("/gather/:id/nudge", perUserRateLimit("gather_nudge", { max: 20, windowMs: 60 * 60 * 1000, message: "Too many reminders sent. Please wait a bit." }), async (req: Request, res: Response): Promise<void> => {
-  const userId = uid(req);
-  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
-  const id = parseInt(String(req.params.id), 10);
-  const [gather] = await db.select().from(gatherTable).where(eq(gatherTable.id, id));
-  if (!gather) { res.status(404).json({ error: "not_found" }); return; }
-  if (gather.organizerUserId !== userId) { res.status(403).json({ error: "not_organizer" }); return; }
-
-  const invitees = await db.select().from(gatherInviteeTable).where(eq(gatherInviteeTable.gatherId, id));
-  const responses = await db.select({ respondentUserId: gatherResponseTable.respondentUserId, guestEmail: gatherResponseTable.guestEmail }).from(gatherResponseTable).where(eq(gatherResponseTable.gatherId, id));
-  const respondedUserIds = new Set(responses.map((r) => r.respondentUserId).filter(Boolean));
-  const respondedEmails = new Set(responses.map((r) => (r.guestEmail ?? "").toLowerCase()).filter(Boolean));
-
-  const nudgeMemberIds = invitees.filter((i) => i.userId && !respondedUserIds.has(i.userId)).map((i) => i.userId as number);
-  const nudgeEmails = invitees.filter((i) => !i.userId && i.email && !respondedEmails.has(i.email.toLowerCase())).map((i) => i.email as string);
-
-  const [organizer] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
-  const link = `${APP_BASE_URL}/gather/${gather.shareToken}`;
-  if (nudgeMemberIds.length > 0) {
-    void sendPushToUsers(nudgeMemberIds, {
-      title: `${firstName(organizer?.name)} is waiting on you`,
-      body: `Pick your times for "${gather.title}"`,
-      path: `/gather/${gather.shareToken}`,
-      threadId: "gather", collapseId: `gather-nudge-${id}`,
-    });
-  }
-  for (const email of nudgeEmails) {
-    void sendGatherEmail({
-      to: email,
-      subject: `Reminder: ${gather.title}`,
-      heading: `When can you make it?`,
-      intro: `${firstName(organizer?.name)} is still hoping to hear your availability for "${gather.title}".`,
-      ctaLabel: "Mark your availability", ctaUrl: link,
-    });
-  }
-  if (nudgeMemberIds.length + nudgeEmails.length > 0) {
-    await db.update(gatherInviteeTable).set({ notifiedAt: new Date() }).where(eq(gatherInviteeTable.gatherId, id));
-  }
-
-  res.json({ nudged: nudgeMemberIds.length + nudgeEmails.length });
-});
+// Nudge/reminder endpoint removed with the social invite/notify layer.
 
 // ── Edit / cancel (auth, organizer) ─────────────────────────────────────────
 router.patch("/gather/:id", async (req: Request, res: Response): Promise<void> => {

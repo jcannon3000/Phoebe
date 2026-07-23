@@ -878,7 +878,7 @@ export default function TraditionNew() {
                       })}
                   </div>
                   <p className="text-[11px] mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    Each selected community will see this gathering and can RSVP.
+                    Each selected community will see this gathering on their calendar.
                   </p>
                 </div>
               )}

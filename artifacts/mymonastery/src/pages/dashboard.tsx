@@ -45,7 +45,6 @@ import { FellowPlans } from "@/components/FellowPlans";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { BetaRhythmExtras } from "@/components/BetaRhythmExtras";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
-import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
 // (the new dedicated screen) — the dashboard card itself only renders
 // the time-of-day eyebrow + CTA copy and links into the chooser.
@@ -1482,11 +1481,6 @@ export function GatheringCard({
               )}
             </div>
           )}
-          {/* RSVP counts (going / maybe). Reads from the dashboard's
-              cached batch summary so this is free on the wire. */}
-          {typeof r.nextMeetupId === "number" && r.nextMeetupId > 0 && (
-            <RsvpSummaryStrip meetupId={r.nextMeetupId} />
-          )}
         </div>
       </motion.div>
     </div>
@@ -1793,17 +1787,6 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
               >
                 {description}
               </p>
-            )}
-            {/* RSVP picker + attendees list. Only renders when the
-                ritual is tied to a real meetup row (group gatherings).
-                Personal one-time rituals without a nextMeetupId skip it. */}
-            {typeof r.nextMeetupId === "number" && r.nextMeetupId > 0 && (
-              <div
-                className="mt-3 rounded-xl px-4 py-3"
-                style={{ background: "rgba(122,175,125,0.06)", border: "1px solid rgba(122,175,125,0.18)" }}
-              >
-                <RsvpBlock meetupId={r.nextMeetupId} />
-              </div>
             )}
           </div>
         </motion.div>
@@ -6124,19 +6107,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     enabled: !!user,
   });
   const rituals = ritualsData ?? [];
-
-  // Prime the batch RSVP summary cache for every gathering's
-  // nextMeetupId, so GatheringCard's inline "N going · M maybe" strip
-  // can render without each card making its own fetch.
-  const meetupIdsForRsvp = useMemo<number[]>(() => {
-    const set = new Set<number>();
-    for (const r of rituals) {
-      const id = (r as { nextMeetupId?: unknown })?.nextMeetupId;
-      if (typeof id === "number" && id > 0) set.add(id);
-    }
-    return Array.from(set);
-  }, [rituals]);
-  useDashboardRsvpSummary(meetupIdsForRsvp);
 
   // Community actions (advocacy / community-action events) across every
   // community the user belongs to. Bucketed into Today / Tomorrow / This

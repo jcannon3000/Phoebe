@@ -351,9 +351,6 @@ const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
 const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
 const WeeklyReviewPage = lazy(() => import("./pages/weekly-review"));
 const VideosPage = lazy(() => import("./pages/videos"));
-const GatherNewPage = lazy(() => import("./pages/gather-new"));
-const GatherRespondPage = lazy(() => import("./pages/gather-respond"));
-const GatherManagePage = lazy(() => import("./pages/gather-manage"));
 const WayOfLoveJourneyPage = lazy(() => import("./pages/way-of-love-journey"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
@@ -1110,11 +1107,6 @@ function Router() {
       <Route path="/this-week" component={WayOfLoveWeekPage} />
       <Route path="/way-of-love" component={WayOfLoveJourneyPage} />
       <Route path="/videos" component={VideosPage} />
-      {/* Gather — propose/respond/manage. /new before /:token so it isn't
-          swallowed as a share token; the /:token respond page is public. */}
-      <Route path="/gather/new" component={GatherNewPage} />
-      <Route path="/gather/:id/manage" component={GatherManagePage} />
-      <Route path="/gather/:token" component={GatherRespondPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
       <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
