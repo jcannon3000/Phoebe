@@ -301,6 +301,14 @@ export function CobreatheBreath({
       const cell = globeCellRef.current; if (!cell) return;
       const rect = cell.getBoundingClientRect();
       setGlobeOffset((cur) => {
+        // The un-dragged default (0,0) already sits exactly at its CSS home —
+        // top:61.8% (golden ratio), centred by translate(-50%,-50%). Clamping
+        // that zero offset can ONLY pull the globe UP off 61.8% toward centre
+        // on shorter screens (maxY goes negative when the globe nears the
+        // bottom labels), which is the "earth drifted to ~50%" regression.
+        // Offsets are never persisted, so on mount cur is always (0,0); only
+        // an ACTUAL in-session drag should ever be re-clamped on resize/rotate.
+        if (cur.x === 0 && cur.y === 0) return cur;
         const natLeft = rect.left - cur.x, natTop = rect.top - cur.y;
         const titleBottom = titleRef.current?.getBoundingClientRect().bottom ?? 0;
         const bottomTop = bottomRef.current?.getBoundingClientRect().top ?? window.innerHeight;
