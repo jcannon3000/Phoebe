@@ -3849,6 +3849,22 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS correspondence_members CASCADE`);
     await run(client, `DROP TABLE IF EXISTS correspondences CASCADE`);
 
+    // More features removed + their free-text/journal data dropped
+    // (owner-approved 2026-07-23). Same pattern as letters above: the CREATE
+    // DDL earlier in this file is a harmless no-op once these drops run.
+    // CASCADE handles FK order (children before parents).
+    await run(client, `DROP TABLE IF EXISTS gratitude_seen CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS gratitude_responses CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS reflection_thoughts CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS group_reflection_comments CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS group_reflections CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS group_reflection_sources CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS lectio_reflections CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS lectio_log_entries CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS journal_entries CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS user_mutes CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS user_public_keys CASCADE`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
