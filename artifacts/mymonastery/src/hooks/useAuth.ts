@@ -37,23 +37,12 @@ export interface AuthUser {
   isSuperAdmin?: boolean;
   googleId: string | null;
   showPresence: boolean;
-  // Opt-in coarse "same air" location for Cobreathe (default false).
-  shareBreathLocation?: boolean;
   correspondenceImprintCompleted: boolean;
   gatheringImprintCompleted: boolean;
   onboardingCompleted: boolean;
   dailyBellTime: string | null;
   prayerInviteLastShownDate: string | null;
   prayerInviteLastShownAt: string | null;
-  // Display form of the phone number the user entered. The server
-  // also stores a normalized E.164 + a SHA-256 hash for the
-  // contact-discovery match endpoint, but we only surface the raw
-  // form to the UI for editing.
-  phoneNumber: string | null;
-  // True once an SMS code was confirmed (Twilio Verify). discoverableByPhone
-  // is the explicit opt-in that makes a verified number findable by contacts.
-  phoneVerified?: boolean;
-  discoverableByPhone?: boolean;
   climateEnrolled: boolean;
   climateOnboardingCompleted: boolean;
   climateOnly: boolean;

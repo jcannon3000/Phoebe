@@ -205,10 +205,6 @@ export default function CobreathePage() {
       return [6, 12, 18, 24, 30, 36].includes(n) ? n : DEFAULT_TOTAL_BREATHS;
     } catch { return DEFAULT_TOTAL_BREATHS; }
   });
-  // Location features are removed (no presence, no coarse bucket, no coords) —
-  // Co-Breathe is the global synchronized breath only. Held as const false so
-  // the sync hook never acquires or broadcasts any geographic signal.
-  const locationOn = false;
   // One calm LANDSCAPE behind the "before you begin" screen (the top-level
   // curated set — wide landscapes, no leaf close-ups / animals / farm), picked
   // once and faded up under a dark wash. Matches the prayer-intro slides so the
@@ -268,19 +264,7 @@ export default function CobreathePage() {
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
-    shareLocation: locationOn,
-    presence: locationOn,
-    shareCoords: false,
   });
-
-  // "Same air" peak for the after-glow: nearby state clears the moment breathing
-  // stops, so hold onto the high-water mark of this sit to show on the summary.
-  const [peakNear, setPeakNear] = useState<{ count: number; fellows: typeof breathSync.nearbyFellows }>({ count: 0, fellows: [] });
-  useEffect(() => {
-    if (mode === "breathing" && breathSync.nearbyCount > peakNear.count) {
-      setPeakNear({ count: breathSync.nearbyCount, fellows: breathSync.nearbyFellows });
-    }
-  }, [mode, breathSync.nearbyCount, breathSync.nearbyFellows, peakNear.count]);
 
   // Who you cobreathed WITH: capture every garden-mate seen breathing live during
   // this sit, so the first to finish still sees the others on the summary even
@@ -557,8 +541,6 @@ export default function CobreathePage() {
         weekBreaths={weekBreaths}
         others={othersDone}
         companions={summaryFaces}
-        nearCount={peakNear.count}
-        nearFellows={peakNear.fellows}
         onContinue={() => setLocation("/")}
       />
     );

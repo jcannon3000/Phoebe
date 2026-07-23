@@ -467,19 +467,6 @@ export const en = {
     loading: "Loading today's office…",
     title: "Forward Movement · Daily Prayer",
   },
-  prayed_for_map: {
-    eyebrow: "A constellation of care",
-    title: "Where you've been prayed for",
-    subtitle: "Each light is a place someone was when they prayed for you.",
-    summary: "{{prayers}} prayers from {{places}} places.",
-    empty: "No places yet. Lights appear here when someone who's turned on location sharing prays for you.",
-  },
-  pray_location_invite: {
-    title: "Show where your prayers travel?",
-    body: "When you pray for someone, they can see a map of the places their prayers came from — shown only as a rough area, about a mile across, never your exact spot.",
-    accept: "Share my location",
-    dismiss: "Not now",
-  },
   settings: {
     contemplation_goal: "Daily contemplation goal",
     contemplation_goal_blurb: "Aim for a few quiet minutes of silent prayer each day.",
@@ -638,7 +625,6 @@ export const en = {
     reflections: "Reflections",
     daily_practice: "Your Way of Love",
     daily_practice_sub: "Your seven practices",
-    prayed_for_map: "Prayed-for map",
     prayer_list: "Prayer list",
     communities: "Communities",
     members_one: "{{count}} member",

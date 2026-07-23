@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthUser } from "./useAuth";
 import { sendMessage, subscribe } from "./useGardenSocket";
-import { getBreathBucket, getBreathCoords, encodeGeohash } from "@/lib/breathGeohash";
 
 // ── Cobreathe photo sync ─────────────────────────────────────────────────────
 //
@@ -34,46 +33,19 @@ interface CobreatheSessionMsg {
   startEpochMs: number;
   masterSeed: number;
   fingerprint: string;
-  // Coarse "same air" bucket — only set on OUR outgoing payload when opted in;
-  // the server keeps it in-memory and strips it from every broadcast.
-  geohash?: string;
-  // PRECISE coords — only set when opted into an in-person session (the map).
-  // The server relays them ONLY to our mutual Fellows, never the general sync.
-  lat?: number;
-  lng?: number;
-}
-
-// A Fellow breathing in the same coarse cell right now (server-derived; we never
-// receive coordinates or another user's bucket — just a count + a coarse band).
-export interface NearFellow {
-  userId: number;
-  name: string;
-  avatarUrl: string | null;
-  band: string; // "near" | "blocks" | "town"
-}
-
-// A Fellow on the breathing-together MAP — precise coords, surfaced only when
-// both you and they opted into an in-person session (server relays to mutual
-// Fellows). Drives the points + connecting lines on the map.
-export interface MapFellow {
-  userId: number;
-  name: string;
-  avatarUrl: string | null;
-  lat: number;
-  lng: number;
 }
 
 export function useCobreatheSync(
   user: AuthUser | null,
   gardenUserIds: Set<number>,
-  opts: { fingerprint: string; active: boolean; shareLocation?: boolean; presence?: boolean; shareCoords?: boolean },
+  opts: { fingerprint: string; active: boolean; presence?: boolean },
 ) {
-  const { fingerprint, active, shareLocation = false, presence = false, shareCoords = false } = opts;
+  const { fingerprint, active, presence = false } = opts;
   // Sync reveals "I'm breathing right now" to garden-mates — the same class of
   // signal as presence, so we gate the whole feature on showPresence. A per-sit
-  // `presence` override lets someone opt into an in-person session for THIS sit
-  // (the Cobreathe options slide) without flipping the global setting. Off → the
-  // breath runs solo on its own random seed (today's behavior), emitting nothing.
+  // `presence` override lets someone opt into it for THIS sit without flipping
+  // the global setting. Off → the breath runs solo on its own random seed
+  // (today's behavior), emitting nothing.
   const enabled = !!user && (!!user.showPresence || presence) && active;
 
   const [leader, setLeader] = useState<CobreatheLeader | null>(null);
@@ -81,14 +53,6 @@ export function useCobreatheSync(
   // page capture who you cobreathed with so the first to finish still sees the
   // others on the summary — even after their live session ends.
   const [coBreatherIds, setCoBreatherIds] = useState<number[]>([]);
-  // "Same air" — others breathing in our coarse cell right now (server-derived).
-  const [nearbyCount, setNearbyCount] = useState(0);
-  const [nearbyFellows, setNearbyFellows] = useState<NearFellow[]>([]);
-  // Map points (precise) + my own anchor — only populated for an in-person session.
-  const [mapFellows, setMapFellows] = useState<MapFellow[]>([]);
-  const [myLoc, setMyLoc] = useState<{ lat: number; lng: number } | null>(null);
-  // Our coarse bucket once resolved (in-memory, never persisted on the client).
-  const bucketRef = useRef<string | null>(null);
 
   // Refs read inside the (rarely re-subscribed) socket handler, so changing
   // garden/fingerprint doesn't churn the subscription.
@@ -137,19 +101,9 @@ export function useCobreatheSync(
     if (!enabled) {
       setLeader(null);
       setCoBreatherIds([]);
-      setNearbyCount(0);
-      setNearbyFellows([]);
       return;
     }
     const handle = (msg: { type: string; [k: string]: unknown }) => {
-      // "Same air" — a private, per-recipient count + Fellow faces.
-      if (msg.type === "cobreathe-near") {
-        setNearbyCount(typeof msg.nearCount === "number" ? msg.nearCount : 0);
-        setNearbyFellows(Array.isArray(msg.nearFellows) ? (msg.nearFellows as NearFellow[]) : []);
-        setMapFellows(Array.isArray(msg.mapFellows) ? (msg.mapFellows as MapFellow[]) : []);
-        setMyLoc(msg.myLoc && typeof msg.myLoc === "object" ? (msg.myLoc as { lat: number; lng: number }) : null);
-        return;
-      }
       if (msg.type !== "cobreathe-sync") return;
       const sessions = (msg.sessions as CobreatheSessionMsg[]) ?? [];
       sessionsRef.current = sessions;
@@ -178,50 +132,6 @@ export function useCobreatheSync(
   useEffect(() => {
     if (enabled) { setLeader(elect(sessionsRef.current)); setCoBreatherIds(coBreathers(sessionsRef.current)); }
   }, [enabled, gardenKey, fingerprint, elect, coBreathers]);
-
-  // "Same air" — resolve our coarse bucket once when breathing AND opted in, then
-  // re-announce so the server can attach it. The breath itself never waits on
-  // location: announceSession fires immediately (location-less), and this enriches
-  // the already-live session the moment the fix lands. Off (or denied) → no bucket
-  // is ever sent and we fall back to the global "N breathing" count.
-  useEffect(() => {
-    if (!enabled || !shareLocation) {
-      bucketRef.current = null;
-      setNearbyCount(0);
-      setNearbyFellows([]);
-      setMapFellows([]);
-      setMyLoc(null);
-      // Scrub any location already attached to the live/last session so a reconnect
-      // self-heal (which re-sends leadingRef.current verbatim) can never re-leak a
-      // stale location after the user opts out or revokes the OS grant. If we're
-      // still breathing, re-announce WITHOUT it so the server drops it.
-      const mine = leadingRef.current;
-      if (mine && (mine.geohash || mine.lat != null)) {
-        delete mine.geohash; delete mine.lat; delete mine.lng;
-        if (enabled) sendMessage({ type: "cobreathe-start", payload: mine });
-      }
-      return;
-    }
-    let cancelled = false;
-    // Attach the resolved location to our live session + re-announce. An in-person
-    // session (shareCoords) attaches PRECISE lat/lng for the map and derives the
-    // coarse bucket from them; the plain coarse opt-in attaches only the bucket.
-    const attach = (geohash: string | null, coords: { lat: number; lng: number } | null) => {
-      if (cancelled) return;
-      bucketRef.current = geohash;
-      const mine = leadingRef.current;
-      if (!mine) return;
-      if (geohash) mine.geohash = geohash;
-      if (coords && shareCoords) { mine.lat = coords.lat; mine.lng = coords.lng; }
-      if (mine.geohash || mine.lat != null) sendMessage({ type: "cobreathe-start", payload: mine });
-    };
-    if (shareCoords) {
-      getBreathCoords({ force: false }).then((c) => { if (c) attach(encodeGeohash(c.lat, c.lng, 5), c); }).catch(() => undefined);
-    } else {
-      getBreathBucket({ force: false }).then((b) => { if (b) attach(b, null); }).catch(() => undefined);
-    }
-    return () => { cancelled = true; };
-  }, [enabled, shareLocation, shareCoords]);
 
   // Called by CobreatheBreath's onSession at count-begin with the plan we're
   // running — our own when leading/solo, or the leader's when following. Either
@@ -253,5 +163,5 @@ export function useCobreatheSync(
     }
   }, []);
 
-  return { leader, announceSession, stop, nearbyCount, nearbyFellows, mapFellows, myLoc, coBreatherIds };
+  return { leader, announceSession, stop, coBreatherIds };
 }

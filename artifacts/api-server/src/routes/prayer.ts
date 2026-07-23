@@ -337,59 +337,6 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
   });
 });
 
-// GET /api/prayer-requests/prayed-for-locations — coarse points for the
-// personal "places I've been prayed for" map. Aggregates the (already
-// ~1-mile-rounded) locations of amens left on requests I'm the subject of
-// — ones I own OR am actively tagged in — by OTHER people (my own
-// self-amens excluded), into one point-per-cell with a count. Only the
-// subject ever sees their own map; coordinates are coarse by construction.
-router.get("/prayer-requests/prayed-for-locations", async (req, res): Promise<void> => {
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const ownRows = await db
-    .select({ id: prayerRequestsTable.id })
-    .from(prayerRequestsTable)
-    .where(eq(prayerRequestsTable.ownerId, sessionUserId));
-  const taggedRows = await db
-    .select({ requestId: prayerRequestTagsTable.requestId })
-    .from(prayerRequestTagsTable)
-    .where(and(
-      eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
-      isNull(prayerRequestTagsTable.removedAt),
-    ));
-  const requestIds = Array.from(new Set([
-    ...ownRows.map(r => r.id),
-    ...taggedRows.map(r => r.requestId),
-  ]));
-  if (requestIds.length === 0) { res.json({ points: [] }); return; }
-
-  const rows = await db
-    .select({
-      lat: prayerRequestAmensTable.lat,
-      lng: prayerRequestAmensTable.lng,
-      userId: prayerRequestAmensTable.userId,
-    })
-    .from(prayerRequestAmensTable)
-    .where(and(
-      inArray(prayerRequestAmensTable.requestId, requestIds),
-      isNotNull(prayerRequestAmensTable.lat),
-      isNotNull(prayerRequestAmensTable.lng),
-    ));
-
-  // One point per ~1-mile cell. Skip my own self-amens — the map is
-  // about where OTHER people prayed for me.
-  const cells = new Map<string, { lat: number; lng: number; count: number }>();
-  for (const r of rows) {
-    if (r.userId === sessionUserId || r.lat == null || r.lng == null) continue;
-    const key = `${r.lat}|${r.lng}`;
-    const cur = cells.get(key);
-    if (cur) cur.count += 1;
-    else cells.set(key, { lat: r.lat, lng: r.lng, count: 1 });
-  }
-  res.json({ points: Array.from(cells.values()) });
-});
-
 // GET /api/prayer-requests — list active prayer requests visible to me (mine + garden)
 router.get("/prayer-requests", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
@@ -2006,31 +1953,9 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     }, "[prayer/amen] third-today check");
   }
 
-  // Optional coarse location the pray-er chose to share (opt-in). The
-  // client already rounds to ~1 mile; we round again to 2 decimals and
-  // drop anything out of range / non-finite / null-island so an exact
-  // position never lands in the table. NULL when not shared.
-  let amenLat: number | null = null;
-  let amenLng: number | null = null;
-  {
-    const body = (req.body ?? {}) as { lat?: unknown; lng?: unknown };
-    const rawLat = Number(body.lat);
-    const rawLng = Number(body.lng);
-    if (
-      Number.isFinite(rawLat) && Number.isFinite(rawLng) &&
-      rawLat >= -90 && rawLat <= 90 && rawLng >= -180 && rawLng <= 180 &&
-      !(rawLat === 0 && rawLng === 0)
-    ) {
-      amenLat = Math.round(rawLat * 100) / 100;
-      amenLng = Math.round(rawLng * 100) / 100;
-    }
-  }
-
   await db.insert(prayerRequestAmensTable).values({
     requestId: id,
     userId: sessionUserId,
-    lat: amenLat,
-    lng: amenLng,
   });
 
   // Daily "you've been held in prayer today" coalesced push — upsert

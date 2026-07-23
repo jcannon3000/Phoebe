@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, inArray, isNotNull, and, ne } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, ritualsTable, usersTable, momentUserTokensTable } from "@workspace/db";
-import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -75,101 +74,6 @@ router.get("/contacts/search", async (req, res): Promise<void> => {
   for (const p of momentMembers) addIfMatch(p);
 
   res.json(merged.slice(0, 15));
-});
-
-// ─── POST /contacts/match ───────────────────────────────────────────────────
-//
-// Body: { hashes: string[] }   // SHA-256 of E.164 phone numbers, hex
-//
-// Returns: { matches: Array<{ userId, name, avatarUrl, hashIndex }> }
-//
-// "Find your friends on Phoebe." The mobile shell reads the device
-// address book, normalizes each phone number to E.164, hashes each
-// with SHA-256, and POSTs the batch here. We look up each hash
-// against users.phone_hash and return the matched users' display
-// info — never the raw hash mapping back to phone, never the
-// uploader's address-book label for that match. Excludes the caller
-// themselves so they don't see their own row.
-//
-// The optional `hashIndex` in each match is the index of the matching
-// hash in the request array — the client can use it to pair a match
-// back to the contact row it came from (so the UI can say "Maya is on
-// Phoebe" using the user's *Phoebe* display name, but still link back
-// to the address-book entry for things like "share a letter with
-// Maya").
-//
-// Rate limit: cap at 5000 hashes per request to keep the IN clause
-// reasonable. Clients with larger address books can chunk.
-router.post("/contacts/match", rateLimit({
-  // Phone-hash contact discovery is inherently enumerable (the phone
-  // number space is small + brute-forceable), so throttle per account.
-  // Legit use is a one-time address-book sync chunked into a few
-  // requests; 20/hour covers a very large book while making mass
-  // enumeration of the user base impractical.
-  name: "contacts_match",
-  max: 20,
-  windowMs: 60 * 60 * 1000,
-  keyFn: (req) => {
-    const u = (req as { user?: { id?: number } }).user;
-    return u?.id ? `u:${u.id}` : null;
-  },
-  message: "Too many contact lookups — please try again in a bit.",
-}), async (req, res): Promise<void> => {
-  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const sessionUserId = (req.user as { id: number }).id;
-
-  const body = (req.body ?? {}) as { hashes?: unknown };
-  const raw = Array.isArray(body.hashes) ? body.hashes : [];
-  // Filter to plausible SHA-256 hex strings; dedupe; cap at 5k.
-  const HEX64 = /^[0-9a-f]{64}$/i;
-  const seen = new Set<string>();
-  const hashes: string[] = [];
-  for (const h of raw) {
-    if (typeof h !== "string") continue;
-    const lower = h.toLowerCase();
-    if (!HEX64.test(lower)) continue;
-    if (seen.has(lower)) continue;
-    seen.add(lower);
-    hashes.push(lower);
-    if (hashes.length >= 5000) break;
-  }
-  if (hashes.length === 0) {
-    res.json({ matches: [] });
-    return;
-  }
-
-  const rows = await db.select({
-    id: usersTable.id,
-    name: usersTable.name,
-    avatarUrl: usersTable.avatarUrl,
-    phoneHash: usersTable.phoneHash,
-  })
-    .from(usersTable)
-    .where(and(
-      isNotNull(usersTable.phoneHash),
-      inArray(usersTable.phoneHash, hashes),
-      ne(usersTable.id, sessionUserId),
-      // Only surface numbers that are BOTH verified (a texted code was
-      // confirmed) AND explicitly opted into discovery. A self-typed or
-      // unverified number, or a verified number whose owner hasn't turned on
-      // "find me by phone", is never matchable.
-      isNotNull(usersTable.phoneVerifiedAt),
-      eq(usersTable.discoverableByPhone, true),
-    ));
-
-  // Build hash → index map so we can return the request-array position
-  // (lets the client correlate a match back to the contact-book row).
-  const indexByHash = new Map<string, number>();
-  hashes.forEach((h, i) => indexByHash.set(h, i));
-
-  const matches = rows.map((r) => ({
-    userId: r.id,
-    name: r.name,
-    avatarUrl: r.avatarUrl,
-    hashIndex: indexByHash.get(r.phoneHash ?? "") ?? -1,
-  }));
-
-  res.json({ matches });
 });
 
 export default router;

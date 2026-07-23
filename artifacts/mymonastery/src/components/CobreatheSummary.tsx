@@ -41,8 +41,6 @@ export function CobreatheSummary({
   onFadeOutComplete,
   fadeIn = false,
   onEntered,
-  nearCount = 0,
-  nearFellows = [],
   companions = [],
 }: {
   // How many breaths the user actually took this sit (open-ended — can exceed
@@ -55,10 +53,6 @@ export function CobreatheSummary({
   // Garden-mates you breathed WITH — those who breathed today plus anyone caught
   // breathing live alongside you this sit. Rendered as faces + first names.
   companions?: Array<{ userId: number; name: string | null; avatarUrl: string | null }>;
-  // "Same air" (opt-in, beta) — the peak number who were breathing in your
-  // coarse area during the sit, and any Fellows among them. 0 → nothing shown.
-  nearCount?: number;
-  nearFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; band: string }>;
   onContinue: () => void;
   continueLabel?: string;
   continueDisabled?: boolean;
@@ -243,39 +237,6 @@ export function CobreatheSummary({
                 })()}
               </>
             )}
-
-            {/* "Same air" after-glow — the felt realization, anonymous for strangers,
-                named for Fellows. Only when someone was actually nearby. */}
-            {nearCount > 0 && (() => {
-              const bandWord = (b: string) => b === "near" ? "near you" : b === "blocks" ? "a few blocks away" : "across town";
-              const fellow = nearFellows[0];
-              const strangers = Math.max(0, nearCount - nearFellows.length);
-              return (
-                <div className="mb-6 flex flex-col items-center">
-                  {nearFellows.length > 0 && (
-                    <div className="flex items-center mb-2">
-                      {nearFellows.slice(0, 4).map((f, i) => (
-                        f.avatarUrl ? (
-                          <img key={f.userId} src={f.avatarUrl} alt={f.name} style={{ width: 30, height: 30, borderRadius: 999, objectFit: "cover", border: "1.5px solid rgba(10,28,20,0.9)", marginLeft: i === 0 ? 0 : -6 }} />
-                        ) : (
-                          <span key={f.userId} style={{ width: 30, height: 30, borderRadius: 999, background: "#1A4A2E", color: "#A8C5A0", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(10,28,20,0.9)", marginLeft: i === 0 ? 0 : -6, fontFamily: SPACE_GROTESK }}>{(f.name[0] ?? "?").toUpperCase()}</span>
-                        )
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-[14px] leading-relaxed px-2" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
-                    {fellow
-                      ? `You breathed the same air as ${nearCount} ${nearCount === 1 ? "person" : "people"} near you — including ${fellow.name}, ${bandWord(fellow.band)}.`
-                      : `You breathed the same air as ${nearCount} ${nearCount === 1 ? "person" : "people"} near you.`}
-                  </p>
-                  {fellow && strangers > 0 && (
-                    <p className="text-[12.5px] leading-relaxed px-2 mt-1" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-                      and {strangers} {strangers === 1 ? "other" : "others"} nearby you don't know yet — held in the same air.
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
 
             <button
               type="button"

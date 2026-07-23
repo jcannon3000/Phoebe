@@ -5,7 +5,6 @@ import { CenteredGlobe } from "@/components/CenteredGlobe";
 import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
-import { CobreatheMap } from "@/components/CobreatheMap";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { openingSentenceForToday } from "@/lib/creationLiturgy";
 
@@ -169,10 +168,6 @@ export function CobreatheBreath({
   followSeed,
   followStartEpochMs,
   onSession,
-  nearbyCount = 0,
-  nearbyFellows = [],
-  mapFellows = [],
-  myLoc = null,
   coBreathingFellows = [],
   onTutorial,
 }: {
@@ -225,15 +220,6 @@ export function CobreatheBreath({
   // that keeps the chain alive when the original leader leaves (those following us
   // keep flowing, and new joiners can still pick up the same plan from us).
   onSession?: (info: { startEpochMs: number; masterSeed: number }) => void;
-  // "Same air" (opt-in, beta) — how many others are breathing in your coarse
-  // area right now, and any Fellows among them (first name + avatar). Revealed
-  // quietly mid-breath; 0 → nothing shown (falls back to the global count).
-  nearbyCount?: number;
-  nearbyFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; band: string }>;
-  // "Breathing together" map (in-person opt-in) — Fellows breathing now who
-  // shared precise coords, plus my own anchor. Drives the across-distance map.
-  mapFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; lat: number; lng: number }>;
-  myLoc?: { lat: number; lng: number } | null;
   // Fellows breathing RIGHT NOW (live) — shown as faces near the top, refreshed
   // ONCE per breath and fading in/out with the breath.
   coBreathingFellows?: Array<{ userId: number; name: string | null; avatarUrl: string | null }>;
@@ -1164,58 +1150,6 @@ export function CobreatheBreath({
           <CenteredGlobe px={globePx} glyph={globe} />
         </div>
       </div>
-      )}
-
-      {/* "Breathing together" map — when you opted into an in-person session and
-          Fellows are breathing with you (precise coords), show where they are with
-          a line from you to each. Fades in mid-breath like the "same air" line and
-          takes its place when present. */}
-      {counting && breathNum >= 3 && myLoc && mapFellows.length > 0 && (
-        <div
-          className="w-full flex flex-col items-center"
-          style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 10, opacity: phase === "in" ? 0.96 : 0.62, transition: "opacity 2.4s ease-in-out" }}
-        >
-          <p style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 14.5, textAlign: "center", marginBottom: 8, textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
-            {mapFellows.length === 1 ? "breathing together, miles apart" : "breathing together, across the miles"}
-          </p>
-          <div style={{ width: "100%", maxWidth: 264 }}>
-            <CobreatheMap me={myLoc} fellows={mapFellows} />
-          </div>
-        </div>
-      )}
-
-      {/* "Same air" — a quiet realization that arrives mid-breath (breath ≥ 3),
-          fading IN with the inhale so the count feels inhaled, not displayed.
-          Strangers stay an anonymous count; Fellows get a first name. Hidden when
-          the map (above) is showing. */}
-      {counting && breathNum >= 3 && nearbyCount > 0 && !(myLoc && mapFellows.length > 0) && (
-        <div
-          className="w-full flex flex-col items-center"
-          style={{
-            paddingLeft: 28, paddingRight: 28, marginBottom: 10,
-            opacity: phase === "in" ? 0.92 : 0.5,
-            transition: "opacity 2.4s ease-in-out",
-          }}
-        >
-          <p style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 15, letterSpacing: "0.01em", textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
-            {nearbyFellows.length > 0
-              ? `breathing the same air as ${nearbyFellows[0].name}${nearbyCount > 1 ? ` and ${nearbyCount - 1} ${nearbyCount - 1 === 1 ? "other" : "others"} near you` : " near you"}`
-              : `breathing the same air as ${nearbyCount} ${nearbyCount === 1 ? "person" : "people"} near you`}
-          </p>
-          {nearbyFellows.length > 0 && (
-            <div className="flex items-center" style={{ marginTop: 8 }}>
-              {nearbyFellows.slice(0, 4).map((f, i) => (
-                f.avatarUrl ? (
-                  <img key={f.userId} src={f.avatarUrl} alt={f.name} style={{ width: 26, height: 26, borderRadius: 999, objectFit: "cover", border: "1.5px solid rgba(12,36,23,0.9)", marginLeft: i === 0 ? 0 : -6 }} />
-                ) : (
-                  <span key={f.userId} style={{ width: 26, height: 26, borderRadius: 999, background: "#1A4A2E", color: "#A8C5A0", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(12,36,23,0.9)", marginLeft: i === 0 ? 0 : -6, fontFamily: SPACE_GROTESK }}>
-                    {(f.name[0] ?? "?").toUpperCase()}
-                  </span>
-                )
-              ))}
-            </div>
-          )}
-        </div>
       )}
 
       {/* No End/Discard controls on the breath itself — the breath is a calm,

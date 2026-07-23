@@ -285,14 +285,11 @@ router.get("/auth/me", async (req, res) => {
   const u = req.user as {
     id: number; name: string; email: string; avatarUrl: string | null;
     isAnonymous: boolean;
-    googleId: string | null; showPresence: boolean; shareBreathLocation: boolean;
+    googleId: string | null; showPresence: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
     onboardingCompleted: boolean; dailyBellTime: string | null;
     prayerInviteLastShownDate: string | null;
     prayerInviteLastShownAt: Date | string | null;
-    phoneNumber: string | null;
-    phoneVerifiedAt: Date | string | null;
-    discoverableByPhone: boolean;
     climateEnrolled: boolean;
     climateOnboardingCompleted: boolean;
     climateOnly: boolean;
@@ -368,7 +365,6 @@ router.get("/auth/me", async (req, res) => {
     isAnonymous: u.isAnonymous ?? false,
     googleId: u.googleId,
     showPresence: u.showPresence,
-    shareBreathLocation: u.shareBreathLocation ?? false,
     correspondenceImprintCompleted: u.correspondenceImprintCompleted ?? false,
     gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
     onboardingCompleted: u.onboardingCompleted ?? false,
@@ -381,12 +377,6 @@ router.get("/auth/me", async (req, res) => {
           ? u.prayerInviteLastShownAt.toISOString()
           : String(u.prayerInviteLastShownAt))
       : null,
-    phoneNumber: u.phoneNumber ?? null,
-    // Verified = an SMS code was confirmed (boolean for the client; the
-    // timestamp stays server-side). discoverableByPhone is the opt-in that
-    // makes a verified number findable by contacts.
-    phoneVerified: !!u.phoneVerifiedAt,
-    discoverableByPhone: u.discoverableByPhone ?? false,
     climateEnrolled: u.climateEnrolled ?? false,
     climateOnboardingCompleted: u.climateOnboardingCompleted ?? false,
     climateOnly: u.climateOnly ?? false,
@@ -462,23 +452,6 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   }
   await db.update(usersTable).set({ showPresence } as Record<string, unknown>).where(eq(usersTable.id, userId));
   res.json({ showPresence });
-});
-
-// PATCH /auth/me/breath-location — opt in/out of the Cobreathe "same air"
-// feature (coarse, in-memory-only proximity; see usersTable.shareBreathLocation).
-// Mirrors the presence toggle; the deserializeUser cache is busted after the
-// mutating request so the next /auth/me reflects it.
-router.patch("/auth/me/breath-location", async (req, res): Promise<void> => {
-  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const userId = (req.user as { id: number }).id;
-  const { shareBreathLocation } = req.body;
-  if (typeof shareBreathLocation !== "boolean") {
-    res.status(400).json({ error: "shareBreathLocation must be a boolean" });
-    return;
-  }
-  await db.update(usersTable).set({ shareBreathLocation } as Record<string, unknown>).where(eq(usersTable.id, userId));
-  if (req.user) (req.user as Record<string, unknown>).shareBreathLocation = shareBreathLocation;
-  res.json({ shareBreathLocation });
 });
 
 // PATCH /auth/me/bell-enabled — simple on/off for the daily push. The full
