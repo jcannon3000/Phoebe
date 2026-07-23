@@ -285,7 +285,6 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
               { "/": "/offices" },
               // ── Standalone deep-link surfaces ───────────────────
               { "/": "/m/*" },              // short-form moment invite
-              { "/": "/lectio/*" },         // lectio practice
               { "/": "/moments/*" },        // practice detail
               { "/": "/parish" },
               { "/": "/parish/*" },

@@ -1488,8 +1488,6 @@ declare global {
       setBiometricLock: (on: boolean) => void;
       updateWidget: (state: {
         bellTime?: string | null;
-        lectioStage?: string | null;
-        lectioPrompt?: string | null;
         nextPracticeName?: string | null;
         // Prayer-rhythm stats for the Lock/Home Screen widget (PhoebeWidget).
         streakDays?: number | null;
@@ -1586,8 +1584,6 @@ function exposePublicApi() {
       try {
         const payload = JSON.stringify({
           bellTime: state.bellTime ?? null,
-          lectioStage: state.lectioStage ?? null,
-          lectioPrompt: state.lectioPrompt ?? null,
           nextPracticeName: state.nextPracticeName ?? null,
           streakDays: state.streakDays ?? null,
           prayedToday: state.prayedToday ?? null,

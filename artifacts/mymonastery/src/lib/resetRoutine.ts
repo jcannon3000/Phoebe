@@ -19,7 +19,7 @@ import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 // requests lead + the feeds card; every optional add-on is off. This matches a
 // brand-new account, whose null layout falls back to exactly this rhythm.
 const DEFAULT_HIDDEN_MODULES = [
-  "listening", "lectio", "reading", "walk", "cobreathe", "gratitude",
+  "listening", "reading", "walk", "cobreathe", "gratitude",
   "examen", "journaling", "cac", "ssje", "ncmp", "podcasts", "contemplation",
 ];
 

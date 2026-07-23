@@ -8,7 +8,7 @@ import {
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
-import { runBellSender, runLectioReminderSender, runLectioEveningReminderSender } from "../lib/bellSender";
+import { runBellSender } from "../lib/bellSender";
 
 const router: IRouter = Router();
 
@@ -271,7 +271,6 @@ router.get("/bell/today", async (req, res): Promise<void> => {
     const todayDow = getCurrentDayOfWeekInTz(timezone);
 
     const actionable = rows.filter((r) => {
-      if (r.templateType === "lectio-divina") return todayDow >= 1 && todayDow <= 6;
       if (r.frequency === "daily") return true;
       if (r.frequency === "weekly") {
         if (r.practiceDays) {
@@ -474,40 +473,6 @@ router.post("/bell/fire-now", async (req, res): Promise<void> => {
     res.json({ ok: true });
   } catch (err) {
     console.error("POST /api/bell/fire-now error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ─── POST /api/bell/lectio-fire-now — force-send Lectio stage reminder ────────
-// Same shape as /bell/fire-now but for the Lectio Divina morning reminder.
-// Default bypasses the time-window + dedup gates only. Pass `?force=all`
-// to ALSO bypass the "user already submitted this stage this week" gate
-// — useful for confirming push delivery end-to-end without having to
-// delete the reflection row first.
-router.post("/bell/lectio-fire-now", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
-  const bypassReflectionGate = req.query.force === "all";
-  try {
-    await runLectioReminderSender({ forceNow: true, bypassReflectionGate });
-    res.json({ ok: true, bypassReflectionGate });
-  } catch (err) {
-    console.error("POST /api/bell/lectio-fire-now error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ─── POST /api/bell/lectio-evening-fire-now — force-send evening catch-up ─────
-router.post("/bell/lectio-evening-fire-now", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
-  try {
-    await runLectioEveningReminderSender({ forceNow: true });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("POST /api/bell/lectio-evening-fire-now error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

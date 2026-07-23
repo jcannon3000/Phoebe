@@ -9,7 +9,7 @@
 // have fired the same 15-min ticks → every push would double / triple.
 //
 // What runs here:
-//   • bellSender (15-min tick → bell, evening nudge, lectio reminders,
+//   • bellSender (15-min tick → bell, evening nudge,
 //     parish office reminders, gathering reminders, feed reminders,
 //     action reminders, weekly digests, parish weekly recap, sunday
 //     reflection, etc. — ~15 senders gated by their own time windows)

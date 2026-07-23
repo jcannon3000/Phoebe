@@ -189,7 +189,7 @@ function buildWeekDays(t: TFn) {
   ];
 }
 
-const SPIRITUAL_TEMPLATES = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "lectio-divina", "custom"]);
+const SPIRITUAL_TEMPLATES = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "custom"]);
 
 type TimeOfDayOption = { id: TimeOfDay; emoji: string; label: string; sub: string; range: string };
 function buildTimeOfDayOptions(t: TFn): TimeOfDayOption[] {
@@ -244,18 +244,6 @@ function buildTemplates(t: TFn): Template[] {
   {
     id: "evening-prayer", emoji: "🌙", name: t("moment_new.templates.evening_prayer.name"),
     desc: t("moment_new.templates.evening_prayer.desc"),
-  },
-  {
-    id: "lectio-divina", emoji: "📜", name: t("moment_new.templates.lectio_divina.name"),
-    desc: t("moment_new.templates.lectio_divina.desc"),
-    prefill: {
-      name: t("moment_new.templates.lectio_divina.prefill_name"),
-      intention: t("moment_new.templates.lectio_divina.prefill_intention"),
-      loggingType: "reflection" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "weekly" as Frequency,
-    },
   },
   {
     id: "intercession", emoji: "🙏🏽", name: t("moment_new.templates.intercession.name"),
@@ -764,20 +752,6 @@ export default function MomentNew() {
       setStep("contemplative-duration");
       return;
     }
-    // Lectio Divina: minimal flow — we just need invitees. Schedule is fixed
-    // (weekly Mon/Wed/Fri) and the gospel text is pulled from the lectionary
-    // automatically each week.
-    if (template.id === "lectio-divina") {
-      if (template.prefill) {
-        setName(template.prefill.name);
-        setIntention(template.prefill.intention);
-        setLoggingType(template.prefill.loggingType);
-        setReflectionPrompt(template.prefill.reflectionPrompt);
-        setFrequency(template.prefill.frequency);
-      }
-      setStep("invite");
-      return;
-    }
     // Fasting: choose fast type first (meat vs custom)
     if (template.id === "fasting") {
       setFastingTypeChoice(null);
@@ -808,7 +782,7 @@ export default function MomentNew() {
   }
 
   // ─── Auto-select template from ?template= query param ──────────────────────
-  // When the dashboard FAB routes to e.g. /moment/new?template=lectio-divina,
+  // When the dashboard FAB routes to e.g. /moment/new?template=intercession,
   // skip past the template picker and drop the user directly into the
   // sub-flow for that template. Only runs once on mount.
   const templateAutoSelected = useRef(false);
@@ -871,8 +845,6 @@ export default function MomentNew() {
       ? (fastingTypeChoice === "meat"
         ? ["template", "fasting-type", "fasting-when", "invite"]
         : ["template", "fasting-type", "fasting-when", "duration", "invite"])
-    : templateId === "lectio-divina"
-      ? ["template", "invite"]
       : ["template", "name", "intention", "logging", "schedule", "invite"];
 
   function goNext() {
@@ -957,8 +929,6 @@ export default function MomentNew() {
     if (step === "commitment") return commitmentSessionsGoal !== null;
     if (step === "duration") return practiceDurationDays !== null;
     if (step === "invite") {
-      // Lectio Divina: invite is a person search (no community requirement)
-      if (templateId === "lectio-divina") return invitedPeople.length > 0;
       return selectedGroupId !== null;
     }
     return false;
@@ -971,14 +941,6 @@ export default function MomentNew() {
       setCreatedMomentId(data.moment.id);
       if (ritualIdFromUrl && !isSpiritual) {
         setLocation(`/ritual/${ritualIdFromUrl}`);
-        return;
-      }
-      // Lectio Divina has its own welcome screen baked into the
-      // /lectio/... slideshow (shown before any reflection is
-      // submitted). Skip the generic "is planted" confirmation for
-      // Lectio creators so they land directly on that welcome slide.
-      if (templateId === "lectio-divina") {
-        setLocation(`/moments/${data.moment.id}`);
         return;
       }
       setDone(true);
@@ -1055,7 +1017,6 @@ export default function MomentNew() {
   function handleSubmit() {
     const validParticipants = invitedPeople;
     const isFasting = templateId === "fasting";
-    const isLectio = templateId === "lectio-divina";
 
     // Fasting: derive name/intention/scheduling from fasting-specific fields
     // "Action" intercessions follow the same custom-intercession plumbing
@@ -1107,16 +1068,14 @@ export default function MomentNew() {
       learnMoreUrl: (isCustomIntercession && actionLearnMoreUrl.trim())
         ? actionLearnMoreUrl.trim()
         : undefined,
-      frequency: (isLectio ? "weekly" : fastingFreqForApi) as "daily" | "weekly" | "monthly",
-      scheduledTime: isFasting || isLectio ? "00:00" : scheduledTime,
+      frequency: fastingFreqForApi as "daily" | "weekly" | "monthly",
+      scheduledTime: isFasting ? "00:00" : scheduledTime,
       dayOfWeek: isFasting ? (fastingDayOfWeekRrule as "MO"|"TU"|"WE"|"TH"|"FR"|"SA"|"SU" | undefined) : dayOfWeek,
-      practiceDays: isLectio
-        ? JSON.stringify(["MO", "WE", "FR"])
-        : isSpiritual && frequency === "weekly" && scheduledDays.length > 0
+      practiceDays: isSpiritual && frequency === "weekly" && scheduledDays.length > 0
         ? JSON.stringify(scheduledDays)
         : undefined,
-      goalDays: isLectio ? 0 : (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
-      commitmentDuration: isLectio ? 0 : (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
+      goalDays: (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
+      commitmentDuration: (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
       commitmentSessionsGoal: (isFasting && fastingTypeChoice === "meat") ? null : (isFasting || templateId === "intercession") ? practiceDurationDays : null,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timeOfDay: timeOfDay ?? undefined,
@@ -2121,18 +2080,7 @@ export default function MomentNew() {
               })()}
 
               {/* ── Invite ─────────────────────────────────────────── */}
-              {step === "invite" && templateId === "lectio-divina" && (
-                <div className="space-y-5 flex-1">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.invite_lectio.title")} 📜</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {t("moment_new.invite_lectio.subtitle")}
-                    </p>
-                  </div>
-                  <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
-                </div>
-              )}
-              {step === "invite" && templateId !== "lectio-divina" && (
+              {step === "invite" && (
                 <div className="space-y-5 flex-1">
                   <div>
                     <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.invite_community.title")} 🌿</h2>
@@ -2532,13 +2480,7 @@ export default function MomentNew() {
                   : step === "bcp-invite"
                     ? <>{t("moment_new.cta.plant_practice")} 🌿</>
                     : step === "invite"
-                      ? templateId === "lectio-divina"
-                        ? invitedPeople.length === 0
-                          ? t("moment_new.cta.add_at_least_one")
-                          : invitedPeople.length === 1
-                            ? <>{t("moment_new.cta.plant_with_person", { name: invitedPeople[0].name || invitedPeople[0].email.split("@")[0] })} 📜</>
-                            : <>{t("moment_new.cta.plant_with_people", { count: invitedPeople.length })} 📜</>
-                        : selectedGroupId
+                      ? selectedGroupId
                           ? <>{t("moment_new.cta.plant_for_community", { community: adminGroups.find(g => g.id === selectedGroupId)?.name ?? t("moment_new.cta.community_fallback") })} 🌿</>
                           : t("moment_new.cta.select_community")
                       : <>{t("moment_new.continue")} →</>}

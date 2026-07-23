@@ -90,12 +90,11 @@ export function setJournalingSlot(slot: CustomSlot): void {
 // Other built-in practices that the customizer now places at a chosen time of day
 // (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot, same
 // idea as journaling. Sensible defaults if the user never picks one.
-export type SlottedPractice = "cobreathe" | "listening" | "examen" | "lectio" | "walk" | "scripture" | "reading";
+export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "scripture" | "reading";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   cobreathe: "morning",
   listening: "midday",
   examen: "evening",
-  lectio: "morning",
   walk: "afternoon",
   scripture: "morning",
   reading: "afternoon", // was a hardcoded "afternoon"; now user-choosable

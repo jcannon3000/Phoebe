@@ -8,13 +8,12 @@ import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
-  lectioReflectionsTable, groupsTable, groupMembersTable, momentGroupsTable,
+  groupsTable, groupMembersTable, momentGroupsTable,
   prayerFeedSubscriptionsTable, prayerFeedsTable, betaUsersTable,
   prayerRequestsTable, prayerRequestAmensTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
-import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers } from "./groups";
 import { getGardenUserIds } from "../lib/garden";
 import { sendNewGroupMomentPushToMany, sendIntercessionGoalReachedPush } from "../lib/pushSender";
@@ -67,7 +66,7 @@ async function createAllDayCalendarEvent(userId: number, opts: Parameters<typeof
 //     of that parish can edit or delete it.
 //   - Any admin / hidden-admin of ANY group the practice is attached to
 //     (primary OR a junction group) can also manage/delete it — every admin
-//     of a group can delete a lectio practice from their group. (They can
+//     of a group can delete a practice from their group. (They can
 //     still just detach via DELETE /moments/:id/groups/:groupId instead.)
 //
 // Used by PATCH /moments/:id, PATCH /moments/:id/goal,
@@ -104,7 +103,7 @@ async function canManageMoment(opts: {
   }
   // Admin of ANY group this practice is attached to (via the junction) can
   // manage it too — per the user spec, every admin of a group can delete a
-  // lectio practice from their group, not only the creator or the primary
+  // practice from their group, not only the creator or the primary
   // group's admins. This also covers practices whose group link lives only in
   // the junction table (primaryGroupId null above).
   const [attachedAdmin] = await db
@@ -120,11 +119,6 @@ async function canManageMoment(opts: {
   if (attachedAdmin) return true;
   return false;
 }
-
-// Monastic wisdom: depth over breadth. A person may only hold three Lectio
-// Divina groups at once — the discipline is to go deep with a few, not shallow
-// with many.
-const LECTIO_GROUP_LIMIT = 3;
 
 const router: IRouter = Router();
 
@@ -306,11 +300,10 @@ function isFastingActionableOnOffset(moment: {
 }
 
 // ─── Is this practice actionable TODAY for dashboard bucketing? ──────────────
-// Separate from windowOpen because: (a) lectio-divina has a weekday-across-the-
-// week rhythm that doesn't map to a single "today" window, and (b) the user's
-// stated intent is "all active practices show up on the home screen today" —
-// so we deliberately don't gate by time-of-day bands here. Time-of-day gating
-// (intercession morning window, etc.) belongs on the detail page, not the card.
+// Separate from windowOpen because the user's stated intent is "all active
+// practices show up on the home screen today" — so we deliberately don't gate
+// by time-of-day bands here. Time-of-day gating (intercession morning window,
+// etc.) belongs on the detail page, not the card.
 function isActionableToday(moment: {
   templateType: string | null;
   frequency: string;
@@ -322,13 +315,6 @@ function isActionableToday(moment: {
   fastingDay?: string | null;
   fastingDayOfMonth?: number | null;
 }): boolean {
-  // Lectio Divina: actionable on the three stage days (Mon/Wed/Fri) only.
-  // Tue/Thu/Sat are evening-reminder catch-up days, not primary action days,
-  // so they shouldn't surface a "Today" card. Sunday is the communal reveal.
-  if (moment.templateType === "lectio-divina") {
-    const dow = getCurrentDayOfWeekInTz(moment.timezone || "UTC");
-    return dow === 1 || dow === 3 || dow === 5;
-  }
   // Fasting: day-of-cadence lives in its own fields. Specific-date fasts are
   // only "today" on their exact date; weekly fasts on their weekday; monthly
   // on their day-of-month.
@@ -360,11 +346,6 @@ function isActionableTomorrow(moment: {
   const todayDow = getCurrentDayOfWeekInTz(tz);
   const tomorrowDow = (todayDow + 1) % 7;
 
-  if (moment.templateType === "lectio-divina") {
-    // Only flag the next fresh stage day (Mon/Wed/Fri). Tue/Thu/Sat are
-    // evening catch-up days, not the next "window".
-    return tomorrowDow === 1 || tomorrowDow === 3 || tomorrowDow === 5;
-  }
   // Fasting: cadence lives in fasting-specific fields.
   if (moment.templateType === "fasting") {
     return isFastingActionableOnOffset(moment, 1);
@@ -753,7 +734,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
 });
 
 // ─── POST /api/moments — plant a standalone shared moment ───────────────────
-const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "lectio-divina", "custom"]);
+const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "custom"]);
 const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
 
 const StandalonePlantSchema = z.object({
@@ -909,28 +890,6 @@ router.post("/moments", perUserRateLimit("moments_create", {
         if (!byEmail.has(k)) byEmail.set(k, { email: row.email, name: row.name ?? row.email });
       }
       if (byEmail.size > 0) groupMembers = [...byEmail.values()];
-    }
-  }
-
-  // Enforce the Lectio Divina group limit — depth, not breadth.
-  if (templateType === "lectio-divina") {
-    const [creator] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-    if (creator) {
-      const myTokens = await db.select().from(momentUserTokensTable)
-        .where(eq(momentUserTokensTable.email, creator.email));
-      const myMomentIds = [...new Set(myTokens.map(t => t.momentId))];
-      if (myMomentIds.length > 0) {
-        const myLectio = (await db.select().from(sharedMomentsTable)
-          .where(inArray(sharedMomentsTable.id, myMomentIds)))
-          .filter(m => m.templateType === "lectio-divina" && m.state !== "archived");
-        if (myLectio.length >= LECTIO_GROUP_LIMIT) {
-          res.status(400).json({
-            error: "lectio_group_limit",
-            message: `You can hold up to ${LECTIO_GROUP_LIMIT} Lectio Divina groups at a time. The discipline is depth, not breadth — leave one to begin another.`,
-          });
-          return;
-        }
-      }
     }
   }
 
@@ -1178,17 +1137,6 @@ router.post("/moments", perUserRateLimit("moments_create", {
       ].join("\n");
     }
 
-    if (templateType === "lectio-divina") {
-      return [
-        `📜 ${invFirst} invited you to pray Lectio Divina together.`,
-        shortLink,
-        "",
-        `On Mondays, Wednesdays, and Fridays, sit with the week's gospel reading. Slowly, attentively — letting the word read you.`,
-        "",
-        `When: Mon · Wed · Fri · Starting ${humanStartDate()}`,
-      ].join("\n");
-    }
-
     // Default / custom practice
     return [
       `🌱 ${invFirst} invited you to practice together.`,
@@ -1197,29 +1145,6 @@ router.post("/moments", perUserRateLimit("moments_create", {
       ...(intention ? [`"${intention}"`, ""] : []),
       `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
     ].join("\n");
-  }
-
-  // ─── Helper for Lectio Divina all-day event start date ────────────────────
-  // Returns the next upcoming Mon/Wed/Fri in the target timezone as YYYY-MM-DD,
-  // including today if today is already Mon/Wed/Fri.
-  function getNextLectioDateStr(tz: string): string {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      weekday: "short",
-    }).formatToParts(new Date());
-    const y = parts.find(p => p.type === "year")?.value ?? "2026";
-    const mo = parts.find(p => p.type === "month")?.value ?? "01";
-    const day = parts.find(p => p.type === "day")?.value ?? "01";
-    const wd = parts.find(p => p.type === "weekday")?.value ?? "Mon";
-    const DOW: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
-    const LECTIO_DAYS = new Set([1, 3, 5]); // Mon, Wed, Fri
-    const startDow = DOW[wd] ?? 1;
-    let offset = 0;
-    while (!LECTIO_DAYS.has((startDow + offset) % 7)) offset++;
-    const dt = new Date(`${y}-${mo}-${day}T00:00:00Z`);
-    dt.setUTCDate(dt.getUTCDate() + offset);
-    return dt.toISOString().split("T")[0];
   }
 
   // ─── Helpers for fasting all-day event date ─────────────────────────────────
@@ -1362,29 +1287,6 @@ router.post("/moments", perUserRateLimit("moments_create", {
         attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
         recurrence: intercessionRecurrence,
         reminders: [{ method: "popup", minutes: 0 }], // morning of
-        transparency: "transparent",
-      }).catch(() => null);
-
-      if (eventId) {
-        if (orgToken) {
-          await db.update(momentUserTokensTable)
-            .set({ googleCalendarEventId: eventId })
-            .where(eq(momentUserTokensTable.id, orgToken.id));
-        }
-        gcalCreated = true;
-      }
-    } else if (templateType === "lectio-divina") {
-      // Lectio Divina: all-day events on Mon/Wed/Fri.
-      // Day-of only — no day-before reminder.
-      const lectioDateStr = getNextLectioDateStr(tz);
-      const lectioTitle = `📜 ${name} — Lectio Divina`;
-      const eventId = await createAllDayCalendarEvent(sessionUserId, {
-        summary: lectioTitle,
-        description: orgDescription,
-        dateStr: lectioDateStr,
-        attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
-        recurrence: ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR"],
-        reminders: [{ method: "popup", minutes: 0 }], // morning of only
         transparency: "transparent",
       }).catch(() => null);
 
@@ -1838,24 +1740,6 @@ router.get("/moments", async (req, res): Promise<void> => {
         return true;
       });
 
-    // If any practices are Lectio Divina, fetch the current Sunday's reading
-    // once and reuse it across all of them.
-    const anyLectio = flatMoments.some(m => m.templateType === "lectio-divina");
-    let lectioReadingMeta: { sundayDate: string; sundayName: string | null; gospelReference: string | null; gospelText: string | null } | null = null;
-    if (anyLectio) {
-      try {
-        const reading = await getReadingForSunday(nextSundayDate());
-        lectioReadingMeta = {
-          sundayDate: reading.sundayDate,
-          sundayName: reading.sundayName,
-          gospelReference: reading.gospelReference,
-          gospelText: reading.gospelText,
-        };
-      } catch (err) {
-        console.warn("[moments] lectio reading fetch failed:", err);
-      }
-    }
-
     // Reconcile membership for every group-linked AND feed-linked
     // practice. Practices attached to a group reflect the group's current
     // roster; feed-scoped intercessions reflect the feed's subscribers.
@@ -2117,27 +2001,6 @@ router.get("/moments", async (req, res): Promise<void> => {
     for (const r of _windowsAll) { const a = _windowsByMoment.get(r.momentId); if (a) a.push(r); else _windowsByMoment.set(r.momentId, [r]); }
     for (const r of _postsAll) { const a = _postsByMoment.get(r.momentId); if (a) a.push(r); else _postsByMoment.set(r.momentId, [r]); }
 
-    // Batch lectio reflections for the current Sunday across ALL lectio moments
-    // (was one query per lectio moment inside the enrich loop). Isolated
-    // try/catch so a lectio_reflections schema drift can't blank the dashboard —
-    // it just empties the map and the cards lose their reflection count.
-    const _lectioMomentIds = lectioReadingMeta
-      ? flatMoments.filter(m => m.templateType === "lectio-divina").map(m => m.id)
-      : [];
-    const _lectioByMoment = new Map<number, Array<typeof lectioReflectionsTable.$inferSelect>>();
-    if (lectioReadingMeta && _lectioMomentIds.length > 0) {
-      try {
-        const _lectioAll = await db.select().from(lectioReflectionsTable)
-          .where(and(
-            inArray(lectioReflectionsTable.momentId, _lectioMomentIds),
-            eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
-          ));
-        for (const r of _lectioAll) { const a = _lectioByMoment.get(r.momentId); if (a) a.push(r); else _lectioByMoment.set(r.momentId, [r]); }
-      } catch (err) {
-        console.warn("[moments] lectio reflections batch failed:", err);
-      }
-    }
-
     // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
     // throws (bad timezone, computeWindowOpen edge case, a null-dereference
     // we didn't anticipate, etc.), we log it and fall back to the raw row
@@ -2297,73 +2160,6 @@ router.get("/moments", async (req, res): Promise<void> => {
           ? postsByWindow.get(lastWindowDate)!.size
           : 0;
 
-        // Lectio-specific enrichment: this week's reading + how many members have
-        // submitted any reflection for the current Sunday anchor.
-        let lectioSundayName: string | null = null;
-        let lectioGospelReference: string | null = null;
-        let lectioGospelText: string | null = null;
-        let lectioResponseCount = 0;
-        // Whether *this user* has submitted the current stage's reflection for
-        // this week. Used by the dashboard to move the card out of "today" once
-        // they've reflected (since lectio reflections don't write to
-        // moment_posts, todayPostCount alone never moves it).
-        let lectioMyStageDone = false;
-        // Current stage label ("Lectio" / "Meditatio" / "Oratio") and a short
-        // "next time" hint ("Wed · Meditatio") for the dashboard card.
-        let lectioCurrentStageLabel: string | null = null;
-        let lectioNextStageLabel: string | null = null;
-        if (m.templateType === "lectio-divina" && lectioReadingMeta) {
-          lectioSundayName = lectioReadingMeta.sundayName;
-          lectioGospelReference = lectioReadingMeta.gospelReference;
-          lectioGospelText = lectioReadingMeta.gospelText;
-          // Reflections count query is isolated in its own try/catch so a
-          // schema drift (missing column, bad migration) on lectio_reflections
-          // can't wipe out the gospel text on the card. The count is a nice-
-          // to-have; the verses are the point of the card.
-          try {
-            const weekReflections = _lectioByMoment.get(m.id) ?? [];
-            lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
-
-            // Determine the current stage for this practice's timezone:
-            // Mon/Tue → lectio, Wed/Thu → meditatio, Fri/Sat → oratio,
-            // Sun → no current stage (gathering day, nothing for the card).
-            const dow = getCurrentDayOfWeekInTz(m.timezone || "UTC");
-            const currentStage =
-              dow === 1 || dow === 2 ? "lectio" :
-              dow === 3 || dow === 4 ? "meditatio" :
-              dow === 5 || dow === 6 ? "oratio" : null;
-            // Check which stages the user has completed this week
-            const myStages = myToken
-              ? new Set(weekReflections.filter(r => r.userToken === myToken.userToken).map(r => r.stage))
-              : new Set<string>();
-            const allThreeDone = myStages.has("lectio") && myStages.has("meditatio") && myStages.has("oratio");
-
-            if (currentStage && myToken) {
-              lectioMyStageDone = myStages.has(currentStage);
-            } else if (!currentStage) {
-              // Sunday: not actionable; treat as done so it doesn't sit in "today".
-              lectioMyStageDone = true;
-            }
-
-            // Friendly labels for the dashboard card. "Completed" only shows
-            // when the user has actually submitted all three stages this week.
-            const STAGE_LABEL = { lectio: "Stage 1", meditatio: "Stage 2", oratio: "Stage 3" } as const;
-            lectioCurrentStageLabel = allThreeDone
-              ? "Completed"
-              : currentStage ? STAGE_LABEL[currentStage] : (myStages.size > 0 ? `${myStages.size} of 3` : "Stage 1");
-            // Next reflection day — Lectio Divina only reflects on Mon/Wed/Fri,
-            // so this is the next of those three days strictly after today.
-            // Friday → Monday (not Sunday, since Sunday has no reflection).
-            if (dow === 0) lectioNextStageLabel = "Monday";            // Sun → Mon
-            else if (dow === 1 || dow === 2) lectioNextStageLabel = "Wednesday"; // Mon/Tue → Wed
-            else if (dow === 3 || dow === 4) lectioNextStageLabel = "Friday";    // Wed/Thu → Fri
-            else lectioNextStageLabel = "Monday";                       // Fri/Sat → next Mon
-          } catch (reflErr) {
-            console.warn(`[moments] lectio reflections count failed for moment ${m.id}:`, reflErr);
-            lectioResponseCount = 0;
-          }
-        }
-
         // Creator = member with smallest token id (matches single-moment endpoint)
         const creatorToken = allMembers.length > 0
           ? allMembers.reduce((min, mt) => mt.id < min.id ? mt : min, allMembers[0])
@@ -2406,13 +2202,6 @@ router.get("/moments", async (req, res): Promise<void> => {
           lastWindowDate,
           lastWindowPostCount,
           isCreator,
-          lectioSundayName,
-          lectioGospelReference,
-          lectioGospelText,
-          lectioResponseCount,
-          lectioMyStageDone,
-          lectioCurrentStageLabel,
-          lectioNextStageLabel,
           // Fasting stats — weekly numbers drive the dashboard card's flap
           // line 1 ("💧 1,200 gallons saved this week"), all-time numbers
           // drive line 2 ("💧 6,800 gallons saved all time"), and
@@ -2470,13 +2259,6 @@ router.get("/moments", async (req, res): Promise<void> => {
           lastWindowDate: null,
           lastWindowPostCount: 0,
           isCreator: false,
-          lectioSundayName: null,
-          lectioGospelReference: null,
-          lectioGospelText: null,
-          lectioResponseCount: 0,
-          lectioMyStageDone: false,
-          lectioCurrentStageLabel: null,
-          lectioNextStageLabel: null,
         };
       }
     }));

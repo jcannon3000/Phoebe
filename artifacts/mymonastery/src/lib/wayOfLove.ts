@@ -127,7 +127,6 @@ export const PRACTICES: Record<PracticeId, Practice> = {
       { id: "learn-devotional", label: txt("way_of_love.learn.devotional", "Read a daily devotional (CAC, Forward Day by Day, or SSJE)"), defaultCadence: "daily", home: "app", setting: "reflectionSource", completionSignal: "reflectionToday" },
       { id: "learn-podcast", label: txt("way_of_love.learn.podcast", "Follow a Scripture podcast"), defaultCadence: "daily", home: "app", setting: "podcasts" },
       { id: "learn-reading-plan", label: txt("way_of_love.learn.reading_plan", "Follow a Bible reading plan"), defaultCadence: "daily", home: "offline" },
-      { id: "learn-lectio", label: txt("way_of_love.learn.lectio", "Practice lectio divina"), defaultCadence: "daily", home: "offline" },
     ],
   },
   pray: {

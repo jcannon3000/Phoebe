@@ -7,7 +7,7 @@
  * currently covers ~24 weeks of Sundays; refresh it quarterly.
  *
  * We do NOT hit lectionarypage.net from the server — Railway's outbound IP
- * is blocked by their mod_security, and we don't want the Lectio card to
+ * is blocked by their mod_security, and we don't want reading lookups to
  * depend on flaky third-party availability anyway. If a user asks for a
  * Sunday outside the seeded window, we fall through to the lectionary_readings
  * DB table (in case an admin populated it by hand), and otherwise throw a
@@ -79,10 +79,10 @@ function seedToReading(seed: SeedReading): LectionaryReading {
  *   3. Nearest seed entry — the seed is always available in memory, so
  *      this path is infallible as long as SEED_READINGS is non-empty.
  *
- * Design goal: this function MUST NOT throw in normal operation. The Lectio
- * card on the dashboard and the /lectio page both depend on it, and a
- * throw here nukes the user's entire experience. We'd rather show
- * yesterday's Gospel than an error screen.
+ * Design goal: this function MUST NOT throw in normal operation. Reading
+ * lookups across the app depend on it, and a throw here nukes the user's
+ * entire experience. We'd rather show yesterday's Gospel than an error
+ * screen.
  */
 export async function getReadingForSunday(
   sundayDate: Date

@@ -13,7 +13,7 @@ import { db, usersTable, type PrescribedRoutineSpec } from "@workspace/db";
 // Same module key set the home-layout route validates against, so an applied
 // layout can never surface an unknown card.
 const HOME_MODULE_KEYS = [
-  "office", "feeds", "contemplation", "listening", "lectio", "reading", "walk",
+  "office", "feeds", "contemplation", "listening", "reading", "walk",
   "cobreathe", "gratitude", "examen", "journaling", "cac", "fdd", "ssje",
   "ncmp", "podcasts", "requests",
 ] as const;

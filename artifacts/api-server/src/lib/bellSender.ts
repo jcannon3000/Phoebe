@@ -7,7 +7,6 @@ import {
   prayerSessionsTable,
   sharedMomentsTable,
   momentUserTokensTable,
-  lectioReflectionsTable,
   lectionaryReadingsTable,
   prayerFeedsTable,
   meetupsTable,
@@ -25,8 +24,6 @@ import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
   sendBellPush,
   sendEveningNudgePush,
-  sendLectioReminderPush,
-  sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
   sendLifeEventFollowUpPush,
   sendParishOfficeReminderPush,
@@ -41,7 +38,6 @@ import {
   sendWeeklyDigestPush,
   sendParishWeeklyRecapPush,
 } from "./pushSender";
-import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
 import { runDailyPrayerDeliverySender } from "./dailyPrayerDelivery";
@@ -291,373 +287,6 @@ export async function runEveningNudgeSender(): Promise<void> {
 // the unused-symbol check stays quiet (same idiom as `void sql` below).
 void runDayCallSender;
 
-// ─── Lectio Divina stage reminder (Mon/Wed/Fri 09:30 local) ────────────────
-//
-// Push-only. For every member of an active lectio-divina circle who has a
-// Phoebe account (matched by email to usersTable), fires at ~09:30 in the
-// user's local timezone on:
-//   Monday    → Stage 1 (lectio)
-//   Wednesday → Stage 2 (meditatio)
-//   Friday    → Stage 3 (oratio)
-// Only sends if the user hasn't already submitted that stage this week.
-// De-duped via a `bell_notifications` row keyed on
-// `${date}-lectio-${momentId}-${stage}` so retries don't double-send.
-
-const LECTIO_DOW_TO_STAGE: Record<number, { stage: "lectio" | "meditatio" | "oratio"; stageNumber: 1 | 2 | 3 }> = {
-  1: { stage: "lectio",    stageNumber: 1 },
-  3: { stage: "meditatio", stageNumber: 2 },
-  5: { stage: "oratio",    stageNumber: 3 },
-};
-
-function dowInTz(timezone: string): number {
-  try {
-    const wd = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(new Date());
-    return ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as Record<string, number>)[wd] ?? new Date().getUTCDay();
-  } catch {
-    return new Date().getUTCDay();
-  }
-}
-
-// `forceNow` skips the time-window and dedup gates so an admin debug
-// endpoint can fire a missed tick. `bypassReflectionGate` *additionally*
-// skips the "this user has already submitted that stage this week" gate,
-// for verifying push delivery end-to-end without having to delete the
-// reflection row first. Default is the safe behavior that production
-// uses on every tick.
-export async function runLectioReminderSender(
-  opts: { forceNow?: boolean; bypassReflectionGate?: boolean } = {},
-): Promise<void> {
-  // Lectio reminder pushes are OFF per user direction — the lectio
-  // surface is reachable from the home and direct deep-links and
-  // doesn't need its own daily nudge. forceNow callers (manual
-  // triggers from the admin endpoint) still go through, so the
-  // path remains testable. Flip this guard to re-enable.
-  if (!opts.forceNow) {
-    logger.info("[lectio-reminder] disabled — skipping run");
-    return;
-  }
-  // Pull every membership in any lectio-divina moment, joined to the
-  // matching registered user (by email). Email-only invitees with no
-  // account get skipped — pushes need a userId to resolve device tokens.
-  const memberships = await db
-    .select({
-      userId: usersTable.id,
-      userEmail: usersTable.email,
-      userTimezone: usersTable.timezone,
-      personalTimezone: momentUserTokensTable.personalTimezone,
-      momentId: sharedMomentsTable.id,
-      momentToken: sharedMomentsTable.momentToken,
-      momentName: sharedMomentsTable.name,
-      momentTimezone: sharedMomentsTable.timezone,
-      userToken: momentUserTokensTable.userToken,
-    })
-    .from(momentUserTokensTable)
-    .innerJoin(sharedMomentsTable, eq(sharedMomentsTable.id, momentUserTokensTable.momentId))
-    // Case-insensitive email join. moment_user_tokens.email is inserted
-    // verbatim from invite payloads (sometimes mixed-case) while
-    // users.email is normalized to lowercase on signup, so a strict
-    // equality join silently dropped invitees whose casing didn't match.
-    .innerJoin(usersTable, sql`LOWER(${usersTable.email}) = LOWER(${momentUserTokensTable.email})`)
-    .where(
-      and(
-        eq(sharedMomentsTable.templateType, "lectio-divina"),
-        eq(sharedMomentsTable.state, "active"),
-      ),
-    );
-
-  if (memberships.length === 0) return;
-
-  // Cache the Sunday's reading once per tick — every member of every
-  // circle keys off the same upcoming-Sunday date. Use getReadingForSunday
-  // (NOT a raw DB query) so we fall back to bundled seed data when the
-  // lectionary_readings row hasn't been populated yet — otherwise the
-  // entire run aborts and NO member of ANY lectio circle gets a push.
-  // That's the bug we shipped originally: dashboard worked because it
-  // used the helper, the cron didn't.
-  const sundayDateObj = nextSundayDate();
-  const sundayStr = sundayDateObj.toISOString().slice(0, 10);
-  let gospelReference: string | null = null;
-  try {
-    const reading = await getReadingForSunday(sundayDateObj);
-    gospelReference = reading.gospelReference;
-  } catch (err) {
-    logger.warn({ err, sundayStr }, "[lectio-reminder] reading lookup failed — skipping run");
-    return;
-  }
-  if (!gospelReference) {
-    logger.warn({ sundayStr }, "[lectio-reminder] reading has no gospelReference — skipping run");
-    return;
-  }
-
-  for (const m of memberships) {
-    try {
-      // Prefer the per-circle override, then the user's account TZ, then
-      // the moment's TZ, then NY (matches sendBellPush behavior).
-      const tz = m.personalTimezone ?? m.userTimezone ?? m.momentTimezone ?? "America/New_York";
-
-      const dow = dowInTz(tz);
-      const stageInfo = LECTIO_DOW_TO_STAGE[dow];
-      if (!stageInfo) continue;
-
-      // Fire any time at-or-after 9:30 local on the stage day. The
-      // dedup row below guarantees once-per-user-per-day, so a missed
-      // tick (server restart, GC pause, late deploy) self-heals on the
-      // next 15-min cycle instead of silently swallowing the day.
-      if (!opts.forceNow) {
-        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-        if ((nowH * 60 + nowM) < (9 * 60 + 30)) continue;
-      }
-
-      const todayStr = todayDateInTz(tz);
-      const dedupKey = `${todayStr}-lectio-${m.momentId}-${stageInfo.stage}`;
-
-      if (!opts.forceNow) {
-        const [existing] = await db
-          .select()
-          .from(bellNotificationsTable)
-          .where(
-            and(
-              eq(bellNotificationsTable.userId, m.userId),
-              eq(bellNotificationsTable.bellDate, dedupKey),
-            ),
-          );
-        if (existing) continue;
-      }
-
-      // Skip if the user already submitted this stage for this week.
-      // Admin debug callers can pass `bypassReflectionGate: true` to
-      // verify delivery without first deleting the reflection row.
-      if (!opts.bypassReflectionGate) {
-        const [existingReflection] = await db
-          .select({ id: lectioReflectionsTable.id })
-          .from(lectioReflectionsTable)
-          .where(
-            and(
-              eq(lectioReflectionsTable.momentId, m.momentId),
-              eq(lectioReflectionsTable.sundayDate, sundayStr),
-              eq(lectioReflectionsTable.userToken, m.userToken),
-              eq(lectioReflectionsTable.stage, stageInfo.stage),
-            ),
-          );
-        if (existingReflection) continue;
-      }
-
-      try {
-        await sendLectioReminderPush(m.userId, {
-          momentToken: m.momentToken,
-          userToken: m.userToken,
-          momentId: m.momentId,
-          stageNumber: stageInfo.stageNumber,
-          gospelReference,
-          communityName: m.momentName,
-          sundayDate: sundayStr,
-          stage: stageInfo.stage,
-        });
-      } catch (err) {
-        logger.warn({ err, userId: m.userId, momentId: m.momentId, stage: stageInfo.stage }, "[lectio-reminder] push dispatch failed — skipping dedup insert so we retry next tick");
-        continue;
-      }
-
-      await db.insert(bellNotificationsTable).values({
-        userId: m.userId,
-        bellDate: dedupKey,
-        sentAt: new Date(),
-      });
-
-      logger.info({ userId: m.userId, momentId: m.momentId, stage: stageInfo.stage, dedupKey }, "[lectio-reminder] sent stage reminder");
-    } catch (err) {
-      logger.error({ err, userId: m.userId, momentId: m.momentId }, "[lectio-reminder] member processing failed");
-    }
-  }
-}
-
-// ─── Lectio Divina evening catch-up (Tue/Thu/Sat 19:30 local) ──────────────
-//
-// Day-after nudge for circle members who missed the morning reminder. Maps
-// the prior morning's stage day → today: Tue covers Mon's Stage 1, Thu
-// covers Wed's Stage 2, Sat covers Fri's Stage 3. Same Sunday's reading
-// applies (nextSundayDate is unchanged Mon→Sat). Copy branches on the
-// number of *other* circle members who have already submitted that stage
-// this week — the count is the social pull ("Join 4 others…"); zero
-// flips to first-mover framing ("Join {community} for Lectio Divina").
-//
-// De-dup key is distinct from the morning push so missing the morning
-// doesn't suppress the evening, and vice versa.
-
-const LECTIO_EVENING_DOW_TO_STAGE: Record<number, { stage: "lectio" | "meditatio" | "oratio"; stageNumber: 1 | 2 | 3 }> = {
-  2: { stage: "lectio",    stageNumber: 1 },
-  4: { stage: "meditatio", stageNumber: 2 },
-  6: { stage: "oratio",    stageNumber: 3 },
-};
-
-export async function runLectioEveningReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  // Evening lectio reminder also off — same rationale as the morning
-  // sender above: lectio surfaces are reachable from home + deep
-  // links, no need for its own nudge.
-  if (!opts.forceNow) {
-    logger.info("[lectio-evening-reminder] disabled — skipping run");
-    return;
-  }
-  const memberships = await db
-    .select({
-      userId: usersTable.id,
-      userEmail: usersTable.email,
-      userTimezone: usersTable.timezone,
-      personalTimezone: momentUserTokensTable.personalTimezone,
-      momentId: sharedMomentsTable.id,
-      momentToken: sharedMomentsTable.momentToken,
-      momentName: sharedMomentsTable.name,
-      momentTimezone: sharedMomentsTable.timezone,
-      userToken: momentUserTokensTable.userToken,
-    })
-    .from(momentUserTokensTable)
-    .innerJoin(sharedMomentsTable, eq(sharedMomentsTable.id, momentUserTokensTable.momentId))
-    // Same case-insensitive join as runLectioReminderSender — see note there.
-    .innerJoin(usersTable, sql`LOWER(${usersTable.email}) = LOWER(${momentUserTokensTable.email})`)
-    .where(
-      and(
-        eq(sharedMomentsTable.templateType, "lectio-divina"),
-        eq(sharedMomentsTable.state, "active"),
-      ),
-    );
-
-  if (memberships.length === 0) return;
-
-  // Same fallback story as runLectioReminderSender — use the helper so
-  // we don't bail when only seed data exists for this Sunday.
-  const sundayDateObj = nextSundayDate();
-  const sundayStr = sundayDateObj.toISOString().slice(0, 10);
-  let gospelReference: string | null = null;
-  try {
-    const reading = await getReadingForSunday(sundayDateObj);
-    gospelReference = reading.gospelReference;
-  } catch (err) {
-    logger.warn({ err, sundayStr }, "[lectio-evening] reading lookup failed — skipping run");
-    return;
-  }
-  if (!gospelReference) {
-    logger.warn({ sundayStr }, "[lectio-evening] reading has no gospelReference — skipping run");
-    return;
-  }
-
-  // (momentId, stage) → number of distinct userTokens with a reflection
-  // submitted this week. Cached per tick so we don't re-COUNT for every
-  // member of the same circle.
-  const completionCache = new Map<string, number>();
-  async function othersCompleted(momentId: number, stage: string, exceptUserToken: string): Promise<number> {
-    const cacheKey = `${momentId}-${stage}`;
-    let total = completionCache.get(cacheKey);
-    if (total === undefined) {
-      const [row] = await db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(lectioReflectionsTable)
-        .where(
-          and(
-            eq(lectioReflectionsTable.momentId, momentId),
-            eq(lectioReflectionsTable.sundayDate, sundayStr),
-            eq(lectioReflectionsTable.stage, stage),
-          ),
-        );
-      total = Number(row?.c ?? 0);
-      completionCache.set(cacheKey, total);
-    }
-    // Subtract one if the recipient themselves has reflected — they
-    // shouldn't be counted in their own "others" tally. We check
-    // separately rather than filtering in SQL to keep the cache shared
-    // across recipients in the same circle.
-    const [self] = await db
-      .select({ id: lectioReflectionsTable.id })
-      .from(lectioReflectionsTable)
-      .where(
-        and(
-          eq(lectioReflectionsTable.momentId, momentId),
-          eq(lectioReflectionsTable.sundayDate, sundayStr),
-          eq(lectioReflectionsTable.stage, stage),
-          eq(lectioReflectionsTable.userToken, exceptUserToken),
-        ),
-      );
-    return self ? Math.max(0, total - 1) : total;
-  }
-
-  for (const m of memberships) {
-    try {
-      const tz = m.personalTimezone ?? m.userTimezone ?? m.momentTimezone ?? "America/New_York";
-
-      const dow = dowInTz(tz);
-      const stageInfo = LECTIO_EVENING_DOW_TO_STAGE[dow];
-      if (!stageInfo) continue;
-
-      // Fire any time at-or-after 19:30 local on the catch-up day. The
-      // dedup row below ensures once-per-user-per-day so a missed tick
-      // doesn't drop the reminder for the entire evening.
-      if (!opts.forceNow) {
-        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-        if ((nowH * 60 + nowM) < (19 * 60 + 30)) continue;
-      }
-
-      const todayStr = todayDateInTz(tz);
-      const dedupKey = `${todayStr}-lectio-evening-${m.momentId}-${stageInfo.stage}`;
-
-      if (!opts.forceNow) {
-        const [existing] = await db
-          .select()
-          .from(bellNotificationsTable)
-          .where(
-            and(
-              eq(bellNotificationsTable.userId, m.userId),
-              eq(bellNotificationsTable.bellDate, dedupKey),
-            ),
-          );
-        if (existing) continue;
-      }
-
-      // Skip if the user already did this stage — the catch-up is for
-      // people who haven't, period.
-      const [existingReflection] = await db
-        .select({ id: lectioReflectionsTable.id })
-        .from(lectioReflectionsTable)
-        .where(
-          and(
-            eq(lectioReflectionsTable.momentId, m.momentId),
-            eq(lectioReflectionsTable.sundayDate, sundayStr),
-            eq(lectioReflectionsTable.userToken, m.userToken),
-            eq(lectioReflectionsTable.stage, stageInfo.stage),
-          ),
-        );
-      if (existingReflection) continue;
-
-      const othersCount = await othersCompleted(m.momentId, stageInfo.stage, m.userToken);
-
-      try {
-        await sendLectioEveningReminderPush(m.userId, {
-          momentToken: m.momentToken,
-          userToken: m.userToken,
-          momentId: m.momentId,
-          stageNumber: stageInfo.stageNumber,
-          gospelReference,
-          communityName: m.momentName,
-          sundayDate: sundayStr,
-          stage: stageInfo.stage,
-          othersCompletedCount: othersCount,
-        });
-      } catch (err) {
-        logger.warn({ err, userId: m.userId, momentId: m.momentId, stage: stageInfo.stage }, "[lectio-evening] push dispatch failed — skipping dedup insert so we retry next tick");
-        continue;
-      }
-
-      await db.insert(bellNotificationsTable).values({
-        userId: m.userId,
-        bellDate: dedupKey,
-        sentAt: new Date(),
-      });
-
-      logger.info({ userId: m.userId, momentId: m.momentId, stage: stageInfo.stage, othersCount, dedupKey }, "[lectio-evening] sent evening reminder");
-    } catch (err) {
-      logger.error({ err, userId: m.userId, momentId: m.momentId }, "[lectio-evening] member processing failed");
-    }
-  }
-}
-
 void sql;
 void ne;
 
@@ -860,6 +489,16 @@ export async function runLifeEventFollowUpSender(opts: { forceNow?: boolean } = 
 //
 // Push deep-links straight into the chosen liturgy via
 // sendParishOfficeReminderPush.
+
+// Day-of-week in the given tz, 0 = Sunday … 6 = Saturday. Falls back to
+// the server-local day if the tz is invalid.
+function dowInTz(tz: string): number {
+  try {
+    const wd = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(new Date());
+    const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return map[wd] ?? new Date().getDay();
+  } catch { return new Date().getDay(); }
+}
 
 // Sunday (start of the local week) on-or-before today, as YYYY-MM-DD in
 // the given tz. Date-only math off a UTC anchor avoids tz drift. The
@@ -1992,8 +1631,6 @@ let bellInterval: ReturnType<typeof setInterval> | null = null;
 const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "bell",                  run: runBellSender },
   { name: "bell-evening",          run: runEveningNudgeSender },
-  { name: "lectio-reminder",       run: runLectioReminderSender },
-  { name: "lectio-evening",        run: runLectioEveningReminderSender },
   // The "your prayer is wrapping up tomorrow" renewal nudge is intentionally
   // NOT scheduled — per request, a prayer request should only ever notify when
   // it's finished/answered, never a wrapping-up reminder. (runPrayerRenewalNudge

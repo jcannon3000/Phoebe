@@ -1414,11 +1414,11 @@ router.delete("/groups/:slug", async (req, res): Promise<void> => {
   // and the moment_groups junction automatically. We have to take care
   // of three groups of references manually:
   //
-  //   1. shared_moments.group_id (intercessions, lectio practices,
+  //   1. shared_moments.group_id (intercessions, practices,
   //      fasting, etc.) — schema is ON DELETE SET NULL, so without
   //      explicit cleanup the practices would survive as orphaned
   //      groupless rows. The user expects "delete the group →
-  //      delete its intercessions / lectio." So we delete them.
+  //      delete its intercessions / practices." So we delete them.
   //   2. rituals.group_id (events / gatherings) — same SET NULL
   //      schema, same expectation: deleting the parish wipes its
   //      events. meetups + ritual_messages + schedule_responses etc.
@@ -1442,7 +1442,7 @@ router.delete("/groups/:slug", async (req, res): Promise<void> => {
     .set({ parishId: null } as Record<string, unknown>)
     .where(eq(usersTable.parishId, groupId));
 
-  // 2. Delete every intercession / lectio / practice owned by this
+  // 2. Delete every intercession / practice owned by this
   //    group. shared_moments has CASCADEs on its child tables
   //    (moment_user_tokens, moment_posts, moment_windows,
   //    moment_renewals, moment_calendar_events, moment_groups,

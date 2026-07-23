@@ -63,16 +63,6 @@ function DashboardMock() {
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>📜 {t("user_onboarding.dashboard_mock.lectio_divina")}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("user_onboarding.dashboard_mock.lectio_with")}</p>
-            </div>
-            <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>{t("user_onboarding.dashboard_mock.responses")}</span>
-          </div>
-        </div>
-        <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
-          <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
-          <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
               <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 {t("user_onboarding.dashboard_mock.prayers_for_healing")}</p>
               <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("user_onboarding.dashboard_mock.healing_with")}</p>
             </div>
@@ -262,44 +252,6 @@ function BCPPrayerModeMock() {
             )}
           </div>
         ))}
-      </div>
-    </MockPhone>
-  );
-}
-
-function LectioMock() {
-  const { t } = useTranslation();
-  const reflections = [
-    { name: t("user_onboarding.lectio_mock.r1_name"), isYou: false, time: t("user_onboarding.lectio_mock.r1_time"), text: t("user_onboarding.lectio_mock.r1_text") },
-    { name: t("user_onboarding.lectio_mock.you"), isYou: true, time: t("user_onboarding.lectio_mock.r2_time"), text: t("user_onboarding.lectio_mock.r2_text") },
-    { name: t("user_onboarding.lectio_mock.r3_name"), isYou: false, time: t("user_onboarding.lectio_mock.r3_time"), text: t("user_onboarding.lectio_mock.r3_text") },
-  ];
-  return (
-    <MockPhone>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← {t("user_onboarding.lectio_mock.back")}</p>
-        <div className="px-3 py-1 rounded-full text-[10px] font-semibold" style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.15)", color: C.text }}>{t("user_onboarding.lectio_mock.menu")}</div>
-        <div className="text-right">
-          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("user_onboarding.lectio_mock.stage")}</p>
-          <p className="text-[10px]" style={{ color: C.sage }}>{t("user_onboarding.lectio_mock.scripture")}</p>
-        </div>
-      </div>
-      <p className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.45)" }}>{t("user_onboarding.lectio_mock.what_others_heard")}</p>
-      <div className="space-y-2 mb-4">
-        {reflections.map((r, i) => (
-          <div key={i} className="rounded-xl px-3 py-2.5" style={{ background: r.isYou ? "rgba(111,175,133,0.08)" : "#0F2818", border: `1px solid ${r.isYou ? "rgba(111,175,133,0.35)" : "rgba(200,212,192,0.15)"}` }}>
-            <div className="flex items-baseline justify-between mb-1">
-              <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: r.isYou ? "#6FAF85" : C.sage }}>{r.name}</p>
-              <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{r.time}</p>
-            </div>
-            <p className="text-[11px] leading-[1.55]" style={{ color: C.text, fontFamily: C.font }}>{r.text}</p>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center justify-between rounded-full px-3 py-2" style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}>
-        <p className="text-[10px] font-semibold" style={{ color: C.text }}>{t("user_onboarding.lectio_mock.back_nav")}</p>
-        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>{t("user_onboarding.lectio_mock.stage_meditatio")}</p>
-        <div className="px-2.5 py-1 rounded-full text-[10px] font-semibold" style={{ background: "#2D5E3F", color: C.text }}>{t("user_onboarding.lectio_mock.next_stage")}</div>
       </div>
     </MockPhone>
   );
@@ -544,7 +496,6 @@ type MockKey =
   | "prayer-requests"
   | "daily-push"
   | "bcp"
-  | "lectio"
   | "gatherings"
   | "daily-office"
   | "prayer-rhythm";
@@ -628,7 +579,6 @@ const MOCK_COMPONENTS: Record<MockKey, () => React.ReactElement> = {
   "prayer-requests": PrayerRequestsMock,
   "daily-push": DailyPushMock,
   "bcp": BCPPrayerModeMock,
-  "lectio": LectioMock,
   "gatherings": GatheringsMock,
   "daily-office": DailyOfficeMock,
   "prayer-rhythm": PrayerRhythmMock,

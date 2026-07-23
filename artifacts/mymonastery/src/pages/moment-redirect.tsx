@@ -14,8 +14,7 @@ export default function MomentRedirect() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.momentToken && data?.userToken) {
-          const base = data.templateType === "lectio-divina" ? "/lectio" : "/moment";
-          setLocation(`${base}/${data.momentToken}/${data.userToken}`);
+          setLocation(`/moment/${data.momentToken}/${data.userToken}`);
         } else {
           setLocation("/dashboard");
         }

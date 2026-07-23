@@ -265,11 +265,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, lectioActive, readingActive, podcastsActive, walkActive, gratitudeActive, examenActive, journalingActive, cobreatheActive, prayerListActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, gratitudeActive, examenActive, journalingActive, cobreatheActive, prayerListActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; lectio: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -299,7 +299,6 @@ export function WeeklyGridCard() {
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
     ...(cobreatheActive ? [{ id: "cobreathe", emoji: "🌍", label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.cobreathe }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
-    ...(lectioActive ? [{ id: "lectio", emoji: "📖", label: t("rhythm.row_lectio", { defaultValue: "Lectio Divina" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.lectio }] : []),
     ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),
     ...(podcastsActive ? [{ id: "podcasts", emoji: "🎙️", label: t("rhythm.row_podcasts", { defaultValue: "Podcasts" }), rgb: "150,120,150", doneFor: (d: Day) => !!d.podcasts }] : []),
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
@@ -589,7 +588,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, journalingActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -743,12 +742,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: listeningDone ? (listeningWhat || kept) : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
-  const lectioCard = {
-    key: "lectio", emoji: "📖", rgb: "120,150,170", done: lectioDone, href: "/lectio-divina",
-    title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }),
-    blurb: lectioDone ? kept : t("rhythm.blurb_lectio", { defaultValue: "Sacred reading" }),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-  };
   const examenCard = {
     key: "examen", emoji: "🌗", rgb: "150,120,180", done: examenDone, href: "/examen",
     title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
@@ -763,7 +756,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
-  const lectioSlot = getPracticeSlot("lectio");
   const scriptureSlot = getPracticeSlot("scripture");
   const walkSlot = getPracticeSlot("walk");
   // The Examen is always an evening practice (no time-of-day picker).
@@ -779,7 +771,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // the list ALWAYS reads morning → midday → afternoon → evening, whatever mix
   // of practices the user has chosen and wherever each is slotted. The offices
   // and reflections anchor morning / evening; the optional practices (Co-Breathe,
-  // Audio Divina, Lectio, Walk, Journaling, customs) ride at their chosen slot;
+  // Audio Divina, Walk, Journaling, customs) ride at their chosen slot;
   // the Examen + Gratitude are end-of-day, so they sit in the evening.
   // Creation Prayer as a per-side anchor: when a side's contemplation style is
   // the breath, that side's card IS Creation Prayer (🌍, opens /cobreathe for
@@ -912,7 +904,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Optional practices ride at the time of day the user chose for each.
     ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
-    ...(lectioActive ? [{ ...lectioCard, slot: lectioSlot }] : []),
     ...(scriptureActive ? [{ ...scriptureCard, slot: scriptureSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(journalingActive ? [{ ...journalingCard, slot: journalingSlot }] : []),

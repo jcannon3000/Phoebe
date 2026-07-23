@@ -14,7 +14,6 @@ import {
   morningPrayerCacheTable,
   userConnectionsCacheTable,
   waitlistTable,
-  lectioReflectionsTable,
   scheduleResponsesTable,
   ritualTimeSuggestionsTable,
 } from "@workspace/db";
@@ -178,9 +177,6 @@ router.delete("/users/me", async (req, res): Promise<void> => {
       await tx.delete(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`);
       await tx.delete(ritualTimeSuggestionsTable)
         .where(sql`LOWER(${ritualTimeSuggestionsTable.suggestedByEmail}) = ${emailLower}`);
-      await tx.update(lectioReflectionsTable)
-        .set({ userEmail: null })
-        .where(sql`LOWER(${lectioReflectionsTable.userEmail}) = ${emailLower}`);
       await tx.update(scheduleResponsesTable)
         .set({ guestEmail: null })
         .where(sql`LOWER(${scheduleResponsesTable.guestEmail}) = ${emailLower}`);
@@ -961,7 +957,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'lectio', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
@@ -1006,7 +1002,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const examen = new Set<string>();
     const listening = new Set<string>();
     const journaling = new Set<string>();
-    const lectio = new Set<string>();
     const reading = new Set<string>();
     const podcasts = new Set<string>();
     const walk = new Set<string>();
@@ -1016,7 +1011,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "examen") examen.add(r.local_date);
       if (r.section === "listening") listening.add(r.local_date);
       if (r.section === "journaling") journaling.add(r.local_date);
-      if (r.section === "lectio") lectio.add(r.local_date);
       if (r.section === "reading") reading.add(r.local_date);
       if (r.section === "podcasts") podcasts.add(r.local_date);
       if (r.section === "walk") walk.add(r.local_date);
@@ -1034,7 +1028,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       gratitude: gratitude.has(ymd),
       examen: examen.has(ymd),
       journaling: journaling.has(ymd),
-      lectio: lectio.has(ymd),
       reading: reading.has(ymd),
       podcasts: podcasts.has(ymd),
       walk: walk.has(ymd),

@@ -291,7 +291,6 @@ export default function MomentsDashboard() {
           <div className="flex flex-wrap gap-2">
             {[
               { label: "🙏🏽 Group Intercession", template: "intercession" },
-              { label: "📜 Lectio Divina", template: "lectio-divina" },
               { label: "🌿 Fast", template: "fasting" },
             ].map((t) => (
               <Link

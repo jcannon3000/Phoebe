@@ -206,7 +206,6 @@ interface InviteInfo {
 // with the dashboard's templateType vocabulary.
 const PRACTICE_ICON: Record<string, { emoji: string; label: string }> = {
   "intercession": { emoji: "🙏🏽", label: "Intercession" },
-  "lectio-divina": { emoji: "📖", label: "Lectio Divina" },
   "fast": { emoji: "🌾", label: "Fasting" },
   "morning-prayer": { emoji: "🌅", label: "Morning Prayer" },
   "evening-prayer": { emoji: "🌙", label: "Evening Prayer" },

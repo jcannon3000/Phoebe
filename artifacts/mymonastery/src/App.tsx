@@ -378,7 +378,6 @@ const GatheringSettings = lazy(() => import("./pages/gathering-settings"));
 const MomentNew = lazy(() => import("./pages/moment-new"));
 const MomentDetail = lazy(() => import("./pages/moment-detail"));
 const MomentPostPage = lazy(() => import("./pages/moment-post"));
-const LectioPage = lazy(() => import("./pages/lectio"));
 const MorningPrayerPage = lazy(() => import("./pages/morning-prayer"));
 const MomentsDashboard = lazy(() => import("./pages/moments-dashboard"));
 const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
@@ -422,7 +421,6 @@ const CustomizeHomeAddPage = lazy(() =>
 const GratitudePage = lazy(() => import("./pages/gratitude"));
 const IntentionsPage = lazy(() => import("./pages/intentions"));
 const ListeningPage = lazy(() => import("./pages/listening"));
-const LectioDivinaPage = lazy(() => import("./pages/lectio-divina"));
 const ReadingLogPage = lazy(() => import("./pages/reading-log"));
 const PodcastLogPage = lazy(() => import("./pages/podcast-log"));
 const WalkLogPage = lazy(() => import("./pages/walk-log"));
@@ -1105,7 +1103,7 @@ function Router() {
   return (
     // Suspense boundary for the lazy-loaded route chunks (code-splitting,
     // frontend audit). Eager routes render immediately; lazy ones (the
-    // heavy non-landing pages — prayer-mode, lectio, community-detail,
+    // heavy non-landing pages — prayer-mode, community-detail,
     // the decks, BCP readers, etc.) suspend to RouteFallback while their
     // chunk loads, keeping them out of the initial bundle.
     <Suspense fallback={<RouteFallback />}>
@@ -1218,7 +1216,6 @@ function Router() {
       <Route path="/moment/new">{() => <PrayerGate><MomentNew /></PrayerGate>}</Route>
       <Route path="/m/:userToken" component={MomentRedirect} />
       <Route path="/moment/:momentToken/:userToken"><PrayerGate><MomentPostPage /></PrayerGate></Route>
-      <Route path="/lectio/:momentToken/:userToken" component={LectioPage} />
       <Route path="/moments/:id" component={MomentDetail} />
       <Route path="/practices" component={MomentsDashboard} />
       <Route path="/morning-prayer/:momentId/:token" component={MorningPrayerPage} />
@@ -1297,7 +1294,6 @@ function Router() {
       <Route path="/gratitude" component={GratitudePage} />
       <Route path="/intentions">{() => <PrayerGate><IntentionsPage /></PrayerGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
-      <Route path="/lectio-divina" component={LectioDivinaPage} />
       <Route path="/reading-log" component={ReadingLogPage} />
       <Route path="/podcast-log" component={PodcastLogPage} />
       <Route path="/walk-log" component={WalkLogPage} />

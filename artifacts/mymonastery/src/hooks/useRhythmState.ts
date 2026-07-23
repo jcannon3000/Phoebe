@@ -101,7 +101,6 @@ export type RhythmState = {
   examenActive: boolean;
   listeningActive: boolean;
   journalingActive: boolean;
-  lectioActive: boolean;
   readingActive: boolean;
   podcastsActive: boolean;
   walkActive: boolean;
@@ -117,7 +116,6 @@ export type RhythmState = {
   examenDone: boolean;
   listeningDone: boolean;
   journalingDone: boolean;
-  lectioDone: boolean;
   readingDone: boolean;
   podcastsDone: boolean;
   walkDone: boolean;
@@ -265,7 +263,6 @@ export function useRhythmState(): RhythmState {
     examen: hasPracticeDoneToday("examen"),
     listening: hasPracticeDoneToday("listening"),
     journaling: hasPracticeDoneToday("journaling"),
-    lectio: hasPracticeDoneToday("lectio"),
     reading: hasPracticeDoneToday("reading"),
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
@@ -278,7 +275,6 @@ export function useRhythmState(): RhythmState {
       examen: hasPracticeDoneToday("examen"),
       listening: hasPracticeDoneToday("listening"),
       journaling: hasPracticeDoneToday("journaling"),
-      lectio: hasPracticeDoneToday("lectio"),
       reading: hasPracticeDoneToday("reading"),
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
@@ -402,9 +398,6 @@ export function useRhythmState(): RhythmState {
   // the card, the menu ring and the weekly grid all drop it at once; the
   // customizer no longer offers it.
   const journalingActive = false;
-  // Lectio Divina — sacred reading as a logging-first practice (same shape as
-  // Audio Divina); appears only when selected in the customizer.
-  const lectioActive = homeCardActive(hl, "lectio");
   // Reading + Podcasts — logging-first practices added from the "Add to your
   // day" step; each its own home card + dot.
   const readingActive = homeCardActive(hl, "reading");
@@ -430,7 +423,7 @@ export function useRhythmState(): RhythmState {
   // Listen to Scripture — the day's appointed readings, heard one passage at a
   // time (Scripture Day by Day); a slotted contemplative practice.
   const scriptureActive = homeCardActive(hl, "scripture");
-  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive || walkActive || prayerListActive || scriptureActive;
+  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || readingActive || podcastsActive || walkActive || prayerListActive || scriptureActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -576,7 +569,6 @@ export function useRhythmState(): RhythmState {
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
   const journalingDone = journalingActive && (practiceLocal.journaling || serverDone("journaling"));
-  const lectioDone = lectioActive && (practiceLocal.lectio || serverDone("lectio"));
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
@@ -753,7 +745,6 @@ export function useRhythmState(): RhythmState {
   const extraFlags = [
     ...(cobreatheStandaloneActive ? [cobreatheDone] : []),
     ...(listeningActive ? [listeningDone] : []),
-    ...(lectioActive ? [lectioDone] : []),
     ...(readingActive ? [readingDone] : []),
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
@@ -813,7 +804,6 @@ export function useRhythmState(): RhythmState {
     examenActive,
     listeningActive,
     journalingActive,
-    lectioActive,
     readingActive,
     podcastsActive,
     walkActive,
@@ -828,7 +818,6 @@ export function useRhythmState(): RhythmState {
     examenDone,
     listeningDone,
     journalingDone,
-    lectioDone,
     readingDone,
     podcastsDone,
     walkDone,

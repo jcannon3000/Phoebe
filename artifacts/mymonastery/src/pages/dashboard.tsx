@@ -99,14 +99,6 @@ export type Moment = {
   dayOfWeek: string | null;
   practiceDays: string | null;
   timeOfDay: string | null;
-  // Lectio-specific enrichment (only populated for lectio-divina moments)
-  lectioSundayName?: string | null;
-  lectioGospelReference?: string | null;
-  lectioGospelText?: string | null;
-  lectioResponseCount?: number | null;
-  lectioMyStageDone?: boolean | null;
-  lectioCurrentStageLabel?: string | null;
-  lectioNextStageLabel?: string | null;
   // Most recent past window where someone actually prayed. Used by the
   // dashboard card flap to replace "0 of 2 have prayed today" with
   // "2 prayed Wednesday" on off-days.
@@ -305,7 +297,6 @@ const PRACTICE_EMOJI: Record<string, string> = {
   "intercession": "🙏🏽",
   "contemplative": "🕯️",
   "fasting": "🌿",
-  "lectio-divina": "📜",
   "custom": "🌱",
 };
 
@@ -659,14 +650,6 @@ function FAB() {
                 identity comes from the border color. */}
             {showAdminMenu && (
               <>
-                <button
-                  onClick={() => { setOpen(false); setLocation("/moment/new?template=lectio-divina"); }}
-                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                  style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-                >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 {t("home_fab.start_lectio")}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.start_lectio_sub")}</p>
-                </button>
                 <button
                   onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
@@ -1042,7 +1025,7 @@ function SplitFlapLine({ lines }: { lines: string[] }) {
 
 // Strip a trailing emoji (or run of emoji-ish chars) from a moment title so
 // we never show the same glyph on both sides when the user's stored name
-// already includes one (e.g. "Lectio Divina 📜" + leading template emoji).
+// already includes one (e.g. "Morning Prayer 🌅" + leading template emoji).
 function stripTrailingEmoji(s: string): string {
   // eslint-disable-next-line no-misleading-character-class
   return s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
@@ -1051,26 +1034,17 @@ function stripTrailingEmoji(s: string): string {
 export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const [, setLocation] = useLocation();
   const emoji = (m as any).customEmoji || PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
-  // Lectio uses its per-user stage-done flag instead of todayPostCount since
-  // reflections don't write to moment_posts. When the user is "caught up"
-  // (has already submitted the current stage's reflection), the card still
-  // shows a CTA — just labeled "Responses" instead of "Reflect 📜" — so
-  // they can jump back in to see what others heard.
-  const isLectio = m.templateType === "lectio-divina";
-  const isLectioCaughtUp = isLectio && !!m.lectioMyStageDone;
   // Goal-reached detection — use the backend-stamped timestamp, not the
   // streak comparison. The backend stamps commitmentGoalReachedAt when
   // commitmentSessionsLogged crosses the goal, which is the correct check.
   const sessionsGoalForCard = m.commitmentSessionsGoal ?? m.goalDays ?? null;
-  const goalReachedForMe = !isLectio && !!m.commitmentGoalReachedAt;
+  const goalReachedForMe = !!m.commitmentGoalReachedAt;
   // Praying for someone isn't a goal to hit — an intercession shows no
   // goal-reached decoration (the "Goal reached" badge, the "Renew" pill, the
   // "N sessions prayed" flap). The creator still gets a gentle keep-praying
   // prompt via GoalReachedModal, which is worded without streak/goal language.
   const showRenewPill = goalReachedForMe && !!m.isCreator && m.templateType !== "intercession";
-  const shouldPulse = isLectio
-    ? !isLectioCaughtUp
-    : showRenewPill
+  const shouldPulse = showRenewPill
       ? true
       // Intercessions: "still to pray" is per-USER (have *I* prayed it today),
       // not the global post count — otherwise an intercession someone else
@@ -1145,11 +1119,9 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
   // Uses the computed groupStreak (from actual window data) not currentStreak
   // which can be corrupted by double-bloom or goal resets.
   const effectiveGroupStreak = m.groupStreak ?? m.currentStreak;
-  const progressLabel = isLectio
-    ? (m.lectioCurrentStageLabel ?? null)
-    // Intercessions carry no streak badge — praying for someone isn't a streak.
-    // Fasting keeps its group-streak fire.
-    : (m.templateType === "fasting")
+  // Intercessions carry no streak badge — praying for someone isn't a streak.
+  // Fasting keeps its group-streak fire.
+  const progressLabel = (m.templateType === "fasting")
       ? (effectiveGroupStreak > 0 ? `🔥 ${effectiveGroupStreak}` : null)
       : null;
 
@@ -1160,12 +1132,7 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
   // on, so both the card and the Pray pill fall through to openHref.
   const prayHref: string | null = null;
 
-  // When the user has already submitted this stage's reflection ("Responses"
-  // pill state), drop them directly into the responses slide for the current
-  // stage — they don't need to land on the week-overview status page first.
-  const openHref = (isLectio && m.momentToken && m.myUserToken)
-    ? `/lectio/${m.momentToken}/${m.myUserToken}${isLectioCaughtUp ? "?view=responses" : ""}`
-    : (shouldPulse && isMorningPrayer && m.myUserToken)
+  const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
     : `/moments/${m.id}`;
 
@@ -1223,19 +1190,6 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  // Lectio cycles through three lines: who you're with → when the next
-  // reflection day is (Mon/Wed/Fri, the three reflection days — so on
-  // Friday the next is Monday, not Sunday) → the gospel reference.
-  const lectioFlapLines: string[] = isLectio
-    ? (() => {
-        const whoLine = subtitle;
-        const verseLine = m.lectioGospelReference || "";
-        const nextLine = m.lectioNextStageLabel
-          ? `Next reflection ${m.lectioNextStageLabel}`
-          : "";
-        return [whoLine, nextLine, verseLine];
-      })()
-    : [];
   // Goal-reached flap: cycle between participants and the goal length completed.
   // Uses "days" for daily practices, "sessions" otherwise. The number reflects
   // whatever goal length the user originally set.
@@ -1275,7 +1229,6 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
 
   const mobileFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
-    isLectio ? lectioFlapLines :
     isMeatFast ? fastingFlapLines :
     [subtitle, mobileStatusLine, logCountLine]
   )
@@ -1283,7 +1236,6 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
     .filter(s => s.length > 0);
   const desktopFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
-    isLectio ? lectioFlapLines :
     isMeatFast ? fastingFlapLines :
     [subtitle, logCountLine, intentionLine]
   )
@@ -1336,7 +1288,7 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
       </div>
       <div className="flex items-center justify-between gap-4 mt-px -mr-2">
         <div className="min-w-0 flex-1">
-          {shouldPulse && !isLectio && !showRenewPill ? (
+          {shouldPulse && !showRenewPill ? (
             subtitle ? (
               <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {subtitle}
@@ -1354,24 +1306,6 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
         <div className="shrink-0 flex items-center self-center">
           {showRenewPill ? (
             <RenewPill momentId={m.id} />
-          ) : isLectio ? (
-            // Lectio always shows a pill: "Reflect 📜" when there's something
-            // to do this stage, "Responses" once the user has submitted.
-            <motion.span
-              className="text-xs font-semibold rounded-full inline-block"
-              style={{
-                background: "#2D5E3F",
-                color: "#F0EDE6",
-                padding: "4px 14px",
-                letterSpacing: "0.01em",
-                whiteSpace: "nowrap",
-                lineHeight: "20px",
-              }}
-              animate={isLectioCaughtUp ? undefined : { scale: [1, 1.05, 1] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            >
-              {isLectioCaughtUp ? "Responses" : "Reflect 📜"}
-            </motion.span>
           ) : shouldPulse ? (
             // Nested <Link> would double-wrap <a>; use setLocation instead so
             // the outer BarCard anchor stays clean (prevents Safari phantom
@@ -5081,7 +5015,7 @@ function TimeSection({
   if (items.length === 0 && !trailingCards) return null;
 
   // Render in the input array's order — caller (parent useMemo) has
-  // already sorted by chronological time-of-occurrence so a 9am Lectio
+  // already sorted by chronological time-of-occurrence so a 9am practice
   // lands before the same day's 6:30pm gathering and a Sunday service
   // drops to last when its date is later in the week. Earlier this
   // function bucketed by `kind` (services → gatherings → moments → …),
@@ -6066,7 +6000,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "lectio", "reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "journaling", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "journaling", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
@@ -6075,7 +6009,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["lectio", "reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -6507,7 +6441,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     };
 
     for (const m of visibleMoments) {
-      const isLectio = m.templateType === "lectio-divina";
       const isIntercession = m.templateType === "intercession";
       const isFasting = m.templateType === "fasting";
 
@@ -6524,14 +6457,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       // the same intercession would get counted in the Daily Prayer
       // List AND show as its own card.
       if (isIntercession) continue;
-      // Lectio Divina cards are off the home dashboard per user
-      // direction — the home is now anchored on prayer-request response
-      // and the office, and Lectio has its own surface (/lectio,
-      // /moment/:token). Surfacing it on home was crowding the page
-      // without driving engagement; users who want it open it directly.
-      if (isLectio) continue;
 
-      const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
+      const userDone = m.todayPostCount > 0;
 
       // Fasting override: decide Today/Tomorrow/elsewhere from the fasting
       // fields directly, ignoring server-side isActionable flags which
@@ -6751,7 +6678,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     }
 
     // Chronological sort for Upcoming / This month so cards line up by next
-    // occurrence including time of day — a 9am Lectio lands before the same
+    // occurrence including time of day — a 9am practice lands before the same
     // day's 6:30pm gathering, and a Sunday service drops to last when its
     // date is later in the week.
     const itemSortMs = (item: DashboardItem): number => {
@@ -6779,22 +6706,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         return item.nextDate ? item.nextDate.getTime() : Number.POSITIVE_INFINITY;
       }
       if (item.kind === "moment") {
-        // Lectio doesn't use the generic practiceDays field — its cadence
-        // is fixed at Mon/Wed/Fri (lectio/meditatio/oratio). Compute the
-        // next reflection day directly so the card sorts correctly.
-        const isLectioItem = item.data.templateType === "lectio-divina";
-        let daysAhead: number;
-        if (isLectioItem) {
-          const todayDow = new Date().getDay();
-          const lectioDows = [1, 3, 5];
-          let i = 1;
-          for (; i <= 7; i++) {
-            if (lectioDows.includes((todayDow + i) % 7)) break;
-          }
-          daysAhead = i;
-        } else {
-          daysAhead = nextWindowDaysAhead(item.data);
-        }
+        const daysAhead = nextWindowDaysAhead(item.data);
         const base = addDays(startOfDay(new Date()), daysAhead).getTime();
         // 9am anchor so morning practices sort before same-day evening
         // gatherings.

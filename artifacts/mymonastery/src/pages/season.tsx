@@ -54,7 +54,7 @@ type SeasonData = {
 const CARD_LABELS: Record<string, string> = {
   gratitude: "Gratitude", journaling: "Journaling", reading: "Reading",
   podcasts: "Podcasts", examen: "Examen", listening: "Audio Divina",
-  lectio: "Lectio Divina", scripture: "Scripture audio", walk: "Walking prayer",
+  scripture: "Scripture audio", walk: "Walking prayer",
   cobreathe: "Creation Prayer", "prayer-list": "Prayer list",
   cac: "Richard Rohr (CAC)", fdd: "Forward Day by Day", ssje: "SSJE",
 };

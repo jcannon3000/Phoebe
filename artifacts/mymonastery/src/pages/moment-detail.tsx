@@ -656,15 +656,6 @@ export default function MomentDetail() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.moment.id]);
 
-  // Lectio Divina no longer has a practice detail page — the practice IS the
-  // slideshow at /lectio/:momentToken/:userToken. Any stale link to
-  // /moments/:id for a lectio practice redirects straight there.
-  useEffect(() => {
-    if (data?.moment.templateType === "lectio-divina" && data.moment.momentToken && data.myUserToken) {
-      setLocation(`/lectio/${data.moment.momentToken}/${data.myUserToken}`, { replace: true });
-    }
-  }, [data, setLocation]);
-
   if (authLoading || !user) return null;
 
   if (isLoading) {
@@ -678,9 +669,6 @@ export default function MomentDetail() {
   }
 
   if (!data) return null;
-  // Short-circuit for lectio while the useEffect above does the redirect —
-  // the generic streak/log/sessions logic below doesn't apply.
-  if (data.moment.templateType === "lectio-divina") return null;
 
   const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, weekLogs, isCreator, group: momentGroup } = data;
   // Treat manage permission as a superset of isCreator so the UI keeps

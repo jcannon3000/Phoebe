@@ -98,7 +98,7 @@ type Step =
   | "fdd-mode"
   | "psalms-cycle"
   | "evening-way" | "evening-bcp" | "evening-config"
-  | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "lectio-when" | "walk-when" | "scripture-when"
+  | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "walk-when" | "scripture-when"
   | "learn" | "extras" | "steps-goal" | "custom" | "weekly" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
@@ -653,7 +653,6 @@ export default function WayOfLoveRuleFlow({
       cobreathe: homeCardOn(user.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && silentSeed),
       audio: homeCardOn(user.homeLayout, "listening"),
       examen: examenSeed,
-      lectio: homeCardOn(user.homeLayout, "lectio"),
       walk: homeCardOn(user.homeLayout, "walk"),
       scripture: homeCardOn(user.homeLayout, "scripture"),
     });
@@ -676,16 +675,15 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; lectio: boolean; walk: boolean; scripture: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; scripture: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit")),
     audio: homeCardOn(user?.homeLayout, "listening"),
     examen: homeCardOn(user?.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
-    lectio: homeCardOn(user?.homeLayout, "lectio"),
     walk: homeCardOn(user?.homeLayout, "walk"),
     scripture: homeCardOn(user?.homeLayout, "scripture"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "lectio" | "walk" | "scripture") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "scripture") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -711,15 +709,14 @@ export default function WayOfLoveRuleFlow({
   const silenceModeHydrated = useRef(false);
   const chooseSilenceMode = (m: "grow" | "fixed") => { touchedRef.current = true; setSilenceMode(m); };
   // Per-practice time-of-day slot for the slotted practices.
-  const [slotByPractice, setSlotByPractice] = useState<Record<"cobreathe" | "listening" | "examen" | "lectio" | "walk" | "scripture", CustomSlot>>(() => ({
+  const [slotByPractice, setSlotByPractice] = useState<Record<"cobreathe" | "listening" | "examen" | "walk" | "scripture", CustomSlot>>(() => ({
     cobreathe: getPracticeSlot("cobreathe"),
     listening: getPracticeSlot("listening"),
     examen: getPracticeSlot("examen"),
-    lectio: getPracticeSlot("lectio"),
     walk: getPracticeSlot("walk"),
     scripture: getPracticeSlot("scripture"),
   }));
-  const chooseSlot = (key: "cobreathe" | "listening" | "examen" | "lectio" | "walk" | "scripture", slot: CustomSlot) => {
+  const chooseSlot = (key: "cobreathe" | "listening" | "examen" | "walk" | "scripture", slot: CustomSlot) => {
     touchedRef.current = true;
     setSlotByPractice((p) => ({ ...p, [key]: slot }));
     setPracticeSlot(key, slot);
@@ -967,7 +964,6 @@ export default function WayOfLoveRuleFlow({
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
-      ...(contemplative.lectio ? ["lectio"] : []),
       ...(contemplative.scripture ? ["scripture"] : []),
       ...(contemplative.walk ? ["walk"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
@@ -980,7 +976,6 @@ export default function WayOfLoveRuleFlow({
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
-      ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.scripture ? [] : ["scripture"]),
       ...(contemplative.walk ? [] : ["walk"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
@@ -1125,7 +1120,6 @@ export default function WayOfLoveRuleFlow({
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
-      ...(contemplative.lectio ? ["lectio"] : []),
       ...(contemplative.scripture ? ["scripture"] : []),
       ...(contemplative.walk ? ["walk"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
@@ -1138,7 +1132,6 @@ export default function WayOfLoveRuleFlow({
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
-      ...(contemplative.lectio ? [] : ["lectio"]),
       ...(contemplative.scripture ? [] : ["scripture"]),
       ...(contemplative.walk ? [] : ["walk"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
@@ -1227,7 +1220,7 @@ export default function WayOfLoveRuleFlow({
     setPrayBySide({ morning: preset.pray, evening: preset.evening ?? preset.pray });
     setCommunityWithOffice({ morning: false, evening: false });
     setContemplationStyle("silent");
-    setContemplative({ cobreathe: false, audio: false, examen: false, lectio: false, walk: false, scripture: false });
+    setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, scripture: false });
     // A starter rule's silence applies to whichever sides it turns on.
     setContemplationBySide({
       morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
@@ -1328,9 +1321,9 @@ export default function WayOfLoveRuleFlow({
     // Daily steps — its own optional slide (iOS only; Apple Health).
     ...(isNativeShell() ? (["steps-goal"] as Step[]) : []),
     // NOTE (owner): the "Contemplative Practices" multi-select ("contemplative"
-    // + its audio/lectio/walk/scripture/examen "-when" detail steps) and the
+    // + its audio/walk/scripture/examen "-when" detail steps) and the
     // "Add to your day" extras step are intentionally NOT in the customizer.
-    // Those practices — Audio Divina, Lectio, Contemplative Walk, Listen to
+    // Those practices — Audio Divina, Contemplative Walk, Listen to
     // Scripture, the Examen, Gratitude, Journaling, Reading, Podcasts — are
     // added/toggled on the Practices page instead. The commit still reads the
     // contemplative/extras state, which is seeded from the user's CURRENT home
@@ -1469,7 +1462,6 @@ export default function WayOfLoveRuleFlow({
           {/* Creation Prayer is chosen per SIDE (a side's contemplation IS the
               breath), so it's not offered here as a standalone toggle. */}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
-          {choiceRow(contemplative.lectio, `📖 ${t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" })}`, t("wol_rule.cp_lectio_sub", { defaultValue: "Sacred reading." }), () => toggleContemplative("lectio"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
           {choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
         </div>
@@ -1479,15 +1471,13 @@ export default function WayOfLoveRuleFlow({
   }
 
   // ── "What time of day?" — slot picker for Co-Breathe / Audio Divina / Examen ─
-  if (step === "cobreathe-when" || step === "audio-when" || step === "examen-when" || step === "lectio-when" || step === "walk-when" || step === "scripture-when") {
-    const key = step === "cobreathe-when" ? "cobreathe" : step === "audio-when" ? "listening" : step === "lectio-when" ? "lectio" : step === "walk-when" ? "walk" : step === "scripture-when" ? "scripture" : "examen";
+  if (step === "cobreathe-when" || step === "audio-when" || step === "examen-when" || step === "walk-when" || step === "scripture-when") {
+    const key = step === "cobreathe-when" ? "cobreathe" : step === "audio-when" ? "listening" : step === "walk-when" ? "walk" : step === "scripture-when" ? "scripture" : "examen";
     const meta = step === "cobreathe-when"
       ? { label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }), body: t("wol_rule.when_cobreathe_body", { defaultValue: "When in the day would you like to breathe?" }) }
       : step === "audio-when"
         ? { label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }), body: t("wol_rule.when_audio_body", { defaultValue: "Take time to listen to music intentionally as a spiritual practice." }) }
-        : step === "lectio-when"
-          ? { label: t("wol_rule.cp_lectio", { defaultValue: "Lectio Divina" }), body: t("wol_rule.when_lectio_body", { defaultValue: "When in the day would you like to read slowly and prayerfully?" }) }
-          : step === "walk-when"
+        : step === "walk-when"
             ? { label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }), body: t("wol_rule.when_walk_body", { defaultValue: "When in the day would you like to take a contemplative walk?" }) }
             : step === "scripture-when"
               ? { label: t("wol_rule.cp_scripture", { defaultValue: "Listen to Scripture" }), body: t("wol_rule.when_scripture_body", { defaultValue: "When in the day would you like to hear the day's readings?" }) }

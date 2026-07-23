@@ -1008,7 +1008,7 @@ export default function CommunityDetailPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
   // Admin-only floating action button (bottom-right) — moved here from the
-  // home dashboard. Lets a community admin start a practice, lectio, fast,
+  // home dashboard. Lets a community admin start a practice, fast,
   // event, or prayer feed scoped to *this* community.
   const [fabOpen, setFabOpen] = useState(false);
   // ── Prayer Circle — "Praying today" add form state ────────────────────
@@ -2244,8 +2244,8 @@ export default function CommunityDetailPage() {
       )}
 
       {/* Admin FAB — bottom-right floating "+" that opens a menu of
-          authoring entry points scoped to THIS community. Lectio /
-          intercession / fast jump into /moment/new with a template
+          authoring entry points scoped to THIS community. Intercession
+          / fast jump into /moment/new with a template
           query param; event jumps into /tradition/new with the
           community slug pre-filled; prayer feed (beta only) goes to
           /prayer-feeds/new. Mirrors the FAB that used to live on the
@@ -2261,7 +2261,6 @@ export default function CommunityDetailPage() {
                 transition={{ duration: 0.15 }}
                 className="flex flex-col gap-2 mb-1"
               >
-                {/* Lectio Divina group feature removed per request. */}
                 <button
                   onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=intercession&community=${slug}`); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
