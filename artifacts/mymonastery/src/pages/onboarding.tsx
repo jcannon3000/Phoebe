@@ -395,7 +395,9 @@ export default function Onboarding() {
                     {submitting ? spinner : t("auth_landing.tab_signup", { defaultValue: "Sign up" })}
                   </button>
                   <p className="text-xs text-center mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>
-                    {t("auth_landing.signup_note", { defaultValue: "Free to start. We'll help you set up your daily rhythm next." })}
+                    {fromCustomize
+                      ? t("auth_landing.signup_note_custom", { defaultValue: "Creating an account lets you build a fully custom routine — your own rule of life, saved and synced across your devices." })
+                      : t("auth_landing.signup_note", { defaultValue: "Free to start. We'll help you set up your daily rhythm next." })}
                   </p>
                 </motion.form>
               )}

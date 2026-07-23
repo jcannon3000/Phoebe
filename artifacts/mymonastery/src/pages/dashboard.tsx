@@ -6932,34 +6932,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     </p>
                   </div>
                 );
-                // Contemplation has no ceiling — keep it on the home even once the
-                // day is "done" so the reader can always sit again if they want.
-                const RGB = "62,124,122";
-                // Always open the begin slide (never skip into Cobreathe); the
-                // Cobreathe pill there leads to its own in-person options slide.
-                const contemplationHref = "/contemplation?begin=1";
-                const contemplationAgainCard = (
-                  <Link href={contemplationHref} className="block mb-5">
-                    <div className="relative flex rounded-3xl overflow-hidden transition-opacity hover:opacity-95 active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
-                      <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${RGB},0.9)` }} />
-                      <div className="flex-1 px-5 py-4 flex items-center gap-3.5">
-                        <span className="text-[28px] leading-none flex-shrink-0">🕯️</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[16px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("rhythm.card_contemplation", { defaultValue: "Contemplation" })}</p>
-                          <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
-                            {t("dashboard.contemplation_rested", { defaultValue: "You rested in silence today" })}
-                          </p>
-                        </div>
-                        <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: `rgba(${RGB},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                          <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {t("rhythm.sit_again", { defaultValue: "Sit again" })} <span aria-hidden>→</span>
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-                // Nothing coming up → the "caught up / sit again" card stands on
-                // its own (the Podcasts rail that used to fill this empty-events
-                // slot is retired along with the rest of the Podcasts feature).
+                // Nothing coming up → the finished-day view is just the blessing
+                // + the day's kept cards (below).
                 if (noEvents) {
                   return (
                     <div>
@@ -6968,7 +6942,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       {/* All cards done, nothing on the calendar → the "Sit again"
                           contemplation card stands on its own, cascading in like
                           the rest of the home (splash-gated + a haptic tick). */}
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}>{contemplationAgainCard}</motion.div>
+                      {/* Keep the day's rhythm on the home even when complete —
+                          the Next list empties and the Done section holds every
+                          kept card (owner). */}
+                      <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
                           Rest. (It self-hides when no weekly practice is on.)
@@ -7019,7 +6996,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
-                    <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
+                    {/* Keep the completed cards on the home — Done section. */}
+                    <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
                     {/* Bare — WeeklyRhythm owns its per-card cascade (see the
@@ -7404,10 +7382,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         <p className="text-center text-xs mt-8 mb-0 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
           {t("dashboard.inspired_by")}
         </p>
-        {/* The "About" pill that lived here (linking to /church-deck)
-            has been removed from the home surface. The deck is still
-            reachable via the side menu and the direct route, but it
-            shouldn't pull tap-attention from the dashboard footer. */}
+        {/* A quiet "About" pill under the footer line — a small way into the
+            About page, mirroring the sign-up screen's About pill. */}
+        <div className="flex justify-center mt-3">
+          <Link href="/about" className="text-[12px] rounded-full px-4 py-1.5 transition-opacity active:opacity-70" style={{ color: "rgba(143,175,150,0.8)", background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t("welcome_public.about_pill", { defaultValue: "About" })}
+          </Link>
+        </div>
 
         {/* The home "+" FAB moved into the global bottom nav bar (People · ＋ ·
             Menu) in Layout, so the create entry points now live there. */}

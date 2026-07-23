@@ -289,7 +289,7 @@ export default function CustomizePage() {
             rule-of-life builder (account = the unlock; /pilot/build is the
             trimmed pilot variant and no longer the upgrade target). */}
         <Link
-          href={guest ? `/signin?mode=signup&redirect=${encodeURIComponent("/rule-of-life")}` : "/rule-of-life"}
+          href={guest ? `/signin?mode=signup&from=customize&redirect=${encodeURIComponent("/rule-of-life")}` : "/rule-of-life"}
           className="mt-6 text-sm font-medium"
           style={{ color: SAGE, fontFamily: FONT }}
         >
