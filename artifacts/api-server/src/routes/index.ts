@@ -24,7 +24,6 @@ import authAppleRouter from "./auth-apple";
 import reportsRouter from "./reports";
 import climateRouter from "./climate";
 import prayerSessionsRouter from "./prayer-sessions";
-import actionsRouter from "./actions";
 import newsletterRouter from "./newsletter";
 import adminMetricsRouter from "./admin-metrics";
 import ministriesRouter from "./ministries";
@@ -35,7 +34,6 @@ import ncmpRouter from "./ncmp";
 import podcastRouter from "./podcast";
 import podcastSocialRouter from "./podcast-social";
 import newsRouter from "./news";
-import blessRouter from "./bless";
 import gatherRouter from "./gather";
 import officeAlignmentRouter from "./office-alignment";
 import practiceCompletionRouter from "./practice-completion";
@@ -80,7 +78,6 @@ const OFFICES_ONLY_BLOCKED_PREFIXES = [
   // offices-only accounts. (Earlier versions of this list blocked them;
   // we opened the gate when Letters became a first-class entry point.)
   "/rituals",
-  "/actions",
   "/people",
   "/contacts",
   "/invite",
@@ -145,7 +142,6 @@ router.use(authAppleRouter);
 router.use(reportsRouter);
 router.use(climateRouter);
 router.use(prayerSessionsRouter);
-router.use(actionsRouter);
 router.use(newsletterRouter);
 router.use(adminMetricsRouter);
 router.use(ministriesRouter);
@@ -156,7 +152,6 @@ router.use(ncmpRouter);
 router.use(podcastRouter);
 router.use(podcastSocialRouter);
 router.use(newsRouter);
-router.use(blessRouter);
 router.use(gatherRouter);
 router.use(officeAlignmentRouter);
 router.use(practiceCompletionRouter);

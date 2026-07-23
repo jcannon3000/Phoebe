@@ -331,8 +331,6 @@ const RuleOfLifeViewPage = lazy(() => import("./pages/rule-of-life-view"));
 const BeginPrayerPage = lazy(() => import("./pages/begin-prayer"));
 const PrayerStartPage = lazy(() => import("./pages/prayer-start"));
 const PrayerRequestDetailPage = lazy(() => import("./pages/prayer-request-detail"));
-const ActionDetailPage = lazy(() => import("./pages/action-detail"));
-const ActionNewPage = lazy(() => import("./pages/action-new"));
 const PrayerRequestNew = lazy(() => import("./pages/prayer-request-new"));
 const MyPrayerRequestsPage = lazy(() => import("./pages/my-prayer-requests"));
 const SettingsPage = lazy(() => import("./pages/settings"));
@@ -409,7 +407,6 @@ const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
 const AboutDeck = lazy(() => import("./pages/about-deck"));
 const UserOnboarding = lazy(() => import("./pages/user-onboarding"));
-const PrayerFeedNewPage = lazy(() => import("./pages/prayer-feed-new"));
 const PrayerFeedManagePage = lazy(() => import("./pages/prayer-feed-manage"));
 const PrayerFeedsBrowsePage = lazy(() => import("./pages/prayer-feeds-browse"));
 const PrayerFeedDetailPage = lazy(() => import("./pages/prayer-feed-detail"));
@@ -565,7 +562,6 @@ const PERSISTED_QUERY_KEYS = [
   "/api/rituals",
   "/api/me/service-schedules",
   "/api/groups/me/circle-intentions",
-  "/api/me/actions",
 ];
 const rqPersister = createSyncStoragePersister({
   storage: window.localStorage,
@@ -898,8 +894,6 @@ function Router() {
       <Route path="/begin-prayer" component={BeginPrayerPage} />
       <Route path="/prayer-start">{() => <PrayerGate><PrayerStartPage /></PrayerGate>}</Route>
       <Route path="/prayer-requests/:id"><PrayerGate><PrayerRequestDetailPage /></PrayerGate></Route>
-      <Route path="/actions/new" component={ActionNewPage} />
-      <Route path="/actions/:id" component={ActionDetailPage} />
       <Route path="/pray-request/new">{() => <PrayerGate><PrayerRequestNew /></PrayerGate>}</Route>
       <Route path="/settings" component={SettingsPage} />
       <Route path="/daily-practice" component={DailyPracticePage} />
@@ -999,7 +993,6 @@ function Router() {
       <Route path="/vision-deck" component={VisionDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/about-deck" component={AboutDeck} />
-      <Route path="/prayer-feeds/new" component={PrayerFeedNewPage} />
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
       <Route path="/prayer-feeds/:slug" component={PrayerFeedDetailPage} />

@@ -53,13 +53,6 @@ export function OfficeCloseEvents({
     enabled: !!uid,
     staleTime: 60_000,
   });
-  // Community actions across the user's communities.
-  const { data: actionsData } = useQuery<{ actions: any[] }>({
-    queryKey: ["/api/me/actions"],
-    queryFn: () => apiRequest("GET", "/api/me/actions"),
-    enabled: !!uid,
-    staleTime: 60_000,
-  });
   // Prayer-feed events the feed managers published.
   const { data: feedsData } = useQuery<{ subscriptions: any[] }>({
     queryKey: ["/api/prayer-feeds/subscribed"],
@@ -96,14 +89,6 @@ export function OfficeCloseEvents({
         event: { id: p.id, title: p.emoji ? `${p.emoji} ${p.title}` : p.title, startsAt: p.startsAt, location: p.location ?? null, joinUrl: null },
       });
     }
-    for (const a of actionsData?.actions ?? []) {
-      const ms = startMs(a?.eventAt);
-      if (ms == null) continue;
-      out.push({
-        key: `action-${a.id}`,
-        event: { id: a.id, title: a.title, startsAt: a.eventAt, location: a.location ?? null, joinUrl: null },
-      });
-    }
     for (const s of feedsData?.subscriptions ?? []) {
       for (const e of s?.upcomingEvents ?? []) {
         if (e?.state === "cancelled") continue;
@@ -115,11 +100,11 @@ export function OfficeCloseEvents({
     out.sort((a, b) => new Date(a.event.startsAt).getTime() - new Date(b.event.startsAt).getTime());
     const seen = new Set<string>();
     return out.filter((e) => (seen.has(e.key) ? false : (seen.add(e.key), true))).slice(0, Math.max(1, max));
-  }, [rituals, plansData, actionsData, feedsData, max]);
+  }, [rituals, plansData, feedsData, max]);
 
   // All four sources have answered (data defined, even if empty) — only then is
   // "nothing upcoming" true. (enabled:!!uid, so a logged-out caller never settles.)
-  const settled = !!uid && rituals !== undefined && plansData !== undefined && actionsData !== undefined && feedsData !== undefined;
+  const settled = !!uid && rituals !== undefined && plansData !== undefined && feedsData !== undefined;
   useEffect(() => {
     if (settled && events.length === 0) onResolvedEmpty?.();
   }, [settled, events.length, onResolvedEmpty]);

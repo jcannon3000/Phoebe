@@ -67,10 +67,7 @@ export default function PrayerFeedsBrowsePage() {
             className="rounded-2xl p-5 text-sm"
             style={{ background: "rgba(62,124,122,0.06)", border: "1px solid rgba(62,124,122,0.18)", color: "#8FAF96" }}
           >
-            No feeds are live yet.{" "}
-            <Link href="/prayer-feeds/new">
-              <span className="underline cursor-pointer" style={{ color: "#A8C5A0" }}>Start one →</span>
-            </Link>
+            No feeds are live yet.
           </div>
         )}
 
@@ -105,13 +102,6 @@ export default function PrayerFeedsBrowsePage() {
           ))}
         </div>
 
-        <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(143,175,150,0.15)" }}>
-          <Link href="/prayer-feeds/new">
-            <span className="text-sm font-semibold cursor-pointer" style={{ color: "#A8C5A0" }}>
-              + Start your own prayer feed
-            </span>
-          </Link>
-        </div>
       </div>
     </Layout>
   );

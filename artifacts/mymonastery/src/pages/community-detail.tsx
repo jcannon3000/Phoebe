@@ -1938,8 +1938,7 @@ export default function CommunityDetailPage() {
           authoring entry points scoped to THIS community. Intercession
           / fast jump into /moment/new with a template
           query param; event jumps into /tradition/new with the
-          community slug pre-filled; prayer feed (beta only) goes to
-          /prayer-feeds/new. Mirrors the FAB that used to live on the
+          community slug pre-filled. Mirrors the FAB that used to live on the
           home dashboard but always lacked a community context. */}
       {isAdmin && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
@@ -1976,16 +1975,6 @@ export default function CommunityDetailPage() {
                   <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 {t("community_detail.fab_event_title")}</p>
                   <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_event_sub")}</p>
                 </button>
-                {isBeta && (
-                  <button
-                    onClick={() => { setFabOpen(false); setLocation(`/prayer-feeds/new?community=${slug}`); }}
-                    className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                    style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-                  >
-                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ {t("community_detail.fab_feed_title")}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_feed_sub")}</p>
-                  </button>
-                )}
               </motion.div>
             )}
           </AnimatePresence>

@@ -1555,59 +1555,6 @@ export async function sendFeedEventTomorrowPush(
   });
 }
 
-// Fires to all joined community members (except the creator) when an
-// admin creates a new community action. Tap lands on the action's
-// detail page where members can read it and RSVP.
-export function sendNewActionPush(
-  userId: number,
-  opts: { actionId: number; actionTitle: string; creatorName: string; groupName: string },
-) {
-  const firstName = (opts.creatorName || "Someone").split(/\s+/)[0] || "Someone";
-  return sendPushToUser(userId, {
-    title: opts.actionTitle,
-    body: `${firstName} called ${opts.groupName} to action.`,
-    path: `/actions/${opts.actionId}`,
-    threadId: `action-${opts.actionId}`,
-    collapseId: `new-action-${opts.actionId}`,
-    sound: PHOEBE_SOUND_MID,
-  });
-}
-
-// Advance reminder for a community action. `lead` selects the cadence:
-//   "week" — fires ~7 days out, deduped via actions.week_reminder_sent_at
-//   "day"  — fires ~1 day out, deduped via actions.day_reminder_sent_at
-// Location-aware body so members know where to show up without opening
-// the app. Fans out to the whole community.
-export function sendActionReminderPush(
-  userId: number,
-  opts: {
-    actionId: number;
-    actionTitle: string;
-    lead: "week" | "day";
-    location: string | null;
-  },
-) {
-  const isWeek = opts.lead === "week";
-  const title = isWeek
-    ? `${opts.actionTitle} is next week`
-    : `${opts.actionTitle} is tomorrow`;
-  const body = isWeek
-    ? opts.location
-      ? `Coming up at ${opts.location}. Let your community know if you'll be there.`
-      : "Coming up. Let your community know if you'll be there."
-    : opts.location
-      ? `See you at ${opts.location}.`
-      : "See you there.";
-  return sendPushToUser(userId, {
-    title,
-    body,
-    path: `/actions/${opts.actionId}`,
-    threadId: `action-${opts.actionId}`,
-    collapseId: `action-${opts.lead}-${opts.actionId}`,
-    sound: PHOEBE_SOUND_MID,
-  });
-}
-
 // (`sendLetterWindowOpenPush` removed — for one-to-one correspondences
 // the moment a letter arrives IS the moment the recipient's write
 // window opens, so we just branch sendNewLetterPush below by group

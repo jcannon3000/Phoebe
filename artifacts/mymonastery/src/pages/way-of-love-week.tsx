@@ -33,7 +33,6 @@ import {
   computeNextGatheringDate,
   type ServiceSchedule,
 } from "@/pages/dashboard";
-import BlessSubScreen from "@/components/BlessSubScreen";
 import { PRACTICES } from "@/lib/wayOfLove";
 import { SECTIONS, commitmentLines, type SectionKey, type WolSelections, type CompletionRow } from "./home-beta";
 
@@ -407,11 +406,10 @@ export default function WayOfLoveWeekPage() {
               )}
             </div>
 
-            {/* Bless — the weekly intention cycle, inline */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-              {sectionHeaderRow("bless")}
-              <BlessSubScreen weekStart={thisWeekStart} today={today} />
-            </div>
+            {/* Bless */}
+            {boxedCard("bless", (
+              <>{chip(t("home_beta.bless_serve", { defaultValue: "Serve someone this week →" }), () => setLocation("/home-beta/bless"))}</>
+            ))}
 
             {/* Go */}
             {boxedCard("go", (

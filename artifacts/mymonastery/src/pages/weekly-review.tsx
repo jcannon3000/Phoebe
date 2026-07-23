@@ -22,7 +22,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import BlessSubScreen from "@/components/BlessSubScreen";
 import { SECTIONS, commitmentLines, type SectionKey, type WolSelections, type CompletionRow } from "./home-beta";
 
 const BG = "#091A10";
@@ -210,35 +209,25 @@ export default function WeeklyReviewPage() {
       </>
     );
   } else if (slide.kind === "set") {
-    if (slide.key === "bless") {
-      body = (
-        <>
-          <p style={eyebrow}>{t("weekly_review.eyebrow_this_week", { practice: def(slide.key).title })}</p>
-          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 10px" }}>{t("weekly_review.set_intentions")}</h1>
-          <BlessSubScreen weekStart={thisWeekStart} today={today} />
-        </>
-      );
-    } else {
-      body = (
-        <>
-          <p style={eyebrow}>{t("weekly_review.eyebrow_this_week", { practice: def(slide.key).title })}</p>
-          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 0" }}>{t("weekly_review.carry_into_week")}</h1>
-          {commitmentLines(def(slide.key), selections).length > 0 && (
-            <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: "8px 0 0" }}>
-              {commitmentLines(def(slide.key), selections).join(" · ")}
-            </p>
-          )}
-          <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.55, margin: "14px 0 0" }}>{t(`weekly_review.sp_${slide.key}`, { defaultValue: SET_PROMPT[slide.key] })}</p>
-          <button
-            type="button"
-            onClick={() => setLocation("/this-week")}
-            style={{ marginTop: 18, alignSelf: "flex-start", background: CARD, border: `1px solid ${CARD_B}`, color: SAGE, borderRadius: 999, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
-          >
-            {t("weekly_review.adjust_on_this_week")}
-          </button>
-        </>
-      );
-    }
+    body = (
+      <>
+        <p style={eyebrow}>{t("weekly_review.eyebrow_this_week", { practice: def(slide.key).title })}</p>
+        <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 0" }}>{t("weekly_review.carry_into_week")}</h1>
+        {commitmentLines(def(slide.key), selections).length > 0 && (
+          <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: "8px 0 0" }}>
+            {commitmentLines(def(slide.key), selections).join(" · ")}
+          </p>
+        )}
+        <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.55, margin: "14px 0 0" }}>{t(`weekly_review.sp_${slide.key}`, { defaultValue: SET_PROMPT[slide.key] })}</p>
+        <button
+          type="button"
+          onClick={() => setLocation("/this-week")}
+          style={{ marginTop: 18, alignSelf: "flex-start", background: CARD, border: `1px solid ${CARD_B}`, color: SAGE, borderRadius: 999, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+        >
+          {t("weekly_review.adjust_on_this_week")}
+        </button>
+      </>
+    );
   } else {
     body = (
       <>
