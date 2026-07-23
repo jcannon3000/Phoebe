@@ -1130,40 +1130,14 @@ export default function WayOfLoveRuleFlow({
     if (user) pushRoutineConfig();
     setStep("done");
   };
-  // ── Rhythm party ("keep it together") — after committing to the 30 days, the
-  // author can invite 1–2 people; the link CARRIES THE RULE (the preset id), so
-  // accepting applies the same rhythm and aligns everyone to one Day-N counter.
-  // Server: POST /api/rhythm-party (memory project_rhythm_parties). Offered to
-  // real signed-in users only (a session is required; anonymous device users
-  // skip it — companions should have a name to walk with).
   const lastAdoptedPresetRef = useRef<string | null>(null);
-  const partyTokenRef = useRef<string | null>(null); // reuse across re-taps — one party per commit
   // The time-ladder dial's position (index into TIME_LADDER; default = 20 min:
   // Morning Prayer · FDD · 5 minutes of silence, no evening).
   const [timeIdx, setTimeIdx] = useState(TIME_LADDER_DEFAULT);
-  const [inviteStage, setInviteStage] = useState(false);
-  const [inviteCopied, setInviteCopied] = useState(false);
-  const shareRhythmParty = async () => {
-    try {
-      if (!partyTokenRef.current) {
-        const presetId = lastAdoptedPresetRef.current ?? "custom";
-        const r = await apiRequest<{ token: string }>("POST", "/api/rhythm-party", { presetId });
-        partyTokenRef.current = r.token;
-      }
-      const url = `${window.location.origin}/companion/${partyTokenRef.current}`;
-      const text = t("wol_rule.party_share_text", { defaultValue: "Walk a month of daily prayer with me on Phoebe — this link carries the rhythm." });
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: t("wol_rule.party_share_title", { defaultValue: "Keep a rhythm together" }), text, url });
-      } else {
-        await navigator.clipboard.writeText(`${text} ${url}`);
-        setInviteCopied(true);
-      }
-    } catch { /* dismissed share sheet / offline — stay on the invite stage */ }
-  };
 
-  // ?adopt=<presetId> — a rhythm-party invite CARRIES the rule: /companion/:token
-  // accepts, then lands here with the preset to auto-adopt, so the recipient's
-  // rhythm arrives in one tap (no stick shift). Runs once on mount.
+  // ?adopt=<presetId> — a shared link (e.g. the Centering course's practice
+  // bridge lands here with ?adopt=centering) CARRIES the rule to auto-adopt, so
+  // the recipient's rhythm arrives in one tap (no stick shift). Runs once on mount.
   const autoAdoptedRef = useRef(false);
   useEffect(() => {
     if (autoAdoptedRef.current) return;
@@ -2388,38 +2362,6 @@ export default function WayOfLoveRuleFlow({
       </>,
     );
   }
-  // ── Walk it with someone? — the rhythm-party invite, offered once right
-  // after committing to the 30 days. The share link CARRIES the rule.
-  if (inviteStage) {
-    return shell(
-      <>
-        <div style={{ textAlign: "center", marginTop: 8 }}>
-          <span style={{ fontSize: 38 }} aria-hidden>🤝</span>
-          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "14px 0 6px" }}>
-            {t("wol_rule.party_eyebrow", { defaultValue: "Keep it together" })}
-          </p>
-          <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
-            {t("wol_rule.party_title", { defaultValue: "Walk it with someone?" })}
-          </h1>
-          <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
-            {t("wol_rule.party_sub", { defaultValue: "A rule kept alone is fragile; a rule kept together holds. Invite one or two people — the link carries this rhythm, and you'll keep the same month, day by day." })}
-          </p>
-        </div>
-        <button onClick={() => { void shareRhythmParty(); }} style={{ marginTop: 24, width: "100%", background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
-          {t("wol_rule.party_share_cta", { defaultValue: "Share an invite" })}
-        </button>
-        {inviteCopied && (
-          <p style={{ textAlign: "center", color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0" }}>
-            {t("wol_rule.party_copied", { defaultValue: "✓ Invite copied — send it to your companion." })}
-          </p>
-        )}
-        <button onClick={onDone} style={{ marginTop: 14, width: "100%", background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer", textAlign: "center" }}>
-          {t("wol_rule.party_alone", { defaultValue: "or walk it alone" })}
-        </button>
-      </>,
-    );
-  }
-
   return shell(
     <>
       <div style={{ textAlign: "center", marginTop: 8 }}>
@@ -2453,8 +2395,7 @@ export default function WayOfLoveRuleFlow({
         {t("wol_rule.done_edit_hint", { defaultValue: "Tap any practice to adjust it." })}
       </p>
       {/* One plain closing CTA — no 30-day offer, no "do it together" invite
-          stage (owner, 2026-07-03): they chose the rhythm, it's set, done.
-          (The inviteStage screen below is intentionally unreachable now.) */}
+          stage (owner, 2026-07-03): they chose the rhythm, it's set, done. */}
       <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
         {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
       </button>

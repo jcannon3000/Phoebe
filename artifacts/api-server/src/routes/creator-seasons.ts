@@ -11,7 +11,7 @@
 // Creation is super-admin gated for now ("Creator" in Admin tools).
 import { Router, type IRouter } from "express";
 import crypto from "crypto";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import {
   db,
   creatorSeasonsTable,
@@ -27,20 +27,6 @@ import {
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { isSuperAdminUser } from "../lib/superAdmin";
 import { canManageParish } from "./parish";
-import { betaUsersTable } from "@workspace/db";
-
-// Beta user OR super admin — the studio-list gate. (The seasons list carries
-// every join token, so it must never be readable by an ordinary session; the
-// public no-login app gives ANONYMOUS device users real sessions.)
-async function isBetaOrSuperAdmin(userId: number): Promise<boolean> {
-  try {
-    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
-    if (!u?.email) return false;
-    const [beta] = await db.select({ id: betaUsersTable.id }).from(betaUsersTable)
-      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
-    return !!beta;
-  } catch { return false; }
-}
 
 // Group membership/admin resolution for COMMUNITY seasons (mirrors groups.ts).
 function isGroupAdminRole(role: string | null | undefined): boolean {
@@ -90,72 +76,6 @@ function callerYmd(raw: unknown): string {
   }
   return serverToday;
 }
-
-// ── POST /api/creator/seasons — create (super admin) ─────────────────────────
-router.post("/creator/seasons", async (req, res): Promise<void> => {
-  const me = getUserId(req);
-  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (!(await isSuperAdminUser(me))) { res.status(403).json({ error: "Admin access required" }); return; }
-  const body = (req.body ?? {}) as {
-    title?: unknown; creatorName?: unknown; description?: unknown;
-    spec?: unknown; durationDays?: unknown; startYmd?: unknown;
-  };
-  const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
-  const creatorName = typeof body.creatorName === "string" ? body.creatorName.trim().slice(0, 80) : "";
-  if (!title || !creatorName) { res.status(400).json({ error: "title and creatorName required" }); return; }
-  const description = typeof body.description === "string" ? body.description.trim().slice(0, 1000) || null : null;
-  const spec = sanitizeSpec(body.spec);
-  if (!spec) { res.status(400).json({ error: "Invalid routine spec" }); return; }
-  // 2–4 weeks; finite is the point.
-  const durationDays = typeof body.durationDays === "number" && Number.isFinite(body.durationDays)
-    ? Math.max(7, Math.min(28, Math.round(body.durationDays))) : 21;
-  const startYmd = typeof body.startYmd === "string" && YMD_RE.test(body.startYmd)
-    ? body.startYmd : new Date().toISOString().slice(0, 10);
-  const token = crypto.randomBytes(16).toString("hex");
-  try {
-    const [row] = await db.insert(creatorSeasonsTable).values({
-      token, title, creatorName, description, spec, durationDays, startYmd, createdByUserId: me,
-    }).returning({ id: creatorSeasonsTable.id });
-    res.json({ id: row?.id, token, url: `https://withphoebe.app/season/${token}` });
-  } catch (err) {
-    console.error("[creator-seasons] create failed:", err);
-    res.status(500).json({ error: "internal_error" });
-  }
-});
-
-// ── GET /api/creator/seasons — list (super admin OR beta; the studio index) ──
-router.get("/creator/seasons", async (req, res): Promise<void> => {
-  const me = getUserId(req);
-  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
-  // The list exposes every season's join token — beta/super-admin only
-  // (matches the client studio gate; anonymous sessions must not enumerate).
-  if (!(await isBetaOrSuperAdmin(me))) { res.status(403).json({ error: "Admin access required" }); return; }
-  try {
-    const rows = await db.select({
-      id: creatorSeasonsTable.id,
-      token: creatorSeasonsTable.token,
-      title: creatorSeasonsTable.title,
-      creatorName: creatorSeasonsTable.creatorName,
-      durationDays: creatorSeasonsTable.durationDays,
-      startYmd: creatorSeasonsTable.startYmd,
-      createdAt: creatorSeasonsTable.createdAt,
-    }).from(creatorSeasonsTable).orderBy(desc(creatorSeasonsTable.createdAt)).limit(50);
-    const ids = rows.map((r) => r.id);
-    const counts = ids.length > 0
-      ? await db.select({
-          seasonId: creatorSeasonMembersTable.seasonId,
-          n: sql<number>`count(*)::int`,
-        }).from(creatorSeasonMembersTable)
-          .where(inArray(creatorSeasonMembersTable.seasonId, ids))
-          .groupBy(creatorSeasonMembersTable.seasonId)
-      : [];
-    const byId = new Map(counts.map((c) => [c.seasonId, Number(c.n)]));
-    res.json({ seasons: rows.map((r) => ({ ...r, memberCount: byId.get(r.id) ?? 0 })) });
-  } catch (err) {
-    console.error("[creator-seasons] list failed:", err);
-    res.status(500).json({ error: "internal_error" });
-  }
-});
 
 // ── GET /api/creator/seasons/:token — public landing + member day view ───────
 // One endpoint for both: the landing fields are public; when the caller is a

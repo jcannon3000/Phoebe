@@ -1636,17 +1636,15 @@ export const en = {
     placeholder_one_to_one: "What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿",
     placeholder_group: "What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿",
   },
-  // Sign-in / waitlist landing page (pages/onboarding.tsx).
+  // Sign-in landing page (pages/onboarding.tsx).
   auth_landing: {
     err_email: "Enter a valid email address.",
     err_password: "Password must be at least 6 characters.",
     err_generic: "Something went wrong. Please try again.",
     err_name: "Your name is required.",
-    err_waitlist: "Couldn't save your spot. Please try again.",
     hero_title: "Pray daily with Phoebe.",
     hero_body: "An app for building a daily habit of prayer — a rhythm you shape and keep, morning and evening, one day at a time.",
     tab_signin: "Sign in",
-    tab_waitlist: "Join waitlist",
     ph_email: "Email address",
     ph_password: "Password",
     ph_name: "Your name",
@@ -4258,16 +4256,6 @@ export const en = {
     monks_quote: "Monks have written this way for centuries.",
     read_letter: "Read your letter →",
     opening: "Opening…",
-  },
-  // Feedback page (pages/feedback.tsx).
-  feedback: {
-    title: "Feedback",
-    subtitle: "Share a thought, report a bug, or suggest something. We read every message.",
-    placeholder: "What's on your mind?",
-    sending: "Sending…",
-    send: "Send feedback",
-    thanks_toast: "Thanks for your feedback!",
-    error_toast: "Something went wrong. Please try again.",
   },
   // Invitations page (pages/invitations.tsx).
   invitations: {

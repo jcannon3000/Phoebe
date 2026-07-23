@@ -96,16 +96,6 @@ function PendingFellowInviteRedirect() {
       setLocation(`/fellow/${token}`);
       return;
     }
-    // Same round-trip for a rhythm-party invite (/companion/:token stashed the
-    // token before sending the visitor to sign in) — bring them back to accept.
-    if (location.startsWith("/companion/")) return;
-    let companion: string | null = null;
-    try { companion = sessionStorage.getItem("phoebe:companion-token"); } catch { /* ignore */ }
-    if (companion && /^[a-f0-9]{32}$/i.test(companion)) {
-      try { sessionStorage.removeItem("phoebe:companion-token"); } catch { /* ignore */ }
-      setLocation(`/companion/${companion}`);
-      return;
-    }
     // And for a prescribed-routine / preset-rule link (/routine/:token) — the
     // landing stashes the token before "Sign in to add this rhythm".
     if (location.startsWith("/routine/")) return;
@@ -439,16 +429,13 @@ const PrescribeRoutinePage = lazy(() => import("./pages/prescribe-routine"));
 const CommunityRuleSetPage = lazy(() => import("./pages/community-rule-set"));
 const RoutineInvitePage = lazy(() => import("./pages/routine-invite"));
 const SignPage = lazy(() => import("./pages/sign"));
-const CreatorStudioPage = lazy(() => import("./pages/creator-studio"));
 const SeasonPage = lazy(() => import("./pages/season"));
-const CompanionInvitePage = lazy(() => import("./pages/companion-invite"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
 const CommunityJoinPage = lazy(() => import("./pages/community-join"));
 const PrayerDialogueJoinPage = lazy(() => import("./pages/prayer-dialogue-join"));
 const PlanSharePage = lazy(() => import("./pages/plan-share"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
-const WaitlistAdminPage = lazy(() => import("./pages/waitlist-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
 const AdminParishesPage = lazy(() => import("./pages/admin-parishes"));
@@ -468,7 +455,6 @@ const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
 const AboutDeck = lazy(() => import("./pages/about-deck"));
 const UserOnboarding = lazy(() => import("./pages/user-onboarding"));
-const FeedbackPage = lazy(() => import("./pages/feedback"));
 const PrayerFeedNewPage = lazy(() => import("./pages/prayer-feed-new"));
 const PrayerFeedManagePage = lazy(() => import("./pages/prayer-feed-manage"));
 const PrayerFeedsBrowsePage = lazy(() => import("./pages/prayer-feeds-browse"));
@@ -839,21 +825,19 @@ const GUEST_ALLOWED_PREFIX = [
   // Printable parish/community invite SIGN (/sign/:token) — a leader prints the
   // QR poster; it shows the community name + the routine QR, all public info.
   "/sign/",
-  // Creator-season links (/season/:token) — the one-tap "take the practice
-  // home" from a video description; the same no-account-wall rule applies.
+  // Season links (/season/:token) — the one-tap "take the practice home" a
+  // community leader or priest shares; the same no-account-wall rule applies.
   "/season/",
   // Community invite links (/communities/join/:slug/:token) — the page has its
   // own signup/sign-in flow for signed-out visitors, which the guest gate was
   // bouncing to the dashboard before it could render. An invite link someone
   // was HANDED must always open.
   "/communities/join/",
-  // Fellow invites (/fellow/:token) and rhythm-party invites
-  // (/companion/:token) — both pages carry their own explainer + sign-in
-  // round-trip (they stash the token and finish after signup), but the guest
-  // gate was bouncing public-app visitors to the dashboard before either could
-  // render. Same rule as above: a handed link must always open.
+  // Fellow invites (/fellow/:token) — the page carries its own explainer +
+  // sign-in round-trip (it stashes the token and finishes after signup), but
+  // the guest gate was bouncing public-app visitors to the dashboard before it
+  // could render. Same rule as above: a handed link must always open.
   "/fellow/",
-  "/companion/",
 ];
 
 // The customizer routes (rule of life / pilot build / the questionnaire) that
@@ -1001,7 +985,6 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/about" ||
         location === "/privacy" ||
         location === "/terms" ||
-        location === "/feedback" ||
         location.startsWith("/onboarding");
       if (!allowed) {
         // Anything in the denylist OR anything not in the allowlist
@@ -1143,11 +1126,9 @@ function Router() {
       <Route path="/fellow/:token" component={FellowInvitePage} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
       <Route path="/sign/:token" component={SignPage} />
-      {/* Creator seasons — /creator (studio: super admins create, beta can see)
-          + /season/:token (public landing → join → the cohort's day view). */}
-      <Route path="/creator" component={CreatorStudioPage} />
+      {/* Seasons — /season/:token (public landing → join → the cohort's day
+          view). Started by a community's leaders or a parish priest. */}
       <Route path="/season/:token" component={SeasonPage} />
-      <Route path="/companion/:token" component={CompanionInvitePage} />
       {/* Letters & Messages removed (owner) — the correspondence/letter-writing
           and 1:1 messaging features are no longer part of the experience. */}
       <Route path="/people" component={People} />
@@ -1273,7 +1254,6 @@ function Router() {
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
-      <Route path="/waitlist" component={WaitlistAdminPage} />
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/journey" component={SpiritualJourneyPage} />
@@ -1284,7 +1264,6 @@ function Router() {
       <Route path="/vision-deck" component={VisionDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/about-deck" component={AboutDeck} />
-      <Route path="/feedback" component={FeedbackPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route path="/prayer-feeds/new" component={PrayerFeedNewPage} />
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />

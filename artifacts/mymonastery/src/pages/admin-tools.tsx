@@ -179,26 +179,11 @@ export default function AdminToolsPage() {
               />
             )}
             <LinkRow
-              emoji="💬"
-              label="Feedback"
-              description="View submitted feedback"
-              onClick={() => setLocation("/feedback")}
-            />
-            <LinkRow
               emoji="🕯️"
               label="Vision deck"
               description="The 'technology of holding' story — Phoebe's why"
               onClick={() => setLocation("/vision-deck")}
             />
-            {/* Creator — super admins design seasons; beta users can see them. */}
-            {(isAdmin || rawIsBeta) && (
-              <LinkRow
-                emoji="🎬"
-                label="Creator"
-                description="Bounded seasons of a practice, joined via link"
-                onClick={() => setLocation("/creator")}
-              />
-            )}
             {isAdmin && (
               <>
                 <LinkRow
@@ -230,12 +215,6 @@ export default function AdminToolsPage() {
                   label="Pilot Users"
                   description="Manage beta access"
                   onClick={() => setLocation("/beta")}
-                />
-                <LinkRow
-                  emoji="📜"
-                  label="Waitlist"
-                  description="Review sign-up requests"
-                  onClick={() => setLocation("/waitlist")}
                 />
                 <LinkRow
                   emoji="🚩"
