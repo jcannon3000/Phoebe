@@ -90,7 +90,7 @@ export default function PilotHomePage() {
         </div>
 
         <div className="mt-6 pt-6 flex flex-col gap-3" style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}>
-          <HomeCard href="/menu/practices" emoji="🕯️" title="Practices" blurb="Listen to Scripture · Contemplation." delay={0.18} muted />
+          <HomeCard href="/menu/practices" emoji="🕯️" title="Practices" blurb="Contemplation · Co-Breathe · Audio Divina." delay={0.18} muted />
         </div>
       </div>
     </Layout>

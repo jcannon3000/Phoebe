@@ -8,7 +8,6 @@ import { markPsalmsPrayed } from "@/lib/cacReadState";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
-import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { PointedLine } from "@/components/PointedLine";
@@ -166,21 +165,8 @@ export default function PsalmsPage() {
     staleTime: 30 * 60_000,
   });
 
-  // Scripture Day by Day reads the day's psalm aloud — offer "Listen" when its
-  // psalm segment matches today's appointed psalm(s).
-  const player = usePodcastPlayer();
-  const scriptureEpisodeQ = useQuery<{ audioUrl: string | null; durationSeconds: number | null; title: string | null; imageUrl: string | null }>({
-    queryKey: ["/api/podcast/scripture-day-by-day/today"],
-    queryFn: () => apiRequest("GET", "/api/podcast/scripture-day-by-day/today"),
-    staleTime: 30 * 60_000,
-  });
-  // The psalm-audio "Listen" relied on the scripture-alignment timestamps,
-  // which were removed with the Listen-to-Scripture feature (and its
-  // transcription automation). With no alignment there's no psalm segment, so
-  // the Listen affordance stays off — and we no longer poll the (deleted)
-  // timestamps endpoint.
-  const psalmSeg: { id: string; title: string | null; startSeconds: number; endSeconds: number | null } | null = null;
-  const canListen = false;
+  // The psalm-audio "Listen" affordance was retired with the Listen-to-Scripture
+  // feature (and its transcription automation), so the psalms page is read-only.
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
   const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
@@ -398,7 +384,6 @@ export default function PsalmsPage() {
             {pill("Format", format, [
               { value: "screen", label: "Digital" },
               { value: "book", label: "Physical" },
-              ...(canListen ? [{ value: "listen", label: "Listen" }] : []),
             ], (v) => setFormat(v as "screen" | "book" | "listen"))}
           </div>
         </div>
