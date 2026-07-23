@@ -4,7 +4,6 @@ import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, pra
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
-import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
@@ -436,11 +435,8 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     .where(eq(userMutesTable.muterId, sessionUserId));
   const mutedIds = mutedRows.map(r => r.mutedUserId);
 
-  // Fetch current letter correspondent user IDs so we can flag and
-  // prioritize their requests. Replaces the previous fellows-pin signal —
-  // if you're actively writing letters to someone, their prayer requests
-  // surface first in the feed.
-  const correspondentIds = new Set(await getCorrespondentUserIds(sessionUserId));
+  // (Letters feature removed 2026-07-23 — there is no longer a
+  // correspondent signal; isCorrespondent is always false below.)
 
   const now = new Date();
 
@@ -703,7 +699,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // viewer can see it — gentle "you're not alone" social proof).
       isAdopted: iAdoptedSet.has(r.id),
       adoptCount: adoptCountByRequest.get(r.id) ?? 0,
-      isCorrespondent: correspondentIds.has(r.ownerId),
+      isCorrespondent: false,
       words: words.map(w => ({
         authorName: w.authorName,
         content: w.content,

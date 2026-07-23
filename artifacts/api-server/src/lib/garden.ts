@@ -19,7 +19,6 @@
 
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, groupMembersTable, usersTable, fellowsTable } from "@workspace/db";
-import { getCorrespondentUserIds } from "./correspondents";
 
 // Helper — returns the user IDs of the viewer's Fellows. A Fellow pair is
 // MEANT to be stored as two directional rows (A→B, B→A), but legacy/early
@@ -150,10 +149,9 @@ async function computeGardenUserIds(userId: number): Promise<number[]> {
     `[garden] viewer=${userId} groups=[${myGroupIds.join(",")}] peerDiag=${JSON.stringify(peerDiag)}`,
   );
 
-  const correspondentIds = await getCorrespondentUserIds(userId);
-  for (const id of correspondentIds) {
-    if (id !== userId) groupPeerIds.add(id);
-  }
+  // (Letters feature removed 2026-07-23 — the correspondents-priority
+  // signal that used to expand the garden here is gone; garden now =
+  // group peers + fellows.)
 
   // Fellows — durable person-to-person link created when someone
   // signs up via a /p/:token share-link Amen. Fellows see each

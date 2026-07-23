@@ -1025,8 +1025,9 @@ export async function migrate() {
 
     // ── Fellows (HISTORICAL — feature removed) ─────────────────────────────
     // The fellows/fellow-invites feature was removed in favor of letter
-    // correspondents as the prayer-feed prioritization signal (see
-    // api-server/src/lib/correspondents.ts and GET /api/prayer-requests).
+    // correspondents as the prayer-feed prioritization signal; the Letters
+    // feature has since ALSO been removed (2026-07-23) and its tables dropped
+    // at the end of this migration, so that signal no longer exists.
     // These CREATE TABLE IF NOT EXISTS calls stay so fresh installs don't
     // fail partway through historical migrations that reference the tables.
     // No runtime code reads or writes them. Safe to leave; safe to drop
@@ -3837,6 +3838,16 @@ export async function migrate() {
 
     // (Voice memos feature removed — its voice_memos table is no longer created.
     // Any existing table in prod is left orphaned/harmless; not dropped here.)
+
+    // Letters feature removed + data dropped (owner-approved 2026-07-23).
+    // The letters/correspondence CREATE + ALTER DDL earlier in this file is
+    // left as-is (harmless — CREATE ... IF NOT EXISTS is a no-op once these
+    // drops have run). Dropped in FK-safe order (children first). CASCADE
+    // also clears letter_drafts / letter_reminders / letter_window_pushes,
+    // which reference correspondences(id).
+    await run(client, `DROP TABLE IF EXISTS letters CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS correspondence_members CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS correspondences CASCADE`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

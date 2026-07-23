@@ -3,7 +3,6 @@ import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
 import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable, walkPairingsTable } from "@workspace/db";
 import { getFellowLightsForUsers, recordTurn } from "../lib/walkProgress";
 import { computeStreak } from "../lib/streak";
-import { getCorrespondentUserIds } from "../lib/correspondents";
 
 const router: IRouter = Router();
 
@@ -129,28 +128,8 @@ router.get("/people", async (req, res): Promise<void> => {
     }
   }
 
-  // Step 2 — active letter correspondents (mutual exchange). Include
-  // them even if they're not in any shared group, because an ongoing
-  // letter correspondence is an explicit relationship.
-  const correspondentUserIds = await getCorrespondentUserIds(ownerId);
-  if (correspondentUserIds.length > 0) {
-    const correspondentRows = await db
-      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
-      .from(usersTable)
-      .where(inArray(usersTable.id, correspondentUserIds));
-    for (const row of correspondentRows) {
-      const emailLower = row.email.toLowerCase();
-      if (emailLower === ownerEmailLower) continue;
-      if (map.has(emailLower)) continue;
-      map.set(emailLower, {
-        name: row.name || row.email,
-        email: row.email,
-        sharedCircleCount: 0,
-        firstCircleDate: new Date(),
-        sharedRitualIds: [],
-      });
-    }
-  }
+  // (Letters feature removed 2026-07-23 — the garden no longer includes
+  // letter correspondents; it is now groups only, minus the veto below.)
 
   // Veto: drop anyone from the garden who is a hidden_admin in ANY
   // group the owner is in. Same rule as prayer.ts — "for members of
@@ -174,7 +153,7 @@ router.get("/people", async (req, res): Promise<void> => {
   }
   console.log(
     `[GET /people] garden size: before-veto=${beforeVeto} ` +
-    `after-veto=${map.size} correspondentIds=${correspondentUserIds.length}`,
+    `after-veto=${map.size}`,
   );
 
   // Traditions (ritual circles) CONTRIBUTE CONTEXT ONLY — we no
@@ -609,11 +588,9 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   // garden/groups/correspondence alone.
   const [personUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
 
-  let isCorrespondent = false;
-  if (personUser) {
-    const correspondentIds = await getCorrespondentUserIds(ownerId);
-    isCorrespondent = correspondentIds.includes(personUser.id);
-  }
+  // (Letters feature removed 2026-07-23 — correspondent status no longer
+  // exists; always false. Kept as a field for client back-compat.)
+  const isCorrespondent = false;
 
   // Find groups both users are members of
   let sharedGroups: Array<{ id: number; name: string; slug: string; emoji: string | null }> = [];

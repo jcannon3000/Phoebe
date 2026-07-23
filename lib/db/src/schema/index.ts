@@ -17,7 +17,6 @@ export * from "./prayer_held_notifications";
 export * from "./ritual_time_suggestions";
 export * from "./user_connections_cache";
 export * from "./morningPrayer";
-export * from "./letters";
 export * from "./lectio";
 export * from "./calendar_subscriptions";
 export * from "./groups";

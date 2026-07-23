@@ -7,10 +7,6 @@ import {
   groupMembersTable,
   momentUserTokensTable,
   momentPostsTable,
-  lettersTable,
-  letterDraftsTable,
-  correspondenceMembersTable,
-  correspondencesTable,
   morningPrayerCacheTable,
   userConnectionsCacheTable,
   waitlistTable,
@@ -144,25 +140,10 @@ router.delete("/users/me", async (req, res): Promise<void> => {
       //    make the final `DELETE FROM users` throw an FK violation — i.e.
       //    account deletion was silently BROKEN (500 + rollback) for whole
       //    classes of ordinary users. Null the account link BEFORE the delete.
-      //    - letters.author_user_id / correspondence_members.user_id (the
-      //      Letters feature is retired; we ALSO scrub the retained author
-      //      email/name here — dead PII with no UI reading it — since keeping
-      //      it defeated erasure).
-      //    - correspondences.created_by_user_id (a sibling FK the earlier fix
-      //      missed — every correspondence creator FK-blocked their own delete).
+      //    (The Letters feature was retired 2026-07-23 and its tables dropped,
+      //    so the former letters/correspondence FK-scrub here is gone.)
       //    - morning_prayer_cache.assembled_by_user_id (whoever opened the
       //      day's first Morning Prayer is stamped assembler → blocked delete).
-      await tx.update(lettersTable)
-        .set({ authorUserId: null, authorEmail: "[deleted]", authorName: "Deleted user" })
-        .where(eq(lettersTable.authorUserId, user.id));
-      await tx.delete(letterDraftsTable)
-        .where(sql`${letterDraftsTable.authorUserId} = ${user.id} OR LOWER(${letterDraftsTable.authorEmail}) = ${emailLower}`);
-      await tx.update(correspondenceMembersTable)
-        .set({ userId: null })
-        .where(eq(correspondenceMembersTable.userId, user.id));
-      await tx.update(correspondencesTable)
-        .set({ createdByUserId: null })
-        .where(eq(correspondencesTable.createdByUserId, user.id));
       await tx.update(morningPrayerCacheTable)
         .set({ assembledByUserId: null })
         .where(eq(morningPrayerCacheTable.assembledByUserId, user.id));
