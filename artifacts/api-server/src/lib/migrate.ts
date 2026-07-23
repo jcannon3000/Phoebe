@@ -3867,6 +3867,33 @@ export async function migrate() {
     // it across ~9 kept routes. Only the mute UI/CRUD was removed. Keep the table.
     await run(client, `DROP TABLE IF EXISTS user_public_keys CASCADE`);
 
+    // Non-core feature removals 2026-07-23 (batches 1-6): drop the dropped
+    // features' tables. Audited: kept tables that other kept code still reads
+    // (creator_seasons [community seasons], fellows/fellow_prefs [How About
+    // plans], waitlist [signup/deletion DELETEs], user_mutes [mute filtering],
+    // user_connections_cache [contacts/moments]) are deliberately NOT dropped.
+    // CASCADE handles FK order.
+    await run(client, `DROP TABLE IF EXISTS rhythm_party_members CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS rhythm_parties CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS prayer_partnerships CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS prayers_for CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS daily_prayers CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS prayer_attentions CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS prayer_intentions CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellow_invites CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellow_encouragements CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellow_link_invites CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS walk_pairings CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS walk_nudges CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS rule_of_life_requests CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS bless_intention CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS bless_week CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS parish_opportunity_interests CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS parish_opportunities CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS parish_prayer_list_prayers CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS parish_prayer_list CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS feedback CASCADE`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
