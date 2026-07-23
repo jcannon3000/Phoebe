@@ -3862,7 +3862,9 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS lectio_reflections CASCADE`);
     await run(client, `DROP TABLE IF EXISTS lectio_log_entries CASCADE`);
     await run(client, `DROP TABLE IF EXISTS journal_entries CASCADE`);
-    await run(client, `DROP TABLE IF EXISTS user_mutes CASCADE`);
+    // NOTE: user_mutes is deliberately NOT dropped — the mute *filtering*
+    // (excluding muted users from prayer delivery / feeds / counts) still reads
+    // it across ~9 kept routes. Only the mute UI/CRUD was removed. Keep the table.
     await run(client, `DROP TABLE IF EXISTS user_public_keys CASCADE`);
 
     // Verify shared_moments columns exist
