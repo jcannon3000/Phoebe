@@ -136,8 +136,7 @@ type ServiceSchedule = {
   name: string | null; location: string | null; dayOfWeek: number;
   times: Array<{ label: string; time: string; location?: string }>;
 };
-type PrayerForMine = { id: number; recipientName: string | null; expired: boolean };
-type FeedHit = { id: number; slug: string; title: string; tagline?: string | null; coverEmoji?: string | null };
+type FeedHit ={ id: number; slug: string; title: string; tagline?: string | null; coverEmoji?: string | null };
 
 const eyebrow = { color: SAGE_DIM, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: "0.12em", fontWeight: 700, fontFamily: FONT };
 const infoCard = { background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 14px" };
@@ -197,12 +196,6 @@ export default function HomeBetaSectionPage() {
     queryFn: () => apiRequest("GET", "/api/me/service-schedules"),
     enabled: !!user && def?.key === "worship",
     staleTime: 5 * 60_000,
-  });
-  const prayForQ = useQuery<PrayerForMine[]>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user && def?.key === "bless",
-    staleTime: 60_000,
   });
   const feedsQ = useQuery<{ feeds: FeedHit[] }>({
     queryKey: ["/api/prayer-feeds"],
@@ -344,8 +337,6 @@ export default function HomeBetaSectionPage() {
 
   // ── Live inline previews ───────────────────────────────────────────────
   const schedules = (svcQ.data?.schedules ?? []).slice(0, 3);
-  const activePrayers = (prayForQ.data ?? []).filter((p) => !p.expired);
-  const prayerNames = activePrayers.map((p) => p.recipientName).filter(Boolean).slice(0, 3) as string[];
   const feeds = (feedsQ.data?.feeds ?? []).slice(0, 3);
 
   // ── Consistency — quiet "weeks kept" + a small recent-history strip ─────
@@ -555,20 +546,6 @@ export default function HomeBetaSectionPage() {
               {s.location && <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "2px 0 0" }}>{s.location}</p>}
             </div>
           ))}
-
-          {/* Bless — who you're praying for */}
-          {def.key === "bless" && activePrayers.length > 0 && (
-            <div style={infoCard}>
-              <p style={{ color: WARM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, margin: 0 }}>
-                {t("home_beta.bless_count", { defaultValue: "You're praying for {{count}} people", count: activePrayers.length })}
-              </p>
-              {prayerNames.length > 0 && (
-                <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "3px 0 0" }}>
-                  {prayerNames.join(", ")}{activePrayers.length > prayerNames.length ? "…" : ""}
-                </p>
-              )}
-            </div>
-          )}
 
           {/* Go — your justice & intercession feeds */}
           {def.key === "go" && feeds.map((f) => (

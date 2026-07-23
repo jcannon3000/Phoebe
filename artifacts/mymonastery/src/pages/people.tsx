@@ -13,7 +13,6 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FellowsConnect } from "@/components/FellowsConnect";
 import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { useBetaStatus } from "@/hooks/useDemo";
-import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 
 function initials(name: string) {
   return name
@@ -125,17 +124,11 @@ function RotatingLine({ lines }: { lines: string[] }) {
 function PersonCard({
   person,
   isPresent,
-  iPrayFor,
-  prayForMe,
   isFellow,
   lastCobreathed,
-  activePrayerFor,
-  activePrayerForMe,
 }: {
   person: PersonSummary;
   isPresent: boolean;
-  iPrayFor: boolean;
-  prayForMe: boolean;
   // True when the viewer + this person are linked via a Fellow row.
   // Drives a small "Fellow" pill on the card so a user can tell
   // who they connected with via a share-link Amen flow vs through
@@ -144,8 +137,6 @@ function PersonCard({
   // The last local day you both held the Cobreathe (YYYY-MM-DD), or null.
   // Shown as a quiet line in place of the old blue presence dots.
   lastCobreathed: string | null;
-  activePrayerFor: MyActivePrayerFor | null;
-  activePrayerForMe: PrayerForMe | null;
 }) {
   const [, setLocation] = useLocation();
   const color = colorFor(person.email);
@@ -189,46 +180,6 @@ function PersonCard({
   // Best streak across shared practices
   const bestStreak = Math.max(person.maxSharedStreak, ...person.sharedPractices.map(p => p.currentStreak), 0);
 
-  // CTA destination: if the user already has an active prayer for this
-  // person, the button links to the detail page; otherwise it opens the
-  // authoring flow. Matches the button on the person profile detail page.
-  const prayerHref = iPrayFor
-    ? `/pray-for/${encodeURIComponent(person.email)}`
-    : `/pray-for/new/${encodeURIComponent(person.email)}`;
-
-  // Active prayer card details — calendar-day math so "Day 2" shows the
-  // morning after a prayer was started, not after a full 24h elapses.
-  function calendarPrayerWindow(startedAt: string, expiresAt: string, durationDays?: number) {
-    const started = new Date(startedAt);
-    const expires = new Date(expiresAt);
-    const nowD = new Date();
-    const todayStart = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate());
-    const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
-    const expiresStart = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-    const totalDays = durationDays
-      ?? Math.max(1, Math.round((expiresStart.getTime() - startedStart.getTime()) / 86400000));
-    const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
-    const day = Math.max(1, Math.min(totalDays, daysElapsed + 1));
-    const daysLeft = Math.max(0, Math.round((expiresStart.getTime() - todayStart.getTime()) / 86400000));
-    return { day, daysLeft, totalDays };
-  }
-
-  let prayerDayLabel = "";
-  let daysRemaining = 0;
-  if (activePrayerFor) {
-    const w = calendarPrayerWindow(activePrayerFor.startedAt, activePrayerFor.expiresAt, activePrayerFor.durationDays);
-    prayerDayLabel = `Day ${w.day} of ${w.totalDays}`;
-    daysRemaining = w.daysLeft;
-  }
-
-  let prayerForMeDayLabel = "";
-  let prayerForMeDaysRemaining = 0;
-  if (activePrayerForMe) {
-    const w = calendarPrayerWindow(activePrayerForMe.startedAt, activePrayerForMe.expiresAt);
-    prayerForMeDayLabel = `Day ${w.day} of ${w.totalDays}`;
-    prayerForMeDaysRemaining = w.daysLeft;
-  }
-
   return (
     <Link href={`/people/${encodeURIComponent(person.email)}`} className="block">
       <motion.div
@@ -264,22 +215,6 @@ function PersonCard({
                     style={{ backgroundColor: "#5C7A5F" }}
                   />
                 )}
-                {iPrayFor && (
-                  <span
-                    title="You're praying for them"
-                    className="text-[11px] flex-shrink-0"
-                    style={{ opacity: 0.75 }}
-                  >
-                    🙏
-                  </span>
-                )}
-                {prayForMe && (
-                  <span
-                    title={`${person.name.split(" ")[0]} is praying for you`}
-                    className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: "#C19A3A", boxShadow: "0 0 6px rgba(193,154,58,0.6)" }}
-                  />
-                )}
                 {isFellow && (
                   <span
                     title="Connected as Fellows"
@@ -298,103 +233,7 @@ function PersonCard({
               <RotatingLine lines={flapLines} />
             </div>
             </div>
-
-            {/* Right: prayer CTA. Stop-propagation so tapping the button
-                doesn't also navigate to the person's profile. */}
-            <div className="shrink-0 pt-0.5">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setLocation(prayerHref);
-                }}
-                className="px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  background: iPrayFor ? "rgba(46,107,64,0.2)" : "#2D5E3F",
-                  border: iPrayFor ? "1px solid rgba(46,107,64,0.45)" : "1px solid rgba(46,107,64,0.6)",
-                  color: iPrayFor ? "#A8C5A0" : "#F0EDE6",
-                }}
-              >
-                🙏 {iPrayFor ? "View prayer" : "Write a prayer"}
-              </button>
-            </div>
           </div>
-
-          {/* Active-prayer card — shown inline when you're currently
-              praying for this person. Tapping goes to the detail page, same
-              target as the "View prayer" button above. */}
-          {activePrayerFor && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setLocation(prayerHref);
-              }}
-              className="mt-3 w-full text-left rounded-xl px-3 py-2.5 transition-opacity hover:opacity-90"
-              style={{
-                background: "rgba(46,107,64,0.18)",
-                border: "1px solid rgba(46,107,64,0.35)",
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] mb-1" style={{ color: "rgba(168,197,160,0.6)" }}>
-                    You're praying 🙏
-                  </p>
-                  <p
-                    className="text-[13px] italic truncate"
-                    style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
-                  >
-                    {activePrayerFor.prayerText}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-semibold" style={{ color: "#A8C5A0" }}>
-                    {daysRemaining} {daysRemaining === 1 ? "day" : "days"} left
-                  </p>
-                  <p className="text-[9px]" style={{ color: "rgba(168,197,160,0.5)" }}>
-                    {prayerDayLabel}
-                  </p>
-                </div>
-              </div>
-            </button>
-          )}
-
-          {/* Mirror card — shown when this person is currently praying for
-              you. Warm amber accent to distinguish it from the green
-              "You're praying" card. Read-only (the text is theirs, not
-              yours to edit), so it's a div, not a button. */}
-          {activePrayerForMe && (
-            <div
-              className="mt-3 w-full rounded-xl px-3 py-2.5"
-              style={{
-                background: "rgba(193,154,58,0.1)",
-                border: "1px solid rgba(193,154,58,0.3)",
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] mb-1" style={{ color: "rgba(217,176,82,0.7)" }}>
-                    {person.name.split(" ")[0]} is praying for you 🕯️
-                  </p>
-                  <p
-                    className="text-[13px] italic truncate"
-                    style={{ color: "#E8D9B0", fontFamily: "Georgia, 'Times New Roman', serif" }}
-                  >
-                    {activePrayerForMe.prayerText}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-semibold" style={{ color: "#D9B052" }}>
-                    {prayerForMeDaysRemaining} {prayerForMeDaysRemaining === 1 ? "day" : "days"} left
-                  </p>
-                  <p className="text-[9px]" style={{ color: "rgba(217,176,82,0.55)" }}>
-                    {prayerForMeDayLabel}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     </Link>
@@ -524,58 +363,6 @@ export default function People() {
     enabled: !!user,
     staleTime: 60_000,
   });
-
-  // Subtle "pray for" indicators — both directions. Keyed by lowercase email.
-  const { data: iPrayFor = [] } = useQuery<MyActivePrayerFor[]>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user,
-  });
-  const { data: prayForMe = [] } = useQuery<PrayerForMe[]>({
-    queryKey: ["/api/prayers-for/for-me"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
-    enabled: !!user,
-  });
-  // Match the active-prayer-card filter below: on the final day (0 days
-  // left) we consider the prayer done, so the CTA resets to "Write a
-  // prayer". Otherwise a just-expired-but-unacknowledged prayer keeps
-  // saying "View prayer" even though the card beneath it disappeared.
-  const iPrayForEmails = useMemo(
-    () => {
-      const now = new Date();
-      const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const set = new Set<string>();
-      for (const p of iPrayFor) {
-        if (p.expired) continue;
-        const expires = new Date(p.expiresAt);
-        const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-        const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
-        if (daysLeft > 0) set.add(p.recipientEmail.toLowerCase());
-      }
-      return set;
-    },
-    [iPrayFor],
-  );
-  // Mirror the iPrayForEmails filter: a prayer that's on its final day
-  // (0 days left) is visually "done" even though the server hasn't
-  // marked it expired yet, so it shouldn't surface as "they're praying
-  // for you" on the people card. The /prayers-for/for-me/history feed
-  // still carries it for the manage-prayer-list backlog.
-  const prayForMeEmails = useMemo(
-    () => {
-      const now = new Date();
-      const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const set = new Set<string>();
-      for (const p of prayForMe) {
-        const expires = new Date(p.expiresAt);
-        const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-        const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
-        if (daysLeft > 0) set.add(p.prayerEmail.toLowerCase());
-      }
-      return set;
-    },
-    [prayForMe],
-  );
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -845,51 +632,8 @@ export default function People() {
                   <PersonCard
                     person={person}
                     isPresent={person.userId != null && presentUserIds.has(person.userId)}
-                    iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
-                    prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                     isFellow={fellowEmails.has(person.email.toLowerCase())}
                     lastCobreathed={person.userId != null ? (cobreathedByUserId[person.userId] ?? null) : null}
-                    activePrayerFor={
-                      iPrayFor.find(
-                        p => {
-                          if (p.recipientEmail.toLowerCase() !== person.email.toLowerCase()) return false;
-                          if (p.expired) return false;
-                          // Hide on the final day: "Day N of N" / "0 days left"
-                          // visually implies the commitment is done. Keeping
-                          // the card on screen with a 0-days-left chip makes
-                          // the list feel stale. We still keep the prayer in
-                          // /api/prayers-for/mine until the user explicitly
-                          // acknowledges it (so tomorrow's render resolves to
-                          // expired), but on the day of expiry we stop
-                          // surfacing it on the People page.
-                          const started = new Date(p.startedAt);
-                          const expires = new Date(p.expiresAt);
-                          const now = new Date();
-                          const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-                          const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                          const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
-                          void started;
-                          return daysLeft > 0;
-                        }
-                      ) ?? null
-                    }
-                    activePrayerForMe={
-                      prayForMe.find(
-                        p => {
-                          if (p.prayerEmail.toLowerCase() !== person.email.toLowerCase()) return false;
-                          // Hide on the final day ("0 days left / Day N of N")
-                          // — same rule as activePrayerFor above. Past prayers
-                          // still surface in the manage-prayer-list backlog
-                          // via the /prayers-for/for-me/history endpoint.
-                          const expires = new Date(p.expiresAt);
-                          const now = new Date();
-                          const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-                          const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                          const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
-                          return daysLeft > 0;
-                        }
-                      ) ?? null
-                    }
                   />
                 </div>
               );

@@ -16,9 +16,6 @@ import gatheringsRouter from "./gatherings";
 import groupsRouter from "./groups";
 import weeklyPlanContentRouter from "./weekly-plan-content";
 import bellRouter from "./bell";
-import prayerIntentionsRouter from "./prayer-intentions";
-import prayersForRouter from "./prayers-for";
-import dailyPrayerRouter from "./daily-prayer";
 import fellowsConnectRouter from "./fellows-connect";
 import walkRouter from "./walk";
 import fellowPrefsRouter from "./fellow-prefs";
@@ -77,9 +74,6 @@ const router: IRouter = Router();
 const OFFICES_ONLY_BLOCKED_PREFIXES = [
   "/groups",
   "/prayer-requests",
-  "/prayer-partner",
-  "/daily-prayer",
-  "/prayers-for",
   "/gatherings",
   // "/moments" (the social practices dashboard) is blocked, but the
   // singular "/moment/:token/*" routes are NOT — an offices-only member
@@ -148,9 +142,6 @@ router.use(gatheringsRouter);
 router.use(groupsRouter);
 router.use(weeklyPlanContentRouter);
 router.use(bellRouter);
-router.use(prayerIntentionsRouter);
-router.use(prayersForRouter);
-router.use(dailyPrayerRouter);
 router.use(fellowsConnectRouter);
 router.use(walkRouter);
 router.use(fellowPrefsRouter);

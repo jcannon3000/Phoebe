@@ -41,9 +41,6 @@ function localDay(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
-// The viewer's PRIVATE prayer list (things they keep in prayer). `personName`
-// for a person, `body` for a free-text intention; answered ones are dropped.
-type PrayerIntention = { id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean };
 // The community feed. We rotate only the requests the viewer THEMSELVES raised.
 type PrayerRequest = { id: number; body: string; isOwnRequest: boolean; isAnswered: boolean };
 
@@ -72,22 +69,16 @@ export default function PrayBreathPage() {
     [],
   );
 
-  // The two sources of "my prayer requests": my private prayer list, and the
-  // community requests I raised. Both are best-effort — if either is empty or
-  // fails, we fall back to whatever we have.
-  const { data: intentionsData } = useQuery<{ intentions: PrayerIntention[] }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: !!user,
-  });
+  // The community requests I raised — best-effort; if empty or it fails, the
+  // breath simply shows no personal prayer text.
   const { data: requests = [] } = useQuery<PrayerRequest[]>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user,
   });
 
-  // Build the rotation: my unanswered intentions first (the things I carry),
-  // then my own open community requests. Dedupe by text, drop blanks.
+  // Build the rotation from my own open community requests. Dedupe by text,
+  // drop blanks.
   const prayerTexts = useMemo(() => {
     const out: string[] = [];
     const seen = new Set<string>();
@@ -99,16 +90,12 @@ export default function PrayBreathPage() {
       seen.add(key);
       out.push(text);
     };
-    for (const i of intentionsData?.intentions ?? []) {
-      if (i.answered) continue;
-      push(i.kind === "person" ? i.personName : i.body);
-    }
     for (const r of requests) {
       if (!r.isOwnRequest || r.isAnswered) continue;
       push(r.body);
     }
     return out;
-  }, [intentionsData, requests]);
+  }, [requests]);
 
   // Record the day's breath (counts the Co-Breathe done-state) on reaching the
   // set, and log the time as a contemplation sit on finish — same as Co-Breathe,

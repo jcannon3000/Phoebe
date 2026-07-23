@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { BCP_PRAYERS, type BcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 
@@ -45,24 +44,7 @@ export default function BcpIntercessionsPage() {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<BcpPrayer | null>(null);
   const [query, setQuery] = useState("");
-  // Titles already added to the prayer list this session (drives the "Added ✓" state).
-  const [addedTitles, setAddedTitles] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
 
-  // Keep a BCP intercession on your prayer list (prayer_intentions). Store the
-  // full localized prayer — the title as a heading, then the whole text — so the
-  // actual words ride the list + slideshow, not just the label.
-  const addToList = async (prayer: BcpPrayer) => {
-    if (adding || addedTitles.has(prayer.title)) return;
-    const loc = localizeBcpPrayer(prayer, i18n.language);
-    setAdding(true);
-    try {
-      const body = loc.text?.trim() ? `${loc.title}\n\n${loc.text.trim()}` : loc.title;
-      await apiRequest("POST", "/api/prayer-intentions", { kind: "text", body });
-      setAddedTitles((s) => { const n = new Set(s); n.add(prayer.title); return n; });
-    } catch { /* leave un-added so they can retry */ }
-    finally { setAdding(false); }
-  };
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   useEffect(() => {
@@ -304,32 +286,6 @@ export default function BcpIntercessionsPage() {
               >
                 {loc.text}
               </p>
-
-              {/* Keep this intercession on your prayer list. */}
-              {(() => {
-                const isAdded = addedTitles.has(selectedPrayer.title);
-                return (
-                  <button
-                    type="button"
-                    onClick={() => addToList(selectedPrayer)}
-                    disabled={adding || isAdded}
-                    className="w-full mt-6 rounded-full py-3 text-[14px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.99] disabled:opacity-100"
-                    style={{
-                      background: isAdded ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.85)",
-                      color: "#F0EDE6",
-                      border: `1px solid ${isAdded ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.6)"}`,
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      cursor: isAdded ? "default" : "pointer",
-                    }}
-                  >
-                    {isAdded
-                      ? t("bcp_intercessions.added", { defaultValue: "Added to your prayer list ✓" })
-                      : adding
-                        ? t("common.saving", { defaultValue: "Saving…" })
-                        : t("bcp_intercessions.add_to_list", { defaultValue: "＋ Add to my prayer list" })}
-                  </button>
-                );
-              })()}
 
               <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
                 {t("bcp_intercessions.from_bcp")}

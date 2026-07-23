@@ -1037,8 +1037,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     intercessionPrefetchRef.current = Promise.all([
       warm("/api/moments"),
       warm("/api/prayer-requests"),
-      warm("/api/prayers-for/for-me"),
-      warm("/api/prayers-for/mine"),
       warm("/api/groups/me/circle-intentions"),
     ]).catch(() => undefined);
     return intercessionPrefetchRef.current;

@@ -80,18 +80,8 @@ export default function BlessSubScreen({
     queryFn: () => apiRequest("GET", `/api/bless?weekStart=${weekStart}`),
     staleTime: 30_000,
   });
-  const recipientsQ = useQuery<Array<{ recipientName: string | null; expired: boolean }>>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    staleTime: 60_000,
-  });
-
   const intentions = blessQ.data?.intentions ?? [];
   const reviewedAt = blessQ.data?.reviewedAt ?? null;
-  const recipients = (recipientsQ.data ?? [])
-    .filter((r) => !r.expired && r.recipientName)
-    .map((r) => r.recipientName as string)
-    .slice(0, 6);
   const doneCount = intentions.filter((i) => i.doneAt).length;
 
   const invalidate = () => {
@@ -242,15 +232,6 @@ export default function BlessSubScreen({
           placeholder={t("bless.recipient", { defaultValue: "For someone (optional)" })}
           style={{ background: CHIP_OFF, border: `1px solid ${CHIP_OFF_B}`, borderRadius: 12, padding: "10px 13px", color: WARM, fontSize: 14, fontFamily: FONT, outline: "none" }}
         />
-        {recipients.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {recipients.map((name) => (
-              <button key={name} type="button" onClick={() => setFRecipient(name)} style={{ background: CHIP_OFF, border: `1px solid ${CHIP_OFF_B}`, color: SAGE, borderRadius: 999, padding: "5px 11px", fontSize: 12, fontFamily: FONT, cursor: "pointer" }}>
-                {name}
-              </button>
-            ))}
-          </div>
-        )}
         <input
           type="time"
           value={fReminder}
@@ -330,11 +311,6 @@ export default function BlessSubScreen({
             </button>
           ))}
         </div>
-        {recipients.length > 0 && (
-          <p style={{ color: SAGE, fontSize: 13, fontFamily: SERIF, fontStyle: "italic", margin: 0, lineHeight: 1.5 }}>
-            {t("bless.recipient_hint", { defaultValue: "On your prayer list: {{names}} — send encouragement?", names: recipients.slice(0, 3).join(", ") })}
-          </p>
-        )}
         <button type="button" onClick={() => openAdd()} style={{ background: CTA, border: "none", color: WARM, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
           {t("bless.add", { defaultValue: "Add a blessing" })}
         </button>

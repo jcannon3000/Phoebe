@@ -828,47 +828,6 @@ export async function sendPushToUsers(userIds: number[], payload: PushPayload): 
     sendPushToUser(id, payload).then(() => undefined).catch(() => undefined));
 }
 
-// Names the sender so the recipient knows who started the prayer. Tap
-// deep-links into the prayers-for-me slideshow with the tapped prayer
-// focused — the deck starts on this prayer and then walks through every
-// other active prayer someone is currently offering for them. Previously
-// the link opened a single-prayer modal on /prayer-list which buried any
-// other concurrent prayers in the list below.
-export function sendPrayerForYouPush(
-  recipientUserId: number,
-  senderName: string,
-  prayerForId: number,
-) {
-  const firstName = (senderName || "Someone").split(/\s+/)[0] || "Someone";
-  return sendPushToUser(recipientUserId, {
-    title: `${firstName} is praying for you`,
-    body: "Open Phoebe to see.",
-    path: `/prayer-mode?queue=prayers-for-me&focus=${prayerForId}`,
-    threadId: "prayer-for-you",
-    sound: PHOEBE_SOUND_HIGH,
-  });
-}
-
-// "{Name} shared their prayer for the day." Fires when a prayer partner
-// shares their daily prayer. This is the ONLY notification in the prayer-
-// dialogue loop — giving attention to someone's prayer (the "amen"-less,
-// 3-second view) deliberately does NOT push the author; only a fresh share
-// does. The deep link opens the day's prayer so the partner can sit with it.
-export function sendDailyPrayerPush(
-  partnerUserId: number,
-  senderName: string,
-  dailyPrayerId: number,
-) {
-  const firstName = (senderName || "Your partner").split(/\s+/)[0] || "Your partner";
-  return sendPushToUser(partnerUserId, {
-    title: `${firstName} shared their prayer for the day`,
-    body: "Open Phoebe to pray it with them.",
-    path: `/prayer-partner?focus=${dailyPrayerId}`,
-    threadId: "prayer-dialogue",
-    sound: PHOEBE_SOUND_HIGH,
-  });
-}
-
 // "How did it go?" — the life-event follow-up, fired the evening of the event
 // day by the cron. Taps into the request so the owner can post an update.
 export function sendLifeEventFollowUpPush(

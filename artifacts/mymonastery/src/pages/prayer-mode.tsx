@@ -31,9 +31,7 @@ import {
   SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
-import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 import { useUnseenNews } from "@/components/NewsClosingSlide";
-import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import { OfficeCloseEvents } from "@/components/OfficeCloseEvents";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -158,7 +156,7 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-from" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention" | "prompts" | "pause";
+  kind: "intercession" | "request" | "ask-request" | "pray-for-suggest" | "circle-intention" | "pause";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -201,18 +199,6 @@ interface PrayerSlide {
   // feed-scoped or single-community intercessions where the chip
   // would be redundant.
   groups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
-  // prayer-for specific
-  prayerForId?: number;
-  recipientName?: string;
-  recipientAvatarUrl?: string | null;
-  dayLabel?: string;
-  // prayer-from specific — someone is praying FOR the viewer (the inverse
-  // of prayer-for). The author fields below carry the pray-er's name +
-  // avatar; `fullText` carries the prayer body; `prayerFromId` is the
-  // /api/prayers-for/for-me row id so the slide can mark it acknowledged
-  // / focused when opened from a push tap.
-  prayerFromId?: number;
-  prayingSinceLabel?: string;
   // request specific — the author's name + avatar, rendered above
   // the "Prayer Request" eyebrow so the slide feels like it's from a
   // specific person rather than a disembodied body of text.
@@ -393,8 +379,6 @@ function SlideContent({
   slide,
   slideKey,
   onAdvance,
-  onRenew,
-  onEnd,
   onAskSubmit,
   askSubmitting,
   suggestedFriends,
@@ -411,8 +395,6 @@ function SlideContent({
   // time we move to a new slide.
   slideKey: string | number;
   onAdvance: () => void;
-  onRenew: (id: number, days: 3 | 7) => void;
-  onEnd: (id: number) => void;
   onAskSubmit: (body: string, durationDays: number) => void;
   askSubmitting: boolean;
   // Populated only on the "pray-for-suggest" final slide — a list of
@@ -645,19 +627,6 @@ function SlideContent({
 
   // ── Prayer prompts — seven topics to lift up, written in place. Sits right
   // before the pause slide (was a closing intercept). Continue → the pause.
-  if (slide.kind === "prompts") {
-    // Vertically center the prompts (the slide container sits at flex-start with
-    // top padding, so reserve most of the height + center inside — same trick as
-    // the pause slide below).
-    return (
-      <div
-        className="w-full flex flex-col justify-center"
-        style={{ minHeight: "calc(100dvh - 32dvh)" }}
-      >
-        <PrayerPromptsSlide onContinue={onAdvance} />
-      </div>
-    );
-  }
 
   // ── Open pause — invitation to bring anything else to prayer.
   // Sits as the final slide before the closing summary so the user
@@ -748,212 +717,6 @@ function SlideContent({
           or continue with office <span aria-hidden>→</span>
         </button>
       </div>
-    );
-  }
-
-  // ── Expired-prayer renewal prompt — shown instead of a normal slide ──────
-  if (slide.kind === "prayer-for-expired" && slide.prayerForId != null) {
-    return (
-      <div className="w-full flex flex-col items-center text-center gap-5">
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
-        >
-          Prayer ended
-        </p>
-        <p
-          className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
-        >
-          Your prayer for {slide.recipientName} has ended.
-        </p>
-        <div className="flex flex-col gap-3 w-full max-w-xs mt-2">
-          <button
-            onClick={() => onRenew(slide.prayerForId!, 7)}
-            className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ background: "var(--oh-cta, #2D5E3F)", color: "var(--oh-ink, #F0EDE6)" }}
-          >
-            Pray for another 7 days
-          </button>
-          <button
-            onClick={() => onEnd(slide.prayerForId!)}
-            className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
-            style={{
-              background: "rgba(var(--ot-mist, 200,212,192),0.06)",
-              border: "1px solid rgba(var(--ot-green, 46,107,64),0.25)",
-              color: "var(--oh-sage, #8FAF96)",
-            }}
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Active "prayer for someone" slide ───────────────────────────────────
-  if (slide.kind === "prayer-for") {
-    return (
-      <div className="w-full flex flex-col items-center text-center gap-5">
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
-        >
-          Praying for
-        </p>
-        {slide.recipientAvatarUrl ? (
-          <img
-            src={slide.recipientAvatarUrl}
-            alt={slide.recipientName}
-            className="w-16 h-16 rounded-full object-cover"
-            style={{ border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)" }}
-          />
-        ) : (
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold"
-            style={{ background: "#1A4A2E", color: "var(--oh-fern, #A8C5A0)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.3)" }}
-          >
-            {(slide.recipientName ?? "")
-              .split(" ")
-              .slice(0, 2)
-              .map(w => w[0]?.toUpperCase() ?? "")
-              .join("")}
-          </div>
-        )}
-        <p
-          className="text-[22px] leading-[1.4] font-medium"
-          style={{ color: "var(--oh-ink2, #E8E4D8)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}
-        >
-          {slide.recipientName}
-        </p>
-
-        {slide.fullText && (
-          <div
-            className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
-            style={{
-              background: "rgba(var(--ot-green, 46,107,64),0.12)",
-              border: "1px solid rgba(var(--ot-green, 46,107,64),0.15)",
-            }}
-          >
-            {(() => {
-              const fit = fitPrayerText(slide.fullText);
-              return (
-                <p
-                  className="italic whitespace-pre-wrap"
-                  style={{
-                    color: "var(--oh-mist, #C8D4C0)",
-                    fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)",
-                    fontSize: `${fit.size}px`,
-                    lineHeight: fit.leading,
-                  }}
-                >
-                  {slide.fullText}
-                </p>
-              );
-            })()}
-          </div>
-        )}
-
-        <p
-          className="text-[12px] italic"
-          style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)" }}
-        >
-          Hold {slide.recipientName?.split(" ")[0]} in prayer today.
-        </p>
-
-        {slide.dayLabel && (
-          <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.35)" }}>
-            {slide.dayLabel}
-          </p>
-        )}
-
-        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
-      </div>
-    );
-  }
-
-  // ── "Someone is praying for you" slide ──────────────────────────────────
-  // Mirror of the prayer-for slide but flipped: avatar + name are the
-  // pray-er, not the recipient. No Amen — the viewer is the one being
-  // held, so we just offer a "Continue →" advance (same pattern as the
-  // pause slide). Built for the queue=prayers-for-me deck the push tap
-  // opens; multiple slides flow naturally if more than one person is
-  // currently praying.
-  if (slide.kind === "prayer-from") {
-    const youInitials = (user?.name ?? "")
-      .split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-    return (
-      // Your prayer request, being held — fades up, themed BLUE (distinct from
-      // the green "pray for others" slides), and shows YOUR picture since it's
-      // your request. The person praying is credited in the caption below.
-      <motion.div
-        className="w-full flex flex-col items-center text-center gap-5"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(150,178,214,0.6)" }}
-        >
-          Praying for you
-        </p>
-        {user?.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt={user?.name ?? "You"}
-            className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
-          />
-        ) : (
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
-            style={{ background: "#1A3A5E", color: "#A8C8E8" }}
-          >
-            {youInitials}
-          </div>
-        )}
-
-        {slide.fullText && (
-          <div
-            className="w-full rounded-2xl px-6 py-5 text-left mt-1"
-            style={{
-              background: "rgba(96,141,209,0.12)",
-              border: "1px solid rgba(96,141,209,0.22)",
-            }}
-          >
-            {(() => {
-              const fit = fitPrayerText(slide.fullText);
-              return (
-                <p
-                  className="italic whitespace-pre-wrap"
-                  style={{
-                    color: "#CDD9EC",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontSize: `${fit.size}px`,
-                    lineHeight: fit.leading,
-                  }}
-                >
-                  {slide.fullText}
-                </p>
-              );
-            })()}
-          </div>
-        )}
-
-        {slide.authorName && (
-          <p className="text-[12px]" style={{ color: "rgba(150,178,214,0.7)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)" }}>
-            {slide.authorName} is praying for you{slide.prayingSinceLabel ? ` · ${slide.prayingSinceLabel}` : ""}
-          </p>
-        )}
-
-        <button
-          onClick={onAdvance}
-          className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2E5C8F", color: "var(--oh-ink, #F0EDE6)" }}
-        >
-          Continue →
-        </button>
-      </motion.div>
     );
   }
 
@@ -2207,7 +1970,6 @@ function PrayerCompletedSlide({
     add(rhythm.readingActive, rhythm.readingDone, getPracticeSlot("reading"), { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading", { defaultValue: "Log what you read" }), href: "/reading-log" });
     add(rhythm.walkActive, rhythm.walkDone, getPracticeSlot("walk"), { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }), href: "/walk-log" });
     add(rhythm.podcastsActive, rhythm.podcastsDone, "afternoon", { emoji: "🎙️", title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }), blurb: t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }), href: "/podcast-log" });
-    add(rhythm.prayerListActive, rhythm.prayerListDone, "anytime", { emoji: "🕊️", title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }), blurb: t("rhythm.blurb_prayer_list", { defaultValue: "Pray through your list" }), href: "/intentions?pray=1" });
     add(rhythm.eveningActive, rhythm.eveningDone, "evening", { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" });
     add(rhythm.examenActive, rhythm.examenDone, "evening", { emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), href: "/examen" });
     if (cands.length === 0) return null;
@@ -2546,13 +2308,6 @@ export default function PrayerModePage() {
     // Plays the new intercessions on the viewer's subscribed feeds
     // since their previous digest.
     if (v === "feed-digest") return "feed-digest";
-    // "{Name} is praying for you" push tap — plays every active prayer
-    // someone is currently offering for the viewer, with the tapped one
-    // first (via ?focus=<prayerForId>). Before this, the push went to a
-    // single-prayer modal on /prayer-list, which surfaced only the one
-    // prayer the notification pointed at; if multiple people had started
-    // prayers in close succession the rest were buried in the list.
-    if (v === "prayers-for-me") return "prayers-for-me";
     // queue=feed + ?slug=… — walks every active intercession of a
     // single feed using the canonical intercession-slide template.
     // Opened from the dashboard FeedPrayerCard's "Begin praying" CTA
@@ -2568,8 +2323,8 @@ export default function PrayerModePage() {
     const v = new URLSearchParams(window.location.search).get("slug");
     return v && v.length > 0 ? v : null;
   })();
-  // Focused row id (any queue, but currently only used by
-  // queue=prayers-for-me to lead with the prayer the user just tapped).
+  // Focused row id (any queue) — used to lead the deck with a specific
+  // tapped item (e.g. a request via ?focus=<requestId>).
   const focusId = (() => {
     if (typeof window === "undefined") return null;
     const v = new URLSearchParams(window.location.search).get("focus");
@@ -2721,25 +2476,6 @@ export default function PrayerModePage() {
     staleTime: 30_000,
   });
 
-  // Prayers OTHERS are offering for the viewer — only fetched when
-  // opened via queue=prayers-for-me (from the "{Name} is praying for
-  // you" push). Same shape as the for-me list on /prayer-list, used
-  // here to build one slide per active prayer.
-  const prayersForMeQuery = useQuery<PrayerForMe[]>({
-    queryKey: ["/api/prayers-for/for-me"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
-    enabled: !!user && queueMode === "prayers-for-me",
-    staleTime: 60_000,
-  });
-  const prayersForMeData = prayersForMeQuery.data ?? [];
-
-  const myPrayersForQuery = useQuery<MyActivePrayerFor[]>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user && !officesOnly,
-  });
-  const myPrayersFor = myPrayersForQuery.data ?? [];
-
   // Friends list — used by the "pray for someone" final slide that
   // appears after the main list when the viewer already has an active
   // prayer request of their own. We filter out anyone they're already
@@ -2756,16 +2492,6 @@ export default function PrayerModePage() {
     enabled: !!user && !officesOnly,
   });
   const circleIntentionsData = circleIntentionsQuery.data;
-
-  // The viewer's PRIVATE prayer list (prayer_intentions). These ride the office
-  // slideshow as "Your Prayer" slides — exactly like the viewer's own requests —
-  // so a prayer kept on your list shows up in the walk just the same, only
-  // private to you. (See the own-intentions map in the slides array below.)
-  const prayerIntentionsQuery = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean; shared: boolean; sharedRequestId: number | null }> }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: !!user && !officesOnly,
-  });
 
   // (The legacy /api/prayer-feeds/today query lived here. Prayer feeds
   // are now a flat, ongoing list of intercessions — sharedMomentsTable
@@ -2792,16 +2518,6 @@ export default function PrayerModePage() {
     queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
     enabled: !!user,
     staleTime: 60_000,
-  });
-
-  const renewMutation = useMutation({
-    mutationFn: ({ id, days }: { id: number; days: 3 | 7 }) =>
-      apiRequest("POST", `/api/prayers-for/${id}/renew`, { durationDays: days }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] }),
-  });
-  const endMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/prayers-for/${id}/end`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] }),
   });
 
   // Creating a prayer request from the final slide ("How can the community
@@ -2868,7 +2584,6 @@ export default function PrayerModePage() {
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
     queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] });
     queryClient.invalidateQueries({ queryKey: ["/api/groups/me/circle-intentions"] });
     queryClient.invalidateQueries({ queryKey: ["/api/prayer-streak"] });
     queryClient.invalidateQueries({ queryKey: ["/api/prayer-streak/co-prayers-week"] });
@@ -2931,23 +2646,6 @@ export default function PrayerModePage() {
     return [...nonFeed, ...deck];
   })();
 
-  // "Pray for someone" records, filtered to match the People-page CTA:
-  // we drop server-expired prayers AND prayers on their final day (0 days
-  // left). A prayer on Day N of N already reads "done" on /people — we
-  // don't want the slideshow to keep showing it, or to tack on a renewal
-  // prompt for something that was meant to quietly reset.
-  const prayerForCutoff = (() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), n.getDate());
-  })();
-  const activePrayersFor = myPrayersFor.filter(p => {
-    if (p.expired) return false;
-    const expires = new Date(p.expiresAt);
-    const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-    const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - prayerForCutoff.getTime()) / 86400000));
-    return daysLeft > 0;
-  });
-
   // Reciprocity rule: others' prayer requests are only surfaced to
   // viewers who have an open prayer request of their own. The slideshow
   // (The "ask-request" closing nudge is removed, so we no longer compute a
@@ -2973,43 +2671,7 @@ export default function PrayerModePage() {
   const momentsById = new Map((momentsData?.moments ?? []).map(m => [m.id, m]));
   const requestsById = new Map(prayerRequests.map(r => [r.id, r]));
 
-  const slides: PrayerSlide[] = queueMode === "prayers-for-me"
-    ? (() => {
-        // Build one slide per active "someone is praying for me" entry,
-        // newest first (the API already sorts startedAt DESC). If the
-        // push tap provided ?focus=<prayerForId>, move that one to the
-        // head of the deck so the tapped prayer reads first.
-        const built: PrayerSlide[] = prayersForMeData.map((p): PrayerSlide => {
-          const then = new Date(p.startedAt);
-          const days = Number.isFinite(then.getTime())
-            ? Math.floor((Date.now() - then.getTime()) / 86400000)
-            : 0;
-          const sinceLabel =
-            days <= 0 ? "Since today"
-            : days === 1 ? "Since yesterday"
-            : days < 7 ? `Since ${then.toLocaleDateString(undefined, { weekday: "long" })}`
-            : `${days} days`;
-          return {
-            kind: "prayer-from",
-            text: p.prayerName,
-            attribution: "",
-            fullText: p.prayerText,
-            prayerFromId: p.id,
-            authorName: p.prayerName,
-            authorAvatarUrl: p.prayerAvatarUrl,
-            prayingSinceLabel: sinceLabel,
-          };
-        });
-        if (focusId != null) {
-          const i = built.findIndex(s => s.prayerFromId === focusId);
-          if (i > 0) {
-            const [hit] = built.splice(i, 1);
-            if (hit) built.unshift(hit);
-          }
-        }
-        return built;
-      })()
-    : queueMode === "feed-digest"
+  const slides: PrayerSlide[] = queueMode === "feed-digest"
     ? (feedDigestData?.entries ?? []).map((e): PrayerSlide => ({
         // The Tuesday digest's new intercessions, played as a focused
         // walk. Built as plain intercession slides so the Take-action
@@ -3348,45 +3010,6 @@ export default function PrayerModePage() {
         adoptCount: r.adoptCount ?? 0,
         alreadyPrayedToday: r.myAmenedToday === true,
       })),
-    // The viewer's OWN private prayer-list items (prayer_intentions) ride the
-    // deck as "Your Prayer" slides too — same treatment as their own requests
-    // (no amen / pray-along controls; advance() skips the amen POST because
-    // there's no requestId). Only purely-private items: a shared intention
-    // already appears via its linked prayer_request above, so exclude those.
-    ...((prayerIntentionsQuery.data?.intentions ?? [])
-      .filter((it) => !it.answered && !it.shared && it.sharedRequestId == null)
-      .map((it): PrayerSlide => ({
-        kind: "request",
-        text: it.kind === "person" ? (it.personName || "Someone") : it.body,
-        intention: it.kind === "person" && it.body ? it.body : null,
-        attribution: "",
-        isOwnPrayer: true,
-        alreadyPrayedToday: false,
-      }))),
-    ...activePrayersFor.map((p): PrayerSlide => {
-      // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
-      // this morning rather than still "Day 1".
-      const started = new Date(p.startedAt);
-      const nowD = new Date();
-      const todayStart = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate());
-      const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
-      const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
-      const day = Math.max(1, Math.min(p.durationDays, daysElapsed + 1));
-      return {
-        kind: "prayer-for",
-        text: p.recipientName,
-        attribution: "",
-        fullText: p.prayerText,
-        prayerForId: p.id,
-        recipientName: p.recipientName,
-        recipientAvatarUrl: p.recipientAvatarUrl,
-        dayLabel: `Day ${day} of ${p.durationDays}`,
-      };
-    }),
-    // Expired "pray-for" entries deliberately don't surface here anymore.
-    // Earlier we showed a renewal-prompt slide; the quieter, expected
-    // behaviour (and what /people does) is to just let the prayer end.
-    // The user can renew from the profile page if they want to continue.
   ];
 
   // ?focus=<requestId> — the prayer-hands button on a prayer-list card opens
@@ -3421,13 +3044,9 @@ export default function PrayerModePage() {
   // `suggestedFriends` as a prop (the type signature spans several
   // slide kinds, even though we no longer push a suggester slide).
   // Filtering cost is trivial.
-  const prayingForEmails = new Set(
-    activePrayersFor.map(p => p.recipientEmail.toLowerCase())
-  );
   const viewerEmail = (user?.email ?? "").toLowerCase();
   const suggestedFriends = friends.filter(f =>
-    f.email.toLowerCase() !== viewerEmail &&
-    !prayingForEmails.has(f.email.toLowerCase())
+    f.email.toLowerCase() !== viewerEmail
   );
 
   // The ask-request nudge + the closing pause are the daily
@@ -3435,9 +3054,8 @@ export default function PrayerModePage() {
   // N waiting requests" deck — the home card counts exactly those
   // requests, so the deck ends on the last one and goes straight to
   // the closing summary, with no trailing nudge or breath. Same shape
-  // for queue=prayers-for-me (notification → see who's praying for you,
-  // not a moment to make a new ask).
-  if (queueMode !== "new" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
+  // (queue=feed is likewise a focused deck with no trailing nudge.)
+  if (queueMode !== "new" && queueMode !== "feed") {
     // The "Add a prayer" closing nudge slide (kind: "ask-request") is REMOVED
     // per request — the office slideshow no longer ends on an empty add-a-prayer
     // button. The viewer's OWN active prayers render INLINE in the request block
@@ -3453,15 +3071,6 @@ export default function PrayerModePage() {
       text: "",
       attribution: "",
     });
-    // Seven prayer-topic prompts ("anything to lift up?"), written in place.
-    // This is the LAST slide — it comes AFTER the pause, right before the walk
-    // ends (heads into the closing summary / next practice). Its Skip/Continue
-    // advances out of the slideshow.
-    slides.push({
-      kind: "prompts",
-      text: "",
-      attribution: "",
-    });
   }
 
   // Pilot is personal-only: strip every COMMUNITY slide from the walk (group /
@@ -3474,9 +3083,6 @@ export default function PrayerModePage() {
       const isCommunity =
         s.kind === "intercession" ||
         s.kind === "circle-intention" ||
-        s.kind === "prayer-for" ||
-        s.kind === "prayer-from" ||
-        s.kind === "prayer-for-expired" ||
         s.kind === "ask-request" ||
         s.kind === "pray-for-suggest" ||
         (s.kind === "request" && !s.isOwnPrayer);
@@ -3511,21 +3117,16 @@ export default function PrayerModePage() {
     if (queueMode === "feed") {
       return feedIntercessionsQuery.isSuccess && feedMetaQuery.isSuccess;
     }
-    if (queueMode === "prayers-for-me") {
-      return prayersForMeQuery.isSuccess;
-    }
     if (queueMode === "feed-digest") {
       return feedDigestQuery.isSuccess;
     }
     // Default / queue=new / queue=parish-weekly all build slides off
-    // the daily queries (intercessions, requests, prayers-for, circle
-    // intentions). Parish-weekly additionally needs its own list.
+    // the daily queries (intercessions, requests, circle intentions).
+    // Parish-weekly additionally needs its own list.
     return (
       momentsQuery.isSuccess &&
       prayerRequestsQuery.isSuccess &&
-      myPrayersForQuery.isSuccess &&
       circleIntentionsQuery.isSuccess &&
-      (officesOnly || prayerIntentionsQuery.isSuccess) &&
       (queueMode !== "parish-weekly" || parishWeeklyQuery.isSuccess)
     );
   })();
@@ -3595,7 +3196,7 @@ export default function PrayerModePage() {
     const focusedLeads =
       (focusId != null && captured[0]?.kind === "request" && captured[0]?.requestId === focusId) ||
       (focusMomentToken != null && captured[0]?.kind === "intercession" && captured[0]?.momentToken === focusMomentToken);
-    if (!focusedLeads && !seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
+    if (!focusedLeads && !seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "feed") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {
@@ -3758,7 +3359,7 @@ export default function PrayerModePage() {
     // for queue=feed reflects feedIntercessionsQuery alone.
     const queriesSettled = officesOnly
       ? dataReady
-      : !!(momentsData && prayerRequests && myPrayersFor);
+      : !!(momentsData && prayerRequests);
     if (displaySlides.length === 0 && queriesSettled) {
       if (seamlessFlow || queueMode === "feed") {
         // Feed walks (and seamless office handoffs) never show the
@@ -3769,7 +3370,7 @@ export default function PrayerModePage() {
         toClosing();
       }
     }
-  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, officesOnly, dataReady, seamlessFlow, queueMode, closingOnly, finishHref, setLocation]);
+  }, [displaySlides.length, momentsData, prayerRequests, officesOnly, dataReady, seamlessFlow, queueMode, closingOnly, finishHref, setLocation]);
 
   // Focused-queue gating-query failure → bail home instead of spinning
   // forever. dataReady only flips on isSuccess, so if the queue's source
@@ -3782,8 +3383,7 @@ export default function PrayerModePage() {
   // query; the default walk degrades to an empty closing recap instead.
   const focusedQueueErrored =
     (queueMode === "feed" && (feedMetaQuery.isError || feedIntercessionsQuery.isError)) ||
-    (queueMode === "feed-digest" && feedDigestQuery.isError) ||
-    (queueMode === "prayers-for-me" && prayersForMeQuery.isError);
+    (queueMode === "feed-digest" && feedDigestQuery.isError);
   useEffect(() => {
     if (focusedQueueErrored) setLocation(finishHref);
   }, [focusedQueueErrored, finishHref, setLocation]);
@@ -4230,7 +3830,6 @@ export default function PrayerModePage() {
       ["/api/moments"],
       ["/api/prayer-requests"],
       ["/api/prayer-requests/last-mine"],
-      ["/api/prayers-for/mine"],
       ["/api/groups/me/circle-intentions"],
       ["/api/prayer-streak"],
       ["/api/prayer-streak/co-prayers-week"],
@@ -4552,14 +4151,6 @@ export default function PrayerModePage() {
               slide={slide}
               slideKey={index}
               onAdvance={advance}
-              onRenew={(id, days) => {
-                renewMutation.mutate({ id, days });
-                advance();
-              }}
-              onEnd={(id) => {
-                endMutation.mutate(id);
-                advance();
-              }}
               onAskSubmit={(body, durationDays) => {
                 createRequestMutation.mutate({ body, durationDays }, { onSuccess: () => advance() });
               }}

@@ -13,7 +13,6 @@ import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
-import type { PrayerForMe, MyActivePrayerFor } from "@/components/pray-for-them";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -59,16 +58,6 @@ type Moment = {
   prayerFeedId?: number | null;
 };
 
-// A private prayer-list item (prayer_intentions) — text or a person.
-type PrayerIntention = {
-  id: number;
-  kind: "text" | "person";
-  personName: string;
-  body: string;
-  answered: boolean;
-  shared: boolean;
-};
-
 type PrayerRequest = {
   id: number;
   body: string;
@@ -103,46 +92,13 @@ type PrayerRequest = {
 // `kind`. Keeps state simple (`detail` is just one field on the page) and
 // lets the close-button + backdrop chrome live in one place.
 type DetailTarget =
-  | { kind: "request"; id: number }
-  | { kind: "prayer-for"; id: number }
-  | { kind: "prayer-from"; id: number };
+  | { kind: "request"; id: number };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 function stripEmoji(s: string): string {
   // eslint-disable-next-line no-misleading-character-class
   return s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
-}
-
-function formatPrayingSince(iso: string): string {
-  const then = new Date(iso);
-  if (!Number.isFinite(then.getTime())) return "";
-  const days = Math.floor((Date.now() - then.getTime()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "Since today";
-  if (days === 1) return "Since yesterday";
-  if (days < 7) {
-    const dayName = then.toLocaleDateString(undefined, { weekday: "long" });
-    return `Since ${dayName}`;
-  }
-  return `${days} days`;
-}
-
-// Calendar-day prayer window: when does "Day N" start? Rounded to the
-// start of the day, so an evening-started prayer reads "Day 2" the next
-// morning rather than still "Day 1".
-function calendarPrayerWindow(startedAt: string, expiresAt: string, durationDays?: number) {
-  const started = new Date(startedAt);
-  const expires = new Date(expiresAt);
-  const nowD = new Date();
-  const todayStart = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate());
-  const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
-  const expiresStart = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-  const totalDays = durationDays
-    ?? Math.max(1, Math.round((expiresStart.getTime() - startedStart.getTime()) / 86400000));
-  const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
-  const day = Math.max(1, Math.min(totalDays, daysElapsed + 1));
-  const daysLeft = Math.max(0, Math.round((expiresStart.getTime() - todayStart.getTime()) / 86400000));
-  return { day, daysLeft, totalDays };
 }
 
 // Initials fallback for an avatar circle. Used by the "for-me" card when
@@ -166,7 +122,7 @@ function initials(name: string): string {
 // back button). When unfocused, the card list is clamped to ~3.5 cards
 // tall with a fade-out gradient so overflow is obviously scrollable. When
 // focused, the clamp + fade lift and every card is shown at full height.
-type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from" | "one-to-ones";
+type SectionKey = "intercessions" | "requests";
 
 // Backlog row from GET /api/moments/past-intercessions — community
 // intercessions the viewer admins that have been retired (state =
@@ -185,18 +141,6 @@ type PastIntercession = {
   createdAt: string;
   group: { id: number; name: string; slug: string } | null;
   feed: { id: number; title: string; slug: string } | null;
-};
-
-// Backlog row from GET /api/prayers-for/for-me/history. Same shape as
-// `PrayerForMe` but with the additional active/expired/acknowledged flags
-// the server adds so we can tell "still being prayed" from "this prayer
-// ran its course." The card uses a dimmed treatment for past entries so
-// the user can tell the prayer is a record, not a live state.
-type PrayerForMeHistoryRow = PrayerForMe & {
-  acknowledgedAt: string | null;
-  expired: boolean;
-  acknowledged: boolean;
-  active: boolean;
 };
 
 function SectionShell({
@@ -626,138 +570,17 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName, isPast = false 
   );
 }
 
-function PrayerForCard({ p, onOpen }: { p: MyActivePrayerFor; onOpen: () => void }) {
-  const w = calendarPrayerWindow(p.startedAt, p.expiresAt, p.durationDays);
-  return (
-    <BarCard onClick={onOpen} accent="#5C8A5F">
-      <div className="flex items-center gap-3">
-        {p.recipientAvatarUrl ? (
-          <img
-            src={p.recipientAvatarUrl}
-            alt={p.recipientName}
-            className="w-9 h-9 rounded-full object-cover shrink-0"
-            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-          />
-        ) : (
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-          >
-            {initials(p.recipientName)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
-            {p.recipientName}
-          </p>
-          <p className="text-xs italic line-clamp-1" style={{ color: "#A8C5A0", fontFamily: "Georgia, 'Times New Roman', serif" }}>
-            {p.prayerText}
-          </p>
-        </div>
-        <span className="text-[10px] font-semibold shrink-0" style={{ color: "#A8C5A0" }}>
-          Day {w.day}/{w.totalDays}
-        </span>
-      </div>
-    </BarCard>
-  );
-}
-
-function PrayerFromCard({ p, onOpen, isPast = false }: { p: PrayerForMe; onOpen: () => void; isPast?: boolean }) {
-  // Mirror the People-page "is praying for you" card: uppercase eyebrow
-  // with the pray-er's first name + candle, the actual prayer text in
-  // Playfair italic as the preview line, and the "since today / N days
-  // ago" timestamp as the small meta underneath. Before this, the card
-  // only rendered name + since, with no preview of what they were
-  // praying — the user asked for parity with the People card.
-  //
-  // `isPast` switches the warm-gold "candle is lit" palette to a calmer
-  // sage one and demotes the eyebrow from present-tense ("is praying
-  // for you") to past-tense ("prayed for you"). The card still renders
-  // the prayer text — the whole point of the backlog is letting the
-  // recipient re-read what was held, even after that specific prayer
-  // run has ended.
-  const firstName = p.prayerName.split(/\s+/)[0] || p.prayerName;
-  const preview = (p.prayerText ?? "").trim();
-  const accent = isPast ? "#5C7A5F" : "#C19A3A";
-  const bg = isPast ? "rgba(46,107,64,0.06)" : "rgba(193,154,58,0.08)";
-  const eyebrowColor = isPast ? "rgba(143,175,150,0.55)" : "rgba(217,176,82,0.75)";
-  const previewColor = isPast ? "rgba(200,212,192,0.72)" : "#E8D9B0";
-  const metaColor = isPast ? "rgba(143,175,150,0.5)" : "rgba(228,201,124,0.65)";
-  const arrowColor = isPast ? "rgba(143,175,150,0.6)" : "rgba(228,201,124,0.7)";
-  const avatarRing = isPast ? "rgba(46,107,64,0.3)" : "rgba(193,154,58,0.3)";
-  const avatarBg = isPast ? "#1A4A2E" : "#3A2E14";
-  const avatarFg = isPast ? "#A8C5A0" : "#E4C97C";
-  // Past prayers get a faded border to visually demote them from the
-  // currently-active block above.
-  const cardBorder = isPast ? "rgba(143,175,150,0.18)" : undefined;
-  return (
-    <BarCard onClick={onOpen} accent={accent} bg={bg} border={cardBorder}>
-      <div className="flex items-start gap-3">
-        {p.prayerAvatarUrl ? (
-          <img
-            src={p.prayerAvatarUrl}
-            alt={p.prayerName}
-            className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-            style={{ border: `1px solid ${avatarRing}`, opacity: isPast ? 0.78 : 1 }}
-          />
-        ) : (
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
-            style={{ background: avatarBg, color: avatarFg, opacity: isPast ? 0.78 : 1 }}
-          >
-            {initials(p.prayerName)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p
-            className="text-[9px] font-semibold uppercase tracking-[0.16em] mb-1"
-            style={{ color: eyebrowColor }}
-          >
-            {isPast ? `${firstName} prayed for you 🌿` : `${firstName} is praying for you 🕯️`}
-          </p>
-          {preview.length > 0 && (
-            <p
-              className="text-[13px] italic leading-snug"
-              style={{
-                color: previewColor,
-                fontFamily: "Georgia, 'Times New Roman', serif",
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {preview}
-            </p>
-          )}
-          <p className="text-[11px] mt-1" style={{ color: metaColor }}>
-            {isPast
-              ? `Prayed ${new Date(p.startedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-              : formatPrayingSince(p.startedAt)}
-          </p>
-        </div>
-        <span className="text-[10px] shrink-0 mt-1" style={{ color: arrowColor }}>→</span>
-      </div>
-    </BarCard>
-  );
-}
-
 // ─── Detail popup ─────────────────────────────────────────────────────────
-// A shared dialog shell that renders the expanded view for whichever card
-// the user tapped. Keeping all three variants in one component avoids
-// three near-identical backdrop+close-button copies.
+// A dialog shell that renders the expanded view for a tapped prayer-request
+// card, keeping the backdrop + close-button chrome in one place.
 
 function DetailModal({
   target,
   requests,
-  prayersFor,
-  prayersFrom,
   onClose,
 }: {
   target: DetailTarget | null;
   requests: PrayerRequest[];
-  prayersFor: MyActivePrayerFor[];
-  prayersFrom: PrayerForMe[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -824,22 +647,6 @@ function DetailModal({
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
     },
   });
-  const renewPrayerFor = useMutation({
-    mutationFn: ({ id, days }: { id: number; days: 3 | 7 }) =>
-      apiRequest("POST", `/api/prayers-for/${id}/renew`, { durationDays: days }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] });
-      onClose();
-    },
-  });
-  const endPrayerFor = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/prayers-for/${id}/end`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] });
-      onClose();
-    },
-  });
-
   // Lock body scroll while the modal is open so the page underneath
   // doesn't slide around on iOS.
   useEffect(() => {
@@ -851,10 +658,8 @@ function DetailModal({
 
   if (!target) return null;
 
-  // Resolve the record once, up front — keeps each variant block tight.
+  // Resolve the record once, up front — keeps the variant block tight.
   const req = target.kind === "request" ? requests.find(r => r.id === target.id) ?? null : null;
-  const myFor = target.kind === "prayer-for" ? prayersFor.find(p => p.id === target.id) ?? null : null;
-  const fromMe = target.kind === "prayer-from" ? prayersFrom.find(p => p.id === target.id) ?? null : null;
 
   return (
     <AnimatePresence>
@@ -1101,107 +906,6 @@ function DetailModal({
             </>
           )}
 
-          {/* ── Prayer I'm holding for someone ──────────────────────────── */}
-          {myFor && (() => {
-            const w = calendarPrayerWindow(myFor.startedAt, myFor.expiresAt, myFor.durationDays);
-            return (
-              <>
-                <div className="flex items-center gap-3 mb-4">
-                  {myFor.recipientAvatarUrl ? (
-                    <img
-                      src={myFor.recipientAvatarUrl}
-                      alt={myFor.recipientName}
-                      className="w-12 h-12 rounded-full object-cover shrink-0"
-                      style={{ border: "1px solid rgba(46,107,64,0.35)" }}
-                    />
-                  ) : (
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                    >
-                      {initials(myFor.recipientName)}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                      {myFor.recipientName}
-                    </p>
-                    <p className="text-[11px]" style={{ color: "rgba(168,197,160,0.75)" }}>
-                      Day {w.day} of {w.totalDays} · {w.daysLeft} {w.daysLeft === 1 ? "day" : "days"} left
-                    </p>
-                  </div>
-                </div>
-
-                <p
-                  className="text-base leading-relaxed italic mb-5"
-                  style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", whiteSpace: "pre-wrap" }}
-                >
-                  {myFor.prayerText}
-                </p>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => renewPrayerFor.mutate({ id: myFor.id, days: 7 })}
-                    disabled={renewPrayerFor.isPending}
-                    className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
-                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                  >
-                    🔄 Renew 7 more days
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => endPrayerFor.mutate(myFor.id)}
-                    disabled={endPrayerFor.isPending}
-                    className="py-3 px-4 rounded-xl text-sm italic disabled:opacity-40"
-                    style={{ background: "rgba(200,212,192,0.08)", color: "rgba(143,175,150,0.75)", border: "1px solid rgba(46,107,64,0.2)" }}
-                  >
-                    End prayer
-                  </button>
-                </div>
-              </>
-            );
-          })()}
-
-          {/* ── Someone is praying for me ──────────────────────────────── */}
-          {fromMe && (
-            <>
-              <div className="flex items-center gap-3 mb-4">
-                {fromMe.prayerAvatarUrl ? (
-                  <img
-                    src={fromMe.prayerAvatarUrl}
-                    alt={fromMe.prayerName}
-                    className="w-12 h-12 rounded-full object-cover shrink-0"
-                    style={{ border: "1px solid rgba(193,154,58,0.35)" }}
-                  />
-                ) : (
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                    style={{ background: "#3A2E14", color: "#E4C97C" }}
-                  >
-                    {initials(fromMe.prayerName)}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                    {fromMe.prayerName}
-                  </p>
-                  <p className="text-[11px]" style={{ color: "rgba(228,201,124,0.75)" }}>
-                    {formatPrayingSince(fromMe.startedAt)}
-                  </p>
-                </div>
-              </div>
-
-              {fromMe.prayerText && (
-                <p
-                  className="text-base leading-relaxed italic"
-                  style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", whiteSpace: "pre-wrap" }}
-                >
-                  {fromMe.prayerText}
-                </p>
-              )}
-            </>
-          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -1236,53 +940,6 @@ export default function PrayerListPage() {
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user,
   });
-
-  // The viewer's PRIVATE prayer list (prayer_intentions) — the people / things
-  // they keep in prayer, shown here alongside the community requests as "Your
-  // prayer list". Stays private until they share an item.
-  const { data: intentionsData } = useQuery<{ intentions: PrayerIntention[]; encrypted?: boolean }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: !!user,
-  });
-  const myIntentions = (intentionsData?.intentions ?? []).filter((i) => !i.answered);
-  // Only show the "encrypted" note when at-rest encryption is actually active
-  // server-side (a key is configured) — never claim it when it isn't true.
-  const listEncrypted = !!intentionsData?.encrypted;
-  const markIntentionAnswered = useMutation({
-    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-intentions/${id}`, { answered: true }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] }),
-  });
-
-  // The viewer's own PAST requests — answered, released, or expired.
-  // The live /prayer-requests feed only carries active rows (plus the
-  // owner's own expired ones), so a dedicated endpoint backs the faded
-  // "Past" backlog so answered / released prayers don't disappear.
-  const { data: prayersForMine = [] } = useQuery<MyActivePrayerFor[]>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user,
-  });
-
-  const { data: prayersForMe = [] } = useQuery<PrayerForMe[]>({
-    queryKey: ["/api/prayers-for/for-me"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
-    enabled: !!user,
-  });
-
-  // Backlog of every prayer ever offered for me — drives the "Past
-  // prayers received" section below. The user asked for past prayers
-  // not to disappear once the prayer-er's slideshow rotates past
-  // them, so they still see a record of who has held them in prayer.
-  // This endpoint includes both still-active and past entries; we
-  // filter to past on the client to avoid double-rendering anything
-  // that's already in the live "Prayers for You" section.
-  const { data: prayersForMeHistory = [] } = useQuery<PrayerForMeHistoryRow[]>({
-    queryKey: ["/api/prayers-for/for-me/history"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me/history"),
-    enabled: !!user,
-  });
-
 
   // Today's intercessions across every prayer feed the user subscribes
   // to. Together with /subscribed (below) we surface one card per feed
@@ -1419,7 +1076,7 @@ export default function PrayerListPage() {
   }, [user, authLoading, setLocation]);
 
   // Auto-open the DetailModal when arrived here via a deep link that
-  // carries `?detail=req:42` (or prayer-for / prayer-from). Used by
+  // carries `?detail=req:42`. Used by
   // push notifications — when a circle member leaves a word on
   // someone's prayer request, the push payload's `path` is
   // /prayer-list?detail=req:<id>, so tapping the notification lands
@@ -1451,8 +1108,6 @@ export default function PrayerListPage() {
           );
         } catch { /* non-fatal */ }
       }
-      else if (kind === "prayer-for") setDetail({ kind: "prayer-for", id });
-      else if (kind === "prayer-from") setDetail({ kind: "prayer-from", id });
     };
     openFromSearch(window.location.search);
     const onPop = () => openFromSearch(window.location.search);
@@ -1461,16 +1116,6 @@ export default function PrayerListPage() {
   }, []);
 
   if (authLoading || !user) return null;
-
-  // Filter each list with the same final-day rule we use elsewhere — a
-  // prayer on Day N of N is visually "done" even if the server hasn't
-  // technically marked it expired yet. Matches the People page + prayer
-  // slideshow behaviour so nothing ghosts across surfaces.
-  const activePrayersFor = prayersForMine.filter((p) => {
-    if (p.expired) return false;
-    const w = calendarPrayerWindow(p.startedAt, p.expiresAt, p.durationDays);
-    return w.daysLeft > 0;
-  });
 
   const intercessions = (momentsData?.moments ?? []).filter(
     (m) => m.templateType === "intercession"
@@ -1508,24 +1153,6 @@ export default function PrayerListPage() {
   // whether it's private (an intention) or shared with the community.
   const mySharedRequests = sortedActiveRequests.filter((r) => r.isOwnRequest);
 
-  // Past prayers (expired or acknowledged) that aren't surfaced in
-  // the live "Prayers for You" section. We compute this by filtering
-  // the history result on `active === false` so the section only ever
-  // contains the backlog rows, never a duplicate of an already-active
-  // prayer.
-  const pastPrayersForMe: PrayerForMe[] = prayersForMeHistory
-    .filter((p) => !p.active)
-    .map((p) => ({
-      id: p.id,
-      startedAt: p.startedAt,
-      expiresAt: p.expiresAt,
-      prayerText: p.prayerText,
-      prayerUserId: p.prayerUserId,
-      prayerName: p.prayerName,
-      prayerEmail: p.prayerEmail,
-      prayerAvatarUrl: p.prayerAvatarUrl,
-    }));
-
   return (
     <Layout bgPhoto={bgPhoto}>
       <div className="max-w-2xl mx-auto w-full pb-24">
@@ -1557,17 +1184,6 @@ export default function PrayerListPage() {
           </p>
         </div>
 
-        {/* Pray through your list — the primary action, ABOVE the tab toggle.
-            Routes to the main slideshow (community + your own "Your Prayer"
-            slides). Shown whenever the viewer has anything on their list. */}
-        {myIntentions.length > 0 && (
-          <Link href="/prayer-mode?reset=1" className="block mb-3">
-            <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", background: "rgba(96,140,180,0.16)", border: "1px solid rgba(96,140,180,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
-              🕊️ {t("intentions.pray_through", { defaultValue: "Pray through your list" })} →
-            </div>
-          </Link>
-        )}
-
         {/* Toggle — your private list vs the shared community list. Hidden in
             pilot (personal-only), which keeps the view on "My list". */}
         {!isPilot && (
@@ -1597,51 +1213,14 @@ export default function PrayerListPage() {
         {/* ── My list (private intentions) ─────────────────────────────── */}
         {tab === "mine" && (
           <>
-            {listEncrypted && (
-              <p className="text-[12px] mb-3 flex items-center justify-center gap-1.5" style={{ color: "rgba(143,175,150,0.75)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                <span aria-hidden>🔒</span>
-                {t("intentions.encrypted_note", { defaultValue: "Your private prayers are encrypted on our servers." })}
-              </p>
-            )}
             <Link href="/pray-request/new?dest=list" className="block mb-3">
               <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
                 ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
               </div>
             </Link>
-            {(myIntentions.length > 0 || mySharedRequests.length > 0) ? (
+            {mySharedRequests.length > 0 ? (
               <>
                 <div className="flex flex-col gap-2">
-                  {myIntentions.map((it) => {
-                    const head = it.kind === "person" ? (it.personName || "Someone") : it.body;
-                    const sub = it.kind === "person" ? it.body : "";
-                    return (
-                      <div key={it.id} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                        {/* Same shell + green accent + 🙏 as a community prayer — a prayer
-                            kept on your list reads as just another prayer; the eyebrow is
-                            the only tell that it's private to you. */}
-                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
-                        <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
-                          <span aria-hidden className="text-base flex-shrink-0">🙏</span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                              {it.shared
-                                ? t("intentions.shared_label", { defaultValue: "Shared with community" })
-                                : t("intentions.private_label", { defaultValue: "Private to you" })}
-                            </p>
-                            <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{head}</p>
-                            {sub && <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", wordBreak: "break-word" }}>{sub}</p>}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => markIntentionAnswered.mutate(it.id)}
-                            aria-label={t("intentions.answered", { defaultValue: "Answered" })}
-                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
-                            style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}
-                          >✓</button>
-                        </div>
-                      </div>
-                    );
-                  })}
                   {/* Your OWN shared/public prayers also live here, tagged
                       "Shared" — tap through to the community request detail.
                       Hidden in pilot: they link to a blocked /prayer-requests/:id
@@ -1662,13 +1241,6 @@ export default function PrayerListPage() {
                     </Link>
                   ))}
                 </div>
-                {myIntentions.length > 0 && (
-                <Link href="/intentions" className="block mt-3">
-                  <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}>
-                    {t("intentions.manage", { defaultValue: "Edit my list" })}
-                  </div>
-                </Link>
-                )}
               </>
             ) : (
               <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -1869,31 +1441,14 @@ export default function PrayerListPage() {
         })()}
         </>)}
 
-        {/* Prayers I'm praying — "prayers for others" that I committed
-            to. User asked (2026-04) for this section to be restored so
-            the prayer list surfaces all four relationships:
-            intercessions, requests, prayers-I'm-praying, prayers-for-me.
-            Each section still auto-hides when empty. */}
-        {/* "My prayers for others" and "Prayers for you" sections removed from
-            this page per request — prayers-for-you now surface as the face stack
-            on the home "Your prayer requests" section. */}
-
-        {/* Heart to Heart (1:1 prayer exchange) is hidden for now — the
-            PartnerExchange block was removed from the prayer list. */}
-
       </div>
 
-      {/* Detail popup — tap on a non-intercession card opens this.
-          We pass active + past prayers-from in the same array so the
-          modal can find the row regardless of which section was
-          tapped; they share the same shape and the modal only reads
-          fields that exist on both. */}
+      {/* Detail popup — tap on a prayer-request card (or arrive via a
+          ?detail=req:<id> deep link) opens this. */}
       {detail && (
         <DetailModal
           target={detail}
           requests={prayerRequests}
-          prayersFor={activePrayersFor}
-          prayersFrom={[...prayersForMe, ...pastPrayersForMe]}
           onClose={() => setDetail(null)}
         />
       )}

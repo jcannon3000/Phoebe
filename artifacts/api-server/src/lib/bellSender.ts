@@ -39,7 +39,6 @@ import {
 } from "./pushSender";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
-import { runDailyPrayerDeliverySender } from "./dailyPrayerDelivery";
 import { logger } from "./logger";
 import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
 import { loadFeedDigest } from "./feedDigest";
@@ -1585,8 +1584,6 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // { name: "digest",                run: runWeeklyDigestSender },
   { name: "parish-weekly",         run: runParishWeeklyRecapSender },
   { name: "retention-cleanup",     run: runRetentionCleanupSender },
-  // Heart to Hearts: release shared prayers to partners the next morning.
-  { name: "heart-to-heart-delivery", run: runDailyPrayerDeliverySender },
 ];
 
 function fireAllSenders(): void {

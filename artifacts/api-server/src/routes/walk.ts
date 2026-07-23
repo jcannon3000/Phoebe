@@ -8,7 +8,7 @@
 // Beta-gated, mirroring fellows-connect.ts (getUserId / requireBeta / areFellows).
 import { Router, type IRouter, type RequestHandler } from "express";
 import { eq, and, or, inArray, gte, sql } from "drizzle-orm";
-import { db, walkPairingsTable, walkNudgesTable, fellowsTable, fellowPrefsTable, usersTable, betaUsersTable, userMutesTable, dailyPrayersTable, prayerAttentionsTable, type WalkPairing } from "@workspace/db";
+import { db, walkPairingsTable, walkNudgesTable, fellowsTable, fellowPrefsTable, usersTable, betaUsersTable, userMutesTable, type WalkPairing } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPushToUser } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";

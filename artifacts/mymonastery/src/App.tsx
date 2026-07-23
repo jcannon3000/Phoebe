@@ -58,27 +58,6 @@ function ScrollToTopOnNavigate() {
   return null;
 }
 
-// A logged-out visitor who taps a Heart to Hearts invite link stashes the token
-// (prayer-dialogue-join) and goes off to sign in / create an account. Once
-// they're authenticated, send them back to the join page — which auto-accepts
-// the stashed invite — so the partnership actually forms. Without this the
-// invite silently dies for every brand-new invitee. (Mirrors how community
-// invites finish after signup; the join page clears the token, so no loop.)
-function PendingPrayerInviteRedirect() {
-  const { user, isLoading } = useAuthForGate();
-  const [location, setLocation] = useLocation();
-  useEffect(() => {
-    if (isLoading || !user) return;
-    if (location.startsWith("/prayer-dialogue/join/")) return;
-    let token: string | null = null;
-    try { token = localStorage.getItem("phoebe:pending-prayer-invite"); } catch { /* ignore */ }
-    if (token && /^[a-f0-9]{32}$/i.test(token)) {
-      setLocation(`/prayer-dialogue/join/${token}`);
-    }
-  }, [user, isLoading, location, setLocation]);
-  return null;
-}
-
 // Same pattern for a Fellows invite link: a logged-out visitor who opened
 // /fellow/:token went through the explainer deck, stashed the token, and went
 // off to create an account. Once authenticated, send them back to /fellow/:token
@@ -359,8 +338,6 @@ const MorningPrayerPage = lazy(() => import("./pages/morning-prayer"));
 const MomentsDashboard = lazy(() => import("./pages/moments-dashboard"));
 const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
 const PrayerListPage = lazy(() => import("./pages/prayer-list"));
-// Heart to Heart pages (prayer-partner / prayer-thread) hidden for now — their
-// routes redirect to /dashboard, so the lazy imports were removed.
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
 const DailyProgressPage = lazy(() => import("./pages/daily-progress"));
@@ -372,11 +349,8 @@ const PrayerStartPage = lazy(() => import("./pages/prayer-start"));
 const PrayerRequestDetailPage = lazy(() => import("./pages/prayer-request-detail"));
 const ActionDetailPage = lazy(() => import("./pages/action-detail"));
 const ActionNewPage = lazy(() => import("./pages/action-new"));
-const PrayerForNew = lazy(() => import("./pages/prayer-for-new"));
 const PrayerRequestNew = lazy(() => import("./pages/prayer-request-new"));
-const PrayerForDetail = lazy(() => import("./pages/prayer-for-detail"));
 const MyPrayerRequestsPage = lazy(() => import("./pages/my-prayer-requests"));
-const PrayersForMePage = lazy(() => import("./pages/prayers-for-me"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const AboutPage = lazy(() => import("./pages/about"));
 const PrivacyPage = lazy(() => import("./pages/privacy"));
@@ -395,7 +369,6 @@ const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
 const CustomizeHomeAddPage = lazy(() =>
   import("./pages/customize-home").then((m) => ({ default: m.CustomizeHomeAddPage })),
 );
-const IntentionsPage = lazy(() => import("./pages/intentions"));
 const ListeningPage = lazy(() => import("./pages/listening"));
 const ReadingLogPage = lazy(() => import("./pages/reading-log"));
 const PodcastLogPage = lazy(() => import("./pages/podcast-log"));
@@ -433,7 +406,6 @@ const SeasonPage = lazy(() => import("./pages/season"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
 const CommunityJoinPage = lazy(() => import("./pages/community-join"));
-const PrayerDialogueJoinPage = lazy(() => import("./pages/prayer-dialogue-join"));
 const PlanSharePage = lazy(() => import("./pages/plan-share"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
@@ -622,8 +594,6 @@ const PERSISTED_QUERY_KEYS = [
   "/api/moments",
   "/api/rituals",
   "/api/me/service-schedules",
-  "/api/prayers-for/mine",
-  "/api/prayers-for/for-me",
   "/api/groups/me/circle-intentions",
   "/api/me/actions",
 ];
@@ -731,9 +701,7 @@ const PARISH_DENIED_PATHS = [
   "/community",
   "/prayer-list",
   "/my-prayer-requests",
-  "/prayers-for-me",
   "/prayer-requests",
-  "/pray-for",
   "/pray-request",
   "/practices",
   "/moment",
@@ -751,7 +719,7 @@ const PARISH_DENIED_PATHS = [
 // messages) to the pilot home. No-op entirely when pilot isn't active.
 const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
-  "/prayer-list", "/intentions", "/pray-request/new",
+  "/prayer-list", "/pray-request/new",
   "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
   "/contemplation", "/cobreathe",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
@@ -941,9 +909,6 @@ function ParishGate({ children }: { children: ReactNode }) {
         // group_members row exists, parishGate flips the derived
         // accessTier to "full" and the gate stops applying.
         location.startsWith("/communities/join/") ||
-        // 1:1 prayer-dialogue invite links — anyone opening a shared link
-        // should reach the accept page regardless of tier.
-        location.startsWith("/prayer-dialogue/join/") ||
         // Shared plan links — /plans/:token. Anyone with the link should
         // reach the plan card regardless of tier.
         location.startsWith("/plans/") ||
@@ -970,7 +935,6 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/cobreathe/about" ||
         location === "/pray-breath" ||
         location === "/examen" ||
-        location === "/intentions" ||
         location === "/listening" ||
         location === "/find-your-rhythm" ||
         location === "/spotify-callback" ||
@@ -1145,24 +1109,14 @@ function Router() {
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
       <Route path="/prayer-list">{() => <PrayerGate><PrayerListPage /></PrayerGate>}</Route>
-      {/* Heart to Heart hidden for now — redirect old deep-links / notification
-          taps to the home rather than dead-ending on a hidden surface. */}
-      <Route path="/prayer-partner">{() => <RedirectTo to="/dashboard" />}</Route>
-      <Route path="/prayer-partner/:partnerId">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
-      <Route path="/prayers-for-me">{() => <PrayerGate><PrayersForMePage /></PrayerGate>}</Route>
       <Route path="/prayer-mode">{() => <PrayerGate><PrayerModePage /></PrayerGate>}</Route>
       <Route path="/begin-prayer" component={BeginPrayerPage} />
       <Route path="/prayer-start">{() => <PrayerGate><PrayerStartPage /></PrayerGate>}</Route>
       <Route path="/prayer-requests/:id"><PrayerGate><PrayerRequestDetailPage /></PrayerGate></Route>
       <Route path="/actions/new" component={ActionNewPage} />
       <Route path="/actions/:id" component={ActionDetailPage} />
-      {/* /pray-for/new (no email) must sit above the two /pray-for/:email
-          routes, otherwise "new" would match as an email param. */}
-      <Route path="/pray-for/new" component={PrayerForNew} />
-      <Route path="/pray-for/new/:email" component={PrayerForNew} />
       <Route path="/pray-request/new">{() => <PrayerGate><PrayerRequestNew /></PrayerGate>}</Route>
-      <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/daily-practice" component={DailyPracticePage} />
       <Route path="/daily-progress" component={DailyProgressPage} />
@@ -1189,7 +1143,6 @@ function Router() {
       <Route path="/pray-breath" component={PrayBreathPage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
-      <Route path="/intentions">{() => <PrayerGate><IntentionsPage /></PrayerGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
       <Route path="/reading-log" component={ReadingLogPage} />
       <Route path="/podcast-log" component={PodcastLogPage} />
@@ -1228,7 +1181,6 @@ function Router() {
       <Route path="/communities/browse" component={CommunitiesBrowsePage} />
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
-      <Route path="/prayer-dialogue/join/:token" component={PrayerDialogueJoinPage} />
       <Route path="/plans/:token" component={PlanSharePage} />
       {/* The old post-signup "Find a community" picker is retired — a fresh
           signup (from the home screen or after praying the office) lands on the
@@ -1433,7 +1385,6 @@ function App() {
           <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
-            <PendingPrayerInviteRedirect />
             <PendingFellowInviteRedirect />
             <CustomAnchorServerSync />
             <ReflectionReturnRedirect />

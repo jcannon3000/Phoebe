@@ -2,7 +2,6 @@ import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import {
   db,
   prayerRequestsTable,
-  prayersForTable,
   groupsTable,
   groupMembersTable,
   circleIntentionsTable,
@@ -138,27 +137,8 @@ export async function buildIntercessionSlides(
   // → 3 on the office hot path. Behaviour is otherwise identical.
 
   // Wave 1 — the reads that depend only on userId.
-  const [gardenIds, prayersForRows, myGroupRows, feedSubs, parishRow] = await Promise.all([
+  const [gardenIds, myGroupRows, feedSubs, parishRow] = await Promise.all([
     getGardenUserIds(userId),
-    db
-      .select({
-        id: prayersForTable.id,
-        prayerText: prayersForTable.prayerText,
-        recipientUserId: prayersForTable.recipientUserId,
-        expiresAt: prayersForTable.expiresAt,
-        recipientName: usersTable.name,
-        recipientAvatarUrl: usersTable.avatarUrl,
-      })
-      .from(prayersForTable)
-      .leftJoin(usersTable, eq(usersTable.id, prayersForTable.recipientUserId))
-      .where(
-        and(
-          eq(prayersForTable.prayerUserId, userId),
-          gt(prayersForTable.expiresAt, new Date()),
-          isNull(prayersForTable.acknowledgedAt),
-        ),
-      )
-      .limit(10),
     db
       .select({ groupId: groupMembersTable.groupId })
       .from(groupMembersTable)
@@ -326,34 +306,7 @@ export async function buildIntercessionSlides(
     });
   }
 
-  // 2. Prayers-for — the user's private "I am holding X" commitments.
-  //    Title carries the recipient name so the viewer remembers who
-  //    they're carrying.
-  for (const p of prayersForRows) {
-    if (!p.prayerText) continue;
-    const who = p.recipientName ?? "Someone";
-    slides.push({
-      id: `dev-prayer-for-${p.id}-${dayKey}`,
-      type: "intercessions",
-      emoji: "🌿",
-      eyebrow: "I AM HOLDING",
-      title: who,
-      content: p.prayerText,
-      isCallAndResponse: false,
-      callAndResponseLines: null,
-      bcpReference: null,
-      isScrollable: p.prayerText.length > 280,
-      scrollHint: p.prayerText.length > 280 ? "↓ continue · tap when ready" : null,
-      metadata: {
-        source: "prayer-for",
-        prayerForId: p.id,
-        authorName: who,
-        authorAvatarUrl: p.recipientAvatarUrl ?? null,
-      },
-    });
-  }
-
-  // 3. Circle intentions — a group's named, ongoing prayer focus.
+  // 2. Circle intentions — a group's named, ongoing prayer focus.
   for (const c of circleRows) {
     slides.push({
       id: `dev-circle-${c.id}-${dayKey}`,

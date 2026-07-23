@@ -160,34 +160,10 @@ const CATEGORY_COLORS: Record<Category, {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Count prayers-for that will actually make it into the slideshow.
-// Mirrors prayer-mode.tsx's filter exactly: drop server-expired AND
-// prayers on their final day (daysLeft === 0). The People-page CTA
-// uses the same cutoff — a prayer on Day N of N reads "done" there,
-// so the slideshow (and therefore the invite popup's count) should
-// not include it either. Before this helper was used, the daily
-// prayer invite card said "7 prayers waiting" while the actual
-// slideshow had 6 slides, which the user flagged directly.
-function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean; expiresAt: string }> | undefined): number {
-  if (!prayersFor) return 0;
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let n = 0;
-  for (const p of prayersFor) {
-    if (p.expired) continue;
-    const expires = new Date(p.expiresAt);
-    if (Number.isNaN(expires.getTime())) { n++; continue; }
-    const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
-    const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayStart.getTime()) / 86400000));
-    if (daysLeft > 0) n++;
-  }
-  return n;
-}
-
 // How many prayers the user will pray THROUGH in their slideshow right now —
 // the exact set the office's intercession handoff reads (community
 // intercessions + open requests INCLUDING the user's own — the main slideshow
-// walks those as "Your prayer" — + active prayers-for-others). Reuses the same
+// walks those as "Your prayer"). Reuses the same
 // query keys, so it shares React Query's cache (no extra fetches). The office
 // card shows this so its "N prayers" matches the slideshow.
 function useSlideshowPrayerCount(): number {
@@ -199,9 +175,6 @@ function useSlideshowPrayerCount(): number {
   });
   const { data: reqs } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; kind?: string | null; expiresAt?: string | null }>>({
     queryKey: ["/api/prayer-requests"], queryFn: () => apiRequest("GET", "/api/prayer-requests"), staleTime: 60_000,
-  });
-  const { data: prayersFor } = useQuery<Array<{ id: number; expired: boolean; expiresAt: string }>>({
-    queryKey: ["/api/prayers-for/mine"], queryFn: () => apiRequest("GET", "/api/prayers-for/mine"), staleTime: 60_000,
   });
   return useMemo(() => {
     const intentionCountByGroup = new Map<number, number>();
@@ -223,8 +196,8 @@ function useSlideshowPrayerCount(): number {
       !(r.isOwnRequest && r.kind != null && r.kind !== "request") &&
       (!r.expiresAt || new Date(r.expiresAt) > new Date())
     ).length;
-    return activeIntercessions + requestsInWalk + countActivePrayersFor(prayersFor);
-  }, [moments, circle, reqs, prayersFor]);
+    return activeIntercessions + requestsInWalk;
+  }, [moments, circle, reqs]);
 }
 
 function nextDayLabel(date: Date): string {
@@ -5733,10 +5706,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // Up to 3 faces of who prayed for THIS request, newest-first (owner-only).
     amenFaces?: Array<{ name: string | null; avatarUrl: string | null }> | null;
   };
-  type DashPrayerFor = {
-    id: number; expired: boolean; expiresAt: string;
-    recipientEmail?: string; recipientName?: string; recipientAvatarUrl?: string | null;
-  };
   type DashCircleIntention = { id: number; groupId: number };
 
   const { data: dashPrayerRequests } = useQuery<DashPrayerRequest[]>({
@@ -5773,16 +5742,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       if (raw.length <= 300_000) localStorage.setItem("phoebe:prayer-list-snapshot", raw);
     } catch { /* ignore (quota / private mode) */ }
   }, [user, dashPrayerRequests]);
-  // The viewer's OWN private prayer list (prayer_intentions). These ride the
-  // home carousel too — as "Private to you" cards — so a prayer you keep on your
-  // own list shows up on the home prayer list just like the community ones, only
-  // private. Purely-private items only: a shared intention already appears via
-  // its linked community request, so it's excluded below.
-  const { data: dashPrayerIntentions } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean; shared: boolean; sharedRequestId: number | null }> }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: !!user,
-  });
   // The home prayer-list carousel rows — the viewer's OWN + others' open prayer
   // requests AND group community intercessions, in one sorted list. Computed
   // ONCE here so the carousel render and the events' cascade base both use the
@@ -5828,32 +5787,18 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         // Feed-sourced intercessions show the feed's name as their eyebrow.
         feedTitle: m.feed?.title ?? null,
       }));
-    // The viewer's purely-private prayers (prayer_intentions) — shown as their
-    // own cards ("Private to you"), no Amen, tap → main slideshow. Exclude any
-    // already shared / answered (those surface via their linked request above).
-    const ownPrayerRows: PrayerListCarouselRow[] = (dashPrayerIntentions?.intentions ?? [])
-      .filter((it) => !it.answered && !it.shared && it.sharedRequestId == null)
-      .map((it) => ({
-        id: it.id,
-        body: it.kind === "person" ? (it.personName || "Someone") : it.body,
-        isOwnRequest: true,
-        isOwnPrayer: true,
-        ownerName: null,
-        ownerAvatarUrl: null,
-        myAmenedToday: false,
-      }));
     // Other people's prayers first: community + prayer-feed intercessions at the
     // top (a feed's daily prayer reads as today's), then other people's requests,
-    // then your own (requests + private intentions). Unprayed before prayed
-    // within each group (a stable sort keeps the source order otherwise).
+    // then your own requests. Unprayed before prayed within each group (a stable
+    // sort keeps the source order otherwise).
     const groupRank = (r: PrayerListCarouselRow): number =>
       (r.isOwnRequest || r.isOwnPrayer) ? 2 : (r.kind === "intercession" ? 0 : 1);
-    return [...ownPrayerRows, ...requestRows, ...intercessionRows].sort((a, b) => {
+    return [...requestRows, ...intercessionRows].sort((a, b) => {
       const g = groupRank(a) - groupRank(b);
       if (g !== 0) return g;
       return (a.myAmenedToday ? 1 : 0) - (b.myAmenedToday ? 1 : 0);
     });
-  }, [dashPrayerRequests, momentsData, dashPrayerIntentions]);
+  }, [dashPrayerRequests, momentsData]);
   // (The own-request card's "who prayed for THIS request" faces now come per-
   // request from /api/prayer-requests (req.amenFaces), so the global
   // prayed-for-me-month query that used to back it here was removed.)
@@ -5875,19 +5820,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       window.removeEventListener("phoebe:appactive", refresh);
     };
   }, [queryClient]);
-  const { data: dashPrayersFor } = useQuery<DashPrayerFor[]>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user,
-  });
-  // Prayers others are currently offering for me — drives the
-  // "Prayers for You" pill (count + unviewed red dot).
-  type DashPrayerForMe = { id: number; expiresAt: string };
-  const { data: dashPrayersForMe } = useQuery<DashPrayerForMe[]>({
-    queryKey: ["/api/prayers-for/for-me"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
-    enabled: !!user,
-  });
   // Circle intentions — shared prayer intentions inside every prayer circle
   // the user belongs to. Each intention is its own prayer (a circle can have
   // many intentions), so we count rows, not circles.
@@ -5914,7 +5846,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const [showNewPrayerChoice, setShowNewPrayerChoice] = useState(false);
 
   // The daily prayer-invite popup logic and its supporting effect were
-  // removed at the user's request. dashCircleIntentions / dashPrayersFor /
+  // removed at the user's request. dashCircleIntentions /
   // dashPrayerRequests stay because the dashboard cards and the
   // PrayerListCard partial-progress count still consume them.
 
@@ -6167,9 +6099,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     const othersRequests = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
     ).length;
-    const activePrayersFor = countActivePrayersFor(dashPrayersFor);
-    return activeIntercessions + othersRequests + activePrayersFor;
-  }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor]);
+    return activeIntercessions + othersRequests;
+  }, [momentsData, dashCircleIntentions, dashPrayerRequests]);
 
   // Count of open prayer requests from others that the viewer has
   // never amened. Drives the "X new prayers" subtitle rotation and
