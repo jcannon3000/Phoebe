@@ -1147,27 +1147,6 @@ export function sendWeeklyReviewPush(userId: number) {
   });
 }
 
-// Phoebe Parish — 8pm "your parish prayed today" recap. Fires once
-// per parish per local day, only to parishioners who themselves
-// prayed today, and only when 4+ distinct parishioners prayed. Body
-// reads as a quiet companion note rather than a notification.
-export function sendParishEveningRecapPush(
-  userId: number,
-  opts: { parishTitle: string; prayedTodayCount: number }
-) {
-  const others = Math.max(0, opts.prayedTodayCount - 1);
-  const body = others === 1
-    ? "1 other from your parish prayed today."
-    : `${others} others from your parish prayed today.`;
-  return sendPushToUser(userId, {
-    title: opts.parishTitle,
-    body,
-    path: "/parish/celebration",
-    threadId: "parish-evening-recap",
-    collapseId: `parish-evening-recap-${userId}`,
-    sound: PHOEBE_SOUND_MID,
-  });
-}
 
 // Fires for each admin of a community when someone taps "Request to
 // join" on /communities/browse. Deep-links to the requests management
@@ -1636,28 +1615,6 @@ export function sendActionReminderPush(
 // turn" — anyone can write any time during the period — so the
 // generic "you have a new letter" framing stays.)
 
-// Weekly parish recap — Saturday evening (parish TZ). Tells each
-// parishioner how many of their parish prayed with them this week,
-// deep-linking into /parish/celebration where the post-Office screen
-// already shows the same count + faces. Skipped when the week has
-// zero distinct parish prayers.
-export function sendParishWeeklyRecapPush(
-  userId: number,
-  opts: { parishTitle: string; parishSlug: string; weekCount: number },
-): Promise<SendResult> {
-  const { parishTitle, parishSlug, weekCount } = opts;
-  const body =
-    weekCount === 1
-      ? "1 parishioner prayed with you this week."
-      : `${weekCount} parishioners prayed with you this week.`;
-  return sendPushToUser(userId, {
-    title: parishTitle,
-    body,
-    path: "/parish/celebration",
-    threadId: `parish-weekly-${parishSlug}`,
-    sound: PHOEBE_SOUND_MID,
-  });
-}
 
 // Weekly prayer-feed digest — fires Tuesday evening (user TZ) per the
 // scheduler in bellSender. Title carries the new-intercession count;

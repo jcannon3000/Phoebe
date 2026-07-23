@@ -405,26 +405,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               )}
               {/* El Jardín is NOT a main-menu entry — it lives as an option
                   INSIDE the Admin Tools page (/admin/tools). */}
-              {/* Phoebe Parish — moved here from the main nav so it
-                  sits alongside Admin Tools as a privileged/preview
-                  entry rather than competing with the daily-prayer
-                  surfaces above. Still gated on rawIsBeta: Parish is
-                  in private beta and the ParishGate normally bounces
-                  full-tier users back to /dashboard, so the drawer
-                  only surfaces it for beta_users who can walk the
-                  picker + dashboard end-to-end. Routes to
-                  /parish/onboarding if the user hasn't subscribed
-                  yet, else /parish. */}
-              {/* Phoebe Parish hidden from the menu per request. Restore by
-                  removing the `false &&` guard. */}
-              {false && rawIsBeta && (
-                <MenuRow
-                  emoji="🏛️"
-                  label={t("menu.phoebe_parish")}
-                  badge={t("menu.beta")}
-                  onClick={() => navigate(user?.parishFeedId ? "/parish" : "/parish/onboarding")}
-                />
-              )}
               <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/about")} />
             </div>
 

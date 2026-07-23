@@ -8,7 +8,6 @@ import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
-import { canManageParish } from "./parish";
 import { rateLimit } from "../lib/rate-limit";
 
 // Per-user rate-limit key — throttles by account, not IP, so users
@@ -78,12 +77,9 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
   // + parish admins and must NEVER be reachable via the garden/tagged path —
   // mirror the list route's exclusion (see ~line 416). Gate them explicitly.
   if (r.parishFeedId != null) {
-    let allowed = viewerIsOwner;
-    if (!allowed) {
-      const { allowed: canManage } = await canManageParish(sessionUserId, r.parishFeedId);
-      allowed = canManage;
-    }
-    if (!allowed) { res.status(403).json({ error: "Forbidden" }); return; }
+    // Legacy "pastoral concern" (parish tier, now removed) — private to the
+    // requester. With the parish-admin concept gone, no other viewer can open it.
+    if (!viewerIsOwner) { res.status(403).json({ error: "Forbidden" }); return; }
   } else if (r.directOnly) {
     // Directed ("to a fellow") request — private to the owner + tagged
     // recipients. Garden membership grants nothing here.
@@ -1225,8 +1221,7 @@ router.post("/prayer-requests/:id/word", rateLimit({
   // A parish "pastoral concern" is private to the requester + parish admins —
   // don't let a guessed id attach a word from anyone else.
   if (request.parishFeedId != null && request.ownerId !== sessionUserId) {
-    const { allowed } = await canManageParish(sessionUserId, request.parishFeedId);
-    if (!allowed) { res.status(403).json({ error: "Forbidden" }); return; }
+    res.status(403).json({ error: "Forbidden" }); return;
   }
   // A directed ("to a fellow") request is private — only the owner + tagged
   // recipients can leave a word on it.

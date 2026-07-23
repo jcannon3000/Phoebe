@@ -24,7 +24,6 @@ import {
   meetupsTable,
   prayerFeedSubscriptionsTable,
   groupJoinRequestsTable,
-  ruleOfLifeRequestsTable,
   groupWeeklyItemsTable,
   groupWeeklyCompletionsTable,
   prescribedRoutinesTable,
@@ -4887,121 +4886,6 @@ router.post("/admin/announce", async (req, res): Promise<void> => {
     console.error("POST /api/admin/announce error:", err);
     res.status(500).json({ error: "Failed to send announcement" });
   }
-});
-
-// ─── Rule-of-life requests (BETA) ────────────────────────────────────────────
-// A member asks their community's clergy/leaders for help building a daily
-// prayer routine. The app is only the THREAD — the discernment happens with a
-// real person (Principle 5). No AI, no auto-matching; the ask goes to the
-// leaders of a community the member is already in.
-
-async function userIsBeta(userId: number): Promise<boolean> {
-  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!u) return false;
-  const [b] = await db.select({ email: betaUsersTable.email }).from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
-  return !!b;
-}
-
-// GET /api/groups/:slug/rule-of-life/mine — the member's own latest request.
-router.get("/groups/:slug/rule-of-life/mine", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(403).json({ error: "Not a member" }); return; }
-  const [r] = await db.select().from(ruleOfLifeRequestsTable)
-    .where(and(eq(ruleOfLifeRequestsTable.groupId, result.group.id), eq(ruleOfLifeRequestsTable.userId, user.id)))
-    .orderBy(desc(ruleOfLifeRequestsTable.requestedAt)).limit(1);
-  res.json({ request: r ? { id: r.id, status: r.status, note: r.note, requestedAt: r.requestedAt } : null });
-});
-
-// POST /api/groups/:slug/rule-of-life — member asks for help. Beta-gated; one
-// open request per community at a time.
-router.post("/groups/:slug/rule-of-life", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (!(await userIsBeta(user.id))) { res.status(403).json({ error: "Building a rule of life with your community is a beta feature." }); return; }
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(403).json({ error: "Join this community first." }); return; }
-  const note = typeof (req.body as { note?: unknown })?.note === "string" ? (req.body as { note: string }).note.trim().slice(0, 1000) : "";
-
-  const [open] = await db.select({ id: ruleOfLifeRequestsTable.id }).from(ruleOfLifeRequestsTable)
-    .where(and(
-      eq(ruleOfLifeRequestsTable.groupId, result.group.id),
-      eq(ruleOfLifeRequestsTable.userId, user.id),
-      inArray(ruleOfLifeRequestsTable.status, ["requested", "accepted"]),
-    ));
-  if (open) { res.json({ ok: true, alreadyOpen: true, id: open.id }); return; }
-
-  const [row] = await db.insert(ruleOfLifeRequestsTable)
-    .values({ groupId: result.group.id, userId: user.id, note: note || null })
-    .returning({ id: ruleOfLifeRequestsTable.id });
-
-  // Notify the community's leaders (a need reaching toward them — not a metric).
-  try {
-    const members = await db.select({ userId: groupMembersTable.userId, role: groupMembersTable.role })
-      .from(groupMembersTable).where(eq(groupMembersTable.groupId, result.group.id));
-    const adminIds = members.filter((m) => m.userId != null && isAdminRole(m.role)).map((m) => m.userId!);
-    const first = (user.name || "Someone").split(/\s+/)[0];
-    void sendPushToUsers(adminIds, {
-      title: `${first} would like help with their rule of life`,
-      body: `In ${result.group.name} — tap to see their note.`,
-      path: `/communities/${result.group.slug}/rule-of-life`,
-      threadId: `rule-of-life-${result.group.slug}`,
-    }).catch(() => undefined);
-  } catch { /* best-effort */ }
-
-  res.json({ ok: true, id: row.id });
-});
-
-// GET /api/groups/:slug/rule-of-life — leaders see the requests for their community.
-router.get("/groups/:slug/rule-of-life", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const result = await requireAdmin(req.params.slug, user.id);
-  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
-  const rows = await db.select({
-    id: ruleOfLifeRequestsTable.id,
-    status: ruleOfLifeRequestsTable.status,
-    note: ruleOfLifeRequestsTable.note,
-    requestedAt: ruleOfLifeRequestsTable.requestedAt,
-    userId: ruleOfLifeRequestsTable.userId,
-    name: usersTable.name,
-    email: usersTable.email,
-    avatarUrl: usersTable.avatarUrl,
-  }).from(ruleOfLifeRequestsTable)
-    .innerJoin(usersTable, eq(usersTable.id, ruleOfLifeRequestsTable.userId))
-    .where(eq(ruleOfLifeRequestsTable.groupId, result.group.id))
-    .orderBy(desc(ruleOfLifeRequestsTable.requestedAt)).limit(200);
-  res.json({ requests: rows });
-});
-
-// PATCH /api/groups/:slug/rule-of-life/:id — leader responds.
-router.patch("/groups/:slug/rule-of-life/:id", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const result = await requireAdmin(req.params.slug, user.id);
-  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
-  const status = (req.body as { status?: unknown })?.status;
-  if (status !== "accepted" && status !== "completed" && status !== "declined" && status !== "requested") {
-    res.status(400).json({ error: "bad status" }); return;
-  }
-  const [row] = await db.update(ruleOfLifeRequestsTable)
-    .set({ status, respondedByUserId: user.id, respondedAt: new Date() })
-    .where(and(eq(ruleOfLifeRequestsTable.id, id), eq(ruleOfLifeRequestsTable.groupId, result.group.id)))
-    .returning({ userId: ruleOfLifeRequestsTable.userId });
-  if (!row) { res.status(404).json({ error: "not found" }); return; }
-  // "We'll help" — a reply the member receives, not a streak nudge.
-  if (status === "accepted") {
-    void sendPushToUsers([row.userId], {
-      title: `${result.group.name} will help with your rule of life`,
-      body: `A leader will reach out about your daily prayer.`,
-      path: `/communities/${result.group.slug}`,
-      threadId: `rule-of-life-reply-${result.group.slug}`,
-    }).catch(() => undefined);
-  }
-  res.json({ ok: true });
 });
 
 // ─── Group weekly plan (NOT YET PUBLIC — client UI is behind a flag) ─────────

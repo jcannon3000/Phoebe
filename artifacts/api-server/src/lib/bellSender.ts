@@ -29,18 +29,15 @@ import {
   sendParishOfficeReminderPush,
   sendContemplationGoalReminderPush,
   sendWeeklyReviewPush,
-  sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
   sendNewFeedIntercessionPush,
   sendActionReminderPush,
   sendWeeklyDigestPush,
-  sendParishWeeklyRecapPush,
 } from "./pushSender";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
 import { logger } from "./logger";
-import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
 import { loadFeedDigest } from "./feedDigest";
 import { sendWeeklyDigestEmail } from "./email";
 import { withSchedulerLog } from "./schedulerHeartbeat";
@@ -992,85 +989,6 @@ export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): 
   }
 }
 
-// ─── Phoebe Parish — 8pm prayed-today recap ────────────────────────────────
-//
-// Once per parish per local day, when the parish's clock crosses 20:00,
-// we fan out a recap push to every parishioner who prayed today —
-// provided 4+ distinct parishioners prayed (the user + 3+ others). Body
-// reads "N others from your parish prayed today." Tap deep-links to
-// /parish/celebration which shows the avatar rail of who.
-//
-// Threshold (4+) keeps the push from feeling lonely on quiet days — the
-// "more than three other people pray also from that parish" rule.
-//
-// Idempotency: prayer_feeds.parish_evening_recap_sent_date stamped with
-// today (parish TZ) on first fire, checked before re-firing.
-const PARISH_EVENING_HOUR = "20:00";
-const PARISH_EVENING_MIN_PARTICIPANTS = 4;
-
-export async function runParishEveningRecapSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  if (!PHOEBE_PARISH_ENABLED) return;
-  try {
-    const parishes = await db
-      .select({
-        id: prayerFeedsTable.id,
-        title: prayerFeedsTable.title,
-        timezone: prayerFeedsTable.timezone,
-        sentDate: prayerFeedsTable.parishEveningRecapSentDate,
-      })
-      .from(prayerFeedsTable)
-      .where(and(
-        eq(prayerFeedsTable.kind, "parish"),
-        eq(prayerFeedsTable.state, "live"),
-      ));
-
-    for (const p of parishes) {
-      const tz = p.timezone || "America/New_York";
-      const today = todayInZone(tz);
-      if (p.sentDate === today && !opts.forceNow) continue;
-      if (!opts.forceNow && !isWithinTickWindow(tz, PARISH_EVENING_HOUR)) continue;
-
-      // Distinct user_ids from this parish who prayed today.
-      const rows = await db.execute<{ user_id: number }>(sql`
-        SELECT DISTINCT ps.user_id
-        FROM prayer_sessions ps
-        INNER JOIN prayer_feed_subscriptions pfs
-          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${p.id}
-        WHERE (ps.ended_at AT TIME ZONE ${tz})::date = ${today}::date
-      `);
-      const userIds = rows.rows.map((r) => r.user_id);
-      const count = userIds.length;
-
-      if (count >= PARISH_EVENING_MIN_PARTICIPANTS) {
-        for (const uid of userIds) {
-          try {
-            await sendParishEveningRecapPush(uid, {
-              parishTitle: p.title,
-              prayedTodayCount: count,
-            });
-          } catch (err) {
-            logger.warn({ err, userId: uid, parishId: p.id }, "[parish-evening] push failed");
-          }
-        }
-        logger.info({ parishId: p.id, count }, "[parish-evening] fan-out sent");
-      } else {
-        logger.info({ parishId: p.id, count }, "[parish-evening] threshold not met — skipped");
-      }
-
-      // Stamp regardless of whether we fanned out. The threshold check
-      // is "did enough pray today" — if not, we shouldn't re-evaluate
-      // on every later tick within the same day; once 8pm passes the
-      // window is closed.
-      await db
-        .update(prayerFeedsTable)
-        .set({ parishEveningRecapSentDate: today })
-        .where(eq(prayerFeedsTable.id, p.id));
-    }
-  } catch (err) {
-    logger.error({ err }, "[parish-evening] sender failed");
-  }
-}
-
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 // ─── Day-before gathering reminder ─────────────────────────────────────────
@@ -1459,93 +1377,6 @@ export async function runWeeklyDigestSender(opts: { forceNow?: boolean } = {}): 
   }
 }
 
-// ─── Parish weekly recap sender ───────────────────────────────────────────────
-// Fires Saturday at 18:00 in each parish's local TZ — closes out the
-// liturgical week with "N parishioners prayed with you this week." for
-// every subscriber. Mirrors the daily evening recap's per-parish fan-
-// out (lines 967-1032 above) but at a weekly cadence; idempotency
-// lives per-user on users.parish_weekly_recap_sent_date so a
-// parishioner added to the parish later in the day still gets the
-// recap if it hasn't been sent to them yet.
-export async function runParishWeeklyRecapSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  const force = opts.forceNow === true;
-  try {
-    const parishes = await db
-      .select({
-        id: prayerFeedsTable.id,
-        title: prayerFeedsTable.title,
-        slug: prayerFeedsTable.slug,
-        timezone: prayerFeedsTable.timezone,
-      })
-      .from(prayerFeedsTable)
-      .where(and(
-        eq(prayerFeedsTable.kind, "parish"),
-        eq(prayerFeedsTable.state, "live"),
-      ));
-
-    for (const parish of parishes) {
-      const tz = parish.timezone ?? "America/New_York";
-      const todayStr = todayDateInTz(tz);
-
-      if (!force) {
-        // Saturday at 18:00 (first 15 min). Sun=0, Sat=6 — read from
-        // noon-UTC of the local date to avoid cross-midnight surprises.
-        const weekday = new Date(`${todayStr}T12:00:00Z`).getUTCDay();
-        if (weekday !== 6) continue;
-        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-        if (nowH !== 18 || nowM >= 15) continue;
-      }
-
-      // Solidarity count: distinct parishioners who completed a
-      // prayer_sessions row in the last 7 days. Matches the count
-      // the parish dashboard + post-Office celebration already show.
-      const [weekRow] = await db
-        .select({ count: sql<number>`count(distinct ${prayerSessionsTable.userId})::int` })
-        .from(prayerSessionsTable)
-        .innerJoin(
-          prayerFeedSubscriptionsTable,
-          and(
-            eq(prayerFeedSubscriptionsTable.userId, prayerSessionsTable.userId),
-            eq(prayerFeedSubscriptionsTable.feedId, parish.id),
-          ),
-        )
-        // Private sits drop out of the solidarity count — same rule as
-        // the parish "praying with you" tally on the intercession slide.
-        .where(sql`${prayerSessionsTable.endedAt} > NOW() - INTERVAL '7 days'
-                   AND ${prayerSessionsTable.isPrivate} = false`);
-      const weekCount = weekRow?.count ?? 0;
-      if (weekCount === 0) continue; // empty week — skip silently.
-
-      const parishioners = await db
-        .select({
-          id: usersTable.id,
-          weeklyStamp: usersTable.parishWeeklyRecapSentDate,
-        })
-        .from(usersTable)
-        .where(eq(usersTable.parishFeedId, parish.id));
-
-      for (const u of parishioners) {
-        if (u.weeklyStamp === todayStr) continue;
-        try {
-          await sendParishWeeklyRecapPush(u.id, {
-            parishTitle: parish.title,
-            parishSlug: parish.slug,
-            weekCount,
-          });
-        } catch (err) {
-          logger.error({ err, userId: u.id, parishId: parish.id }, "[parish-weekly] push failed");
-        }
-        await db.update(usersTable)
-          .set({ parishWeeklyRecapSentDate: todayStr })
-          .where(eq(usersTable.id, u.id));
-      }
-      logger.info({ parishId: parish.id, weekCount, parishioners: parishioners.length }, "[parish-weekly] sent");
-    }
-  } catch (err) {
-    logger.error({ err }, "[parish-weekly] sender failed");
-  }
-}
-
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 // Each sender wrapped via withSchedulerLog: insert a "running" row in
@@ -1576,13 +1407,11 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.
   // { name: "weekly-review",         run: runWeeklyReviewSender },
-  { name: "parish-evening",        run: runParishEveningRecapSender },
   { name: "gathering-reminder",    run: runGatheringReminderSender },
   { name: "feed-event-reminder",   run: runFeedEventReminderSender },
   { name: "feed-intercession-push", run: runFeedIntercessionPushSender },
   { name: "action-reminder",       run: runActionReminderSender },
   // { name: "digest",                run: runWeeklyDigestSender },
-  { name: "parish-weekly",         run: runParishWeeklyRecapSender },
   { name: "retention-cleanup",     run: runRetentionCleanupSender },
 ];
 

@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
@@ -82,17 +80,6 @@ export function CobreatheSummary({
   // Slide 0 = the collect (prayer), slide 1 = the breaths + who you breathed with.
   const [step, setStep] = useState<0 | 1>(0);
 
-  // Name the parish priest/leader if they also co-breathed today (null for
-  // non-parish users, or when no leader breathed). Fails soft.
-  const { data: leaderData } = useQuery<{ leaderName: string | null; leaderAvatarUrl: string | null }>({
-    queryKey: ["/api/parish/breathed-with-leader-today"],
-    queryFn: () => apiRequest("GET", "/api/parish/breathed-with-leader-today"),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-  const leaderName = leaderData?.leaderName?.trim() || null;
-  const leaderAvatarUrl = leaderData?.leaderAvatarUrl ?? null;
-
   return (
     <motion.div
       className="flex flex-col"
@@ -168,40 +155,8 @@ export function CobreatheSummary({
               {weekBreaths} {t("cobreathe.breaths_this_week", { defaultValue: "breaths this week" })}
             </p>
 
-            {/* Who you breathed with. When your parish's priest also breathed today,
-                name them; otherwise fall back to the garden-mates you breathed with. */}
-            {leaderName ? (
-              <div className="flex flex-col items-center mb-6">
-                <div className="flex items-center mb-2">
-                  <div className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-                    style={{ width: 34, height: 34, border: "1.5px solid #0A1C14", background: "rgba(62,124,122,0.55)", zIndex: 20 }}>
-                    {leaderAvatarUrl
-                      ? <img src={leaderAvatarUrl} alt={leaderName} className="w-full h-full object-cover" />
-                      : <span style={{ color: WARM, fontSize: 12, fontWeight: 700, fontFamily: SPACE_GROTESK }}>{initials(leaderName)}</span>}
-                  </div>
-                  {companions.slice(0, 5).map((c, i) => (
-                    <div key={c.userId} className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-                      style={{ width: 32, height: 32, marginLeft: -8, border: "1.5px solid #0A1C14", background: "rgba(62,124,122,0.45)", zIndex: 19 - i }}>
-                      {c.avatarUrl
-                        ? <img src={c.avatarUrl} alt={c.name ?? ""} className="w-full h-full object-cover" />
-                        : <span style={{ color: WARM, fontSize: 11, fontWeight: 700, fontFamily: SPACE_GROTESK }}>{initials(c.name ?? "·")}</span>}
-                    </div>
-                  ))}
-                </div>
-                {/* The priest is themselves one of "today's others", so drop them
-                    from the remaining count when we name them. */}
-                {(() => {
-                  const rest = Math.max(0, others - 1);
-                  return (
-                    <p className="text-[13.5px]" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
-                      {rest > 0
-                        ? `You breathe with ${leaderName} and ${rest} ${rest === 1 ? "other" : "others"} today.`
-                        : `You breathe with ${leaderName} today.`}
-                    </p>
-                  );
-                })()}
-              </div>
-            ) : (
+            {/* Who you breathed with — the garden-mates you breathed with. */}
+            {(
               <>
                 {others > 0 && (
                   <p className="text-[12px] mb-6" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>

@@ -9,8 +9,6 @@ import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlis
 import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
-import { getUserAccessTier } from "../lib/parishGate";
-import { PHOEBE_PARISH_ENABLED } from "../lib/parishFlag";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { isSuperAdminUser } from "../lib/superAdmin";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
@@ -307,15 +305,10 @@ router.get("/auth/me", async (req, res) => {
     pushEnabled: boolean;
     emailEnabled: boolean;
   };
-  // Phoebe Parish access tier. Computed server-side so every page that
-  // calls useAuth() knows immediately whether to render the simplified
-  // parish-only UI or the full app — no per-page round-trip needed.
-  // Gated by the parish feature flag — when off (the current default
-  // while Parish is tucked away) every existing user reads as "full"
-  // tier, no DB round-trip, no behavior change.
-  const access = PHOEBE_PARISH_ENABLED
-    ? await getUserAccessTier(u.id)
-    : { tier: "full" as const, parishFeedId: null, parishSlug: null };
+  // Access tier. Phoebe Parish has been removed, so every user reads as
+  // the "full" tier — no DB round-trip, no downgrade. Kept on the payload
+  // so the client's useAuth() shape is unchanged.
+  const access = { tier: "full" as const, parishFeedId: null, parishSlug: null };
   // These five lookups are INDEPENDENT — none uses another's result — yet this is
   // the hottest authenticated endpoint (every app/PWA open). Running them
   // sequentially made the handler's latency the SUM of five round-trips; issuing

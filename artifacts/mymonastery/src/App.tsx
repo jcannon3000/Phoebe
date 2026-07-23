@@ -377,7 +377,6 @@ import WelcomePublicPage from "./pages/welcome-public";
 const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
-const CommunityRuleOfLifePage = lazy(() => import("./pages/community-rule-of-life"));
 const CommunityWeeklyPlanPage = lazy(() => import("./pages/community-weekly-plan"));
 const CommunityWeeklyPlanEditPage = lazy(() => import("./pages/community-weekly-plan-edit"));
 const CommunityWeeklyPlanReadPage = lazy(() => import("./pages/community-weekly-plan-read"));
@@ -394,7 +393,6 @@ const PlanSharePage = lazy(() => import("./pages/plan-share"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
-const AdminParishesPage = lazy(() => import("./pages/admin-parishes"));
 const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const CustomizePage = lazy(() => import("./pages/customize"));
@@ -415,19 +413,7 @@ const PrayerFeedNewPage = lazy(() => import("./pages/prayer-feed-new"));
 const PrayerFeedManagePage = lazy(() => import("./pages/prayer-feed-manage"));
 const PrayerFeedsBrowsePage = lazy(() => import("./pages/prayer-feeds-browse"));
 const PrayerFeedDetailPage = lazy(() => import("./pages/prayer-feed-detail"));
-const ParishDashboard = lazy(() => import("./pages/parish-dashboard"));
-const ParishOnboarding = lazy(() => import("./pages/parish-onboarding"));
-const ParishSettings = lazy(() => import("./pages/parish-settings"));
-const ParishCelebration = lazy(() => import("./pages/parish-celebration"));
-const ParishAdmin = lazy(() => import("./pages/parish-admin"));
-const ParishSeasonNewPage = lazy(() => import("./pages/parish-season-new"));
-const ParishRuleNewPage = lazy(() => import("./pages/parish-rule-new"));
-const ParishNewPage = lazy(() => import("./pages/parish-new"));
-const ParishConcernsPage = lazy(() => import("./pages/parish-concerns"));
-const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"));
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
-import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
@@ -658,41 +644,6 @@ function NotificationTapPrewarm() {
   return null;
 }
 
-// Phoebe Parish — routing gate.
-//
-// Watches the current path + the user's accessTier and redirects when
-// the two don't match. Lives at the top of <Router/> so every navigation
-// passes through it. Three rules:
-//
-//   1. parish-only user on a full-app path → /parish
-//      (e.g. they manually typed /people, or hit a stale push deep-link
-//       from before they were demoted)
-//   2. parish-only user with no parish_feed_id (race) → /parish/onboarding
-//   3. unassigned user → /parish/onboarding
-//      (signed up but hasn't picked a parish yet — only matters for the
-//       parish-tier signup flow we're building; existing beta users skip
-//       this branch entirely because they're "full" tier)
-//
-// Anything PUBLIC (BCP, daily-office, settings, the parish routes
-// themselves) is allow-listed — parish users SHOULD be able to read
-// the BCP and pray the offices. The denylist is everything that
-// surfaces user-generated or community content.
-const PARISH_DENIED_PATHS = [
-  "/dashboard",
-  "/communities",
-  "/community",
-  "/prayer-list",
-  "/my-prayer-requests",
-  "/prayer-requests",
-  "/pray-request",
-  "/practices",
-  "/moment",
-  "/moments",
-  "/gatherings",
-  "/ritual",
-  "/tradition",
-];
-
 // PilotGate — the simplified public "pilot" shell. Modeled on ParishGate.
 // When a session is in pilot mode (see usePilotMode: pilot is the default for
 // everyone EXCEPT community admins + beta testers, gated by PHOEBE_PILOT_ENABLED
@@ -829,123 +780,6 @@ function GuestGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function ParishGate({ children }: { children: ReactNode }) {
-  const [location, setLocation] = useLocation();
-  const { user, isLoading } = useAuthForGate();
-  // Beta users sit in the "full" tier (beta wins the tier derivation
-  // in parishGate.ts), so the redirect below would bounce them out of
-  // Parish even though Parish is a beta-only feature. Carve them out
-  // so they can preview the picker + dashboard end-to-end. The drawer
-  // entry that surfaces /parish is itself gated on rawIsBeta in
-  // layout.tsx, so non-beta users still have no way in.
-  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
-
-  useEffect(() => {
-    // Tucked-away mode: the entire Parish flow is dormant. Don't
-    // redirect anyone, don't read the access tier, just pass through.
-    // Flip PHOEBE_PARISH_ENABLED in lib/parishFlag.ts (client + server)
-    // when ready to roll Parish out.
-    if (!PHOEBE_PARISH_ENABLED) return;
-    if (isLoading || betaLoading || !user) return;
-    if (user.accessTier === "full") {
-      // Beta users get to preview Parish. Skip the redirect so they
-      // can land on /parish, /parish/onboarding, /parish/admin, etc.
-      // from the drawer entry. They remain full-tier the whole time;
-      // subscribing to a parish doesn't demote them (beta wins).
-      if (rawIsBeta) return;
-      // Non-beta full-app users shouldn't get stuck on /parish; if
-      // they navigated there manually, send them home.
-      if (location === "/parish" || location.startsWith("/parish/")) {
-        setLocation("/dashboard");
-      }
-      return;
-    }
-    if (user.accessTier === "parish-only" || user.accessTier === "offices-only") {
-      // Both restricted tiers get the same allowlist — the parish
-      // surfaces + BCP + settings + the root onboarding fall-through.
-      // An offices-only user has no parish, but its home (parish
-      // dashboard) and settings live under /parish, so the allowlist
-      // is identical; everything else bounces to /parish.
-      const allowed =
-        location === "/" ||
-        location === "/parish" ||
-        location === "/parish/onboarding" ||
-        location === "/parish/settings" ||
-        // /settings is the full settings page reached via the drawer
-        // on the offices-only Layout. We allow it here so the
-        // ParishGate doesn't bounce offices-only users back to
-        // /parish the moment they tap "Settings" in the menu. The
-        // page itself degrades gracefully for limited tiers (the
-        // queries it makes resolve to empty / no-op for offices-only).
-        location === "/settings" ||
-        // Community-join links — offices-only / parish-only users
-        // who receive a community invite from a friend or admin
-        // need to land on this page even though /communities itself
-        // is blocked for them. The page auto-joins them and
-        // invalidates /api/auth/me on success; once the joined
-        // group_members row exists, parishGate flips the derived
-        // accessTier to "full" and the gate stops applying.
-        location.startsWith("/communities/join/") ||
-        // Shared plan links — /plans/:token. Anyone with the link should
-        // reach the plan card regardless of tier.
-        location.startsWith("/plans/") ||
-        // Public Prayer Request share links — /p/:token. An offices-
-        // only viewer landing on a friend's shared prayer request
-        // should be able to read it + tap Amen, which auto-Fellows
-        // them with the owner. Without this carve-out, ParishGate
-        // bounces them to /parish before the page renders.
-        location.startsWith("/p/") ||
-        location === "/parish/admin" ||
-        location.startsWith("/parish/celebration") ||
-        location.startsWith("/bcp") ||
-        // The offices-only home now shows the same PrayerOfficeCard +
-        // FeedPrayerCard surfaces the full app does, so the chooser
-        // sheet and the feed-walk slideshow have to be reachable.
-        // Same for the moment detail page each feed-intercession
-        // card on the Prayer List section taps through to.
-        location === "/prayer-chooser" ||
-        location.startsWith("/prayer-mode") ||
-        // Contemplation timer + Daily Examen + Gratitude — reflective-
-        // prayer surfaces open to every tier (offices-only + parish-only).
-        location === "/contemplation" ||
-        location === "/cobreathe" ||
-        location === "/cobreathe/about" ||
-        location === "/pray-breath" ||
-        location === "/examen" ||
-        location === "/listening" ||
-        location === "/find-your-rhythm" ||
-        location === "/spotify-callback" ||
-        location.startsWith("/moments/") ||
-        // Public prayer feeds — discovery + detail. Offices-only and
-        // parish-only members may browse and subscribe to public feeds
-        // (the API enforces public/private; feed management stays
-        // beta-only).
-        location.startsWith("/prayer-feeds") ||
-        // Letters is community-admins-only now — no carve-out for the
-        // offices-only / parish-only tiers, so /letters* bounces home.
-        location === "/about" ||
-        location === "/privacy" ||
-        location === "/terms" ||
-        location.startsWith("/onboarding");
-      if (!allowed) {
-        // Anything in the denylist OR anything not in the allowlist
-        // bounces home.
-        setLocation("/parish");
-      }
-      return;
-    }
-    if (user.accessTier === "unassigned") {
-      if (location !== "/parish/onboarding" && location !== "/" && !location.startsWith("/onboarding")) {
-        setLocation("/parish/onboarding");
-      }
-    }
-  }, [location, setLocation, user, isLoading, rawIsBeta, betaLoading]);
-
-  void PARISH_DENIED_PATHS; // explicit denylist kept for readability + future toggling
-
-  return <>{children}</>;
-}
-
 // Quiet full-screen fallback shown while a lazy-loaded route chunk is
 // fetched. On iOS the chunks are bundled (capacitor://localhost), so
 // this flashes only for a frame or two; on web it covers the network
@@ -1027,28 +861,6 @@ function Router() {
       <Route path="/videos" component={VideosPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
       <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>
-      {/* Phoebe Parish — simplified tier. /parish is the dashboard
-          for parish-only users; /parish/onboarding is the parish
-          picker. The router-level gate (ParishGate below) redirects
-          parish-only users away from full-app routes and full-app
-          users away from /parish, so these are reachable but not
-          conflicting. */}
-      <Route path="/parish" component={ParishDashboard} />
-      <Route path="/parish/onboarding" component={ParishOnboarding} />
-      <Route path="/parish/settings" component={ParishSettings} />
-      <Route path="/parish/celebration" component={ParishCelebration} />
-      <Route path="/parish/admin" component={ParishAdmin} />
-      {/* Start a parish season — the priest designs the rhythm, names it, and
-          begins it ("pray with your priest"). Admin-gated by the server. */}
-      <Route path="/parish/season/new" component={ParishSeasonNewPage} />
-      {/* Set the parish's always-on standing rhythm (priest designs it). */}
-      <Route path="/parish/rule/new" component={ParishRuleNewPage} />
-      {/* /parish/new — self-serve parish creation (beta-gated; page
-          re-checks). The creator becomes the first admin and gets
-          dropped on /parish/admin to start authoring. */}
-      <Route path="/parish/new" component={ParishNewPage} />
-      <Route path="/parish/concerns" component={ParishConcernsPage} />
-      <Route path="/parish/intercessions" component={ParishIntercessionsPage} />
       <Route path="/gatherings" component={GatheringsPage} />
       <Route path="/gatherings/new" component={GatheringNewPage} />
       <Route path="/gatherings/:id" component={GatheringDetailPage} />
@@ -1076,7 +888,6 @@ function Router() {
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
-      <Route path="/admin/parishes" component={AdminParishesPage} />
       <Route path="/admin/ministries" component={AdminMinistriesPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
@@ -1161,7 +972,6 @@ function Router() {
           redirecting any residual link to /welcome straight to the dashboard. */}
       <Route path="/welcome">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
-      <Route path="/communities/:slug/rule-of-life" component={CommunityRuleOfLifePage} />
       {/* Leaders set the community's shared RULE OF LIFE (adoptable in one tap). */}
       <Route path="/communities/:slug/rule-of-life/set" component={CommunityRuleSetPage} />
       {/* NOT YET PUBLIC (WEEKLY_PLAN_ENABLED) — both pages redirect away while
@@ -1375,9 +1185,7 @@ function App() {
             <PodcastPlayerProvider>
               <GuestGate>
                 <PilotGate>
-                  <ParishGate>
-                    <Router />
-                  </ParishGate>
+                  <Router />
                 </PilotGate>
               </GuestGate>
             </PodcastPlayerProvider>
