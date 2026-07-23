@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel } from "@/lib/officePrefs";
-import { getPracticeSlot, getJournalingSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
 type WidgetState = {
@@ -146,7 +146,6 @@ export function useWidgetSync(): void {
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
       { active: r.scriptureActive, done: r.scriptureDone, slot: getPracticeSlot("scripture"), title: "Listen to Scripture", eyebrow: "The day's readings", subtitle: "Hear today's word", cta: "Listen", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
-      { active: r.journalingActive, done: r.journalingDone, slot: getJournalingSlot(), title: "Journaling", eyebrow: "Keep a journal", subtitle: "Log the day", cta: "Log", kind: "office" },
       { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
       { active: r.prayerListActive, done: r.prayerListDone, slot: "anytime", title: "My Prayer List", eyebrow: "Your intentions", subtitle: "Pray through your list", cta: "Pray", kind: "office" },
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
@@ -234,7 +233,7 @@ export function useWidgetSync(): void {
     r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
     r.scriptureActive, r.scriptureDone,
-    r.walkActive, r.walkDone, r.journalingActive, r.journalingDone,
+    r.walkActive, r.walkDone,
     r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
     r.examenActive, r.examenDone, r.gratitudeActive, r.gratitudeDone,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,

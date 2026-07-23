@@ -30,7 +30,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // snapshot on entry, restore on exit, so their own rhythm is untouched.
 const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
 const ROUTINE_EXACT = [
-  "phoebe:journaling-slot", "phoebe:scripture-scope", "phoebe:fdd-mode",
+  "phoebe:scripture-scope", "phoebe:fdd-mode",
   "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
   "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
 ];

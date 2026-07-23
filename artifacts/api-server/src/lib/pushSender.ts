@@ -1096,10 +1096,6 @@ export function sendParishOfficeReminderPush(
       title: "The Examen",
       body: "Review the day with God.",
     },
-    journal: {
-      title: "Journal",
-      body: side === "morning" ? "A few quiet lines to begin the day." : "A few quiet lines before the day ends.",
-    },
   };
   const practice = level ? practiceCopy[level] : undefined;
   const title = practice?.title

@@ -11,7 +11,6 @@
 
 import { apiRequest } from "@/lib/queryClient";
 import { setSideLevel } from "@/lib/officePrefs";
-import { setJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
 import { saveHomeLayout } from "@/lib/homeLayoutCache";
 
 // ——— Question model (drives the slideshow UI) ———
@@ -37,7 +36,7 @@ export type FinderAnswers = {
   readingVoice: string;  // cac | fdd | ssje | unsure
   whenSpace: string[];   // morning | midday | evening | night
   season: string;        // beginning | returning | steady | rooted
-  growToward: string[];  // silence | gratitude | examen | journaling | music | walking
+  growToward: string[];  // silence | gratitude | examen | music | walking
 };
 
 export const EMPTY_ANSWERS: FinderAnswers = {
@@ -130,7 +129,6 @@ export const FINDER_QUESTIONS: FinderQuestion[] = [
       { id: "silence", emoji: "🕯️", label: "More silence" },
       { id: "gratitude", emoji: "🌾", label: "Gratitude" },
       { id: "examen", emoji: "🌗", label: "The Examen" },
-      { id: "journaling", emoji: "📓", label: "Journaling" },
       { id: "music", emoji: "🎧", label: "Music as prayer" },
       { id: "walking", emoji: "🚶", label: "A daily walk" },
     ],
@@ -144,8 +142,6 @@ export type RecommendedRhythm = {
   contemplationMinutes: number;
   reflectionSource: "fdd" | "cac" | "ssje" | null;
   listening: boolean;
-  journaling: boolean;
-  journalingSlot: CustomSlot;
   gratitude: boolean;
   examen: boolean;
   cobreatheInterest: boolean;
@@ -156,13 +152,6 @@ export type RecommendedRhythm = {
   /** Human-readable "why" lines for the results screen. */
   reasons: string[];
 };
-
-function pickSlot(whenSpace: string[]): CustomSlot {
-  if (has(whenSpace, "morning")) return "morning";
-  if (has(whenSpace, "midday")) return "midday";
-  if (has(whenSpace, "evening") || has(whenSpace, "night")) return "evening";
-  return "evening";
-}
 
 export function recommend(a: FinderAnswers): RecommendedRhythm {
   const reasons: string[] = [];
@@ -206,11 +195,6 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   const listening = has(a.meet, "music") || has(a.growToward, "music");
   if (listening) reasons.push("Audio Divina — music as a way of prayer — because that's where the music takes you.");
 
-  // Writing → Journaling (at the time of day they have space).
-  const journaling = has(a.meet, "writing") || has(a.growToward, "journaling");
-  const journalingSlot = pickSlot(a.whenSpace);
-  if (journaling) reasons.push("Journaling, to keep at the time of day you have the most space.");
-
   // Gratitude / Examen — explicit, or sensible by season.
   let gratitude = has(a.growToward, "gratitude");
   let examen = has(a.growToward, "examen") || (a.season === "rooted");
@@ -226,7 +210,7 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
 
   // Make sure no one leaves with an empty rhythm — a gentle gratitude is the
   // easiest first practice if nothing else optional was chosen.
-  const anyExtra = listening || journaling || gratitude || examen || reflectionSource || contemplationMinutes > 0;
+  const anyExtra = listening || gratitude || examen || reflectionSource || contemplationMinutes > 0;
   if (!anyExtra && gentle) {
     gratitude = true;
     reasons.push("A daily gratitude to begin with — the gentlest way into a rhythm.");
@@ -236,7 +220,7 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   const eveningReminder = has(a.whenSpace, "evening") || has(a.whenSpace, "night");
 
   return {
-    morningPrayer, contemplationMinutes, reflectionSource, listening, journaling, journalingSlot,
+    morningPrayer, contemplationMinutes, reflectionSource, listening,
     gratitude, examen, cobreatheInterest, walking, artistsNote: a.artists.trim(),
     morningReminder, eveningReminder, reasons,
   };
@@ -248,7 +232,7 @@ const PRAYER_LEVEL: Record<RecommendedRhythm["morningPrayer"], "intercessions" |
   community: "intercessions", devotion: "devotion", office: "office", contemplation: "reflect-sit",
 };
 const HOME_LAYOUT_VERSION = 2; // keep in sync with WayOfLoveRuleFlow
-const ALL_EXTRAS = ["listening", "journaling", "gratitude", "examen"] as const;
+const ALL_EXTRAS = ["listening", "gratitude", "examen"] as const;
 
 export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const level = PRAYER_LEVEL[rec.morningPrayer];
@@ -270,7 +254,7 @@ export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const newsletters = rec.reflectionSource ? [rec.reflectionSource] : [];
   const otherReflections = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
   const onMap: Record<(typeof ALL_EXTRAS)[number], boolean> = {
-    listening: rec.listening, journaling: rec.journaling, gratitude: rec.gratitude, examen: rec.examen,
+    listening: rec.listening, gratitude: rec.gratitude, examen: rec.examen,
   };
   const extrasOn = ALL_EXTRAS.filter((e) => onMap[e]);
   const extrasOff = ALL_EXTRAS.filter((e) => !onMap[e]);
@@ -283,6 +267,5 @@ export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
 
   // Per-device choices the customizer also sets.
   try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
-  if (rec.journaling) setJournalingSlot(rec.journalingSlot);
   if (rec.artistsNote) { try { localStorage.setItem("phoebe:listening-artists", rec.artistsNote); } catch { /* ignore */ } }
 }

@@ -594,7 +594,9 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       morningTime: u?.morningTime ?? "07:00",
       eveningTime: u?.eveningTime ?? "18:00",
       showConfession: u?.showConfession ?? false,
-      defaultPrayerLevel: u?.defaultPrayerLevel ?? "devotion",
+      // "journal" was a retired office depth (its page is gone) — fold any
+      // stored value down to a safe Devotion so an old pref can't break the office.
+      defaultPrayerLevel: u?.defaultPrayerLevel === "journal" ? "devotion" : (u?.defaultPrayerLevel ?? "devotion"),
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 5,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
       dailyStepGoal: u?.dailyStepGoal ?? 0,
@@ -638,7 +640,7 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   // Default prayer level — Settings picker. Strict allowlist so an
   // arbitrary string can't be written.
-  const allowedLevels = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"]);
+  const allowedLevels = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit"]);
   if (typeof body.defaultPrayerLevel === "string" && allowedLevels.has(body.defaultPrayerLevel)) {
     update.defaultPrayerLevel = body.defaultPrayerLevel;
   }
@@ -957,7 +959,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
@@ -1001,7 +1003,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const gratitude = new Set<string>();
     const examen = new Set<string>();
     const listening = new Set<string>();
-    const journaling = new Set<string>();
     const reading = new Set<string>();
     const podcasts = new Set<string>();
     const walk = new Set<string>();
@@ -1010,7 +1011,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "gratitude") gratitude.add(r.local_date);
       if (r.section === "examen") examen.add(r.local_date);
       if (r.section === "listening") listening.add(r.local_date);
-      if (r.section === "journaling") journaling.add(r.local_date);
       if (r.section === "reading") reading.add(r.local_date);
       if (r.section === "podcasts") podcasts.add(r.local_date);
       if (r.section === "walk") walk.add(r.local_date);
@@ -1027,7 +1027,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       listening: listening.has(ymd),
       gratitude: gratitude.has(ymd),
       examen: examen.has(ymd),
-      journaling: journaling.has(ymd),
       reading: reading.has(ymd),
       podcasts: podcasts.has(ymd),
       walk: walk.has(ymd),

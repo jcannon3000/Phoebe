@@ -14,12 +14,12 @@ import { db, usersTable, type PrescribedRoutineSpec } from "@workspace/db";
 // layout can never surface an unknown card.
 const HOME_MODULE_KEYS = [
   "office", "feeds", "contemplation", "listening", "reading", "walk",
-  "cobreathe", "gratitude", "examen", "journaling", "cac", "fdd", "ssje",
+  "cobreathe", "gratitude", "examen", "cac", "fdd", "ssje",
   "ncmp", "podcasts", "requests",
 ] as const;
 
 const ALLOWED_PREFS = new Set(["none", "office", "devotion"]);
-const ALLOWED_LEVELS = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"]);
+const ALLOWED_LEVELS = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit"]);
 // A real clock time (00:00–23:59). The old /^\d{2}:\d{2}$/ accepted "99:99",
 // which sailed through to the reminder cron and silently disabled that side's
 // notifications for everyone who adopted the spec.

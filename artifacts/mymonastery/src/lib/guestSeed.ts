@@ -154,7 +154,7 @@ export function resetDeviceRuleForLogout(): void {
     ];
     const EXACT = new Set([
       "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:scripture-scope",
-      "phoebe:journaling-slot", "phoebe:commitment-start", "phoebe:dp-pulse",
+      "phoebe:commitment-start", "phoebe:dp-pulse",
     ]);
     const toRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

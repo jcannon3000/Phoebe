@@ -69,27 +69,9 @@ export function slotOpensLabel(slot: CustomSlot): string | null {
   return `${hr12} ${am ? "AM" : "PM"}`;
 }
 
-// Journaling (a built-in optional practice) is flexible about WHEN — morning
-// pages, an evening reflection — so, like a custom anchor, it carries a
-// time-of-day slot that places its card in the rhythm at the chosen time.
-// Stored per-device; defaults to evening (the most common journaling beat).
-const JOURNALING_SLOT_KEY = "phoebe:journaling-slot";
-export function getJournalingSlot(): CustomSlot {
-  try {
-    const v = localStorage.getItem(JOURNALING_SLOT_KEY) as CustomSlot | null;
-    return v && CUSTOM_SLOTS.includes(v) ? v : "evening";
-  } catch {
-    return "evening";
-  }
-}
-export function setJournalingSlot(slot: CustomSlot): void {
-  try { localStorage.setItem(JOURNALING_SLOT_KEY, slot); } catch { /* private mode */ }
-  pushRoutineConfig(); // sync the slot change across devices (lib/routineSync)
-}
-
-// Other built-in practices that the customizer now places at a chosen time of day
-// (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot, same
-// idea as journaling. Sensible defaults if the user never picks one.
+// Built-in practices that the customizer places at a chosen time of day
+// (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot.
+// Sensible defaults if the user never picks one.
 export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "scripture" | "reading";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   cobreathe: "morning",

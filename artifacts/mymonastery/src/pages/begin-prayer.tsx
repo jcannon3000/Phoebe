@@ -28,7 +28,7 @@ export default function BeginPrayerPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: officePrefs, isLoading: prefsLoading } = useQuery<{
-    defaultPrayerLevel?: "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
+    defaultPrayerLevel?: "ask" | "devotion" | "office" | "intercessions" | "reflect-sit";
   }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
@@ -80,14 +80,6 @@ export default function BeginPrayerPage() {
     // regardless of time of day or prayed-today state.
     if (defaultPrayerLevel === "reflect-sit") {
       setLocation("/contemplation?begin=1", { replace: true });
-      return;
-    }
-
-    // "Journal" — a private daily reflection. Self-contained (writes its
-    // own entry, logs its own journal prayer-session), so route straight
-    // there regardless of time of day or prayed-today state.
-    if (defaultPrayerLevel === "journal") {
-      setLocation("/journal", { replace: true });
       return;
     }
 

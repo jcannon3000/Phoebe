@@ -100,7 +100,6 @@ export type RhythmState = {
   gratitudeActive: boolean;
   examenActive: boolean;
   listeningActive: boolean;
-  journalingActive: boolean;
   readingActive: boolean;
   podcastsActive: boolean;
   walkActive: boolean;
@@ -115,7 +114,6 @@ export type RhythmState = {
   gratitudeDone: boolean;
   examenDone: boolean;
   listeningDone: boolean;
-  journalingDone: boolean;
   readingDone: boolean;
   podcastsDone: boolean;
   walkDone: boolean;
@@ -262,7 +260,6 @@ export function useRhythmState(): RhythmState {
     gratitude: hasPracticeDoneToday("gratitude"),
     examen: hasPracticeDoneToday("examen"),
     listening: hasPracticeDoneToday("listening"),
-    journaling: hasPracticeDoneToday("journaling"),
     reading: hasPracticeDoneToday("reading"),
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
@@ -274,7 +271,6 @@ export function useRhythmState(): RhythmState {
       gratitude: hasPracticeDoneToday("gratitude"),
       examen: hasPracticeDoneToday("examen"),
       listening: hasPracticeDoneToday("listening"),
-      journaling: hasPracticeDoneToday("journaling"),
       reading: hasPracticeDoneToday("reading"),
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
@@ -393,11 +389,6 @@ export function useRhythmState(): RhythmState {
   // practice — it appears ONLY when the user selects it in the customizer
   // (homeCardActive reads the saved home layout).
   const listeningActive = homeCardActive(hl, "listening");
-  // Journaling removed (2026-07-22): the free-text journal was taken out to keep
-  // the app free of plaintext personal-content inputs. Forced inactive here so
-  // the card, the menu ring and the weekly grid all drop it at once; the
-  // customizer no longer offers it.
-  const journalingActive = false;
   // Reading + Podcasts — logging-first practices added from the "Add to your
   // day" step; each its own home card + dot.
   const readingActive = homeCardActive(hl, "reading");
@@ -423,7 +414,7 @@ export function useRhythmState(): RhythmState {
   // Listen to Scripture — the day's appointed readings, heard one passage at a
   // time (Scripture Day by Day); a slotted contemplative practice.
   const scriptureActive = homeCardActive(hl, "scripture");
-  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || readingActive || podcastsActive || walkActive || prayerListActive || scriptureActive;
+  const anyExtraActive = gratitudeActive || examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive || scriptureActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -568,7 +559,6 @@ export function useRhythmState(): RhythmState {
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
-  const journalingDone = journalingActive && (practiceLocal.journaling || serverDone("journaling"));
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
@@ -752,7 +742,6 @@ export function useRhythmState(): RhythmState {
     ...(prayerListActive ? [prayerListDone] : []),
     ...(scriptureActive ? [scriptureDone] : []),
     ...(examenActive ? [examenDone] : []),
-    ...(journalingActive ? [journalingDone] : []),
     ...(stepsActive ? [stepsDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
@@ -803,7 +792,6 @@ export function useRhythmState(): RhythmState {
     gratitudeActive,
     examenActive,
     listeningActive,
-    journalingActive,
     readingActive,
     podcastsActive,
     walkActive,
@@ -817,7 +805,6 @@ export function useRhythmState(): RhythmState {
     gratitudeDone,
     examenDone,
     listeningDone,
-    journalingDone,
     readingDone,
     podcastsDone,
     walkDone,

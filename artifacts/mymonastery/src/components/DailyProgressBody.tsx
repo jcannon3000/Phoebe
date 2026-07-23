@@ -20,7 +20,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, type Reflec
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -265,11 +265,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, gratitudeActive, examenActive, journalingActive, cobreatheActive, prayerListActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, gratitudeActive, examenActive, cobreatheActive, prayerListActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -306,7 +306,6 @@ export function WeeklyGridCard() {
     ...(gratitudeActive ? [{ id: "gratitude", emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124", doneFor: (d: Day) => !!d.gratitude }] : []),
     ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
-    ...(journalingActive ? [{ id: "journaling", emoji: "📓", label: t("rhythm.row_journaling", { defaultValue: "Journaling" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.journaling }] : []),
     // The user's own custom anchors — one row each, filled from local per-day
     // history (it fills in going forward; no backfill before this shipped).
     ...getCustomAnchors().map((a, i) => {
@@ -588,7 +587,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, journalingActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, journalingDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, gratitudeActive, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, scriptureActive, gratitudeDone, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, scriptureDone, stepsActive, stepsToday, stepsGoal, stepsDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -714,22 +713,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     };
   };
 
-  // Journaling is a LOG-only practice — you keep it however you like (a notebook,
-  // paper) and tap to mark the day, like a daily walk. No in-app typing (the
-  // /journal page stays separate). It slots into the rhythm at the time of day
-  // the user chose (getJournalingSlot), so it sits near that part of the day.
-  const journalingSlot = getJournalingSlot();
-  const journalingCard = {
-    key: "journaling", emoji: "📓", rgb: "120,150,170", done: journalingDone, href: "",
-    onClick: () => markPracticeDoneToday("journaling"),
-    title: t("rhythm.card_journaling", { defaultValue: "Journaling" }),
-    blurb: journalingDone ? kept : t("rhythm.blurb_journaling", { defaultValue: "Kept however you like — tap to log" }),
-    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-  };
-
   // Co-Breathe, Audio Divina, and the Examen now slot into the rhythm at the
   // time of day chosen in the customizer's contemplative step (getPracticeSlot),
-  // the same way journaling + custom anchors do.
+  // the same way custom anchors do.
   const cobreatheCard = {
     key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone, href: "/cobreathe?start=1",
     title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
@@ -906,7 +892,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(scriptureActive ? [{ ...scriptureCard, slot: scriptureSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
-    ...(journalingActive ? [{ ...journalingCard, slot: journalingSlot }] : []),
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{
       key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180", done: readingDone, href: "/reading-log",

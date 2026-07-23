@@ -25,7 +25,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // entry, restore on exit (identical set to prescribe-routine.tsx).
 const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
 const ROUTINE_EXACT = [
-  "phoebe:journaling-slot", "phoebe:scripture-scope", "phoebe:fdd-mode",
+  "phoebe:scripture-scope", "phoebe:fdd-mode",
   "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
   "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
 ];

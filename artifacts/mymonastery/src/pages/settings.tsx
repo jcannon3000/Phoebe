@@ -179,7 +179,7 @@ type OfficePref = "none" | "office" | "devotion";
 // Default prayer level — Settings picker decides which depth the
 // home-screen office card's CTA jumps to. Mirrors the server-side
 // allowlist in /api/me/office-prefs (PUT).
-type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
+type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;

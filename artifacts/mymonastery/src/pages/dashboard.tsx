@@ -6000,7 +6000,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "journaling", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "gratitude", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
@@ -7117,10 +7117,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // not as a separate classic-home feed card — like cac/fdd when
                 // they're not the reflection hero.
                 case "listening":
-                  return null;
-                // Journaling is a log-only rhythm dot (surfaced in daily-progress),
-                // not a classic-home feed card.
-                case "journaling":
                   return null;
                 case "gratitude":
                   return <GratitudeHomeCard />;

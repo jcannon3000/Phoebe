@@ -28,7 +28,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // the admin's own rhythm. (Mirrors ROUTINE_KEYS in lib/routineSync.ts.)
 const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
 const ROUTINE_EXACT = [
-  "phoebe:journaling-slot", "phoebe:scripture-scope", "phoebe:fdd-mode",
+  "phoebe:scripture-scope", "phoebe:fdd-mode",
   "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
   // Also written by the customizer's controls (breath-count picker) or carried
   // in ROUTINE_KEYS — missing from this list, designing-for-others permanently

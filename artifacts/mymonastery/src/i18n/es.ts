@@ -2106,8 +2106,6 @@ export const es: Translations = {
     depth_intercessions_sub: "La presentación de las peticiones de oración que sostiene tu comunidad.",
     depth_reflect_sit_label: "Reflexionar y Sentarse",
     depth_reflect_sit_sub: "Forward Day by Day, leído en voz alta, y luego un temporizador en silencio.",
-    depth_journal_label: "Diario",
-    depth_journal_sub: "Una reflexión diaria privada que tú escribes.",
     // Slide 2 — Morning reminder
     morning_reminder_eyebrow: "Paso 2 · Mañanas",
     morning_reminder_headline: "¿Quieres un aviso por la mañana?",

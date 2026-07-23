@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Printer, Sliders } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { getPracticeSlot, getJournalingSlot, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, type CustomSlot } from "@/lib/customAnchors";
 import { getExplicitSideLevel, getPsalmCycle, type OfficeLevel } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { Fragment, type CSSProperties } from "react";
@@ -129,7 +129,6 @@ export default function RoutinePrintPage() {
   if (r.listeningActive) items.push({ emoji: "🎵", label: "Audio Divina", slot: getPracticeSlot("listening") });
   if (r.readingActive) items.push({ emoji: "📚", label: "Reading", slot: getPracticeSlot("reading") });
   if (r.walkActive) items.push({ emoji: "🚶", label: "Contemplative Walk", slot: getPracticeSlot("walk") });
-  if (r.journalingActive) items.push({ emoji: "📓", label: "Journaling", slot: getJournalingSlot() });
   if (r.podcastsActive) items.push({ emoji: "🎙️", label: "Podcasts", slot: "afternoon" });
   if (r.prayerListActive) items.push({ emoji: "🕊️", label: "My Prayer List", slot: "anytime" });
   for (const a of r.customAnchors) {

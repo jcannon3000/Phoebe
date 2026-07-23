@@ -27,7 +27,7 @@ import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getPracticeSlot, setPracticeSlot, getScriptureScope, setScriptureScope, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ScriptureScope, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
@@ -558,11 +558,10 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; journaling: boolean; reading: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; reading: boolean; podcasts: boolean; prayerList: boolean }>(() => ({
     gratitude: homeCardOn(user?.homeLayout, "gratitude"),
     examen: homeCardOn(user?.homeLayout, "examen"),
     listening: homeCardOn(user?.homeLayout, "listening"),
-    journaling: homeCardOn(user?.homeLayout, "journaling"),
     reading: homeCardOn(user?.homeLayout, "reading"),
     podcasts: homeCardOn(user?.homeLayout, "podcasts"),
     prayerList: homeCardOn(user?.homeLayout, "prayer-list"),
@@ -634,7 +633,6 @@ export default function WayOfLoveRuleFlow({
       gratitude: homeCardOn(user.homeLayout, "gratitude"),
       examen: homeCardOn(user.homeLayout, "examen"),
       listening: homeCardOn(user.homeLayout, "listening"),
-      journaling: homeCardOn(user.homeLayout, "journaling"),
       reading: homeCardOn(user.homeLayout, "reading"),
       podcasts: homeCardOn(user.homeLayout, "podcasts"),
       prayerList: homeCardOn(user.homeLayout, "prayer-list"),
@@ -748,11 +746,6 @@ export default function WayOfLoveRuleFlow({
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
   const [customSlot, setCustomSlot] = useState<CustomSlot>("anytime");
-  // Journaling's time-of-day slot — when they add Journaling we ask when in the
-  // day they keep it, so its card slots into the rhythm at that point. Seeded
-  // from the saved choice; persisted on tap (localStorage, per-device).
-  const [journalingSlot, setJournalingSlotState] = useState<CustomSlot>(() => getJournalingSlot());
-  const chooseJournalingSlot = (s: CustomSlot) => { touchedRef.current = true; setJournalingSlotState(s); setJournalingSlot(s); };
   const [readingSlot, setReadingSlotState] = useState<CustomSlot>(() => getPracticeSlot("reading"));
   const chooseReadingSlot = (s: CustomSlot) => { touchedRef.current = true; setReadingSlotState(s); setPracticeSlot("reading", s); };
   // Reading ritual toggle — when on, the new practice is logged by an amount
@@ -782,7 +775,7 @@ export default function WayOfLoveRuleFlow({
     setCustomList(getCustomAnchors());
     setAddingCustom(false);
   };
-  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling" | "reading" | "podcasts" | "prayerList") => {
+  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "reading" | "podcasts" | "prayerList") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
@@ -959,7 +952,6 @@ export default function WayOfLoveRuleFlow({
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
-      ...(extras.journaling ? ["journaling"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(contemplative.examen ? ["examen"] : []),
@@ -971,7 +963,6 @@ export default function WayOfLoveRuleFlow({
     const offKeys = [
       ...(extras.gratitude ? [] : ["gratitude"]),
       ...(extras.prayerList ? [] : ["prayer-list"]),
-      ...(extras.journaling ? [] : ["journaling"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(contemplative.examen ? [] : ["examen"]),
@@ -1099,7 +1090,7 @@ export default function WayOfLoveRuleFlow({
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
-    // Gratitude + journaling come from the "Add to your day" step; Examen, Audio
+    // Gratitude comes from the "Add to your day" step; Examen, Audio
     // Divina (listening), and Co-Breathe come from the contemplative step. Every
     // selected Co-Breathe gets its own home card. Co-Breathe earns a card from
     // EITHER path: the Contemplation-practices toggle (contemplative.cobreathe) OR
@@ -1115,7 +1106,6 @@ export default function WayOfLoveRuleFlow({
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.prayerList ? ["prayer-list"] : []),
-      ...(extras.journaling ? ["journaling"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
       ...(contemplative.examen ? ["examen"] : []),
@@ -1127,7 +1117,6 @@ export default function WayOfLoveRuleFlow({
     const offKeys = [
       ...(extras.gratitude ? [] : ["gratitude"]),
       ...(extras.prayerList ? [] : ["prayer-list"]),
-      ...(extras.journaling ? [] : ["journaling"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
       ...(contemplative.examen ? [] : ["examen"]),
@@ -1236,7 +1225,7 @@ export default function WayOfLoveRuleFlow({
       evening: preset.silence && preset.goalMin >= 5 && preset.goalMin <= 30 ? preset.goalMin : 15,
     });
     setNewsletters(preset.reflections);
-    setExtras({ gratitude: false, examen: false, listening: false, journaling: false, reading: false, podcasts: false, prayerList: false });
+    setExtras({ gratitude: false, examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
     try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
     setAdoptId(preset.id);
   };

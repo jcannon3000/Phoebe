@@ -23,7 +23,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // prescribe-routine.tsx / lib/routineSync ROUTINE_KEYS.)
 const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
 const ROUTINE_EXACT = [
-  "phoebe:journaling-slot", "phoebe:scripture-scope", "phoebe:fdd-mode",
+  "phoebe:scripture-scope", "phoebe:fdd-mode",
   "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
   // Also written by the customizer's controls (breath-count picker) or carried
   // in ROUTINE_KEYS — missing from this list, designing-for-others permanently

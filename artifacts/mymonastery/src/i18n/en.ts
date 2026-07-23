@@ -2164,8 +2164,6 @@ export const en = {
     depth_intercessions_sub: "The slideshow of prayer requests your community holds.",
     depth_reflect_sit_label: "Reflect & Sit",
     depth_reflect_sit_sub: "Forward Day by Day, read aloud, then a silent timer.",
-    depth_journal_label: "Journal",
-    depth_journal_sub: "A private daily reflection you write.",
     // Slide 2 — Morning reminder
     morning_reminder_eyebrow: "Step 2 · Mornings",
     morning_reminder_headline: "Want a morning nudge?",

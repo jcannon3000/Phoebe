@@ -62,7 +62,7 @@ export type CompletionSignal =
   | "feedEngagedWeek";     // engaged a prayer feed this week
 
 // Which office depth a Pray option maps to (drives the office-settings sync).
-export type OptionOfficeLevel = "office" | "devotion" | "intercessions" | "reflect-sit" | "journal";
+export type OptionOfficeLevel = "office" | "devotion" | "intercessions" | "reflect-sit";
 
 // An i18n label: a key plus the English default rendered via t().
 export type I18nText = { key: string; default: string };
@@ -139,7 +139,6 @@ export const PRACTICES: Record<PracticeId, Practice> = {
       { id: "pray-devotion", label: txt("way_of_love.pray.devotion", "Pray a Daily Devotion (a short form)"), defaultCadence: "daily", home: "app", setting: "office", officeLevel: "devotion", completionSignal: "officeToday" },
       { id: "pray-reflect-sit", label: txt("way_of_love.pray.reflect_sit", "Reflect & Sit — a short reading, then silence"), defaultCadence: "daily", home: "app", setting: "office", officeLevel: "reflect-sit", completionSignal: "officeToday" },
       { id: "pray-intercessions", label: txt("way_of_love.pray.intercessions", "Pray the community intercessions"), defaultCadence: "daily", home: "app", setting: "office", officeLevel: "intercessions", completionSignal: "officeToday" },
-      { id: "pray-journal", label: txt("way_of_love.pray.journal", "Keep a prayer journal"), defaultCadence: "daily", home: "app", setting: "office", officeLevel: "journal", completionSignal: "officeToday" },
       { id: "pray-devotions-136", label: txt("way_of_love.pray.devotions_136", "Pray the BCP Daily Devotions for Individuals & Families (p. 136)"), defaultCadence: "daily", home: "offline" },
       { id: "pray-beads", label: txt("way_of_love.pray.beads", "Pray with prayer beads"), defaultCadence: "daily", home: "offline" },
       { id: "pray-walking", label: txt("way_of_love.pray.walking", "Walk and pray"), defaultCadence: "occasional", home: "offline" },

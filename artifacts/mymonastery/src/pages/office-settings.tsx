@@ -58,7 +58,7 @@ const ACCENT = "#A8C5A0";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 type OfficePref = "none" | "office" | "devotion";
-type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
+type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
@@ -296,7 +296,6 @@ export default function OfficeSettingsPage() {
           { value: "office" as const, emoji: "📖", label: t("office_settings.depth_office_label"), sub: side === "evening" ? t("office_settings.depth_office_sub_evening") : t("office_settings.depth_office_sub_morning") },
           { value: "intercessions" as const, emoji: "🙏🏽", label: t("office_settings.depth_intercessions_label"), sub: t("office_settings.depth_intercessions_sub") },
           { value: "reflect-sit" as const, emoji: "🕯️", label: t("office_settings.depth_reflect_sit_label"), sub: t("office_settings.depth_reflect_sit_sub") },
-          { value: "journal" as const, emoji: "📓", label: t("office_settings.depth_journal_label"), sub: t("office_settings.depth_journal_sub") },
         ]).map((o) => (
           <OptionCard
             key={o.value}
