@@ -1290,11 +1290,9 @@ export default function CommunityDetailPage() {
             Hidden for admins, who manage these surfaces from settings
             and don't want the member-facing reflection cards cluttering
             their admin view. */}
-        {rawIsBeta && !isAdmin && <ReflectionEntryCard slug={slug} />}
 
         {/* Beta-only — Sunday-service reflection entry. Mirrors the
             daily card pattern. Also hidden for admins (see above). */}
-        {rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card

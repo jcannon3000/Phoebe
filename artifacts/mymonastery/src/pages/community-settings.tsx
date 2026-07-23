@@ -375,7 +375,6 @@ export default function CommunitySettingsPage() {
             card on /communities/:slug with an "Open today's reading"
             button + a write-and-share composer. Off by default; the
             admin can set, change, or clear it any time. */}
-        {isBeta && <ReflectionSourcePicker slug={slug ?? ""} />}
 
         {/* ── Sunday Service Reflections (beta) ────────────────────────────
             Admin-flipped toggle. When on, the bell scanner sends every
@@ -383,7 +382,6 @@ export default function CommunitySettingsPage() {
             reflection on this week's service. The composer page lives at
             /communities/:slug/sunday-reflection and stays open the whole
             week — members edit until the next Sunday rolls over. */}
-        {isBeta && <SundayReflectionsToggle slug={slug ?? ""} />}
 
         {/* ── Prayer Circle (beta) ──────────────────────────────────────────
             Admins can turn any community into a prayer circle here, or toggle
