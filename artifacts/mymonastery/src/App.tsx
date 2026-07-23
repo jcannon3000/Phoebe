@@ -469,7 +469,6 @@ const FeaturesDeck = lazy(() => import("./pages/features-deck"));
 const AboutDeck = lazy(() => import("./pages/about-deck"));
 const UserOnboarding = lazy(() => import("./pages/user-onboarding"));
 const FeedbackPage = lazy(() => import("./pages/feedback"));
-const MutedUsersPage = lazy(() => import("./pages/muted-users"));
 const PrayerFeedNewPage = lazy(() => import("./pages/prayer-feed-new"));
 const PrayerFeedManagePage = lazy(() => import("./pages/prayer-feed-manage"));
 const PrayerFeedsBrowsePage = lazy(() => import("./pages/prayer-feeds-browse"));
@@ -1286,7 +1285,6 @@ function Router() {
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/about-deck" component={AboutDeck} />
       <Route path="/feedback" component={FeedbackPage} />
-      <Route path="/settings/muted" component={MutedUsersPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route path="/prayer-feeds/new" component={PrayerFeedNewPage} />
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />

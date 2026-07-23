@@ -113,25 +113,7 @@ export default function PersonProfile() {
 
   const [prayerWord, setPrayerWord] = useState("");
   const [wordJustSent, setWordJustSent] = useState(false);
-  const [showMuteModal, setShowMuteModal] = useState(false);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
-
-  const muteMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/mutes/${(person as any)?.userId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
-      setShowMuteModal(false);
-    },
-  });
-
-  const unmuteMutation = useMutation({
-    mutationFn: () => apiRequest("DELETE", `/api/mutes/${(person as any)?.userId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
-    },
-  });
 
   // Fellow-relationship management. We read /api/fellows once and
   // check if this person is in the set so we can render either an
@@ -276,14 +258,6 @@ export default function PersonProfile() {
                   📮 {t("person.correspondent")}
                 </span>
               )}
-              {(person as any).isMuted && (
-                <span
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(194,92,92,0.15)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
-                >
-                  🔇 {t("person.muted")}
-                </span>
-              )}
             </div>
             {sharedGroups.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 mt-1">
@@ -355,26 +329,6 @@ export default function PersonProfile() {
                           {unfellowMutation.isPending ? t("person.removing") : t("person.unfellow_name", { name: firstName })}
                         </button>
                       </>
-                    )}
-
-                    {/* Mute toggle */}
-                    {(person as any).isMuted ? (
-                      <button
-                        onClick={() => { setShowSettingsPopup(false); unmuteMutation.mutate(); }}
-                        disabled={unmuteMutation.isPending}
-                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
-                        style={{ color: "#A8C5A0" }}
-                      >
-                        {unmuteMutation.isPending ? t("person.unmuting") : t("person.unmute")}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => { setShowSettingsPopup(false); setShowMuteModal(true); }}
-                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
-                        style={{ color: "#C25C5C" }}
-                      >
-                        🔇 {t("person.mute_name", { name: firstName })}
-                      </button>
                     )}
 
                     {/* Report — App Store Guideline 1.2 path. Sits
@@ -646,48 +600,6 @@ export default function PersonProfile() {
         )}
       </div>
 
-      {/* ── Mute confirmation modal ───────────────────────────────────── */}
-      {showMuteModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-6"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
-          onClick={() => setShowMuteModal(false)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-sm rounded-2xl px-6 py-6"
-            style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="text-3xl mb-4 text-center">🔇</div>
-            <h2 className="text-lg font-semibold text-center mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {t("person.mute_modal_title", { name: firstName })}
-            </h2>
-            <p className="text-sm text-center leading-relaxed mb-6" style={{ color: "#8FAF96" }}>
-              {t("person.mute_modal_body")}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowMuteModal(false)}
-                className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-                style={{ background: "rgba(46,107,64,0.08)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
-              >
-                {t("person.cancel")}
-              </button>
-              <button
-                onClick={() => muteMutation.mutate()}
-                disabled={muteMutation.isPending}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "rgba(194,92,92,0.2)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
-              >
-                {muteMutation.isPending ? t("person.muting") : t("person.mute")}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
     </Layout>
   );

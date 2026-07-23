@@ -1060,9 +1060,6 @@ function OfficeCloseExtrasSettings() {
   );
 }
 
-// ─── Muted People ───────────────────────────────────────────────────────────
-
-type MutedUser = { userId: number; name: string; email: string };
 
 // Each row is ~52px tall; show 3.5 rows = ~182px
 const PREVIEW_HEIGHT = 182;
@@ -1211,65 +1208,6 @@ function HomeDisplaySettings() {
   );
 }
 
-function MutedPeople() {
-  const { data, isLoading } = useQuery<{ muted: MutedUser[] }>({
-    queryKey: ["/api/mutes"],
-    queryFn: () => apiRequest("GET", "/api/mutes"),
-  });
-
-  const muted = data?.muted ?? [];
-
-  return (
-    <>
-      <SectionHeader label="Muted People" />
-      <SettingsCard>
-        {isLoading && (
-          <p className="text-sm" style={{ color: "#8FAF96" }}>Loading…</p>
-        )}
-        {!isLoading && muted.length === 0 && (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm" style={{ color: "#8FAF96" }}>
-              No one muted.
-            </p>
-            <Link
-              href="/settings/muted"
-              className="text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition-opacity hover:opacity-80"
-              style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
-            >
-              + Add
-            </Link>
-          </div>
-        )}
-        {muted.length > 0 && (
-          <>
-            <div
-              className="overflow-y-auto space-y-3"
-              style={{ maxHeight: PREVIEW_HEIGHT }}
-            >
-              {muted.map((m) => (
-                <div key={m.userId} className="flex items-center justify-between gap-3 py-0.5">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{m.name}</p>
-                    <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
-              <Link
-                href="/settings/muted"
-                className="text-sm font-medium transition-opacity hover:opacity-80"
-                style={{ color: "#A8C5A0" }}
-              >
-                See all ({muted.length}) →
-              </Link>
-            </div>
-          </>
-        )}
-      </SettingsCard>
-    </>
-  );
-}
 
 // ─── Account Section (photo + name editing) ────────────────────────────────
 
@@ -2137,13 +2075,6 @@ export default function SettingsPage() {
         </div>
         )}
 
-        {/* ── Muted People — social-graph feature, hidden in pilot AND the
-              public version. ── */}
-        {!isPilot && !isGuest && (
-        <div className="mb-8">
-          <MutedPeople />
-        </div>
-        )}
 
         {/* ── Notifications master switch — same platform rule as reminders. ── */}
         {notificationsSupportedHere() && (
