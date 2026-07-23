@@ -66,30 +66,6 @@ export const usersTable = pgTable("users", {
   // prayerStreakLastDate is YYYY-MM-DD in the user's timezone.
   prayerStreakCount: integer("prayer_streak_count").notNull().default(0),
   prayerStreakLastDate: text("prayer_streak_last_date"),
-  // ── Phone-number contact discovery ───────────────────────────────────────
-  // phoneNumber is the display form (what the user typed); normalized is
-  // the canonical E.164 ("+15555550123") used for the unique-per-account
-  // index; phoneHash is SHA-256(normalized), the only column we read from
-  // when matching uploaded device-contact hashes. Verification (SMS) is
-  // deferred — for the v1 trust model we always render the matched user's
-  // own Phoebe display name + avatar, never the uploader's contact-book
-  // label, so an impersonator can't masquerade as someone else's contact
-  // entry. See routes/users.ts (POST /me/phone) and routes/contacts.ts
-  // (POST /match) for the matching pipeline.
-  phoneNumber: text("phone_number"),
-  phoneNumberNormalized: text("phone_number_normalized"),
-  phoneHash: text("phone_hash"),
-  // Set the moment an SMS code (Twilio Verify) is confirmed. NULL = the
-  // number is unverified / self-attested. Contact discovery only ever
-  // surfaces VERIFIED numbers, so a self-typed number can't impersonate a
-  // contact entry or be matched against an address book.
-  phoneVerifiedAt: timestamp("phone_verified_at"),
-  // Opt-in: false by default, even after verifying. Verifying your number
-  // does NOT make you findable — the user must explicitly turn on "let
-  // people find me by my phone number". Preserves the standing privacy
-  // promise that an account isn't discoverable unless the finder already
-  // knows the user. Discovery requires phone_verified_at IS NOT NULL too.
-  discoverableByPhone: boolean("discoverable_by_phone").notNull().default(false),
   climateEnrolled: boolean("climate_enrolled").notNull().default(false),
   // Distinct from `onboardingCompleted` (Phoebe's general onboarding tour).
   // Climate has its own short intro shown once after signup; this column
@@ -300,18 +276,6 @@ export const usersTable = pgTable("users", {
   // stay on "en". Default English so legacy rows don't need a backfill.
   locale: text("locale").notNull().default("en"),
   // ── "Places I've been prayed for" map ────────────────────────────────────
-  // Opt-in, default OFF: when on AND the OS grants location permission,
-  // tapping Amen attaches a coarse (~1 mile) location to that amen, so the
-  // person being prayed for can see a map of where their prayers came from.
-  // Location is sensitive, so this stays off until the user explicitly
-  // enables it (Settings) and the OS permission prompt is granted.
-  sharePrayLocation: boolean("share_pray_location").notNull().default(false),
-  // Opt-in, default OFF. When on AND the OS grants location, a live Cobreathe
-  // breath attaches a COARSE (~5km, 5-char geohash) bucket to the user's
-  // ephemeral ws session, so they see how many others nearby are breathing now
-  // ("the same air"). In-memory only — never stored on a session row, never
-  // broadcast to other clients; the server derives only a count + coarse band.
-  shareBreathLocation: boolean("share_breath_location").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

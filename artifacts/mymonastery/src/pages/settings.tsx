@@ -1486,7 +1486,7 @@ export default function SettingsPage() {
   const { user, isLoading } = useAuth();
   // PUBLIC no-login version: the light settings page. `isGuest` (the shape —
   // any non-pilot session) drops the community-facing rows: Language (the
-  // Spanish beta is a full-app rollout), phone discovery, Muted People, and
+  // Spanish beta is a full-app rollout), Muted People, and
   // Emails. `accountless` (signed in only as the anonymous device user)
   // additionally drops every account affordance — profile editing, Sign out,
   // Export, Delete — there's no account to manage: just the rhythm,

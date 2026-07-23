@@ -102,10 +102,6 @@ export function PrivacyBody() {
         <Section title="Why we ask for iOS permissions">
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Contacts</strong> — only when you tap "Invite from contacts." We use selected names, emails,
-              and phone numbers to send invites. We do not upload your contact list.
-            </li>
-            <li>
               <strong>Face ID</strong> — optional app re-lock after a period of idle. Face ID authentication
               happens entirely on your device; we never receive biometric data.
             </li>
@@ -193,20 +189,9 @@ export function PrivacyBody() {
             link; anyone holding the link can view the shared content. Invite links are not publicly indexed.
           </p>
           <p>
-            One-to-one messages and letters are visible only to the people you exchange them with. Reflections
-            and comments you post in a group are visible to that group's members. Prayers you record privately
-            for another member are not shown to that person.
-          </p>
-          <p>
-            There are no public profiles. Your account is not discoverable unless someone already knows your
-            email, has your invite link, or — if you choose to turn it on — has your verified phone number
-            saved in their contacts.
-          </p>
-          <p>
-            Finding contacts by phone is optional and off by default. If you verify your number, it stays
-            private until you switch on “let people who have my number find me” in Settings. When a contact
-            looks for friends, their phone numbers are hashed on their device and only the hashes are sent —
-            we never store anyone’s address book, and we never reveal which of your numbers matched.
+            Content you post in a community is visible to that community's members. There are no public
+            profiles, and we do not use phone numbers or your contacts to find or suggest people — your
+            account is not discoverable unless someone already knows your email or has your invite link.
           </p>
           <p>We may disclose data if required by law or valid legal process.</p>
         </Section>

@@ -889,34 +889,8 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS letter_window_pushes_uk ON letter_window_pushes (correspondence_id, user_id, period_start_date, kind)`);
 
-    // ── Phone-number contact discovery ─────────────────────────────────────
-    // Three columns:
-    //   phone_number             — display form, what the user typed
-    //   phone_number_normalized  — E.164 (e.g. "+15555550123"); UNIQUE so
-    //                              one number → one account
-    //   phone_hash               — SHA-256 of phone_number_normalized,
-    //                              indexed for the contact-match lookup.
-    //                              We only store + index the hash so a
-    //                              dump of the device-uploaded contact
-    //                              hashes can be matched without ever
-    //                              keeping the raw uploaded numbers.
-    // Verification (SMS) is intentionally deferred — for now any user
-    // can self-attest. The trust model: matched contacts are surfaced
-    // by the OWNER's address book, and we always show the matched
-    // user's real Phoebe display name + avatar (not the uploader's
-    // contact-book label) so an impersonator can't "become" someone
-    // else's contact entry.
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number_normalized TEXT`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_hash TEXT`);
-    // SMS verification (Twilio Verify): phone_verified_at is set only once a
-    // texted code is confirmed; discoverable_by_phone is the explicit opt-in
-    // that makes a verified number findable by contacts. A row needs BOTH
-    // (verified AND opted-in) to surface in /contacts/match.
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS discoverable_by_phone BOOLEAN NOT NULL DEFAULT FALSE`);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS users_phone_normalized_uk ON users (phone_number_normalized) WHERE phone_number_normalized IS NOT NULL`);
-    await run(client, `CREATE INDEX IF NOT EXISTS users_phone_hash_idx ON users (phone_hash) WHERE phone_hash IS NOT NULL`);
+    // Phone-number contact discovery was removed (privacy simplification); its
+    // columns/indexes are dropped at the end of this migration.
 
     // ── Waitlist ─────────────────────────────────────────────────────────────
     // Public-facing signup queue: people who want in before invite-based
@@ -2556,38 +2530,8 @@ export async function migrate() {
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS rhythm_party_members_once ON rhythm_party_members (party_id, user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS rhythm_party_members_by_user ON rhythm_party_members (user_id)`);
 
-    // ── Group chat — a message stream scoped to a community (group) ───────
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS group_messages (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-        sender_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        body TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `
-      CREATE INDEX IF NOT EXISTS group_messages_by_group
-      ON group_messages (group_id, created_at)
-    `);
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS group_message_reads (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        last_read_message_id INTEGER NOT NULL DEFAULT 0
-      )
-    `);
-    // The cursor moved from a wall-clock time to a message-id (see schema) —
-    // add the column for any table created before that change.
-    await run(client, `
-      ALTER TABLE group_message_reads
-      ADD COLUMN IF NOT EXISTS last_read_message_id INTEGER NOT NULL DEFAULT 0
-    `);
-    await run(client, `
-      CREATE UNIQUE INDEX IF NOT EXISTS group_message_reads_unique
-      ON group_message_reads (group_id, user_id)
-    `);
+    // Group chat was removed (privacy simplification); the group_messages /
+    // group_message_reads tables are dropped at the end of this migration.
 
     // ── Prescribed routines — a community admin / clergy designs a daily
     //    rhythm for someone and shares it as a token link; the recipient opens
@@ -3432,9 +3376,8 @@ export async function migrate() {
     // (default) opted-out case. Powers the personal prayed-for map.
     await run(client, `ALTER TABLE prayer_request_amens ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`);
     await run(client, `ALTER TABLE prayer_request_amens ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
-    // Opt-in (default OFF) to attach a coarse location when you tap Amen.
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_pray_location BOOLEAN NOT NULL DEFAULT false`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_breath_location BOOLEAN NOT NULL DEFAULT false`);
+    // The share-location opt-in toggles (share_pray_location / share_breath_location)
+    // were removed (privacy simplification); the columns are dropped at the end.
     // PUBLIC no-login version: anonymous device users (silently provisioned on
     // first guest boot so push/reminders/prefs-sync work with no credentials).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL DEFAULT false`);
@@ -3893,6 +3836,21 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS parish_prayer_list_prayers CASCADE`);
     await run(client, `DROP TABLE IF EXISTS parish_prayer_list CASCADE`);
     await run(client, `DROP TABLE IF EXISTS feedback CASCADE`);
+
+    // ── Privacy simplification: phone contact-discovery, group chat, and the
+    //    share-location opt-ins were removed. Drop their tables + columns so no
+    //    phone numbers, chat bodies, or location flags remain at rest.
+    await run(client, `DROP TABLE IF EXISTS group_message_reads CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS group_messages CASCADE`);
+    await run(client, `DROP INDEX IF EXISTS users_phone_normalized_uk`);
+    await run(client, `DROP INDEX IF EXISTS users_phone_hash_idx`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS phone_number`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS phone_number_normalized`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS phone_hash`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS phone_verified_at`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS discoverable_by_phone`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS share_pray_location`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS share_breath_location`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

@@ -56,7 +56,6 @@ import {
   breathSessionsTable,
   listeningEntriesTable,
   reflectionThoughtsTable,
-  groupMessagesTable,
   dailyPrayersTable,
   prayerAttentionsTable,
 } from "@workspace/db";
@@ -117,7 +116,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     breathSessions,
     listeningEntries,
     reflectionThoughts,
-    groupMessages,
     dailyPrayersAuthored,
     prayerAttentions,
   ] = await Promise.all([
@@ -155,7 +153,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     db.select().from(breathSessionsTable).where(eq(breathSessionsTable.userId, userId)).catch(() => []),
     db.select().from(listeningEntriesTable).where(eq(listeningEntriesTable.userId, userId)).catch(() => []),
     db.select().from(reflectionThoughtsTable).where(eq(reflectionThoughtsTable.userId, userId)).catch(() => []),
-    db.select().from(groupMessagesTable).where(eq(groupMessagesTable.senderUserId, userId)).catch(() => []),
     db.select().from(dailyPrayersTable).where(eq(dailyPrayersTable.authorId, userId)).catch(() => []),
     db.select().from(prayerAttentionsTable).where(eq(prayerAttentionsTable.viewerId, userId)).catch(() => []),
   ]);
@@ -205,7 +202,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     breathSessions,
     listeningEntries,
     reflectionThoughts,
-    groupMessages,
     dailyPrayersAuthored,
     prayerAttentions,
   };
