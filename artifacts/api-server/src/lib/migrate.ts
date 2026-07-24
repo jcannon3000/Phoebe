@@ -122,35 +122,12 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
-      CREATE TABLE IF NOT EXISTS schedule_responses (
-        id SERIAL PRIMARY KEY,
-        ritual_id INTEGER NOT NULL REFERENCES rituals(id),
-        guest_name TEXT NOT NULL,
-        guest_email TEXT,
-        chosen_time TEXT,
-        unavailable INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS scheduling_responses (
-        id SERIAL PRIMARY KEY,
-        ritual_id INTEGER NOT NULL REFERENCES rituals(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        choice TEXT NOT NULL,
-        chosen_time TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS invite_tokens (
-        id SERIAL PRIMARY KEY,
-        ritual_id INTEGER NOT NULL REFERENCES rituals(id),
-        email TEXT NOT NULL,
-        name TEXT NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        responded_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
+      -- schedule_responses, scheduling_responses (a legacy/dead duplicate —
+      -- never wired to any application code), and invite_tokens were the
+      -- RSVP/scheduling-poll tables (guest name/email + chosen time or
+      -- availability). That feature is removed entirely (owner: "we don't
+      -- want RSVP data") — dropped at the end of this migration, no longer
+      -- created here.
     `);
 
     // ── shared_moments: create with all columns ───────────────────────────────
@@ -654,18 +631,8 @@ export async function migrate() {
       )
     `);
 
-    // Time suggestions from tradition members
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS ritual_time_suggestions (
-        id SERIAL PRIMARY KEY,
-        ritual_id INTEGER NOT NULL REFERENCES rituals(id) ON DELETE CASCADE,
-        suggested_by_email TEXT NOT NULL,
-        suggested_by_name TEXT,
-        suggested_time TEXT NOT NULL,
-        note TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
+    // Member "suggest a time" (ritual_time_suggestions) removed along with
+    // the rest of the RSVP/scheduling-poll system — dropped at the end.
 
     // Magic link tokens for email-based login
     await run(client, `
@@ -3243,68 +3210,9 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_rule_of_life_user ON rule_of_life_sessions (created_by_user_id)`);
 
-    // ── Gatherings scheduler (Phase 1) ──────────────────────────────────────
-    // Three tables: the gathering being scheduled, who's invited, and each
-    // member's recurring weekly availability rhythm.
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS scheduled_gatherings (
-        id                    SERIAL PRIMARY KEY,
-        community_id          INTEGER REFERENCES groups(id) ON DELETE SET NULL,
-        leader_user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        title                 TEXT NOT NULL,
-        description           TEXT,
-        cadence               TEXT NOT NULL DEFAULT 'weekly',
-        duration_min          INTEGER NOT NULL DEFAULT 60,
-        expected_size         INTEGER,
-        needs_room            BOOLEAN NOT NULL DEFAULT FALSE,
-        needs_clergy          BOOLEAN NOT NULL DEFAULT FALSE,
-        visibility            TEXT NOT NULL DEFAULT 'community',
-        status                TEXT NOT NULL DEFAULT 'forming',
-        season_window         JSONB,
-        confirmed_day_of_week INTEGER,
-        confirmed_time        TEXT,
-        confirmed_start_date  TEXT,
-        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_sched_gatherings_leader ON scheduled_gatherings (leader_user_id)`);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_sched_gatherings_community ON scheduled_gatherings (community_id)`);
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS gathering_members (
-        id            SERIAL PRIMARY KEY,
-        gathering_id  INTEGER NOT NULL REFERENCES scheduled_gatherings(id) ON DELETE CASCADE,
-        user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        role          TEXT NOT NULL DEFAULT 'member',
-        invite_status TEXT NOT NULL DEFAULT 'invited',
-        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        CONSTRAINT uq_gathering_member UNIQUE (gathering_id, user_id)
-      )
-    `);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_gathering_members_user ON gathering_members (user_id)`);
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS availability_patterns (
-        id           SERIAL PRIMARY KEY,
-        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        gathering_id INTEGER REFERENCES scheduled_gatherings(id) ON DELETE CASCADE,
-        day_of_week  INTEGER NOT NULL,
-        time_band    TEXT NOT NULL,
-        level        TEXT NOT NULL DEFAULT 'free',
-        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_avail_user_gathering ON availability_patterns (user_id, gathering_id)`);
-    await run(client, `
-      CREATE UNIQUE INDEX IF NOT EXISTS uniq_avail_gathering
-        ON availability_patterns (user_id, gathering_id, day_of_week, time_band)
-        WHERE gathering_id IS NOT NULL
-    `);
-    await run(client, `
-      CREATE UNIQUE INDEX IF NOT EXISTS uniq_avail_global
-        ON availability_patterns (user_id, day_of_week, time_band)
-        WHERE gathering_id IS NULL
-    `);
+    // Gatherings scheduler removed entirely (owner: "we don't want RSVP
+    // data") — scheduled_gatherings, gathering_members (invite/RSVP status),
+    // and availability_patterns are dropped at the end of this migration.
 
     // ── Forward Day by Day audio marks ────────────────────────────────────────
     // Per-episode skip points (scripture start + donation-appeal start) so
@@ -3824,6 +3732,23 @@ export async function migrate() {
     // ── Apple Health / HealthKit removal: no more mindful-minutes or step data.
     await run(client, `DROP TABLE IF EXISTS contemplation_health_minutes CASCADE`);
     await run(client, `DROP TABLE IF EXISTS daily_health_steps CASCADE`);
+
+    // ── RSVP data removal (owner: "we don't want RSVP data"). These two tables
+    //    are already dead (0 readers): the meetup RSVP store and the civic-
+    //    action RSVP store. Drop them so no RSVP records remain at rest.
+    await run(client, `DROP TABLE IF EXISTS meetup_rsvps CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS action_rsvps CASCADE`);
+    // The gathering scheduler (invite/RSVP status + availability polling) was
+    // removed entirely — no meetup RSVP or "who can meet when" data collected.
+    await run(client, `DROP TABLE IF EXISTS availability_patterns CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS gathering_members CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS scheduled_gatherings CASCADE`);
+    // The ritual/tradition scheduling-poll system was removed entirely too —
+    // guest RSVP responses, per-invitee tokens, and member time-suggestions.
+    await run(client, `DROP TABLE IF EXISTS schedule_responses CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS scheduling_responses CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS invite_tokens CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS ritual_time_suggestions CASCADE`);
 
     // ── Fellows (1:1 social layer) removed entirely — Plans/How About, prefs,
     //    the connection graph. No live readers remain.

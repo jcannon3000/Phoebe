@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, ExternalLink, MapPin, Users, ChevronRight, X, Link2, Check } from "lucide-react";
+import { Calendar, ExternalLink, MapPin, Users, ChevronRight, X, Link2, Check } from "lucide-react";
 import {
   parseISO, format, isToday, isTomorrow,
   startOfDay, addDays, differenceInCalendarDays,
@@ -16,17 +16,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface SchedulerGathering {
-  id: number;
-  title: string;
-  cadence: string;
-  status: string;
-  confirmedDayOfWeek: number | null;
-  confirmedTime: string | null;
-  myRole: string;
-  members?: Array<{ hasResponded: boolean; inviteStatus: string }>;
-}
 
 interface CalSub {
   id: number;
@@ -301,21 +290,10 @@ export default function GatheringsPage() {
     },
   });
 
-  const { data: schedulerGatherings = [] } = useQuery<SchedulerGathering[]>({
-    queryKey: ["/api/gatherings"],
-    queryFn: () => apiRequest("GET", "/api/gatherings"),
-    enabled: !!user,
-  });
-  const activeSchedulerGatherings = schedulerGatherings.filter(
-    g => g.status === "forming" || g.status === "scheduled",
-  );
-
   if (!user) { setLocation("/"); return null; }
 
   const isLoading = ritualsLoading || (subs.length > 0 && icalLoading);
   const lang = i18n.language || "en";
-  const weekdayName = (dow: number) =>
-    new Intl.DateTimeFormat(lang, { weekday: "long" }).format(new Date(Date.UTC(2024, 0, 7 + dow, 12)));
 
   // ── Build unified timeline ─────────────────────────────────────────────────
   const events: TimelineEvent[] = [];
@@ -441,58 +419,11 @@ export default function GatheringsPage() {
                 {t("gathering_list.subtitle")}
               </p>
             </div>
-            <Link href="/gatherings/new">
-              <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{ background: "rgba(46,107,64,0.18)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
-              >
-                <Plus size={12} /> {t("gathering_list.new")}
-              </button>
-            </Link>
           </div>
         </div>
 
-        {/* ── Scheduler gatherings ── */}
-        {activeSchedulerGatherings.length > 0 && (
-          <div className="mb-6">
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
-              {t("gathering_list.in_progress")}
-            </p>
-            <div className="space-y-2">
-              {activeSchedulerGatherings.map(g => (
-                <Link key={g.id} href={`/gatherings/${g.id}`}>
-                  <div
-                    className="flex items-center justify-between px-4 py-3.5 rounded-xl transition-all hover:brightness-110 cursor-pointer"
-                    style={{
-                      background: g.status === "scheduled" ? "rgba(46,107,64,0.12)" : "rgba(46,107,64,0.07)",
-                      border: `1px solid ${g.status === "scheduled" ? "rgba(111,175,133,0.35)" : "rgba(46,107,64,0.18)"}`,
-                    }}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>{g.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                        {g.status === "scheduled" && g.confirmedDayOfWeek !== null
-                          ? (g.confirmedTime
-                              ? t("gathering_list.scheduled_at", { day: weekdayName(g.confirmedDayOfWeek), time: formatHHMM(g.confirmedTime) })
-                              : t("gathering_list.scheduled_day", { day: weekdayName(g.confirmedDayOfWeek) }))
-                          : t("gathering_list.collecting")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      {g.status === "scheduled" && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: "rgba(111,175,133,0.15)", color: "#6FAF85" }}>
-                          {t("gathering_list.confirmed")}
-                        </span>
-                      )}
-                      <ChevronRight size={14} style={{ color: "rgba(143,175,150,0.35)" }} />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="h-px mt-5" style={{ background: "rgba(200,212,192,0.08)" }} />
-          </div>
-        )}
+        {/* Gathering scheduler (availability polling + RSVPs) removed — no
+            RSVP data is collected anymore. This page is calendar-only now. */}
 
         {/* ── Subscribed calendars ── */}
         {subs.length > 0 && (
@@ -609,16 +540,6 @@ export default function GatheringsPage() {
           </div>
         )}
       </div>
-
-      {/* FAB */}
-      <Link
-        href="/gatherings/new"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
-        aria-label={t("gathering_list.new_gathering_aria")}
-      >
-        <Plus size={24} />
-      </Link>
 
       {/* Add calendar sheet */}
       <AnimatePresence>

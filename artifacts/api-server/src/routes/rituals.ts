@@ -2,7 +2,7 @@ import { getInviteBaseUrl } from "../lib/urls";
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, and, ne, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { db, ritualsTable, meetupsTable, ritualMessagesTable, scheduleResponsesTable, inviteTokensTable, usersTable, momentUserTokensTable, ritualTimeSuggestionsTable, groupMembersTable, groupsTable, ritualGroupsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, ritualMessagesTable, usersTable, momentUserTokensTable, groupMembersTable, groupsTable, ritualGroupsTable } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, createGatheringCalendarEvent, updateGatheringCalendarEvent } from "../lib/calendar";
 import { sendNewGatheringPush } from "../lib/pushSender";
 import {
@@ -382,7 +382,6 @@ router.post("/rituals", async (req, res): Promise<void> => {
   }
 
   try {
-    const schedulingToken = randomUUID();
     const location = parsed.data.location?.trim() || null;
 
     const body = parsed.data as typeof parsed.data & {
@@ -472,7 +471,6 @@ router.post("/rituals", async (req, res): Promise<void> => {
           location,
           meetingUrl,
           ownerId,
-          scheduleToken: schedulingToken,
           rhythm: body.rhythm ?? "fortnightly",
           hasIntercession: body.hasIntercession ?? false,
           hasFasting: body.hasFasting ?? false,
@@ -911,8 +909,6 @@ router.delete("/rituals/:id", async (req, res): Promise<void> => {
   // Delete all dependent records (tables without ON DELETE CASCADE in the actual DB)
   await db.delete(meetupsTable).where(eq(meetupsTable.ritualId, params.data.id));
   await db.delete(ritualMessagesTable).where(eq(ritualMessagesTable.ritualId, params.data.id));
-  await db.delete(scheduleResponsesTable).where(eq(scheduleResponsesTable.ritualId, params.data.id));
-  await db.delete(inviteTokensTable).where(eq(inviteTokensTable.ritualId, params.data.id));
   // ritual_groups (multi-community share junction). Wrap in try/catch
   // so a fresh DB without the table doesn't break delete.
   try {
@@ -1146,19 +1142,9 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
     return;
   }
 
-  // Create invite tokens for each participant
+  // No RSVP/availability polling is collected — participants are informed via
+  // a Google Calendar invite (below), not an in-app response page.
   const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-  const appBase = getInviteBaseUrl();
-  const existingInvites = await db
-    .select()
-    .from(inviteTokensTable)
-    .where(eq(inviteTokensTable.ritualId, id));
-  for (const p of participants) {
-    const existingForEmail = existingInvites.find((t) => t.email === p.email);
-    if (!existingForEmail) {
-      await db.insert(inviteTokensTable).values({ ritualId: id, email: p.email, name: p.name, token: randomUUID() });
-    }
-  }
 
   // Create a planned meetup row so dashboard shows the proposed date.
   // Location is per-meetup: when the organizer supplies a location with
@@ -1256,13 +1242,9 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
       // Include the organizer so they also receive a calendar invite to their own calendar
       const attendeeEmails = [...new Set([organizer.email, ...participants.map(p => p.email)])];
 
-      // Fetch organizer's invite token for the link
-      const allTokens = await db.select().from(inviteTokensTable)
-        .where(eq(inviteTokensTable.ritualId, id));
-      const organizerInviteToken = allTokens.find(t => t.email === organizer.email);
-      const scheduleUrl = ritual.scheduleToken
-        ? `${appBase}/schedule/${ritual.scheduleToken}`
-        : (organizerInviteToken ? `${appBase}/invite/${organizerInviteToken.token}` : appBase);
+      // No RSVP/response page anymore — the link just opens the tradition in
+      // Phoebe (informational only, no polling to respond to).
+      const scheduleUrl = `${appBase}/ritual/${id}`;
 
       // Build description — emoji first, creator name, link on the second line,
       // then the practical details. No Phoebe tagline.
@@ -1271,14 +1253,9 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
       lines.push(scheduleUrl);
       lines.push("");
 
-      if (proposedTimes.length === 1) {
+      // A single confirmed time — no guest voting on alternates.
+      if (proposedTimes.length > 0) {
         lines.push(`When: ${formatProposedTime(proposedTimes[0])}`);
-      } else if (proposedTimes.length > 1) {
-        lines.push("Proposed times:");
-        for (let i = 0; i < proposedTimes.length; i++) {
-          const label = i === 0 ? "✓ First choice" : "· Alternate";
-          lines.push(`  ${label}: ${formatProposedTime(proposedTimes[i])}`);
-        }
       }
 
       if (ritual.location && ritual.location.trim()) {
@@ -1418,40 +1395,6 @@ router.patch("/rituals/:id/meetups/:meetupId", async (req, res): Promise<void> =
   if (!updated) { res.status(404).json({ error: "Meetup not found" }); return; }
 
   res.json({ ...updated, scheduledDate: new Date(updated.scheduledDate as unknown as string).toISOString() });
-});
-
-// GET /api/rituals/:id/scheduling-summary — auth-required
-router.get("/rituals/:id/scheduling-summary", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid ritual id" });
-    return;
-  }
-
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, id));
-  if (!ritual) {
-    res.status(404).json({ error: "Ritual not found" });
-    return;
-  }
-
-  if (ritual.ownerId !== sessionUserId) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-
-  const responses = await db
-    .select()
-    .from(scheduleResponsesTable)
-    .where(eq(scheduleResponsesTable.ritualId, id))
-    .orderBy(scheduleResponsesTable.createdAt);
-
-  res.json({ responses });
 });
 
 // POST /api/rituals/:id/confirm-time — auth-required
@@ -1631,17 +1574,6 @@ router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
 
     await db.update(ritualsTable).set({ participants: merged }).where(eq(ritualsTable.id, ritualId));
 
-    // Add invite tokens for new participants
-    for (const p of newParts) {
-      const existingToken = await db.select().from(inviteTokensTable)
-        .where(eq(inviteTokensTable.ritualId, ritualId));
-      const alreadyHasToken = existingToken.find(t => t.email.toLowerCase() === p.email.toLowerCase());
-      if (!alreadyHasToken) {
-        const token = randomUUID();
-        await db.insert(inviteTokensTable).values({ ritualId, email: p.email, name: p.name, token });
-      }
-    }
-
     // Calendar invites
     //   - Owner inviting: add attendees to the existing shared meetup event.
     //   - Non-owner inviting: create a one-off calendar event from the
@@ -1727,13 +1659,6 @@ router.delete("/rituals/:id/participants/:email", async (req, res): Promise<void
   // Update participants array
   await db.update(ritualsTable).set({ participants: updated }).where(eq(ritualsTable.id, ritualId));
 
-  // Remove invite token
-  const tokens = await db.select().from(inviteTokensTable).where(eq(inviteTokensTable.ritualId, ritualId));
-  const tokenToRemove = tokens.find(t => t.email.toLowerCase() === emailToRemove);
-  if (tokenToRemove) {
-    await db.delete(inviteTokensTable).where(eq(inviteTokensTable.id, tokenToRemove.id));
-  }
-
   // Remove from calendar event
   try {
     const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritualId));
@@ -1797,82 +1722,9 @@ router.post("/rituals/:id/restore-calendar", async (req, res): Promise<void> => 
   res.json({ success: true });
 });
 
-// ─── POST /api/rituals/:id/suggest-time — participant suggests an alternative time ───
-router.post("/rituals/:id/suggest-time", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
-
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const parsed = z.object({
-    suggestedTime: z.string().min(1),
-    note: z.string().optional(),
-  }).safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "suggestedTime is required" }); return; }
-
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, id));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
-
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
-
-  // Verify user is a participant (owner or listed participant)
-  const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-  const isMember = ritual.ownerId === sessionUserId
-    || participants.some(p => p.email.toLowerCase() === user.email.toLowerCase());
-  if (!isMember) { res.status(403).json({ error: "Not a member of this tradition" }); return; }
-
-  const [suggestion] = await db.insert(ritualTimeSuggestionsTable).values({
-    ritualId: id,
-    suggestedByEmail: user.email,
-    suggestedByName: user.name,
-    suggestedTime: parsed.data.suggestedTime,
-    note: parsed.data.note ?? null,
-  }).returning();
-
-  res.json(suggestion);
-});
-
-// ─── GET /api/rituals/:id/suggestions — owner views member time suggestions ───
-router.get("/rituals/:id/suggestions", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
-
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, id));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
-
-  // Only the owner sees suggestions
-  if (ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
-
-  const suggestions = await db.select()
-    .from(ritualTimeSuggestionsTable)
-    .where(eq(ritualTimeSuggestionsTable.ritualId, id))
-    .orderBy(desc(ritualTimeSuggestionsTable.createdAt));
-
-  res.json({ suggestions });
-});
-
-// ─── DELETE /api/rituals/:id/suggestions/:suggestionId — owner dismisses a suggestion ───
-router.delete("/rituals/:id/suggestions/:suggestionId", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  const suggestionId = parseInt(req.params.suggestionId, 10);
-  if (isNaN(id) || isNaN(suggestionId)) { res.status(400).json({ error: "Invalid id" }); return; }
-
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, id));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
-  if (ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
-
-  await db.delete(ritualTimeSuggestionsTable)
-    .where(and(eq(ritualTimeSuggestionsTable.id, suggestionId), eq(ritualTimeSuggestionsTable.ritualId, id)));
-
-  res.json({ success: true });
-});
+// Member "suggest a time" (ritual_time_suggestions) was removed — it collected
+// a participant's name/email + a suggested meeting time, the same category of
+// scheduling-response data as the guest RSVP poll. No RSVP-shaped data is
+// collected from anyone but the organizer now.
 
 export default router;

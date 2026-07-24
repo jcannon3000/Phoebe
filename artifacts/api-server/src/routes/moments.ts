@@ -5,7 +5,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, inArray, gt, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
-  db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
+  db, ritualsTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
   groupsTable, groupMembersTable, momentGroupsTable,
@@ -632,13 +632,17 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
   // Get the organizer's info
   const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
 
-  // Get all circle members (invite_tokens) + organizer
-  const inviteTokens = await db.select().from(inviteTokensTable).where(eq(inviteTokensTable.ritualId, ritualId));
+  // Get all circle members from the ritual's own participant list + organizer.
+  // (Previously read a separate invite_tokens table — removed along with the
+  // RSVP/scheduling-poll feature it existed to support. ritual.participants is
+  // the same name/email roster and stays in sync as the owner adds/removes
+  // people via /rituals/:id/invite and /rituals/:id/participants/:email.)
+  const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
 
   // Build member list: organizer + all invitees
   const members: Array<{ email: string; name: string }> = [
     { email: organizer.email, name: organizer.name ?? organizer.email },
-    ...inviteTokens.map(t => ({ email: t.email, name: t.name ?? t.email })),
+    ...participants.map(p => ({ email: p.email, name: p.name ?? p.email })),
   ];
 
   // Deduplicate by email

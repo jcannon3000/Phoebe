@@ -10,8 +10,6 @@ import {
   morningPrayerCacheTable,
   userConnectionsCacheTable,
   waitlistTable,
-  scheduleResponsesTable,
-  ritualTimeSuggestionsTable,
 } from "@workspace/db";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
@@ -153,11 +151,6 @@ router.delete("/users/me", async (req, res): Promise<void> => {
         sql`LOWER(${userConnectionsCacheTable.userEmail}) = ${emailLower} OR LOWER(${userConnectionsCacheTable.contactEmail}) = ${emailLower}`,
       );
       await tx.delete(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`);
-      await tx.delete(ritualTimeSuggestionsTable)
-        .where(sql`LOWER(${ritualTimeSuggestionsTable.suggestedByEmail}) = ${emailLower}`);
-      await tx.update(scheduleResponsesTable)
-        .set({ guestEmail: null })
-        .where(sql`LOWER(${scheduleResponsesTable.guestEmail}) = ${emailLower}`);
 
       // Capture the parish this user belongs to BEFORE the delete — the cascade
       // drops their prayer_feed_subscriptions row, and the denormalized

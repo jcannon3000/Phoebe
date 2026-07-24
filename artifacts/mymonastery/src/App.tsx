@@ -275,9 +275,6 @@ import Onboarding from "./pages/onboarding";
 import Dashboard from "./pages/dashboard";
 const EventsPage = lazy(() => import("./pages/events"));
 const RitualDetail = lazy(() => import("./pages/ritual-detail"));
-const RitualSchedule = lazy(() => import("./pages/ritual-schedule"));
-const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
-const InvitePage = lazy(() => import("./pages/invite"));
 const PsalmsPage = lazy(() => import("./pages/psalms"));
 const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const ContemplationSetupPage = lazy(() => import("./pages/contemplation-setup"));
@@ -312,9 +309,6 @@ const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
 const FddSitPage = lazy(() => import("./pages/fdd-sit"));
 const ReflectCacPage = lazy(() => import("./pages/reflect-cac"));
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
-const GatheringNewPage = lazy(() => import("./pages/gathering-new"));
-const GatheringDetailPage = lazy(() => import("./pages/gathering-detail"));
-const GatheringSettings = lazy(() => import("./pages/gathering-settings"));
 const MomentNew = lazy(() => import("./pages/moment-new"));
 const MomentDetail = lazy(() => import("./pages/moment-detail"));
 const MomentPostPage = lazy(() => import("./pages/moment-post"));
@@ -857,10 +851,6 @@ function Router() {
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
       <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>
       <Route path="/gatherings" component={GatheringsPage} />
-      <Route path="/gatherings/new" component={GatheringNewPage} />
-      <Route path="/gatherings/:id" component={GatheringDetailPage} />
-      <Route path="/gatherings/:id/settings" component={GatheringSettings} />
-      <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
       <Route path="/moment/new">{() => <PrayerGate><MomentNew /></PrayerGate>}</Route>
       <Route path="/m/:userToken" component={MomentRedirect} />
@@ -869,8 +859,6 @@ function Router() {
       <Route path="/practices" component={MomentsDashboard} />
       <Route path="/morning-prayer/:momentId/:token" component={MorningPrayerPage} />
       <Route path="/ritual/:id" component={RitualDetail} />
-      <Route path="/schedule/:token" component={GuestSchedule} />
-      <Route path="/invite/:token" component={InvitePage} />
       <Route path="/routine/:token" component={RoutineInvitePage} />
       <Route path="/sign/:token" component={SignPage} />
       {/* Seasons — /season/:token (public landing → join → the cohort's day

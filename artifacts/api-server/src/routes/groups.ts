@@ -1458,10 +1458,12 @@ router.delete("/groups/:slug", async (req, res): Promise<void> => {
   //    junction row disappears via that table's CASCADE.
   await db.delete(sharedMomentsTable).where(eq(sharedMomentsTable.groupId, groupId));
 
-  // 3. Delete every event / gathering tied to this group. Rituals'
-  //    own children (meetups, ritual_messages, schedule_responses,
-  //    scheduling_responses, invite_tokens, ritual_time_suggestions)
-  //    cascade off rituals.id via their existing FKs.
+  // 3. Delete every event / gathering tied to this group. Rituals' own
+  //    remaining children (meetups, ritual_messages) are cleaned up
+  //    explicitly in the ritual-delete route, not via FK cascade — they
+  //    don't specify ON DELETE CASCADE. (The RSVP-scheduling tables that
+  //    used to live here — schedule_responses, invite_tokens,
+  //    ritual_time_suggestions — were removed along with that feature.)
   await db.delete(ritualsTable).where(eq(ritualsTable.groupId, groupId));
 
   // 4. Finally drop the group row. The schema's existing CASCADEs

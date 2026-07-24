@@ -70,15 +70,6 @@ interface TimelineData {
   calendarEventMissing?: boolean;
 }
 
-interface TimeSuggestion {
-  id: number;
-  suggestedByEmail: string;
-  suggestedByName: string | null;
-  suggestedTime: string;
-  note: string | null;
-  createdAt: string;
-}
-
 function getStatusMeta(status: string) {
   switch (status) {
     case "on_track":   return { label: "Blooming",      style: "bg-[#1A3D2B] text-[#8FAF96] border-[#2D5E3F]" };
@@ -131,12 +122,6 @@ export default function RitualDetail() {
   const [calSyncNotifs, setCalSyncNotifs] = useState<Array<{ name: string; email: string }>>([]);
   const [calSyncedEmails, setCalSyncedEmails] = useState<Set<string>>(new Set());
   const [declinedEmails, setDeclinedEmails] = useState<Set<string>>(new Set());
-
-  // ── Suggest time state (non-creator members) ───────────────────────────────
-  const [showSuggestTime, setShowSuggestTime] = useState(false);
-  const [suggestDateTime, setSuggestDateTime] = useState("");
-  const [suggestNote, setSuggestNote] = useState("");
-  const [suggestSent, setSuggestSent] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -233,32 +218,23 @@ export default function RitualDetail() {
     onError: () => toast({ variant: "destructive", title: t("ritual_detail.toast_calendar_restore_error") }),
   });
 
-  // ── Time suggestions (creator view) ────────────────────────────────────────
-  const isOwner = !!(ritual && user && ritual.ownerId === user.id);
-
-  const { data: suggestionsData, refetch: refetchSuggestions } = useQuery<{ suggestions: TimeSuggestion[] }>({
-    queryKey: [`/api/rituals/${ritualId}/suggestions`],
-    queryFn: () => apiRequest("GET", `/api/rituals/${ritualId}/suggestions`),
-    enabled: isOwner && activeTab === "timeline",
-  });
-
-  const suggestTimeMutation = useMutation({
-    mutationFn: (payload: { suggestedTime: string; note?: string }) =>
-      apiRequest("POST", `/api/rituals/${ritualId}/suggest-time`, payload),
+  // ── Set / change the meeting time (owner only) ─────────────────────────────
+  // Replaces the old guest-facing scheduling-poll page: the organizer picks a
+  // single time directly, no invite link, no responses to collect.
+  const [showSetTime, setShowSetTime] = useState(false);
+  const [setTimeValue, setSetTimeValue] = useState("");
+  const confirmTimeMutation = useMutation({
+    mutationFn: (confirmedTime: string) =>
+      apiRequest("POST", `/api/rituals/${ritualId}/confirm-time`, { confirmedTime }),
     onSuccess: () => {
-      setSuggestSent(true);
-      setShowSuggestTime(false);
-      setSuggestDateTime("");
-      setSuggestNote("");
+      setShowSetTime(false);
+      setSetTimeValue("");
+      fetchTimeline();
     },
-    onError: () => toast({ variant: "destructive", title: t("ritual_detail.toast_suggestion_error") }),
+    onError: () => toast({ variant: "destructive", title: t("ritual_detail.toast_save_error") }),
   });
 
-  const dismissSuggestionMutation = useMutation({
-    mutationFn: (suggestionId: number) =>
-      apiRequest("DELETE", `/api/rituals/${ritualId}/suggestions/${suggestionId}`, {}),
-    onSuccess: () => refetchSuggestions(),
-  });
+  const isOwner = !!(ritual && user && ritual.ownerId === user.id);
 
   if (isLoading) {
     return (
@@ -554,16 +530,13 @@ export default function RitualDetail() {
                         </p>
                       )}
                     </div>
-                  ) : (
+                  ) : isOwner ? (
                     <div className="mb-4">
                       <p className="text-sm" style={{ color: "#8FAF96" }}>
-                        {t("ritual_detail.waiting_for_responses")}
-                      </p>
-                      <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        {t("ritual_detail.members_respond_hint")}
+                        {t("ritual_detail.no_time_set", { defaultValue: "No time set yet." })}
                       </p>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Bottom action zone */}
                   {upcomingIsPast ? (
@@ -589,49 +562,62 @@ export default function RitualDetail() {
                       </div>
                       {isOwner && (
                         <div className="pt-2 flex justify-end">
-                          <Link
-                            href={`/ritual/${ritualId}/schedule`}
+                          <button
+                            type="button"
+                            onClick={() => setShowSetTime(true)}
                             className="text-sm hover:underline"
                             style={{ color: "#8FAF96" }}
                           >
                             {t("ritual_detail.reschedule")}
-                          </Link>
+                          </button>
                         </div>
                       )}
                     </div>
-                  ) : timeline.confirmedTime ? (
-                    /* Fixed future event */
+                  ) : (
+                    /* Confirmed or pending future event */
                     isOwner && (
                       <div className="flex justify-end">
-                        <Link
-                          href={`/ritual/${ritualId}/schedule`}
+                        <button
+                          type="button"
+                          onClick={() => setShowSetTime(true)}
                           className="text-sm hover:underline"
                           style={{ color: "#8FAF96" }}
                         >
-                          {t("ritual_detail.reschedule")}
-                        </Link>
+                          {timeline.confirmedTime ? t("ritual_detail.reschedule") : t("ritual_detail.set_a_time", { defaultValue: "Set a time" })}
+                        </button>
                       </div>
                     )
-                  ) : (
-                    /* Flexible pending event */
-                    isOwner && (
-                      <div className="flex items-center justify-end gap-5">
-                        <Link
-                          href={`/ritual/${ritualId}/schedule`}
-                          className="text-sm hover:underline"
-                          style={{ color: "#8FAF96" }}
+                  )}
+
+                  {/* Set/change time — inline, owner only. Replaces the old
+                      guest-facing scheduling-poll page. */}
+                  {isOwner && showSetTime && (
+                    <div className="mt-3 pt-3 space-y-2" style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}>
+                      <input
+                        type="datetime-local"
+                        value={setTimeValue}
+                        onChange={e => setSetTimeValue(e.target.value)}
+                        className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowSetTime(false); setSetTimeValue(""); }}
+                          className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {t("ritual_detail.change_options")}
-                        </Link>
-                        <Link
-                          href={`/ritual/${ritualId}/schedule`}
-                          className="text-sm hover:underline"
-                          style={{ color: "#8FAF96" }}
+                          {t("ritual_detail.cancel")}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!setTimeValue) return;
+                            confirmTimeMutation.mutate(new Date(setTimeValue).toISOString());
+                          }}
+                          disabled={!setTimeValue || confirmTimeMutation.isPending}
+                          className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                         >
-                          {t("ritual_detail.reschedule")}
-                        </Link>
+                          {confirmTimeMutation.isPending ? t("ritual_detail.sending") : t("ritual_detail.save", { defaultValue: "Save" })}
+                        </button>
                       </div>
-                    )
+                    </div>
                   )}
                 </div>
               ) : (
@@ -647,13 +633,43 @@ export default function RitualDetail() {
                         ? t("ritual_detail.overdue_owner_hint", { freq: ritual.frequency })
                         : t("ritual_detail.propose_times_hint")}
                     </p>
-                    <Link
-                      href={`/ritual/${ritualId}/schedule`}
-                      className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
-                      style={{ background: "#2D5E3F", color: "#F0EDE6", padding: "12px 24px", fontSize: "15px" }}
-                    >
-                      {t("ritual_detail.find_a_time")}
-                    </Link>
+                    {showSetTime ? (
+                      <div className="space-y-2 text-left">
+                        <input
+                          type="datetime-local"
+                          value={setTimeValue}
+                          onChange={e => setSetTimeValue(e.target.value)}
+                          className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setShowSetTime(false); setSetTimeValue(""); }}
+                            className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {t("ritual_detail.cancel")}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!setTimeValue) return;
+                              confirmTimeMutation.mutate(new Date(setTimeValue).toISOString());
+                            }}
+                            disabled={!setTimeValue || confirmTimeMutation.isPending}
+                            className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                          >
+                            {confirmTimeMutation.isPending ? t("ritual_detail.sending") : t("ritual_detail.save", { defaultValue: "Save" })}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowSetTime(true)}
+                        className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
+                        style={{ background: "#2D5E3F", color: "#F0EDE6", padding: "12px 24px", fontSize: "15px" }}
+                      >
+                        {t("ritual_detail.find_a_time")}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: "1px dashed rgba(46,107,64,0.3)" }}>
@@ -666,109 +682,6 @@ export default function RitualDetail() {
                     </p>
                   </div>
                 )
-              )}
-
-              {/* Suggest a time — non-owner members */}
-              {!isOwner && ritual && (
-                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.2)" }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{t("ritual_detail.propose_a_time")}</p>
-                    {suggestSent && (
-                      <span className="text-xs" style={{ color: "#6B8F71" }}>{t("ritual_detail.sent")}</span>
-                    )}
-                  </div>
-                  <p className="text-xs mb-3" style={{ color: "#8FAF96" }}>
-                    {t("ritual_detail.propose_time_hint", { name: ritual.name.split(" ")[0] || t("ritual_detail.the_organizer") })}
-                  </p>
-                  {showSuggestTime ? (
-                    <div className="space-y-2">
-                      <input
-                        type="datetime-local"
-                        value={suggestDateTime}
-                        onChange={e => setSuggestDateTime(e.target.value)}
-                        className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background"
-                      />
-                      <input
-                        type="text"
-                        value={suggestNote}
-                        onChange={e => setSuggestNote(e.target.value)}
-                        placeholder={t("ritual_detail.note_placeholder")}
-                        className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { setShowSuggestTime(false); setSuggestDateTime(""); setSuggestNote(""); }}
-                          className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {t("ritual_detail.cancel")}
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!suggestDateTime) return;
-                            suggestTimeMutation.mutate({
-                              suggestedTime: new Date(suggestDateTime).toISOString(),
-                              note: suggestNote.trim() || undefined,
-                            });
-                          }}
-                          disabled={!suggestDateTime || suggestTimeMutation.isPending}
-                          className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                        >
-                          {suggestTimeMutation.isPending ? t("ritual_detail.sending") : t("ritual_detail.send_suggestion")}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { setShowSuggestTime(true); setSuggestSent(false); }}
-                      className="w-full py-2 rounded-xl border border-dashed border-primary/40 text-sm text-primary hover:bg-primary/5 transition-colors"
-                    >
-                      {t("ritual_detail.suggest_a_time")}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Time suggestions — owner only */}
-              {isOwner && suggestionsData && suggestionsData.suggestions.length > 0 && (
-                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.2)" }}>
-                  <p className="text-sm font-semibold mb-3" style={{ color: "#F0EDE6" }}>
-                    {t("ritual_detail.when_people_free")}
-                  </p>
-                  <div className="space-y-3">
-                    {suggestionsData.suggestions.map(s => (
-                      <div key={s.id} className="flex items-start gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-                          {(s.suggestedByName ?? s.suggestedByEmail).charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground">
-                            {s.suggestedByName ?? s.suggestedByEmail}
-                          </p>
-                          <p className="text-sm text-foreground mt-0.5">
-                            {new Date(s.suggestedTime).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-                            {" · "}
-                            {new Date(s.suggestedTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                          </p>
-                          {s.note && <p className="text-xs text-muted-foreground mt-0.5 italic">"{s.note}"</p>}
-                        </div>
-                        <div className="flex flex-col gap-1 shrink-0">
-                          <Link
-                            href={`/ritual/${ritualId}/schedule`}
-                            className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                          >
-                            {t("ritual_detail.use_this")}
-                          </Link>
-                          <button
-                            onClick={() => dismissSuggestionMutation.mutate(s.id)}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {t("ritual_detail.dismiss")}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               )}
 
               {/* Past gatherings */}
