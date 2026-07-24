@@ -718,8 +718,8 @@ export default function TraditionNew() {
                   when the admin has more than one community of their
                   own (excluding the primary host they already picked).
                   Members of every selected community will see the
-                  gathering on their dashboard, can RSVP, and (for
-                  video calls) receive the calendar invite. */}
+                  gathering on their dashboard, and (for video calls)
+                  receive the calendar invite. */}
               {adminGroups.filter((g) => g.id !== selectedGroupId).length > 0 && (
                 <div className="mt-7">
                   <p

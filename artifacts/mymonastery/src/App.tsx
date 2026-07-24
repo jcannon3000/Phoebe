@@ -380,7 +380,6 @@ const SeasonPage = lazy(() => import("./pages/season"));
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
 const CommunityJoinPage = lazy(() => import("./pages/community-join"));
-const PlanSharePage = lazy(() => import("./pages/plan-share"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
@@ -945,7 +944,6 @@ function Router() {
       <Route path="/communities/browse" component={CommunitiesBrowsePage} />
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
-      <Route path="/plans/:token" component={PlanSharePage} />
       {/* The old post-signup "Find a community" picker is retired — a fresh
           signup (from the home screen or after praying the office) lands on the
           home, not a community-finder. The page is kept out of the flow by

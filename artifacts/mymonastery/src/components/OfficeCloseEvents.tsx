@@ -11,12 +11,13 @@ import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 
 // Upcoming-events rail for the office close. Pulls the SAME sources the
 // Events page (dashboard in eventsOnly mode) draws on — community
-// gatherings, fellow "How About" plans, community actions, and prayer-feed
-// events — normalizes them to FeedEvent and renders each with the SAME
-// FeedEventCard the events surface uses, so the close reads "just how they
-// appear on the event page." If nothing is upcoming we render `onEmpty`
-// instead (the original "prayed with N people" faces), so the close is
-// never barren.
+// gatherings, community actions, and prayer-feed events — normalizes them to
+// FeedEvent and renders each with the SAME FeedEventCard the events surface
+// uses, so the close reads "just how they appear on the event page." If
+// nothing is upcoming we render `onEmpty` instead (the original "prayed with
+// N people" faces), so the close is never barren.
+// (Fellow "How About" plans were removed along with Fellows — no longer a
+// source here.)
 
 type NormEvent = { key: string; event: FeedEvent };
 
@@ -43,13 +44,6 @@ export function OfficeCloseEvents({
   const { data: rituals } = useQuery<any[]>({
     queryKey: ["/api/rituals", uid],
     queryFn: () => apiRequest("GET", `/api/rituals?ownerId=${uid}`),
-    enabled: !!uid,
-    staleTime: 60_000,
-  });
-  // Fellow "How About" plans (the dated subset becomes timeline events).
-  const { data: plansData } = useQuery<{ plans: any[] }>({
-    queryKey: ["/api/fellow-plans"],
-    queryFn: () => apiRequest("GET", "/api/fellow-plans"),
     enabled: !!uid,
     staleTime: 60_000,
   });
@@ -81,14 +75,6 @@ export function OfficeCloseEvents({
         event: { id: r.id, title: r.name ?? "Gathering", startsAt: r.nextMeetupDate, location: r.location ?? null, joinUrl: join },
       });
     }
-    for (const p of plansData?.plans ?? []) {
-      const ms = startMs(p?.startsAt);
-      if (ms == null) continue;
-      out.push({
-        key: `plan-${p.id}`,
-        event: { id: p.id, title: p.emoji ? `${p.emoji} ${p.title}` : p.title, startsAt: p.startsAt, location: p.location ?? null, joinUrl: null },
-      });
-    }
     for (const s of feedsData?.subscriptions ?? []) {
       for (const e of s?.upcomingEvents ?? []) {
         if (e?.state === "cancelled") continue;
@@ -100,11 +86,11 @@ export function OfficeCloseEvents({
     out.sort((a, b) => new Date(a.event.startsAt).getTime() - new Date(b.event.startsAt).getTime());
     const seen = new Set<string>();
     return out.filter((e) => (seen.has(e.key) ? false : (seen.add(e.key), true))).slice(0, Math.max(1, max));
-  }, [rituals, plansData, feedsData, max]);
+  }, [rituals, feedsData, max]);
 
-  // All four sources have answered (data defined, even if empty) — only then is
+  // Both sources have answered (data defined, even if empty) — only then is
   // "nothing upcoming" true. (enabled:!!uid, so a logged-out caller never settles.)
-  const settled = !!uid && rituals !== undefined && plansData !== undefined && feedsData !== undefined;
+  const settled = !!uid && rituals !== undefined && feedsData !== undefined;
   useEffect(() => {
     if (settled && events.length === 0) onResolvedEmpty?.();
   }, [settled, events.length, onResolvedEmpty]);
