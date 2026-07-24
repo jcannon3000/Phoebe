@@ -641,7 +641,7 @@ export const en = {
     contemplation: "Contemplation",
     gratitude: "Gratitude",
     examen: "Ignatian Examen",
-    guided_prayer: "Guided Prayer",
+    guided_prayer: "Simple Guided Prayer",
     resources: "Resources",
     bcp_prayers: "Prayers",
     bcp_collects: "Collects",
@@ -4427,7 +4427,7 @@ export const en = {
   guided_prayer: {
     back: "← Back",
     eyebrow: "A pattern for prayer",
-    title: "Guided Prayer",
+    title: "Simple Guided Prayer",
     intro_body: "Praise, Confession, Thanksgiving, Supplication — an old, simple shape for prayer. Four movements, at your own pace. Find a quiet few minutes.",
     begin: "Begin →",
     movement_n_of_m: "Movement {{n}} of {{total}}",

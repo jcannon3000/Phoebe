@@ -5,6 +5,7 @@ import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
+  hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -97,7 +98,6 @@ export type RhythmState = {
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   examenActive: boolean;
-  guidedPrayerActive: boolean;
   listeningActive: boolean;
   readingActive: boolean;
   podcastsActive: boolean;
@@ -105,7 +105,6 @@ export type RhythmState = {
   cobreatheActive: boolean;
   prayerListActive: boolean;
   examenDone: boolean;
-  guidedPrayerDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
   podcastsDone: boolean;
@@ -189,14 +188,23 @@ export function useRhythmState(): RhythmState {
   const [reflectLocal, setReflectLocal] = useState(
     () => hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday(),
   );
-  // FDD / Psalms used AS a side's morning/evening PRAYER (not just a reflection)
-  // must light that side's done-state. Tracked reactively with the same robust
-  // return-to-app signals as the reflection read-state.
-  const [prayerRead, setPrayerRead] = useState(() => ({ fdd: hasReadFddToday(), psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening") }));
+  // FDD / Psalms / Simple Guided Prayer used AS a side's morning/evening PRAYER
+  // (not just a reflection) must light that side's done-state. Tracked
+  // reactively with the same robust return-to-app signals as the reflection
+  // read-state.
+  const [prayerRead, setPrayerRead] = useState(() => ({
+    fdd: hasReadFddToday(),
+    psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
+    guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
+  }));
   useEffect(() => {
     const recheck = () => {
       setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
-      setPrayerRead({ fdd: hasReadFddToday(), psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening") });
+      setPrayerRead({
+        fdd: hasReadFddToday(),
+        psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
+        guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
+      });
     };
     // The reflection is read on a separate surface (often the in-app browser),
     // which stamps localStorage + fires a read-event. We re-check on those
@@ -209,6 +217,7 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(FDD_READ_EVENT, recheck);
     window.addEventListener(SSJE_READ_EVENT, recheck);
     window.addEventListener(PSALMS_READ_EVENT, recheck);
+    window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
     window.addEventListener("visibilitychange", recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
@@ -233,6 +242,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(FDD_READ_EVENT, recheck);
       window.removeEventListener(SSJE_READ_EVENT, recheck);
       window.removeEventListener(PSALMS_READ_EVENT, recheck);
+      window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
       window.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
@@ -250,7 +260,6 @@ export function useRhythmState(): RhythmState {
   // return-to-app signals, and OR in the server rows below for cross-device.
   const [practiceLocal, setPracticeLocal] = useState(() => ({
     examen: hasPracticeDoneToday("examen"),
-    guidedPrayer: hasPracticeDoneToday("guided-prayer"),
     listening: hasPracticeDoneToday("listening"),
     reading: hasPracticeDoneToday("reading"),
     podcasts: hasPracticeDoneToday("podcasts"),
@@ -260,7 +269,6 @@ export function useRhythmState(): RhythmState {
   useEffect(() => {
     const recheck = () => setPracticeLocal({
       examen: hasPracticeDoneToday("examen"),
-      guidedPrayer: hasPracticeDoneToday("guided-prayer"),
       listening: hasPracticeDoneToday("listening"),
       reading: hasPracticeDoneToday("reading"),
       podcasts: hasPracticeDoneToday("podcasts"),
@@ -374,8 +382,6 @@ export function useRhythmState(): RhythmState {
   // Server-backed completion rows for the optional practices (cross-device).
   // Only fetched/used for the practices the user has actually added.
   const examenActive = homeCardActive(hl, "examen");
-  // Guided Prayer (PACT) — same optional-practice pattern as the Examen.
-  const guidedPrayerActive = homeCardActive(hl, "guided-prayer");
   // Audio Divina (listening as a way of prayer) is live as a logging-first
   // practice — it appears ONLY when the user selects it in the customizer
   // (homeCardActive reads the saved home layout).
@@ -402,7 +408,7 @@ export function useRhythmState(): RhythmState {
   // the menu progress ring, the weekly grid — treats it as inactive at once.
   const prayerRequestsEnabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
   const prayerListActive = prayerRequestsEnabled && homeCardActive(hl, "prayer-list");
-  const anyExtraActive = examenActive || guidedPrayerActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
+  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -460,7 +466,9 @@ export function useRhythmState(): RhythmState {
   // this reads it back), so a sit done on the iPhone shows done on the web.
   // ORed with the local flags below; signed-in only (guests are one-device).
   const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
-    queryKey: ["/api/me/contemplation-sides-today", tz],
+    // Date-scoped so a day rollover always re-fetches rather than serving a
+    // pre-midnight cached answer (same reasoning as contemplation-stats' key).
+    queryKey: ["/api/me/contemplation-sides-today", tz, day],
     queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
     enabled: !guest && !!user,
@@ -516,9 +524,11 @@ export function useRhythmState(): RhythmState {
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
   const morningDone = !!todayOffice?.morning || officeLocal.morning
-    || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalmsMorning);
+    || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalmsMorning)
+    || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
-    || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalmsEvening);
+    || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalmsEvening)
+    || (el === "guided-prayer" && prayerRead.guidedPrayerEvening);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
   // (a Cobreathe breath logs a contemplation sit, so it's already counted
@@ -545,7 +555,6 @@ export function useRhythmState(): RhythmState {
     : ladderLevel != null ? ladderLevel : ((!hl && rawGoalMin === 0) ? 5 : rawGoalMin);
 
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
-  const guidedPrayerDone = guidedPrayerActive && (practiceLocal.guidedPrayer || serverDone("guided-prayer"));
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
@@ -713,7 +722,6 @@ export function useRhythmState(): RhythmState {
     ...(walkActive ? [walkDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
-    ...(guidedPrayerActive ? [guidedPrayerDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
@@ -761,7 +769,6 @@ export function useRhythmState(): RhythmState {
     reflectActive,
     reflections,
     examenActive,
-    guidedPrayerActive,
     listeningActive,
     readingActive,
     podcastsActive,
@@ -769,7 +776,6 @@ export function useRhythmState(): RhythmState {
     cobreatheActive,
     prayerListActive,
     examenDone,
-    guidedPrayerDone,
     listeningDone,
     readingDone,
     podcastsDone,

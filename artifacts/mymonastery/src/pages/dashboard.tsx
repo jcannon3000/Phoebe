@@ -37,6 +37,7 @@ import {
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
+  GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -2184,8 +2185,14 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [side]);
+  // Date-scoped key — matches the contemplation-stats query above. Without a
+  // day component, a cached result from BEFORE midnight (e.g. the app stayed
+  // open/backgrounded overnight) could serve yesterday's "sat this side"
+  // answer past a day rollover until something else happened to invalidate
+  // it, reading a side as done when today's sit hasn't happened yet.
+  const todayLocal = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return todaySince.slice(0, 10); } })();
   const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
-    queryKey: ["/api/me/contemplation-sides-today", tz],
+    queryKey: ["/api/me/contemplation-sides-today", tz, todayLocal],
     queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
     enabled: !guest,
@@ -2444,50 +2451,91 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
   );
 }
 
-// Guided Prayer (PACT) home card — same shape as ExamenHomeCard, a distinct
-// warm rose/terracotta palette so it reads as its own anchor next to Examen's
+// Simple Guided Prayer (PACT) home card — side-scoped like PsalmsHomeCard: a
+// per-side alternative to the BCP office, so it replaces THIS side's office
+// card (Morning or Evening Simple Guided Prayer) rather than riding as a
+// separate add-on. Warm rose/terracotta palette, distinct from Examen's
 // green and Contemplation's teal.
-function GuidedPrayerHomeCard({ hero = false }: { hero?: boolean } = {}) {
+function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
+  const [, goTo] = useLocation();
+  const [done, setDone] = useState(() => hasPrayedGuidedPrayerToday(side));
+  useEffect(() => {
+    const refresh = () => setDone(hasPrayedGuidedPrayerToday(side));
+    refresh();
+    window.addEventListener(GUIDED_PRAYER_READ_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(GUIDED_PRAYER_READ_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [side]);
+  const title = side === "evening" ? "Evening Simple Guided Prayer" : "Morning Simple Guided Prayer";
+  const onClick = () => goTo(`/guided-prayer?side=${side}`);
+  const rgb = "168,108,96";
   if (hero) {
-    const rgb = "168,108,96";
     return (
-      <Link href="/guided-prayer" className="block">
-        <div
-          role="button"
-          tabIndex={0}
-          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
-        >
-          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-          <div className="flex-1 px-5 py-5">
-            <div className="flex items-start gap-3.5">
-              <span className="text-[34px] leading-none flex-shrink-0">🙌</span>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Guided Prayer</p>
-                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif" }}>Praise, Confession, Thanksgiving, Supplication</p>
-              </div>
-              <div className="flex-shrink-0">
-                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Begin <span aria-hidden className="ml-1">→</span>
-                </span>
-              </div>
+      <div
+        className="relative flex rounded-3xl overflow-hidden"
+        style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+      >
+        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+        <div className="flex-1 px-5 py-5">
+          <div className="flex items-start gap-3.5">
+            <span className="text-[34px] leading-none flex-shrink-0">🙌</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
+              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif" }}>Praise, Confession, Thanksgiving, Supplication</p>
             </div>
           </div>
+          {done ? (
+            <div className="mt-[12px] flex items-stretch gap-2">
+              <div aria-label="Prayer completed today" className="flex-1 rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
+                Prayer completed <span aria-hidden>✓</span>
+              </div>
+              <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="flex-1 rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>
+                Pray again <span aria-hidden>→</span>
+              </div>
+            </div>
+          ) : (
+            <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-[12px] w-full rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>
+              Begin prayer <span aria-hidden>→</span>
+            </div>
+          )}
         </div>
-      </Link>
+      </div>
     );
   }
   return (
-    <PracticeHomeCard
-      href="/guided-prayer"
-      label="Guided Prayer 🙌"
-      cta="Begin"
-      tintBg="rgba(168,108,96,0.12)"
-      tintBorder="rgba(168,108,96,0.35)"
-      pillBg="rgba(168,108,96,0.28)"
-      pillBorder="rgba(168,108,96,0.45)"
-      accentBar="rgba(168,108,96,0.85)"
-    />
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)` }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
+        <div className="min-w-0">
+          <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
+            {title} 🙌
+          </p>
+          <p className="truncate" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
+            Praise, Confession, Thanksgiving, Supplication
+          </p>
+        </div>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: `rgba(${rgb},0.28)`, color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500,
+            padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap",
+          }}
+        >
+          {done ? "Prayed ✓" : "Pray"} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -3356,6 +3404,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   }
   if (getSideLevel(isMorning ? "morning" : "evening") === "examen") {
     return <ExamenHomeCard hero={!compact && !!forceSide} />;
+  }
+  // Per-user: Simple Guided Prayer (PACT) IS this side's prayer → its card
+  // replaces the office card, side-scoped like Psalms.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "guided-prayer") {
+    return <GuidedPrayerHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
   // Per-user: Creation Prayer IS this side's prayer → its card replaces the
   // office card. Labels Morning/Evening Creation Prayer when both sides use it.
@@ -5900,16 +5953,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "prayer-list", "examen", "guided-prayer", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "guided-prayer", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "prayer-list", "examen", "guided-prayer", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -6934,8 +6987,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   return null;
                 case "examen":
                   return <ExamenHomeCard />;
-                case "guided-prayer":
-                  return <GuidedPrayerHomeCard />;
                 case "cac":
                   return reflectionIsHero("cac") ? <CacHomeCard /> : null;
                 case "fdd":

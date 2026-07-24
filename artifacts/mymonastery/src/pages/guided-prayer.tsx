@@ -3,15 +3,20 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
-import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
-import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
 
-// ── Guided Prayer (PACT) ────────────────────────────────────────────────────
+// ── Simple Guided Prayer (PACT) ─────────────────────────────────────────────
 // A four-movement outline — Praise, Confession, Thanksgiving, Supplication —
 // as a guided flow, modeled directly on pages/examen.tsx's shape: one movement
-// per slide, the user's own pace, no timer. A personal practice — no
-// community, no logging beyond the prayer-session time row.
+// per slide, the user's own pace, no timer.
+//
+// SIDE-SCOPED, like Psalms: a per-side alternative to the BCP office
+// (/guided-prayer?side=morning|evening). markGuidedPrayerPrayed(side) both
+// stamps the local per-side day-flag AND posts a devotion-surface
+// prayer_session (see lib/cacReadState.ts) so it credits office-history-week /
+// the streak / practice-week exactly like Praying the Psalms does — no
+// separate prayer-session surface needed.
 
 const FONT = "'Space Grotesk', sans-serif";
 const BG = "#0C1F12";
@@ -43,8 +48,12 @@ export default function GuidedPrayerPage() {
   const [, setLocation] = useLocation();
   // step 0 = intro, 1..4 = movements, 5 = closing.
   const [step, setStep] = useState(0);
-
-  usePrayerSession(user ? "guided-prayer" : null);
+  const side: "morning" | "evening" = (() => {
+    try {
+      const s = new URLSearchParams(window.location.search).get("side");
+      return s === "evening" ? "evening" : "morning";
+    } catch { return "morning"; }
+  })();
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -58,10 +67,10 @@ export default function GuidedPrayerPage() {
     // The closing gets the resolving submit feedback (swell + haptic).
     if (step === MOVEMENTS.length + 1) {
       try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
-      // Reaching the closing = Guided Prayer is prayed today. Stamps the
-      // optional "guided-prayer" practice so its Daily-progress anchor
-      // (when added) checks off.
-      try { markPracticeDoneToday("guided-prayer"); } catch { /* non-fatal */ }
+      // Reaching the closing = THIS side's Simple Guided Prayer is prayed
+      // today — stamps only `side`, so praying the morning form doesn't
+      // mark the evening one done (a user can have it on both sides).
+      try { markGuidedPrayerPrayed(side); } catch { /* non-fatal */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);

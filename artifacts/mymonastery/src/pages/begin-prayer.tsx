@@ -95,6 +95,12 @@ export default function BeginPrayerPage() {
       setLocation("/examen", { replace: true });
       return;
     }
+    // Simple Guided Prayer IS this side's prayer → open it directly, side-scoped
+    // (self-contained, logs its own per-side session), like Psalms above.
+    if (defaultPrayerLevel === "guided-prayer") {
+      setLocation(`/guided-prayer?side=${side}`, { replace: true });
+      return;
+    }
     // Forward Day by Day IS this side's prayer → its home card (the office slot)
     // opens the reading / plays the audio per the user's choice, so land on the
     // home rather than the generic prayer chooser.

@@ -133,6 +133,31 @@ const psalmsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? 
 export function hasPrayedPsalmsToday(side: "morning" | "evening" = "morning"): boolean { return psalmsTrackerFor(side).hasReadToday(); }
 export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); }
 
+// Simple Guided Prayer (Praise / Confession / Thanksgiving / Supplication) —
+// same shape as Psalms above: a per-side alternative to the BCP office, so
+// morning and evening are tracked independently (a user can pray it on one
+// side, both, or neither). Reuses the devotion surfaces for rollup credit
+// (office-history-week, streak, practice-week, the parish rollup) — same
+// reasoning as syncPsalmsSession: those surfaces are what every existing
+// rollup already agrees on, so this counts everywhere with no server change.
+export const GUIDED_PRAYER_READ_EVENT = "phoebe:guided-prayer-read";
+function syncGuidedPrayerSession(side: "morning" | "evening"): void {
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60,
+    slidesCompleted: 99,
+    completed: true,
+    startedAt: now.toISOString(),
+    endedAt: now.toISOString(),
+  }).catch(() => { /* best effort — the local flag already credited it today */ });
+}
+const guidedPrayerTrackerMorning = makeDailyReadTracker("phoebe:guided-prayer:morning:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("morning"));
+const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:evening:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("evening"));
+const guidedPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? guidedPrayerTrackerEvening : guidedPrayerTrackerMorning);
+export function hasPrayedGuidedPrayerToday(side: "morning" | "evening" = "morning"): boolean { return guidedPrayerTrackerFor(side).hasReadToday(); }
+export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); }
+
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with
 // a 9 AM ET publish-day cache in front; we always link via that route

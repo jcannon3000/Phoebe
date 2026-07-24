@@ -662,7 +662,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'guided-prayer', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
@@ -704,7 +704,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     for (const r of reflRows.rows) reflection.add(r.ymd);
     for (const r of cacRows.rows) reflection.add(r.ymd);
     const examen = new Set<string>();
-    const guidedPrayer = new Set<string>();
     const listening = new Set<string>();
     const reading = new Set<string>();
     const podcasts = new Set<string>();
@@ -712,7 +711,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const prayerList = new Set<string>();
     for (const r of pcRows.rows) {
       if (r.section === "examen") examen.add(r.local_date);
-      if (r.section === "guided-prayer") guidedPrayer.add(r.local_date);
       if (r.section === "listening") listening.add(r.local_date);
       if (r.section === "reading") reading.add(r.local_date);
       if (r.section === "podcasts") podcasts.add(r.local_date);
@@ -729,7 +727,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       reflection: reflection.has(ymd),
       listening: listening.has(ymd),
       examen: examen.has(ymd),
-      guidedPrayer: guidedPrayer.has(ymd),
       reading: reading.has(ymd),
       podcasts: podcasts.has(ymd),
       walk: walk.has(ymd),

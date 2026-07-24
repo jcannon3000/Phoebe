@@ -86,7 +86,7 @@ const SIDES = ["morning", "evening"] as const;
 // "none" = no office anchor for this side (e.g. contemplation-only). The
 // contemplation/fdd/examen values remain only so an OLD saved level still reads
 // back (prayFromLevel) and migrates forward on the next save.
-type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen" | "creation";
+type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen" | "creation" | "guidedPrayer";
 
 // Creation Prayer lengths — 6-breath increments, mirroring the /cobreathe
 // page's own Length dropdown (default 12).
@@ -217,7 +217,7 @@ const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen" | "creation"> = {
+const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer"> = {
   // No office anchor on this side — its level clears to "ask" (no office card).
   // Any Contemplative / Examen the user picked surface as their OWN cards.
   none: "ask",
@@ -240,6 +240,9 @@ const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "off
   // (the creation Psalter + prayers, opening with Co-Breathe). begin-prayer
   // routes the "creation" level to /creation-devotion.
   creation: "creation",
+  // Simple Guided Prayer (PACT) IS the prayer for this side — the home
+  // Morning/Evening Simple Guided Prayer card replaces the office card.
+  guidedPrayer: "guided-prayer",
 };
 // Inverse of PRAY_LEVEL — read an existing office level back into a Pray
 // choice so Customize opens with the user's current pick selected.
@@ -252,6 +255,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "psalms") return "psalms";
   if (level === "examen") return "examen";
   if (level === "creation") return "creation";
+  if (level === "guided-prayer") return "guidedPrayer";
   return null;
 }
 // Read a saved office level back into a side's OFFICE ANCHOR only. Contemplation
@@ -261,7 +265,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
 // key). This is what lets a BCP office coexist with a silent sit.
 function anchorFromLevel(level: string | null | undefined): PrayChoice {
   const p = prayFromLevel(level);
-  return p === "offices" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" ? p : "none";
+  return p === "offices" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" || p === "guidedPrayer" ? p : "none";
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).
@@ -275,6 +279,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   psalms: "pray-psalms",
   examen: "pray-examen",
   creation: "pray-creation",
+  guidedPrayer: "pray-guided-prayer",
 };
 // Each Pray choice → the morning reminder pref the office-reminder cron reads
 // (parish_office_morning_pref). "office" deep-links the nudge to Morning
@@ -297,6 +302,8 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   examen: "devotion",
   // Creation Prayer gets the lighter nudge that opens the devotion.
   creation: "devotion",
+  // Simple Guided Prayer gets the lighter nudge that opens the practice.
+  guidedPrayer: "devotion",
 };
 // Default reminder times — 7am / 6pm (owner). Reminder TIMES themselves are no
 // longer asked in the customizer; they're set in Settings → Daily reminders,
@@ -1564,6 +1571,21 @@ export default function WayOfLoveRuleFlow({
               if (goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
             },
           )}
+          {/* Simple Guided Prayer — a four-movement outline (Praise, Confession,
+              Thanksgiving, Supplication) IS this side's prayer, replacing the BCP
+              office. Its own per-side anchor (like Psalms), not a contemplation
+              style, so picking it clears any per-side contemplation on this side. */}
+          {choiceRow(
+            prayBySide[side] === "guidedPrayer",
+            `🙌 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
+            t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise, Confession, Thanksgiving, Supplication." }),
+            () => {
+              if (prayBySide[side] === "guidedPrayer") return; // already selected
+              touchedRef.current = true;
+              if (contemplationBySide[side]) toggleContemplationSide(side);
+              choosePrayBySide(side, "guidedPrayer");
+            },
+          )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -1614,7 +1636,7 @@ export default function WayOfLoveRuleFlow({
     // card — and a side with NO office anchor ("none": contemplation/examen only)
     // has no method either. (Silent-sit length is set on the dedicated
     // contemplation-goal step, not here — contemplation is no longer a side anchor.)
-    const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms" || prayBySide[side] === "creation";
+    const noMethod = prayBySide[side] === "none" || prayBySide[side] === "fdd" || prayBySide[side] === "psalms" || prayBySide[side] === "creation" || prayBySide[side] === "guidedPrayer";
     // Creation Prayer side → the length question is a BREATHS preset, not a
     // silent-sit's minutes (owner: "it should not be minutes but the preset
     // for breaths").
@@ -2136,6 +2158,7 @@ export default function WayOfLoveRuleFlow({
     return prayBySide[side] === "community" ? "Community Intercessions"
       : prayBySide[side] === "offices" ? `${cap} Prayer`
       : prayBySide[side] === "psalms" ? "Praying the Psalms"
+      : prayBySide[side] === "guidedPrayer" ? `${cap} Simple Guided Prayer`
       : `${cap} Devotion`;
   };
   const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [
@@ -2145,7 +2168,7 @@ export default function WayOfLoveRuleFlow({
     ...SIDES.filter((s) => sides[s] && prayBySide[s] !== "none").map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : prayBySide[s] === "guidedPrayer" ? "Praise · Confession · Thanksgiving · Supplication" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     // Per-side contemplative prayer — its own row per side. When the style is

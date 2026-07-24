@@ -35,7 +35,7 @@ const SOFT_GREEN = "rgba(200,212,192,0.75)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const BG = "#0C1F12";
 
-type DailyPrayer = "psalms" | "devotion" | "office" | "contemplation" | "creation";
+type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "contemplation" | "creation";
 
 // Contemplative Prayer from the basic editor: the SILENCE GOAL is the total
 // daily silence (default 20 min, chosen in 10-min steps), and the two per-side
@@ -53,6 +53,7 @@ function currentDailyPrayer(): DailyPrayer {
   const perSideContemplation = getSideContemplation("morning") || getSideContemplation("evening");
   if (perSideContemplation) return style === "cobreathe" ? "creation" : "contemplation";
   const lvl = getSideLevel("morning");
+  if (lvl === "guided-prayer") return "guided-prayer";
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
   // "Devotions" is no longer a selectable option here — an existing user
@@ -251,6 +252,7 @@ export default function CustomizePage() {
 
         <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 10 }}>
           {row("Daily Prayer", dailyPrayer, [
+            { value: "guided-prayer", label: "Simple Guided Prayer" },
             { value: "psalms", label: "Psalms" },
             { value: "office", label: "Offices" },
             { value: "contemplation", label: "Contemplative Prayer" },
