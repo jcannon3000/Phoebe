@@ -9,14 +9,13 @@ import {
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
-import { useDailySteps } from "@/lib/appleHealth";
 import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { isFirstOpen } from "@/lib/firstOpen";
-import { getGuestSilenceGoalMin, getGuestStepGoal } from "@/lib/guestSeed";
+import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
 
@@ -104,11 +103,6 @@ export type RhythmState = {
   walkActive: boolean;
   cobreatheActive: boolean;
   prayerListActive: boolean;
-  /** Daily steps (Apple Health) — a step-goal card, active when a goal is set. */
-  stepsActive: boolean;
-  stepsToday: number;
-  stepsGoal: number;
-  stepsDone: boolean;
   examenDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
@@ -225,9 +219,9 @@ export function useRhythmState(): RhythmState {
     // A cross-device routine sync rewrote the local office levels / slots — force
     // a re-read so the cards reflect the synced rhythm (lib/routineSync).
     window.addEventListener(ROUTINE_SYNCED_EVENT, recheck);
-    // A goal changed in-document (e.g. a guest sets a step or silence goal on
-    // /daily-steps) — the `storage` event only fires cross-tab, so without this
-    // the home wouldn't grow the new goal card until a reload. OFFICE_PREFS_EVENT
+    // A goal changed in-document (e.g. a guest sets a silence goal) — the
+    // `storage` event only fires cross-tab, so without this the home wouldn't
+    // grow the new goal card until a reload. OFFICE_PREFS_EVENT
     // and GUEST_SILENCE_EVENT fire same-document; recheck's fresh setState forces
     // the re-render that re-reads the (device-local) goals.
     window.addEventListener(OFFICE_PREFS_EVENT, recheck);
@@ -434,7 +428,7 @@ export function useRhythmState(): RhythmState {
   const tz = useMemo(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   }, []);
-  const { data: contStats } = useQuery<{ todaySeconds: number; healthMinutesToday: number }>({
+  const { data: contStats } = useQuery<{ todaySeconds: number }>({
     queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
     queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`),
     staleTime: 30_000,
@@ -520,14 +514,14 @@ export function useRhythmState(): RhythmState {
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
     || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalmsEvening);
 
-  // Contemplation (was "Silence"): today's minutes = Phoebe sits + any external
-  // Apple Health mindful minutes (a Cobreathe breath logs a contemplation sit,
-  // so it's already counted here). It only counts as KEPT once the daily goal is
-  // met — if no goal is set, any silence counts. GUESTS can't post
-  // prayer_sessions — their minutes come from the device-local sit tally.
+  // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
+  // (a Cobreathe breath logs a contemplation sit, so it's already counted
+  // here). It only counts as KEPT once the daily goal is met — if no goal is
+  // set, any silence counts. GUESTS can't post prayer_sessions — their minutes
+  // come from the device-local sit tally.
   const contemplationMin = guest
     ? getGuestSilenceMinutesToday()
-    : Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
+    : Math.floor((contStats?.todaySeconds ?? 0) / 60);
   const rawGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
   // Starter rule: an un-set-up user (no saved home layout) gets a 5-minute
   // silence by default — alongside Morning/Evening Psalms + Forward Day by Day.
@@ -552,20 +546,6 @@ export function useRhythmState(): RhythmState {
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
-
-  // Daily steps (Apple Health) — a step-goal card, active whenever a goal is
-  // set (office-prefs `dailyStepGoal`), like the silence goal. Today's count
-  // comes from HealthKit on native and the server-synced value on web — read
-  // only while active (the hook is gated). Kept when the count reaches the goal
-  // (or the server already stamped today's reached-date, for a cross-device
-  // echo). Guests share the same shape (goal-driven), just device-local prefs.
-  // Guests are login-free, so the server office-prefs query is disabled for
-  // them — their step goal is the device-local guest key (like the silence
-  // goal). Signed-in users read dailyStepGoal from office-prefs.
-  const stepsGoal = guest ? getGuestStepGoal() : (officePrefs?.dailyStepGoal ?? 0);
-  const stepsActive = stepsGoal > 0;
-  const { steps: stepsToday } = useDailySteps(stepsActive);
-  const stepsDone = stepsActive && (stepsToday >= stepsGoal || (!guest && (officePrefs?.dailyStepReachedDate ?? null) === day));
 
   // The four core anchors plus whichever optional practices the user added.
   // Evening is an OPT-IN anchor — off by default (evening office pref "none"),
@@ -726,7 +706,6 @@ export function useRhythmState(): RhythmState {
     ...(walkActive ? [walkDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
-    ...(stepsActive ? [stepsDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
@@ -780,10 +759,6 @@ export function useRhythmState(): RhythmState {
     walkActive,
     cobreatheActive,
     prayerListActive,
-    stepsActive,
-    stepsToday,
-    stepsGoal,
-    stepsDone,
     examenDone,
     listeningDone,
     readingDone,

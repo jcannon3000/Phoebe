@@ -32,7 +32,6 @@ import {
 } from "./home-beta";
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
-import { useHealthMindfulToday } from "@/lib/appleHealth";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { Layout } from "@/components/layout";
 
@@ -230,10 +229,7 @@ export default function HomeBetaSectionPage() {
   // or a Forward/SSJE/CAC reflection); Pray counts an office or a sit.
   const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
   const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
-  // iOS + Health connected: meditation logged in other apps (Insight Timer,
-  // Calm, Apple Mindfulness) counts as a Pray sit too.
-  const healthMindfulToday = useHealthMindfulToday();
-  const dailyPrayerEngaged = officePrayedToday || reflectionReadToday || contemplationDoneToday || healthMindfulToday;
+  const dailyPrayerEngaged = officePrayedToday || reflectionReadToday || contemplationDoneToday;
 
   // Rest carve-out — a device-local preference for v1 (no push scheduler yet).
   const [restDay, setRestDay] = useState<number | null>(() => {
@@ -273,13 +269,13 @@ export default function HomeBetaSectionPage() {
     const auto =
       sec === "learn_pray" ? dailyPrayerEngaged
         : sec === "learn" ? (reflectionReadToday || officePrayedToday)
-          : sec === "pray" ? (officePrayedToday || contemplationDoneToday || healthMindfulToday)
+          : sec === "pray" ? (officePrayedToday || contemplationDoneToday)
             : false;
     if (auto && !rows.some((r) => r.section === sec && r.localDate === today)) {
       mark.mutate({ section: sec, localDate: today, weekStart: thisWeekStart });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyPrayerEngaged, reflectionReadToday, contemplationDoneToday, healthMindfulToday, officePrayedToday, rows, today, thisWeekStart, compQ.isLoading, officeQ.isLoading, user, def]);
+  }, [dailyPrayerEngaged, reflectionReadToday, contemplationDoneToday, officePrayedToday, rows, today, thisWeekStart, compQ.isLoading, officeQ.isLoading, user, def]);
 
   if (authLoading || !user || !def || (!betaLoading && !isBeta)) return null;
 
@@ -297,7 +293,7 @@ export default function HomeBetaSectionPage() {
   const lockedDone =
     (def.key === "learn_pray" && dailyPrayerEngaged) ||
     (def.key === "learn" && (reflectionReadToday || officePrayedToday)) ||
-    (def.key === "pray" && (officePrayedToday || contemplationDoneToday || healthMindfulToday));
+    (def.key === "pray" && (officePrayedToday || contemplationDoneToday));
   // Daily practices are "done" on the exact day; weekly practices (Worship,
   // Bless, Go, Rest) are "done" for the whole week if ANY completion lands in
   // it — matched by weekStart, NOT localDate. /this-week writes weekly marks as

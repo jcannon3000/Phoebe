@@ -342,7 +342,6 @@ const BcpPage = lazy(() => import("./pages/bcp"));
 const OfficesPage = lazy(() => import("./pages/offices"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
-const DailyStepsPage = lazy(() => import("./pages/daily-steps"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
 const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
 const PrayBreathPage = lazy(() => import("./pages/pray-breath"));
@@ -694,7 +693,7 @@ function PilotGate({ children }: { children: ReactNode }) {
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/resources",
-  "/psalms", "/contemplation", "/daily-steps", "/reflect/fdd", "/customize",
+  "/psalms", "/contemplation", "/reflect/fdd", "/customize",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
@@ -912,7 +911,6 @@ function Router() {
       <Route path="/offices" component={OfficesPage} />
       <Route path="/examen" component={ExamenPage} />
       <Route path="/contemplation" component={ContemplationPage} />
-      <Route path="/daily-steps" component={DailyStepsPage} />
       <Route path="/psalms" component={PsalmsPage} />
       <Route path="/cobreathe/about" component={CobreatheAboutPage} />
       <Route path="/cobreathe" component={CobreathePage} />

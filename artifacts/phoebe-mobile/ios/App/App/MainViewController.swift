@@ -1,18 +1,16 @@
 // MainViewController.swift
 //
 // The app's root Capacitor bridge view controller. We subclass
-// CAPBridgeViewController to register MindfulHealthPlugin AND
-// PhoebeWidgetPlugin EXPLICITLY.
+// CAPBridgeViewController to register PhoebeWidgetPlugin EXPLICITLY.
 //
 // Why: Capacitor auto-discovers app-target plugins through the
 // Objective-C runtime, and that works for the in-app plugins that ARE
 // referenced elsewhere in Swift (PhoebeAudio, BibleBrowser, PhoebeBadge).
-// But MindfulHealth and PhoebeWidget are referenced ONLY in their own
-// definition files, so this Cap 8 build's linker dead-strips their classes
-// and they never appear in window.Capacitor.Plugins. Registering the
-// instances here in capacitorDidLoad() is the path Capacitor documents for
-// app-embedded plugins and guarantees the bridge is created — so the Apple
-// Health UI lights up AND the Home Screen widget actually receives data
+// But PhoebeWidget is referenced ONLY in its own definition file, so this
+// Cap 8 build's linker dead-strips the class and it never appears in
+// window.Capacitor.Plugins. Registering the instance here in
+// capacitorDidLoad() is the path Capacitor documents for app-embedded
+// plugins and guarantees the Home Screen widget actually receives data
 // (PhoebeWidget.update writes the App Group + reloads WidgetKit).
 
 import UIKit
@@ -21,8 +19,7 @@ import WebKit
 
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
-        bridge?.registerPluginInstance(MindfulHealthPlugin())
-        // PhoebeWidget is dead-stripped for the SAME reason — nothing in Swift
+        // PhoebeWidget is dead-stripped — nothing in Swift
         // references the class, so it never appeared in window.Capacitor.Plugins
         // and updateWidget() silently no-op'd (optional chaining). The Home
         // Screen widget then got NO data and fell back to the generic time-based

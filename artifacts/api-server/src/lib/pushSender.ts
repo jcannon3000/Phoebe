@@ -1099,40 +1099,6 @@ export function sendContemplationGoalReminderPush(
   });
 }
 
-// Congrats push when external Health minutes (Calm, Insight Timer, Apple
-// Mindfulness) push the user over their daily contemplation goal. Fired from
-// the PUT /me/contemplation-health-minutes endpoint at the moment of crossing.
-export function sendContemplationGoalReachedPush(
-  userId: number,
-  opts: { goalMinutes: number; doneMinutes: number }
-) {
-  return sendPushToUser(userId, {
-    title: "Goal reached 🌿",
-    body: `${opts.doneMinutes} minutes of silence today — you've hit your ${opts.goalMinutes}-minute goal.`,
-    path: "/contemplation",
-    threadId: "contemplation-goal",
-    collapseId: `contemplation-goal-reached-${userId}`,
-    sound: PHOEBE_SOUND_LOW,
-  });
-}
-
-// Congrats push when Apple Health step count crosses the user's daily step
-// goal. Fired from PUT /me/daily-steps on the first upload that reaches the goal
-// (deduped to once per local day by users.daily_step_reached_date).
-export function sendDailyStepGoalReachedPush(
-  userId: number,
-  opts: { goalSteps: number; steps: number }
-) {
-  return sendPushToUser(userId, {
-    title: "Step goal reached 👟",
-    body: `${opts.steps.toLocaleString()} steps today — you've hit your ${opts.goalSteps.toLocaleString()}-step goal.`,
-    path: "/dashboard",
-    threadId: "daily-steps",
-    collapseId: `daily-steps-reached-${userId}`,
-    sound: PHOEBE_SOUND_LOW,
-  });
-}
-
 // Weekly Way of Love review — the Sunday-evening examen nudge. Invites the user
 // to look back on the week and set the one ahead. Deep-links into the review;
 // deduped to once per Sunday by the sender.

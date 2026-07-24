@@ -27,7 +27,6 @@ import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
 } from "@/lib/cacReadState";
 import { primeAudio } from "@/lib/amenFeedback";
-import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, syncMindfulMinutesNow, type MindfulSession } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -95,14 +94,6 @@ type Stats = {
   todaySeconds: number; todayCount: number; todayDays: number;
   weekSeconds: number; weekCount: number; weekDays: number;
   totalSeconds: number; sessionCount: number; totalDays: number;
-  // External Apple Health mindful minutes the server has stored for today
-  // (uploaded by the iOS client). Prayer-only todaySeconds stays separate so
-  // the Stats tiles don't double-count; "done" consumers add this on top.
-  healthMinutesToday: number;
-  // …and for the week + all-time, folded into the cumulative Stats tiles so
-  // Insight Timer / Calm / Apple Mindfulness minutes count too.
-  healthMinutesWeek: number;
-  healthMinutesTotal: number;
 };
 
 // Someone in your garden whose contemplative prayer overlapped yours.
@@ -160,21 +151,12 @@ function dayKey(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
-// Local YYYY-MM-DD (zero-padded) — matches the day key Apple Health minutes are
-// stored under server-side, so a session's day can look up that day's Health total.
+// Local YYYY-MM-DD (zero-padded) — a stable sort key for grouping older
+// history days newest-first.
 function ymdLocal(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-CA");
-}
-// Whole-day diff from today for a local YYYY-MM-DD string (parsed as LOCAL, not
-// UTC, so it doesn't drift a day for users behind UTC).
-function dayDiffYmd(ymd: string): number {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
-  if (!m) return Infinity;
-  const that = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.round((today.getTime() - that.getTime()) / 86400000);
 }
 
 // <input type="datetime-local"> wants LOCAL "YYYY-MM-DDTHH:mm".
@@ -183,18 +165,10 @@ function localDatetimeValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Average per day INCLUDING Apple Health mindful minutes — so the average
-// matches the cumulative tile (which already adds health). Previously the
-// average used prayer-sit seconds only, so any health minutes (which stay
-// counted even after older days condense in the history view) silently
-// dropped out and the weekly average read too low. The day count is still
-// the prayer-sit day count from the server; when a window has only health
-// minutes we divide by at least one day so it isn't "—" while the total shows.
-function avgPerDayWithHealth(seconds: number, healthMinutes: number, days: number): string {
-  const total = seconds + healthMinutes * 60;
-  const d = Math.max(days, healthMinutes > 0 ? 1 : 0);
-  if (!d) return "—";
-  return humanMinutes(Math.round(total / d));
+// Average per day across the prayer-sit day count from the server.
+function avgPerDay(seconds: number, days: number): string {
+  if (!days) return "—";
+  return humanMinutes(Math.round(seconds / days));
 }
 
 // Always plain minutes — "75 min", "<1 min", "—" for zero. (Per product
@@ -235,89 +209,24 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Apple Health (iOS native shell only) — read-only preview of today's Mindful
-// Minutes from OTHER apps (Calm, Insight Timer, Apple Mindfulness all write to
-// HealthKit). Hidden on web. This proves the read pipeline end-to-end; it does
-// NOT yet feed the goal — wiring it in (with de-dup of Phoebe's own sits, and
-// uploading to the server so the 7pm nudge sees it) is the deliberate next step.
 // Daily goal card — set a minutes/day target and see today's progress toward
 // it. Setting a goal (> 0) turns on a gentle ~7pm reminder ONLY on days it's
 // still unmet (no nudge once the goal is reached). The target is a free field —
 // the user types any number of minutes; there are no presets.
 function DailyGoalCard({
-  goalMinutes, todaySeconds, healthMinutesToday, onSet, saving,
+  goalMinutes, todaySeconds, onSet, saving,
 }: {
   goalMinutes: number;
   todaySeconds: number;
-  // Server's stored external Health minutes for today — the fallback used when
-  // there's no live HealthKit read (web, or before the query resolves), so the
-  // card reflects minutes synced from the user's phone.
-  healthMinutesToday: number;
   onSet: (m: number) => void;
   saving: boolean;
 }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
   const hasGoal = goalMinutes > 0;
 
-  // iOS only: meditation logged in OTHER apps (Calm, Insight Timer, Apple
-  // Mindfulness) lands in Apple Health as Mindful Minutes. We read today's
-  // total — excludeOwn drops the sits Phoebe itself wrote back to Health, so
-  // they're never double-counted — and fold it into the goal below. Keyed by
-  // local day so it refetches across midnight.
-  const healthQ = useQuery<{ minutes: number; sessions: number } | null>({
-    queryKey: ["apple-health-mindful-external", new Date().toLocaleDateString("en-CA")],
-    queryFn: () => getMindfulMinutesToday(true),
-    enabled: appleHealthAvailable(),
-    staleTime: 5 * 60_000,
-  });
-
-  // Whether the user has connected Apple Health on THIS install. The flag is
-  // localStorage-only, so deleting + re-downloading the app clears it even
-  // though iOS keeps the underlying HealthKit grant. Surface a Connect button
-  // right here on the stats page (not just buried in Settings) so a fresh
-  // install can re-authorize + re-arm the sync without hunting for it.
-  const [healthConnected, setHealthConnected] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
-  });
-  const [connectingHealth, setConnectingHealth] = useState(false);
-  const connectHealth = async () => {
-    setConnectingHealth(true);
-    try {
-      await requestMindfulAuthorization();
-      try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
-      setHealthConnected(true);
-      // Read the freshly-authorized external mindful minutes and push them to the
-      // server NOW so they count immediately (the app-wide sync hook won't re-read
-      // just because we set the flag). Then refresh the display + stats.
-      await syncMindfulMinutesNow();
-      await qc.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
-      qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-    } finally {
-      setConnectingHealth(false);
-    }
-  };
-  // Show the connect prompt only in the native shell, before they've connected
-  // on this install. Once connected (or once a live read returns minutes) the
-  // synced-from-Health line below carries it instead.
-  const showHealthConnect = appleHealthAvailable() && !healthConnected;
-  // The live HealthKit read (iOS only; 0/absent on web) — gates the connect
-  // prompt. The upload to the server happens app-wide from the Layout shell
-  // (useSyncHealthMinutes), so the goal card no longer uploads itself.
-  const liveHealthMin = healthQ.data?.minutes ?? 0;
-  // What we display/count: the larger of the live read and the server's
-  // stored value. A live read of 0 is ambiguous — HealthKit hides read-grant
-  // state, so "granted but no minutes" and "not granted on THIS device" both
-  // read {minutes: 0} — and `0 ?? server` kept the 0, discarding minutes the
-  // user's phone had already synced (this card said 0 while the dashboard
-  // card, which always uses the server value, said 25). Math.max keeps the
-  // two surfaces in agreement; the server value resets at the day boundary.
-  const healthMin = Math.max(liveHealthMin, healthMinutesToday);
-
-  // Today's progress = Phoebe's own logged time + meditation synced from Health.
-  // todaySeconds is prayer-only (server keeps Health minutes in a separate
-  // field), so adding healthMin here doesn't double-count.
-  const doneMin = Math.floor(todaySeconds / 60) + healthMin;
+  // Today's progress = Phoebe's own logged time (the in-app contemplation timer
+  // + office sits). No external source folds in.
+  const doneMin = Math.floor(todaySeconds / 60);
   const pct = hasGoal ? Math.min(100, Math.round((doneMin / goalMinutes) * 100)) : 0;
   const met = hasGoal && doneMin >= goalMinutes;
 
@@ -356,40 +265,6 @@ function DailyGoalCard({
       {hasGoal && (
         <div className="rounded-full overflow-hidden mb-3" style={{ height: 6, background: "rgba(46,107,64,0.20)" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: met ? "#6FAF85" : "#2D5E3F", transition: "width 0.3s" }} />
-        </div>
-      )}
-
-      {/* Synced from Apple Health — folded into today's progress above. */}
-      {healthMin > 0 && (
-        <p className="text-[12px] flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 12px" }}>
-          <span aria-hidden>🍎</span>
-          {t("contemplation.health_counted", { defaultValue: `Including ${healthMin} min synced from Apple Health`, count: healthMin })}
-        </p>
-      )}
-
-      {/* Connect Apple Health — shown on the stats page for a native install
-          that hasn't connected yet (incl. after a re-download, which clears the
-          local flag). The explanation is the point: connecting lets Phoebe
-          COUNT silence you keep in OTHER apps (Calm, Insight Timer, Apple
-          Mindfulness) toward this goal, so your practice reflects everywhere
-          you sit — not only in-app. */}
-      {showHealthConnect && (
-        <div className="mb-3">
-          <p className="text-[12.5px] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK, lineHeight: 1.5 }}>
-            {t("contemplation.health_connect_why", { defaultValue: "Connect Apple Health and Phoebe will count the silence you keep in other apps — Calm, Insight Timer, Apple Mindfulness — toward your goal too." })}
-          </p>
-          <button
-            type="button"
-            onClick={connectHealth}
-            disabled={connectingHealth}
-            className="rounded-full px-4 py-2 text-[13px] font-semibold flex items-center gap-1.5 transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: connectingHealth ? "default" : "pointer" }}
-          >
-            <span aria-hidden>🍎</span>
-            {connectingHealth
-              ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
-              : t("contemplation.health_connect", { defaultValue: "Connect Apple Health" })}
-          </button>
         </div>
       )}
 
@@ -572,11 +447,6 @@ export default function ContemplationPage() {
   // from, what to do) so a beginner isn't dropped into a blank timer unguided.
   const [silenceIntroDismissed, setSilenceIntroDismissed] = useState(false);
 
-  // Apple Health is OPT-IN: we no longer auto-prompt for Mindful access when the
-  // Contemplation page opens. Per request, don't ask for health data unless the
-  // user has chosen a health practice. Phoebe no longer writes Mindful Minutes
-  // to Apple Health at all (simpler Health ask); the Daily steps practice
-  // requests its own step access on opt-in.
   // Always launched with an explicit length now (the Begin pill passes the
   // chosen minutes), so the timer skips its own picker and starts straight
   // into the sit. The six-box picker phase is reserved for the prayer-
@@ -747,39 +617,13 @@ export default function ContemplationPage() {
     queryFn: () => apiRequest("GET", "/api/me/contemplation-sessions") as Promise<Session[]>,
   });
 
-  // External Apple Health mindful minutes PER LOCAL DAY (YYYY-MM-DD → minutes),
-  // synced from other apps. The condensed older-day history cards only sum
-  // Phoebe's own sits, so a day mostly kept in Calm/Insight Timer/Apple
-  // Mindfulness read far too low; we fold these in below so a condensed day
-  // matches the Stats totals (which already include Health).
-  const { data: healthDays = {} } = useQuery<Record<string, number>>({
-    queryKey: ["/api/me/contemplation-health-days"],
-    queryFn: async () => (await apiRequest("GET", "/api/me/contemplation-health-days") as { days?: Record<string, number> })?.days ?? {},
-  });
-
-  // Today's mindful sessions read from Apple Health (iOS only). We surface
-  // only EXTERNAL ones (Calm, Insight Timer, Apple Mindfulness) as history
-  // cards — Phoebe's own sits already appear above as logged sits, so showing
-  // the copies Phoebe wrote back to Health would double them.
-  const { data: healthSessions = [] } = useQuery<MindfulSession[]>({
-    queryKey: ["apple-health-mindful-sessions", new Date().toLocaleDateString("en-CA")],
-    queryFn: () => getMindfulSessionsToday(),
-    enabled: appleHealthAvailable(),
-    staleTime: 5 * 60_000,
-  });
-  const externalHealthSessions = useMemo(
-    () => healthSessions.filter((h) => !h.isOwn && h.minutes > 0),
-    [healthSessions],
-  );
-
   // History grouping: today's & yesterday's sits stay as individual cards;
   // every older day collapses into ONE summary card (date + sit count + total
   // minutes). Sessions arrive newest-first, so day groups land newest-first.
   const historyGroups = useMemo(() => {
     const recent: Session[] = [];
-    const olderDays: Array<{ key: string; iso: string; ymd: string; totalSeconds: number; healthMinutes: number; count: number }> = [];
+    const olderDays: Array<{ key: string; iso: string; ymd: string; totalSeconds: number; count: number }> = [];
     const seen = new Map<string, number>();
-    const usedYmd = new Set<string>();
     for (const s of sessions) {
       const w = s.startedAt ?? s.endedAt;
       if (!w || dayDiff(w) <= 1) { recent.push(s); continue; }
@@ -788,29 +632,15 @@ export default function ContemplationPage() {
       if (idx === undefined) {
         idx = olderDays.length;
         seen.set(k, idx);
-        const ymd = ymdLocal(w);
-        usedYmd.add(ymd);
-        olderDays.push({ key: k, iso: w, ymd, totalSeconds: 0, healthMinutes: 0, count: 0 });
+        olderDays.push({ key: k, iso: w, ymd: ymdLocal(w), totalSeconds: 0, count: 0 });
       }
       olderDays[idx].totalSeconds += s.durationSeconds ?? 0;
       olderDays[idx].count += 1;
     }
-    // Fold in that day's external Apple Health minutes (Calm / Insight Timer /
-    // Apple Mindfulness) so a condensed day matches the Stats totals — otherwise
-    // a day mostly kept in another app read far too low.
-    for (const g of olderDays) g.healthMinutes = healthDays[g.ymd] ?? 0;
-    // Days kept ENTIRELY in another app (no Phoebe sit) would otherwise vanish
-    // from the history — surface them as health-only cards. Only TODAY is skipped
-    // (it already shows via the live HealthKit read `externalHealthSessions`);
-    // YESTERDAY's health-only minutes were being dropped, so include dayDiff >= 1.
-    for (const [ymd, minutes] of Object.entries(healthDays)) {
-      if (minutes <= 0 || usedYmd.has(ymd) || dayDiffYmd(ymd) < 1) continue;
-      olderDays.push({ key: `h-${ymd}`, iso: `${ymd}T12:00:00`, ymd, totalSeconds: 0, healthMinutes: minutes, count: 0 });
-    }
-    // Newest day first (Phoebe + health-only interleaved by date).
+    // Newest day first.
     olderDays.sort((a, b) => (a.ymd < b.ymd ? 1 : a.ymd > b.ymd ? -1 : 0));
     return { recent, olderDays };
-  }, [sessions, healthDays]);
+  }, [sessions]);
 
   // Manual-log form state.
   const queryClient = useQueryClient();
@@ -1118,7 +948,6 @@ export default function ContemplationPage() {
           <DailyGoalCard
             goalMinutes={goalMinutes}
             todaySeconds={todayTotalSeconds}
-            healthMinutesToday={stats?.healthMinutesToday ?? 0}
             onSet={(m) => goalMutation.mutate(m)}
             saving={goalMutation.isPending}
           />
@@ -1159,17 +988,16 @@ export default function ContemplationPage() {
           <div>
             <RowLabel>{t("contemplation.cumulative")}</RowLabel>
             <div className="flex gap-3 mb-4">
-              {/* Cumulative time = in-app sits (incl. Cobreathe) + external
-                  Apple Health mindful minutes for each window. */}
-              <StatTile label={t("contemplation.label_today")} value={humanMinutes(todayTotalSeconds + (stats?.healthMinutesToday ?? 0) * 60)} />
-              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes((stats?.weekSeconds ?? 0) + (stats?.healthMinutesWeek ?? 0) * 60)} />
-              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes((stats?.totalSeconds ?? 0) + (stats?.healthMinutesTotal ?? 0) * 60)} />
+              {/* Cumulative time = in-app sits (incl. Cobreathe) for each window. */}
+              <StatTile label={t("contemplation.label_today")} value={humanMinutes(todayTotalSeconds)} />
+              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes(stats?.weekSeconds ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes(stats?.totalSeconds ?? 0)} />
             </div>
             <RowLabel>{t("contemplation.average_per_day")}</RowLabel>
             <div className="flex gap-3">
-              <StatTile label={t("contemplation.label_today")} value={avgPerDayWithHealth(todayTotalSeconds, stats?.healthMinutesToday ?? 0, stats?.todayDays ?? 0)} />
-              <StatTile label={t("contemplation.label_this_week")} value={avgPerDayWithHealth(stats?.weekSeconds ?? 0, stats?.healthMinutesWeek ?? 0, stats?.weekDays ?? 0)} />
-              <StatTile label={t("contemplation.label_all_time")} value={avgPerDayWithHealth(stats?.totalSeconds ?? 0, stats?.healthMinutesTotal ?? 0, stats?.totalDays ?? 0)} />
+              <StatTile label={t("contemplation.label_today")} value={avgPerDay(todayTotalSeconds, stats?.todayDays ?? 0)} />
+              <StatTile label={t("contemplation.label_this_week")} value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
             </div>
           </div>
         )}
@@ -1292,62 +1120,22 @@ export default function ContemplationPage() {
             </div>
           )}
 
-          {sessions.length === 0 && externalHealthSessions.length === 0 ? (
+          {sessions.length === 0 ? (
             <p className="text-[13px] text-center py-6" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
               {t("contemplation.no_sessions")}
             </p>
           ) : (
             <div className="space-y-2">
-              {/* Recent — Phoebe sits + Apple Health mindful minutes (Calm,
-                  Insight Timer, Apple Mindfulness) interleaved in true
-                  chronological order (newest first), not grouped by source.
-                  Older Phoebe sits collapse into per-day summaries below. */}
-              {(() => {
-                type Row =
-                  | { kind: "health"; ms: number; h: (typeof externalHealthSessions)[number] }
-                  | { kind: "sit"; ms: number; s: Session };
-                const rows: Row[] = [
-                  ...externalHealthSessions.map((h) => ({ kind: "health" as const, ms: h.startMs, h })),
-                  ...historyGroups.recent.map((s) => ({
-                    kind: "sit" as const,
-                    ms: new Date(s.startedAt ?? s.endedAt ?? 0).getTime(),
-                    s,
-                  })),
-                ].sort((a, b) => b.ms - a.ms);
-                return rows.map((row) => {
-                  if (row.kind === "sit") {
-                    return (
-                      <SessionRow
-                        key={row.s.id}
-                        s={row.s}
-                        onDelete={() => deleteMutation.mutate(row.s.id)}
-                        deleting={deleteMutation.isPending}
-                      />
-                    );
-                  }
-                  const h = row.h;
-                  const iso = new Date(h.startMs).toISOString();
-                  return (
-                    <div
-                      key={`hk-${h.startMs}`}
-                      className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-                      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-                          {formatSessionDate(iso, t, i18n.language)}
-                        </p>
-                        <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, margin: 0 }}>
-                          {formatSessionTime(iso)} · 🍎 {h.source || t("contemplation.health_title", { defaultValue: "Apple Health" })}
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold shrink-0" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                        {humanMinutes(h.minutes * 60)}
-                      </span>
-                    </div>
-                  );
-                });
-              })()}
+              {/* Recent — today's & yesterday's sits as individual cards, newest
+                  first. Older sits collapse into per-day summaries below. */}
+              {historyGroups.recent.map((s) => (
+                <SessionRow
+                  key={s.id}
+                  s={s}
+                  onDelete={() => deleteMutation.mutate(s.id)}
+                  deleting={deleteMutation.isPending}
+                />
+              ))}
               {/* Older — one condensed summary card per day. */}
               {historyGroups.olderDays.map((g) => (
                 <div
@@ -1360,18 +1148,13 @@ export default function ContemplationPage() {
                       {formatSessionDate(g.iso, t)}
                     </p>
                     <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
-                      {g.count === 0
-                        ? `🍎 ${t("contemplation.health_title", { defaultValue: "Apple Health" })}`
-                        : g.count === 1
-                          ? t("contemplation.day_one_sit", { defaultValue: "1 sit" })
-                          : t("contemplation.day_n_sits", { count: g.count, defaultValue: `${g.count} sits` })}
-                      {g.count > 0 && g.healthMinutes > 0
-                        ? ` · 🍎 ${t("contemplation.plus_health", { minutes: g.healthMinutes, defaultValue: `+${g.healthMinutes} min from Apple Health` })}`
-                        : ""}
+                      {g.count === 1
+                        ? t("contemplation.day_one_sit", { defaultValue: "1 sit" })
+                        : t("contemplation.day_n_sits", { count: g.count, defaultValue: `${g.count} sits` })}
                     </p>
                   </div>
                   <span className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                    {humanMinutes(g.totalSeconds + g.healthMinutes * 60)}
+                    {humanMinutes(g.totalSeconds)}
                   </span>
                 </div>
               ))}

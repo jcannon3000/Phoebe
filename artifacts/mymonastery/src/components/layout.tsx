@@ -25,7 +25,6 @@ import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacRea
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { PrayedWithWeek } from "@/components/PrayedWithWeek";
 import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
-import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -516,14 +515,11 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const officePrayedToday = !!lastOffice && lastOffice.ymd === today && (lastOffice.morning || lastOffice.evening);
   const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
   const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
-  // iOS + Health connected: meditation logged in other apps (Insight Timer,
-  // Calm, Apple Mindfulness) counts toward Pray too.
-  const healthMindfulToday = useHealthMindfulToday();
   const hasRuleOfLife = Object.keys(wolQ.data?.selections ?? {}).length > 0;
 
   const turnDone = true; // opening the app counts as turning toward God today
   const learnDone = officePrayedToday || reflectionReadToday;
-  const prayDone = officePrayedToday || contemplationDoneToday || healthMindfulToday;
+  const prayDone = officePrayedToday || contemplationDoneToday;
   const weeklyDone = (section: string) => rows.some((r) => r.section === section && r.weekStart === weekStart);
 
   type WolCard = { key: string; emoji: string; label: string; done: boolean; route: string };
@@ -676,7 +672,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, prayerListActive, prayerListDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, prayerListActive, prayerListDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -692,7 +688,7 @@ function DailyProgressPill() {
   }, []);
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
-  // they added (gratitude, examen, the daily-steps goal) and each user-defined
+  // they added (examen, the prayer-list card) and each user-defined
   // custom practice. Keyed so the "just completed" pulse below tracks the right
   // dot even as the set changes.
   // Custom-practice dots sit in their time-of-day SLOT (not lumped at the end) —
@@ -714,10 +710,9 @@ function DailyProgressPill() {
     // the goal-progress card riding alongside per-side Creation Prayer cards
     // (whose own dots are the per-side entries above).
     ...(silenceGoalCardActive ? [{ key: "silence", done: silenceGoalCardDone }] : []),
-    // "Anytime" all-day anchors (rank right after morning): the daily-steps goal,
-    // the prayer-list card, and any custom placed at "anytime" — each renders a
-    // card, so each needs a dot or the pill under-counts the rhythm.
-    ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),
+    // "Anytime" all-day anchors (rank right after morning): the prayer-list
+    // card and any custom placed at "anytime" — each renders a card, so each
+    // needs a dot or the pill under-counts the rhythm.
     ...(prayerListActive ? [{ key: "prayer-list", done: prayerListDone }] : []),
     ...cDots("anytime"),
     ...cDots("midday"),
@@ -1456,12 +1451,6 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false,
   // Pilot has no /daily-progress dashboard (replaced by /pilot/home) — the
   // header pill would dead-end, so hide it for pilot.
   const { isPilot: headerIsPilot } = usePilotMode();
-
-  // Best-effort sync of today's external Apple Health mindful minutes to the
-  // server from the app shell (so it runs on nearly every page), giving the
-  // ~7pm contemplation-goal nudge a fresh value even when the user never opens
-  // the Contemplation page. No-ops on web / when Health is unavailable.
-  useSyncHealthMinutes();
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10", isolation: "isolate" }}>

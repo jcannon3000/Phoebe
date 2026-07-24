@@ -22,7 +22,6 @@ import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { RhythmWhyIntro } from "@/components/RhythmWhyIntro";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { appleHealthAvailable, requestStepAuthorization } from "@/lib/appleHealth";
 import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
-import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
+import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import {
   setSideLevel,
@@ -99,7 +98,7 @@ type Step =
   | "psalms-cycle"
   | "evening-way" | "evening-bcp" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "walk-when"
-  | "learn" | "extras" | "steps-goal" | "custom" | "weekly" | "done"
+  | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
 // later (you receive a rule, you don't compose one from a blank trellis). Each
@@ -779,7 +778,7 @@ export default function WayOfLoveRuleFlow({
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
 
-  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; dailyStepGoal?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null }>({
+  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -799,30 +798,6 @@ export default function WayOfLoveRuleFlow({
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
 
-  // Daily steps (Apple Health) — its own optional customizer slide, like the
-  // silence goal, but iOS-only (HealthKit). Goal is 0 (off) by DEFAULT; this
-  // slide isn't threaded through commit, so a pick persists IMMEDIATELY (guest
-  // → device-local key, signed-in → office-prefs). Picking a real goal (> 0)
-  // asks Apple Health for step-read access — once, in the tap gesture, native.
-  const [stepGoal, setStepGoal] = useState<number>(() => {
-    try { return (guest || isDeviceLocalGuest(user)) ? getGuestStepGoal() : 0; } catch { return 0; }
-  });
-  const chooseStepGoal = (g: number) => {
-    touchedRef.current = true;
-    setStepGoal(g);
-    if (guest || isDeviceLocalGuest(user)) setGuestStepGoal(g);
-    else void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: g }).catch(() => { /* best-effort */ });
-    // Turning steps ON (a bigger goal) → connect Apple Health for step data.
-    // STEP read is a SEPARATE HealthKit permission from mindful minutes, so it
-    // sets its OWN flag — never `phoebe:health-connected` (the mindful flag that
-    // gates useHealthMindfulToday + the contemplation stats Connect button).
-    if (g > 0 && appleHealthAvailable() && localStorage.getItem("phoebe:health-step-asked") !== "1") {
-      try { localStorage.setItem("phoebe:health-step-asked", "1"); } catch { /* private mode */ }
-      void requestStepAuthorization().then((ok) => {
-        if (ok) { try { localStorage.setItem("phoebe:health-step-connected", "1"); } catch { /* ignore */ } }
-      }).catch(() => { /* best-effort */ });
-    }
-  };
   // Toggle a reflection in/out. "None" clears the list (no reflection card, one
   // fewer Daily-progress dot); picking a real source clears None.
   const noReflection = newsletters.length === 0;
@@ -855,7 +830,6 @@ export default function WayOfLoveRuleFlow({
     // prefill from it so Customize opens on what they actually have set (a stale
     // local per-side minutes value must not win, which is why it showed 15 when
     // the real goal was 60).
-    if (typeof prefs.dailyStepGoal === "number") setStepGoal(prefs.dailyStepGoal);
     if (typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
       setGoal(String(prefs.contemplationGoalMinutes));
       // An existing silence goal means Contemplative Prayer is already part of the
@@ -1244,7 +1218,6 @@ export default function WayOfLoveRuleFlow({
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
-        ...(isNativeShell() ? (["steps-goal"] as Step[]) : []),
         "custom",
       ]
     : pilot
@@ -1257,7 +1230,6 @@ export default function WayOfLoveRuleFlow({
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
-        ...(isNativeShell() ? (["steps-goal"] as Step[]) : []),
         "custom",
       ]
     : [
@@ -1272,8 +1244,6 @@ export default function WayOfLoveRuleFlow({
     ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
     // Silence (the daily-minutes goal, i.e. the silent sit).
     "contemplation-goal",
-    // Daily steps — its own optional slide (iOS only; Apple Health).
-    ...(isNativeShell() ? (["steps-goal"] as Step[]) : []),
     // NOTE (owner): the "Contemplative Practices" multi-select ("contemplative"
     // + its audio/walk/examen "-when" detail steps) and the
     // "Add to your day" extras step are intentionally NOT in the customizer.
@@ -1489,40 +1459,6 @@ export default function WayOfLoveRuleFlow({
         </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
           {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
-        </p>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
-      </>,
-    );
-  }
-
-  // ── Daily steps (Apple Health) — its own slide, like Silence. iOS-only ────
-  if (step === "steps-goal") {
-    const STEP_OPTS = [5000, 7500, 10000, 12500, 15000];
-    return shell(
-      <>
-        {backRow(goPrev)}
-        {stepHeader(t("wol_rule.steps_eyebrow", { defaultValue: "Move" }), t("wol_rule.steps_title", { defaultValue: "Daily steps" }))}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "22px 0 12px" }}>
-          {t("wol_rule.steps_body", { defaultValue: "Walk toward a daily step goal, counted from Apple Health. Choose one — or leave it off." })}
-        </p>
-        <div style={{ position: "relative" }}>
-          <select
-            value={String(stepGoal)}
-            onChange={(e) => chooseStepGoal(parseInt(e.target.value, 10) || 0)}
-            aria-label={t("wol_rule.steps_goal_label", { defaultValue: "Choose a daily step goal." })}
-            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-          >
-            <option value="0">{t("wol_rule.steps_none", { defaultValue: "No step goal" })}</option>
-            {/* Preserve a previously-saved non-standard goal as an option. */}
-            {stepGoal > 0 && !STEP_OPTS.includes(stepGoal) && (
-              <option value={String(stepGoal)}>{stepGoal.toLocaleString()}</option>
-            )}
-            {STEP_OPTS.map((g) => (<option key={g} value={String(g)}>{t("wol_rule.steps_n", { count: g, defaultValue: `${g.toLocaleString()} steps` })}</option>))}
-          </select>
-          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-        </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "12px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.steps_note", { defaultValue: "Counted from Apple Health — we'll ask permission when you set a goal. Off by default; it's never measured against you." })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,

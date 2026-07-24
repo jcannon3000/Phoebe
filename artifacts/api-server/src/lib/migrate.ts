@@ -1837,40 +1837,9 @@ export async function migrate() {
       END $$;
     `);
 
-    // ── contemplation_health_minutes ──────────────────────────────────────────
-    // External mindful minutes (Calm, Insight Timer, Apple Mindfulness — NOT
-    // Phoebe's own sits, which the client excludes) that the iOS client reads
-    // from Apple Health and best-effort uploads per local day. The server-side
-    // ~7pm goal nudge (lib/bellSender) and the /me/contemplation-stats endpoint
-    // fold these into "done today" so they count silence kept in other apps the
-    // same way the Contemplation card already does — otherwise the nudge fires
-    // even when the goal was met elsewhere. `day` is the user's local YYYY-MM-DD.
-    // Additive + idempotent; the unique (user_id, day) index is the upsert target.
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS contemplation_health_minutes (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        day TEXT NOT NULL,
-        minutes INTEGER NOT NULL DEFAULT 0,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS contemplation_health_minutes_user_day_uk ON contemplation_health_minutes (user_id, day)`);
-
-    // ── daily_health_steps ────────────────────────────────────────────────────
-    // Apple Health step count the iOS client uploads per local day, so the
-    // server can fire a "you hit your step goal" push (the home card itself
-    // reads steps straight from HealthKit). Mirrors contemplation_health_minutes.
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS daily_health_steps (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        day TEXT NOT NULL,
-        steps INTEGER NOT NULL DEFAULT 0,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS daily_health_steps_user_day_uk ON daily_health_steps (user_id, day)`);
+    // Apple Health / HealthKit integration removed (privacy simplification): the
+    // app no longer reads mindful minutes or steps. The contemplation_health_minutes
+    // and daily_health_steps tables are dropped at the end of this migration.
 
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
@@ -3851,6 +3820,10 @@ export async function migrate() {
     await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS discoverable_by_phone`);
     await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS share_pray_location`);
     await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS share_breath_location`);
+
+    // ── Apple Health / HealthKit removal: no more mindful-minutes or step data.
+    await run(client, `DROP TABLE IF EXISTS contemplation_health_minutes CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS daily_health_steps CASCADE`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

@@ -47,11 +47,9 @@ import {
   userConnectionsCacheTable,
   waitlistTable,
   // Previously-omitted user-keyed PII tables — a portability/access export must
-  // include the user's journals, imported Apple Health data, practice history,
-  // and community chat, not just their social graph.
+  // include the user's journals, practice history, and community chat, not just
+  // their social graph.
   journalEntriesTable,
-  contemplationHealthMinutesTable,
-  dailyHealthStepsTable,
   prayerSessionsTable,
   breathSessionsTable,
   listeningEntriesTable,
@@ -110,8 +108,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     userConnectionsCache,
     waitlistEntries,
     journalEntries,
-    contemplationHealthMinutes,
-    dailyHealthSteps,
     prayerSessions,
     breathSessions,
     listeningEntries,
@@ -147,8 +143,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     db.select().from(userConnectionsCacheTable).where(sql`LOWER(${userConnectionsCacheTable.userEmail}) = ${emailLower} OR LOWER(${userConnectionsCacheTable.contactEmail}) = ${emailLower}`),
     db.select().from(waitlistTable).where(sql`LOWER(${waitlistTable.email}) = ${emailLower}`),
     db.select().from(journalEntriesTable).where(eq(journalEntriesTable.userId, userId)).catch(() => []),
-    db.select().from(contemplationHealthMinutesTable).where(eq(contemplationHealthMinutesTable.userId, userId)).catch(() => []),
-    db.select().from(dailyHealthStepsTable).where(eq(dailyHealthStepsTable.userId, userId)).catch(() => []),
     db.select().from(prayerSessionsTable).where(eq(prayerSessionsTable.userId, userId)).catch(() => []),
     db.select().from(breathSessionsTable).where(eq(breathSessionsTable.userId, userId)).catch(() => []),
     db.select().from(listeningEntriesTable).where(eq(listeningEntriesTable.userId, userId)).catch(() => []),
@@ -196,8 +190,6 @@ export async function exportUserData(userId: number, email: string): Promise<Rec
     userConnectionsCache,
     waitlistEntries,
     journalEntries,
-    contemplationHealthMinutes,
-    dailyHealthSteps,
     prayerSessions,
     breathSessions,
     listeningEntries,

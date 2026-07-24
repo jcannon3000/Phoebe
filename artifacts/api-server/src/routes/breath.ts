@@ -27,8 +27,7 @@ import { perUserRateLimit } from "../lib/rate-limit";
 // counts toward the daily contemplation goal like any other silence.
 //
 // `day` is the caller's LOCAL calendar day (YYYY-MM-DD), matching the TEXT
-// local-day convention used by practice_completion and
-// contemplation_health_minutes. People in different timezones who share a
+// local-day convention used by practice_completion. People in different timezones who share a
 // day string share a breath count — fitting for a practice about
 // interconnection, and it means everyone's "today" is their own.
 
