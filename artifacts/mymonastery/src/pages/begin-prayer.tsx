@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getSideLevel, getSideEntry, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideEntry, getSideContemplation, type OfficeSide } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 
@@ -107,6 +107,26 @@ export default function BeginPrayerPage() {
     // now — when off, a stale "creation" pref falls through to the office below.
     if (CREATION_PRAYER_ENABLED && defaultPrayerLevel === "creation") {
       setLocation(`/creation-devotion?mode=creation-${side}&picked=1`, { replace: true });
+      return;
+    }
+
+    // Contemplative OR Creation Prayer set via the simplified customizer
+    // (/customize) encodes as level "ask" + this side's contemplation flag ON
+    // — NOT the literal "reflect-sit"/"creation" levels checked above (those
+    // come only from the full rule-of-life builder, and "creation" is
+    // currently flag-gated off). Without this check a Creation/Contemplative
+    // Prayer side fell through to the generic BCP chooser below, landing on
+    // "Devotions" — the same bug for both styles. Route to exactly what the
+    // home contemplation card links to for this style (DailyProgressBody's
+    // creationStyle branch): Co-Breathe direct for the Creation style, the
+    // silence timer for the plain contemplative style.
+    if (getSideContemplation(side)) {
+      let style: "silent" | "cobreathe" = "silent";
+      try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
+      setLocation(
+        style === "cobreathe" ? `/cobreathe?begin=1&side=${side}` : `/contemplation?begin=1&side=${side}`,
+        { replace: true },
+      );
       return;
     }
 
