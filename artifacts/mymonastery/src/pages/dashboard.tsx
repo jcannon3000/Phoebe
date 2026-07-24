@@ -22,6 +22,7 @@ import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { seedGuestRule } from "@/lib/guestSeed";
@@ -2109,11 +2110,22 @@ function NewPrayerRequestsCard({
 }
 
 // ── ContemplationHomeCard — compact "sit in silence" home anchor ──
-// A one-line card that taps through to /contemplation. Hidden by
-// default; surfaced (and pinnable to the top) from the Customize page so
-// someone whose daily rhythm is silent prayer can lead with it.
-export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {}) {
+// A one-line card that taps through to /contemplation (or /cobreathe when the
+// user's style is Creation Prayer). Hidden by default; surfaced (and pinnable
+// to the top) from the Customize page so someone whose daily rhythm is silent
+// prayer can lead with it.
+//
+// `side` makes this per-side, like the /daily-progress Morning/Evening
+// Contemplation cards: each side completes independently (contemplationSideDone
+// + the server's cross-device echo), and the evening card stays a quiet
+// "later" card until its slot opens at 5 PM (matching the evening office's
+// gate) instead of literally being hidden. Defaults to "morning" for the
+// generic classic-home / home-beta module slots, which aren't tied to a
+// specific side of the day (never evening-gated there).
+export function ContemplationHomeCard({ side = "morning", hero = false }: { side?: "morning" | "evening"; hero?: boolean } = {}) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const guest = !user;
 
   // Invalidate contemplation-stats whenever the dashboard becomes visible —
   // covers returning from the contemplation page, switching back from another
@@ -2122,6 +2134,7 @@ export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {})
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        qc.invalidateQueries({ queryKey: ["/api/me/contemplation-sides-today"] });
       }
     };
     document.addEventListener("visibilitychange", onVisible);
@@ -2131,6 +2144,8 @@ export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {})
   // When a daily contemplation goal is set, show live progress under the title
   // ("8 of 15 min today" / "Goal reached"). Reads the same office-prefs goal +
   // contemplation-stats the Contemplation page uses, so they never disagree.
+  // This aggregate stays goal-progress only — it is NOT used for this side's
+  // done state below (that's per-side, see contemplationSideDone/sidesToday).
   const { data: prefs } = useQuery<{ contemplationGoalMinutes?: number }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<{ contemplationGoalMinutes?: number }>,
@@ -2151,87 +2166,142 @@ export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {})
   // minutes (Calm / Insight Timer / Apple Mindfulness) the client synced. No
   // live HealthKit read here, so we use the server's stored value.
   const doneMin = Math.floor((stats?.todaySeconds ?? 0) / 60) + (stats?.healthMinutesToday ?? 0);
-  const met = goalMin > 0 && doneMin >= goalMin;
-  const progressLabel = goalMin <= 0 ? null : met ? "Goal reached 🌿" : `${doneMin} of ${goalMin} min today`;
+  const goalMet = goalMin > 0 && doneMin >= goalMin;
+  const progressLabel = goalMin <= 0 ? null : goalMet ? "Goal reached 🌿" : `${doneMin} of ${goalMin} min today`;
+
+  // THIS side's own completion — local day-flag OR'd with the server's
+  // cross-device echo, exactly like useRhythmState's morning/evening
+  // Contemplation cards. Never derived from the shared minutes goal above,
+  // so completing one side never flips the other.
+  const [localSideDone, setLocalSideDone] = useState(() => hasContemplationSideDoneToday(side));
+  useEffect(() => {
+    const refresh = () => setLocalSideDone(hasContemplationSideDoneToday(side));
+    refresh();
+    window.addEventListener(CONTEMPLATION_SIDE_DONE_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(CONTEMPLATION_SIDE_DONE_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [side]);
+  const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
+    queryKey: ["/api/me/contemplation-sides-today", tz],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}`),
+    staleTime: 60_000,
+    enabled: !guest,
+  });
+  const met = localSideDone || !!sidesToday?.[side];
+
+  // Creation Prayer is the breath style for this side — same source of truth
+  // as useRhythmState/DailyProgressBody, so the label + destination agree
+  // with the /daily-progress cards for the same side.
+  const contemplationStyle: "silent" | "cobreathe" = (() => {
+    try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
+  })();
+  const isCreation = contemplationStyle === "cobreathe";
+  const bothSides = isCreation && getSideLevel("morning") === "reflect-sit" && getSideLevel("evening") === "reflect-sit";
+  // Silent style always names the side (matches the /daily-progress cards);
+  // Creation Prayer only splits into Morning/Evening when BOTH sides use it.
+  const label = isCreation
+    ? (bothSides ? (side === "morning" ? "Morning Creation Prayer" : "Evening Creation Prayer") : "Creation Prayer")
+    : (side === "morning" ? "Morning Contemplation" : "Evening Contemplation");
+  const emoji = isCreation ? "🌍" : "🕯️";
+  const href = isCreation ? `/cobreathe?begin=1&side=${side}` : `/contemplation?begin=1&side=${side}`;
+  const compactHref = isCreation ? `/cobreathe?side=${side}` : `/contemplation?side=${side}`;
+
+  // Evening stays a quiet "later" card until its slot opens at 5 PM — mirrors
+  // the evening office's gate (SLOT_OPEN_HOUR.evening in lib/customAnchors.ts)
+  // so Creation Prayer/Contemplation isn't offered as "available" before then.
+  const hour = new Date().getHours();
+  const later = side === "evening" && !met && hour < 17;
+
+  // Sub-line: the "later" gate wins (evening, not yet 5 PM); then this side's
+  // own kept state; then style-specific blurb; goal progress only applies to
+  // the silent style (Creation Prayer's blurb never mentions minutes, same
+  // rule as the /daily-progress cards).
+  const subline = later
+    ? "Available from 5 PM"
+    : met
+      ? (isCreation ? "Kept 🌿" : "Kept 🌿")
+      : (isCreation ? "Breathing together with God's creation" : (progressLabel ?? "A few minutes of stillness"));
+  const showBar = !isCreation && !later && goalMin > 0 && !met;
 
   // Hero layout — the big "what's next" card, mirroring the office hero, when
   // Contemplation is set as this side's daily prayer. Same teal palette as the
   // compact card so it reads as the same anchor.
   if (hero) {
     const rgb = "62,124,122";
-    return (
-      // Begin a sit (like the normal Silence card) — not the stats page.
-      <Link href="/contemplation?begin=1" className="block">
-        <div
-          role="button"
-          tabIndex={0}
-          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
-        >
-          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-          <div className="flex-1 px-5 py-5">
-            <div className="flex items-start gap-3.5">
-              <span className="text-[34px] leading-none flex-shrink-0">🕯️</span>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Contemplation</p>
-                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: met ? "#A8C5A0" : "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {progressLabel ?? "A few minutes of stillness"}
-                </p>
-                {goalMin > 0 && !met && (
-                  <div className="mt-2.5 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)", maxWidth: 220 }}>
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }} />
-                  </div>
-                )}
-              </div>
+    const inner = (
+      <div
+        role={later ? undefined : "button"}
+        tabIndex={later ? undefined : 0}
+        className={`relative flex rounded-3xl overflow-hidden mb-3 ${later ? "opacity-60" : "cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
+        style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+      >
+        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+        <div className="flex-1 px-5 py-5">
+          <div className="flex items-start gap-3.5">
+            <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
+              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: met ? "#A8C5A0" : "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {subline}
+              </p>
+              {showBar && (
+                <div className="mt-2.5 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)", maxWidth: 220 }}>
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }} />
+                </div>
+              )}
+            </div>
+            {!later && (
               <div className="flex-shrink-0">
                 <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> Sit again</> : "Begin"} <span aria-hidden className="ml-1">→</span>
+                  {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> {isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden className="ml-1">→</span>
                 </span>
               </div>
-            </div>
+            )}
           </div>
         </div>
-      </Link>
+      </div>
     );
+    return later ? <div className="block">{inner}</div> : <Link href={href} className="block">{inner}</Link>;
   }
 
-  return (
-    <Link href="/contemplation" className="block">
-      <div
-        role="button"
-        tabIndex={0}
-        className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{ background: "rgba(62,124,122,0.12)", border: `1px solid rgba(62,124,122,0.35)` }}
-      >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(62,124,122,0.85)` }} />
-        <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
-          <span className="text-xl flex-shrink-0" aria-hidden>🕯️</span>
-          <div className="flex-1 min-w-0">
-            <p
-              className="font-semibold min-w-0 truncate"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
-            >
-              Contemplation
-            </p>
-            {progressLabel && (
-              <p
-                className="truncate"
-                style={{ color: met ? "#A8C5A0" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
-              >
-                {progressLabel}
-              </p>
-            )}
-            {/* Goal progress bar — matches the Daily Progress page's
-                contemplation card so the two views feel of a piece. */}
-            {goalMin > 0 && !met && (
-              <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: "rgba(62,124,122,0.85)", transition: "width 0.3s" }}
-                />
-              </div>
-            )}
-          </div>
+  const compactInner = (
+    <div
+      role={later ? undefined : "button"}
+      tabIndex={later ? undefined : 0}
+      className={`relative flex rounded-xl overflow-hidden ${later ? "opacity-60" : "cursor-pointer"}`}
+      style={{ background: "rgba(62,124,122,0.12)", border: `1px solid rgba(62,124,122,0.35)` }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(62,124,122,0.85)` }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
+        <span className="text-xl flex-shrink-0" aria-hidden>{emoji}</span>
+        <div className="flex-1 min-w-0">
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+          >
+            {label}
+          </p>
+          <p
+            className="truncate"
+            style={{ color: met ? "#A8C5A0" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
+          >
+            {subline}
+          </p>
+          {/* Goal progress bar — matches the Daily Progress page's
+              contemplation card so the two views feel of a piece. */}
+          {showBar && (
+            <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: "rgba(62,124,122,0.85)", transition: "width 0.3s" }}
+              />
+            </div>
+          )}
+        </div>
+        {!later && (
           <div
             className="rounded-full text-center shrink-0"
             style={{
@@ -2245,12 +2315,13 @@ export function ContemplationHomeCard({ hero = false }: { hero?: boolean } = {})
               whiteSpace: "nowrap",
             }}
           >
-            Begin <span aria-hidden>→</span>
+            {met ? <>✓ {isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden>→</span>
           </div>
-        </div>
+        )}
       </div>
-    </Link>
+    </div>
   );
+  return later ? <div className="block">{compactInner}</div> : <Link href={compactHref} className="block">{compactInner}</Link>;
 }
 
 // (StepsHomeCard removed — the Daily steps / Apple Health step-goal feature is
@@ -3234,7 +3305,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // replaces the office card for this user. Same after-all-hooks placement as
   // FDD/Psalms; the forced (hero) slot renders the big variant.
   if (getSideLevel(isMorning ? "morning" : "evening") === "reflect-sit") {
-    return <ContemplationHomeCard hero={!compact && !!forceSide} />;
+    return <ContemplationHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
   if (getSideLevel(isMorning ? "morning" : "evening") === "examen") {
     return <ExamenHomeCard hero={!compact && !!forceSide} />;
