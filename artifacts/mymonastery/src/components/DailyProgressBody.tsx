@@ -264,11 +264,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, guidedPrayerActive, cobreatheActive, prayerListActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; guidedPrayer: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -304,6 +304,7 @@ export function WeeklyGridCard() {
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
     ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
+    ...(guidedPrayerActive ? [{ id: "guided-prayer", emoji: "🙌", label: t("rhythm.row_guided_prayer", { defaultValue: "Guided Prayer" }), rgb: "168,108,96", doneFor: (d: Day) => !!d.guidedPrayer }] : []),
     // The user's own custom anchors — one row each, filled from local per-day
     // history (it fills in going forward; no backfill before this shipped).
     ...getCustomAnchors().map((a, i) => {
@@ -597,7 +598,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, guidedPrayerActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, examenDone, guidedPrayerDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -744,11 +745,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
+  const guidedPrayerCard = {
+    key: "guided-prayer", emoji: "🙌", rgb: "168,108,96", done: guidedPrayerDone, href: "/guided-prayer",
+    title: t("rhythm.card_guided_prayer", { defaultValue: "Guided Prayer" }),
+    blurb: guidedPrayerDone ? kept : t("rhythm.blurb_guided_prayer", { defaultValue: "Praise, Confession, Thanksgiving, Supplication" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
   const walkSlot = getPracticeSlot("walk");
   // The Examen is always an evening practice (no time-of-day picker).
   const examenSlot: CustomSlot = "evening";
+  // Guided Prayer (PACT) has no fixed time of day — flexible, like Audio
+  // Divina/Reading, rather than pinned to the evening like the Examen.
+  const guidedPrayerSlot: CustomSlot = "anytime";
   const walkCard = {
     key: "walk", emoji: "🚶", rgb: "120,160,120", done: walkDone, href: "/walk-log",
     title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }),
@@ -897,6 +907,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }] : []),
     // The Examen is an end-of-day reflection — it belongs to evening.
     ...(examenActive ? [{ ...examenCard, slot: examenSlot }] : []),
+    ...(guidedPrayerActive ? [{ ...guidedPrayerCard, slot: guidedPrayerSlot }] : []),
     ...(prayerListActive ? [{
       key: "prayer-list", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "96,140,180", done: prayerListDone, href: "/intentions?pray=1",
       title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }),

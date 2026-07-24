@@ -2444,6 +2444,53 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
   );
 }
 
+// Guided Prayer (PACT) home card — same shape as ExamenHomeCard, a distinct
+// warm rose/terracotta palette so it reads as its own anchor next to Examen's
+// green and Contemplation's teal.
+function GuidedPrayerHomeCard({ hero = false }: { hero?: boolean } = {}) {
+  if (hero) {
+    const rgb = "168,108,96";
+    return (
+      <Link href="/guided-prayer" className="block">
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
+          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        >
+          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+          <div className="flex-1 px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <span className="text-[34px] leading-none flex-shrink-0">🙌</span>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Guided Prayer</p>
+                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif" }}>Praise, Confession, Thanksgiving, Supplication</p>
+              </div>
+              <div className="flex-shrink-0">
+                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Begin <span aria-hidden className="ml-1">→</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+  return (
+    <PracticeHomeCard
+      href="/guided-prayer"
+      label="Guided Prayer 🙌"
+      cta="Begin"
+      tintBg="rgba(168,108,96,0.12)"
+      tintBorder="rgba(168,108,96,0.35)"
+      pillBg="rgba(168,108,96,0.28)"
+      pillBorder="rgba(168,108,96,0.45)"
+      accentBar="rgba(168,108,96,0.85)"
+    />
+  );
+}
+
 // Creation Prayer home card — replaces the office card for a side set to
 // Creation Prayer. Labels "Morning/Evening Creation Prayer" when BOTH sides are
 // Creation Prayer (so the two cards are distinguishable); just "Creation Prayer"
@@ -5853,16 +5900,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "prayer-list", "examen", "guided-prayer", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "guided-prayer", "cac", "ssje", "ncmp", "podcasts"];
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "prayer-list", "examen", "guided-prayer", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -6887,6 +6934,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   return null;
                 case "examen":
                   return <ExamenHomeCard />;
+                case "guided-prayer":
+                  return <GuidedPrayerHomeCard />;
                 case "cac":
                   return reflectionIsHero("cac") ? <CacHomeCard /> : null;
                 case "fdd":

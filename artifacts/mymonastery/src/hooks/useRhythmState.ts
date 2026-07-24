@@ -97,6 +97,7 @@ export type RhythmState = {
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   examenActive: boolean;
+  guidedPrayerActive: boolean;
   listeningActive: boolean;
   readingActive: boolean;
   podcastsActive: boolean;
@@ -104,6 +105,7 @@ export type RhythmState = {
   cobreatheActive: boolean;
   prayerListActive: boolean;
   examenDone: boolean;
+  guidedPrayerDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
   podcastsDone: boolean;
@@ -248,6 +250,7 @@ export function useRhythmState(): RhythmState {
   // return-to-app signals, and OR in the server rows below for cross-device.
   const [practiceLocal, setPracticeLocal] = useState(() => ({
     examen: hasPracticeDoneToday("examen"),
+    guidedPrayer: hasPracticeDoneToday("guided-prayer"),
     listening: hasPracticeDoneToday("listening"),
     reading: hasPracticeDoneToday("reading"),
     podcasts: hasPracticeDoneToday("podcasts"),
@@ -257,6 +260,7 @@ export function useRhythmState(): RhythmState {
   useEffect(() => {
     const recheck = () => setPracticeLocal({
       examen: hasPracticeDoneToday("examen"),
+      guidedPrayer: hasPracticeDoneToday("guided-prayer"),
       listening: hasPracticeDoneToday("listening"),
       reading: hasPracticeDoneToday("reading"),
       podcasts: hasPracticeDoneToday("podcasts"),
@@ -370,6 +374,8 @@ export function useRhythmState(): RhythmState {
   // Server-backed completion rows for the optional practices (cross-device).
   // Only fetched/used for the practices the user has actually added.
   const examenActive = homeCardActive(hl, "examen");
+  // Guided Prayer (PACT) — same optional-practice pattern as the Examen.
+  const guidedPrayerActive = homeCardActive(hl, "guided-prayer");
   // Audio Divina (listening as a way of prayer) is live as a logging-first
   // practice — it appears ONLY when the user selects it in the customizer
   // (homeCardActive reads the saved home layout).
@@ -396,7 +402,7 @@ export function useRhythmState(): RhythmState {
   // the menu progress ring, the weekly grid — treats it as inactive at once.
   const prayerRequestsEnabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
   const prayerListActive = prayerRequestsEnabled && homeCardActive(hl, "prayer-list");
-  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
+  const anyExtraActive = examenActive || guidedPrayerActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -539,6 +545,7 @@ export function useRhythmState(): RhythmState {
     : ladderLevel != null ? ladderLevel : ((!hl && rawGoalMin === 0) ? 5 : rawGoalMin);
 
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
+  const guidedPrayerDone = guidedPrayerActive && (practiceLocal.guidedPrayer || serverDone("guided-prayer"));
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
@@ -706,6 +713,7 @@ export function useRhythmState(): RhythmState {
     ...(walkActive ? [walkDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
+    ...(guidedPrayerActive ? [guidedPrayerDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
@@ -753,6 +761,7 @@ export function useRhythmState(): RhythmState {
     reflectActive,
     reflections,
     examenActive,
+    guidedPrayerActive,
     listeningActive,
     readingActive,
     podcastsActive,
@@ -760,6 +769,7 @@ export function useRhythmState(): RhythmState {
     cobreatheActive,
     prayerListActive,
     examenDone,
+    guidedPrayerDone,
     listeningDone,
     readingDone,
     podcastsDone,

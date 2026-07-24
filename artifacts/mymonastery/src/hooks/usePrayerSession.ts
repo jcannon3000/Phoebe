@@ -45,6 +45,10 @@ export type PrayerSurface =
   // reflective prayer. Counts toward "time praying" like the offices;
   // the server stores surface as free text so no enum migration.
   | "examen"
+  // "guided-prayer" — the PACT (Praise/Confession/Thanksgiving/
+  // Supplication) guided four-movement prayer. Same free-text surface,
+  // no enum migration needed.
+  | "guided-prayer"
   // "prayer-list" — opening the manage prayer list page counts as a
   // prayer event for the metrics dashboard. Server exempts this
   // surface from the 5-second floor so a glance still records.
