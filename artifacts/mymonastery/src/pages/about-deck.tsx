@@ -20,50 +20,28 @@ const SLIDES: Slide[] = [
       "Phoebe brings together the prayers, psalms, and readings of the Episcopal Church and beyond. They're all there — and free — but scattered across a half-dozen websites, a physical prayer book, and a lectionary most people can't navigate. Phoebe is the front door.",
     ],
   },
-  // The Daily Office — the real Evening Prayer psalm mock. Copy to the side,
-  // mock on the right (the psalms render left-aligned, like the real office).
-  // Make the accessibility claim explicit: the hard part was always knowing
-  // what to pray today, and Phoebe does that part.
+  // Pray how you want — flexibility across the tradition's forms (Psalms, the
+  // offices, contemplative silence), not the Daily Office alone. The ways-to-
+  // pray mock.
   {
     kind: "feature-combo",
     label: "",
-    headline: "The Daily Office",
+    headline: "Pray how you want",
     body: [
-      "The hardest part of the Office has always been figuring out what to pray today — which psalms, which lessons, from a book that assumes you already know. Phoebe does that part: Morning and Evening Prayer, already filled in for you.",
-    ],
-    mock: "daily-office",
-  },
-  // One office, prayed your way — the ways-to-pray mock.
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: "One office, prayed your way",
-    body: [
-      "From your own Book of Common Prayer, on the app, by audio, or alongside a cathedral broadcast — the same prayer, met however it meets you that day.",
+      "Pray the Psalms, the Daily Office, or sit in contemplative silence — whatever meets you that day. From your own Book of Common Prayer, on the app, or by audio. The depth of the tradition, met your way.",
     ],
     mock: "office-formats",
   },
-  // Shape your own rhythm — the customizer / rule-of-life builder. Name the
-  // tradition: this is a rule of life, briefly defined — turning a settings
-  // screen into an entry point into the tradition.
+  // A rhythm that meets your life — the customizer / rule of life, with the
+  // wider practices folded in: a daily devotional, silence, Audio Divina.
   {
     kind: "feature-combo",
     label: "",
-    headline: "Shape your own rhythm",
+    headline: "A rhythm that meets your life",
     body: [
-      "This is a rule of life — a pattern you grow along, the way Christians have ordered their days for centuries, shaped to the life you actually live. Keep whatever you already pray, add only what you want, all held in one place — and easily changed as your life does.",
+      "Build a rule of life shaped to the life you actually live: the offices, a daily devotional, a few minutes of silence, sacred listening with Audio Divina. Keep whatever you already pray, add only what you want — all in one place, and easily changed as your life does.",
     ],
     mock: "customizer",
-  },
-  // The reflection, right where the office ends — the seamless FDD handoff.
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: "A seamless practice",
-    body: [
-      "When the office ends, the day's Forward Day by Day reflection is right there — no searching, no second app. One unbroken passage from prayer into reflection.",
-    ],
-    mock: "office-fdd",
   },
   {
     kind: "statement",
@@ -83,16 +61,16 @@ const SLIDES: Slide[] = [
     ],
     mock: "prayer-rhythm",
   },
-  // What's next — today's daily-progress view (position over score, the current
-  // UI): where you are, and the next thing to pray.
+  // What's next up — the real home view: where you are in today's rhythm and
+  // the next thing to pray. Uses the accurate home mock.
   {
     kind: "feature-combo",
     label: "",
-    headline: "Always, what's next",
+    headline: "See what's next up",
     body: [
-      "Open Phoebe and see exactly where you are in today's rhythm — and the next thing to pray. Made for the pace of modern life: nothing to figure out, just the next step.",
+      "Open Phoebe and it shows you where you are in today's rhythm — and the next thing to pray. Nothing to figure out, just the next step, made for the pace of modern life.",
     ],
-    mock: "prayer-streak",
+    mock: "dashboard",
   },
   // Shared prayer — not a social feed, just the quiet mark that others prayed
   // the same words today. Gives the closing "carried to a community" line
@@ -104,14 +82,15 @@ const SLIDES: Slide[] = [
       "Some at dawn, some on a train, some at midnight — praying the same psalm, the same day. Not a feed to keep up with, not a crowd; just the quiet knowledge that you're not praying alone.",
     ],
   },
-  // The name — and the invitation. The app icon anchors it (see ClosingSlide).
+  // The invitation — stability, carried into modern life. The app icon
+  // anchors it (see ClosingSlide).
   {
     kind: "closing",
     body: [
-      "It takes its name from the deacon Phoebe,",
-      "who carried Paul’s letter to the Romans —",
-      "entrusted to bring the word to where it needed to go.",
-      "And now — carrying it to you.",
+      "Monastic life is built on stability —",
+      "a rhythm you return to, day after day, until it becomes a place to stand.",
+      "Phoebe carries that steadiness into the pace of modern life:",
+      "the depth of the tradition, meeting you where your days actually are.",
     ],
     featured: ["Phoebe"],
   },

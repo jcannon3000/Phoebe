@@ -43,7 +43,7 @@ export type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd";
+      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -1641,6 +1641,7 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   "prayer-requests": PrayerRequestsMock,
   "prayer-notification": PrayerNotificationMock,
   "community-intercession": CommunityIntercessionMock,
+  dashboard: DashboardMock,
   bcp: BCPPrayerModeMock,
   "prayer-list": PrayerListMock,
   "daily-office": DailyOfficeMock,
