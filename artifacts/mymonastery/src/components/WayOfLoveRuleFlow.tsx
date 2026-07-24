@@ -922,13 +922,12 @@ export default function WayOfLoveRuleFlow({
       eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
     };
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
-    // Creation Prayer earns a home card ONLY through the per-side "way" choice
-    // (a side's contemplation IS the breath) — the old standalone Co-Breathe
-    // add-on toggle (contemplative.cobreathe) is no longer reachable in the
-    // simplified flow, so it's dropped here too. Otherwise a leftover flag from
-    // an older save kept showing a duplicate "Creation Prayer" card even after
-    // the side switched back to the Book of Common Prayer.
-    const wantCobreathe = contemplationStyle === "cobreathe" && anyContemplation;
+    // Creation Prayer earns a home card either through the per-side "way"
+    // choice (a side's contemplation IS the breath) OR the standalone
+    // "Add an additional practice" toggle (contemplative.cobreathe) — the
+    // latter is only offered there when NEITHER side already carries it, so
+    // the two paths never fight over the same card.
+    const wantCobreathe = (contemplationStyle === "cobreathe" && anyContemplation) || contemplative.cobreathe;
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
@@ -1072,13 +1071,12 @@ export default function WayOfLoveRuleFlow({
     // EITHER path: the Contemplation-practices toggle (contemplative.cobreathe) OR
     // choosing Co-Breathe as the contemplative sit's STYLE (contemplationStyle ===
     // "cobreathe" with Contemplative Prayer on). Mirrors the hydration logic above.
-    // Creation Prayer earns a home card ONLY through the per-side "way" choice
-    // (a side's contemplation IS the breath) — the old standalone Co-Breathe
-    // add-on toggle (contemplative.cobreathe) is no longer reachable in the
-    // simplified flow, so it's dropped here too. Otherwise a leftover flag from
-    // an older save kept showing a duplicate "Creation Prayer" card even after
-    // the side switched back to the Book of Common Prayer.
-    const wantCobreathe = contemplationStyle === "cobreathe" && anyContemplation;
+    // Creation Prayer earns a home card either through the per-side "way"
+    // choice (a side's contemplation IS the breath) OR the standalone
+    // "Add an additional practice" toggle (contemplative.cobreathe) — the
+    // latter is only offered there when NEITHER side already carries it, so
+    // the two paths never fight over the same card.
+    const wantCobreathe = (contemplationStyle === "cobreathe" && anyContemplation) || contemplative.cobreathe;
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
@@ -1251,16 +1249,17 @@ export default function WayOfLoveRuleFlow({
     ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
     // Silence (the daily-minutes goal, i.e. the silent sit).
     "contemplation-goal",
-    // NOTE (owner): the "Contemplative Practices" multi-select ("contemplative"
-    // + its audio/walk/examen "-when" detail steps) and the
-    // "Add to your day" extras step are intentionally NOT in the customizer.
-    // Those practices — Audio Divina, Contemplative Walk,
-    // the Examen, Reading, Podcasts — are
-    // added/toggled on the Practices page instead. The commit still reads the
-    // contemplative/extras state, which is seeded from the user's CURRENT home
-    // layout (homeCardOn), so re-running this flow PRESERVES whatever they
-    // already have on rather than turning it off. The review screen drops any
-    // row whose edit-step isn't in orderedSteps (see the filter below).
+    // "Add an additional practice" — Audio Divina, Contemplative Walk, the
+    // Examen, and (when neither side already carries it as their primary
+    // prayer) Creation Prayer. Each checked practice gets its own "when in
+    // the day?" detail step right after. The "Add to your day" extras step
+    // (Reading, Podcasts, Prayer List) is still reachable from the Practices
+    // page instead, not here.
+    "contemplative",
+    ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
+    ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
+    ...(contemplative.examen ? (["examen-when"] as Step[]) : []),
+    ...(contemplative.cobreathe ? (["cobreathe-when"] as Step[]) : []),
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -1381,19 +1380,24 @@ export default function WayOfLoveRuleFlow({
 
   // ── Contemplative practices — multi-select (pick any) ─────────────────────
   if (step === "contemplative") {
+    // Creation Prayer is already offered per SIDE (a side's contemplation IS
+    // the breath) in the morning/evening "way" step — only offer it again
+    // here as a standalone extra when NEITHER side already carries it, so a
+    // user who picked it as their morning or evening prayer doesn't see a
+    // confusing duplicate toggle for the same practice.
+    const creationAlreadyPrimary = contemplationStyle === "cobreathe" && (contemplationBySide.morning || contemplationBySide.evening);
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Contemplative Practices" }))}
+        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Add an additional practice" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
           {t("wol_rule.contemplative_body", { defaultValue: "Beyond silence, choose any other contemplative practices for your day — each becomes its own card." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Creation Prayer is chosen per SIDE (a side's contemplation IS the
-              breath), so it's not offered here as a standalone toggle. */}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
-          {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
           {choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
+          {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
+          {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
