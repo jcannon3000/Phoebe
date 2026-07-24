@@ -55,7 +55,10 @@ function currentDailyPrayer(): DailyPrayer {
   const lvl = getSideLevel("morning");
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
-  return "devotion";
+  // "Devotions" is no longer a selectable option here — an existing user
+  // whose level is still "devotion" (or anything else unmatched) shows
+  // "Offices" pre-selected, the closest remaining option.
+  return "office";
 }
 
 export default function CustomizePage() {
@@ -249,7 +252,6 @@ export default function CustomizePage() {
         <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 10 }}>
           {row("Daily Prayer", dailyPrayer, [
             { value: "psalms", label: "Psalms" },
-            { value: "devotion", label: "Devotions" },
             { value: "office", label: "Offices" },
             { value: "contemplation", label: "Contemplative Prayer" },
             { value: "creation", label: "Creation Prayer" },

@@ -3,8 +3,8 @@ import { MenuHub } from "@/components/MenuHub";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
 
-// The core contemplative practices. (Gratitude + Examen are still reachable via
-// their own surfaces; they're just not listed here.)
+// The core contemplative practices. (Gratitude is still reachable via its own
+// surface; it's just not listed here.)
 export default function MenuPracticesPage() {
   const [, setLocation] = useLocation();
   // PUBLIC no-login version: guests keep exactly Contemplation · Co-Breathe —
@@ -27,6 +27,7 @@ export default function MenuPracticesPage() {
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
+          { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
           // Guided courses now live in their own "Learn" menu tab.
           { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
           // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
