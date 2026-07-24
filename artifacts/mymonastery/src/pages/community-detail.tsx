@@ -913,8 +913,6 @@ export default function CommunityDetailPage() {
   // Tapping a gathering card opens a lightweight pop-up with time / location /
   // description — same UX pattern as the Sunday Service modal. We do NOT
   // navigate to a dedicated /ritual/:id page.
-  const [openGatheringModal, setOpenGatheringModal] = useState<Gathering | null>(null);
-
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
@@ -929,12 +927,6 @@ export default function CommunityDetailPage() {
     queryKey: ["/api/groups", slug, "practices"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/practices`),
     enabled: !!user && !!slug && activeTab === "practices",
-  });
-
-  const { data: gatheringsData } = useQuery<{ gatherings: Gathering[] }>({
-    queryKey: ["/api/groups", slug, "gatherings"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
-    enabled: !!user && !!slug && activeTab === "gatherings",
   });
 
   // ── Admin "new arrival" popup ──────────────────────────────────────────
@@ -1529,7 +1521,7 @@ export default function CommunityDetailPage() {
                 // roster of each other. The Members tile is admin-only (for
                 // managing followers); everyone gets Gatherings + Practices.
                 ...(isAdmin ? [{ emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") }] : []),
-                { emoji: "🤝🏽", label: t("community_detail.tab_gatherings"), go: () => setActiveTab("gatherings") },
+                { emoji: "⛪", label: t("community_detail.tab_services", { defaultValue: "Services" }), go: () => setActiveTab("gatherings") },
                 { emoji: "🕯️", label: t("community_detail.tab_practices", { defaultValue: "Practices" }), go: () => setActiveTab("practices") },
               ]).map((tile, i) => (
                 <button
@@ -1616,25 +1608,9 @@ export default function CommunityDetailPage() {
         {/* ─── Gatherings ─── */}
         {activeTab === "gatherings" && (
           <div>
+            {/* A community is a followed feed: the schedule shows the read-only
+                church service times, not social meetups with attendee lists. */}
             <ServicesSection slug={slug!} isAdmin={isAdmin} />
-            {isAdmin && (
-              <Link href={`/tradition/new?community=${slug}`} className="block mb-4">
-                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                  <Plus size={16} /> {t("community_detail.create_gathering")}
-                </div>
-              </Link>
-            )}
-            {(gatheringsData?.gatherings ?? []).length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                {t("community_detail.no_gatherings")}{isAdmin ? ` ${t("community_detail.create_one_above")}` : ""}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {gatheringsData!.gatherings.map(g => (
-                  <CommunityGatheringCard key={g.id} g={g} onOpen={() => setOpenGatheringModal(g)} />
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -1929,17 +1905,6 @@ export default function CommunityDetailPage() {
           );
         })()}
       </div>
-
-      {/* Gathering details pop-up — opens when a card is tapped. */}
-      {openGatheringModal && (
-        <CommunityGatheringDetailModal
-          g={openGatheringModal}
-          groupName={group.name}
-          groupEmoji={group.emoji}
-          isAdmin={isAdmin}
-          onClose={() => setOpenGatheringModal(null)}
-        />
-      )}
 
       {/* Admin FAB — bottom-right floating "+" that opens a menu of
           authoring entry points scoped to THIS community. Intercession
