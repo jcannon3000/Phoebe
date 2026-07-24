@@ -28,7 +28,7 @@ const SLIDES: Slide[] = [
     label: "",
     headline: "Pray how you want",
     body: [
-      "Pray the Psalms, the Daily Office, or sit in contemplative silence — whatever meets you that day. From your own Book of Common Prayer, on the app, or by audio. The depth of the tradition, met your way.",
+      "Pray the Psalms, the Daily Office, or sit in contemplative silence — whatever meets you that day, from your own prayer book, on the app, or by audio. And it's met the way you actually read on your phone: one unhurried card at a time, not a wall of text.",
     ],
     mock: "office-formats",
   },
@@ -39,7 +39,7 @@ const SLIDES: Slide[] = [
     label: "",
     headline: "A rhythm that meets your life",
     body: [
-      "Build a rule of life shaped to the life you actually live: the offices, a daily devotional, a few minutes of silence, sacred listening with Audio Divina. Keep whatever you already pray, add only what you want — all in one place, and easily changed as your life does.",
+      "Start light on day one, then grow a rule of life shaped to the life you actually live: the offices, a daily devotional like Forward Day by Day, contemplative silence, Audio Divina, Creation Prayer, the Way of Love — or a practice you make your own. Keep what you already pray, add only what you want.",
     ],
     mock: "customizer",
   },
@@ -72,14 +72,13 @@ const SLIDES: Slide[] = [
     ],
     mock: "dashboard",
   },
-  // Shared prayer — not a social feed, just the quiet mark that others prayed
-  // the same words today. Gives the closing "carried to a community" line
-  // something to land on.
+  // Praying WITH, not FOR — the communal pivot. Not a social feed; a shared
+  // rhythm, elastic to each life, that quietly holds a community together.
   {
     kind: "statement",
     headline: "The same words, the same day",
     body: [
-      "Some at dawn, some on a train, some at midnight — praying the same psalm, the same day. Not a feed to keep up with, not a crowd; just the quiet knowledge that you're not praying alone.",
+      "Some at dawn, some on a train, some at midnight — praying the same psalm, the same day. Not praying for each other from a distance, but praying with each other: one shared rhythm, elastic to each life, quietly holding a community together.",
     ],
   },
   // The invitation — stability, carried into modern life. The app icon
