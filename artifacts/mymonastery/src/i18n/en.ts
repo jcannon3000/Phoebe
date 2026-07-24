@@ -3525,11 +3525,11 @@ export const en = {
     got_it: "Got it",
     // Share-invite modal.
     share_invite_link: "Share invite link",
-    invite_link_desc: "Anyone with this link can join {{name}}. If it's shared too widely, rotate it below.",
+    invite_link_desc: "Anyone with this link can follow {{name}} — its shared rhythm, prayer feed, and gatherings. If it's shared too widely, rotate it below.",
     copy_to_clipboard: "Copy to clipboard",
     copied: "Copied",
     copy: "Copy",
-    invite_share_text: "You're invited to join {{name}} on Phoebe — a small private circle for shared prayer. Tap to join:",
+    invite_share_text: "You're invited to follow {{name}} on Phoebe — its shared rhythm of prayer, feed, and gatherings. Tap to follow along:",
     send_via_messages: "Send via Messages",
     rotate_link_confirm: "Rotate the invite link? The current URL will stop working immediately.",
     rotating: "Rotating…",

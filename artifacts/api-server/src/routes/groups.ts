@@ -639,13 +639,20 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     }
   }
 
-  // Filter hidden admins out of the roster for non-admin viewers. Admin-
-  // level viewers still see them so they can manage / demote. The viewer's
-  // own row is always included even if they're a hidden admin (so `myRole`
-  // is consistent with what they find in the list).
+  // A community is a FOLLOWED FEED, not a social room: regular members never
+  // see each other. A non-admin viewer receives ONLY their own membership row
+  // (so `myRole` / joined-state resolves) and never any peer's name or avatar.
+  // Admin-level viewers still get the full roster so they can manage the feed's
+  // followers (remove, demote); that's leader management, not member-to-member
+  // visibility.
   const visibleMembers = isAdminView
     ? members
-    : members.filter(m => m.role !== "hidden_admin" || m.userId === user.id);
+    : members.filter(m => m.userId === user.id);
+
+  // Anonymous follower count (joined, excluding hidden-admin observers) —
+  // computed from the FULL roster so the "N following" headline stays honest
+  // even though a non-admin viewer never receives the individual member rows.
+  const memberCount = members.filter(m => m.joinedAt !== null && m.role !== "hidden_admin").length;
 
   res.json({
     group: {
@@ -653,6 +660,7 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
       ...(isAdminView ? {} : { inviteToken: undefined }),
     },
     myRole: result.member.role,
+    memberCount,
     members: visibleMembers.map(m => ({
       id: m.id,
       name: m.name,
@@ -1582,26 +1590,11 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
   // 1. Community-wide token — the new primary path. Anyone with this
   // token can join, no email match required.
   if (group.inviteToken && group.inviteToken === token) {
-    // Enrich with preview data for the join-page onboarding slideshow:
-    // a small sample of joined members (names + avatars for social proof)
-    // and the group's active practices (so visitors see what they're
-    // signing up to do). All of this is read-only, non-sensitive, and
-    // already visible to any member — fine to surface pre-auth.
-    const joinedMembers = await db.select({
-      name: groupMembersTable.name,
-      email: groupMembersTable.email,
-      avatarUrl: usersTable.avatarUrl,
-    })
-      .from(groupMembersTable)
-      .leftJoin(usersTable, eq(groupMembersTable.userId, usersTable.id))
-      .where(and(
-        eq(groupMembersTable.groupId, group.id),
-        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-        sql`${groupMembersTable.role} <> 'hidden_admin'`,
-      ))
-      .orderBy(desc(groupMembersTable.joinedAt))
-      .limit(6);
-
+    // Enrich with preview data for the join-page onboarding slideshow: the
+    // group's active practices (so visitors see what they're signing up to do)
+    // plus an anonymous follower count. A community is a followed feed, not a
+    // social room, so we NEVER surface individual members' names or avatars —
+    // not on the join page, not anywhere.
     const [memberCountRow] = await db.select({
       c: sql<number>`count(*)::int`,
     })
@@ -1632,12 +1625,7 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
       group: { name: group.name, slug: group.slug, emoji: group.emoji, description: group.description },
       preview: {
         memberCount: memberCountRow?.c ?? 0,
-        sampleMembers: joinedMembers.map(m => ({
-          name: m.name,
-          // Strip email — we only surface first names / display names to
-          // pre-auth visitors. An email would be PII leakage.
-          avatarUrl: m.avatarUrl ?? null,
-        })),
+        sampleMembers: [],
         practices: practices.map(p => ({
           id: p.id,
           name: p.name,

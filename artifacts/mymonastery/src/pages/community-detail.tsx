@@ -919,7 +919,7 @@ export default function CommunityDetailPage() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
-  const { data: groupData } = useQuery<{ group: Group; myRole: string; members: Member[]; intentions?: Intention[] }>({
+  const { data: groupData } = useQuery<{ group: Group; myRole: string; memberCount?: number; members: Member[]; intentions?: Intention[] }>({
     queryKey: ["/api/groups", slug],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!user && !!slug,
@@ -1126,7 +1126,11 @@ export default function CommunityDetailPage() {
                   // looking at their own community. Keeps the headline
                   // honest about how many people the community will
                   // *feel* like it has.
-                  const joinedCount = members.filter(m => m.joinedAt !== null && m.role !== "hidden_admin").length;
+                  // Use the server's anonymous memberCount — a non-admin viewer
+                  // no longer receives the individual member rows, so counting
+                  // `members` locally would wrongly read 1 (just themselves).
+                  const joinedCount = groupData.memberCount
+                    ?? members.filter(m => m.joinedAt !== null && m.role !== "hidden_admin").length;
                   return t("community_detail.member_count", { count: joinedCount });
                 })()}
               </p>
@@ -1521,7 +1525,10 @@ export default function CommunityDetailPage() {
           <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
             <div className="flex flex-col" style={{ gap: 10 }}>
               {([
-                { emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") },
+                // A community is a followed feed — regular members don't see a
+                // roster of each other. The Members tile is admin-only (for
+                // managing followers); everyone gets Gatherings + Practices.
+                ...(isAdmin ? [{ emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") }] : []),
                 { emoji: "🤝🏽", label: t("community_detail.tab_gatherings"), go: () => setActiveTab("gatherings") },
                 { emoji: "🕯️", label: t("community_detail.tab_practices", { defaultValue: "Practices" }), go: () => setActiveTab("practices") },
               ]).map((tile, i) => (
@@ -1631,8 +1638,8 @@ export default function CommunityDetailPage() {
           </div>
         )}
 
-        {/* ─── Members ─── */}
-        {activeTab === "members" && (() => {
+        {/* ─── Members (admin-only: managing followers, not a social roster) ─── */}
+        {activeTab === "members" && isAdmin && (() => {
           // "Recently joined" = within the last 7 calendar days. We deliberately
           // use a calendar-day diff so the badge flips off at local midnight
           // on day 8, not 168 hours after the exact join timestamp.

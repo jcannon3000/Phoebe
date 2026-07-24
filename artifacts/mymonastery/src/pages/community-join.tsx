@@ -460,27 +460,13 @@ export default function CommunityJoinPage() {
     // and shown once on their first dashboard visit.
 
     // Slide — Welcome to the specific community. Always shown.
-    // The member avatars + "N people are praying together" summary lives
-    // directly under the community title — users repeatedly told us the
-    // old separate "You're in good company" slide read as a second
-    // welcome. Merging them makes the first impression do the full job:
-    // who you've been invited to + who's already there, in one beat.
-    const memberPreview = (() => {
-      if (!preview || preview.memberCount === 0) return null;
-      const sample = preview.sampleMembers.slice(0, 5);
-      const firstNames = sample
-        .map(m => (m.name ?? "").split(/\s+/)[0])
-        .filter(Boolean);
-      const shown = firstNames.slice(0, 3).join(", ");
-      const remainder = preview.memberCount - Math.min(3, firstNames.length);
-      const headline =
-        firstNames.length === 0
-          ? `${preview.memberCount} ${preview.memberCount === 1 ? "person is" : "people are"} praying together`
-          : remainder > 0
-            ? `Join ${shown} & ${remainder} ${remainder === 1 ? "other" : "others"}`
-            : `Join ${shown}`;
-      return { sample, headline };
-    })();
+    // A community is a FOLLOWED FEED, not a social room: the join flow invites
+    // you to *follow* the community's shared rhythm, prayer feed, and events —
+    // never to "join these people." So we never show member names or avatars,
+    // only an anonymous count of how many are keeping the rhythm.
+    const followerLine = (preview && preview.memberCount > 0)
+      ? `${preview.memberCount} ${preview.memberCount === 1 ? "person is" : "people are"} keeping this rhythm`
+      : null;
 
     s.push({
       key: "welcome",
@@ -488,41 +474,16 @@ export default function CommunityJoinPage() {
         <div className="text-center">
           <div className="text-6xl mb-5">{invite.group.emoji ?? "🏘️"}</div>
           <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            You've been invited to pray with
+            You've been invited to follow
           </p>
           <h1 className="text-3xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
             {invite.group.name}
           </h1>
 
-          {memberPreview && (
-            <div className="mb-5">
-              {memberPreview.sample.length > 0 && (
-                <div className="flex items-center justify-center mb-3">
-                  {memberPreview.sample.map((m, i) => (
-                    <div
-                      key={i}
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden"
-                      style={{
-                        background: "#1A4A2E",
-                        color: "#A8C5A0",
-                        border: "2px solid #091A10",
-                        marginLeft: i === 0 ? 0 : -8,
-                        zIndex: memberPreview.sample.length - i,
-                      }}
-                    >
-                      {m.avatarUrl ? (
-                        <img src={m.avatarUrl} alt={m.name ?? ""} className="w-full h-full object-cover" />
-                      ) : (
-                        (m.name ?? "?").charAt(0).toUpperCase()
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
-                {memberPreview.headline}
-              </p>
-            </div>
+          {followerLine && (
+            <p className="text-sm font-medium mb-5" style={{ color: "#C8D4C0" }}>
+              {followerLine}
+            </p>
           )}
 
           {invite.group.description && (
@@ -793,17 +754,17 @@ export default function CommunityJoinPage() {
           >
             <div className="text-5xl mb-4">{invite.group.emoji ?? "🏘️"}</div>
             <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-              You've been invited to pray with
+              You've been invited to follow
             </p>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
               {invite.group.name}
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
               {alreadyHasAccount
-                ? "Sign in to your Phoebe account to join."
+                ? "Sign in to your Phoebe account to follow along."
                 : isCommunityWide
-                  ? "Create a Phoebe account to join — or sign in if you already have one."
-                  : "Create your Phoebe account to join the community."}
+                  ? "Create a Phoebe account to follow — or sign in if you already have one."
+                  : "Create your Phoebe account to follow the community."}
             </p>
           </motion.div>
 
