@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -6,6 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { pickWideBackground } from "@/lib/wideBackgrounds";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── The Daily Examen ────────────────────────────────────────────────────────
 // St. Ignatius of Loyola's end-of-day reflective prayer, as a guided
@@ -51,6 +54,9 @@ export default function ExamenPage() {
   const [, setLocation] = useLocation();
   // step 0 = intro, 1..5 = movements, 6 = closing.
   const [step, setStep] = useState(0);
+  // A still landscape backdrop, picked once per mount — a wide photo on web,
+  // a bundled leaf on native (pickWideBackground returns null there).
+  const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   usePrayerSession(user ? "examen" : null);
 
@@ -81,9 +87,19 @@ export default function ExamenPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
-      style={{ background: BG, color: "#F0EDE6", fontFamily: FONT }}
+      className="min-h-screen flex flex-col relative"
+      style={{ background: BG, color: "#F0EDE6", fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
     >
+      {/* Ambient drifting glow, matching Contemplation/Cobreathe — plus a still
+          landscape photo (wide on web, a bundled leaf on native) washed under a
+          dark vignette so movement text stays legible over it. */}
+      <AnimatedBackground base={BG} variant="subtle" />
+      {backdropPhoto && (
+        <>
+          <img src={backdropPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.35, zIndex: 0 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.7) 45%, rgba(8,22,15,0.86) 100%)" }} />
+        </>
+      )}
       {/* Top bar — back exits to the offices picker, the same place
           the Examen is reached from. On a movement slide, Back steps
           one movement instead of leaving, so a discreet ✕ on the right
@@ -91,7 +107,7 @@ export default function ExamenPage() {
           movement to escape). */}
       <header
         className="px-5 pb-2 flex items-center justify-between"
-        style={{ paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))" }}
+        style={{ position: "relative", zIndex: 1, paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))" }}
       >
         <button
           type="button"
@@ -128,7 +144,15 @@ export default function ExamenPage() {
         )}
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12" style={{ position: "relative", zIndex: 1 }}>
+        <div
+          className="w-full max-w-md"
+          style={{
+            borderRadius: 28, padding: "40px 30px",
+            background: "rgba(9,26,16,0.34)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            border: "1px solid rgba(46,107,64,0.30)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+          }}
+        >
         <AnimatePresence mode="wait">
           {isIntro && (
             <motion.div
@@ -263,6 +287,7 @@ export default function ExamenPage() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </main>
     </div>
   );

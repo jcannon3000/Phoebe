@@ -1520,7 +1520,7 @@ export default function WayOfLoveRuleFlow({
             const bcpSub = prayBySide[side] === "offices" ? officeSub
               : prayBySide[side] === "devotion" ? devotionSub
               : prayBySide[side] === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
-              : t("wol_rule.pray_bcp_sub", { defaultValue: "Pray the office — the psalms and lessons are filled in for you." });
+              : t("wol_rule.pray_bcp_sub", { defaultValue: "Choose from three options: Psalms, Devotion, or Office." });
             return choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => {
               if (bcpOn) return; // already selected — nothing to switch
               touchedRef.current = true;
