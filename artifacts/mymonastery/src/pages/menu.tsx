@@ -123,7 +123,8 @@ export default function MenuPage() {
       : [],
   };
   if (showAdminTools) account.items.push({ emoji: "🔧", label: t("menu.admin_tools"), onClick: () => go("/admin/tools") });
-  account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/about") });
+  // About opens the deck first; finishing the deck (exitTo) lands on /about.
+  account.items.push({ emoji: "ℹ️", label: t("menu.about"), onClick: () => go("/about-deck") });
   // Signed-out guests get the QUIET "Sign in" (the public version's only auth
   // surface — beta testers' door into the full app) where Sign out normally
   // sits. Keyed on `user` too, so a widened SIGNED-IN guest keeps Sign out.
