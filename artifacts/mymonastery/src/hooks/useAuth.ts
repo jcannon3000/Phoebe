@@ -40,14 +40,12 @@ export interface AuthUser {
   correspondenceImprintCompleted: boolean;
   gatheringImprintCompleted: boolean;
   onboardingCompleted: boolean;
-  dailyBellTime: string | null;
   prayerInviteLastShownDate: string | null;
   prayerInviteLastShownAt: string | null;
   climateEnrolled: boolean;
   climateOnboardingCompleted: boolean;
   climateOnly: boolean;
   parishId: number | null;
-  bellEnabled: boolean;
   // Server-derived: is a MEMBER of at least one community (any joined group,
   // any role). Anyone in a community + beta testers keep the FULL app (community
   // features stay); everyone else falls into the simplified pilot experience.

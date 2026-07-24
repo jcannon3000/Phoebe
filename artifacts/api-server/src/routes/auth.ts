@@ -285,7 +285,7 @@ router.get("/auth/me", async (req, res) => {
     isAnonymous: boolean;
     googleId: string | null; showPresence: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
-    onboardingCompleted: boolean; dailyBellTime: string | null;
+    onboardingCompleted: boolean;
     prayerInviteLastShownDate: string | null;
     prayerInviteLastShownAt: Date | string | null;
     climateEnrolled: boolean;
@@ -293,7 +293,6 @@ router.get("/auth/me", async (req, res) => {
     climateOnly: boolean;
     parishId: number | null;
     parishFeedId: number | null;
-    bellEnabled: boolean;
     locale: string | null;
     homeFeedId: number | null;
     feedFirstHome: boolean;
@@ -361,7 +360,6 @@ router.get("/auth/me", async (req, res) => {
     correspondenceImprintCompleted: u.correspondenceImprintCompleted ?? false,
     gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
     onboardingCompleted: u.onboardingCompleted ?? false,
-    dailyBellTime: u.dailyBellTime ?? null,
     prayerInviteLastShownDate: u.prayerInviteLastShownDate ?? null,
     // ISO 8601 string the client parses with Date.parse() to compute
     // hours-since-shown for the re-show gate.
@@ -374,7 +372,6 @@ router.get("/auth/me", async (req, res) => {
     climateOnboardingCompleted: u.climateOnboardingCompleted ?? false,
     climateOnly: u.climateOnly ?? false,
     parishId: u.parishId ?? null,
-    bellEnabled: u.bellEnabled ?? false,
     locale: u.locale ?? "en",
     // Phoebe Parish — flat fields the client uses to decide UI shape.
     accessTier: access.tier,
@@ -445,26 +442,6 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   }
   await db.update(usersTable).set({ showPresence } as Record<string, unknown>).where(eq(usersTable.id, userId));
   res.json({ showPresence });
-});
-
-// PATCH /auth/me/bell-enabled — simple on/off for the daily push. The full
-// /api/bell/preferences endpoint also touches calendar event ids and the
-// daily_bell_time string; this is a lighter affordance the climate
-// settings UI uses to mute the 7am push without dragging the calendar
-// integration into the toggle.
-router.patch("/auth/me/bell-enabled", async (req, res): Promise<void> => {
-  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const userId = (req.user as { id: number }).id;
-  const { bellEnabled } = req.body;
-  if (typeof bellEnabled !== "boolean") {
-    res.status(400).json({ error: "bellEnabled must be a boolean" });
-    return;
-  }
-  await db.update(usersTable).set({ bellEnabled } as Record<string, unknown>).where(eq(usersTable.id, userId));
-  if (req.user) {
-    (req.user as Record<string, unknown>).bellEnabled = bellEnabled;
-  }
-  res.json({ bellEnabled });
 });
 
 // PATCH /auth/me/email-enabled — master opt-in/out for non-essential email

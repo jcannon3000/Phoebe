@@ -151,7 +151,6 @@ router.post(
         name: name.trim(),
         passwordHash,
         climateEnrolled: true,
-        bellEnabled: true,
         // Skip Phoebe's general onboarding tour. Climate has its own.
         onboardingCompleted: true,
         // climateOnly distinguishes signups via /climate from existing
@@ -184,11 +183,10 @@ router.post("/climate/enroll-self", async (req, res): Promise<void> => {
   const userId = (req.user as { id: number }).id;
   await db
     .update(usersTable)
-    .set({ climateEnrolled: true, bellEnabled: true })
+    .set({ climateEnrolled: true })
     .where(eq(usersTable.id, userId));
   if (req.user) {
     (req.user as Record<string, unknown>).climateEnrolled = true;
-    (req.user as Record<string, unknown>).bellEnabled = true;
   }
   // Same auto-subscribe path as signup.
   await subscribeToClimateFeed(userId);

@@ -31,7 +31,6 @@ export const usersTable = pgTable("users", {
   showPresence: boolean("show_presence").notNull().default(true),
   correspondenceImprintCompleted: boolean("correspondence_imprint_completed").notNull().default(false),
   gatheringImprintCompleted: boolean("gathering_imprint_completed").notNull().default(false),
-  bellEnabled: boolean("bell_enabled").notNull().default(false),
   // Master notifications switch (Settings → Notifications). When false,
   // every push is suppressed — the single gate in sendPushToUser checks
   // this, so it silences the bell, reminders, digests, prayer-for-you,
@@ -47,9 +46,7 @@ export const usersTable = pgTable("users", {
   // receiving until they unsubscribe (the footer link on every bulk
   // email, or Settings → Emails). The unsubscribe link flips this false.
   emailEnabled: boolean("email_enabled").notNull().default(true),
-  dailyBellTime: text("daily_bell_time"),           // HH:MM format, e.g. "07:00"
   timezone: text("timezone"),                        // IANA timezone, e.g. "America/New_York"
-  bellCalendarEventId: text("bell_calendar_event_id"), // Google Calendar event ID for the daily bell
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   // Last local date (YYYY-MM-DD) we showed the daily prayer-slideshow invite
   // popup on the dashboard. Kept for historical reference — the live gate
@@ -139,9 +136,9 @@ export const usersTable = pgTable("users", {
   //   "none"     — do not push at the morning/evening reminder hour
   //   "office"   — push the full Daily Office (Morning Prayer / Evening Prayer)
   //   "devotion" — push the abbreviated Devotion (BCP pp. 137 / 139)
-  // The push fires from a per-user cron at the user's stored
-  // `dailyBellTime` (morning) or a fixed evening hour (in their TZ),
-  // and deep-links straight into the chosen liturgy. Default "none"
+  // The push fires from a per-user cron at `parishOfficeMorningTime`
+  // (morning) or a fixed evening hour (in their TZ), and deep-links
+  // straight into the chosen liturgy. Default "none"
   // for legacy rows so we don't start pinging anyone without consent.
   // Morning side defaults to "devotion" — the abbreviated BCP
   // morning office (~2-3 min). The whole pitch of Phoebe is the
@@ -155,7 +152,7 @@ export const usersTable = pgTable("users", {
   parishOfficeEveningPref: text("parish_office_evening_pref").notNull().default("none"),
   // Optional override of the morning / evening push times (HH:MM,
   // user TZ). If null, the cron falls back to its built-in defaults
-  // (dailyBellTime / 18:00). Both sides are independently set from
+  // (morning default / 18:00). Both sides are independently set from
   // Settings → Daily reminders.
   parishOfficeMorningTime: text("parish_office_morning_time"),
   parishOfficeEveningTime: text("parish_office_evening_time"),

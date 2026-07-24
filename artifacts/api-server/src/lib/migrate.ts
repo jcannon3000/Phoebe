@@ -825,11 +825,12 @@ export async function migrate() {
         ) >= 2
     `);
 
-    // ── Daily Bell system ──────────────────────────────────────────────────
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_enabled BOOLEAN NOT NULL DEFAULT false`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_bell_time TEXT`);
+    // The Google-Calendar-based Daily Bell (bell_enabled, daily_bell_time,
+    // bell_calendar_event_id: a calendar invite the user accepted/declined,
+    // polled via the Google Calendar API) was removed entirely (owner) —
+    // dropped at the end of this migration. `timezone` is still used broadly
+    // (office reminders, etc.), so it stays.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_calendar_event_id TEXT`);
 
     // ── Daily prayer-slideshow invite gate ──────────────────────────────────
     // Account-scoped "last shown" date so dismissing the popup on one
@@ -3749,6 +3750,13 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS scheduling_responses CASCADE`);
     await run(client, `DROP TABLE IF EXISTS invite_tokens CASCADE`);
     await run(client, `DROP TABLE IF EXISTS ritual_time_suggestions CASCADE`);
+
+    // ── Google-Calendar Daily Bell removal — no calendar invite/RSVP polling
+    //    remains for the daily reminder. The push-based bell (bellSender.ts,
+    //    bell_notifications dedup table) is unrelated and stays.
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS bell_enabled`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS daily_bell_time`);
+    await run(client, `ALTER TABLE users DROP COLUMN IF EXISTS bell_calendar_event_id`);
 
     // ── Fellows (1:1 social layer) removed entirely — Plans/How About, prefs,
     //    the connection graph. No live readers remain.

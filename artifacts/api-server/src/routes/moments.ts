@@ -21,38 +21,17 @@ import { perUserRateLimit, rateLimit } from "../lib/rate-limit";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
-// ─── Bell-aware calendar creation ───────────────────────────────────────────
-// Users with the Daily Bell enabled use a single bell event instead of
-// individual per-practice calendar events. These wrappers filter out
-// bell-enabled users from attendee lists so others still receive invites.
-
-async function isEmailBellEnabled(email: string): Promise<boolean> {
-  try {
-    const lower = email.toLowerCase();
-    const userResult = await pool.query(`SELECT bell_enabled FROM users WHERE LOWER(email) = $1`, [lower]);
-    return userResult.rows.length > 0 && userResult.rows[0].bell_enabled === true;
-  } catch { return false; }
-}
-
-async function filterBellAttendees(attendees: string[] | undefined): Promise<string[]> {
-  if (!attendees || attendees.length === 0) return [];
-  const filtered: string[] = [];
-  for (const email of attendees) {
-    if (!(await isEmailBellEnabled(email))) filtered.push(email);
-  }
-  return filtered;
-}
+// The Google-Calendar Daily Bell's attendee filtering (bell-enabled users
+// got a single bell event instead of a per-practice invite) was removed
+// entirely (owner). These wrappers now just forward to the real calendar
+// functions unfiltered — kept so call sites below don't need touching.
 
 async function createCalendarEvent(userId: number, opts: Parameters<typeof _createCalendarEvent>[1]): Promise<string | null> {
-  const attendees = await filterBellAttendees(opts.attendees);
-  if (attendees.length === 0) return null; // all attendees use the bell
-  return _createCalendarEvent(userId, { ...opts, attendees });
+  return _createCalendarEvent(userId, opts);
 }
 
 async function createAllDayCalendarEvent(userId: number, opts: Parameters<typeof _createAllDayCalendarEvent>[1]): Promise<string | null> {
-  const attendees = await filterBellAttendees(opts.attendees);
-  if (attendees.length === 0) return null;
-  return _createAllDayCalendarEvent(userId, { ...opts, attendees });
+  return _createAllDayCalendarEvent(userId, opts);
 }
 
 // ─── Moment management auth ──────────────────────────────────────────────────

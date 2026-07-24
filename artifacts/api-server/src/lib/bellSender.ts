@@ -46,9 +46,8 @@ import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
 // first of two daily nudges (09:00 / 20:00). This morning slot fires
 // unconditionally; the evening slot is gentler and skips users who have
 // already prayed today. The midday (14:00) slot was removed per user
-// direction — two nudges felt right; three was noisy. The time is global — the
-// per-user `dailyBellTime` column is still in the schema for now but is
-// no longer read here. The bell is on by default for everyone;
+// direction — two nudges felt right; three was noisy. The time is global,
+// not per-user. The bell is on by default for everyone;
 // `sendPushToUser` no-ops for users without an active device token, so
 // users who haven't installed the app simply don't receive anything.
 // De-duped via a `bell_notifications` row keyed on (userId, todayStr).

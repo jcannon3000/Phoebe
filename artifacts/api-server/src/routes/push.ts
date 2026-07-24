@@ -86,25 +86,6 @@ router.post("/push/device-token", async (req, res): Promise<void> => {
       `token=${parsed.data.token.slice(0, 12)}…`
     );
 
-    // Granting push permission is the bell opt-in. Auto-enable the
-    // morning bell at 07:00 local for any user who doesn't already have
-    // a time set — they don't opt in from onboarding anymore. We use
-    // COALESCE so a user who explicitly chose a different time keeps it
-    // on subsequent token re-registrations (token rotation, reinstalls).
-    // Same pass clears any stale calendar event ID — the calendar-invite
-    // path is gone, push is the only delivery channel now.
-    try {
-      await db.execute(sql`
-        UPDATE users
-        SET bell_enabled = TRUE,
-            daily_bell_time = COALESCE(daily_bell_time, '09:30'),
-            bell_calendar_event_id = NULL
-        WHERE id = ${user.id}
-      `);
-    } catch (err) {
-      console.warn("[push] bell auto-enable failed:", err);
-    }
-
     res.json({ ok: true });
   } catch (err) {
     console.error("[push] device-token upsert failed:", err);
@@ -242,21 +223,6 @@ router.post("/push/web-subscription", async (req, res): Promise<void> => {
       `[push] web-subscription registered: userId=${user.id} ` +
       `endpoint=${parsed.data.endpoint.slice(0, 40)}…`
     );
-
-    // Granting browser-push permission is the bell opt-in for web,
-    // mirroring the iOS device-token path. Default 07:00 local if the
-    // user hasn't picked a time yet.
-    try {
-      await db.execute(sql`
-        UPDATE users
-        SET bell_enabled = TRUE,
-            daily_bell_time = COALESCE(daily_bell_time, '09:30'),
-            bell_calendar_event_id = NULL
-        WHERE id = ${user.id}
-      `);
-    } catch (err) {
-      console.warn("[push] bell auto-enable failed:", err);
-    }
 
     res.json({ ok: true });
   } catch (err) {
