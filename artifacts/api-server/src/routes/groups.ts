@@ -1828,23 +1828,25 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-// GET /api/groups/:slug/members — list all members
+// GET /api/groups/:slug/members — list all members. Admin-only: communities
+// are a followed feed now (members don't see a roster of each other), so
+// full member rows (name, email, role) are for admin management only — the
+// sibling GET /groups/:slug already scopes non-admins to just their own row;
+// this endpoint must match that, not the community's public member COUNT.
 router.get("/groups/:slug/members", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const result = await requireMember(req.params.slug, user.id);
+  const result = await requireAdmin(req.params.slug, user.id);
   if (!result) { res.status(404).json({ error: "Group not found" }); return; }
 
   const members = await db.select().from(groupMembersTable)
     .where(eq(groupMembersTable.groupId, result.group.id));
 
-  // Hidden admins are visible only to other admins. The viewer's own row
-  // is always included so their client-side `myRole` stays consistent.
-  const isAdminView = isAdminRole(result.member.role);
-  const visibleMembers = isAdminView
-    ? members
-    : members.filter(m => m.role !== "hidden_admin" || m.userId === user.id);
+  // Hidden admins are visible only to other admins — always true here since
+  // the caller is already an admin, but keep the viewer's-own-row carve-out
+  // for consistency with the sibling endpoint's shape.
+  const visibleMembers = members;
 
   const memberEmails = Array.from(new Set(
     visibleMembers.map(m => m.email?.toLowerCase()).filter((e): e is string => !!e)
