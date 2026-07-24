@@ -39,7 +39,6 @@ import {
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
-import { FellowPlans } from "@/components/FellowPlans";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { BetaRhythmExtras } from "@/components/BetaRhythmExtras";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
@@ -5909,15 +5908,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   });
   const rituals = ritualsData ?? [];
 
-  // Fellow "How About" plans — the same feed the events-page card uses
-  // (mine + my fellows'). Dated ones drop into the timeline as events.
-  const { data: fellowPlansData } = useQuery<{ plans: FellowPlanEvent[] }>({
-    queryKey: ["/api/fellow-plans"],
-    queryFn: () => apiRequest("GET", "/api/fellow-plans"),
-    staleTime: 20_000,
-    enabled: !!user,
-  });
-  const fellowPlans = fellowPlansData?.plans ?? [];
+  // Fellows "How About" plans removed (1:1 social layer gone). Kept as an empty
+  // list so the timeline builder below simply weaves in nothing.
+  const fellowPlans: FellowPlanEvent[] = [];
 
   // Prayer-list streak (consecutive days finishing a full slideshow) — used
   // by the Today-empty fallback card to reward the habit.
@@ -6598,20 +6591,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             </p>
           )}
 
-          {/* Plans ("How About") — share something you're going to and your
-              fellows can come. Kept on the Events page regardless of the master
-              Fellows flag (Plans + prayer-request sharing are the fellows
-              features that stay on; accountability does not). Beta hosts always
-              see the compose surface; everyone else only when a plan is shared. */}
-          {eventsOnly && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>
-                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
-              </div>
-              <FellowPlans canManage={isBeta} hideWhenEmpty={!isBeta} />
-            </div>
-          )}
+          {/* Fellows "Plans (How About)" removed — the 1:1 social layer is gone. */}
 
           {/* Today's Rhythm card moved off the home top: it now lives on the
               slideshow closing slide and on the /daily-progress page (reached

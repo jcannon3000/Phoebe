@@ -3825,6 +3825,14 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS contemplation_health_minutes CASCADE`);
     await run(client, `DROP TABLE IF EXISTS daily_health_steps CASCADE`);
 
+    // ── Fellows (1:1 social layer) removed entirely — Plans/How About, prefs,
+    //    the connection graph. No live readers remain.
+    await run(client, `DROP TABLE IF EXISTS fellow_plan_rsvps CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellow_plan_times CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellow_plans CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellow_prefs CASCADE`);
+    await run(client, `DROP TABLE IF EXISTS fellows CASCADE`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
