@@ -539,7 +539,7 @@ router.get("/groups", async (req, res): Promise<void> => {
     const enriched = groups.map((g) => ({
       ...g,
       memberCount: countByGroup.get(g.id) ?? 0,
-      myRole: joined.find(m => m.groupId === g.id)?.role ?? "member",
+      myRole: joined.find(m => m.groupId === g.id)?.role ?? "follower",
     }));
 
     res.json({ groups: enriched });
@@ -638,15 +638,21 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     }
   }
 
-  // A community is a FOLLOWED FEED, not a social room: regular members never
-  // see each other. A non-admin viewer receives ONLY their own membership row
-  // (so `myRole` / joined-state resolves) and never any peer's name or avatar.
-  // Admin-level viewers still get the full roster so they can manage the feed's
-  // followers (remove, demote); that's leader management, not member-to-member
-  // visibility.
+  // A community is a FOLLOWED FEED, not a social room: FOLLOWERS (the
+  // anonymous default every join grants) never see each other or anyone
+  // else's row. MEMBERS are the smaller, admin-curated tier — they ARE
+  // visible to any other non-admin viewer (the curated "who's here" list),
+  // just never to a follower peer. A non-admin viewer always receives their
+  // own row (so `myRole` / joined-state resolves) plus every member/admin
+  // row; a fellow follower's row is never included. Admin-level viewers get
+  // the full roster (incl. every follower) so they can manage the feed
+  // (remove, promote, demote) — that's leader management, not peer visibility.
   const visibleMembers = isAdminView
     ? members
-    : members.filter(m => m.userId === user.id);
+    // hidden_admin stays hidden from non-admins even though it's technically
+    // "member or above" — only member/admin rows (plus the viewer's own row,
+    // whatever tier they are) are in the curated visible-to-everyone set.
+    : members.filter(m => m.userId === user.id || m.role === "member" || m.role === "admin");
 
   // Anonymous follower count (joined, excluding hidden-admin observers) —
   // computed from the FULL roster so the "N following" headline stays honest
@@ -1489,8 +1495,10 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       name: z.string().optional(),
       email: z.string().email(),
       // Optional per-person role. "admin" is open to all current admins;
-      // "hidden_admin" is pilot-gated (see check below). Unspecified → "member".
-      role: z.enum(["member", "admin", "hidden_admin"]).optional(),
+      // "hidden_admin" is pilot-gated (see check below). Unspecified → "follower"
+      // (the anonymous, count-only tier — "member" is now the smaller,
+      // admin-curated tier an admin must explicitly pick).
+      role: z.enum(["follower", "member", "admin", "hidden_admin"]).optional(),
     })).min(1).max(50),
   });
   const parsed = schema.safeParse(req.body);
@@ -1535,7 +1543,7 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       userId: userIdByEmail.get(emailLower) ?? null,
       email: emailLower,
       name: person.name ?? null,
-      role: person.role ?? "member",
+      role: person.role ?? "follower",
       inviteToken: generateToken(),
       // Audit #1: an admin-typed email is a PENDING INVITE, not an accepted
       // membership — leave joinedAt null until the invitee joins via their
@@ -1737,7 +1745,7 @@ router.post(
       userId: user.id,
       email: user.email?.toLowerCase() ?? "",
       name: user.name ?? null,
-      role: "member",
+      role: "follower",
       inviteToken: crypto.randomBytes(16).toString("hex"),
       joinedAt: new Date(),
     });
@@ -1895,10 +1903,13 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
 });
 
 // PATCH /api/groups/:slug/members/:memberId/role — change a member's role
-// between "member" | "admin" | "hidden_admin". Admin-gated. Designating or
-// removing a "hidden_admin" role is additionally pilot-gated (only users in
-// betaUsersTable can make that call). Guards against demoting the last
-// visible admin so a community can never end up without a reachable admin.
+// between "follower" | "member" | "admin" | "hidden_admin". Admin-gated.
+// "follower" is the anonymous, count-only tier (the default for anyone who
+// joins); "member" is the smaller, admin-curated tier an admin explicitly
+// promotes someone into. Designating or removing a "hidden_admin" role is
+// additionally pilot-gated (only users in betaUsersTable can make that
+// call). Guards against demoting the last visible admin so a community can
+// never end up without a reachable admin.
 router.patch("/groups/:slug/members/:memberId/role", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -1910,7 +1921,7 @@ router.patch("/groups/:slug/members/:memberId/role", async (req, res): Promise<v
   if (isNaN(memberId)) { res.status(400).json({ error: "Invalid member ID" }); return; }
 
   const schema = z.object({
-    role: z.enum(["member", "admin", "hidden_admin"]),
+    role: z.enum(["follower", "member", "admin", "hidden_admin"]),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid role" }); return; }
@@ -1937,10 +1948,11 @@ router.patch("/groups/:slug/members/:memberId/role", async (req, res): Promise<v
     return;
   }
 
-  // Last-admin guard: if we're demoting an admin (either role) to "member",
-  // make sure someone with admin powers will remain. Count both visible and
-  // hidden admins — either is enough to keep the community reachable.
-  if (isAdminRole(target.role) && nextRole === "member") {
+  // Last-admin guard: if we're demoting an admin (either role) to a
+  // non-admin tier (follower OR member), make sure someone with admin
+  // powers will remain. Count both visible and hidden admins — either is
+  // enough to keep the community reachable.
+  if (isAdminRole(target.role) && !isAdminRole(nextRole)) {
     const remainingAdmins = await db.select({ id: groupMembersTable.id })
       .from(groupMembersTable)
       .where(and(
@@ -4078,7 +4090,7 @@ router.post("/groups/:slug/join-requests/:id/accept", async (req, res): Promise<
         userId: requester.id,
         email: requester.email.toLowerCase(),
         name: requester.name,
-        role: "member",
+        role: "follower",
         inviteToken: crypto.randomBytes(16).toString("hex"),
         joinedAt: new Date(),
       })

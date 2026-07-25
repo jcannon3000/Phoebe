@@ -173,7 +173,11 @@ export const groupMembersTable = pgTable("group_members", {
     .references(() => usersTable.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
   name: text("name"),
-  role: text("role").notNull().default("member"), // "admin" | "member"
+  // "follower" (anonymous, count-only — the default for anyone who joins) |
+  // "member" (the smaller, admin-curated tier, visible to fellow non-admins
+  // on the roster) | "admin" | "hidden_admin" (admin powers, invisible to
+  // non-admins). Enforced at the route layer (Zod enums), not a DB constraint.
+  role: text("role").notNull().default("follower"),
   inviteToken: text("invite_token").notNull().unique(),
   joinedAt: timestamp("joined_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

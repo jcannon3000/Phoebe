@@ -328,7 +328,7 @@ export async function migrate() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         email TEXT NOT NULL,
         name TEXT,
-        role TEXT NOT NULL DEFAULT 'member',
+        role TEXT NOT NULL DEFAULT 'follower',
         invite_token TEXT NOT NULL UNIQUE,
         joined_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -2961,6 +2961,26 @@ export async function migrate() {
     // members vanished from counts and from newsletter recipient lists.
     // Backfill the intended default. Idempotent.
     await run(client, `UPDATE group_members SET role = 'member' WHERE role IS NULL`);
+
+    // ── Followers vs. members tier (2026-07-24) ─────────────────────────────
+    // "member" used to be the only non-admin role — functionally already a
+    // "follower" (anonymous, count-only; see GET /groups/:slug). Introducing
+    // a genuinely smaller, admin-curated "member" tier (visible to fellow
+    // non-admins on the roster) means the OLD "member" rows need to become
+    // "follower" — a ONE-TIME reclassification of existing data, not a
+    // policy to keep re-imposing (an admin who later promotes someone to
+    // "member" must have that stick across every future deploy). Uses
+    // runOnce, not a bare UPDATE, for exactly the reason documented on
+    // runOnce above.
+    await runOnce(
+      client,
+      "group_members_member_to_follower_2026_07_24",
+      `UPDATE group_members SET role = 'follower' WHERE role = 'member'`,
+    );
+    // Existing databases created the column with the old DEFAULT 'member' —
+    // bring the live default in line with the Drizzle schema. Genuinely
+    // idempotent (ALTER ... SET DEFAULT), so a plain `run` is correct here.
+    await run(client, `ALTER TABLE group_members ALTER COLUMN role SET DEFAULT 'follower'`);
 
     // ── Shareable prayer requests + Fellows (revived) ─────────────────────
     // Three pieces work together:

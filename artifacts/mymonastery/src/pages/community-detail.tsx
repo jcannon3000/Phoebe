@@ -908,7 +908,7 @@ export default function CommunityDetailPage() {
   const [inviteError, setInviteError] = useState("");
   // Role the admin wants to assign when adding a new member. Toggle in the
   // add-member panel; "hidden_admin" only shows for pilot (beta) users.
-  const [pendingRole, setPendingRole] = useState<"member" | "admin" | "hidden_admin">("member");
+  const [pendingRole, setPendingRole] = useState<"follower" | "member" | "admin" | "hidden_admin">("follower");
   // ── Gathering details modal ────────────────────────────────────────────
   // Tapping a gathering card opens a lightweight pop-up with time / location /
   // description — same UX pattern as the Sunday Service modal. We do NOT
@@ -982,10 +982,10 @@ export default function CommunityDetailPage() {
   // Pilot-admin "add member directly" mutation. The backend endpoint sets
   // `joinedAt: new Date()` so the person shows up as a full member right
   // away — no invite-email roundtrip, no pending-state purgatory.
-  // `role` is optional — the server defaults to "member" and gates
+  // `role` is optional — the server defaults to "follower" and gates
   // "hidden_admin" behind the acting admin being a pilot user.
   const addMemberMutation = useMutation({
-    mutationFn: (person: { name?: string; email: string; role?: "member" | "admin" | "hidden_admin" }) =>
+    mutationFn: (person: { name?: string; email: string; role?: "follower" | "member" | "admin" | "hidden_admin" }) =>
       apiRequest("POST", `/api/groups/${slug}/members`, { people: [person] }),
     onSuccess: () => {
       setInviteName("");
@@ -1003,7 +1003,7 @@ export default function CommunityDetailPage() {
   // blocks demoting the last admin, so the client can stay naive about
   // those guardrails — it just shows an error toast on failure.
   const changeRoleMutation = useMutation({
-    mutationFn: ({ memberId, role }: { memberId: number; role: "member" | "admin" | "hidden_admin" }) =>
+    mutationFn: ({ memberId, role }: { memberId: number; role: "follower" | "member" | "admin" | "hidden_admin" }) =>
       apiRequest("PATCH", `/api/groups/${slug}/members/${memberId}/role`, { role }),
     onSuccess: () => {
       // Role changes (especially to/from hidden_admin) affect what
@@ -1517,10 +1517,12 @@ export default function CommunityDetailPage() {
           <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
             <div className="flex flex-col" style={{ gap: 10 }}>
               {([
-                // A community is a followed feed — regular members don't see a
-                // roster of each other. The Members tile is admin-only (for
-                // managing followers); everyone gets Gatherings + Practices.
-                ...(isAdmin ? [{ emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") }] : []),
+                // A community is a followed feed — FOLLOWERS (the anonymous
+                // default) don't see a roster of each other. But MEMBERS (the
+                // smaller, admin-curated tier) ARE visible to everyone, so the
+                // Members tile is open to all viewers now; admins additionally
+                // get the management controls inside it (see the section below).
+                { emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") },
                 { emoji: "⛪", label: t("community_detail.tab_services", { defaultValue: "Services" }), go: () => setActiveTab("gatherings") },
                 { emoji: "🕯️", label: t("community_detail.tab_practices", { defaultValue: "Practices" }), go: () => setActiveTab("practices") },
               ]).map((tile, i) => (
@@ -1614,7 +1616,58 @@ export default function CommunityDetailPage() {
           </div>
         )}
 
-        {/* ─── Members (admin-only: managing followers, not a social roster) ─── */}
+        {/* ─── Members: a read-only Member roster for everyone, plus the
+            admin-only management view (invite/promote/demote/remove) for
+            admins. FOLLOWERS never appear in either — the anonymous crowd
+            behind the header's "N members" count. ─── */}
+        {activeTab === "members" && !isAdmin && (() => {
+          // `members` here is already server-scoped to the viewer's own row
+          // plus every member/admin row (never a fellow follower's row, never
+          // hidden_admin) — see GET /groups/:slug. Just render it read-only.
+          const visible = members.filter(m => m.joinedAt !== null && m.role !== "follower");
+          const followerCount = Math.max(0, (groupData.memberCount ?? 0) - visible.length);
+          return (
+            <div>
+              {visible.length === 0 ? (
+                <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.55)" }}>
+                  {t("community_detail.no_members_yet", { defaultValue: "No members yet — just followers." })}
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {visible.map(m => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl"
+                      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)" }}
+                    >
+                      {m.avatarUrl ? (
+                        <img src={m.avatarUrl} alt={m.name || ""} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                          {(m.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <p className="text-sm font-medium truncate flex-1" style={{ color: "#F0EDE6" }}>
+                        {m.name || t("community_detail.a_member", { defaultValue: "A member" })}
+                      </p>
+                      {m.role === "admin" && (
+                        <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(46,107,64,0.3)", color: "#8FAF96" }}>
+                          {t("community_detail.role_admin")}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {followerCount > 0 && (
+                <p className="text-xs text-center mt-4" style={{ color: "rgba(143,175,150,0.5)" }}>
+                  {t("community_detail.plus_followers", { count: followerCount, defaultValue: `+ ${followerCount} more following` })}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
         {activeTab === "members" && isAdmin && (() => {
           // "Recently joined" = within the last 7 calendar days. We deliberately
           // use a calendar-day diff so the badge flips off at local midnight
@@ -1636,7 +1689,7 @@ export default function CommunityDetailPage() {
 
           const memberEmails = new Set(members.map(m => m.email.toLowerCase()));
 
-          const addPerson = (person: { name?: string; email: string }, role?: "member" | "admin" | "hidden_admin") => {
+          const addPerson = (person: { name?: string; email: string }, role?: "follower" | "member" | "admin" | "hidden_admin") => {
             const email = person.email.trim().toLowerCase();
             if (!isValidEmail(email)) {
               setInviteError(t("community_detail.invalid_email"));
@@ -1684,6 +1737,7 @@ export default function CommunityDetailPage() {
                 const isSelf = m.email.toLowerCase() === (user.email ?? "").toLowerCase();
                 const isHiddenAdmin = m.role === "hidden_admin";
                 const isRoleAdmin = m.role === "admin";
+                const isRoleMember = m.role === "member";
                 const changingThisRow = changeRoleMutation.isPending && changeRoleMutation.variables?.memberId === m.id;
                 return (
                 <div
@@ -1711,6 +1765,11 @@ export default function CommunityDetailPage() {
                       {isRoleAdmin && (
                         <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(46,107,64,0.3)", color: "#8FAF96" }}>
                           {t("community_detail.role_admin")}
+                        </span>
+                      )}
+                      {isRoleMember && (
+                        <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(46,107,64,0.18)", color: "#A8C5A0" }}>
+                          {t("community_detail.role_member", { defaultValue: "Member" })}
                         </span>
                       )}
                       {isHiddenAdmin && (
@@ -1758,6 +1817,39 @@ export default function CommunityDetailPage() {
                         needing a second admin to flip the bit. */}
                   {isAdmin && (
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {/* Follower → Member: the new admin-curated tier. Only
+                          shown on follower rows — a member/admin/hidden_admin
+                          is already at or above that tier. */}
+                      {!isSelf && m.role === "follower" && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            changeRoleMutation.mutate({ memberId: m.id, role: "member" });
+                          }}
+                          disabled={changingThisRow}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "#A8C5A0", background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+                        >
+                          {changingThisRow ? "…" : t("community_detail.make_member", { defaultValue: "Make member" })}
+                        </button>
+                      )}
+                      {/* Member → Follower: step back down from the curated
+                          tier to the anonymous default. */}
+                      {!isSelf && isRoleMember && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            changeRoleMutation.mutate({ memberId: m.id, role: "follower" });
+                          }}
+                          disabled={changingThisRow}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
+                        >
+                          {changingThisRow ? "…" : t("community_detail.make_follower", { defaultValue: "→ Follower" })}
+                        </button>
+                      )}
                       {/* Peer-only: promote/demote. Hidden on self rows. */}
                       {!isSelf && !isRoleAdmin && !isHiddenAdmin && (
                         <button
@@ -1998,13 +2090,13 @@ function MemberPicker({
   inviteName: string;
   inviteEmail: string;
   inviteError: string;
-  pendingRole: "member" | "admin" | "hidden_admin";
+  pendingRole: "follower" | "member" | "admin" | "hidden_admin";
   isBeta: boolean;
   isPending: boolean;
   setInviteName: (v: string) => void;
   setInviteEmail: (v: string) => void;
   setInviteError: (v: string) => void;
-  setPendingRole: (v: "member" | "admin" | "hidden_admin") => void;
+  setPendingRole: (v: "follower" | "member" | "admin" | "hidden_admin") => void;
   onPick: (person: { name?: string; email: string }) => void;
 }) {
   const { t } = useTranslation();
@@ -2034,8 +2126,11 @@ function MemberPicker({
   const matchesCandidate = candidates.some(p => p.email.toLowerCase() === trimmed.toLowerCase());
   const showEmailFallback = looksLikeEmail && !matchesCandidate;
 
-  const roleLabel = (r: "member" | "admin" | "hidden_admin") =>
-    r === "admin" ? t("community_detail.role_admin") : r === "hidden_admin" ? t("community_detail.role_hidden_admin") : t("community_detail.role_member");
+  const roleLabel = (r: "follower" | "member" | "admin" | "hidden_admin") =>
+    r === "admin" ? t("community_detail.role_admin")
+    : r === "hidden_admin" ? t("community_detail.role_hidden_admin")
+    : r === "member" ? t("community_detail.role_member")
+    : t("community_detail.role_follower", { defaultValue: "Follower" });
 
   return (
     <div
@@ -2060,8 +2155,8 @@ function MemberPicker({
           so a non-pilot manipulating the DOM would still be rejected. */}
       <div className="flex items-center gap-1 mb-3">
         {(isBeta
-          ? (["member", "admin", "hidden_admin"] as const)
-          : (["member", "admin"] as const)
+          ? (["follower", "member", "admin", "hidden_admin"] as const)
+          : (["follower", "member", "admin"] as const)
         ).map(r => {
           const active = pendingRole === r;
           return (
