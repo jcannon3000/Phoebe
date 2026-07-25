@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { getPracticeSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
@@ -908,12 +908,11 @@ function OpeningSplash() {
     if (isFirstOpen()) return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
-  // Splash backdrop — one of the bundled leaf photos, matching the imagery on
-  // Examen/PACT/the office rather than the old single forest-path shot. Still
-  // eager-imported (LEAF_PHOTOS) so it paints instantly with no network flash;
-  // picked once per mount so it doesn't shuffle mid-fade.
+  // Splash backdrop — a calm water photo (owner). Still eager-imported so it
+  // paints instantly with no network flash; picked once per mount so it
+  // doesn't shuffle mid-fade.
   const splashLeafPhoto = useMemo(
-    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : splashForestPath),
+    () => (WATER_PHOTOS.length > 0 ? WATER_PHOTOS[Math.floor(Math.random() * WATER_PHOTOS.length)]! : splashForestPath),
     [],
   );
   const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>; total?: number }>({
@@ -1184,7 +1183,11 @@ function OpeningSplash() {
         src={splashLeafPhoto}
         alt=""
         aria-hidden
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+        // Anchor the crop to the BOTTOM of the photo — a tall landscape shot
+        // center-cropped left the screen's lower half a dark, empty void with
+        // all the visible detail bunched at the top (owner: flagged from a
+        // screenshot another user sent).
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center bottom", zIndex: -1 }}
       />
       <div
         aria-hidden

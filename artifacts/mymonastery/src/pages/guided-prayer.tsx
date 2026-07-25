@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
@@ -108,10 +109,16 @@ export default function GuidedPrayerPage() {
     // The closing gets the resolving submit feedback (swell + haptic).
     if (step === MOVEMENTS.length + 1) {
       try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
-      // Reaching the closing = THIS side's Simple Guided Prayer is prayed
-      // today — stamps only `side`, so praying the morning form doesn't
-      // mark the evening one done (a user can have it on both sides).
-      try { markGuidedPrayerPrayed(side); } catch { /* non-fatal */ }
+      // Reaching the closing = THIS side's prayer is prayed today. On evening
+      // this screen doubles as the Examen (relabeled "Simple Guided Prayer"
+      // but the side's actual anchor level is "examen") — crediting the
+      // guided-prayer tracker there is a no-op (sideIsSetTo gates on the REAL
+      // level), so the Home card never flipped and no completion swell fired.
+      // Credit whichever tracker matches this side's actual configured level.
+      try {
+        if (getSideLevel(side) === "examen") markPracticeDoneToday("examen");
+        else markGuidedPrayerPrayed(side);
+      } catch { /* non-fatal */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);

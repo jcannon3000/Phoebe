@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/queryClient";
 import { getSideLevel } from "@/lib/officePrefs";
+import { markRecentCompletion } from "@/lib/recentCompletion";
 
 // Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
 // side's OFFICE when they're that side's chosen prayer — but they're also
@@ -81,6 +82,9 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
       } catch {
         /* private mode / quota — non-fatal */
       }
+      // A fresh mark → stamp the shared "just completed" signal that holds
+      // the home's Next→Done reveal for a beat (lib/recentCompletion.ts).
+      if (!alreadySyncedToday) markRecentCompletion();
       if (alreadySyncedToday) return;
       // Fire-and-forget; an unauthenticated/offline call just no-ops.
       try { syncRead(ymd); } catch { /* best effort */ }

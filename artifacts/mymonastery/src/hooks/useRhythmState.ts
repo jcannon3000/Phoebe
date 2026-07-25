@@ -437,7 +437,10 @@ export function useRhythmState(): RhythmState {
   // prayer-request feature is available to this account (pilot-group-only,
   // 2026-07-22). Gated here at the source so every consumer — the home card,
   // the menu progress ring, the weekly grid — treats it as inactive at once.
-  const prayerRequestsEnabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
+  // Prayer requests are OFF for everyone, no exceptions (matches
+  // usePrayerRequestsEnabled) — the pilot/super-admin carve-out here was
+  // stale and still lit the My Prayer List home card for those accounts.
+  const prayerRequestsEnabled = false;
   const prayerListActive = prayerRequestsEnabled && homeCardActive(hl, "prayer-list");
   const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
