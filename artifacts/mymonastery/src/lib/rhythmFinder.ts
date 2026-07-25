@@ -232,8 +232,17 @@ const ALL_EXTRAS = ["listening", "examen"] as const;
 
 export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const level = PRAYER_LEVEL[rec.morningPrayer];
-  // The office side levels (local, instant) — morning is the primary side.
-  try { setSideLevel("morning", level); } catch { /* ignore */ }
+  // The office side levels (local, instant). Set BOTH sides — Find Your Rhythm
+  // only recommends one prayer style, so evening mirrors morning's. Leaving
+  // evening unset here left it with no EXPLICIT level, and WayOfLoveRuleFlow's
+  // customizer seeds its morning/evening toggle from "which sides already have
+  // an explicit level" — so a user coming from Find Your Rhythm opened the
+  // customizer to find only Morning on (owner's report). Both toggles fixes it
+  // at the source rather than special-casing the customizer's heuristic.
+  try {
+    setSideLevel("morning", level);
+    setSideLevel("evening", level);
+  } catch { /* ignore */ }
 
   await apiRequest("PUT", "/api/me/office-prefs", {
     defaultPrayerLevel: level,

@@ -908,6 +908,14 @@ function OpeningSplash() {
     if (isFirstOpen()) return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
+  // Splash backdrop — one of the bundled leaf photos, matching the imagery on
+  // Examen/PACT/the office rather than the old single forest-path shot. Still
+  // eager-imported (LEAF_PHOTOS) so it paints instantly with no network flash;
+  // picked once per mount so it doesn't shuffle mid-fade.
+  const splashLeafPhoto = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : splashForestPath),
+    [],
+  );
   const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-month"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),
@@ -986,7 +994,7 @@ function OpeningSplash() {
     { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
     // The Examen is an end-of-day reflection — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
-    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : "Evening prayer", blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : "Mark the day's end with the office", rgb: "124,116,196" },
+    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : "Evening prayer", blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : "Mark the day's end with the office", rgb: "46,107,64" },
   ];
   // From the AFTERNOON on (noon onward), "what's next" LEADS WITH EVENING (owner)
   // — once the day has turned, the evening office is what's ahead, so it surfaces
@@ -1167,12 +1175,13 @@ function OpeningSplash() {
         paddingTop: "calc(var(--safe-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
       }}
     >
-      {/* Splash backdrop — ONE fixed, bundled leaf photo (foggy forest path).
-          It's set, not loaded from the rotating library, so it paints instantly
-          on a cold open with no flash. A frosted dark wash sits on top so the
-          greeting / faces / quote stay legible over the photo. */}
+      {/* Splash backdrop — a bundled leaf photo (owner: match the leaf imagery
+          used elsewhere, not the old single forest-path shot). Still eager-
+          imported so it paints instantly on a cold open with no flash. A
+          frosted dark wash sits on top so the greeting / faces / quote stay
+          legible over the photo. */}
       <img
-        src={splashForestPath}
+        src={splashLeafPhoto}
         alt=""
         aria-hidden
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}

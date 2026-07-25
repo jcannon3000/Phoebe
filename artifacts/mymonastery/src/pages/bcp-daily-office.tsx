@@ -1137,10 +1137,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
         : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
   // The held-breath image + wash follow the chosen backdrop, so a Water user
-  // gets a calm water photo under a blue wash (not the forest splash) all the
+  // gets a calm water photo under a blue wash (not the leaf splash) all the
   // way through the load. officeThemeStyle carries the blue token overrides even
   // on this pre-load early return, which sits outside the main themed deck root.
-  const veilPhoto = display.backdrop === "water" ? (WATER_PHOTOS[0] ?? splashForestPath) : splashForestPath;
+  // Picked once per mount (not per render) so the veil doesn't shuffle photos
+  // if it re-renders while still showing.
+  const veilLeafPhoto = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : splashForestPath),
+    [],
+  );
+  const veilPhoto = display.backdrop === "water" ? (WATER_PHOTOS[0] ?? veilLeafPhoto) : veilLeafPhoto;
   const veilStyle: CSSProperties = {
     ...officeThemeStyle(display.backdrop, display.font),
     position: "fixed", inset: 0, background: BG, isolation: "isolate",

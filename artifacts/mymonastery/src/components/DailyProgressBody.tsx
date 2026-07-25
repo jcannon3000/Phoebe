@@ -289,7 +289,9 @@ export function WeeklyGridCard() {
   // Each row carries its own per-day predicate, so built-in practices (from the
   // practice-week matrix) and the user's CUSTOM anchors (from local history) live
   // in one list — a pill line for EVERY practice.
-  const CUSTOM_PALETTE = ["46,107,64", "96,141,209", "62,124,122", "124,116,196", "108,162,124", "150,120,180"];
+  // Green only (owner). Kept as a list so custom practices still vary in
+  // WEIGHT rather than hue.
+  const CUSTOM_PALETTE = ["46,107,64", "60,124,80", "40,96,58", "72,140,94", "52,116,72", "84,150,104"];
   const rows: Array<{ id: string; emoji: string; label: string; rgb: string; doneFor: (d: Day) => boolean }> = [
     ...(morningActive ? [{ id: "morning", emoji: "🌅", label: t("rhythm.row_morning", { defaultValue: "Morning" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.morning }] : []),
     // Reflection rides right after Morning Prayer — it's the second beat of the
@@ -301,7 +303,7 @@ export function WeeklyGridCard() {
     ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),
     ...(podcastsActive ? [{ id: "podcasts", emoji: "🎙️", label: t("rhythm.row_podcasts", { defaultValue: "Podcasts" }), rgb: "150,120,150", doneFor: (d: Day) => !!d.podcasts }] : []),
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
-    ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
+    ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.evening }] : []),
     ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
     // The user's own custom anchors — one row each, filled from local per-day
@@ -465,8 +467,9 @@ function PracticeCard({
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
+          {/* Emoji sits to the RIGHT of the title, never as a leading icon
+              column (owner). */}
           <div className="flex items-start gap-3.5">
-            {emoji ? <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span> : null}
             <div className="flex-1 min-w-0 overflow-hidden">
               {eyebrow ? (
                 <p
@@ -476,7 +479,9 @@ function PracticeCard({
                   {eyebrow}
                 </p>
               ) : null}
-              <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+              <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
+                {title}{emoji ? <span className="ml-2" aria-hidden>{emoji}</span> : null}
+              </p>
               {useCycle
                 ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
                 : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
@@ -553,9 +558,10 @@ function PracticeCard({
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
-          {emoji ? <span className="text-xl flex-shrink-0">{emoji}</span> : null}
           <div className="flex-1 min-w-0 overflow-hidden">
-            <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+            <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>
+              {title}{emoji ? <span className="ml-1.5" aria-hidden>{emoji}</span> : null}
+            </p>
             {useCycle
               ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
               : <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p>}
@@ -646,8 +652,27 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : "";
   // Office/devotion subtitle leads with the descriptive line, then flips
   // between the two things you carry in.
-  const morningBlurb = t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" });
-  const eveningBlurb = t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" });
+  // The subtitle has to follow the LEVEL the same way officeTitle does. When a
+  // side is set to the Examen or Guided Prayer, "…with the office" is simply
+  // wrong — that side isn't an office at all.
+  const officeBlurbFor = (side: "morning" | "evening"): string => {
+    const lvl = getSideLevel(side);
+    if (lvl === "examen") return t("rhythm.blurb_examen", { defaultValue: "Review the day with God" });
+    if (lvl === "guided-prayer") return t("rhythm.blurb_guided_prayer", { defaultValue: "Praise, Confession, Thanksgiving, Supplication" });
+    if (lvl === "reflect-sit") return t("rhythm.blurb_contemplation", { defaultValue: "Loving God in silence" });
+    if (lvl === "psalms") return t("rhythm.blurb_psalms", { defaultValue: "Today's appointed psalms" });
+    return side === "morning"
+      ? t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" })
+      : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" });
+  };
+  const morningBlurb = officeBlurbFor("morning");
+  const eveningBlurb = officeBlurbFor("evening");
+  // The BCP "…with community prayers" alternation only makes sense for an
+  // actual office — don't cycle it under the Examen or a guided prayer.
+  const cycleFor = (side: "morning" | "evening") => {
+    const lvl = getSideLevel(side);
+    return (lvl === "office" || lvl === "devotion" || lvl === "intercessions" || lvl === "ask");
+  };
   // Guests never carry community intercessions into the office (that handoff
   // is stripped in guest mode), so their card must not promise them — the
   // subtitle stays on the BCP line instead of alternating.
@@ -689,7 +714,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (lvl === "examen") return t("rhythm.card_examen", { defaultValue: "The Examen" });
     // Simple Guided Prayer (PACT) IS this side's prayer — "Morning/Evening
     // Simple Guided Prayer", matching the per-side home card.
-    if (lvl === "guided-prayer") return t(`rhythm.card_${side.toLowerCase()}_guided_prayer`, { defaultValue: `${side} Simple Guided Prayer` });
+    // Just "Guided Prayer" — no Morning/Evening prefix, no "Simple" (owner).
+    if (lvl === "guided-prayer") return t("rhythm.card_guided_prayer", { defaultValue: "Guided Prayer" });
     return prayerKind === "community"
       ? t("rhythm.card_community", { defaultValue: "Pray together" })
       : prayerKind === "devotion"
@@ -790,21 +816,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
-      blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
+      blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     ...(eveningActive ? [{
       // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
       // so the morning rhythm leads the day; from 3 PM on it becomes the office
       // hero. Opt-in — off by default (evening pref "none").
-      key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
+      key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "46,107,64", done: eveningDone, href: "/begin-prayer?side=evening",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).
       blurb: eveningDone
         ? prayed
-        : hour >= 20 ? officeTitle("Evening") : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
-      blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
+        : hour >= 20 ? officeTitle("Evening") : eveningBlurb,
+      blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 17,
     }] : []),

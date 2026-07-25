@@ -2242,7 +2242,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
   // Contemplation is set as this side's daily prayer. Same teal palette as the
   // compact card so it reads as the same anchor.
   if (hero) {
-    const rgb = "62,124,122";
+    const rgb = "46,107,64";
     const inner = (
       <div
         role={later ? undefined : "button"}
@@ -2436,7 +2436,7 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
   // the Examen is set as this side's daily prayer (usually evening). Same green
   // palette as the compact card so it reads as the same anchor.
   if (hero) {
-    const rgb = "90,140,114";
+    const rgb = "46,107,64";
     return (
       <Link href="/examen" className="block">
         <div
@@ -2511,9 +2511,10 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [side]);
-  const title = side === "evening" ? "Evening Simple Guided Prayer" : "Morning Simple Guided Prayer";
+  // Just "Guided Prayer" — no Morning/Evening prefix, no "Simple" (owner).
+  const title = "Guided Prayer";
   const onClick = () => goTo(`/guided-prayer?side=${side}`);
-  const rgb = "168,108,96";
+  const rgb = "46,107,64";
   if (hero) {
     return (
       <div
@@ -2589,7 +2590,7 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
   const bothCreation = getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation";
   const label = bothCreation ? (side === "morning" ? "Morning Creation Prayer" : "Evening Creation Prayer") : "Creation Prayer";
   const href = `/creation-devotion?mode=creation-${side}&picked=1`;
-  const rgb = "76,124,91";
+  const rgb = "46,107,64";
   if (hero) {
     return (
       <Link href={href} className="block">
@@ -3020,7 +3021,9 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
   // Same colour as the side's office card (green for morning, violet for
   // evening) — not a beige/parchment tone — so it sits with the other rhythm
   // cards rather than standing out.
-  const rgb = side === "evening" ? "124,116,196" : "46,107,64";
+  // One green across every anchor — the evening purple is gone (owner: no
+  // colors other than green).
+  const rgb = "46,107,64";
 
   // Hero layout — per owner, this is now the SAME shell/chrome as the office
   // hero in PrayerOfficeCard (rounded-3xl card, green accent bar, eyebrow,

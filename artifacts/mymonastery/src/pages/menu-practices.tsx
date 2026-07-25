@@ -24,9 +24,6 @@ export default function MenuPracticesPage() {
         items: [
           // Contemplation leads the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
-          ...(!isGuest ? [
-            { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
-          ] : []),
           { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
           // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
           // ?side=), so it logs as a standalone practice rather than closing
@@ -38,6 +35,10 @@ export default function MenuPracticesPage() {
           // The standalone "Creation Prayer" devotion was removed per owner.
           ...(CREATION_PRAYER_ENABLED && !isGuest ? [
             { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
+          ] : []),
+          // Audio Divina sits at the BOTTOM of Practices (owner).
+          ...(!isGuest ? [
+            { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
         ],
       }]}
