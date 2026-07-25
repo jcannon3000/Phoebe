@@ -79,7 +79,10 @@ export default function BeginPrayerPage() {
     // length, logs its own contemplation session), so route straight there
     // regardless of time of day or prayed-today state.
     if (defaultPrayerLevel === "reflect-sit") {
-      setLocation("/contemplation?begin=1", { replace: true });
+      // Pass the side explicitly. `side` is already resolved above, and without
+      // it the sit falls back to a clock-based guess — so tapping the MORNING
+      // card after 5 PM would credit the evening contemplation card instead.
+      setLocation(`/contemplation?begin=1&side=${side}`, { replace: true });
       return;
     }
 
@@ -92,7 +95,7 @@ export default function BeginPrayerPage() {
     // The Examen IS this side's prayer → open the Examen directly (self-contained,
     // logs its own session), regardless of time of day or prayed-today state.
     if (defaultPrayerLevel === "examen") {
-      setLocation("/examen", { replace: true });
+      setLocation(`/examen?side=${side}`, { replace: true });
       return;
     }
     // Simple Guided Prayer IS this side's prayer → open it directly, side-scoped

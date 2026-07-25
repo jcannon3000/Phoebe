@@ -147,16 +147,6 @@
 			<key>UIApplicationShortcutItemIconType</key>
 			<string>UIApplicationShortcutIconTypeAdd</string>
 		</dict>
-		<dict>
-			<key>UIApplicationShortcutItemType</key>
-			<string>app.withphoebe.mobile.shortcut.letter-new</string>
-			<key>UIApplicationShortcutItemTitle</key>
-			<string>Write a letter</string>
-			<key>UIApplicationShortcutItemSubtitle</key>
-			<string>To one friend</string>
-			<key>UIApplicationShortcutItemIconType</key>
-			<string>UIApplicationShortcutIconTypeCompose</string>
-		</dict>
 	</array>
 </dict>
 </plist>

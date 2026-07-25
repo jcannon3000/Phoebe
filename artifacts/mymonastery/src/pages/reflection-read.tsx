@@ -179,14 +179,6 @@ export default function ReflectionReadPage() {
         </button>
         <button
           type="button"
-          onClick={() => setLocation(`/journal?source=${active}`)}
-          className="px-6 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT }}
-        >
-          ✎ {t("reflection_read.journal")}
-        </button>
-        <button
-          type="button"
           onClick={goNext}
           className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: FONT, whiteSpace: "nowrap" }}

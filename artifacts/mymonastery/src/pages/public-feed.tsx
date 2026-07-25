@@ -820,7 +820,7 @@ function DoneStep({ feedTitle }: { feedTitle: string }) {
           {t("public_feed.done_body")}
         </p>
         <button
-          onClick={() => setLocation("/parish")}
+          onClick={() => setLocation("/")}
           className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
           style={{ background: BUTTON_BG, color: WARM_TEXT }}
         >

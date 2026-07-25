@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -168,11 +168,9 @@ function ReportCard({ report, onAction }: { report: Report; onAction: (s: "revie
           </div>
           {report.kind === "user" && report.target ? (
             <p className="text-sm font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              <Link href={`/people/${encodeURIComponent(report.target.email)}`}>
-                <a style={{ color: "#F0EDE6" }} className="hover:underline">
-                  {report.target.name || report.target.email}
-                </a>
-              </Link>
+              <span style={{ color: "#F0EDE6" }}>
+                {report.target.name || report.target.email}
+              </span>
             </p>
           ) : (
             <p className="text-sm font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>

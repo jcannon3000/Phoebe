@@ -159,44 +159,34 @@ const CATEGORY_COLORS: Record<Category, {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// How many prayers the user will pray THROUGH in their slideshow right now —
-// the exact set the office's intercession handoff reads (community
-// intercessions + open requests INCLUDING the user's own — the main slideshow
-// walks those as "Your prayer"). Reuses the same
-// query keys, so it shares React Query's cache (no extra fetches). The office
-// card shows this so its "N prayers" matches the slideshow.
-function useSlideshowPrayerCount(): number {
-  const { data: moments } = useQuery<{ moments: Array<{ templateType?: string | null; group?: { id?: number } | null }> }>({
-    queryKey: ["/api/moments"], queryFn: () => apiRequest("GET", "/api/moments"), staleTime: 60_000,
+// The psalms + lessons appointed for THIS office TODAY, as one compact line
+// ("Psalm 104 · Acts 3:1–10 · Luke 24:13–35") — what the home hero shows under
+// its title now that intercession lists (the old "N prayers" count) are gone.
+// Backed by /api/office/readings, a pure lectionary lookup: no slide assembly,
+// no scripture bodies, so it's cheap enough to run on every app open.
+//
+// The query key carries the viewer's LOCAL day string. Without it, a result
+// cached before midnight survives the rollover and the card keeps showing
+// yesterday's propers (the same day-scoping bug class contemplation-stats and
+// the per-side done flags key around).
+//
+// Returns null while pending OR on failure — the caller renders nothing in that
+// slot rather than a spinner or an error, and the hero never blocks on it.
+function useOfficeReadingsLine(side: "morning" | "evening", level: "office" | "devotion"): string | null {
+  const today = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
+  const { data } = useQuery<{ psalms?: string[]; lessons?: string[] }>({
+    queryKey: ["/api/office/readings", side, level, today],
+    queryFn: () => apiRequest("GET", `/api/office/readings?side=${side}&level=${level}&date=${today}`),
+    staleTime: 30 * 60_000,
   });
-  const { data: circle } = useQuery<{ intentions: Array<{ groupId: number }> }>({
-    queryKey: ["/api/groups/me/circle-intentions"], queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"), staleTime: 60_000,
-  });
-  const { data: reqs } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; kind?: string | null; expiresAt?: string | null }>>({
-    queryKey: ["/api/prayer-requests"], queryFn: () => apiRequest("GET", "/api/prayer-requests"), staleTime: 60_000,
-  });
-  return useMemo(() => {
-    const intentionCountByGroup = new Map<number, number>();
-    for (const i of (circle?.intentions ?? [])) intentionCountByGroup.set(i.groupId, (intentionCountByGroup.get(i.groupId) ?? 0) + 1);
-    let activeIntercessions = 0;
-    for (const m of (moments?.moments ?? [])) {
-      if (m.templateType !== "intercession") continue;
-      const gid = m.group?.id;
-      const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
-      activeIntercessions += intentions > 0 ? intentions : 1;
-    }
-    // Include the user's OWN requests — the office's main slideshow walks them
-    // as "Your prayer", so leaving them out under-reported the count (showing
-    // "3" when the walk-through actually covers all 5).
-    const requestsInWalk = (reqs ?? []).filter((r) =>
-      !r.isAnswered && !r.closedAt &&
-      // Match the office slideshow exactly: it drops the viewer's OWN non-request
-      // kinds (life-events, justice) and any expired request, so the count must too.
-      !(r.isOwnRequest && r.kind != null && r.kind !== "request") &&
-      (!r.expiresAt || new Date(r.expiresAt) > new Date())
-    ).length;
-    return activeIntercessions + requestsInWalk;
-  }, [moments, circle, reqs]);
+  const psalms = (data?.psalms ?? []).filter((p) => !!p && p.trim().length > 0);
+  const lessons = (data?.lessons ?? []).filter((l) => !!l && l.trim().length > 0);
+  const parts: string[] = [];
+  // "Psalm 104" / "Psalms 42, 43" — the lectionary already carries any verse
+  // range inside each ref, so a plain comma join reads right.
+  if (psalms.length > 0) parts.push(`Psalm${psalms.length > 1 ? "s" : ""} ${psalms.join(", ")}`);
+  parts.push(...lessons.map((l) => l.trim()));
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function nextDayLabel(date: Date): string {
@@ -2971,7 +2961,7 @@ function FddHomeCard() {
 // Praying the Psalms home card — replaces the office card for a side set to
 // "psalms". Shows today's appointed psalms (per the chosen cycle) and opens the
 // /psalms reader. Warm parchment tone, distinct from the blue FDD card.
-function PsalmsHomeCard({ side, hero = false, requesterFaces = [], slideshowCount = 0 }: { side: "morning" | "evening"; hero?: boolean; requesterFaces?: Array<{ id: number; name: string; avatarUrl: string }>; slideshowCount?: number }) {
+function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
   const { t } = useTranslation();
   const [, goTo] = useLocation();
   const [done, setDone] = useState(() => hasPrayedPsalmsToday(side));
@@ -3007,13 +2997,12 @@ function PsalmsHomeCard({ side, hero = false, requesterFaces = [], slideshowCoun
 
   // Hero layout — per owner, this is now the SAME shell/chrome as the office
   // hero in PrayerOfficeCard (rounded-3xl card, green accent bar, eyebrow,
-  // avatar rail + prayer count, two-pill done state) — only the title and the
-  // CTA's destination differ (Psalms, not the office).
+  // appointed-psalms sub line, two-pill done state) — only the title and the
+  // CTA's destination differ (Psalms, not the office). The old "N prayers"
+  // count + requester avatar rail were removed here alongside the office hero:
+  // this card renders the SAME home slot, so leaving intercession furniture on
+  // it would contradict the office variant beside it.
   if (hero) {
-    const withAvatars = requesterFaces;
-    const countCopy = slideshowCount === 0
-      ? null
-      : `${slideshowCount} prayer${slideshowCount === 1 ? "" : "s"}`;
     return (
       <div
         className="relative flex rounded-3xl overflow-hidden"
@@ -3034,19 +3023,14 @@ function PsalmsHomeCard({ side, hero = false, requesterFaces = [], slideshowCoun
               <p className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}>
                 {title}
               </p>
-              {countCopy && (
-                <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}>
-                  {countCopy}
+              {/* The day's appointed psalms — the same line the compact
+                  variant carries. Empty/pending renders nothing. */}
+              {refs.length > 0 && (
+                <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}>
+                  {subtitle}
                 </p>
               )}
             </div>
-            {withAvatars.length > 0 && (
-              <div className="flex items-center -space-x-2 shrink-0">
-                {withAvatars.slice(0, 8).map((p) => (
-                  <img key={p.id} src={p.avatarUrl} alt={p.name} title={p.name} className="w-6 h-6 rounded-full object-cover" style={{ border: "1.5px solid rgba(12,31,18,0.9)" }} />
-                ))}
-              </div>
-            )}
           </div>
           {done ? (
             <div className="mt-[12px] flex items-stretch gap-2">
@@ -3367,21 +3351,14 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && (!r.expiresAt || new Date(r.expiresAt) > new Date()),
   );
   const requestCount = openOfficeReqs.length;
-  // The full count of what the office's prayer slideshow will walk through —
-  // so the "N prayers" subtitle matches the slideshow, not just open requests.
-  const slideshowCount = useSlideshowPrayerCount();
-  // Faces of the people ASKING for prayer (open requests), deduped by owner,
-  // non-anonymous, with an avatar — shown on the office card in place of the
-  // who-prayed rail.
-  const requesterFaces: Array<{ id: number; name: string; avatarUrl: string }> = [];
-  {
-    const seenOwners = new Set<number>();
-    for (const r of openOfficeReqs) {
-      if (r.isAnonymous || typeof r.ownerId !== "number" || !r.ownerAvatarUrl || seenOwners.has(r.ownerId)) continue;
-      seenOwners.add(r.ownerId);
-      requesterFaces.push({ id: r.ownerId, name: r.ownerName ?? "", avatarUrl: r.ownerAvatarUrl });
-    }
-  }
+  // What's appointed to be read in this office today — the hero's sub line.
+  // Called before the early returns below so it can never become a conditional
+  // hook. A devotion reads one short lesson rather than the office's two, so
+  // the level rides along.
+  const readingsLine = useOfficeReadingsLine(
+    isMorning ? "morning" : "evening",
+    programmedLevel === "devotion" ? "devotion" : "office",
+  );
   const eyebrow = programmedOffice
     ? t("dashboard.book_of_common_prayer")
     : requestCount > 0
@@ -3446,7 +3423,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   if (getSideLevel(isMorning ? "morning" : "evening") === "psalms") {
     // A forced side (the home "what's next" / office-hero slot) renders the big
     // hero variant; the compact mini stays small.
-    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} requesterFaces={requesterFaces} slideshowCount={slideshowCount} />;
+    return <PsalmsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
   // Per-user: Contemplation / the Examen IS this side's prayer → its card
   // replaces the office card for this user. Same after-all-hooks placement as
@@ -3664,36 +3641,16 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
             {/* Customize pill removed from the hero card per owner — the
                 rule-of-life customizer stays reachable from the menu. */}
           </div>
-          {/* LEFT  column = title + "N people prayed with you this week"
-              RIGHT column = avatar stack only (no copy beside it).
-              Same vertical rhythm as the parish-weekly card above.
-              Profile pictures only — entries without an avatar are
-              filtered out. */}
+          {/* Title + the day's appointed psalms & lessons beneath it.
+              This slot used to carry "N prayers" and a rail of the faces
+              of people ASKING for prayer — both pure intercession-list
+              furniture, removed per owner now that intercession lists are
+              retired. What's appointed to be read is what someone actually
+              wants to know before tapping in. */}
           {(() => {
-            // The avatar rail intentionally only renders people with
-            // a profile photo (cleaner visual — initials chips next
-            // to a row of real faces felt mismatched). The COUNT
-            // text, though, has to reflect everyone who prayed:
-            // otherwise a user without an avatar silently drops from
-            // the tally, and the displayed number jumps around as
-            // pray-ers come and go from the avatar-filtered subset
-            // (this is what made the home card read 7 yesterday and
-            // 3 today even though more people had prayed in the
-            // interim). Use the full list for the count, the
-            // filtered list for the rail.
-            // Count = everyone who prayed (any way, not just offices) — the
-            // server's true total, which can exceed the (capped) people list.
-            // The office card surfaces who's ASKING for prayer, not who prayed:
-            // the requesters' faces + "N prayer requests".
-            const withAvatars = requesterFaces;
-            const countCopy = slideshowCount === 0
-              ? null
-              : t("dashboard.office_requests_sub", { count: slideshowCount, defaultValue: `${slideshowCount} prayer${slideshowCount === 1 ? "" : "s"}` });
             return (
               // Title sits tight to the eyebrow above, with breathing
-              // room below before the "N people prayed with you this
-              // week" sub line. items-center vertically centers the
-              // right-side avatar stack against the title + sub block.
+              // room below before the readings line.
               <div className="mt-[4px] flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p
@@ -3708,33 +3665,18 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                         ? (isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer"))
                         : `${t("dashboard.prayer_list_title", { defaultValue: "Prayer List" })} 🙏🏽`}
                   </p>
-                  {countCopy && (
+                  {/* Nothing renders here while the lookup is pending or if it
+                      fails — no spinner, no error, and the hero never waits on
+                      it. One line; it truncates rather than wrapping. */}
+                  {readingsLine && (
                     <p
-                      className="text-[11px]"
+                      className="text-[11px] truncate"
                       style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}
                     >
-                      {countCopy}
+                      {readingsLine}
                     </p>
                   )}
                 </div>
-                {withAvatars.length > 0 && (
-                  <div className="flex items-center -space-x-2 shrink-0">
-                    {/* Show as many faces as fit the card (up from 5); the
-                        count line above carries the true total. Capped so the
-                        rail can't overflow / crush the title — 6 on the Devotion
-                        variant (its longer title + 🌙 leave less room), 8 otherwise. */}
-                    {withAvatars.slice(0, programmedLevel === "devotion" ? 6 : 8).map((p) => (
-                      <img
-                        key={p.id}
-                        src={p.avatarUrl as string}
-                        alt={p.name}
-                        title={p.name}
-                        className="w-6 h-6 rounded-full object-cover"
-                        style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
-                      />
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })()}

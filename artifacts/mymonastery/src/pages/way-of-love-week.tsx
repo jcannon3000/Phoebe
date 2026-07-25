@@ -401,7 +401,7 @@ export default function WayOfLoveWeekPage() {
                 worshipItems.map((item, i) => {
                   if (item.kind === "service") return <ServiceCard key={`svc-${item.schedule.id}`} schedule={item.schedule} nextDate={item.nextDate} isOnDate={item.isOnDate} keyPrefix="wol-week" onOpen={() => setOpenSvc({ schedules: [item.schedule], nextDate: item.nextDate })} />;
                   if (item.kind === "services") return <ConsolidatedServiceCard key={`svcs-${item.schedules.map((s) => s.id).join("-")}`} schedules={item.schedules} nextDate={item.nextDate} isOnDate={item.isOnDate} keyPrefix="wol-week" onOpen={() => setOpenSvc({ schedules: item.schedules, nextDate: item.nextDate })} />;
-                  return <GatheringCard key={`gath-${item.r.id ?? i}`} r={item.r} keyPrefix="wol-week" onOpen={() => setLocation(`/gatherings/${item.r.id}`)} />;
+                  return <GatheringCard key={`gath-${item.r.id ?? i}`} r={item.r} keyPrefix="wol-week" onOpen={() => setLocation("/gatherings")} />;
                 })
               )}
             </div>

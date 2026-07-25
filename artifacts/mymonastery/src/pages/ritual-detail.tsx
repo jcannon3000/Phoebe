@@ -346,10 +346,9 @@ export default function RitualDetail() {
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
               <div className="flex flex-wrap items-center gap-1.5">
                 {ritual.participants.slice(0, 3).map((p, i) => (
-                  <Link
+                  <span
                     key={i}
-                    href={`/people/${encodeURIComponent(p.email)}`}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:bg-[#4A6741]/10"
+                    className="px-3 py-1.5 rounded-full text-xs font-medium"
                     style={{
                       border: "1px solid rgba(46,107,64,0.35)",
                       background: "rgba(74,103,65,0.12)",
@@ -358,7 +357,7 @@ export default function RitualDetail() {
                     title={p.email}
                   >
                     {p.name || p.email.split("@")[0]}
-                  </Link>
+                  </span>
                 ))}
                 {ritual.participants.length > 3 && (
                   <span className="text-xs font-medium px-2 py-1.5 rounded-full" style={{ color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>

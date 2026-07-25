@@ -192,12 +192,10 @@ export default function AdminToolsPage() {
                   description="Design a rule of life anyone can join via link"
                   onClick={() => setLocation("/prescribe")}
                 />
-                <LinkRow
-                  emoji="⛪"
-                  label="Phoebe Parish"
-                  description="Create & manage parish feeds (events + prayer list)"
-                  onClick={() => setLocation("/admin/parishes")}
-                />
+                {/* "Phoebe Parish" row removed — the parish system was deleted
+                    (094181c0) and /admin/parishes 404s. Its capabilities live on
+                    the community now (directory listing, standing intercessions,
+                    Get Involved), reachable from the community's own admin tools. */}
                 <LinkRow
                   emoji="📊"
                   label="App Metrics"

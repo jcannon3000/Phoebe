@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
+import { getSideLevel } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -75,11 +76,24 @@ export default function GuidedPrayerPage() {
   // A still landscape backdrop, picked once per mount — a wide photo on web,
   // a bundled leaf on native (pickWideBackground returns null there).
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  // An explicit ?side= (from that side's home card) always wins. Without one —
+  // e.g. opened from Practices — do NOT blindly assume morning: that credited
+  // Morning Prayer for a 9 PM sit, and could even keep a side the user doesn't
+  // have PACT on. Fall back to the side whose window the clock is in, and only
+  // to a side that's actually active. Same rule contemplation uses.
   const side: "morning" | "evening" = (() => {
     try {
       const s = new URLSearchParams(window.location.search).get("side");
-      return s === "evening" ? "evening" : "morning";
-    } catch { return "morning"; }
+      if (s === "morning" || s === "evening") return s;
+    } catch { /* ignore */ }
+    const morningActive = getSideLevel("morning") === "guided-prayer";
+    const eveningActive = getSideLevel("evening") === "guided-prayer";
+    // Only one side carries PACT → that's the one, whatever the hour.
+    if (morningActive && !eveningActive) return "morning";
+    if (eveningActive && !morningActive) return "evening";
+    // Both (or neither) → go by the clock, using the same 5 PM boundary the
+    // evening office and the evening home cards use.
+    return new Date().getHours() >= 17 ? "evening" : "morning";
   })();
 
   useEffect(() => {

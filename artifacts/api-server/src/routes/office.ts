@@ -450,6 +450,44 @@ router.get("/office/psalter", (_req, res) => {
   return res.json({ psalms });
 });
 
+// GET /office/readings?side=morning|evening&date=YYYY-MM-DD&level=office|devotion
+// Public. A PURE lectionary lookup — just the appointed psalm + lesson
+// REFERENCES for one office on one day. No slide assembly, no scripture/psalm
+// bodies, no DB writes: this is what the home screen's office hero card shows
+// under its title, so it has to be cheap enough to run on every app open.
+// (The /office/morning + /office/evening endpoints assemble the whole deck and
+// must never be called for this.) Pass the viewer's LOCAL date.
+router.get("/office/readings", (req, res) => {
+  try {
+    const date = parseOfficeDate(req.query.date);
+    const side: "morning" | "evening" = req.query.side === "evening" ? "evening" : "morning";
+    const level = req.query.level === "devotion" ? "devotion" : "office";
+    const stamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    res.setHeader("Cache-Control", "public, max-age=3600");
+
+    if (level === "devotion") {
+      // A devotion reads the day's appointed psalm(s) plus ONE short lesson —
+      // morning takes lesson2 (the Epistle), early evening lesson3 (the
+      // Gospel). Mirrors assembleDevotion so the card can't disagree with
+      // what the devotion actually prays.
+      const lect = getLectionaryReadings(getOfficeDay(date), side);
+      const raw = (side === "morning" ? lect.lesson2 : lect.lesson3) ?? "";
+      const ok = raw.trim().length > 0 && !/^-+$/.test(raw.trim());
+      return res.json({ date: stamp, side, psalms: lect.psalms ?? [], lessons: ok ? [raw.trim()] : [] });
+    }
+
+    // Full office — reuse the ordo builder (pure/synchronous, and the same
+    // selectors the assemblers use, including the "Eve of …" evening fallback).
+    const day = buildOfficeOrdoDay(date);
+    const o = side === "evening" ? day.evening : day.morning;
+    return res.json({ date: day.date, side, psalms: o.psalms ?? [], lessons: o.lessons.map((l) => l.ref) });
+  } catch (err) {
+    console.error("office readings lookup failed:", err);
+    // Never 500 — the card just omits the line.
+    return res.json({ psalms: [], lessons: [] });
+  }
+});
+
 // GET /office/ordo-week — public. The per-day ordo (order of service + the
 // day's appointments) for Morning + Evening Prayer across a span of days, built
 // from the SAME selectors/pickers the office assemblers use — so the printable

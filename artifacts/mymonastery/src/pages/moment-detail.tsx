@@ -857,13 +857,9 @@ export default function MomentDetail() {
                 <div className="flex flex-wrap gap-x-1.5 gap-y-0.5">
                   {shown.map((m, i) => (
                     <span key={m.email} className="inline-flex items-center gap-0.5">
-                      <Link
-                        href={`/people/${encodeURIComponent(m.email)}`}
-                        className="text-sm transition-colors text-muted-foreground/70 hover:text-primary"
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                      >
+                      <span className="text-sm text-muted-foreground/70">
                         {(m.name ?? m.email).split(" ")[0]}
-                      </Link>
+                      </span>
                       {(i < shown.length - 1 || extra > 0) && <span className="text-muted-foreground/40"> ·</span>}
                     </span>
                   ))}

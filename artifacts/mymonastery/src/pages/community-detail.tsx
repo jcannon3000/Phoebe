@@ -735,19 +735,6 @@ function CommunityGatheringDetailModal({
               )}
             </div>
             <div className="shrink-0 flex items-center gap-1.5">
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    setLocation(`/gatherings/${g.id}/settings`);
-                  }}
-                  aria-label={t("community_detail.gathering_settings")}
-                  className="rounded-full p-1.5 transition-opacity hover:opacity-80"
-                  style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", cursor: "pointer" }}
-                >
-                  <Settings size={16} />
-                </button>
-              )}
               <button
                 onClick={onClose}
                 aria-label={t("community_detail.close")}

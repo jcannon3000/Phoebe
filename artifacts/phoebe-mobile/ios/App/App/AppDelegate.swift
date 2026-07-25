@@ -89,8 +89,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return "/contemplation"
         case "app.withphoebe.mobile.shortcut.prayer-request-new":
             return "/pray-request/new"
-        case "app.withphoebe.mobile.shortcut.letter-new":
-            return "/letters/new"
+        // The "Write a letter" shortcut is gone — Letters were removed from the
+        // app and /letters/new 404s. Its Info.plist entry is deleted too.
         default:
             return nil
         }
