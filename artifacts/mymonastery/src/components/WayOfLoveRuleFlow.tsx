@@ -1386,6 +1386,12 @@ export default function WayOfLoveRuleFlow({
     // user who picked it as their morning or evening prayer doesn't see a
     // confusing duplicate toggle for the same practice.
     const creationAlreadyPrimary = contemplationStyle === "cobreathe" && (contemplationBySide.morning || contemplationBySide.evening);
+    // Same reasoning for the Examen: since evening's "Simple Guided Prayer" row
+    // now doubles as the Examen (see the morning/evening "way" step), a user who
+    // reaches this step with evening set that way already has the Examen as
+    // their evening prayer — offering it again here as an "additional" extra
+    // would be a confusing duplicate toggle for the same practice.
+    const examenAlreadyPrimary = prayBySide.morning === "examen" || prayBySide.evening === "examen";
     return shell(
       <>
         {backRow(goPrev)}
@@ -1395,7 +1401,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
-          {choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
+          {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
         </div>
@@ -1519,6 +1525,29 @@ export default function WayOfLoveRuleFlow({
             the flow, reflections are chosen on "learn", and Examen/other add-ons
             aren't offered in this flow. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Simple Guided Prayer leads the list (owner). On EVENING the row
+              keeps its "Simple Guided Prayer" label but functions as the
+              Examen — subtitle and selected-level both follow the Examen,
+              matching the same morning-PACT/evening-Examen pairing already
+              shipped in the light /customize picker. */}
+          {(() => {
+            const isEveningExamen = side === "evening";
+            const selected = isEveningExamen ? prayBySide[side] === "examen" : prayBySide[side] === "guidedPrayer";
+            const sub = isEveningExamen
+              ? t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God." })
+              : t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise, Confession, Thanksgiving, Supplication." });
+            return choiceRow(
+              selected,
+              `🙌 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
+              sub,
+              () => {
+                if (selected) return; // already selected
+                touchedRef.current = true;
+                if (contemplationBySide[side]) toggleContemplationSide(side);
+                choosePrayBySide(side, isEveningExamen ? "examen" : "guidedPrayer");
+              },
+            );
+          })()}
           {(() => {
             const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
             const bcpSub = prayBySide[side] === "offices" ? officeSub
@@ -1573,21 +1602,6 @@ export default function WayOfLoveRuleFlow({
               if (!contemplationBySide[side]) toggleContemplationSide(side);
               chooseContemplationStyle("cobreathe");
               if (goalMin === 0) { chooseGoal("5"); chooseSilenceMode("fixed"); }
-            },
-          )}
-          {/* Simple Guided Prayer — a four-movement outline (Praise, Confession,
-              Thanksgiving, Supplication) IS this side's prayer, replacing the BCP
-              office. Its own per-side anchor (like Psalms), not a contemplation
-              style, so picking it clears any per-side contemplation on this side. */}
-          {choiceRow(
-            prayBySide[side] === "guidedPrayer",
-            `🙌 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
-            t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise, Confession, Thanksgiving, Supplication." }),
-            () => {
-              if (prayBySide[side] === "guidedPrayer") return; // already selected
-              touchedRef.current = true;
-              if (contemplationBySide[side]) toggleContemplationSide(side);
-              choosePrayBySide(side, "guidedPrayer");
             },
           )}
         </div>
@@ -2026,23 +2040,10 @@ export default function WayOfLoveRuleFlow({
           </>
         )}
 
-        {/* Audio Divina — sacred listening (bring your own music, logged by the
-            minute). An optional add-on the user can switch on here (owner); when
-            on it becomes its own home card at its chosen slot. Shown on the main
-            custom slide, not the add-a-practice sub-slide. */}
-        {!addingCustom && (
-          <div style={{ marginTop: 22 }}>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
-              {t("wol_rule.custom_more", { defaultValue: "Or add a practice we've made" })}
-            </p>
-            {choiceRow(
-              contemplative.audio,
-              `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`,
-              t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening — a few minutes with music, held as prayer." }),
-              () => toggleContemplative("audio"),
-            )}
-          </div>
-        )}
+        {/* Audio Divina used to also be offered here as "add a practice we've
+            made" — removed (owner): it already lives on the Contemplation step
+            ("Add an additional practice"), and offering it again on this
+            unrelated custom-practice step was a confusing duplicate. */}
 
         {/* Bottom: the add sub-slide just returns to the list; otherwise Save. */}
         {addingCustom ? (

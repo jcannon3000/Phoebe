@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
@@ -80,13 +80,35 @@ export function CobreatheSummary({
   // Slide 0 = the collect (prayer), slide 1 = the breaths + who you breathed with.
   const [step, setStep] = useState<0 | 1>(0);
 
+  // Owner report: "Creation Prayer has been getting stuck on the last slide and
+  // not closing." The overlay caller (CobreatheOverlay) hands off through this
+  // exact sequence: Continue → fadeOut=true → wait for THIS component's fade-out
+  // transition to call onFadeOutComplete via framer's onAnimationComplete. That
+  // callback is not guaranteed — reduced-motion settings, a backgrounded
+  // WebView, or the animation getting interrupted can all leave it un-fired,
+  // and there is no other path off this screen once continueDisabled has
+  // grayed out the button. A bounded fallback timer forces the close so a
+  // missed callback is a slightly-early cut, never a permanently stuck screen.
+  const closedRef = useRef(false);
+  useEffect(() => {
+    if (!fadeOut || !onFadeOutComplete) return;
+    closedRef.current = false;
+    const id = setTimeout(() => {
+      if (!closedRef.current) { closedRef.current = true; onFadeOutComplete(); }
+    }, 1200); // transition is 600ms; double it as a safety margin
+    return () => clearTimeout(id);
+  }, [fadeOut, onFadeOutComplete]);
+
   return (
     <motion.div
       className="flex flex-col"
       initial={{ opacity: fadeIn ? 0 : 1 }}
       animate={{ opacity: fadeOut ? 0 : 1 }}
       transition={{ duration: 0.6, ease: "easeInOut" }}
-      onAnimationComplete={() => { if (fadeOut) onFadeOutComplete?.(); else onEntered?.(); }}
+      onAnimationComplete={() => {
+        if (fadeOut) { if (!closedRef.current) { closedRef.current = true; onFadeOutComplete?.(); } }
+        else onEntered?.();
+      }}
       style={{
         position: "fixed", inset: 0, zIndex: 60,
         background: "#0A1C14",
