@@ -1145,7 +1145,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     () => (WATER_PHOTOS.length > 0 ? WATER_PHOTOS[Math.floor(Math.random() * WATER_PHOTOS.length)]! : splashForestPath),
     [],
   );
-  const veilPhoto = display.backdrop === "water" ? (WATER_PHOTOS[0] ?? veilLeafPhoto) : veilLeafPhoto;
+  // The veil is a random water photo for everyone now, so there's no longer a
+  // separate Water-backdrop branch — pinning WATER_PHOTOS[0] here would give
+  // the user who actually CHOSE Water the same fixed photo every office while
+  // everyone else got variety.
+  const veilPhoto = veilLeafPhoto;
   const veilStyle: CSSProperties = {
     ...officeThemeStyle(display.backdrop, display.font),
     position: "fixed", inset: 0, background: BG, isolation: "isolate",

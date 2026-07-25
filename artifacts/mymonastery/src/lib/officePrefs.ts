@@ -290,15 +290,27 @@ const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercession
 export function getSideLevel(side: OfficeSide): OfficeLevel | null {
   try {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
-    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return raw as OfficeLevel;
+    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
   } catch { /* private mode */ }
-  // New-user default rule: Morning = the Prayer List (community intercessions),
-  // Evening = Contemplation (a silent sit). Reflection defaults to CAC + a
-  // 5-minute Silence goal + Co-Breathe, all handled in useRhythmState. Only
-  // applies until the user explicitly picks a level for that side (stored above).
-  if (side === "morning") return "intercessions";
+  // New-user default rule: Morning = the BCP office, Evening = Contemplation (a
+  // silent sit). Reflection defaults to CAC + a 5-minute Silence goal +
+  // Co-Breathe, all handled in useRhythmState. Only applies until the user
+  // explicitly picks a level for that side (stored above).
+  if (side === "morning") return "office";
   if (side === "evening") return "reflect-sit";
   return null;
+}
+
+// Prayer requests / community intercessions are OFF for everyone (see
+// hooks/usePrayerRequests.ts, 2026-07-23), so a side left on `intercessions`
+// is a DEAD anchor: its home card routes to /prayer-mode, which PrayerGate
+// bounces straight back to /dashboard, and useRhythmState has no done-clause
+// for it — so the dot can never light no matter what the user does. This was
+// also the built-in morning default, so it hit every user who never explicitly
+// chose a morning practice. Read it back as the BCP office instead. Delete
+// this coercion (and restore the default above) if intercessions return.
+function coerceRetiredLevel(level: OfficeLevel): OfficeLevel {
+  return level === "intercessions" ? "office" : level;
 }
 // Like getSideLevel but WITHOUT the new-user default — returns null when the
 // user has not EXPLICITLY chosen a level for this side. Use this (not

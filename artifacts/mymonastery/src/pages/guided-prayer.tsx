@@ -87,8 +87,17 @@ export default function GuidedPrayerPage() {
       const s = new URLSearchParams(window.location.search).get("side");
       if (s === "morning" || s === "evening") return s;
     } catch { /* ignore */ }
-    const morningActive = getSideLevel("morning") === "guided-prayer";
-    const eveningActive = getSideLevel("evening") === "guided-prayer";
+    // A side "carries PACT" if it's set to guided-prayer OR to examen — the
+    // customizer's evening row is LABELLED "Simple Guided Prayer" but stores
+    // the examen level, and this same page serves it. Testing only for
+    // guided-prayer meant evening never matched, so the clock branch below was
+    // skipped and a 9 PM sit opened from Practices (no ?side=) credited MORNING.
+    const carriesPact = (s: "morning" | "evening") => {
+      const lvl = getSideLevel(s);
+      return lvl === "guided-prayer" || lvl === "examen";
+    };
+    const morningActive = carriesPact("morning");
+    const eveningActive = carriesPact("evening");
     // Only one side carries PACT → that's the one, whatever the hour.
     if (morningActive && !eveningActive) return "morning";
     if (eveningActive && !morningActive) return "evening";

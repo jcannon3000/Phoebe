@@ -19,7 +19,7 @@ import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
-import { getSideContemplation } from "@/lib/officePrefs";
+import { getSideContemplation, getSideLevel } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
@@ -361,10 +361,25 @@ export default function CobreathePage() {
     // layer — their /api/me/contemplation-sides-today query is disabled, so
     // without it a guest's Morning/Evening Creation Prayer card could never
     // read "kept". Signed-in users still get the server echo below too.
-    if (getSideContemplation("morning") || getSideContemplation("evening")) {
+    // A side can carry the breath in TWO ways: the per-side contemplation flag
+    // (the customizer's Creation Prayer add-on) OR a level of "reflect-sit"
+    // with a cobreathe style (what /customize-home's "Breathing together"
+    // writes — it never sets the per-side flags). Gating on the flags alone
+    // meant the second config skipped this stamp entirely, so its card only
+    // flipped once the server echo landed — and never at all offline or for a
+    // device-local guest, whose sides-today query is disabled.
+    // Same key useRhythmState reads for `contemplationStyle`.
+    const styleIsCobreathe = (() => {
+      try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe"; } catch { return false; }
+    })();
+    const sideCarriesBreath = (s: "morning" | "evening") =>
+      getSideContemplation(s) || (styleIsCobreathe && getSideLevel(s) === "reflect-sit");
+    const morningBreath = sideCarriesBreath("morning");
+    const eveningBreath = sideCarriesBreath("evening");
+    if (morningBreath || eveningBreath) {
       attributeContemplationSit({
         explicitSide: sideParam ?? null,
-        activeSides: { morning: getSideContemplation("morning"), evening: getSideContemplation("evening") },
+        activeSides: { morning: morningBreath, evening: eveningBreath },
         kind: "cobreathe",
       });
     }

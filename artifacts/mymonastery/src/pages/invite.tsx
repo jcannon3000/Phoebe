@@ -6,15 +6,27 @@ import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 
 // ── /invite ───────────────────────────────────────────────────────────────
 //
-// Where the menu's "Invite" row (shareInvite.ts) points. A signed-in app
-// user never lands here — Universal Links open the app directly for anyone
-// who already has it installed, so this page only ever renders in a browser
-// for someone who DOESN'T.
+// Where the menu's "Invite" row (shareInvite.ts) points.
 //
-// On iOS Safari specifically, "the website" isn't the useful thing to show —
-// the App Store listing is — so we skip straight there instead of making the
-// visitor find a download link themselves. Android/desktop see the page
-// itself, since there's no Play Store listing yet to redirect to.
+// On iOS Safari, "the website" isn't the useful thing to show — the App Store
+// listing is — so we skip straight there instead of making the visitor find a
+// download link themselves. Android/desktop see the page itself, since
+// there's no Play Store listing yet to redirect to.
+//
+// NOTE: this does NOT currently skip people who already have Phoebe. That
+// would need /invite in the Universal Links association file
+// (phoebe-mobile/assets/apple-app-site-association), which today lists only
+// /communities/join/*, /m/*, /lectio/*, /moments/*, /prayer-requests/* and
+// /dashboard — and still carries the literal TEAM_ID placeholder, so
+// Universal Links don't resolve at all yet. Until that's filled in, an
+// existing user who taps an invite link lands on the App Store listing,
+// which shows OPEN rather than GET — acceptable, but not the ideal path.
+//
+// The page NEVER renders blank: we keep the full content mounted under the
+// redirect rather than returning null, so a blocked/failed navigation (a
+// content blocker, offline, a restrictive in-app WebView) leaves a usable
+// page with a tappable App Store link instead of a black screen. See the
+// "never return null while gating" invariant in the project's memory.
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921";
 const BG = "#091A10";
@@ -35,23 +47,20 @@ export default function InvitePage() {
   const { t } = useTranslation();
   // Redirect immediately, not on a delay — this page's whole job on iOS is
   // to be a way-station, not a landing experience.
-  const [redirecting] = useState(() => {
-    if (isIOSWeb()) {
-      window.location.replace(APP_STORE_URL);
-      return true;
-    }
-    return false;
+  useState(() => {
+    if (isIOSWeb()) window.location.replace(APP_STORE_URL);
+    return null;
   });
   useEffect(() => {
     document.title = "You're invited — Phoebe";
   }, []);
   const bgPhoto = useState(() => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null))[0];
 
-  // The redirect above fires synchronously before first paint on iOS — this
-  // fallback view is only what Android/desktop visitors (or a redirect that
-  // somehow didn't fire) actually see.
-  if (redirecting) return null;
-
+  // Deliberately NO `if (redirecting) return null` here. On iOS the navigation
+  // above wins long before this paints, so rendering the page costs nothing —
+  // but if the redirect is ever blocked (content blocker, offline, a locked-down
+  // in-app WebView), the visitor gets this usable page with a tappable App
+  // Store link instead of a permanently black screen.
   return (
     <div className="relative min-h-[100dvh] flex flex-col" style={{ background: BG, color: WARM, fontFamily: FONT, isolation: "isolate" }}>
       {bgPhoto && (

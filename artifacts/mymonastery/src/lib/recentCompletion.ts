@@ -22,7 +22,12 @@ export function wasRecentlyCompleted(windowMs = 15_000): boolean {
     const raw = localStorage.getItem(KEY);
     if (!raw) return false;
     const at = Number(raw);
-    return Number.isFinite(at) && Date.now() - at < windowMs;
+    if (!Number.isFinite(at)) return false;
+    const age = Date.now() - at;
+    // Bound BOTH ends: a stamp written while the device clock was ahead (or a
+    // manual clock change) would otherwise sit in the future forever and hold
+    // the Done reveal on every single Home mount from then on.
+    return age >= 0 && age < windowMs;
   } catch {
     return false;
   }

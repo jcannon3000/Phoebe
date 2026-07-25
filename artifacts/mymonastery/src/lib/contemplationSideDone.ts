@@ -66,9 +66,15 @@ export function hasContemplationSideDoneToday(
 // within a day.
 export function markContemplationSideDone(side: ContemplationSide, kind?: ContemplationKind): void {
   try {
+    // Only stamp the shared "just completed" signal on a FRESH keep. Sitting
+    // again after this side is already done re-marks it, and an unguarded
+    // stamp would blank the home's Done section for 2s for no reason. (The
+    // other two writers — markPracticeDoneToday, makeDailyReadTracker.markRead
+    // — guard the same way.)
+    const wasAlreadyDone = hasContemplationSideDoneToday(side, kind);
     localStorage.setItem(`${PREFIX}${side}`, kind ? `${todayLocalISO()}|${kind}` : todayLocalISO());
     window.dispatchEvent(new Event(CONTEMPLATION_SIDE_DONE_EVENT));
-    markRecentCompletion();
+    if (!wasAlreadyDone) markRecentCompletion();
   } catch {
     /* private mode / quota — non-fatal */
   }
