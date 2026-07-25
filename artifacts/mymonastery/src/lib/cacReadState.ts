@@ -1,4 +1,15 @@
 import { apiRequest } from "@/lib/queryClient";
+import { getSideLevel } from "@/lib/officePrefs";
+
+// Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
+// side's OFFICE when they're that side's chosen prayer — but they're also
+// readable on their own, and crediting then made the office card read "Prayed"
+// for an office the user never opened (owner's call: only credit when it IS
+// that side's anchor). The local practice flag is still stamped either way, so
+// the reading is never lost; only the office-crediting session POST is gated.
+function sideIsSetTo(side: "morning" | "evening", level: string): boolean {
+  try { return getSideLevel(side) === level; } catch { return false; }
+}
 
 // Tracks whether the user has tapped a daily-reflection link today,
 // so surfaces that link to it (the dashboard module + the Morning
@@ -114,6 +125,8 @@ export const PSALMS_READ_EVENT = "phoebe:psalms-read";
  *  five. Which form was actually prayed stays recorded in the routine's per-side
  *  level. Mirrors markOfficeBookComplete in lib/officeManualLog.ts. */
 function syncPsalmsSession(side: "morning" | "evening"): void {
+  // Only when Psalms IS this side's prayer — see sideIsSetTo above.
+  if (!sideIsSetTo(side, "psalms")) return;
   const now = new Date();
   void apiRequest("POST", "/api/prayer-sessions", {
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
@@ -142,6 +155,8 @@ export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void 
 // rollup already agrees on, so this counts everywhere with no server change.
 export const GUIDED_PRAYER_READ_EVENT = "phoebe:guided-prayer-read";
 function syncGuidedPrayerSession(side: "morning" | "evening"): void {
+  // Only when Simple Guided Prayer IS this side's prayer — see sideIsSetTo.
+  if (!sideIsSetTo(side, "guided-prayer")) return;
   const now = new Date();
   void apiRequest("POST", "/api/prayer-sessions", {
     surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
@@ -157,6 +172,32 @@ const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:ev
 const guidedPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? guidedPrayerTrackerEvening : guidedPrayerTrackerMorning);
 export function hasPrayedGuidedPrayerToday(side: "morning" | "evening" = "morning"): boolean { return guidedPrayerTrackerFor(side).hasReadToday(); }
 export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); }
+
+// Forward Day by Day USED AS a side's prayer — the office slot, not the
+// reflection card. Same shape as Psalms / Simple Guided Prayer above and for the
+// same reason: FDD's global read-flag (`fddTracker` below) is ONE key, so a
+// single read lit the reflection card AND both offices at once. These per-side
+// keys are separate from that global one — reading FDD as a reflection still
+// stamps only the reflection; taking FDD AS this side's prayer stamps this side.
+export const FDD_PRAYED_EVENT = "phoebe:fdd-prayed";
+function syncFddSession(side: "morning" | "evening"): void {
+  // Only when Forward Day by Day IS this side's prayer — see sideIsSetTo above.
+  if (!sideIsSetTo(side, "fdd")) return;
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60,
+    slidesCompleted: 99,
+    completed: true,
+    startedAt: now.toISOString(),
+    endedAt: now.toISOString(),
+  }).catch(() => { /* best effort — the local flag already credited it today */ });
+}
+const fddTrackerMorning = makeDailyReadTracker("phoebe:fdd:morning:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("morning"));
+const fddTrackerEvening = makeDailyReadTracker("phoebe:fdd:evening:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("evening"));
+const fddTrackerFor = (side: "morning" | "evening") => (side === "evening" ? fddTrackerEvening : fddTrackerMorning);
+export function hasPrayedFddToday(side: "morning" | "evening" = "morning"): boolean { return fddTrackerFor(side).hasReadToday(); }
+export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); }
 
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with
@@ -203,8 +244,14 @@ export function markFddRead(): void { fddTracker.markRead(); }
 // so coming back from the browser lands on the FDD journey page (/reflect/fdd
 // — read-aloud + sit), matching CAC's return to its companion page. Was the
 // inline reader (/menu/reflections/fdd), which just re-showed what they'd read.
-export function recordFddOpened(opts?: { flagReturn?: boolean }): void {
+// `side` is passed ONLY when the reader arrived here as that side's PRAYER (the
+// Morning/Evening card → /begin-prayer → the home FDD slot). It additionally
+// stamps that side's day-flag (and, gated on the side really being set to fdd,
+// POSTs the office-crediting session). Omit it on the plain reflection card so a
+// reflection read never ticks an office dot.
+export function recordFddOpened(opts?: { flagReturn?: boolean; side?: "morning" | "evening" }): void {
   markFddRead();
+  if (opts?.side) markFddPrayed(opts.side);
   if (opts?.flagReturn) flagReflectionReturn("/reflect/fdd");
 }
 

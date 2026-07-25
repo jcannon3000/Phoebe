@@ -6,6 +6,7 @@ import {
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
+  hasPrayedFddToday, FDD_PRAYED_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -204,8 +205,12 @@ export function useRhythmState(): RhythmState {
   // (not just a reflection) must light that side's done-state. Tracked
   // reactively with the same robust return-to-app signals as the reflection
   // read-state.
+  // `fdd` is the GLOBAL reflection flag (the reflection card reads it). The
+  // per-side `fddMorning`/`fddEvening` flags are what an office side keys on —
+  // the global one lit BOTH sides plus the reflection card off a single read.
   const [prayerRead, setPrayerRead] = useState(() => ({
     fdd: hasReadFddToday(),
+    fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
     psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
     guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
   }));
@@ -214,6 +219,7 @@ export function useRhythmState(): RhythmState {
       setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
       setPrayerRead({
         fdd: hasReadFddToday(),
+        fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
         psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
         guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
       });
@@ -230,6 +236,7 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(SSJE_READ_EVENT, recheck);
     window.addEventListener(PSALMS_READ_EVENT, recheck);
     window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
+    window.addEventListener(FDD_PRAYED_EVENT, recheck);
     window.addEventListener("visibilitychange", recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
@@ -255,6 +262,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(SSJE_READ_EVENT, recheck);
       window.removeEventListener(PSALMS_READ_EVENT, recheck);
       window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
+      window.removeEventListener(FDD_PRAYED_EVENT, recheck);
       window.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
@@ -390,7 +398,13 @@ export function useRhythmState(): RhythmState {
   }, []);
 
   const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
-    queryKey: ["/api/me/office-history-week"],
+    // Date-scoped so a day rollover always re-fetches instead of serving the
+    // pre-midnight cached week (same reasoning as contemplation-stats' key).
+    // Without `day` here, an app backgrounded overnight came back holding
+    // YESTERDAY's array — whose last row is yesterday — and Morning/Evening read
+    // "Prayed" on a fresh day. `day` is recomputed from the wall clock every
+    // render, so the key changes the moment the date rolls over.
+    queryKey: ["/api/me/office-history-week", day],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
     staleTime: 30_000,
     enabled: !guest,
@@ -544,7 +558,13 @@ export function useRhythmState(): RhythmState {
     : (dpl === "intercessions" || ml === "intercessions" || el === "intercessions") ? "community"
     : "devotion";
 
-  const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
+  // The LAST row of the week is only today's when its ymd IS today. The re-keyed
+  // query above refetches at rollover, but React Query still hands back the
+  // previous data while that refetch is in flight (and an offline/persisted
+  // cache may never refresh) — so guard the read too, or a stale last row keeps
+  // the offices marked "Prayed" into the new day. Same check dashboard.tsx makes.
+  const lastOfficeDay = officeHistory?.days?.[officeHistory.days.length - 1];
+  const todayOffice = lastOfficeDay?.ymd === day ? lastOfficeDay : undefined;
   // A side is kept when the practice that side is SET TO has been done. Every
   // level that can be a side's prayer needs a clause here — a missing one means
   // that side can never be marked kept and its dot stays unlit forever, which
@@ -560,12 +580,12 @@ export function useRhythmState(): RhythmState {
   const morningSatKept = contemplationSideDone.morning || !!sidesToday?.morning;
   const eveningSatKept = contemplationSideDone.evening || !!sidesToday?.evening;
   const morningDone = !!todayOffice?.morning || officeLocal.morning
-    || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalmsMorning)
+    || (ml === "fdd" && prayerRead.fddMorning) || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
     || (ml === "examen" && examenKept)
     || (ml === "reflect-sit" && morningSatKept);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
-    || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalmsEvening)
+    || (el === "fdd" && prayerRead.fddEvening) || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
     || (el === "examen" && examenKept)
     || (el === "reflect-sit" && eveningSatKept);

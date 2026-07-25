@@ -696,6 +696,17 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
   "/psalms", "/contemplation", "/examen", "/guided-prayer", "/reflect/fdd", "/customize",
+  // Every one of these is reachable from a home card or menu row the light
+  // tier already SEES, so bouncing the tap to the dashboard was a dead end.
+  // (This gate is not guests-only: useGuestMode is true for any signed-in
+  // non-beta, non-community-admin account, so the bounce hit ordinary users.)
+  // All personal practices — a reflection reader, a listening session, and
+  // three tap-to-log surfaces — with no social surface between them.
+  "/reflect/cac", "/listening", "/walk-log", "/reading-log", "/podcast-log",
+  // The branching questionnaire that ENDS in a rule — reached from inside the
+  // already-allowlisted /rule-of-life flow, so excluding it broke that flow
+  // partway through.
+  "/find-your-rhythm",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts

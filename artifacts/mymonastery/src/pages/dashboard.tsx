@@ -176,8 +176,23 @@ function useOfficeReadingsLine(side: "morning" | "evening", level: "office" | "d
   const today = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
   const { data } = useQuery<{ psalms?: string[]; lessons?: string[] }>({
     queryKey: ["/api/office/readings", side, level, today],
-    queryFn: () => apiRequest("GET", `/api/office/readings?side=${side}&level=${level}&date=${today}`),
+    // NEVER resolve undefined: React Query throws "Query data cannot be
+    // undefined" and logs an error on every render. That happens for real —
+    // an older server without this route falls through to the SPA, so
+    // apiRequest hands back a non-JSON body. Coerce to an empty shape; the
+    // caller then just renders nothing.
+    queryFn: async () => {
+      try {
+        const r = await apiRequest<{ psalms?: string[]; lessons?: string[] } | undefined>(
+          "GET", `/api/office/readings?side=${side}&level=${level}&date=${today}`,
+        );
+        return r && typeof r === "object" ? r : {};
+      } catch {
+        return {};
+      }
+    },
     staleTime: 30 * 60_000,
+    retry: false,
   });
   const psalms = (data?.psalms ?? []).filter((p) => !!p && p.trim().length > 0);
   const lessons = (data?.lessons ?? []).filter((l) => !!l && l.trim().length > 0);
@@ -2865,6 +2880,18 @@ function PodcastHomeCard({ show }: { show: FollowedShow }) {
 // distinct from the brand-forest CAC card next to it.
 function FddHomeCard() {
   const [hasRead, setHasRead] = useState(() => hasReadFddToday());
+  // Did the reader get here from a Morning/Evening card whose prayer IS Forward
+  // Day by Day (/begin-prayer?side=… → /dashboard?fdd=side)? Then this card is
+  // standing in for that side's office, and taking it keeps that ONE side.
+  // Read once at mount, and only honored while that side is still set to fdd.
+  const [praySide] = useState<"morning" | "evening" | undefined>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("fdd");
+      if (v !== "morning" && v !== "evening") return undefined;
+      return getSideLevel(v) === "fdd" ? v : undefined;
+    } catch { return undefined; }
+  });
+  const recordOpened = () => recordFddOpened({ side: praySide });
   useEffect(() => {
     const refresh = () => setHasRead(hasReadFddToday());
     window.addEventListener(FDD_READ_EVENT, refresh);
@@ -2911,11 +2938,11 @@ function FddHomeCard() {
         showHref: "/podcast/forward-day-by-day",
       });
       // Listening to today's FDD counts as taking it — flip the card to done.
-      recordFddOpened();
+      recordOpened();
       return;
     }
     // Written: mark read only once the reader is closed (see CAC card above).
-    openExternalThenMarkRead(FDD_TODAY_URL, recordFddOpened, { reader: true });
+    openExternalThenMarkRead(FDD_TODAY_URL, recordOpened, { reader: true });
   };
   const pillLabel = mode === "audio"
     ? (hasRead ? "Listen again" : "Listen")

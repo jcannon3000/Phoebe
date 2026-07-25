@@ -108,7 +108,13 @@ export default function BeginPrayerPage() {
     // opens the reading / plays the audio per the user's choice, so land on the
     // home rather than the generic prayer chooser.
     if (defaultPrayerLevel === "fdd") {
-      setLocation("/dashboard", { replace: true });
+      // Carry the SIDE through: the home card is the only surface that knows
+      // whether the reader took FDD by reading or by audio, but it can't know
+      // which side sent them. With ?fdd=<side> the card stamps that side's
+      // day-flag when it's actually opened — so taking FDD as morning prayer
+      // keeps the morning, and doesn't also tick the evening (or the FDD
+      // reflection card, which stays its own separate anchor).
+      setLocation(`/dashboard?fdd=${side}`, { replace: true });
       return;
     }
     // Creation Prayer IS this side's prayer → the creation-focused devotion
