@@ -692,7 +692,10 @@ function PilotGate({ children }: { children: ReactNode }) {
 const GUEST_ALLOWED_EXACT = new Set<string>([
   "/", "/dashboard", "/daily-progress",
   "/menu", "/menu/bcp", "/menu/practices", "/menu/learn", "/menu/reflections", "/menu/resources",
-  "/psalms", "/contemplation", "/reflect/fdd", "/customize",
+  // Practices that need no account to pray — the Examen and the Simple Guided
+  // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
+  // only adds the server-side session log.
+  "/psalms", "/contemplation", "/examen", "/guided-prayer", "/reflect/fdd", "/customize",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts

@@ -79,11 +79,9 @@ export default function ExamenPage() {
   // a bundled leaf on native (pickWideBackground returns null there).
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
+  // Signed-in sits log a prayer session; a signed-out / guest visitor still
+  // prays the Examen, just without the server-side log.
   usePrayerSession(user ? "examen" : null);
-
-  useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
-  }, [user, isLoading, setLocation]);
 
   // Opening swell once, when the user begins (leaving the intro).
   // Fire-and-forget — the helper handles autoplay-policy unlock.
@@ -100,7 +98,11 @@ export default function ExamenPage() {
     }
   }, [step]);
 
-  if (isLoading || !user) return null;
+  // The Examen is open to everyone — signed in or not. It used to bounce a
+  // signed-out visitor to "/" and render bare null while auth resolved, which
+  // meant tapping into the practice could land on the dashboard (or, if
+  // /auth/me stalled, on nothing at all). The practice needs no account; only
+  // the session log below is gated on `user`.
 
   const isIntro = step === 0;
   const isClosing = step === 6;
@@ -199,76 +201,75 @@ export default function ExamenPage() {
           position: "relative", zIndex: 1,
         }}
       >
+        {/* ONE keyed child, always — never three sibling conditionals. With
+            `mode="wait"` AnimatePresence must resolve a single exiting child
+            before mounting the next; given `{a && …}{b && …}{c && …}` the
+            false branches make that reconciliation ambiguous and it can wedge,
+            leaving the OLD slide mounted and the new one never entering (that
+            bug: tapping Begin advanced the dots but the intro copy stayed on
+            screen). Keying one wrapper by `step` makes the swap unambiguous. */}
+        {/* Grid with a single cell so the outgoing and incoming slides occupy
+            the SAME space rather than stacking and shoving the layout down. */}
+        <div style={{ display: "grid", width: "100%", justifyItems: "center" }}>
         <AnimatePresence mode="wait">
-          {isIntro && (
-            <motion.div
-              key="intro"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
-            >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("examen.eyebrow")}
-              </p>
-              <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
-                {t("examen.title")}
-              </h1>
-              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
-                {t("examen.intro_body")}
-              </p>
-            </motion.div>
-          )}
+          <motion.div
+            key={`examen-step-${step}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            style={{ gridArea: "1 / 1", maxWidth: 480, textAlign: "center" }}
+          >
+            {isIntro && (
+              <>
+                <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+                  {t("examen.eyebrow")}
+                </p>
+                <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
+                  {t("examen.title")}
+                </h1>
+                <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
+                  {t("examen.intro_body")}
+                </p>
+              </>
+            )}
 
-          {movement && (
-            <motion.div
-              key={`movement-${movement.n}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
-            >
-              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("examen.movement_n_of_m", { n: movement.n, total: MOVEMENTS.length })}
-              </p>
-              <h2
-                className="title-glow-breathe"
-                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}
-              >
-                {movement.title}
-              </h2>
-              <p style={{ color: "rgba(168,197,160,0.92)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
-                {movement.lead}
-              </p>
-              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
-                {movement.body}
-              </p>
-            </motion.div>
-          )}
+            {movement && (
+              <>
+                <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+                  {t("examen.movement_n_of_m", { n: movement.n, total: MOVEMENTS.length })}
+                </p>
+                <h2
+                  className="title-glow-breathe"
+                  style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}
+                >
+                  {movement.title}
+                </h2>
+                <p style={{ color: "rgba(168,197,160,0.92)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
+                  {movement.lead}
+                </p>
+                <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
+                  {movement.body}
+                </p>
+              </>
+            )}
 
-          {isClosing && (
-            <motion.div
-              key="closing"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
-            >
-              <p style={{ fontSize: 40, marginBottom: 18 }} aria-hidden>
-                🌿
-              </p>
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
-                {t("examen.day_is_held")}
-              </h2>
-              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
-                {t("examen.closing_body")}
-              </p>
-            </motion.div>
-          )}
+            {isClosing && (
+              <>
+                <p style={{ fontSize: 40, marginBottom: 18 }} aria-hidden>
+                  🌿
+                </p>
+                <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
+                  {t("examen.day_is_held")}
+                </h2>
+                <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
+                  {t("examen.closing_body")}
+                </p>
+              </>
+            )}
+          </motion.div>
         </AnimatePresence>
+        </div>
       </main>
 
       {/* Bottom controls — the office band: quiet movement dots where the deck
