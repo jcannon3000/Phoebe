@@ -18,6 +18,7 @@ export * from "./lectio";
 export * from "./calendar_subscriptions";
 export * from "./groups";
 export * from "./group_service_schedules";
+export * from "./group_opportunities";
 export * from "./bell_notifications";
 export * from "./feedback";
 export * from "./user_mutes";

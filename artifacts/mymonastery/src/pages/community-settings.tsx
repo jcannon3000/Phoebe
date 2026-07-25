@@ -30,6 +30,9 @@ type Group = {
   // only; members of a pilot group are the only users who keep the full app
   // once the guest flag flips.
   isPilotGroup?: boolean;
+  // Listed on /communities/browse for anyone signed in to find and request
+  // to join. Off by default — most communities are invite-only.
+  isPublic?: boolean;
 };
 
 type Intention = {
@@ -57,6 +60,8 @@ export default function CommunitySettingsPage() {
   // ── Contemplation community (beta) admin controls ────────────────────
   const [isContemplation, setIsContemplation] = useState(false);
   const [contemplationGoalMinutes, setContemplationGoalMinutes] = useState(20);
+  // ── Public directory listing ──────────────────────────────────────────
+  const [isPublic, setIsPublic] = useState(false);
   const GOAL_PRESETS = [10, 15, 20, 30];
   const [saved, setSaved] = useState(false);
 
@@ -142,6 +147,7 @@ export default function CommunitySettingsPage() {
       setIsPrayerCircle(!!group.isPrayerCircle);
       setIsContemplation(group.focus === "contemplation");
       if (group.contemplationGoalMinutes) setContemplationGoalMinutes(group.contemplationGoalMinutes);
+      setIsPublic(!!group.isPublic);
     }
   }, [group]);
 
@@ -162,6 +168,7 @@ export default function CommunitySettingsPage() {
       // clears the goal on disable.
       focus: isContemplation ? "contemplation" : null,
       contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : null,
+      isPublic,
     }),
     onSuccess: () => {
       setSaved(true);
@@ -565,6 +572,38 @@ export default function CommunitySettingsPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* ── Public directory listing ─────────────────────────────────────
+            When on, this community shows up on /communities/browse for any
+            signed-in user to find by name and request to join — the
+            "parish directory" experience. Defaults ON at the schema level
+            (groups.is_public defaults true) for every community, including
+            this one — this toggle is the first UI that lets an admin turn
+            it OFF for a community that should stay invite-only. Saved with
+            the regular Save button below (not its own immediate PATCH,
+            unlike the super-admin pilot toggle). */}
+        <div
+          className="rounded-xl px-4 py-3.5 mb-4"
+          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={e => setIsPublic(e.target.checked)}
+              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+              style={{ accentColor: "#2D5E3F" }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                {t("community_settings.public_listing", { defaultValue: "List in the community directory" })}
+              </p>
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                {t("community_settings.public_listing_desc", { defaultValue: "Anyone signed in can find this community by name and request to join. On by default — turn off to keep this community invite-only." })}
+              </p>
+            </div>
+          </label>
         </div>
 
         {/* ── Pilot group (app super admins only) ───────────────────────────

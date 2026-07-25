@@ -2587,6 +2587,40 @@ export async function migrate() {
       ON group_weekly_pdfs (group_id)
     `);
 
+    // ── Group "ways to get involved" opportunities — rebuilt from the
+    //    deleted Phoebe Parish system's parish_opportunities /
+    //    parish_opportunity_interests tables (094181c0), scoped to a group
+    //    instead of a parish feed. An admin publishes opportunities (worship
+    //    roles, service ministries, anything); members tap "I'm interested".
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_opportunities (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        category TEXT NOT NULL DEFAULT 'other',
+        schedule_note TEXT,
+        contact TEXT,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        archived_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_opportunities_group ON group_opportunities (group_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_opportunity_interests (
+        id SERIAL PRIMARY KEY,
+        opportunity_id INTEGER NOT NULL REFERENCES group_opportunities(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT,
+        email TEXT,
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_group_opp_interest_pair ON group_opportunity_interests (opportunity_id, user_id)`);
+
     // ── Creator seasons — a creator turns the practice their content inspired
     //    into a bounded 2–4 week season: one-tap join link applies the practice
     //    (prescribed-routines spec), a cohort-shared Day-N clock, daily

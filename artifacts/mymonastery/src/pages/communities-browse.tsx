@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
+import { Search } from "lucide-react";
 
 interface PublicGroup {
   id: number;
@@ -37,9 +38,24 @@ export default function CommunitiesBrowsePage() {
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
+  // Debounce the search box so we're not firing a request on every
+  // keystroke — matches the server's own 2-char minimum (a 1-char query
+  // is ignored there anyway, so no point round-tripping for it).
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
   const { data, isLoading: groupsLoading } = useQuery<PublicGroupsResponse>({
-    queryKey: ["/api/groups/public"],
-    queryFn: () => apiRequest("GET", "/api/groups/public"),
+    queryKey: ["/api/groups/public", debouncedSearch],
+    queryFn: () => apiRequest(
+      "GET",
+      debouncedSearch.length >= 2
+        ? `/api/groups/public?q=${encodeURIComponent(debouncedSearch)}`
+        : "/api/groups/public",
+    ),
     enabled: !!user,
   });
 
@@ -107,6 +123,22 @@ export default function CommunitiesBrowsePage() {
           </Link>
         </div>
 
+        <div className="relative">
+          <Search
+            size={15}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: "rgba(143,175,150,0.6)" }}
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t("communities_browse.search_placeholder", { defaultValue: "Search communities by name" })}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none"
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+          />
+        </div>
+
         {groupsLoading ? (
           <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>
             {t("communities_browse.loading")}
@@ -120,7 +152,9 @@ export default function CommunitiesBrowsePage() {
             }}
           >
             <p className="text-sm" style={{ color: "#8FAF96" }}>
-              {t("communities_browse.empty_title")}
+              {debouncedSearch.length >= 2
+                ? t("communities_browse.no_results", { defaultValue: "No communities match that search." })
+                : t("communities_browse.empty_title")}
             </p>
             <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>
               {t("communities_browse.empty_body")}

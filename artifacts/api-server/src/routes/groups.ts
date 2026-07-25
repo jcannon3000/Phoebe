@@ -30,6 +30,8 @@ import {
   prayerSessionsTable,
   practiceCompletionTable,
   practiceLogEntriesTable,
+  groupOpportunitiesTable,
+  groupOpportunityInterestsTable,
 } from "@workspace/db";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
 import { sanitizeWeeklyPayload } from "../lib/weeklyPayload";
@@ -1286,6 +1288,9 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     // Contemplation template: null clears it back to a standard community.
     focus: z.enum(["contemplation"]).nullable().optional(),
     contemplationGoalMinutes: z.number().int().min(1).max(180).nullable().optional(),
+    // Listed on /communities/browse for anyone to find and request to join.
+    // Any group admin can flip this (not super-admin-only, unlike isPilotGroup).
+    isPublic: z.boolean().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -1295,6 +1300,7 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   if (parsed.data.description !== undefined) updates.description = parsed.data.description;
   if (parsed.data.emoji !== undefined) updates.emoji = parsed.data.emoji || null;
   if (parsed.data.calendarUrl !== undefined) updates.calendarUrl = parsed.data.calendarUrl || null;
+  if (parsed.data.isPublic !== undefined) updates.isPublic = parsed.data.isPublic;
 
   // Circle toggle logic. Compose the effective-after-update values so we
   // can enforce "intention required when circle is on" regardless of which
@@ -3849,6 +3855,13 @@ router.get("/groups/public", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    // Optional name search: `?q=` filters the directory by group name. A short
+    // query (< 2 chars) is ignored so the browse page still shows the full
+    // list. LIKE wildcards are escaped so a typed %/_ can't widen the match set.
+    const q = ((req.query.q as string) || "").trim();
+    const nameFilter = q.length >= 2
+      ? sql`${groupsTable.name} ILIKE ${`%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`}`
+      : undefined;
     const rows = await db
       .select({
         id: groupsTable.id,
@@ -3860,7 +3873,10 @@ router.get("/groups/public", async (req, res): Promise<void> => {
         createdAt: groupsTable.createdAt,
       })
       .from(groupsTable)
-      .where(eq(groupsTable.isPublic, true))
+      .where(and(
+        eq(groupsTable.isPublic, true),
+        ...(nameFilter ? [nameFilter] : []),
+      ))
       .orderBy(desc(groupsTable.createdAt));
 
     if (rows.length === 0) { res.json({ groups: [] }); return; }
@@ -4658,6 +4674,274 @@ router.get("/groups/:slug/pulse", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[group-pulse] failed:", err);
     res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ─── "Ways to get involved" opportunities ──────────────────────────────────
+// An admin publishes opportunities (worship roles, service ministries,
+// community groups, anything) scoped to their group; members tap "I'm
+// interested", which notifies the group's admins. Rebuilt from the deleted
+// Phoebe Parish system's identically-shaped feature (commit 094181c0),
+// scoped to groupId instead of a parish's prayerFeedId. Reads require group
+// membership (any tier — follower or above); writes are requireAdmin.
+
+const OPP_CATEGORIES = ["worship", "serve", "community", "other"] as const;
+
+const opportunityBodySchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(2000).optional(),
+  category: z.enum(OPP_CATEGORIES).default("other"),
+  scheduleNote: z.string().trim().max(120).optional(),
+  contact: z.string().trim().max(200).optional(),
+});
+
+// GET /api/groups/:slug/opportunities — the member board: every non-archived
+// opportunity for this group, with an interest count and whether the viewer
+// has raised their hand. Open to any joined member (follower or above).
+router.get("/groups/:slug/opportunities", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+  try {
+    const opps = await db
+      .select()
+      .from(groupOpportunitiesTable)
+      .where(and(
+        eq(groupOpportunitiesTable.groupId, result.group.id),
+        isNull(groupOpportunitiesTable.archivedAt),
+      ))
+      .orderBy(asc(groupOpportunitiesTable.createdAt));
+
+    const oppIds = opps.map((o) => o.id);
+    const counts = new Map<number, number>();
+    const mine = new Set<number>();
+    if (oppIds.length > 0) {
+      const countRows = await db
+        .select({ opportunityId: groupOpportunityInterestsTable.opportunityId, n: sql<number>`count(*)::int` })
+        .from(groupOpportunityInterestsTable)
+        .where(inArray(groupOpportunityInterestsTable.opportunityId, oppIds))
+        .groupBy(groupOpportunityInterestsTable.opportunityId);
+      for (const r of countRows) counts.set(r.opportunityId, Number(r.n));
+      const mineRows = await db
+        .select({ opportunityId: groupOpportunityInterestsTable.opportunityId })
+        .from(groupOpportunityInterestsTable)
+        .where(and(
+          inArray(groupOpportunityInterestsTable.opportunityId, oppIds),
+          eq(groupOpportunityInterestsTable.userId, user.id),
+        ));
+      for (const r of mineRows) mine.add(r.opportunityId);
+    }
+
+    res.json({
+      isAdmin: isAdminRole(result.member.role),
+      opportunities: opps.map((o) => ({
+        id: o.id,
+        title: o.title,
+        description: o.description,
+        category: o.category,
+        scheduleNote: o.scheduleNote,
+        contact: o.contact,
+        interestCount: counts.get(o.id) ?? 0,
+        viewerInterested: mine.has(o.id),
+      })),
+    });
+  } catch (err) {
+    console.error("[groups] list opportunities failed:", err);
+    res.status(500).json({ error: "Failed to load opportunities." });
+  }
+});
+
+// POST /api/groups/:slug/admin/opportunities — create (admin only).
+router.post("/groups/:slug/admin/opportunities", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const parsed = opportunityBodySchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  const { title, description, category, scheduleNote, contact } = parsed.data;
+  try {
+    const [created] = await db.insert(groupOpportunitiesTable).values({
+      groupId: result.group.id,
+      title,
+      description: description || null,
+      category,
+      scheduleNote: scheduleNote || null,
+      contact: contact || null,
+      createdByUserId: user.id,
+    }).returning();
+    res.status(201).json({ ok: true, id: created.id });
+  } catch (err) {
+    console.error("[groups] create opportunity failed:", err);
+    res.status(500).json({ error: "Failed to create." });
+  }
+});
+
+// PUT /api/groups/:slug/admin/opportunities/:id — edit (admin only).
+router.put("/groups/:slug/admin/opportunities/:id", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = opportunityBodySchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  const { title, description, category, scheduleNote, contact } = parsed.data;
+  try {
+    const [opp] = await db.select().from(groupOpportunitiesTable).where(eq(groupOpportunitiesTable.id, id));
+    if (!opp || opp.groupId !== result.group.id) { res.status(404).json({ error: "Not found" }); return; }
+    await db.update(groupOpportunitiesTable).set({
+      title, description: description || null, category,
+      scheduleNote: scheduleNote || null, contact: contact || null,
+      updatedAt: new Date(),
+    }).where(eq(groupOpportunitiesTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[groups] edit opportunity failed:", err);
+    res.status(500).json({ error: "Failed to save." });
+  }
+});
+
+// POST /api/groups/:slug/admin/opportunities/:id/archive — soft-archive (admin only).
+router.post("/groups/:slug/admin/opportunities/:id/archive", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [opp] = await db.select().from(groupOpportunitiesTable).where(eq(groupOpportunitiesTable.id, id));
+    if (!opp || opp.groupId !== result.group.id) { res.status(404).json({ error: "Not found" }); return; }
+    await db.update(groupOpportunitiesTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(groupOpportunitiesTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[groups] archive opportunity failed:", err);
+    res.status(500).json({ error: "Failed to remove." });
+  }
+});
+
+// GET /api/groups/:slug/admin/opportunities/:id/interests — who raised
+// their hand (admin only).
+router.get("/groups/:slug/admin/opportunities/:id/interests", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [opp] = await db.select().from(groupOpportunitiesTable).where(eq(groupOpportunitiesTable.id, id));
+    if (!opp || opp.groupId !== result.group.id) { res.status(404).json({ error: "Not found" }); return; }
+    const rows = await db
+      .select()
+      .from(groupOpportunityInterestsTable)
+      .where(eq(groupOpportunityInterestsTable.opportunityId, id))
+      .orderBy(desc(groupOpportunityInterestsTable.createdAt));
+    res.json({
+      title: opp.title,
+      interests: rows.map((r) => ({
+        name: r.name, email: r.email, note: r.note, at: r.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error("[groups] list opportunity interests failed:", err);
+    res.status(500).json({ error: "Failed to load." });
+  }
+});
+
+// POST /api/groups/:slug/opportunities/:id/interest — a member raises their
+// hand. Idempotent (unique on opportunity+user); notifies group admins on
+// the FIRST raise only. Rate-limited so the button can't spam admin lock
+// screens.
+router.post(
+  "/groups/:slug/opportunities/:id/interest",
+  perUserRateLimit("group_opportunity_interest", { max: 40, windowMs: 60 * 60 * 1000 }),
+  async (req, res): Promise<void> => {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const slug = String(req.params.slug ?? "");
+    const result = await requireMember(slug, user.id);
+    if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const note = typeof (req.body as { note?: unknown })?.note === "string"
+      ? (req.body as { note: string }).note.trim().slice(0, 500) : null;
+    try {
+      const [opp] = await db.select().from(groupOpportunitiesTable).where(eq(groupOpportunitiesTable.id, id));
+      if (!opp || opp.archivedAt || opp.groupId !== result.group.id) { res.status(404).json({ error: "Not found" }); return; }
+
+      const [existing] = await db.select({ id: groupOpportunityInterestsTable.id })
+        .from(groupOpportunityInterestsTable)
+        .where(and(
+          eq(groupOpportunityInterestsTable.opportunityId, id),
+          eq(groupOpportunityInterestsTable.userId, user.id),
+        ));
+      const [userRow] = await db.select({ name: usersTable.name, email: usersTable.email })
+        .from(usersTable).where(eq(usersTable.id, user.id));
+      await db.insert(groupOpportunityInterestsTable).values({
+        opportunityId: id,
+        userId: user.id,
+        name: userRow?.name ?? null,
+        email: userRow?.email ?? null,
+        note,
+      }).onConflictDoUpdate({
+        target: [groupOpportunityInterestsTable.opportunityId, groupOpportunityInterestsTable.userId],
+        set: { name: userRow?.name ?? null, note },
+      });
+
+      // Notify the group's admins on the first hand-raise only.
+      if (!existing) {
+        const adminRows = await db.select({ userId: groupMembersTable.userId })
+          .from(groupMembersTable)
+          .where(and(
+            eq(groupMembersTable.groupId, result.group.id),
+            or(eq(groupMembersTable.role, "admin"), eq(groupMembersTable.role, "hidden_admin")),
+            isNotNull(groupMembersTable.joinedAt),
+          ));
+        const adminIds = adminRows
+          .map((r) => r.userId)
+          .filter((uid): uid is number => typeof uid === "number" && uid !== user.id);
+        if (adminIds.length > 0) {
+          const who = (userRow?.name || "Someone").split(/\s+/)[0] || "Someone";
+          void sendPushToUsers(adminIds, {
+            title: `${who} is interested`,
+            body: `"${opp.title}" — tap to see who's raising their hand.`,
+            path: `/communities/${slug}?tab=hub`,
+            threadId: "group-opportunity",
+            collapseId: `group-opp-${id}`,
+          }).catch((err) => console.warn("[groups] interest push failed:", err));
+        }
+      }
+      res.status(201).json({ ok: true });
+    } catch (err) {
+      console.error("[groups] express interest failed:", err);
+      res.status(500).json({ error: "Failed to submit." });
+    }
+  },
+);
+
+// DELETE /api/groups/:slug/opportunities/:id/interest — withdraw interest.
+router.delete("/groups/:slug/opportunities/:id/interest", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(groupOpportunityInterestsTable).where(and(
+      eq(groupOpportunityInterestsTable.opportunityId, id),
+      eq(groupOpportunityInterestsTable.userId, user.id),
+    ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[groups] withdraw interest failed:", err);
+    res.status(500).json({ error: "Failed." });
   }
 });
 
