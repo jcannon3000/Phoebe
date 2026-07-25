@@ -28,6 +28,10 @@ export default function MenuPracticesPage() {
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
           { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
+          // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
+          // ?side=), so it logs as a standalone practice rather than closing
+          // out a morning/evening anchor.
+          { emoji: "🙏🏽", label: "Simple Guided Prayer", sub: "Praise, ask, confess, give thanks", onClick: () => go("/guided-prayer") },
           // Guided courses now live in their own "Learn" menu tab.
           { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation", onClick: () => go("/cobreathe") },
           // Prayers for the Climate sits at the bottom (behind CREATION_PRAYER_ENABLED).
