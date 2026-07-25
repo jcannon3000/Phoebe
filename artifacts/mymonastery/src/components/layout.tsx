@@ -8,6 +8,7 @@ import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react"
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { getPracticeSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
+import { shareInvite } from "@/lib/shareInvite";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
@@ -123,6 +124,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // reach the full app through it). See memory "project_public_no_login".
   const { isGuest } = useGuestMode();
   const { t } = useTranslation();
+  // "Invite" row feedback — flashes a "Link copied" sub-line only on the
+  // clipboard-fallback path (native share + Web Share already give their own
+  // OS-level acknowledgement).
+  const [inviteJustCopied, setInviteJustCopied] = useState(false);
+  async function handleInvite() {
+    const { copied } = await shareInvite();
+    if (copied) {
+      setInviteJustCopied(true);
+      window.setTimeout(() => setInviteJustCopied(false), 1800);
+    }
+  }
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
   // drawer open / Layout mount used to trip NetworkBanner's "flaky"
@@ -398,6 +410,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
             {/* ── Account + info footer ── */}
             <div className="px-5 py-3 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+              {/* Invite — everyone sees it, guests included; sharing Phoebe
+                  doesn't need an account. */}
+              <MenuRow
+                emoji="💌"
+                label={t("menu.invite", { defaultValue: "Invite" })}
+                sub={inviteJustCopied ? t("menu.invite_copied", { defaultValue: "Link copied ✓" }) : undefined}
+                onClick={handleInvite}
+              />
               <MenuRow emoji="⚙️" label={t("menu.settings")} onClick={() => navigate("/settings")} />
               {showAdminTools && (
                 <MenuRow emoji="🔧" label={t("menu.admin_tools")} onClick={() => navigate("/admin/tools")} />
