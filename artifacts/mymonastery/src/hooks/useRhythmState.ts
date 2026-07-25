@@ -545,12 +545,30 @@ export function useRhythmState(): RhythmState {
     : "devotion";
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
+  // A side is kept when the practice that side is SET TO has been done. Every
+  // level that can be a side's prayer needs a clause here — a missing one means
+  // that side can never be marked kept and its dot stays unlit forever, which
+  // is exactly what happened to `examen` and `creation` (reflect-sit): they
+  // were selectable as a side's prayer but had no clause, so the card was
+  // permanently open. `examen` is tracked by the shared practice flag;
+  // `reflect-sit`/creation by the per-side contemplation day-flag (which, since
+  // today, also carries WHICH contemplative practice was kept).
+  const examenKept = practiceLocal.examen || serverDone("examen");
+  // Same expression as morning/eveningContemplationDone below — inlined because
+  // those are declared further down (after the per-side active flags) and this
+  // block runs first.
+  const morningSatKept = contemplationSideDone.morning || !!sidesToday?.morning;
+  const eveningSatKept = contemplationSideDone.evening || !!sidesToday?.evening;
   const morningDone = !!todayOffice?.morning || officeLocal.morning
     || (ml === "fdd" && prayerRead.fdd) || (ml === "psalms" && prayerRead.psalmsMorning)
-    || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning);
+    || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
+    || (ml === "examen" && examenKept)
+    || (ml === "reflect-sit" && morningSatKept);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
     || (el === "fdd" && prayerRead.fdd) || (el === "psalms" && prayerRead.psalmsEvening)
-    || (el === "guided-prayer" && prayerRead.guidedPrayerEvening);
+    || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
+    || (el === "examen" && examenKept)
+    || (el === "reflect-sit" && eveningSatKept);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
   // (a Cobreathe breath logs a contemplation sit, so it's already counted

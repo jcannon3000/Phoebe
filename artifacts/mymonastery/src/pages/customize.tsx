@@ -149,8 +149,12 @@ export default function CustomizePage() {
       setSideContemplation("morning", false);
       setSideContemplation("evening", false);
       try { localStorage.setItem("phoebe:contemplation-style", "silent"); } catch { /* ignore */ }
+      // Simple Guided Prayer is a MORNING shape — PACT (Praise · Ask · Confess
+      // · Thanks) opens the day; the day is closed by the Examen, the classic
+      // evening review. So this one pick programs BOTH sides, rather than
+      // praying PACT twice. Every other choice stays the same on both sides.
       setSideLevel("morning", choice);
-      setSideLevel("evening", choice);
+      setSideLevel("evening", choice === "guided-prayer" ? "examen" : choice);
       setSideEntry("morning", "read");
       setSideEntry("evening", "read");
       if (choice === "psalms") setPsalmCycle("office");
