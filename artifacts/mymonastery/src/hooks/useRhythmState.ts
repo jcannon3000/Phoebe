@@ -11,7 +11,19 @@ import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceComplet
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
-import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
+import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
+
+// The contemplative practice the user's rhythm is set to — the Creation Prayer
+// breath or the silent sit. Read straight from localStorage (same key the
+// `contemplationStyle` value below uses) so the per-side done-flag check can
+// run inside state initializers/listeners that sit above that computation.
+function currentContemplationKind(): ContemplationKind {
+  try {
+    return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent";
+  } catch {
+    return "silent";
+  }
+}
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -346,17 +358,22 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
-  // Per-side contemplation completion (which side's silent sit is kept today) —
-  // its own day-flag so an undone evening sit stays in Next even after the
-  // morning sit met the daily minutes goal.
+  // Per-side contemplation completion (which side's sit is kept today) — its
+  // own day-flag so an undone evening sit stays in Next even after the morning
+  // sit met the daily minutes goal. The flag is matched against the user's
+  // contemplation STYLE: a side styled as Creation Prayer (the Co-Breathe
+  // breath) is only kept by the breath, and a side styled as the silent sit is
+  // only kept by a silent sit — they're different practices, so keeping one
+  // must not tick the other's card. (Legacy flags carry no kind and satisfy
+  // either, so a day already kept before this shipped doesn't flip back.)
   const [contemplationSideDone, setContemplationSideDone] = useState(() => ({
-    morning: hasContemplationSideDoneToday("morning"),
-    evening: hasContemplationSideDoneToday("evening"),
+    morning: hasContemplationSideDoneToday("morning", currentContemplationKind()),
+    evening: hasContemplationSideDoneToday("evening", currentContemplationKind()),
   }));
   useEffect(() => {
     const recheck = () => setContemplationSideDone({
-      morning: hasContemplationSideDoneToday("morning"),
-      evening: hasContemplationSideDoneToday("evening"),
+      morning: hasContemplationSideDoneToday("morning", currentContemplationKind()),
+      evening: hasContemplationSideDoneToday("evening", currentContemplationKind()),
     });
     window.addEventListener(CONTEMPLATION_SIDE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -465,11 +482,16 @@ export function useRhythmState(): RhythmState {
   // localStorage day-flags (a sit posts its resolved side with the session;
   // this reads it back), so a sit done on the iPhone shows done on the web.
   // ORed with the local flags below; signed-in only (guests are one-device).
+  // `kind` narrows the echo to the practice this rhythm's contemplative sides
+  // are actually set to, so a silent sit never reports a Creation Prayer side
+  // kept (and vice versa) — the server-side half of the same rule the local
+  // day-flags follow.
+  const sidesTodayKind = currentContemplationKind();
   const { data: sidesToday } = useQuery<{ morning: boolean; evening: boolean }>({
     // Date-scoped so a day rollover always re-fetches rather than serving a
     // pre-midnight cached answer (same reasoning as contemplation-stats' key).
-    queryKey: ["/api/me/contemplation-sides-today", tz, day],
-    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}`),
+    queryKey: ["/api/me/contemplation-sides-today", tz, day, sidesTodayKind],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-sides-today?tz=${encodeURIComponent(tz)}&kind=${sidesTodayKind}`),
     staleTime: 60_000,
     enabled: !guest && !!user,
   });

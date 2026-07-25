@@ -437,8 +437,14 @@ export function CobreatheBreath({
     ensureClockSynced().then(() => {
       if (cancelled || frozenRef.current) return;
       const n = syncedNow();
+      const nextStart = Math.ceil(n / CYCLE_MS) * CYCLE_MS;
+      // Only ever pull the count EARLIER (or leave it). A sync that lands late
+      // — the app woke from a notification with the network still settling —
+      // would otherwise re-anchor to a fresh future boundary and restart the
+      // pre-roll, holding the intro slide up again for another whole cycle.
+      if (nextStart > countStartRef.current) return;
       startRef.current = n;
-      countStartRef.current = Math.ceil(n / CYCLE_MS) * CYCLE_MS;
+      countStartRef.current = nextStart;
     }).catch(() => { /* offline — fall back to the device clock */ });
     return () => { cancelled = true; };
   }, []);

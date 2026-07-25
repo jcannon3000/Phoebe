@@ -535,7 +535,10 @@ export default function ContemplationPage() {
       morning: anyExplicit ? mSet === true : true,
       evening: anyExplicit ? eSet === true : true,
     };
-    attributeContemplationSit({ explicitSide, activeSides });
+    // This page IS the silent sit — never the Creation Prayer breath (that's
+    // /cobreathe). Tagging the kind keeps a silent sit from ticking a side
+    // whose card is styled as Creation Prayer, and vice versa.
+    attributeContemplationSit({ explicitSide, activeSides, kind: "silent" });
   };
 
   const whatsNext: ContemplationWhatsNext | null = (() => {

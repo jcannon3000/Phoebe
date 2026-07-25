@@ -426,7 +426,12 @@ function RedirectTo({ to }: { to: string }) {
 function PrayerGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuthForGate();
   const enabled = !!user?.inPilotGroup || !!user?.isSuperAdmin;
-  if (isLoading) return null;
+  // A bare `return null` here reads as a dead app if /auth/me is slow to
+  // settle — which is exactly what a notification tap hits when iOS wakes the
+  // WebView with the network still coming back. Show the same quiet loading
+  // shell the rest of the app uses, so a slow open looks like loading rather
+  // than a blank screen. (fetchMe is also timeout-bounded now — see useAuth.)
+  if (isLoading) return <RouteFallback />;
   if (!enabled) return <RedirectTo to="/dashboard" />;
   return <>{children}</>;
 }

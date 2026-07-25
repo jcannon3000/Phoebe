@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,28 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 // feels like crossing a threshold.
 
 const FONT = "'Space Grotesk', sans-serif";
+const SERIF = "Georgia, 'Times New Roman', serif";
 const BG = "#0C1F12";
+const WARM = "#F0EDE6";
+// Chrome tuned to the Laurel Kearns prayer intro / office deck: a frosted pill
+// on a sage hairline. The Examen keeps its green identity, so ACCENT is the
+// reference's own sage border.
+const ACCENT = "rgba(168,197,160,0.5)";
+const EYEBROW = "rgba(143,175,150,0.7)";
+const DOT_ON = "#6FAF85";
+const DOT_OFF = "rgba(143,175,150,0.28)";
+// Exactly the Kearns/office frosted-pill recipe (CobreatheHowToIntro.tsx:242).
+const PILL: CSSProperties = {
+  background: "rgba(9,26,16,0.42)",
+  backdropFilter: "blur(11px)",
+  WebkitBackdropFilter: "blur(11px)",
+  border: `1px solid ${ACCENT}`,
+  color: WARM,
+  fontFamily: FONT,
+  fontSize: 16,
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 type Movement = {
   n: number;
@@ -85,20 +106,40 @@ export default function ExamenPage() {
   const isClosing = step === 6;
   const movement = !isIntro && !isClosing ? MOVEMENTS[step - 1] : null;
 
+  const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
+  // One primary action per slide, in the office's bottom control band.
+  const primary = isIntro
+    ? { label: t("examen.begin"), onClick: () => setStep(1) }
+    : isClosing
+      ? { label: t("common.done"), onClick: () => setLocation("/dashboard") }
+      : { label: isLastMovement ? t("examen.amen") : t("examen.continue"), onClick: () => setStep((s) => s + 1) };
+
   return (
     <div
-      className="min-h-screen flex flex-col relative"
-      style={{ background: BG, color: "#F0EDE6", fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
+      className="relative"
+      style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}
     >
-      {/* Ambient drifting glow, matching Contemplation/Cobreathe — plus a still
-          landscape photo (wide on web, a bundled leaf on native) washed under a
-          dark vignette so movement text stays legible over it. */}
-      <AnimatedBackground base={BG} variant="subtle" />
-      {backdropPhoto && (
+      {/* Backdrop — the Kearns / office treatment: one still landscape held at
+          0.22 (CobreatheHowToIntro.tsx:127) under the shared multi-stop dark
+          wash (CobreatheHowToIntro.tsx:170, bcp-daily-office.tsx:1783), both on
+          zIndex -1 inside the isolated stacking context. NEVER position:fixed
+          (iOS flash). No frosted card — the text sits straight on the scenery.
+          Falls back to the ambient drift when no photo is available. */}
+      {backdropPhoto ? (
         <>
-          <img src={backdropPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.35, zIndex: 0 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.7) 45%, rgba(8,22,15,0.86) 100%)" }} />
+          <motion.img
+            src={backdropPhoto}
+            alt=""
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.22 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+          />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
         </>
+      ) : (
+        <AnimatedBackground base={BG} variant="subtle" />
       )}
       {/* Top bar — back exits to the offices picker, the same place
           the Examen is reached from. On a movement slide, Back steps
@@ -107,7 +148,7 @@ export default function ExamenPage() {
           movement to escape). */}
       <header
         className="px-5 pb-2 flex items-center justify-between"
-        style={{ position: "relative", zIndex: 1, paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))" }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))" }}
       >
         <button
           type="button"
@@ -115,7 +156,6 @@ export default function ExamenPage() {
             if (step > 0 && step < 6) setStep((s) => s - 1);
             else setLocation("/offices");
           }}
-          className="text-sm"
           style={{
             color: "rgba(143,175,150,0.8)",
             background: "none",
@@ -123,6 +163,7 @@ export default function ExamenPage() {
             padding: 0,
             cursor: "pointer",
             fontFamily: FONT,
+            fontSize: 13,
           }}
         >
           {t("examen.back")}
@@ -134,8 +175,9 @@ export default function ExamenPage() {
             aria-label={t("examen.exit", { defaultValue: "Exit" })}
             className="flex items-center justify-center rounded-full"
             style={{
-              width: 32, height: 32, background: "rgba(46,107,64,0.16)",
-              border: "1px solid rgba(46,107,64,0.32)", color: "rgba(200,212,192,0.85)",
+              width: 32, height: 32, background: "rgba(9,26,16,0.42)",
+              backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)",
+              border: `1px solid ${ACCENT}`, color: "rgba(240,237,230,0.85)",
               fontSize: 17, lineHeight: 1, cursor: "pointer",
             }}
           >
@@ -144,151 +186,115 @@ export default function ExamenPage() {
         )}
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12" style={{ position: "relative", zIndex: 1 }}>
-        <div
-          className="w-full max-w-md"
-          style={{
-            borderRadius: 28, padding: "40px 30px",
-            background: "rgba(9,26,16,0.34)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-            border: "1px solid rgba(46,107,64,0.30)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-          }}
-        >
+      {/* Content — vertically centered on the scenery, using the same wrapper
+          metrics the Kearns intro uses (CobreatheHowToIntro.tsx:180-185): max
+          560 outer / 480 inner, a clamped top pad, and a reserved bottom band
+          for the controls. */}
+      <main
+        className="flex flex-col items-center text-center px-6 w-full"
+        style={{
+          maxWidth: 560, margin: "0 auto", minHeight: "100dvh", justifyContent: "center",
+          paddingTop: "clamp(24px, 6dvh, 72px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
+          position: "relative", zIndex: 1,
+        }}
+      >
         <AnimatePresence mode="wait">
           {isIntro && (
             <motion.div
               key="intro"
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              className="w-full max-w-md text-center"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ maxWidth: 480, textAlign: "center" }}
             >
-              <p
-                className="text-[11px] font-semibold uppercase tracking-widest mb-3"
-                style={{ color: "rgba(143,175,150,0.55)" }}
-              >
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
                 {t("examen.eyebrow")}
               </p>
-              <h1
-                className="text-3xl font-semibold leading-tight mb-3"
-                style={{ color: "#F0EDE6" }}
-              >
+              <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
                 {t("examen.title")}
               </h1>
-              <p
-                className="text-[15px] leading-relaxed mb-8"
-                style={{ color: "#8FAF96" }}
-              >
+              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                 {t("examen.intro_body")}
               </p>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                {t("examen.begin")}
-              </button>
             </motion.div>
           )}
 
           {movement && (
             <motion.div
               key={`movement-${movement.n}`}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              className="w-full max-w-md text-center"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ maxWidth: 480, textAlign: "center" }}
             >
-              <p
-                className="text-[11px] font-semibold uppercase tracking-widest mb-4"
-                style={{ color: "rgba(143,175,150,0.55)" }}
-              >
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
                 {t("examen.movement_n_of_m", { n: movement.n, total: MOVEMENTS.length })}
               </p>
               <h2
-                className="title-glow-breathe text-3xl font-semibold leading-tight mb-2"
-                style={{ color: "#F0EDE6" }}
+                className="title-glow-breathe"
+                style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}
               >
                 {movement.title}
               </h2>
-              <p
-                className="text-base italic mb-6"
-                style={{ color: "#A8C5A0", fontFamily: "Georgia, 'Times New Roman', serif" }}
-              >
+              <p style={{ color: "rgba(168,197,160,0.92)", fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.5, marginBottom: 18 }}>
                 {movement.lead}
               </p>
-              <p
-                className="text-[16px] leading-relaxed mb-9"
-                style={{ color: "rgba(240,237,230,0.92)" }}
-              >
+              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                 {movement.body}
               </p>
-              <button
-                type="button"
-                onClick={() => setStep((s) => s + 1)}
-                className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                {movement.n === MOVEMENTS.length ? t("examen.amen") : t("examen.continue")}
-              </button>
-              {/* Movement dots — quiet progress, no numbers shouting. */}
-              <div className="flex items-center justify-center gap-1.5 mt-8">
-                {MOVEMENTS.map((m) => (
-                  <span
-                    key={m.n}
-                    className="block rounded-full"
-                    style={{
-                      width: 6,
-                      height: 6,
-                      background: m.n <= movement.n
-                        ? "#6FAF85"
-                        : "rgba(46,107,64,0.3)",
-                    }}
-                  />
-                ))}
-              </div>
             </motion.div>
           )}
 
           {isClosing && (
             <motion.div
               key="closing"
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="w-full max-w-md text-center"
+              style={{ maxWidth: 480, textAlign: "center" }}
             >
-              <p className="text-[40px] mb-4" aria-hidden>
+              <p style={{ fontSize: 40, marginBottom: 18 }} aria-hidden>
                 🌿
               </p>
-              <h2
-                className="text-2xl font-semibold leading-tight mb-3"
-                style={{ color: "#F0EDE6" }}
-              >
+              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
                 {t("examen.day_is_held")}
               </h2>
-              <p
-                className="text-[15px] leading-relaxed mb-8"
-                style={{ color: "#8FAF96" }}
-              >
+              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
                 {t("examen.closing_body")}
               </p>
-              <button
-                type="button"
-                onClick={() => setLocation("/dashboard")}
-                className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                {t("common.done")}
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
-        </div>
       </main>
+
+      {/* Bottom controls — the office band: quiet movement dots where the deck
+          puts its "X of Y" counter, then the frosted pill
+          (CobreatheHowToIntro.tsx:234-244). */}
+      <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
+        {movement && (
+          <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
+            {MOVEMENTS.map((m) => (
+              <span
+                key={m.n}
+                className="block rounded-full"
+                style={{ width: 6, height: 6, background: m.n <= movement.n ? DOT_ON : DOT_OFF }}
+              />
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={primary.onClick}
+          className="rounded-full py-3 px-12 transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={PILL}
+        >
+          {primary.label}
+        </button>
+      </div>
     </div>
   );
 }

@@ -411,7 +411,25 @@ export function ContemplationTimer({
     };
     tick();
     const id = window.setInterval(tick, 250);
-    return () => window.clearInterval(id);
+    // iOS/WKWebView (and background tabs generally) can throttle or fully
+    // suspend setInterval while the app is away or the screen is off — and it
+    // doesn't always resume cleanly, which reads as a frozen counter (owner's
+    // report: "I started a contemplation timer and the counter didn't move
+    // after three seconds"). Every tick re-derives from the absolute end time,
+    // so one tick on wake is all it takes to snap back to the true remaining
+    // time; these listeners guarantee that tick happens even if the interval
+    // never fires again. Same event set the rest of the app resyncs on.
+    window.addEventListener("focus", tick);
+    window.addEventListener("pageshow", tick);
+    window.addEventListener("phoebe:appactive", tick);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", tick);
+      window.removeEventListener("pageshow", tick);
+      window.removeEventListener("phoebe:appactive", tick);
+      document.removeEventListener("visibilitychange", tick);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -450,7 +468,10 @@ export function ContemplationTimer({
       // Which per-side card this sit keeps — same resolution the local
       // attribution applies, so the server can echo done-state to the
       // user's OTHER devices (/me/contemplation-sides-today).
-      contemplationSide: resolveContemplationSideForSit() ?? undefined,
+      // This timer is the SILENT sit (the Creation Prayer breath logs its own
+      // session from /cobreathe with source: "cobreathe"), so resolve the side
+      // against silent-kind day-flags.
+      contemplationSide: resolveContemplationSideForSit("silent") ?? undefined,
     };
     apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", sessionBody)
       .then((data) => {

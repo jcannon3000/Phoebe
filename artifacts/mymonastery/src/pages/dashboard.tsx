@@ -2243,31 +2243,42 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
         role={later ? undefined : "button"}
         tabIndex={later ? undefined : 0}
         className={`relative flex rounded-3xl overflow-hidden mb-3 ${later ? "opacity-60" : "cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        style={{
+          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          // Same sage outline + 3xl radius as the office hero (PrayerOfficeCard)
+          // and the cascade rhythm cards, so this reads as the same family
+          // rather than a teal-framed outlier. The teal identity survives in the
+          // accent bar + CTA, which is where the office hero carries its own.
+          border: "1px solid rgba(200,212,192,0.35)",
+        }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-        <div className="flex-1 px-5 py-5">
-          <div className="flex items-start gap-3.5">
-            <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
-              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: met ? "#A8C5A0" : "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {subline}
-              </p>
-              {showBar && (
-                <div className="mt-2.5 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)", maxWidth: 220 }}>
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }} />
-                </div>
-              )}
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
+        <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+          {/* Eyebrow → title → CTA, stacked, matching the office hero's rhythm.
+              No emoji: the office hero deliberately carries none. */}
+          <p
+            className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate"
+            style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+          >
+            {isCreation ? "Creation Prayer" : "Contemplation"}
+          </p>
+          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
+          <p className="text-[13.5px] mt-1 leading-snug" style={{ color: met ? "#A8C5A0" : "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {subline}
+          </p>
+          {showBar && (
+            <div className="mt-2.5 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)", maxWidth: 220 }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }} />
             </div>
-            {!later && (
-              <div className="flex-shrink-0">
-                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span> {isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden className="ml-1">→</span>
-                </span>
-              </div>
-            )}
-          </div>
+          )}
+          {!later && (
+            <div
+              className="mt-4 w-full flex items-center justify-center rounded-full text-[15px] font-semibold py-3"
+              style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden className="ml-1">→</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2555,21 +2566,27 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
           role="button"
           tabIndex={0}
           className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+          style={{
+            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+            // Same sage outline the office hero uses — see ContemplationHomeCard.
+            border: "1px solid rgba(200,212,192,0.35)",
+          }}
         >
-          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-          <div className="flex-1 px-5 py-5">
-            <div className="flex items-start gap-3.5">
-              <span className="text-[34px] leading-none flex-shrink-0">🌱</span>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
-                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Creation Prayer</p>
-              </div>
-              <div className="flex-shrink-0">
-                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Begin <span aria-hidden className="ml-1">→</span>
-                </span>
-              </div>
+          <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
+          <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate"
+              style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+            >
+              Creation Prayer
+            </p>
+            <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
+            <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Creation Prayer</p>
+            <div
+              className="mt-4 w-full flex items-center justify-center rounded-full text-[15px] font-semibold py-3"
+              style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              Begin <span aria-hidden className="ml-1">→</span>
             </div>
           </div>
         </div>

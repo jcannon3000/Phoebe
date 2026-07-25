@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useLocation, useSearch, Link } from "wouter";
 import { parseISO, format, isToday, addDays, startOfDay, startOfWeek, endOfWeek, addWeeks } from "date-fns";
@@ -13,9 +13,8 @@ import { CommunitySeasonCard, CommunityPulseLine } from "@/components/CommunityS
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, ChevronRight } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, MessageSquareText, ChevronRight } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
-import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { MomentCard, type Moment } from "@/pages/dashboard";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -928,17 +927,6 @@ export default function CommunityDetailPage() {
   const [showFocusForm, setShowFocusForm] = useState(false);
   const [focusType, setFocusType] = useState<"situation" | "cause" | "custom">("situation");
   const [focusSubject, setFocusSubject] = useState("");
-  // ── Invite-by-email form (Members tab) ─────────────────────────────────
-  // Pilot-admin affordance — lets a community admin type an email + optional
-  // name and add the person directly, without having to share the community
-  // invite link. Hidden for non-pilot admins (they still see the invite-link
-  // modal) and for regular members.
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteError, setInviteError] = useState("");
-  // Role the admin wants to assign when adding a new member. Toggle in the
-  // add-member panel; "hidden_admin" only shows for pilot (beta) users.
-  const [pendingRole, setPendingRole] = useState<"follower" | "member" | "admin" | "hidden_admin">("follower");
   // ── Gathering details modal ────────────────────────────────────────────
   // Tapping a gathering card opens a lightweight pop-up with time / location /
   // description — same UX pattern as the Sunday Service modal. We do NOT
@@ -1089,25 +1077,6 @@ export default function CommunityDetailPage() {
     },
   });
 
-  // Pilot-admin "add member directly" mutation. The backend endpoint sets
-  // `joinedAt: new Date()` so the person shows up as a full member right
-  // away — no invite-email roundtrip, no pending-state purgatory.
-  // `role` is optional — the server defaults to "follower" and gates
-  // "hidden_admin" behind the acting admin being a pilot user.
-  const addMemberMutation = useMutation({
-    mutationFn: (person: { name?: string; email: string; role?: "follower" | "member" | "admin" | "hidden_admin" }) =>
-      apiRequest("POST", `/api/groups/${slug}/members`, { people: [person] }),
-    onSuccess: () => {
-      setInviteName("");
-      setInviteEmail("");
-      setInviteError("");
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
-    },
-    onError: (err: any) => {
-      setInviteError(err?.message || t("community_detail.add_member_error"));
-    },
-  });
-
   // Change a member's role between member / admin / hidden_admin. The
   // server enforces the pilot gate on anything touching hidden_admin and
   // blocks demoting the last admin, so the client can stay naive about
@@ -1167,15 +1136,12 @@ export default function CommunityDetailPage() {
   });
 
   const [communityAdminView] = useCommunityAdminToggle();
-  // Pilot (beta) flag — used to gate admin-only invite-by-email form on the
-  // Members tab. A community admin who is also a pilot user gets the form;
-  // non-pilot admins still have the shareable invite-link modal.
   // rawIsBeta = beta_users membership regardless of the in-app
   // beta-view toggle. We use raw for "this user is actually a pilot"
   // capability checks (e.g. designating hidden admins) so toggling
   // the beta view off doesn't hide the pilot affordances they're
   // allowed to use.
-  const { isBeta, rawIsBeta } = useBetaStatus();
+  const { rawIsBeta } = useBetaStatus();
 
   if (authLoading || !user) return null;
   if (!groupData) return (
@@ -1191,10 +1157,6 @@ export default function CommunityDetailPage() {
   // only difference is that they're filtered from the roster for non-admin
   // viewers (server-side, so the list never even hits the client).
   const isAdmin = (myRole === "admin" || myRole === "hidden_admin") && communityAdminView;
-  // "Can invite by email" = admin of this community AND viewing as a pilot
-  // user. Non-pilot admins still get the shareable invite-link modal; this
-  // unlocks the direct-add form on the Members tab.
-  const canInviteByEmail = isAdmin && isBeta;
 
   return (
     <Layout>
@@ -2043,56 +2005,13 @@ export default function CommunityDetailPage() {
             if (!joinedAt) return false;
             return new Date(joinedAt) >= sevenDaysAgo;
           };
-          // Simple email validation — used by the free-email fallback in
-          // the member picker (for inviting someone not yet in the viewer's
-          // fellowship). Server still validates.
-          const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-
-          const memberEmails = new Set(members.map(m => m.email.toLowerCase()));
-
-          const addPerson = (person: { name?: string; email: string }, role?: "follower" | "member" | "admin" | "hidden_admin") => {
-            const email = person.email.trim().toLowerCase();
-            if (!isValidEmail(email)) {
-              setInviteError(t("community_detail.invalid_email"));
-              return;
-            }
-            if (memberEmails.has(email)) {
-              setInviteError(t("community_detail.already_member"));
-              return;
-            }
-            setInviteError("");
-            addMemberMutation.mutate({
-              email,
-              name: person.name?.trim() || undefined,
-              role: role ?? pendingRole,
-            });
-          };
 
           return (
           <div>
-            {/* Pilot-admin "add directly" block — bypasses the invite-link
-                flow. Appears at the top of the members tab, above the
-                roster. Non-pilot admins still see the shareable invite-link
-                modal from the header; regular members don't see this at all. */}
-            {canInviteByEmail && user && (
-              <MemberPicker
-                groupName={group.name}
-                ownerId={user.id}
-                memberEmails={memberEmails}
-                inviteName={inviteName}
-                inviteEmail={inviteEmail}
-                inviteError={inviteError}
-                pendingRole={pendingRole}
-                isBeta={rawIsBeta}
-                isPending={addMemberMutation.isPending}
-                setInviteName={setInviteName}
-                setInviteEmail={setInviteEmail}
-                setInviteError={setInviteError}
-                setPendingRole={setPendingRole}
-                onPick={(person) => addPerson(person)}
-              />
-            )}
-
+            {/* Direct "add member" panel removed 2026-07-25 — the only way
+                into a community is the shareable invite link (or requesting
+                to join and being accepted). Role management on EXISTING
+                rows below is unchanged. */}
             <div className="space-y-1.5">
               {members.filter(m => m.joinedAt !== null).map(m => {
                 const isSelf = m.email.toLowerCase() === (user.email ?? "").toLowerCase();
@@ -2416,237 +2335,5 @@ export default function CommunityDetailPage() {
         </div>
       )}
     </Layout>
-  );
-}
-
-// ─── Member picker ───────────────────────────────────────────────────────
-// Typeahead-backed add-member panel for pilot admins. Pulls the viewer's
-// fellowship from /api/people (via usePeople), filters locally on typing,
-// and hides anyone already in this community. If the admin wants to
-// invite someone outside their fellowship, the "Add by email" fallback
-// at the bottom accepts a free email + optional name.
-//
-// Role selection lives at the top as a segmented control. "Hidden admin"
-// only shows for pilot (beta) viewers — for everyone else, adding defaults
-// to "member" with an optional admin toggle.
-function MemberPicker({
-  groupName,
-  ownerId,
-  memberEmails,
-  inviteName,
-  inviteEmail,
-  inviteError,
-  pendingRole,
-  isBeta,
-  isPending,
-  setInviteName,
-  setInviteEmail,
-  setInviteError,
-  setPendingRole,
-  onPick,
-}: {
-  groupName: string;
-  ownerId: number;
-  memberEmails: Set<string>;
-  inviteName: string;
-  inviteEmail: string;
-  inviteError: string;
-  pendingRole: "follower" | "member" | "admin" | "hidden_admin";
-  isBeta: boolean;
-  isPending: boolean;
-  setInviteName: (v: string) => void;
-  setInviteEmail: (v: string) => void;
-  setInviteError: (v: string) => void;
-  setPendingRole: (v: "follower" | "member" | "admin" | "hidden_admin") => void;
-  onPick: (person: { name?: string; email: string }) => void;
-}) {
-  const { t } = useTranslation();
-  const [q, setQ] = useState("");
-  const { data: people = [], isLoading } = usePeople(ownerId);
-
-  // Candidates = people in the viewer's fellowship who are NOT already in
-  // this community, filtered live by the search string. We keep already-
-  // joined people out of the dropdown entirely so the admin isn't tempted
-  // to re-add them.
-  const candidates = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const match = (p: PersonSummary) =>
-      !needle ||
-      p.name.toLowerCase().includes(needle) ||
-      p.email.toLowerCase().includes(needle);
-    return people
-      .filter(p => !memberEmails.has(p.email.toLowerCase()))
-      .filter(match);
-  }, [people, q, memberEmails]);
-
-  // The free-email fallback only shows when the admin typed something
-  // that looks like an email and it doesn't match an existing candidate.
-  // Keeps the UI quiet while they're just browsing their fellowship.
-  const trimmed = q.trim();
-  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-  const matchesCandidate = candidates.some(p => p.email.toLowerCase() === trimmed.toLowerCase());
-  const showEmailFallback = looksLikeEmail && !matchesCandidate;
-
-  const roleLabel = (r: "follower" | "member" | "admin" | "hidden_admin") =>
-    r === "admin" ? t("community_detail.role_admin")
-    : r === "hidden_admin" ? t("community_detail.role_hidden_admin")
-    : r === "member" ? t("community_detail.role_member")
-    : t("community_detail.role_follower", { defaultValue: "Follower" });
-
-  return (
-    <div
-      className="mb-4 rounded-xl p-4"
-      style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{t("community_detail.add_member")}</p>
-        <span
-          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
-          style={{ background: "rgba(232,184,114,0.15)", color: "#E8B872", border: "1px solid rgba(232,184,114,0.35)", letterSpacing: "0.08em" }}
-        >
-          {t("community_detail.pilot")}
-        </span>
-      </div>
-      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
-        {t("community_detail.add_member_desc", { name: groupName })}
-      </p>
-
-      {/* Role segmented control. Server-enforced — the "hidden_admin"
-          option is still only honored when the acting admin is a pilot,
-          so a non-pilot manipulating the DOM would still be rejected. */}
-      <div className="flex items-center gap-1 mb-3">
-        {(isBeta
-          ? (["follower", "member", "admin", "hidden_admin"] as const)
-          : (["follower", "member", "admin"] as const)
-        ).map(r => {
-          const active = pendingRole === r;
-          return (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setPendingRole(r)}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full transition-opacity"
-              style={{
-                background: active
-                  ? (r === "hidden_admin" ? "rgba(193,127,36,0.25)" : "rgba(46,107,64,0.35)")
-                  : "transparent",
-                color: active
-                  ? (r === "hidden_admin" ? "#E8B872" : "#F0EDE6")
-                  : "rgba(200,212,192,0.6)",
-                border: `1px solid ${active
-                  ? (r === "hidden_admin" ? "rgba(193,127,36,0.5)" : "rgba(46,107,64,0.5)")
-                  : "rgba(46,107,64,0.25)"}`,
-              }}
-            >
-              {roleLabel(r)}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search / typeahead */}
-      <div
-        className="flex items-center gap-2 rounded-lg px-3 py-2 mb-2"
-        style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)" }}
-      >
-        <SearchIcon size={14} style={{ color: "#8FAF96" }} />
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setInviteError(""); }}
-          placeholder={t("community_detail.search_name_email")}
-          className="flex-1 bg-transparent text-sm outline-none"
-          style={{ color: "#F0EDE6" }}
-        />
-      </div>
-
-      {inviteError && (
-        <p className="text-xs mb-2" style={{ color: "#C47A65" }}>{inviteError}</p>
-      )}
-
-      {/* Candidate list — clamped to ~4 rows so the form doesn't explode. */}
-      <div
-        className="space-y-1 mb-2"
-        style={{ maxHeight: 220, overflowY: "auto" }}
-      >
-        {isLoading && (
-          <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>{t("community_detail.loading_fellowship")}</p>
-        )}
-        {!isLoading && candidates.length === 0 && !showEmailFallback && (
-          <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>
-            {q.trim()
-              ? t("community_detail.no_fellowship_match")
-              : t("community_detail.everyone_here")}
-          </p>
-        )}
-        {!isLoading && candidates.map(p => (
-          <button
-            key={p.email}
-            type="button"
-            onClick={() => onPick({ name: p.name, email: p.email })}
-            disabled={isPending}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-40"
-            style={{ background: "rgba(9,26,16, 0.660)", border: "1px solid rgba(46,107,64,0.25)" }}
-          >
-            {p.avatarUrl ? (
-              <img src={p.avatarUrl} alt={p.name} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
-            ) : (
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
-                {p.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate" style={{ color: "#F0EDE6" }}>{p.name}</p>
-              <p className="text-[10px] truncate" style={{ color: "rgba(143,175,150,0.65)" }}>{p.email}</p>
-            </div>
-            <span className="text-[10px] shrink-0" style={{ color: "rgba(168,197,160,0.75)" }}>
-              {t("community_detail.add_role", { role: roleLabel(pendingRole).toLowerCase() })}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Free-email fallback. Optional name + the typed email. Lets the
-          admin invite someone who isn't in their fellowship yet. */}
-      {showEmailFallback && (
-        <div
-          className="rounded-lg p-3 mt-2"
-          style={{ background: "rgba(9,26,16, 0.440)", border: "1px dashed rgba(46,107,64,0.35)" }}
-        >
-          <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            {t("community_detail.not_in_fellowship")}
-          </p>
-          <input
-            type="text"
-            value={inviteName}
-            onChange={e => { setInviteName(e.target.value); setInviteError(""); }}
-            placeholder={t("community_detail.name_optional")}
-            className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-            style={{ color: "#F0EDE6" }}
-          />
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={inviteEmail || trimmed}
-              onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }}
-              placeholder={t("community_detail.email")}
-              className="flex-1 px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-              style={{ color: "#F0EDE6" }}
-            />
-            <button
-              onClick={() => onPick({
-                email: (inviteEmail || trimmed).trim(),
-                name: inviteName.trim() || undefined,
-              })}
-              disabled={isPending || !(inviteEmail || trimmed).trim()}
-              className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40 shrink-0"
-              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-            >
-              {isPending ? t("community_detail.adding") : t("community_detail.add_role", { role: roleLabel(pendingRole).toLowerCase() })}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }

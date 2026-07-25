@@ -365,6 +365,7 @@ export default function CobreathePage() {
       attributeContemplationSit({
         explicitSide: sideParam ?? null,
         activeSides: { morning: getSideContemplation("morning"), evening: getSideContemplation("evening") },
+        kind: "cobreathe",
       });
     }
     // PUBLIC no-login version: a GUEST has no account to POST prayer_sessions to,

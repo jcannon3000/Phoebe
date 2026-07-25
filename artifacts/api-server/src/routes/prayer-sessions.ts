@@ -339,12 +339,28 @@ router.get("/me/contemplation-sides-today", async (req, res): Promise<void> => {
     const tzParam = typeof req.query.tz === "string" && isValidTimeZone(req.query.tz) ? req.query.tz : null;
     const tz = tzParam ?? "UTC";
     const today = todayDateInTz(tz);
+    // Optional `kind` narrows the echo to ONE contemplative practice: the
+    // Creation Prayer breath (source = 'cobreathe') or the silent sit (any
+    // other/absent source). A side's card is styled as one or the other and
+    // they're different practices, so a silent sit must not report the
+    // Creation Prayer side as kept (the user's report: "I did a contemplation
+    // sit, not Creation Prayer, and it counted it as Creation Prayer").
+    // Omitted = the legacy any-practice behavior, for older clients.
+    const kind = req.query.kind === "cobreathe" ? "cobreathe"
+      : req.query.kind === "silent" ? "silent"
+        : null;
+    const kindFilter = kind === "cobreathe"
+      ? sql`AND source = 'cobreathe'`
+      : kind === "silent"
+        ? sql`AND (source IS NULL OR source <> 'cobreathe')`
+        : sql``;
     const rows = await db.execute<{ side: string }>(sql`
       SELECT DISTINCT contemplation_side AS side
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
         AND surface = 'contemplation'
         AND contemplation_side IS NOT NULL
+        ${kindFilter}
         AND ended_at >= NOW() - INTERVAL '2 days'
         AND to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') = ${today}
     `);

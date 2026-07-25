@@ -86,8 +86,24 @@ export interface AuthUser {
   locale: "en" | "es";
 }
 
+// Every route gate in App.tsx blocks on this query's loading state, and several
+// render NOTHING while it's pending — so a request that never settles is a
+// permanently blank app, not a slow one. iOS can leave a fetch issued before
+// suspension in limbo when the WebView wakes (the owner's report: tapping the
+// morning notification "opens the app but nothing loads"). Bound it: on timeout
+// we surface "logged out", which routes to the signed-out home — recoverable,
+// unlike a blank screen. React Query still retries in the background.
+const AUTH_TIMEOUT_MS = 10_000;
+
 async function fetchMe(): Promise<AuthUser | null> {
-  const res = await fetch("/api/auth/me", { credentials: "include" });
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS) : null;
+  let res: Response;
+  try {
+    res = await fetch("/api/auth/me", { credentials: "include", signal: controller?.signal });
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+  }
   // 401 → session cookie is missing or expired. Before declaring the
   // user logged-out, try the durable persistent token: on iOS upgrades
   // the WKWebView cookie jar can lose state while the localStorage

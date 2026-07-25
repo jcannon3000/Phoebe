@@ -1488,92 +1488,9 @@ router.delete("/groups/:slug", async (req, res): Promise<void> => {
 
 // ─── Membership ─────────────────────────────────────────────────────────────
 
-// POST /api/groups/:slug/members — add members (admin only)
-router.post("/groups/:slug/members", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const result = await requireAdmin(req.params.slug, user.id);
-  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
-
-  const schema = z.object({
-    people: z.array(z.object({
-      name: z.string().optional(),
-      email: z.string().email(),
-      // Optional per-person role. "admin" is open to all current admins;
-      // "hidden_admin" is pilot-gated (see check below). Unspecified → "follower"
-      // (the anonymous, count-only tier — "member" is now the smaller,
-      // admin-curated tier an admin must explicitly pick).
-      role: z.enum(["follower", "member", "admin", "hidden_admin"]).optional(),
-    })).min(1).max(50),
-  });
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-
-  // If any requested role is "hidden_admin", the inviting admin must also
-  // be a pilot (beta) user. This gate keeps hidden-admin designation
-  // reserved for people we've explicitly onboarded as pilots.
-  const wantsHiddenAdmin = parsed.data.people.some(p => p.role === "hidden_admin");
-  if (wantsHiddenAdmin && !(await isBetaUser(user.id))) {
-    res.status(403).json({ error: "Only pilot users can designate hidden admins" });
-    return;
-  }
-
-  // Batched (was an N+1: a SELECT-exists + SELECT-user + INSERT per person,
-  // up to 150 round-trips for a 50-person import). Resolve existing members
-  // and accounts in two inArray queries, then one multi-row insert.
-  const emailsLower = [...new Set(parsed.data.people.map(p => p.email.toLowerCase()))];
-
-  const existingRows = await db.select({ email: groupMembersTable.email })
-    .from(groupMembersTable)
-    .where(and(eq(groupMembersTable.groupId, result.group.id), inArray(groupMembersTable.email, emailsLower)));
-  const existingSet = new Set(existingRows.map(r => r.email.toLowerCase()));
-
-  const accountRows = await db.select({ id: usersTable.id, email: usersTable.email })
-    .from(usersTable)
-    .where(inArray(usersTable.email, emailsLower));
-  const userIdByEmail = new Map<string, number>();
-  for (const u of accountRows) userIdByEmail.set(u.email.toLowerCase(), u.id);
-
-  // Build the rows to insert, skipping people already in the group and
-  // de-duping within this request (the old sequential loop deduped via its
-  // per-row existence check; the first occurrence of an email wins).
-  const seen = new Set<string>();
-  const toInsert: (typeof groupMembersTable.$inferInsert)[] = [];
-  for (const person of parsed.data.people) {
-    const emailLower = person.email.toLowerCase();
-    if (existingSet.has(emailLower) || seen.has(emailLower)) continue;
-    seen.add(emailLower);
-    toInsert.push({
-      groupId: result.group.id,
-      userId: userIdByEmail.get(emailLower) ?? null,
-      email: emailLower,
-      name: person.name ?? null,
-      role: person.role ?? "follower",
-      inviteToken: generateToken(),
-      // Audit #1: an admin-typed email is a PENDING INVITE, not an accepted
-      // membership — leave joinedAt null until the invitee joins via their
-      // invite (the join endpoint stamps it). Previously this stamped joinedAt
-      // immediately, which (a) made someone a full member of a group they never
-      // agreed to join and (b) fanned their open prayers from every OTHER
-      // community + their personal wall onto this admin's wall with no consent
-      // (a prayer-harvesting primitive). Membership TIER is unaffected — the
-      // roster shows them as pending (pending: !joinedAt) and parishGate grants
-      // access by email match. Their prayers surface once they accept.
-      joinedAt: null,
-    });
-  }
-
-  const added = toInsert.length > 0
-    ? await db.insert(groupMembersTable).values(toInsert).returning()
-    : [];
-
-  // Practices attached to this group reflect the group roster — reconcile once
-  // at the end so every attached practice sees the newly-added members.
-  await reconcileAllPracticesForGroup(result.group.id);
-
-  res.json({ added });
-});
+// NOTE: POST /api/groups/:slug/members (admin add-by-email) was removed
+// 2026-07-25. Admins can no longer add people directly — the only ways in
+// are the shareable invite link or requesting to join and being accepted.
 
 // GET /api/groups/:slug/invite/:token — public lookup. Returns the group
 // name and either the pre-invited email (per-member legacy tokens) or
