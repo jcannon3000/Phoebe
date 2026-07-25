@@ -73,7 +73,10 @@ export async function ensurePersistentToken(): Promise<void> {
 // resolve to the same outcome.
 let inFlight: Promise<boolean> | null = null;
 
-export function tryExchangePersistentToken(): Promise<boolean> {
+// `signal` lets the caller bound this. Auth resolution gates every route in
+// the app, so an exchange left hanging by an iOS wake blanks the whole UI —
+// useAuth passes the same deadline it uses for /auth/me itself.
+export function tryExchangePersistentToken(signal?: AbortSignal): Promise<boolean> {
   if (inFlight) return inFlight;
   inFlight = (async () => {
     const token = getPersistentToken();
@@ -84,6 +87,7 @@ export function tryExchangePersistentToken(): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ token }),
+        signal,
       });
       if (!res.ok) {
         clearPersistentToken();

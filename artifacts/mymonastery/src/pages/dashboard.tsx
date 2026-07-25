@@ -2271,12 +2271,23 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
               <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }} />
             </div>
           )}
+          {/* CTA matches the office hero exactly: a translucent tint with a
+              hairline border, NOT a solid fill. A solid pill made these heroes
+              shout next to the office and read as a different family. */}
           {!later && (
             <div
-              className="mt-4 w-full flex items-center justify-center rounded-full text-[15px] font-semibold py-3"
-              style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              style={{
+                background: `rgba(${rgb},0.22)`,
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: `1px solid rgba(${rgb},0.45)`,
+              }}
             >
-              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden className="ml-1">→</span>
+              {met ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;{isCreation ? "Kept" : "Sit again"}</> : "Begin"} <span aria-hidden>→</span>
             </div>
           )}
         </div>
@@ -2427,21 +2438,36 @@ function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
           role="button"
           tabIndex={0}
           className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99] mb-3"
-          style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+          style={{
+            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+            // Same sage outline the office hero uses — see ContemplationHomeCard.
+            border: "1px solid rgba(200,212,192,0.35)",
+          }}
         >
-          <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-          <div className="flex-1 px-5 py-5">
-            <div className="flex items-start gap-3.5">
-              <span className="text-[34px] leading-none flex-shrink-0">🤔</span>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>The Examen</p>
-                <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Review the day with God</p>
-              </div>
-              <div className="flex-shrink-0">
-                <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Begin <span aria-hidden className="ml-1">→</span>
-                </span>
-              </div>
+          <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
+          <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate"
+              style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+            >
+              A prayer for the end of the day
+            </p>
+            <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>The Examen</p>
+            <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Review the day with God</p>
+            {/* Translucent CTA, matching the office hero — see ContemplationHomeCard. */}
+            <div
+              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              style={{
+                background: `rgba(${rgb},0.22)`,
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: `1px solid rgba(${rgb},0.45)`,
+              }}
+            >
+              Begin <span aria-hidden>→</span>
             </div>
           </div>
         </div>
@@ -2582,11 +2608,20 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
             </p>
             <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</p>
             <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>The creation Psalter &amp; prayers, with Creation Prayer</p>
+            {/* Translucent CTA, matching the office hero — see ContemplationHomeCard. */}
             <div
-              className="mt-4 w-full flex items-center justify-center rounded-full text-[15px] font-semibold py-3"
-              style={{ background: `rgba(${rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              style={{
+                background: `rgba(${rgb},0.22)`,
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: `1px solid rgba(${rgb},0.45)`,
+              }}
             >
-              Begin <span aria-hidden className="ml-1">→</span>
+              Begin <span aria-hidden>→</span>
             </div>
           </div>
         </div>

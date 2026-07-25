@@ -96,30 +96,38 @@ export interface AuthUser {
 const AUTH_TIMEOUT_MS = 10_000;
 
 async function fetchMe(): Promise<AuthUser | null> {
+  // ONE deadline covering the WHOLE resolution, including the 401 recovery
+  // branch below. An earlier version bounded only the first request, which
+  // left the recovery path (token exchange + retry GET) able to hang forever
+  // — and because every route gate blocks on this query's loading state, a
+  // hang there blanks the entire app rather than just delaying it.
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timeoutId = controller ? setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS) : null;
-  let res: Response;
   try {
-    res = await fetch("/api/auth/me", { credentials: "include", signal: controller?.signal });
+    const res = await fetch("/api/auth/me", { credentials: "include", signal: controller?.signal });
+    // 401 → session cookie is missing or expired. Before declaring the
+    // user logged-out, try the durable persistent token: on iOS upgrades
+    // the WKWebView cookie jar can lose state while the localStorage
+    // mirror (→ Capacitor Preferences / App Group container) survives.
+    // If exchange succeeds the server has re-issued a session cookie and
+    // a fresh /auth/me will land authenticated.
+    if (res.status === 401) {
+      if (!getPersistentToken()) return null;
+      const recovered = await tryExchangePersistentToken(controller?.signal);
+      if (!recovered) return null;
+      const retry = await fetch("/api/auth/me", { credentials: "include", signal: controller?.signal });
+      if (retry.status === 401) return null;
+      if (!retry.ok) throw new Error("Failed to fetch user");
+      const user = (await retry.json()) as AuthUser;
+      return applyCachedHomeLayout(user);
+    }
+    return await finishFetchMe(res);
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);
   }
-  // 401 → session cookie is missing or expired. Before declaring the
-  // user logged-out, try the durable persistent token: on iOS upgrades
-  // the WKWebView cookie jar can lose state while the localStorage
-  // mirror (→ Capacitor Preferences / App Group container) survives.
-  // If exchange succeeds the server has re-issued a session cookie and
-  // a fresh /auth/me will land authenticated.
-  if (res.status === 401) {
-    if (!getPersistentToken()) return null;
-    const recovered = await tryExchangePersistentToken();
-    if (!recovered) return null;
-    const retry = await fetch("/api/auth/me", { credentials: "include" });
-    if (retry.status === 401) return null;
-    if (!retry.ok) throw new Error("Failed to fetch user");
-    const user = (await retry.json()) as AuthUser;
-    return applyCachedHomeLayout(user);
-  }
+}
+
+async function finishFetchMe(res: Response): Promise<AuthUser | null> {
   if (!res.ok) throw new Error("Failed to fetch user");
   const user = (await res.json()) as AuthUser;
   // First-time authenticated load on this device — stash a durable token
