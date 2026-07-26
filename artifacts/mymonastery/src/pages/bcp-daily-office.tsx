@@ -16,7 +16,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
@@ -1137,19 +1137,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
         : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
   // The held-breath image + wash follow the chosen backdrop. officeThemeStyle
-  // carries the blue token overrides even on this pre-load early return,
-  // which sits outside the main themed deck root. Picked once per mount (not
-  // per render) so the veil doesn't shuffle photos if it re-renders while
-  // still showing. A calm water photo (owner) — matches the app-open splash.
-  const veilLeafPhoto = useMemo(
-    () => (WATER_PHOTOS.length > 0 ? WATER_PHOTOS[Math.floor(Math.random() * WATER_PHOTOS.length)]! : splashForestPath),
-    [],
-  );
-  // The veil is a random water photo for everyone now, so there's no longer a
-  // separate Water-backdrop branch — pinning WATER_PHOTOS[0] here would give
-  // the user who actually CHOSE Water the same fixed photo every office while
-  // everyone else got variety.
-  const veilPhoto = veilLeafPhoto;
+  // carries the blue token overrides even on this pre-load early return, which
+  // sits outside the main themed deck root. ONE fixed leaf photo (owner) —
+  // the same image the app-open splash uses, so opening an office reads as a
+  // continuation of the launch screen rather than a different picture.
+  const veilPhoto = SPLASH_PHOTO || splashForestPath;
   const veilStyle: CSSProperties = {
     ...officeThemeStyle(display.backdrop, display.font),
     position: "fixed", inset: 0, background: BG, isolation: "isolate",

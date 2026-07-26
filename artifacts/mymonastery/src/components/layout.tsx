@@ -6,9 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
-import { LEAF_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
 import { getPracticeSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
-import { shareInvite } from "@/lib/shareInvite";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
@@ -124,17 +123,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // reach the full app through it). See memory "project_public_no_login".
   const { isGuest } = useGuestMode();
   const { t } = useTranslation();
-  // "Invite" row feedback — flashes a "Link copied" sub-line only on the
-  // clipboard-fallback path (native share + Web Share already give their own
-  // OS-level acknowledgement).
-  const [inviteJustCopied, setInviteJustCopied] = useState(false);
-  async function handleInvite() {
-    const { copied } = await shareInvite();
-    if (copied) {
-      setInviteJustCopied(true);
-      window.setTimeout(() => setInviteJustCopied(false), 1800);
-    }
-  }
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
   // drawer open / Layout mount used to trip NetworkBanner's "flaky"
@@ -415,8 +403,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow
                 emoji="💌"
                 label={t("menu.invite", { defaultValue: "Invite" })}
-                sub={inviteJustCopied ? t("menu.invite_copied", { defaultValue: "Link copied ✓" }) : undefined}
-                onClick={handleInvite}
+                onClick={() => navigate("/invite/share")}
               />
               <MenuRow emoji="⚙️" label={t("menu.settings")} onClick={() => navigate("/settings")} />
               {showAdminTools && (
@@ -928,13 +915,11 @@ function OpeningSplash() {
     if (isFirstOpen()) return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
-  // Splash backdrop — a calm water photo (owner). Still eager-imported so it
-  // paints instantly with no network flash; picked once per mount so it
-  // doesn't shuffle mid-fade.
-  const splashLeafPhoto = useMemo(
-    () => (WATER_PHOTOS.length > 0 ? WATER_PHOTOS[Math.floor(Math.random() * WATER_PHOTOS.length)]! : splashForestPath),
-    [],
-  );
+  // Splash backdrop — ONE fixed leaf photo (owner), not a random pick: the
+  // splash is the first thing the app shows, so it should look the same every
+  // launch, and a known URL is what lets us preload it. Falls back to the old
+  // forest shot only if the asset glob somehow came back empty.
+  const splashLeafPhoto = SPLASH_PHOTO || splashForestPath;
   const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-month"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),

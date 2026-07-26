@@ -27,6 +27,34 @@ export const LEAF_PHOTOS = (() => {
   return leaves.length > 0 ? leaves : EARTH_PHOTOS;
 })();
 
+// THE splash / loading photo — one fixed banana-leaf macro (owner's pick), used
+// for the app-open splash and the office's held-breath load screen. Deliberately
+// NOT random: it's the first thing the app shows, so it should be the same
+// every launch, and a single known URL is what lets us preload it (see
+// preloadSplashPhoto below) instead of racing a random pick against first paint.
+export const SPLASH_PHOTO: string = (() => {
+  const match = LEAF_PHOTOS.find((url) => url.includes("ryunosuke-kikuno-4Rrb8pmQ09w"));
+  return match ?? LEAF_PHOTOS[0] ?? EARTH_PHOTOS[0] ?? "";
+})();
+
+// Warm the browser/WebView cache for the splash photo as early as the module
+// graph loads, so the splash paints the image immediately instead of flashing
+// its background colour first. Idempotent and best-effort — a failed decode
+// just means the <img> loads normally.
+export function preloadSplashPhoto(): void {
+  if (!SPLASH_PHOTO || typeof document === "undefined") return;
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = SPLASH_PHOTO;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = SPLASH_PHOTO;
+    document.head.appendChild(link);
+  } catch { /* non-fatal */ }
+}
+
 // The Home Screen subset — used ONLY on the home + daily-progress (a curated set,
 // per the Pictures/Leaves/Home Screen folder). The general LEAF_PHOTOS glob above is
 // `@/assets/leaves/*` (non-recursive), so it does NOT include this `home/` subfolder.

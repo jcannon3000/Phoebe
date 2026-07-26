@@ -3,6 +3,7 @@ import App from "./App";
 import "./index.css";
 import { recoverFromStaleChunk } from "./lib/staleChunk";
 import { installGlobalErrorReporting } from "./lib/reportClientError";
+import { preloadSplashPhoto } from "./lib/earthPhotos";
 // Boot i18next before mounting the tree so the very first render
 // reads from the resource tables. Fallback to English if Spanish
 // hasn't been activated. Runs as a side-effect import — there's no
@@ -23,6 +24,11 @@ window.addEventListener("vite:preloadError", (event) => {
 // Forward uncaught errors + unhandled promise rejections (the ones that never
 // reach a React ErrorBoundary) to our server → Sentry. See lib/reportClientError.
 installGlobalErrorReporting();
+
+// Warm the splash/office-load photo before the tree mounts, so the very first
+// screen paints WITH its image rather than flashing the background colour and
+// swapping the photo in a beat later.
+preloadSplashPhoto();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

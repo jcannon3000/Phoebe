@@ -367,6 +367,7 @@ const CommunitiesBrowsePage = lazy(() => import("./pages/communities-browse"));
 const CommunityRequestsPage = lazy(() => import("./pages/community-requests"));
 import WelcomePublicPage from "./pages/welcome-public";
 import InvitePage from "./pages/invite";
+import InviteSharePage from "./pages/invite-share";
 const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
@@ -653,7 +654,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",
-  "/about", "/about-deck", "/privacy", "/terms", "/invite",
+  "/about", "/about-deck", "/privacy", "/terms", "/invite", "/invite/share",
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
 // subpaths, not just the index. Same for /cobreathe (intro → breath).
@@ -723,7 +724,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // The invite landing page — a first-time visitor tapping a shared link has
   // no session yet, which useGuestMode treats as a guest; without this the
   // gate bounced them to /dashboard before they ever saw the invite.
-  "/invite",
+  "/invite", "/invite/share",
 ]);
 const GUEST_ALLOWED_PREFIX = [
   "/bcp", "/prayer-mode", "/cobreathe",
@@ -916,6 +917,8 @@ function Router() {
       {/* /customize-home/add must sit above /customize-home so it matches first */}
       <Route path="/customize-home/add" component={CustomizeHomeAddPage} />
       <Route path="/customize-home" component={CustomizeHomePage} />
+      {/* /invite/share (sender side) must sit above /invite (recipient side). */}
+      <Route path="/invite/share" component={InviteSharePage} />
       <Route path="/invite" component={InvitePage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />

@@ -559,9 +559,14 @@ function PracticeCard({
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
+          {/* Compact rows keep the emoji as a LEADING icon on the left (owner)
+              — only the HERO layout moves it to the right of the title. */}
+          {emoji ? (
+            <span className="text-[15px] leading-none flex-shrink-0" aria-hidden>{emoji}</span>
+          ) : null}
           <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>
-              {title}{emoji ? <span className="ml-1.5" aria-hidden>{emoji}</span> : null}
+              {title}
             </p>
             {useCycle
               ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
