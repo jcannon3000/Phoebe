@@ -81,17 +81,12 @@ const SLIDES: Slide[] = [
       "Some at dawn, some on a train, some at midnight — praying the same psalm, the same day. Not praying for each other from a distance, but praying with each other: one shared rhythm, elastic to each life, quietly holding a community together.",
     ],
   },
-  // The invitation — stability, carried into modern life. The app icon
-  // anchors it (see ClosingSlide).
+  // The invitation — just the name and the ask. The app icon anchors it
+  // (see ClosingSlide); no sub copy underneath.
   {
     kind: "closing",
-    body: [
-      "Monastic life is built on stability —",
-      "a rhythm you return to, day after day, until it becomes a place to stand.",
-      "Phoebe carries that steadiness into the pace of modern life:",
-      "the depth of the tradition, meeting you where your days actually are.",
-    ],
-    featured: ["Phoebe"],
+    body: [],
+    featured: ["Pray daily", "with Phoebe"],
   },
 ];
 
