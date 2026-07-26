@@ -4,7 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
-import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
+import {
+  markGuidedPrayerPrayed,
+  CAC_TODAY_URL, markCacRead, hasReadCacToday,
+  FDD_TODAY_URL, markFddRead, hasReadFddToday,
+  SSJE_TODAY_URL, markSsjeRead, hasReadSsjeToday,
+} from "@/lib/cacReadState";
+import { openExternalThenMarkRead } from "@/lib/openExternal";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -134,16 +140,38 @@ export default function GuidedPrayerPage() {
 
   if (isLoading || !user) return null;
 
+  // What's next in the rhythm once this prayer is done — the same hand-off the
+  // contemplation sit offers at its close, so finishing PACT/the Examen leads
+  // on into the day's reading instead of dead-ending on "Done". Only the
+  // reflections the user actually follows (their home layout), and only one
+  // they haven't read yet; null when there's nothing left to point at.
+  const REFLECTIONS: Array<{ key: "fdd" | "cac" | "ssje"; name: string; url: string; isReadToday: () => boolean; markRead: () => void }> = [
+    { key: "fdd", name: "Forward Day by Day", url: FDD_TODAY_URL, isReadToday: hasReadFddToday, markRead: markFddRead },
+    { key: "cac", name: "CAC Daily Meditation", url: CAC_TODAY_URL, isReadToday: hasReadCacToday, markRead: markCacRead },
+    { key: "ssje", name: "SSJE — Brother, Give Us a Word", url: SSJE_TODAY_URL, isReadToday: hasReadSsjeToday, markRead: markSsjeRead },
+  ];
+  const whatsNext = (() => {
+    const order = user?.homeLayout?.order ?? [];
+    const hidden = new Set(user?.homeLayout?.hidden ?? []);
+    const followed = REFLECTIONS.filter((r) => order.includes(r.key) && !hidden.has(r.key));
+    return followed.find((r) => !r.isReadToday()) ?? null;
+  })();
+
   const isIntro = step === 0;
   const isClosing = step === MOVEMENTS.length + 1;
-  const movement = !isIntro && !isClosing ? MOVEMENTS[step - 1] : null;
+  const isWhatsNext = step === MOVEMENTS.length + 2;
+  const movement = !isIntro && !isClosing && !isWhatsNext ? MOVEMENTS[step - 1] : null;
 
   const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
   // One primary action per slide, in the office's bottom control band.
   const primary = isIntro
     ? { label: t("guided_prayer.begin"), onClick: () => setStep(1) }
     : isClosing
-      ? { label: t("common.done"), onClick: () => setLocation("/dashboard") }
+      ? (whatsNext
+          ? { label: t("guided_prayer.whats_next", { defaultValue: "What's next" }), onClick: () => setStep((s) => (s + 1) as typeof step) }
+          : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
+      : isWhatsNext
+        ? { label: t("guided_prayer.read_it", { defaultValue: "Read it" }), onClick: () => { if (whatsNext) openExternalThenMarkRead(whatsNext.url, whatsNext.markRead, { reader: true }); } }
       : { label: isLastMovement ? t("guided_prayer.amen") : t("guided_prayer.continue"), onClick: () => setStep((s) => s + 1) };
 
   return (
@@ -297,6 +325,35 @@ export default function GuidedPrayerPage() {
               <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
                 {t("guided_prayer.closing_body")}
               </p>
+            </motion.div>
+          )}
+          {isWhatsNext && whatsNext && (
+            <motion.div
+              key="whats-next"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ maxWidth: 480, textAlign: "center" }}
+            >
+              <p className="text-[11px] uppercase tracking-[0.2em] font-semibold" style={{ color: EYEBROW, marginBottom: 18 }}>
+                {t("guided_prayer.whats_next", { defaultValue: "What's next" })}
+              </p>
+              <p style={{ fontSize: 34, marginBottom: 14 }} aria-hidden>📖</p>
+              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5.2vw, 28px)", lineHeight: 1.25, marginBottom: 12 }}>
+                {whatsNext.name}
+              </h2>
+              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.6 }}>
+                {t("guided_prayer.whats_next_sub", { defaultValue: "Today's reflection" })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setLocation("/dashboard")}
+                className="mt-7 text-[13px] underline"
+                style={{ color: "rgba(143,175,150,0.75)", background: "transparent", border: "none", cursor: "pointer", fontFamily: FONT }}
+              >
+                {t("guided_prayer.back_home", { defaultValue: "Back to home" })}
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
