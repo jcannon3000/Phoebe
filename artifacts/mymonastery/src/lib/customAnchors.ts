@@ -14,6 +14,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { swellHaptic } from "@/lib/swellHaptic";
+import { markRecentCompletion } from "@/lib/recentCompletion";
 
 // Where in the day this practice belongs — drives where its card slots into the
 // daily rhythm (a morning walk near Morning Prayer, an evening stretch near the
@@ -346,6 +347,7 @@ export function markCustomDoneToday(id: string): void {
     localStorage.removeItem(SKIP_PREFIX + id);
     addDoneDay(id, todayISO());
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+    if (!wasAlreadyDone) markRecentCompletion(`custom-${id}`);
   } catch {
     /* non-fatal */
   }

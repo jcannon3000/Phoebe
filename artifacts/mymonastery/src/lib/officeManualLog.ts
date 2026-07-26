@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
+import { markRecentCompletion } from "@/lib/recentCompletion";
 
 // Manual "I prayed it" logging for the offices — for people praying Morning
 // or Evening Prayer straight from their physical Book of Common Prayer rather
@@ -41,6 +42,8 @@ export function markOfficeBookComplete(side: "morning" | "evening"): void {
   try {
     localStorage.setItem(flagKey(side), "1");
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
+    // The side anchor card is keyed by the side itself on the home.
+    if (!wasAlreadyLogged) markRecentCompletion(side);
   } catch { /* private mode / quota — non-fatal */ }
   // A fresh office log (from the book) → the swell haptic.
   if (!wasAlreadyLogged) swellHaptic();

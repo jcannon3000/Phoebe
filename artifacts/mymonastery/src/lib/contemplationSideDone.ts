@@ -14,6 +14,7 @@
 // two layers (same pattern as reflections' local-read + server reflection_reads).
 
 import { getSideContemplationExplicit } from "@/lib/officePrefs";
+import { markRecentCompletion } from "@/lib/recentCompletion";
 
 export type ContemplationSide = "morning" | "evening";
 // WHICH contemplative practice was kept. A side's card is styled/labelled by
@@ -65,8 +66,12 @@ export function hasContemplationSideDoneToday(
 // within a day.
 export function markContemplationSideDone(side: ContemplationSide, kind?: ContemplationKind): void {
   try {
+    // Only on a FRESH keep — sitting again after this side is already done
+    // shouldn't replay the home's completion moment.
+    const wasAlreadyDone = hasContemplationSideDoneToday(side, kind);
     localStorage.setItem(`${PREFIX}${side}`, kind ? `${todayLocalISO()}|${kind}` : todayLocalISO());
     window.dispatchEvent(new Event(CONTEMPLATION_SIDE_DONE_EVENT));
+    if (!wasAlreadyDone) markRecentCompletion(`contemplation-${side}`);
   } catch {
     /* private mode / quota — non-fatal */
   }

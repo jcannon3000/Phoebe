@@ -17,6 +17,7 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
+import { markRecentCompletion } from "@/lib/recentCompletion";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { FROST_BLUR } from "@/lib/frost";
@@ -1251,7 +1252,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       })
       .catch(() => { /* best-effort — the localStorage flag below still flips the local UI */ });
     try {
-      if (viewerUser) localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+                  // completion moment (the side anchor card is keyed "morning"/"evening").
+                  markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     clearOfficeReminderNotifications();
@@ -1488,7 +1491,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // still see the completed flag and decide what copy to show.
     completedRef.current = true;
     try {
-      if (viewerUser) localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+                  // completion moment (the side anchor card is keyed "morning"/"evening").
+                  markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
     // The public /pray page handles its own close (a sign-up invite)
@@ -3460,7 +3465,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               // for prayer-shaped closings, Done for non-prayer ones).
               completedRef.current = true;
               try {
-                if (viewerUser) localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+                if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+                  // completion moment (the side anchor card is keyed "morning"/"evening").
+                  markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
                 localStorage.removeItem(officeProgressKey(resolvedMode));
               } catch { /* non-fatal */ }
               // Clear the daily reminder pushes — the "Done" path is the

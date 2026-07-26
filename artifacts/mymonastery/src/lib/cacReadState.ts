@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/queryClient";
 import { getSideLevel } from "@/lib/officePrefs";
+import { markRecentCompletion } from "@/lib/recentCompletion";
 
 // Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
 // side's OFFICE when they're that side's chosen prayer — but they're also
@@ -45,7 +46,9 @@ function todayLocalISO(): string {
 // Factory: returns a tiny tracker tied to one localStorage key + one
 // custom event. Keeps the per-source surfaces honest without a
 // second copy of the same logic.
-function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (ymd: string) => void) {
+// `cardKey` is the home card this tracker completes — stamped on the day's
+// FIRST mark so the home can play that card's completion moment.
+function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (ymd: string) => void, cardKey?: string) {
   return {
     /** "YYYY-MM-DD" of the last tap, or null. Returns null on storage errors. */
     getLastReadDay(): string | null {
@@ -82,6 +85,7 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
         /* private mode / quota — non-fatal */
       }
       if (alreadySyncedToday) return;
+      if (cardKey) markRecentCompletion(cardKey);
       // Fire-and-forget; an unauthenticated/offline call just no-ops.
       try { syncRead(ymd); } catch { /* best effort */ }
     },
@@ -93,14 +97,17 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
 const cacTracker = makeDailyReadTracker(
   "phoebe:cac:last-read-day", "phoebe:cac-read",
   (ymd) => { void apiRequest("POST", "/api/cac/read", { ymd }).catch(() => { /* best effort */ }); },
+  "reflect-cac",
 );
 const fddTracker = makeDailyReadTracker(
   "phoebe:fdd:last-read-day", "phoebe:fdd-read",
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "fdd", ymd }).catch(() => { /* best effort */ }); },
+  "reflect-fdd",
 );
 const ssjeTracker = makeDailyReadTracker(
   "phoebe:ssje:last-read-day", "phoebe:ssje-read",
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "ssje", ymd }).catch(() => { /* best effort */ }); },
+  "reflect-ssje",
 );
 // Praying the Psalms — the done tracker for the psalms office form.
 // SIDE-SCOPED: morning and evening psalms are tracked separately, so praying the
@@ -140,8 +147,8 @@ function syncPsalmsSession(side: "morning" | "evening"): void {
   }).catch(() => { /* best effort — the local flag already credited it today */ });
 }
 
-const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("morning"));
-const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("evening"));
+const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("morning"), "morning");
+const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("evening"), "evening");
 const psalmsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? psalmsTrackerEvening : psalmsTrackerMorning);
 export function hasPrayedPsalmsToday(side: "morning" | "evening" = "morning"): boolean { return psalmsTrackerFor(side).hasReadToday(); }
 export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); }
@@ -167,8 +174,8 @@ function syncGuidedPrayerSession(side: "morning" | "evening"): void {
     endedAt: now.toISOString(),
   }).catch(() => { /* best effort — the local flag already credited it today */ });
 }
-const guidedPrayerTrackerMorning = makeDailyReadTracker("phoebe:guided-prayer:morning:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("morning"));
-const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:evening:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("evening"));
+const guidedPrayerTrackerMorning = makeDailyReadTracker("phoebe:guided-prayer:morning:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("morning"), "morning");
+const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:evening:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("evening"), "evening");
 const guidedPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? guidedPrayerTrackerEvening : guidedPrayerTrackerMorning);
 export function hasPrayedGuidedPrayerToday(side: "morning" | "evening" = "morning"): boolean { return guidedPrayerTrackerFor(side).hasReadToday(); }
 export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); }
@@ -193,8 +200,8 @@ function syncFddSession(side: "morning" | "evening"): void {
     endedAt: now.toISOString(),
   }).catch(() => { /* best effort — the local flag already credited it today */ });
 }
-const fddTrackerMorning = makeDailyReadTracker("phoebe:fdd:morning:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("morning"));
-const fddTrackerEvening = makeDailyReadTracker("phoebe:fdd:evening:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("evening"));
+const fddTrackerMorning = makeDailyReadTracker("phoebe:fdd:morning:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("morning"), "morning");
+const fddTrackerEvening = makeDailyReadTracker("phoebe:fdd:evening:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("evening"), "evening");
 const fddTrackerFor = (side: "morning" | "evening") => (side === "evening" ? fddTrackerEvening : fddTrackerMorning);
 export function hasPrayedFddToday(side: "morning" | "evening" = "morning"): boolean { return fddTrackerFor(side).hasReadToday(); }
 export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); }

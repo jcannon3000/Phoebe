@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -21,6 +21,7 @@ import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL,
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
@@ -390,7 +391,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
@@ -426,8 +427,25 @@ function PracticeCard({
    *  blur that WebKit otherwise repaints for every card at once after the
    *  cascade settles. Each card's blur then arrives gradually as it lands. */
   blurDelay?: number;
+  /** Play the just-completed moment on THIS card: the action pill drops away
+   *  and a ✓ rises in its place (hero: the CTA button becomes "Completed"),
+   *  and the border pulses to say "this one is done and on its way to Done".
+   *  The card is rendered with done=true; this only drives the transition. */
+  celebrate?: boolean;
 }) {
   const waiting = !!later && !done;
+  // Hold the pre-completion pill for a beat so the swap is something the user
+  // SEES, rather than the card already wearing its ✓ when the home paints.
+  const [celebrated, setCelebrated] = useState(!celebrate);
+  useEffect(() => {
+    if (!celebrate) { setCelebrated(true); return; }
+    setCelebrated(false);
+    const id = window.setTimeout(() => setCelebrated(true), 420);
+    return () => window.clearTimeout(id);
+  }, [celebrate]);
+  // While celebrating and still showing the old pill, render the card as if it
+  // weren't done yet — that's the state we're animating OUT of.
+  const showPreDone = !!celebrate && !celebrated;
   // Gradual per-card blur-in. When blurDelay is provided we drop the static
   // backdrop-filter from `style` and animate it (both unprefixed + -webkit- so
   // it works across iOS 15.x) from blur(0) → full. It stays at 0 while the card
@@ -455,15 +473,46 @@ function PracticeCard({
       <div className="mt-4 w-full text-center rounded-full text-[14px] font-medium py-3" style={{ background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)", fontFamily: FONT }}>
         {laterLabel}
       </div>
+    ) : celebrate ? (
+      // Just completed: the CTA drops away and "Completed ✓" rises in its
+      // place. mode="wait" so the old label is gone before the new one lands —
+      // a fade DOWN then UP, not a cross-dissolve.
+      <div className="mt-4 relative" style={{ height: 48 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          {showPreDone ? (
+            <motion.div
+              key="hero-cta"
+              initial={{ opacity: 1, y: 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.22, ease: "easeIn" }}
+              className="absolute inset-0 w-full text-center rounded-full text-[15px] font-semibold flex items-center justify-center"
+              style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}
+            >
+              {cta} <span aria-hidden className="ml-1">→</span>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="hero-done"
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 w-full text-center rounded-full text-[15px] font-semibold flex items-center justify-center gap-2"
+              style={{ background: `rgba(${rgb},0.28)`, color: WARM, border: `1px solid rgba(${rgb},0.55)`, fontFamily: FONT }}
+            >
+              <span aria-hidden>✓</span>Completed
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     ) : (
       <div className="mt-4 w-full text-center rounded-full text-[15px] font-semibold py-3" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
         {cta} <span aria-hidden className="ml-1">→</span>
       </div>
     );
     const heroRow = (
-      <div
-        className={`${pulseOnLoad ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
+      <motion.div
+        className={`${pulseOnLoad && !celebrate ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
         style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
+        animate={celebrate ? { borderColor: [CARD_BORDER, `rgba(${rgb},0.95)`, CARD_BORDER] } : undefined}
+        transition={celebrate ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" } } : undefined}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
@@ -497,7 +546,7 @@ function PracticeCard({
           )}
           {heroCta}
         </div>
-      </div>
+      </motion.div>
     );
     if (waiting) return heroRow;
     // A plain div (not a native <button>) for the onClick path — buttons
@@ -511,7 +560,34 @@ function PracticeCard({
     return <Link href={href} className="block">{heroRow}</Link>;
   }
 
-  const pill = done ? (
+  // Just-completed compact card: the action pill fades DOWN and out, then the
+  // ✓ rises up into its slot. Fixed-width slot so the row doesn't reflow
+  // mid-swap.
+  const pill = celebrate ? (
+    <span className="flex-shrink-0 relative inline-block" style={{ minWidth: 84, height: 28 }}>
+      <AnimatePresence mode="wait" initial={false}>
+        {showPreDone ? (
+          <motion.span
+            key="cta"
+            initial={{ opacity: 1, y: 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 9 }}
+            transition={{ duration: 0.2, ease: "easeIn" }}
+            className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center"
+            style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
+          >
+            {cta} <span aria-hidden className="ml-0.5">→</span>
+          </motion.span>
+        ) : (
+          <motion.span
+            key="check"
+            initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center"
+            style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
+          >✓</motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  ) : done ? (
     doneCta ? (
       // Done, but still invites more (e.g. keep sitting past the contemplation
       // goal). A "✓ Sit again →" pill — the card stays tappable to its href.
@@ -545,14 +621,21 @@ function PracticeCard({
       style={{ background: cardTintBg(tint), ...staticBlur, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
       initial={blurInitial}
       animate={
-        pulse
-          ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder], ...(blurAnimate ?? {}) }
-          : blurAnimate
+        // A just-completed card gets a BRIGHTER, quicker border pulse than the
+        // ordinary "next up" pulse — it's saying "this one is done", and it
+        // rides along as the card moves from Next down into Done.
+        celebrate
+          ? { borderColor: [restBorder, `rgba(${rgb},0.95)`, restBorder], ...(blurAnimate ?? {}) }
+          : pulse
+            ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder], ...(blurAnimate ?? {}) }
+            : blurAnimate
       }
       transition={
-        pulse
-          ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" }, ...(blurTransition ?? {}) }
-          : blurTransition
+        celebrate
+          ? { borderColor: { duration: 1.25, repeat: Infinity, ease: "easeInOut" }, ...(blurTransition ?? {}) }
+          : pulse
+            ? { borderColor: { duration: 2.2, repeat: Infinity, ease: "easeInOut" }, ...(blurTransition ?? {}) }
+            : blurTransition
       }
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
@@ -608,6 +691,29 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
+  // ── The just-completed moment ────────────────────────────────────────────
+  // Coming back from a practice, the card is already Done in state — so
+  // without this it would simply be sitting in the Done list, with nothing to
+  // watch. Instead: PIN it in Next wearing its old action pill, swap that pill
+  // for a ✓, hold a beat, then let it drop into Done while the list closes up.
+  // Read once at mount and consumed immediately, so the moment plays exactly
+  // once per completion and never replays on a later visit.
+  const [celebrateKey] = useState<string | null>(() => {
+    const recent = readRecentCompletion();
+    if (recent) clearRecentCompletion();
+    return recent?.key ?? null;
+  });
+  // Phase 1: pinned in Next (pill → ✓). Phase 2: released into Done.
+  const [pinnedInNext, setPinnedInNext] = useState<boolean>(!!celebrateKey);
+  // The border keeps pulsing for a while AFTER it lands in Done, so the eye can
+  // follow the card across the move.
+  const [celebrating, setCelebrating] = useState<boolean>(!!celebrateKey);
+  useEffect(() => {
+    if (!celebrateKey) return;
+    const release = window.setTimeout(() => setPinnedInNext(false), 2000);
+    const stop = window.setTimeout(() => setCelebrating(false), 5000);
+    return () => { window.clearTimeout(release); window.clearTimeout(stop); };
+  }, [celebrateKey]);
   const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
@@ -1027,8 +1133,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const tomorrowDisplay = guestMorningTomorrow
     ? visibleCards.filter((c) => c.key === morningAnchorKey)
     : [];
+  // While the completion moment is pinned, the just-done card stays in Next
+  // (that's the whole point — the user watches it finish there first).
+  const pinnedKey = pinnedInNext ? celebrateKey : null;
   const upcomingDisplay = (() => {
-    const all = visibleCards.filter((c) => !c.done && !(guestMorningTomorrow && c.key === morningAnchorKey));
+    const all = visibleCards.filter((c) => (!c.done || c.key === pinnedKey) && !(guestMorningTomorrow && c.key === morningAnchorKey));
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
@@ -1036,7 +1145,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   })();
   // Everything kept today stays in the Done section all day — until the whole
   // day's rhythm is complete — so the home always reflects what's been prayed.
-  const completedDisplay = visibleCards.filter((c) => c.done);
+  const completedDisplay = visibleCards.filter((c) => c.done && c.key !== pinnedKey);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
   const showTomorrowSection = tomorrowDisplay.length > 0;
 
@@ -1056,6 +1165,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (isFirstOpen()) return true;
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
+
   useEffect(() => {
     if (splashCleared) return;
     const clear = () => setSplashCleared(true);
@@ -1146,6 +1256,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       pulse={pulse}
       pulseOnLoad={splashCleared}
       blurDelay={blurDelay}
+      celebrate={celebrating && c.key === celebrateKey}
     />
   );
   // The card that LEADS the Next list as a hero: the office hero when there is
@@ -1181,7 +1292,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Gentle staggered fade-up — each card rises in just after the one above it.
   // A clear cascade: a touch more travel + a longer per-card gap so the cards
   // visibly load one after another rather than appearing all at once.
-  const enterUp = (i: number) => ({
+  // Returning from a practice, the cards are ALREADY THERE — no cascade. The
+  // completion moment is the thing to watch, and a stagger underneath it just
+  // competes for attention.
+  const enterUp = (i: number) => (celebrateKey ? {
+    initial: false as const,
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0 },
+  } : {
     initial: { opacity: 0, y: 8 },
     animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
@@ -1224,7 +1342,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
               <BookOfficeLogRow side={heroSide} done={heroSide === "morning" ? morningDone : eveningDone} />
             )}
             {upcomingDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(i + (heroLeads ? 1 : 0))}>
+              // `layout` only while a completion is playing: framer then
+              // animates the card's move out of Next and the cards below
+              // closing the gap, instead of both snapping.
+              <motion.div key={c.key} layout={!!celebrateKey} layoutId={celebrateKey ? `card-${c.key}` : undefined} {...enterUp(i + (heroLeads ? 1 : 0))}>
                 {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (heroLeads ? 1 : 0)))}
               </motion.div>
             ))}
@@ -1238,7 +1359,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <motion.div {...enterUp(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(doneBase + i)}>
+              <motion.div key={c.key} layout={!!celebrateKey} layoutId={celebrateKey ? `card-${c.key}` : undefined} {...enterUp(doneBase + i)}>
                 {renderCard(c, false, tintFor(doneBase + i), blurLand(doneBase + i))}
               </motion.div>
             ))}
