@@ -292,12 +292,14 @@ export function getSideLevel(side: OfficeSide): OfficeLevel | null {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
     if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
   } catch { /* private mode */ }
-  // New-user default rule: Morning = the BCP office, Evening = Contemplation (a
-  // silent sit). Reflection defaults to CAC + a 5-minute Silence goal +
-  // Co-Breathe, all handled in useRhythmState. Only applies until the user
+  // New-user default rule (owner, 2026-07-26): Morning = Simple Guided Prayer
+  // (PACT), Evening = the Examen — the same pairing the light /customize
+  // picker and the full customizer's leading "way" choice both already offer
+  // as the first option. Reflection defaults to CAC + a 5-minute Silence goal
+  // + Co-Breathe, all handled in useRhythmState. Only applies until the user
   // explicitly picks a level for that side (stored above).
-  if (side === "morning") return "office";
-  if (side === "evening") return "reflect-sit";
+  if (side === "morning") return "guided-prayer";
+  if (side === "evening") return "examen";
   return null;
 }
 

@@ -91,7 +91,13 @@ export default function ReflectCacPage() {
 
   const readReflection = () => {
     recordCacOpened();
-    openExternal(metaQ.data?.url || CAC_TODAY_URL);
+    // { reader: true } — same as every other CAC entry point. Without it this
+    // opens through a DIFFERENT native browser surface with its own separate
+    // cookie storage, so a "remember my choice" cookie-consent answer given
+    // here wouldn't be visible from the dashboard/menu card, and vice versa —
+    // the site's cookie banner reappeared every time depending on which
+    // screen the user opened it from (owner report).
+    openExternal(metaQ.data?.url || CAC_TODAY_URL, { reader: true });
   };
 
   const readers = readersQ.data?.readers ?? [];

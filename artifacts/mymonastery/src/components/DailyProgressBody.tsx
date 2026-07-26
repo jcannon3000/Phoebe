@@ -1348,11 +1348,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
             {officeHero && heroSide && (
               <BookOfficeLogRow side={heroSide} done={heroSide === "morning" ? morningDone : eveningDone} />
             )}
-            {/* AnimatePresence only while a completion is playing, so the
-                just-completed card gets a real EXIT animation (fade down,
-                not a snap) when it's released into Done — and `layout` lets
-                the cards below it slide up to close the gap it leaves. */}
-            <AnimatePresence initial={false}>
+            {/* Leave AnimatePresence's OWN `initial` prop at its default
+                (true) — setting it false here previously suppressed EVERY
+                card's entrance fade-up on every mount, not just during a
+                completion (that broke the ordinary cascade entirely). Each
+                card's own `initial` (from enterUp, below) already correctly
+                skips the animation on a celebrateKey mount and plays it
+                otherwise — that per-child value is what should differ, not
+                this wrapper. */}
+            <AnimatePresence>
               {upcomingDisplay.map((c, i) => (
                 <motion.div
                   key={c.key}

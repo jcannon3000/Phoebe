@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { getSideLevel } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -92,9 +93,30 @@ export default function ExamenPage() {
     // The closing gets the resolving submit feedback (swell + haptic).
     if (step === 6) {
       try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
-      // Reaching the closing = the Examen is prayed today. Stamps the optional
-      // "examen" practice so the Daily-progress anchor (when added) checks off.
-      try { markPracticeDoneToday("examen"); } catch { /* non-fatal */ }
+      // Reaching the closing = the Examen is prayed today — BUT the "examen"
+      // flag is shared/global (useRhythmState checks it for BOTH morning and
+      // evening's anchor, whichever side is set to examen), so an off-schedule
+      // sit can't be allowed to silently satisfy a side's routine. Opening
+      // from that side's own card carries ?side= (begin-prayer.tsx) and
+      // always counts, any hour — that IS the scheduled sit. Opening from
+      // Practices carries no ?side=; if evening owns examen and it isn't
+      // evening yet (before the same 5 PM boundary the office/PACT use),
+      // wandering in through Practices must NOT check off a routine the
+      // user hasn't actually reached today (owner: "if it's 10am and someone
+      // happens to do Examen via Practices, don't have it count for their
+      // routine if Examen is in the routine for evening").
+      const explicitSide = (() => {
+        try {
+          const s = new URLSearchParams(window.location.search).get("side");
+          return s === "morning" || s === "evening" ? s : null;
+        } catch { return null; }
+      })();
+      const eveningOwnsExamen = getSideLevel("evening") === "examen";
+      const beforeEveningWindow = new Date().getHours() < 17;
+      const offScheduleViaPractices = !explicitSide && eveningOwnsExamen && beforeEveningWindow;
+      if (!offScheduleViaPractices) {
+        try { markPracticeDoneToday("examen"); } catch { /* non-fatal */ }
+      }
     }
   }, [step]);
 

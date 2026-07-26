@@ -63,7 +63,10 @@ export default function FddSitPage() {
 
   const readReflection = () => {
     recordFddOpened();
-    openExternal(FDD_TODAY_URL);
+    // { reader: true } — matches every other FDD entry point (same fix as
+    // reflect-cac.tsx/reflection-read.tsx: without it this opens through a
+    // separate native browser surface with its own cookie storage).
+    openExternal(FDD_TODAY_URL, { reader: true });
   };
 
   return (

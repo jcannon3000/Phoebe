@@ -57,7 +57,11 @@ export default function ReflectionReadPage() {
 
   // CAC can't be iframed, so it always opens in a new page (the in-app
   // browser) rather than rendering inline.
-  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL); };
+  // { reader: true } — matches every other CAC entry point. Without it this
+  // opened through a SEPARATE native browser surface with its own cookie
+  // storage, so cac.org's cookie-consent banner reappeared depending on which
+  // screen the user tapped in from (owner report).
+  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL, { reader: true }); };
 
   // "Next" walks Forward → SSJE → CAC. The final step opens CAC in a new page.
   const goNext = () => {

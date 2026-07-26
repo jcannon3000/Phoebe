@@ -987,7 +987,10 @@ function OpeningSplash() {
   // these (a Begin CTA on a pure log indicator is misleading).
   type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean };
   const nextCandidates: NextCand[] = [
-    { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅", label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : "Morning prayer", blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : "Begin the day with the office", rgb: "46,107,64" },
+    { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅",
+      label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : getSideLevel("morning") === "guided-prayer" ? "Simple Guided Prayer" : "Morning prayer",
+      blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : getSideLevel("morning") === "guided-prayer" ? "Praise, Confession, Thanksgiving, Supplication" : "Begin the day with the office",
+      rgb: "46,107,64" },
     ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
     { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "Loving God in silence", rgb: "62,124,122" },
     { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Creation Prayer", blurb: "12 breaths with all creation", rgb: "62,124,122" },
@@ -998,7 +1001,10 @@ function OpeningSplash() {
     { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
     // The Examen is an end-of-day reflection — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
-    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙", label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : "Evening prayer", blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : "Mark the day's end with the office", rgb: "46,107,64" },
+    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙",
+      label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : getSideLevel("evening") === "examen" ? "The Examen" : "Evening prayer",
+      blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : getSideLevel("evening") === "examen" ? "Review the day with God" : "Mark the day's end with the office",
+      rgb: "46,107,64" },
   ];
   // From the AFTERNOON on (noon onward), "what's next" LEADS WITH EVENING (owner)
   // — once the day has turned, the evening office is what's ahead, so it surfaces
@@ -1431,7 +1437,19 @@ function LoadReveal() {
 // Full-bleed page backdrop — fades UP once the photo decodes (no flash/pop), and
 // sits z-index:-1 within the Layout root's isolation:isolate context so it stays put.
 function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) {
-  const [loaded, setLoaded] = useState(false);
+  // Owner report: the home's backdrop always faded in from opacity 0, even
+  // when it's the SAME photo the opening splash just showed a beat earlier
+  // (splash and home now share one fixed leaf photo) — the browser already
+  // has it decoded, but `loaded` still started false, so it visibly dipped
+  // and re-faded instead of just staying put. Check synchronously whether
+  // an <img> at this src is already complete (decoded, in cache) and skip
+  // the redundant fade-in when it is.
+  const [loaded, setLoaded] = useState(() => {
+    if (typeof Image === "undefined") return false;
+    const probe = new Image();
+    probe.src = photo;
+    return probe.complete;
+  });
   // Photo AND its wash fade UP together once the image decodes — so the
   // backdrop eases in as one piece rather than the dark wash flashing on
   // instantly while the photo is still loading behind it.

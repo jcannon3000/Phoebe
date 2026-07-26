@@ -581,7 +581,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // or two later — the flash on opening the office (worst on Water, whose photos
   // are larger than the cached forest splash). Declared here, above the deck's
   // early returns, so the hook order stays stable.
-  const [veilPhotoReady, setVeilPhotoReady] = useState(false);
+  // Owner report: opening the office visibly re-faded the SAME leaf photo the
+  // app-open splash had just shown a beat earlier — `veilPhoto` defaults to
+  // that identical fixed SPLASH_PHOTO, but this flag always started false, so
+  // an already-fully-visible image dipped to 0 and re-faded in. Probe
+  // SPLASH_PHOTO specifically (the only photo that could actually be a
+  // just-shown repeat — a Water/Planet backdrop's veil is a fresh random
+  // pick and correctly still fades in normally) and start ready if the
+  // browser already has it decoded. `display` (needed to know the backdrop)
+  // isn't computed yet at this point in the file, so this can only check the
+  // shared default photo, not the final `veilPhoto` value — sufficient,
+  // since that default IS the repeat case this is fixing.
+  const [veilPhotoReady, setVeilPhotoReady] = useState(() => {
+    if (typeof Image === "undefined" || !SPLASH_PHOTO) return false;
+    const probe = new Image();
+    probe.src = SPLASH_PHOTO;
+    return probe.complete;
+  });
   // Match the browser toolbar / status bar to the backdrop while the office is
   // open (green default, blue for Water, cream for Paper) — otherwise the top
   // bar keeps the app's default green and clashes with a Water/Paper deck.
