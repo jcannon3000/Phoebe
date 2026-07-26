@@ -54,6 +54,10 @@ export default function AboutPage() {
           </button>
         </header>
 
+        <p style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.6, color: "#8FAF96", margin: "0 0 22px" }}>
+          Phoebe is a project by Episcopal seminarians Anabelle Helsell and Jeremy Cannon, backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.
+        </p>
+
         <div className="space-y-4">
           <p style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.72, color: "#E4EADD" }}>
             Phoebe is an app for cultivating a daily practice of prayer. It brings together resources from across the Episcopal Church and beyond into one seamless routine — with the modern tools to help guide you through building it, and holding it.
@@ -99,10 +103,6 @@ export default function AboutPage() {
             Terms of Service
           </button>
         </div>
-
-        <p style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.6, color: "#8FAF96", margin: "28px 0 0", paddingTop: 18, borderTop: "1px solid rgba(143,175,150,0.16)" }}>
-          Phoebe is a project by Episcopal seminarians Anabelle Helsell and Jeremy Cannon, backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.
-        </p>
       </div>
   );
 
