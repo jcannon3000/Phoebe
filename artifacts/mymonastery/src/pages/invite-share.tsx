@@ -43,26 +43,6 @@ export default function InviteSharePage() {
     }
   }
 
-  // The three things sharing Phoebe actually gives someone. Concrete, not a
-  // feature list — each line is a thing that happens in their day.
-  const gifts: Array<{ emoji: string; title: string; body: string }> = [
-    {
-      emoji: "🌅",
-      title: t("invite_share.gift_1_title", { defaultValue: "A place to begin the day" }),
-      body: t("invite_share.gift_1_body", { defaultValue: "Morning and evening prayer from the Book of Common Prayer, already laid out — no deciding what to read." }),
-    },
-    {
-      emoji: "🕯️",
-      title: t("invite_share.gift_2_title", { defaultValue: "A rhythm they can actually keep" }),
-      body: t("invite_share.gift_2_body", { defaultValue: "They choose how much: a few minutes of silence, the Examen at night, or the full office. It adapts to the life they have." }),
-    },
-    {
-      emoji: "🤝",
-      title: t("invite_share.gift_3_title", { defaultValue: "The sense of not praying alone" }),
-      body: t("invite_share.gift_3_body", { defaultValue: "The same prayers, the same day, alongside others in your church — even when you're apart." }),
-    },
-  ];
-
   return (
     <div
       className="relative min-h-[100dvh] flex flex-col"
@@ -102,13 +82,13 @@ export default function InviteSharePage() {
 
       <div className="flex-1 flex flex-col px-7 pb-10 max-w-md mx-auto w-full">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
-          <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mt-6 mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+          <p className="text-[12px] uppercase tracking-[0.2em] font-semibold mt-6 mb-4" style={{ color: "rgba(143,175,150,0.7)" }}>
             {t("invite_share.eyebrow", { defaultValue: "Invite someone" })}
           </p>
-          <h1 className="text-[27px] font-semibold leading-tight mb-4">
+          <h1 className="text-[34px] font-semibold leading-tight mb-6">
             {t("invite_share.title", { defaultValue: "Give someone a way to pray every day" })}
           </h1>
-          <p className="text-[15.5px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF }}>
+          <p className="text-[19px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF }}>
             {t("invite_share.lede", {
               defaultValue:
                 "Most people who want to pray daily don't lack the desire — they lack a form to put it in. Sharing Phoebe hands someone that form: a simple, unhurried rhythm they can keep, and a way to grow into the prayer life of the church.",
@@ -116,45 +96,21 @@ export default function InviteSharePage() {
           </p>
         </motion.div>
 
-        <div className="mt-8 flex flex-col gap-3">
-          {gifts.map((g, i) => (
-            <motion.div
-              key={g.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.08 + i * 0.09 }}
-              className="rounded-2xl px-4 py-3.5 flex gap-3.5"
-              style={{
-                background: "rgba(22,46,32,0.42)",
-                backdropFilter: "blur(11px)",
-                WebkitBackdropFilter: "blur(11px)",
-                border: "1px solid rgba(46,107,64,0.30)",
-              }}
-            >
-              <span className="text-[17px] leading-none flex-shrink-0 mt-0.5" aria-hidden>{g.emoji}</span>
-              <div className="min-w-0">
-                <p className="text-[14.5px] font-semibold leading-snug" style={{ color: WARM }}>{g.title}</p>
-                <p className="text-[13px] mt-1 leading-snug" style={{ color: SAGE }}>{g.body}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
-          className="mt-9 flex flex-col items-center"
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+          className="mt-12 flex flex-col items-center"
         >
           <button
             type="button"
             onClick={handleShare}
-            className="w-full rounded-full px-8 py-4 text-[15px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
+            className="w-full rounded-full px-8 py-4 text-[17px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer" }}
           >
             {t("invite_share.share_cta", { defaultValue: "Share Phoebe" })}
           </button>
-          <p className="text-[12.5px] mt-3 text-center" style={{ color: justCopied ? "#8FAF96" : "rgba(143,175,150,0.6)" }}>
+          <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? "#8FAF96" : "rgba(143,175,150,0.6)" }}>
             {justCopied
               ? t("invite_share.copied", { defaultValue: "Link copied ✓" })
               : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
