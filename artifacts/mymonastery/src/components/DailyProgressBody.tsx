@@ -21,7 +21,6 @@ import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL,
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { wasRecentlyCompleted } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
@@ -1057,20 +1056,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (isFirstOpen()) return true;
     try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
-  // Owner report: cards jump straight from Next to Done with no animation to
-  // see, because a practice's state is already final by the time this page
-  // mounts (the transition "happened" back on the practice page, off-screen).
-  // When a completion was very recent, hold the Done section's reveal for a
-  // beat so the fade-up actually plays once the user is back — otherwise
-  // (the common case: opening Home fresh, or a card that's been done for
-  // hours) reveal immediately, same as every other card.
-  const [doneRevealReady, setDoneRevealReady] = useState(() => !wasRecentlyCompleted());
-  useEffect(() => {
-    if (doneRevealReady) return;
-    const id = setTimeout(() => setDoneRevealReady(true), 2000);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   useEffect(() => {
     if (splashCleared) return;
     const clear = () => setSplashCleared(true);
@@ -1201,15 +1186,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
   });
-  // Same cascade, but ALSO held on doneRevealReady — used only for the Done
-  // section, so a just-completed card's move into Done is what's delayed,
-  // not the whole home's normal entrance cascade.
-  const enterUpDone = (i: number) => ({
-    initial: { opacity: 0, y: 8 },
-    animate: (splashCleared && doneRevealReady) ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
-    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
-  });
-
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
   if (!ready) return null;
@@ -1259,10 +1235,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           home (showDone). */}
       {showDoneSection && (
         <div className={doneGapCls}>
-          <motion.div {...enterUpDone(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
+          <motion.div {...enterUp(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUpDone(doneBase + i)}>
+              <motion.div key={c.key} {...enterUp(doneBase + i)}>
                 {renderCard(c, false, tintFor(doneBase + i), blurLand(doneBase + i))}
               </motion.div>
             ))}

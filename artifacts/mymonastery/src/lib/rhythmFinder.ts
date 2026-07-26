@@ -159,8 +159,14 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
   // Morning prayer form.
   let morningPrayer: RecommendedRhythm["morningPrayer"];
   if (has(a.meet, "community")) {
-    morningPrayer = "community";
-    reasons.push("You meet God with others, so we set your prayer to pray alongside your community.");
+    // Prayer requests / community intercessions are OFF app-wide, so the
+    // "community" level no longer resolves to a real practice (getSideLevel
+    // coerces it to the office). Recommending it promised the user Community
+    // Prayer on the results screen and then silently handed them the Daily
+    // Office. Give them the office outright — praying the SAME liturgy the rest
+    // of their church prays is the closest thing that actually works today.
+    morningPrayer = "office";
+    reasons.push("You meet God with others, so we gave you the Daily Office — the same prayers your church prays each day.");
   } else if (has(a.meet, "silence") && a.meet.length === 1) {
     morningPrayer = "contemplation";
     reasons.push("Silence is where you meet God — so your prayer itself is a daily sit, not a liturgy.");

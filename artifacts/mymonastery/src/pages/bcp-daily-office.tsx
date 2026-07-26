@@ -1136,12 +1136,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       : resolvedMode === "compline"
         ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
         : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
-  // The held-breath image + wash follow the chosen backdrop. officeThemeStyle
-  // carries the blue token overrides even on this pre-load early return, which
-  // sits outside the main themed deck root. ONE fixed leaf photo (owner) —
-  // the same image the app-open splash uses, so opening an office reads as a
-  // continuation of the launch screen rather than a different picture.
-  const veilPhoto = SPLASH_PHOTO || splashForestPath;
+  // The held-breath veil. Default is the fixed splash leaf (owner) so opening
+  // an office reads as a continuation of the launch screen. But a user who
+  // DELIBERATELY chose the Water or Planet office backdrop keeps it here too —
+  // pinning the leaf for them put a leaf photo under blue/planet wash tokens.
+  // Picked once per mount so the veil can't shuffle while it's showing.
+  const veilPhoto = useMemo(() => {
+    const pick = (set: string[]) => (set.length > 0 ? set[Math.floor(Math.random() * set.length)]! : null);
+    if (display.backdrop === "water") return pick(WATER_PHOTOS) ?? SPLASH_PHOTO ?? splashForestPath;
+    if (display.backdrop === "planet") return pick(PLANET_PHOTOS) ?? SPLASH_PHOTO ?? splashForestPath;
+    return SPLASH_PHOTO || splashForestPath;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [display.backdrop]);
   const veilStyle: CSSProperties = {
     ...officeThemeStyle(display.backdrop, display.font),
     position: "fixed", inset: 0, background: BG, isolation: "isolate",

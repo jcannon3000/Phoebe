@@ -1,6 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
-import { markRecentCompletion } from "@/lib/recentCompletion";
 
 // Tracks whether the user has completed an *optional* daily practice today —
 // currently Gratitude and the Examen. These are the practices a user can add
@@ -62,10 +61,8 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
   } catch {
     /* private mode / quota — non-fatal */
   }
-  // A fresh completion of a daily-routine practice → the swell haptic, and the
-  // shared "just completed" stamp that holds the home's Done reveal (see
-  // lib/recentCompletion.ts).
-  if (!wasAlreadyDone) { swellHaptic(); markRecentCompletion(); }
+  // A fresh completion of a daily-routine practice → the swell haptic.
+  if (!wasAlreadyDone) swellHaptic();
   // Fire-and-forget; an unauthenticated/offline call just no-ops.
   void apiRequest("POST", "/api/practice-completion", {
     section,

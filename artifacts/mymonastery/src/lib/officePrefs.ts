@@ -319,7 +319,12 @@ function coerceRetiredLevel(level: OfficeLevel): OfficeLevel {
 export function getExplicitSideLevel(side: OfficeSide): OfficeLevel | null {
   try {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
-    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return raw as OfficeLevel;
+    // Coerce retired levels here too. Leaving this getter raw meant a stored
+    // "intercessions" leaked out of it while getSideLevel reported "office" for
+    // the SAME side — so pilot-home routed to Daily Devotions, routine-print
+    // dropped the office readings, and SimpleRuleEditor showed no row selected,
+    // all while the home card prayed it as the office.
+    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
   } catch { /* private mode */ }
   return null;
 }

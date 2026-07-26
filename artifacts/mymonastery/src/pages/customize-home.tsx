@@ -50,9 +50,8 @@ const PRAY_ANCHOR: HomeModule = "office";
 //   cobreathe → "reflect-sit"   → contemplation, breathing together (style=cobreathe)
 //   devotion  → "devotion"      → the shorter Daily Devotion
 //   offices   → "office"        → full Morning & Evening Prayer
-type PrayChoice = "community" | "cobreathe" | "devotion" | "offices";
+type PrayChoice = "cobreathe" | "devotion" | "offices";
 const PRAY_LEVEL: Record<PrayChoice, OfficeLevel> = {
-  community: "intercessions",
   cobreathe: "reflect-sit",
   devotion: "devotion",
   offices: "office",
@@ -66,7 +65,9 @@ function getContemplationStyle(): "silent" | "cobreathe" {
 // Pill labels — hardcoded English, matching the other hardcoded module labels
 // (cac/fdd/ssje) so the i18n coverage guard stays green.
 const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
-  { id: "community", pill: "Community" },
+  // "Community" removed — it wrote the `intercessions` level, which getSideLevel
+  // now coerces to "office" (prayer requests are OFF app-wide), so the pill
+  // snapped straight back to Office and could never stay selected.
   { id: "cobreathe", pill: "Creation Prayer" },
   { id: "devotion", pill: "Devotions" },
   { id: "offices", pill: "Office" },
@@ -74,7 +75,6 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
 // The anchor card's identity per choice — mirrors what the home actually
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
-  community: { emoji: "🙏🏽", label: "Pray Together", sub: "Pray with your community" },
   cobreathe: { emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation" },
   devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
@@ -92,7 +92,10 @@ function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayCh
   if (m === "fdd" || e === "fdd" || m === "psalms" || e === "psalms") return null;
   if (defaultPrayerLevel === "office" || m === "office" || e === "office") return "offices";
   if (defaultPrayerLevel === "devotion" || m === "devotion" || e === "devotion") return "devotion";
-  if (defaultPrayerLevel === "intercessions" || m === "intercessions" || e === "intercessions") return "community";
+  // A stale server-side "intercessions" default reads as the office now —
+  // that level is retired (prayer requests are OFF) and getSideLevel coerces
+  // it, so there is no "community" pill left for it to select.
+  if (defaultPrayerLevel === "intercessions") return "offices";
   // reflect-sit IS contemplation; here that only ever means Cobreathe (gated on
   // the shared-breath style). Plain silent contemplation isn't a choice here.
   const isReflect = defaultPrayerLevel === "reflect-sit" || m === "reflect-sit" || e === "reflect-sit";

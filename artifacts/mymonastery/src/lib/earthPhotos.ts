@@ -44,14 +44,13 @@ export const SPLASH_PHOTO: string = (() => {
 export function preloadSplashPhoto(): void {
   if (!SPLASH_PHOTO || typeof document === "undefined") return;
   try {
+    // Just the Image() fetch. A <link rel=preload> appended from JS lands after
+    // parse, so it's too late for the preload scanner to help — it only earned
+    // a duplicate hint and Chrome's "preloaded but not used within a few
+    // seconds" warning on the loads where the splash never renders.
     const img = new Image();
     img.decoding = "async";
     img.src = SPLASH_PHOTO;
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "image";
-    link.href = SPLASH_PHOTO;
-    document.head.appendChild(link);
   } catch { /* non-fatal */ }
 }
 

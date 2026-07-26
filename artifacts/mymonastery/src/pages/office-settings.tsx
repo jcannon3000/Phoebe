@@ -294,7 +294,11 @@ export default function OfficeSettingsPage() {
           { value: "ask" as const, emoji: "🤔", label: t("office_settings.depth_ask_label"), sub: t("office_settings.depth_ask_sub") },
           { value: "devotion" as const, emoji: "🌱", label: t("office_settings.depth_devotion_label"), sub: t("office_settings.depth_devotion_sub") },
           { value: "office" as const, emoji: "📖", label: t("office_settings.depth_office_label"), sub: side === "evening" ? t("office_settings.depth_office_sub_evening") : t("office_settings.depth_office_sub_morning") },
-          { value: "intercessions" as const, emoji: "🙏🏽", label: t("office_settings.depth_intercessions_label"), sub: t("office_settings.depth_intercessions_sub") },
+          // "Community Intercessions" removed — prayer requests are OFF app-wide
+          // (hooks/usePrayerRequests.ts), so getSideLevel coerces that level to
+          // "office". Leaving the row here meant tapping it moved the checkmark
+          // to the Daily Office row instead: a tap that selected a different
+          // option than the one touched. Restore alongside prayer requests.
           { value: "reflect-sit" as const, emoji: "🕯️", label: t("office_settings.depth_reflect_sit_label"), sub: t("office_settings.depth_reflect_sit_sub") },
         ]).map((o) => (
           <OptionCard

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -29,11 +29,17 @@ export default function InviteSharePage() {
   const [justCopied, setJustCopied] = useState(false);
   const bgPhoto = useState(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null))[0];
 
+  // Clear the "Link copied ✓" timer on unmount — tapping Back within the 2.2s
+  // window otherwise leaves it to fire against an unmounted component.
+  const copiedTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current); }, []);
+
   async function handleShare() {
     const { copied } = await shareInvite();
     if (copied) {
       setJustCopied(true);
-      window.setTimeout(() => setJustCopied(false), 2200);
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setJustCopied(false), 2200);
     }
   }
 
