@@ -96,7 +96,7 @@ export default function ReflectionReadPage() {
         </span>
         <button
           type="button"
-          onClick={() => openExternal(url)}
+          onClick={() => openExternal(url, { reader: true })}
           style={{ background: "none", border: "none", color: SAGE, fontSize: 12, fontFamily: FONT, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
         >
           {t("reflection_read.open")} ↗

@@ -585,14 +585,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // app-open splash had just shown a beat earlier — `veilPhoto` defaults to
   // that identical fixed SPLASH_PHOTO, but this flag always started false, so
   // an already-fully-visible image dipped to 0 and re-faded in. Probe
-  // SPLASH_PHOTO specifically (the only photo that could actually be a
-  // just-shown repeat — a Water/Planet backdrop's veil is a fresh random
-  // pick and correctly still fades in normally) and start ready if the
-  // browser already has it decoded. `display` (needed to know the backdrop)
-  // isn't computed yet at this point in the file, so this can only check the
-  // shared default photo, not the final `veilPhoto` value — sufficient,
-  // since that default IS the repeat case this is fixing.
+  // SPLASH_PHOTO specifically and start ready if the browser already has it
+  // decoded — but ONLY when the backdrop actually renders that shared photo
+  // (the default/Leaves case). A Water/Planet backdrop's veil picks its own
+  // fresh random photo (see the `veilPhoto` useMemo below), which is almost
+  // never the already-cached SPLASH_PHOTO — probing SPLASH_PHOTO there was
+  // reporting "ready" for a *different* image that hadn't loaded yet, so it
+  // popped in instead of fading. Water/Planet always start unready and fade
+  // in normally, which is what the "correctly still fades in normally" note
+  // above originally intended.
   const [veilPhotoReady, setVeilPhotoReady] = useState(() => {
+    if (display.backdrop === "water" || display.backdrop === "planet") return false;
     if (typeof Image === "undefined" || !SPLASH_PHOTO) return false;
     const probe = new Image();
     probe.src = SPLASH_PHOTO;

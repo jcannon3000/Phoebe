@@ -24,10 +24,13 @@ export function markRecentCompletion(cardKey: string): void {
   } catch { /* private mode / quota — non-fatal */ }
 }
 
-/** The card completed within the last `windowMs`, or null. The window is
- *  generous enough to cover the walk back from a practice page but short
- *  enough that re-opening the app later never replays the moment. */
-export function readRecentCompletion(windowMs = 20_000): RecentCompletion | null {
+/** The card completed within the last `windowMs`, or null. The window has to
+ *  cover the slowest realistic walk back to home — the full BCP office close
+ *  ends on a manually-dismissed blessing slide plus two chained fade
+ *  timeouts, which can easily run past 20s if the user pauses to read it —
+ *  while staying short enough that re-opening the app later never replays
+ *  the moment. */
+export function readRecentCompletion(windowMs = 60_000): RecentCompletion | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;

@@ -74,7 +74,7 @@ function useMovements(): Movement[] {
 }
 
 export default function GuidedPrayerPage() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const { t } = useTranslation();
   const MOVEMENTS = useMovements();
   const [, setLocation] = useLocation();
@@ -112,9 +112,13 @@ export default function GuidedPrayerPage() {
     return new Date().getHours() >= 17 ? "evening" : "morning";
   })();
 
-  useEffect(() => {
-    if (!isLoading && !user) setLocation("/");
-  }, [user, isLoading, setLocation]);
+  // Simple Guided Prayer / the Examen (via this page) is open to everyone —
+  // signed in or not, same as examen.tsx. It used to bounce a signed-out
+  // visitor to "/" and render bare null while auth resolved, which meant
+  // tapping into the practice from a guest session (this route is in
+  // GUEST_ALLOWED_EXACT / PILOT_ALLOWED_EXACT) could land on a blank screen.
+  // The practice needs no account; markGuidedPrayerPrayed/markPracticeDoneToday
+  // below work fine for a guest's local, device-only state.
 
   // Opening swell once, when the user begins (leaving the intro).
   useEffect(() => {
@@ -130,15 +134,32 @@ export default function GuidedPrayerPage() {
       // guided-prayer tracker there is a no-op (sideIsSetTo gates on the REAL
       // level), so the Home card never flipped and no completion swell fired.
       // Credit whichever tracker matches this side's actual configured level.
-      try {
-        if (getSideLevel(side) === "examen") markPracticeDoneToday("examen");
-        else markGuidedPrayerPrayed(side);
-      } catch { /* non-fatal */ }
+      //
+      // Off-schedule guard (mirrors examen.tsx): the `side` resolution above
+      // short-circuits straight to "evening" whenever evening is the ONLY
+      // side carrying PACT/Examen, with no clock check — so opening this via
+      // Practices at, say, 8 AM would wrongly credit evening's routine hours
+      // early. Opening from that side's own home card always carries ?side=
+      // (begin-prayer.tsx) and counts at any hour — that IS the scheduled
+      // sit. Without ?side=, only credit an "evening" resolution once it's
+      // actually evening (same 5 PM boundary the office/Examen use).
+      const explicitSide = (() => {
+        try {
+          const s = new URLSearchParams(window.location.search).get("side");
+          return s === "morning" || s === "evening" ? s : null;
+        } catch { return null; }
+      })();
+      const beforeEveningWindow = new Date().getHours() < 17;
+      const offScheduleViaPractices = !explicitSide && side === "evening" && beforeEveningWindow;
+      if (!offScheduleViaPractices) {
+        try {
+          if (getSideLevel(side) === "examen") markPracticeDoneToday("examen");
+          else markGuidedPrayerPrayed(side);
+        } catch { /* non-fatal */ }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
-
-  if (isLoading || !user) return null;
 
   // What's next in the rhythm once this prayer is done — the same hand-off the
   // contemplation sit offers at its close, so finishing PACT/the Examen leads

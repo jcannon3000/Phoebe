@@ -1,7 +1,6 @@
 import { Layout } from "@/components/layout";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
 
 // The About page — a short description of Phoebe. English only by design.
 // Public: a logged-out visitor (from the welcome screen's "About" pill) can

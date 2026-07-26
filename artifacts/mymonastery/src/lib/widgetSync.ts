@@ -120,9 +120,24 @@ export function useWidgetSync(): void {
     const officeTitle = (side: "Morning" | "Evening"): string => {
       const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
       if (lvl === "psalms") return `${side} Psalms`;
+      // The Examen / Simple Guided Prayer / Contemplation IS this side's
+      // anchor → name the card after the practice, matching officeSubtitle
+      // below and DailyProgressBody.officeTitle (which this mirrors).
+      if (lvl === "reflect-sit") return "Contemplation";
+      if (lvl === "examen") return "The Examen";
+      if (lvl === "guided-prayer") return "Guided Prayer";
       if (r.prayerKind === "community") return "Pray together";
       if (r.prayerKind === "devotion") return `${side} Devotion`;
       return `${side} Prayer`;
+    };
+    // Eyebrow follows the same per-side level check as officeTitle — "Book of
+    // Common Prayer" only fits when the side's anchor actually IS the office.
+    const officeEyebrow = (side: "Morning" | "Evening"): string => {
+      const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
+      if (lvl === "reflect-sit") return "Contemplative Prayer";
+      if (lvl === "examen") return "Review the day";
+      if (lvl === "guided-prayer") return "Praise, Confession, Thanksgiving, Supplication";
+      return "Book of Common Prayer";
     };
     const officeSubtitle = (isMorning: boolean): string =>
       withYou > 0
@@ -133,7 +148,7 @@ export function useWidgetSync(): void {
     // slot rank then reproduces the home's time-of-day ordering; within a slot
     // the base order below is preserved.
     const items: NextItem[] = [
-      { active: r.morningActive, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: "Book of Common Prayer", subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office" },
+      { active: r.morningActive, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office" },
       ...r.reflections.map((rf) => ({
         active: true, done: rf.done, slot: "morning" as CustomSlot,
         title: REFLECTION_NAME[rf.source] ?? "Today's reflection",
@@ -149,7 +164,7 @@ export function useWidgetSync(): void {
       { active: r.prayerListActive, done: r.prayerListDone, slot: "anytime", title: "My Prayer List", eyebrow: "Your intentions", subtitle: "Pray through your list", cta: "Pray", kind: "office" },
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
-      { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: "Book of Common Prayer", subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
+      { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
         title: a.title, eyebrow: "Your practice", subtitle: "A daily practice", cta: "Log", kind: "office" as const,
