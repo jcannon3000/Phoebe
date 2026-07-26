@@ -263,8 +263,15 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
 // reflect-sit / examen level maps to "none" here — the anchor is empty and the
 // silence / examen card is seeded separately (from the goal + the examen home
 // key). This is what lets a BCP office coexist with a silent sit.
-function anchorFromLevel(level: string | null | undefined): PrayChoice {
+function anchorFromLevel(level: string | null | undefined, side?: "morning" | "evening"): PrayChoice {
   const p = prayFromLevel(level);
+  // "examen" is an office ANCHOR only on evening — the shipped PACT/Examen
+  // pairing stores evening's Simple Guided Prayer choice as level "examen",
+  // and the way-step's choiceRow checks prayBySide.evening === "examen" to
+  // show it selected. Dropping it here (as the morning-only "examen is an
+  // add-on, not an anchor" rule did) meant reopening the customizer always
+  // showed evening's Simple Guided Prayer as unselected.
+  if (p === "examen" && side === "evening") return p;
   return p === "offices" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" || p === "guidedPrayer" ? p : "none";
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
@@ -455,8 +462,8 @@ export default function WayOfLoveRuleFlow({
   // saved reflect-sit/examen level seeds "none" here and is picked up by the
   // contemplative state below. Each side reads only its OWN level.
   const [prayBySide, setPrayBySide] = useState<Record<OfficeSide, PrayChoice>>(() => ({
-    morning: anchorFromLevel(getSideLevel("morning")),
-    evening: anchorFromLevel(getSideLevel("evening")),
+    morning: anchorFromLevel(getSideLevel("morning"), "morning"),
+    evening: anchorFromLevel(getSideLevel("evening"), "evening"),
   }));
   // Which BCP form the "With the Book of Common Prayer" option commits to
   // (Psalms / Devotion / Office). Seeded from the current per-side level so
@@ -830,8 +837,8 @@ export default function WayOfLoveRuleFlow({
     // defaultPrayerLevel ("intercessions"), so re-seeding from it would keep
     // re-presetting Customize to Community for users who never chose it.
     setPrayBySide({
-      morning: anchorFromLevel(getSideLevel("morning")),
-      evening: anchorFromLevel(getSideLevel("evening")),
+      morning: anchorFromLevel(getSideLevel("morning"), "morning"),
+      evening: anchorFromLevel(getSideLevel("evening"), "evening"),
     });
     // The server's contemplationGoalMinutes is the authoritative current goal —
     // prefill from it so Customize opens on what they actually have set (a stale

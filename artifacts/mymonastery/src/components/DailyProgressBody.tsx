@@ -561,17 +561,24 @@ function PracticeCard({
   }
 
   // Just-completed compact card: the action pill fades DOWN and out, then the
-  // ✓ rises up into its slot. Fixed-width slot so the row doesn't reflow
-  // mid-swap.
+  // ✓ rises up into its slot. The slot itself shrinks from the CTA's width
+  // down to the ✓'s natural (much narrower) width as part of the swap —
+  // giving the check a fixed wide box made it look like an oversized blank
+  // pill instead of the same small ✓ the DONE state uses elsewhere.
   const pill = celebrate ? (
-    <span className="flex-shrink-0 relative inline-block" style={{ minWidth: 84, height: 28 }}>
+    <motion.span
+      className="flex-shrink-0 relative inline-block overflow-hidden"
+      style={{ height: 28 }}
+      animate={{ width: showPreDone ? 84 : 32 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+    >
       <AnimatePresence mode="wait" initial={false}>
         {showPreDone ? (
           <motion.span
             key="cta"
             initial={{ opacity: 1, y: 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 9 }}
             transition={{ duration: 0.2, ease: "easeIn" }}
-            className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center"
+            className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center whitespace-nowrap"
             style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
           >
             {cta} <span aria-hidden className="ml-0.5">→</span>
@@ -580,13 +587,13 @@ function PracticeCard({
           <motion.span
             key="check"
             initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
             className="absolute inset-0 rounded-full text-[12px] font-semibold flex items-center justify-center"
             style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
           >✓</motion.span>
         )}
       </AnimatePresence>
-    </span>
+    </motion.span>
   ) : done ? (
     doneCta ? (
       // Done, but still invites more (e.g. keep sitting past the contemplation
@@ -1341,14 +1348,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
             {officeHero && heroSide && (
               <BookOfficeLogRow side={heroSide} done={heroSide === "morning" ? morningDone : eveningDone} />
             )}
-            {upcomingDisplay.map((c, i) => (
-              // `layout` only while a completion is playing: framer then
-              // animates the card's move out of Next and the cards below
-              // closing the gap, instead of both snapping.
-              <motion.div key={c.key} layout={!!celebrateKey} layoutId={celebrateKey ? `card-${c.key}` : undefined} {...enterUp(i + (heroLeads ? 1 : 0))}>
-                {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (heroLeads ? 1 : 0)))}
-              </motion.div>
-            ))}
+            {/* AnimatePresence only while a completion is playing, so the
+                just-completed card gets a real EXIT animation (fade down,
+                not a snap) when it's released into Done — and `layout` lets
+                the cards below it slide up to close the gap it leaves. */}
+            <AnimatePresence initial={false}>
+              {upcomingDisplay.map((c, i) => (
+                <motion.div
+                  key={c.key}
+                  layout={!!celebrateKey}
+                  exit={c.key === celebrateKey ? { opacity: 0, y: 10, transition: { duration: 0.26, ease: "easeIn" } } : undefined}
+                  {...enterUp(i + (heroLeads ? 1 : 0))}
+                >
+                  {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (heroLeads ? 1 : 0)))}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         </>
       )}
@@ -1359,7 +1374,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <motion.div {...enterUp(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
-              <motion.div key={c.key} layout={!!celebrateKey} layoutId={celebrateKey ? `card-${c.key}` : undefined} {...enterUp(doneBase + i)}>
+              <motion.div
+                key={c.key}
+                layout={!!celebrateKey}
+                // The just-released card gets a real fade-UP entrance (it's
+                // NEW here); every other Done card is already sitting there,
+                // so it stays instant like the rest of a warm return-visit.
+                {...(c.key === celebrateKey
+                  ? { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const } }
+                  : enterUp(doneBase + i))}
+              >
                 {renderCard(c, false, tintFor(doneBase + i), blurLand(doneBase + i))}
               </motion.div>
             ))}

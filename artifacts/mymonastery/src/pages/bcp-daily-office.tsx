@@ -283,8 +283,8 @@ function buildContemplativePauseSlide(mode: "morning" | "evening" | string): Sli
   return {
     id: "contemplative-pause",
     type: "contemplative_pause",
-    emoji: "🕊️",
-    eyebrow: "A moment of stillness",
+    emoji: "🕯️",
+    eyebrow: "A moment to pause",
     title: null,
     content: "",
     isCallAndResponse: false,
@@ -2091,23 +2091,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0 }}>
                     {currentSlide.eyebrow}
                   </p>
+                  {/* Restored per owner: the same invitation the community
+                      intercessions used to close on ("bring anything else on
+                      your heart to prayer"), before the hand-off into
+                      /prayer-mode was cut — the intercession FEATURE stays
+                      off, just this framing on the still-live chooser below. */}
                   <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
-                    Before you go on, pause to pray in the body — take a breath, or keep a moment of silence.
+                    Take a breath. Bring anything else on your heart to prayer.
                   </p>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
                     <button
                       type="button"
-                      onClick={() => setShowCreationBreath(true)}
+                      onClick={() => setSilencePauseActive(true)}
                       style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      🌿 Breathe
+                      🕯️ Contemplation
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSilencePauseActive(true)}
+                      onClick={() => setShowCreationBreath(true)}
                       style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      🕊️ Sit in silence
+                      🌍 Creation Prayer
                     </button>
                   </div>
                 </>
