@@ -28,9 +28,30 @@ export default function AboutPage() {
           </h1>
           <button
             onClick={() => setLocation("/about-deck")}
-            style={{ marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: "#A8C5A0", display: "inline-flex", alignItems: "center", gap: 6 }}
+            className="w-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{
+              marginTop: 18,
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              padding: "16px 18px",
+              borderRadius: 18,
+              background: "rgba(45,94,63,0.28)",
+              border: "1px solid rgba(143,175,150,0.35)",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
           >
-            View as a slideshow →
+            <span aria-hidden style={{ fontSize: 22, lineHeight: 1 }}>🎞️</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontFamily: FONT, fontSize: 16, fontWeight: 700, color: "#F0EDE6" }}>
+                View slideshow
+              </span>
+              <span style={{ display: "block", fontFamily: FONT, fontSize: 12.5, color: "#A8C5A0", marginTop: 2 }}>
+                See Phoebe in ten slides
+              </span>
+            </span>
+            <span aria-hidden style={{ fontSize: 18, color: "#A8C5A0" }}>→</span>
           </button>
         </header>
 
@@ -43,7 +64,44 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <p style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.6, color: "#8FAF96", margin: "36px 0 0", paddingTop: 18, borderTop: "1px solid rgba(143,175,150,0.16)" }}>
+        <div className="flex gap-3 mt-7">
+          <button
+            onClick={() => setLocation("/privacy")}
+            className="transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              padding: "9px 18px",
+              borderRadius: 999,
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.45)",
+              color: "#A8C5A0",
+              fontFamily: FONT,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Privacy Policy
+          </button>
+          <button
+            onClick={() => setLocation("/terms")}
+            className="transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              padding: "9px 18px",
+              borderRadius: 999,
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.45)",
+              color: "#A8C5A0",
+              fontFamily: FONT,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Terms of Service
+          </button>
+        </div>
+
+        <p style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.6, color: "#8FAF96", margin: "28px 0 0", paddingTop: 18, borderTop: "1px solid rgba(143,175,150,0.16)" }}>
           Phoebe is a project by Episcopal seminarians Anabelle Helsell and Jeremy Cannon, backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.
         </p>
       </div>
