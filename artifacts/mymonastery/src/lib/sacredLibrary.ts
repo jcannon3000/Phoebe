@@ -23,7 +23,7 @@ export type SacredItem = {
   service: SacredService;
   url: string; // share / deep link, used to play
   artworkUrl?: string;
-  appleId?: string; // MusicKit catalog id — lets Apple items play in-app
+  appleId?: string; // Apple Music catalog id parsed from a pasted link
   addedAt: number;
 };
 

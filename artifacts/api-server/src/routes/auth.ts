@@ -22,8 +22,9 @@ const frontendURL = getFrontendUrl();
 // Google Sign-In (user login) and the Google Calendar UI feature are both
 // removed (owner) — but the invites@withphoebe.app service account below
 // still sends every outbound email (invites, magic links, password resets)
-// via Gmail send, so its OAuth config stays. GOOGLE_CONFIGURED/callbackURL
-// now describe ONLY that service-account setup, not user sign-in.
+// via Gmail send, so its OAuth config stays. This is purely backend
+// infrastructure, not a user-facing sign-in path — GOOGLE_CONFIGURED/
+// callbackURL now describe ONLY that service-account setup.
 const GOOGLE_CONFIGURED =
   !!process.env["GOOGLE_CLIENT_ID"] && !!process.env["GOOGLE_CLIENT_SECRET"];
 
