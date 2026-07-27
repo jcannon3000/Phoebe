@@ -992,9 +992,6 @@ importers:
 
   artifacts/phoebe-mobile:
     dependencies:
-      '@capacitor-community/apple-sign-in':
-        specifier: ^7.1.0
-        version: 7.1.0(@capacitor/core@8.4.0)
       '@capacitor-community/contacts':
         specifier: ^7.2.0
         version: 7.2.0(@capacitor/core@8.4.0)
@@ -1228,11 +1225,6 @@ packages:
 
   '@breezystack/lamejs@1.2.7':
     resolution: {integrity: sha512-6wc7ck65ctA75Hq7FYHTtTvGnYs6msgdxiSUICQ+A01nVOWg6rqouZB8IdyteRlfpYYiFovkf67dIeOgWIUzTA==}
-
-  '@capacitor-community/apple-sign-in@7.1.0':
-    resolution: {integrity: sha512-df7cA7vfvvvilTtpJKeVvxO31W+py5t3HK9233GBD5MvgAgtGvCqeQ3pI0noNkVsKPF9B1g/po8Mph6s4bVSmw==}
-    peerDependencies:
-      '@capacitor/core': '>=7.0.0'
 
   '@capacitor-community/contacts@7.2.0':
     resolution: {integrity: sha512-s/DVHuhMYbIbkSCuZyx6+ZDIho2wuUdtcb+cre4igo5Fz26lkBlayRSo+tBBfJsYxLlrQX21Jy8rMmUCdz2GTQ==}
@@ -2863,9 +2855,6 @@ packages:
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
 
-  '@types/scriptjs@0.0.2':
-    resolution: {integrity: sha512-GFrUgzGYfNX3VWZwMyzr0JrBwzLv5Kes4BQBvo6hXdRy14/GBbpCiVwwB7v1o2xIEvFf+9GyznmYhuesQQjSag==}
-
   '@types/send@1.2.1':
     resolution: {integrity: sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==}
 
@@ -4437,9 +4426,6 @@ packages:
   scheduler@0.26.0:
     resolution: {integrity: sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA==}
 
-  scriptjs@2.5.9:
-    resolution: {integrity: sha512-qGVDoreyYiP1pkQnbnFAUIS5AjenNwwQBdl7zeos9etl+hYKWahjRTfzAZZYBv5xNHx7vNKCmaLDQZ6Fr2AEXg==}
-
   secure-json-parse@4.1.0:
     resolution: {integrity: sha512-l4KnYfEyqYJxDwlNVyRfO2E4NTHfMKAWdUuA8J0yve2Dz/E/PdBepY03RvyJpssIpRFwJoCD55wA+mEDs6ByWA==}
 
@@ -4993,12 +4979,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@breezystack/lamejs@1.2.7': {}
-
-  '@capacitor-community/apple-sign-in@7.1.0(@capacitor/core@8.4.0)':
-    dependencies:
-      '@capacitor/core': 8.4.0
-      '@types/scriptjs': 0.0.2
-      scriptjs: 2.5.9
 
   '@capacitor-community/contacts@7.2.0(@capacitor/core@8.4.0)':
     dependencies:
@@ -6850,8 +6830,6 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
-  '@types/scriptjs@0.0.2': {}
-
   '@types/send@1.2.1':
     dependencies:
       '@types/node': 25.5.0
@@ -8305,8 +8283,6 @@ snapshots:
   sax@1.6.0: {}
 
   scheduler@0.26.0: {}
-
-  scriptjs@2.5.9: {}
 
   secure-json-parse@4.1.0: {}
 

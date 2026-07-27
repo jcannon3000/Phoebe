@@ -84,24 +84,27 @@ async function configureStatusBar() {
 }
 
 // ─── Splash screen ─────────────────────────────────────────────────────────
-// We keep the splash up until the web app signals it's ready. mymonastery
-// doesn't know about us, so we dispatch our own "ready" heuristic: the
-// first requestAnimationFrame after DOMContentLoaded + a short settling
-// delay. That's plenty for the React app's initial paint; longer waits
-// just make the app feel sluggish.
+// We keep the NATIVE launch-image splash up until mymonastery's own React
+// splash (OpeningSplash, components/layout.tsx) has actually mounted and
+// painted its first frame — including its own copy of the same leaf photo
+// the native launch image shows. This used to fire on a blind DOMContentLoaded
+// + 60ms heuristic, which on a real device is often faster than React
+// parsing/mounting/painting: the native splash would hide into a bare
+// background-color WebView, then React's OpeningSplash would paint its image
+// a beat later — reading as the photo "reloading" rather than one continuous
+// picture. Layout dispatches "phoebe:app-first-paint" right after its first
+// commit (see components/layout.tsx); we wait for that, with the old timer
+// as a safety net in case it never fires (an error before mount, etc.) so the
+// splash can never hang indefinitely.
 function scheduleSplashHide() {
+  let done = false;
   const hide = () => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        SplashScreen.hide({ fadeOutDuration: 180 }).catch(() => {});
-      }, 60);
-    });
+    if (done) return;
+    done = true;
+    SplashScreen.hide({ fadeOutDuration: 180 }).catch(() => {});
   };
-  if (document.readyState === "complete" || document.readyState === "interactive") {
-    hide();
-  } else {
-    document.addEventListener("DOMContentLoaded", hide, { once: true });
-  }
+  window.addEventListener("phoebe:app-first-paint", hide, { once: true });
+  setTimeout(hide, 2500);
 }
 
 // ─── Keyboard behavior ─────────────────────────────────────────────────────

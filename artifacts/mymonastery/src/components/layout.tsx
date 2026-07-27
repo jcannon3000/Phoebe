@@ -1462,6 +1462,23 @@ function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) 
 }
 
 export function Layout({ children, bgPhoto, bgOpacity = 0.4, chromeless = false, onClose, blueShade = false }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number; chromeless?: boolean; onClose?: () => void; blueShade?: boolean }) {
+  // Signals native-shell.ts's splash hider (scheduleSplashHide) that the JS
+  // app has actually painted its first frame — including OpeningSplash's own
+  // copy of the native launch-image photo. native-shell used to hide the
+  // native splash on a blind short timer, which on a real device sometimes
+  // beat React's mount, leaving a bare-background gap before OpeningSplash's
+  // image painted — reading as the photo "reloading". Double rAF: the first
+  // schedules the next frame, the second only fires once that frame is
+  // actually on screen. Web builds still dispatch this harmlessly (nothing
+  // there is listening for it).
+  useEffect(() => {
+    const id1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try { window.dispatchEvent(new Event("phoebe:app-first-paint")); } catch { /* ignore */ }
+      });
+    });
+    return () => cancelAnimationFrame(id1);
+  }, []);
   const { user } = useAuth();
   // Water home theme: tint the browser toolbar / status bar blue to match the
   // page (the meta must be a literal hex — CSS var() is ignored there). Restore
