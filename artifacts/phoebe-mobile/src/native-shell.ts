@@ -1345,6 +1345,10 @@ declare global {
       // and dismissals. No-op on web. Backed by PhoebeBadgePlugin
       // (ios/App/App/PhoebeBadgePlugin.swift).
       setBadge?: (count: number) => Promise<void>;
+      // Read-only — never prompts. Lets the web layer decide whether to show
+      // its own "turn notifications on" reminder without side effects; the
+      // actual request still goes through requestPushPermission() above.
+      checkPushPermission?: () => Promise<"granted" | "denied" | "prompt">;
     };
   }
 }
@@ -1359,6 +1363,16 @@ function exposePublicApi() {
     },
     requestPushPermission() {
       window.dispatchEvent(new Event("phoebe:request-push-permission"));
+    },
+    async checkPushPermission() {
+      try {
+        const perm = await PushNotifications.checkPermissions();
+        if (perm.receive === "granted") return "granted";
+        if (perm.receive === "denied") return "denied";
+        return "prompt";
+      } catch {
+        return "prompt";
+      }
     },
     requestContacts() {
       window.dispatchEvent(new Event("phoebe:request-contacts"));

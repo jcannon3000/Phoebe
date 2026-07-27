@@ -1,5 +1,6 @@
 import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
 import { NcmpLiveBanner } from "@/components/NcmpLiveBanner";
+import { NotificationReminderBanner } from "@/components/NotificationReminderBanner";
 
 // Single bottom-anchored stack for the screen-bottom prompt cards so they
 // sit one above the other instead of overlapping when more than one
@@ -18,8 +19,10 @@ import { NcmpLiveBanner } from "@/components/NcmpLiveBanner";
 // /ncmp/watch on "Watch →". The download prompt is router-agnostic (it
 // uses a plain external <a>), so living here costs it nothing.
 //
-// Order: live banner first (renders on top — it's the time-sensitive
-// one); the download prompt sits at the very bottom edge.
+// Order: live banner first (renders on top — it's the time-sensitive one);
+// the download prompt next; the notification reminder last (lowest priority
+// — it's a standing nag, not a time-boxed or one-shot ask, so it always
+// yields the top slot to anything more urgent).
 export function BottomPromptStack() {
   return (
     <div
@@ -28,6 +31,7 @@ export function BottomPromptStack() {
     >
       <NcmpLiveBanner />
       <IOSAppDownloadPrompt />
+      <NotificationReminderBanner />
     </div>
   );
 }

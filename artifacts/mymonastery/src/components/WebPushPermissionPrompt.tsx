@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { ensureWebPushSubscription } from "@/lib/webPush";
 
 /**
  * Daily-bell push permission for Android web users.
@@ -74,7 +74,7 @@ export function WebPushPermissionPrompt() {
     if (Notification.permission === "granted") {
       // Permission already granted — make sure the server has our
       // current subscription. No prompt UI needed.
-      void ensureSubscription().catch(() => { /* non-fatal */ });
+      void ensureWebPushSubscription().catch(() => { /* non-fatal */ });
       return;
     }
 
@@ -97,7 +97,7 @@ export function WebPushPermissionPrompt() {
         setShow(false);
         return;
       }
-      await ensureSubscription();
+      await ensureWebPushSubscription();
       localStorage.setItem("phoebe:web-push-prompt-asked", "1");
       setShow(false);
     } catch (err) {
@@ -198,56 +198,4 @@ export function WebPushPermissionPrompt() {
       </div>
     </div>
   );
-}
-
-/**
- * Subscribe to the push service with the server's VAPID public key,
- * then POST the subscription to /api/push/web-subscription so the
- * bell scheduler can reach this browser. Idempotent — calling
- * twice with the same browser is a server-side upsert.
- */
-async function ensureSubscription(): Promise<void> {
-  // Service worker must be active before we can subscribe.
-  const reg = await navigator.serviceWorker.ready;
-
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    const { publicKey } = await apiRequest<{ publicKey: string }>(
-      "GET",
-      "/api/push/vapid-public-key",
-    );
-    // PushManager.subscribe wants BufferSource, not Uint8Array<ArrayBufferLike>.
-    // Both are byte-compatible at runtime; cast through unknown to satisfy TS.
-    const appServerKey = urlBase64ToUint8Array(publicKey) as unknown as BufferSource;
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: appServerKey,
-    });
-  }
-
-  const json = sub.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-    throw new Error("PushSubscription missing required fields");
-  }
-
-  await apiRequest("POST", "/api/push/web-subscription", {
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    userAgent: navigator.userAgent.slice(0, 500),
-  });
-}
-
-// VAPID public keys are sent over the wire as base64url; the Push API
-// wants a Uint8Array. This is the standard conversion routine
-// recommended by the web-push docs — handles both URL-safe and
-// padded variants.
-function urlBase64ToUint8Array(base64: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(normalized);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i += 1) {
-    out[i] = raw.charCodeAt(i);
-  }
-  return out;
 }
