@@ -38,6 +38,10 @@ type AppMetrics = {
   officesThisWeek: number;
   officesTotal: number;
 
+  contemplationExamenToday: number;
+  contemplationExamenThisWeek: number;
+  contemplationExamenTotal: number;
+
   prayerRequestsToday: number;
   prayerRequestsThisWeek: number;
   prayerRequestsTotal: number;
@@ -204,7 +208,17 @@ export default function AdminAppMetricsPage() {
               <TileRow today={data.officesToday} week={data.officesThisWeek} allTime={data.officesTotal} />
             </Section>
 
-            <Section eyebrow={t("admin_user_metrics.section_prayer_requests")}>
+            <Section
+              eyebrow={t("admin_user_metrics.section_contemplation_examen")}
+              caption={t("admin_user_metrics.caption_contemplation_examen")}
+            >
+              <TileRow today={data.contemplationExamenToday} week={data.contemplationExamenThisWeek} allTime={data.contemplationExamenTotal} />
+            </Section>
+
+            <Section
+              eyebrow={t("admin_user_metrics.section_prayer_requests")}
+              caption={t("admin_user_metrics.caption_prayer_requests")}
+            >
               <TileRow today={data.prayerRequestsToday} week={data.prayerRequestsThisWeek} allTime={data.prayerRequestsTotal} />
             </Section>
 

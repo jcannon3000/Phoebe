@@ -4,11 +4,14 @@
  * GET /api/admin/metrics — whole-app Today / This Week / All Time
  * tile data. Mirrors the per-community metrics dashboard exactly:
  *
- *   People praying   — distinct users with a prayer event
- *   Times prayed     — total prayer events (15-min dedup, no admin cap)
- *   Offices          — (user, day, morning|evening) office completions
- *                       (Daily Office / Devotion ≥3 slides)
- *   Prayer requests  — total requests created
+ *   People praying          — distinct users with a prayer event
+ *   Times prayed            — total prayer events (15-min dedup, no admin cap)
+ *   Offices                 — (user, day, morning|evening) office completions
+ *                              (Daily Office / Devotion ≥3 slides)
+ *   Contemplation & Examen  — (user, day) tuples for a silent sit, Creation
+ *                              Prayer, or the Examen
+ *   Prayer requests         — total requests created (feature currently OFF
+ *                              for all users — historical totals only)
  *
  * Same SQL semantics as /api/groups/:slug/metrics but without the
  * `members` scope — we don't filter to one community, we roll across
@@ -16,6 +19,17 @@
  * skipped: the whole point of an admin dashboard is to see real
  * engagement totals, and there's no single "admin" identity in an
  * app-wide rollup.
+ *
+ * The `session_candidates` surface whitelist below MUST be kept in sync
+ * with the `PrayerSurface` type (hooks/usePrayerSession.ts) and every
+ * other direct POST /api/prayer-sessions call site — that type's own
+ * comments document "examen" and "prayer-list" as surfaces meant to count
+ * toward this dashboard, and Contemplation/Creation Prayer (surface
+ * "contemplation", the latter tagged source:"cobreathe") were never added
+ * at all. All three were silently excluded from "People praying" / "Times
+ * prayed" — undercounting real engagement, most consequentially for the
+ * Examen, which is now the default evening anchor for new users. Audited
+ * and fixed alongside the identical bug in /api/groups/:slug/metrics.
  *
  * Gated to beta admins (beta_users.is_admin) — same gate the Newsletter
  * / Pilot Users / Reports tools use.
@@ -96,8 +110,10 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         -- Same definition as the community-scoped metrics endpoint,
         -- minus the members CTE: a "prayer event" candidate is an
         -- Amen tap OR an office / devotion completion that reached
-        -- ≥3 slides. NULL slides_completed = legacy row pre-dating
-        -- the column; treat as qualifying.
+        -- ≥3 slides, OR a qualifying non-office practice session
+        -- (examen / prayer-list / contemplation — see the file header
+        -- for why these three were missing). NULL slides_completed =
+        -- legacy row pre-dating the column; treat as qualifying.
         SELECT user_id, occurred_at FROM (
           SELECT a.user_id, a.prayed_at AS occurred_at
           FROM prayer_request_amens a
@@ -112,7 +128,10 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
               'evening-prayer',
               'compline',
               'morning-devotion',
-              'early-evening-devotion'
+              'early-evening-devotion',
+              'examen',
+              'prayer-list',
+              'contemplation'
             )
             AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
         ) c
@@ -167,6 +186,20 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
           side,
           to_char((occurred_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day
         FROM office_session_candidates
+      ),
+      -- Contemplation & Examen: (user, day) tuples for a silent sit,
+      -- Creation Prayer, or the Examen — the practices that replaced
+      -- the office as the default anchor for many users this session,
+      -- surfaced as their own rollup rather than buried in the
+      -- general "Times prayed" total. prayer-list is deliberately
+      -- excluded here (it's a browsing action, not a timed practice).
+      contemplation_examen_days AS (
+        SELECT DISTINCT
+          ps.user_id,
+          to_char((ps.ended_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_sessions ps
+        WHERE ps.surface IN ('examen', 'contemplation')
+          AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
       )
       SELECT
         (SELECT COUNT(*) FROM users)::int AS total_users,
@@ -191,6 +224,11 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(*) FROM office_days WHERE day >= $1)::int AS offices_today,
         (SELECT COUNT(*) FROM office_days WHERE day >= $2)::int AS offices_week,
         (SELECT COUNT(*) FROM office_days)::int AS offices_total,
+
+        -- Contemplation & Examen.
+        (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $1)::int AS contemplation_examen_today,
+        (SELECT COUNT(*) FROM contemplation_examen_days WHERE day >= $2)::int AS contemplation_examen_week,
+        (SELECT COUNT(*) FROM contemplation_examen_days)::int AS contemplation_examen_total,
 
         -- New signups in each window — handy app-level signal.
         (SELECT COUNT(*) FROM users
@@ -231,6 +269,10 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       officesToday: Number(row.offices_today ?? 0),
       officesThisWeek: Number(row.offices_week ?? 0),
       officesTotal: Number(row.offices_total ?? 0),
+
+      contemplationExamenToday: Number(row.contemplation_examen_today ?? 0),
+      contemplationExamenThisWeek: Number(row.contemplation_examen_week ?? 0),
+      contemplationExamenTotal: Number(row.contemplation_examen_total ?? 0),
 
       prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
       prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),

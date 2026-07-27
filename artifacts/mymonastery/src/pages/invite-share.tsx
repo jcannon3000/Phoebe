@@ -119,13 +119,34 @@ export default function InviteSharePage() {
           </p>
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+          className="mt-8 flex flex-col items-center"
+        >
+          <button
+            type="button"
+            onClick={handleShare}
+            className="w-full rounded-full px-8 py-4 text-[17px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer" }}
+          >
+            {t("invite_share.share_cta", { defaultValue: "Share Phoebe" })}
+          </button>
+          <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? "#8FAF96" : "rgba(143,175,150,0.6)" }}>
+            {justCopied
+              ? t("invite_share.copied", { defaultValue: "Link copied ✓" })
+              : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
+          </p>
+        </motion.div>
+
         <div className="mt-8 flex flex-col gap-3">
           {gifts.map((g, i) => (
             <motion.div
               key={g.title}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.08 + i * 0.09 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.32 + i * 0.09 }}
               className="rounded-2xl px-4 py-3.5 flex gap-3.5"
               style={{
                 background: "rgba(22,46,32,0.42)",
@@ -142,27 +163,6 @@ export default function InviteSharePage() {
             </motion.div>
           ))}
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
-          className="mt-9 flex flex-col items-center"
-        >
-          <button
-            type="button"
-            onClick={handleShare}
-            className="w-full rounded-full px-8 py-4 text-[17px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer" }}
-          >
-            {t("invite_share.share_cta", { defaultValue: "Share Phoebe" })}
-          </button>
-          <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? "#8FAF96" : "rgba(143,175,150,0.6)" }}>
-            {justCopied
-              ? t("invite_share.copied", { defaultValue: "Link copied ✓" })
-              : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
-          </p>
-        </motion.div>
       </div>
     </div>
   );
