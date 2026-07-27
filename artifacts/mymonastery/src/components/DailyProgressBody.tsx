@@ -9,14 +9,15 @@
  */
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, type ReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel, getSideEntry, getSideMinutes, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
+import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -733,6 +734,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
+  // The physical-book office "Log" popup — which side's popup is open.
+  const [bookLogSide, setBookLogSide] = useState<"morning" | "evening" | null>(null);
+  const [, setLocation] = useLocation();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
   const reflectionSource = useEffectiveReflectionSource();
@@ -936,6 +940,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      // Praying from the physical BCP — a tap opens a quick Log popup FIRST
+      // (like a custom practice) instead of walking straight into the office
+      // page-number guide; "Page numbers and readings" is the way through
+      // for anyone who actually wants that page.
+      ...(getSideEntry("morning") === "book" && !morningDone ? { onClick: () => setBookLogSide("morning") } : {}),
     }] : []),
     ...(eveningActive ? [{
       // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
@@ -951,6 +960,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 17,
+      ...(getSideEntry("evening") === "book" && !eveningDone ? { onClick: () => setBookLogSide("evening") } : {}),
     }] : []),
     // Reflection cards lead the morning (default second, right after Morning).
     // One card per reflection newsletter the user follows — each its own card +
@@ -1260,7 +1270,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       later={c.later}
       laterLabel={("laterLabel" in c && c.laterLabel) ? (c.laterLabel as string) : t("rhythm.later", { defaultValue: "Later" })}
       progress={(c as { progress?: { current: number; goal: number } }).progress}
-      blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
+      blurbCycle={(c as { blurbCycle?: string[] }).blurbCycle}
       onClick={"onClick" in c ? (c.onClick as (() => void) | undefined) : undefined}
       doneCta={(c as { doneCta?: string }).doneCta}
       pulse={pulse}
@@ -1448,6 +1458,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         if (!a) return null;
         return <LogSheet anchor={a} onClose={() => setLogAnchorId(null)} t={t} />;
       })()}
+
+      {/* Log popup for a physical-BCP office — praying from your own book
+          needs no page-number guide to just mark it prayed; the guide is
+          still one tap away for whoever wants today's readings. */}
+      {bookLogSide && (
+        <BookOfficeLogSheet
+          side={bookLogSide}
+          title={bookLogSide === "morning" ? officeTitle("Morning") : officeTitle("Evening")}
+          onClose={() => setBookLogSide(null)}
+          onOpenGuide={() => setLocation(`/begin-prayer?side=${bookLogSide}`)}
+          t={t}
+        />
+      )}
     </div>
   );
 }
@@ -1564,3 +1587,4 @@ function LogSheet({
     </div>
   );
 }
+

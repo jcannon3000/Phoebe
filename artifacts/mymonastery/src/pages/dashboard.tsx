@@ -21,7 +21,8 @@ import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel, setSideLevel, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
@@ -3444,6 +3445,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _stateTick = stateTick; // reads below depend on this for re-render
 
+  // Physical-BCP quick-log sheet — see the "book" entry-mode interception
+  // below, placed before any early return so hook order stays fixed.
+  const [bookLogOpen, setBookLogOpen] = useState(false);
+  const [, setLocation] = useLocation();
+
   // Per-user: when this side's prayer is Forward Day by Day, the FDD card IS the
   // office card here — it replaces it (only the user who picked FDD; everyone
   // else keeps their office). Morning only. Placed AFTER every hook above so the
@@ -3479,6 +3485,17 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   if (CREATION_PRAYER_ENABLED && getSideLevel(isMorning ? "morning" : "evening") === "creation") {
     return <CreationHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
+
+  const officeSide: "morning" | "evening" = isMorning ? "morning" : "evening";
+  // Physical-BCP entry mode ("praying from a paper prayer book") — tapping
+  // the CTA opens a quick-log sheet (Log / Page numbers and readings)
+  // instead of navigating straight into the in-app office viewer. Only
+  // applies to the programmed office/devotion path — community "Pray
+  // Together" has no "page numbers" concept.
+  const entryIsBook = programmedOffice && getSideEntry(officeSide) === "book";
+  const bookSheetTitle = programmedLevel === "devotion"
+    ? (isMorning ? t("offices.morning_devotion", { defaultValue: "Morning Devotion" }) : t("offices.evening_devotion", { defaultValue: "Evening Devotion" }))
+    : (isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer"));
 
   const prayedTodayHalf = (() => {
     if (typeof window === "undefined") return false;
@@ -3603,54 +3620,69 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
       : programmedLevel === "office"
         ? (isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙")
         : "Pray Together 🙏🏽";
-    return (
-      <Link href={ctaHref} className="block">
-        <div
-          role="button"
-          tabIndex={0}
-          className="relative flex rounded-xl overflow-hidden cursor-pointer"
-          style={{
-            background: "rgba(46,107,64,0.14)",
-            border: "1px solid rgba(46,107,64,0.4)",
-          }}
-        >
-          <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-            <p
-              className="font-semibold min-w-0 truncate"
-              style={{
-                color: "#F0EDE6",
-                fontFamily: "'Space Grotesk', sans-serif",
-                margin: 0,
-                lineHeight: 1.2,
-                fontSize: 16,
-              }}
-            >
-              {title}
-            </p>
-            <div
-              className="rounded-full text-center shrink-0"
-              style={{
-                background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.28)",
-                color: prayedToday ? "rgba(168,197,160,0.9)" : "#F0EDE6",
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 13,
-                fontWeight: 500,
-                padding: "6px 14px",
-                border: prayedToday
-                  ? "1px solid rgba(46,107,64,0.22)"
-                  : "1px solid rgba(46,107,64,0.45)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")} <span aria-hidden>→</span></>}
-            </div>
+    const openBookLog = entryIsBook && !prayedToday;
+    const card = (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openBookLog ? () => setBookLogOpen(true) : undefined}
+        className="relative flex rounded-xl overflow-hidden cursor-pointer"
+        style={{
+          background: "rgba(46,107,64,0.14)",
+          border: "1px solid rgba(46,107,64,0.4)",
+        }}
+      >
+        <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              margin: 0,
+              lineHeight: 1.2,
+              fontSize: 16,
+            }}
+          >
+            {title}
+          </p>
+          <div
+            className="rounded-full text-center shrink-0"
+            style={{
+              background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.28)",
+              color: prayedToday ? "rgba(168,197,160,0.9)" : "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 13,
+              fontWeight: 500,
+              padding: "6px 14px",
+              border: prayedToday
+                ? "1px solid rgba(46,107,64,0.22)"
+                : "1px solid rgba(46,107,64,0.45)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")} <span aria-hidden>→</span></>}
           </div>
         </div>
-      </Link>
+      </div>
+    );
+    return (
+      <>
+        {openBookLog ? card : <Link href={ctaHref} className="block">{card}</Link>}
+        {bookLogOpen && (
+          <BookOfficeLogSheet
+            side={officeSide}
+            title={bookSheetTitle}
+            onClose={() => setBookLogOpen(false)}
+            onOpenGuide={() => { setBookLogOpen(false); setLocation(`/begin-prayer?side=${officeSide}`); }}
+            t={t}
+          />
+        )}
+      </>
     );
   }
 
   return (
+    <>
     <div
       className="relative flex rounded-3xl overflow-hidden"
       style={{
@@ -3756,27 +3788,41 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
               </Link>
             </div>
           ) : (
-            <Link href={ctaHref}>
-              <div
-                role="button"
-                tabIndex={0}
-                className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
-                style={{
-                  background: "rgba(46,107,64,0.22)",
-                  color: "#F0EDE6",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  padding: "7px 12px",
-                  border: "1px solid rgba(46,107,64,0.45)",
-                }}
-              >
-                {ctaCopy} <span aria-hidden>→</span>
-              </div>
-            </Link>
+            (() => {
+              const heroCta = (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={entryIsBook ? () => setBookLogOpen(true) : undefined}
+                  className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+                  style={{
+                    background: "rgba(46,107,64,0.22)",
+                    color: "#F0EDE6",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    padding: "7px 12px",
+                    border: "1px solid rgba(46,107,64,0.45)",
+                  }}
+                >
+                  {ctaCopy} <span aria-hidden>→</span>
+                </div>
+              );
+              return entryIsBook ? heroCta : <Link href={ctaHref}>{heroCta}</Link>;
+            })()
           )}
       </div>
     </div>
+    {bookLogOpen && (
+      <BookOfficeLogSheet
+        side={officeSide}
+        title={bookSheetTitle}
+        onClose={() => setBookLogOpen(false)}
+        onOpenGuide={() => { setBookLogOpen(false); setLocation(`/begin-prayer?side=${officeSide}`); }}
+        t={t}
+      />
+    )}
+    </>
   );
 }
 
