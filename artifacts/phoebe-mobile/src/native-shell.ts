@@ -28,7 +28,6 @@ import { Share } from "@capacitor/share";
 import { Browser } from "@capacitor/browser";
 import { Preferences } from "@capacitor/preferences";
 import { Contacts } from "@capacitor-community/contacts";
-import { SignInWithApple, type SignInWithAppleResponse } from "@capacitor-community/apple-sign-in";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { NativeBiometric, BiometryType } from "@capgo/capacitor-native-biometric";
@@ -833,146 +832,6 @@ function wireContacts() {
   });
 }
 
-// ─── Sign in with Apple ────────────────────────────────────────────────────
-// Mandatory under Apple Guideline 4.8 because Phoebe offers Google SSO.
-// The web app dispatches `phoebe:request-apple-signin` (typically from the
-// injected SIWA button on the login page) and we:
-//   1. Generate a per-login nonce (prevents token replay).
-//   2. Open the native Apple sheet via the community plugin.
-//   3. POST the returned identity token to /api/auth/apple/native.
-//   4. On success, reload the web view so the session cookie is picked up.
-function randomNonce(): string {
-  // 128 bits of entropy is plenty for a one-shot nonce.
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function runAppleSignIn(): Promise<void> {
-  const nonce = randomNonce();
-  let response: SignInWithAppleResponse;
-  try {
-    response = await SignInWithApple.authorize({
-      // `clientId` is the iOS bundle ID for native SIWA (no Services ID).
-      clientId: "app.withphoebe.mobile",
-      // The plugin types require `redirectURI` even though native iOS
-      // SIWA doesn't actually round-trip through a browser redirect
-      // (it's a web-flow concept). We pass a placeholder that matches
-      // our universal link; iOS ignores it in the native sheet.
-      redirectURI: "https://withphoebe.app/auth/apple/callback",
-      // Request BOTH email + name. Apple only honors `name` on the very
-      // first authorization for a given Apple ID on this bundle — if the
-      // user has signed in before on another install we only get email.
-      scopes: "email name",
-      // Required by the plugin; we use the same value as nonce so the
-      // server can correlate the round-trip.
-      state: nonce,
-      nonce,
-    });
-  } catch (err) {
-    window.dispatchEvent(new CustomEvent("phoebe:apple-signin-error", { detail: err }));
-    return;
-  }
-
-  const identityToken = response.response?.identityToken;
-  if (!identityToken) {
-    window.dispatchEvent(new CustomEvent("phoebe:apple-signin-error", { detail: "no_identity_token" }));
-    return;
-  }
-
-  const name = response.response?.givenName || response.response?.familyName
-    ? {
-        givenName: response.response?.givenName ?? undefined,
-        familyName: response.response?.familyName ?? undefined,
-      }
-    : undefined;
-
-  try {
-    const res = await fetch(API_BASE + "/api/auth/apple/native", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ identityToken, nonce, name }),
-    });
-    if (!res.ok) {
-      const detail = await res.json().catch(() => ({}));
-      window.dispatchEvent(new CustomEvent("phoebe:apple-signin-error", { detail }));
-      return;
-    }
-    const body = await res.json();
-    window.dispatchEvent(new CustomEvent("phoebe:apple-signin-ready", { detail: body }));
-    // Reload the web view so the cookie becomes active and the web app
-    // re-queries /api/users/me as the authenticated user.
-    window.location.href = "/dashboard";
-  } catch (err) {
-    window.dispatchEvent(new CustomEvent("phoebe:apple-signin-error", { detail: err }));
-  }
-}
-
-function wireAppleSignIn() {
-  window.addEventListener("phoebe:request-apple-signin", () => {
-    runAppleSignIn();
-  });
-}
-
-// ─── SIWA button injector ──────────────────────────────────────────────────
-// The web login page lives at /? and has a "Continue with Google" button.
-// Apple requires SIWA to be at LEAST as prominent as the third-party SSO
-// options when the app offers any of them — so on native iOS only, we
-// inject a matching "Sign in with Apple" button right next to the Google
-// one. We do this by observing the DOM because we don't know when the
-// login page will render (Wouter-routed SPA). Once placed, we don't
-// re-inject.
-function injectSiwaButton() {
-  const INJECTED_ATTR = "data-phoebe-siwa-injected";
-  const tryInject = () => {
-    // Only on the login-like routes. `/` is the marketing/login page;
-    // `/signin` and `/login` are hypothetical future aliases.
-    const path = window.location.pathname;
-    if (!(path === "/" || path === "/signin" || path === "/login")) return;
-
-    // Find the Google button. We look for any button/link whose text mentions
-    // "Google" — robust to copy changes as long as the brand name stays.
-    const candidates = Array.from(document.querySelectorAll<HTMLElement>("button, a")).filter(el => {
-      const txt = (el.textContent ?? "").toLowerCase();
-      return txt.includes("google") && !el.hasAttribute(INJECTED_ATTR);
-    });
-    const googleBtn = candidates[0];
-    if (!googleBtn) return;
-    // Avoid double-injection.
-    if (document.querySelector(`[${INJECTED_ATTR}="siwa"]`)) return;
-
-    const appleBtn = document.createElement("button");
-    appleBtn.type = "button";
-    appleBtn.setAttribute(INJECTED_ATTR, "siwa");
-    appleBtn.textContent = "\uF8FF  Sign in with Apple";
-    // Styling: copy the Google button's computed class list so it visually
-    // matches its neighbor. Inline fallback for font/colors if class copy
-    // doesn't survive a Tailwind rebuild.
-    appleBtn.className = googleBtn.className;
-    appleBtn.style.cssText = `
-      background: #000;
-      color: #fff;
-      border: 1px solid #000;
-      font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
-      font-weight: 500;
-      letter-spacing: 0.01em;
-    `;
-    appleBtn.addEventListener("click", () => {
-      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
-      window.dispatchEvent(new Event("phoebe:request-apple-signin"));
-    });
-    // Insert after the Google button.
-    googleBtn.parentElement?.insertBefore(appleBtn, googleBtn.nextSibling);
-  };
-
-  // Try once on bootstrap and again on route changes.
-  tryInject();
-  const mo = new MutationObserver(() => tryInject());
-  mo.observe(document.body, { childList: true, subtree: true });
-  window.addEventListener("popstate", tryInject);
-}
-
 // ─── Biometric re-auth on app resume ───────────────────────────────────────
 // Adds a lock-after-idle layer on top of Phoebe's cookie session. The web
 // app writes `phoebe:persist:biometricLock = "on"` to enable (mirrored to
@@ -1338,61 +1197,6 @@ function wireContemplation() {
   });
 }
 
-// ─── Cobreathe music (Apple Music) ──────────────────────────────────────────
-// The Cobreathe breath can play ONE fixed, curated Apple Music playlist while
-// you breathe — playback ONLY, never reads listening history. The web app
-// dispatches `phoebe:cobreathe-music-start` when the breath begins (only if the
-// user enabled it) and `phoebe:cobreathe-music-stop` on every exit; we route to
-// the native CobreatheMusic plugin. Subscriber-gated; no-op on web / iOS < 16.
-//
-// Replace this with the real catalog playlist id from the Apple Music share
-// link (the "pl...." id — a public/curated playlist, NOT a personal "p...."
-// one). While it's the placeholder, play() quietly no-ops.
-const COBREATHE_PLAYLIST_ID = "pl.PLACEHOLDER";
-
-function getCobreatheMusic(): {
-  authorize?: () => Promise<{ status: string }>;
-  getAuthorizationStatus?: () => Promise<{ status: string }>;
-  isAvailable?: () => Promise<{ available: boolean }>;
-  play?: (opts: { playlistId: string }) => Promise<{ playing: boolean; reason?: string }>;
-  stop?: () => Promise<void>;
-} | undefined {
-  const cap = (window as {
-    Capacitor?: { Plugins?: Record<string, unknown> };
-  }).Capacitor;
-  return cap?.Plugins?.["CobreatheMusic"] as ReturnType<typeof getCobreatheMusic>;
-}
-
-function wireCobreatheMusic() {
-  // Tell the web layer whether music is REALLY offerable — i.e. a real catalog
-  // playlist is set (not the placeholder). The plugin's PRESENCE in
-  // Capacitor.Plugins covers the native wiring (target + registration); this
-  // covers the playlist config. The UI toggle requires BOTH, so we never show a
-  // control that silently does nothing.
-  (window as unknown as { __cobreatheMusicReady?: boolean }).__cobreatheMusicReady =
-    !!COBREATHE_PLAYLIST_ID && COBREATHE_PLAYLIST_ID !== "pl.PLACEHOLDER";
-
-  window.addEventListener("phoebe:cobreathe-music-start", async () => {
-    if (!COBREATHE_PLAYLIST_ID || COBREATHE_PLAYLIST_ID === "pl.PLACEHOLDER") return;
-    const music = getCobreatheMusic();
-    if (!music) return;
-    try {
-      // Co-Breathe must NEVER prompt for Apple Music (owner): only play if the
-      // user has ALREADY granted access elsewhere (e.g. Audio Divina). If not
-      // authorized — or not a subscriber — we silently skip; the breath plays on.
-      const status = (await music.getAuthorizationStatus?.())?.status;
-      if (status !== "authorized") return;
-      const avail = await music.isAvailable?.();
-      if (!avail?.available) return;
-      await music.play?.({ playlistId: COBREATHE_PLAYLIST_ID });
-    } catch { /* best-effort — music is optional over the breath */ }
-  });
-
-  window.addEventListener("phoebe:cobreathe-music-stop", async () => {
-    try { await getCobreatheMusic()?.stop?.(); } catch { /* best-effort */ }
-  });
-}
-
 // ─── Persisted storage bridge ──────────────────────────────────────────────
 // Capacitor Preferences is more reliable than localStorage inside a
 // WKWebView cold start on iOS. The web app still uses localStorage; we
@@ -1482,7 +1286,6 @@ declare global {
       triggerHaptic: (style: string) => void;
       requestPushPermission: () => void;
       requestContacts: () => void;
-      requestAppleSignIn: () => void;
       scheduleBell: (bellId: string, hourMin: string, title?: string, body?: string) => void;
       cancelBell: (bellId: string) => void;
       setBiometricLock: (on: boolean) => void;
@@ -1523,6 +1326,10 @@ declare global {
       // handler keeps it within the gesture, so SFSafariViewController
       // is allowed to present.
       openInAppBrowser?: (url: string) => Promise<void>;
+      // SFSafariViewController with entersReaderIfAvailable — shares Safari's
+      // system-wide cookie jar (unlike openInAppBrowser's own WKWebView data
+      // store). See lib/openExternal.ts's `reader` option on the web side.
+      openReaderView?: (url: string) => Promise<void>;
       // Warm a URL in a background WKWebView so a later openInAppBrowser of the
       // same URL shows the already-loaded page instantly. Best-effort no-op.
       preloadInAppBrowser?: (url: string) => Promise<void>;
@@ -1552,9 +1359,6 @@ function exposePublicApi() {
     },
     requestContacts() {
       window.dispatchEvent(new Event("phoebe:request-contacts"));
-    },
-    requestAppleSignIn() {
-      window.dispatchEvent(new Event("phoebe:request-apple-signin"));
     },
     scheduleBell(bellId: string, hourMin: string, title?: string, body?: string) {
       window.dispatchEvent(
@@ -1667,7 +1471,7 @@ function exposePublicApi() {
         try { await bible.openReader({ url }); return; }
         catch (err) { console.warn("[PhoebeNative] openReader failed, falling back:", err); }
       }
-      await this.openInAppBrowser(url);
+      await this.openInAppBrowser?.(url);
     },
     async preloadInAppBrowser(url: string) {
       // Best-effort warm: start loading `url` in a background WKWebView so a
@@ -1730,13 +1534,10 @@ function exposePublicApi() {
   wireNativeOpenUrl();
   wireHaptics();
   wireContacts();
-  wireAppleSignIn();
-  injectSiwaButton();
   wireBiometricLock();
   wireLocalNotifications();
   wireRestReminders();
   wireContemplation();
-  wireCobreatheMusic();
   wireDurableStorage();
   wireLifecycle();
 })();

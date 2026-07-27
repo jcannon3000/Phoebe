@@ -3,7 +3,6 @@ import { sendPasswordResetEmail } from "../lib/email";
 import { Router, type IRouter, type Request } from "express";
 import passport from "passport";
 import { loginFreshSession } from "../lib/session";
-import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
 import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
@@ -18,6 +17,13 @@ const scryptAsync = promisify(scrypt);
 
 const router: IRouter = Router();
 
+const frontendURL = getFrontendUrl();
+
+// Google Sign-In (user login) and the Google Calendar UI feature are both
+// removed (owner) — but the invites@withphoebe.app service account below
+// still sends every outbound email (invites, magic links, password resets)
+// via Gmail send, so its OAuth config stays. GOOGLE_CONFIGURED/callbackURL
+// now describe ONLY that service-account setup, not user sign-in.
 const GOOGLE_CONFIGURED =
   !!process.env["GOOGLE_CLIENT_ID"] && !!process.env["GOOGLE_CLIENT_SECRET"];
 
@@ -25,102 +31,6 @@ if (process.env["NODE_ENV"] === "production" && !process.env["GOOGLE_REDIRECT_UR
   throw new Error("GOOGLE_REDIRECT_URI must be set in production");
 }
 const callbackURL = process.env["GOOGLE_REDIRECT_URI"] ?? "http://localhost:3001/api/auth/google/callback";
-const frontendURL = getFrontendUrl();
-
-if (GOOGLE_CONFIGURED) {
-  passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env["GOOGLE_CLIENT_ID"]!,
-        clientSecret: process.env["GOOGLE_CLIENT_SECRET"]!,
-        callbackURL,
-        scope: ["profile", "email"],
-        // Pass `req` into verify so we can see the CURRENT session — an
-        // anonymous device guest signing up via Google should upgrade that
-        // same row in place (keep their streak), not mint a fresh account.
-        passReqToCallback: true,
-      },
-      async (
-        req: Request,
-        accessToken: string,
-        refreshToken: string,
-        profile: Profile,
-        done: (err: Error | null, user?: Express.User) => void
-      ) => {
-        try {
-          const email = profile.emails?.[0]?.value ?? "";
-          const name = profile.displayName ?? email;
-          const avatarUrl = profile.photos?.[0]?.value ?? null;
-          const googleId = profile.id;
-
-          // Calendar tokens no longer stored per-user — scheduler account handles all events.
-          // Never let a Google sign-in clobber a custom uploaded avatar. Only
-          // adopt Google's photo when the user has no avatar yet, or their
-          // current one is itself a Google photo (so it can refresh). A custom
-          // upload (data: URI or any non-Google URL) is preserved — otherwise
-          // every Google re-auth reverted the user's chosen picture everywhere.
-          const keepAvatar = (prev: { avatarUrl: string | null }): string | null => {
-            const cur = prev.avatarUrl;
-            const isGoogle = !!cur && cur.startsWith("https://lh3.googleusercontent.com");
-            if (cur && !isGoogle) return cur; // custom upload — keep it
-            return avatarUrl ?? cur;          // adopt Google's, but never null out
-          };
-          const existing = await db.select().from(usersTable).where(eq(usersTable.googleId, googleId));
-          if (existing.length > 0) {
-            const prev = existing[0];
-            const [user] = await db
-              .update(usersTable)
-              .set({ avatarUrl: keepAvatar(prev) })
-              .where(eq(usersTable.id, prev.id))
-              .returning();
-            return done(null, user);
-          }
-
-          const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, email));
-          if (byEmail.length > 0) {
-            // Only link this Google identity to a pre-existing account when
-            // Google has VERIFIED the email. Otherwise a Google account that
-            // merely claims a victim's address (e.g. an unverified custom
-            // Workspace domain) could take over the victim's password account.
-            const emailVerified = (profile as { _json?: { email_verified?: boolean } })._json?.email_verified === true;
-            if (!emailVerified) {
-              return done(null, undefined);
-            }
-            const [user] = await db
-              .update(usersTable)
-              .set({ googleId, avatarUrl: keepAvatar(byEmail[0]) })
-              .where(eq(usersTable.id, byEmail[0].id))
-              .returning();
-            return done(null, user);
-          }
-
-          // Anonymous device guest signing up via Google → upgrade that same
-          // row in place (keeps streak / history / push token / rule; id
-          // unchanged), mirroring /auth/register + Apple. Only reached when the
-          // email is free (byEmail miss above), so there's no takeover risk.
-          const anonId = req.user && (req.user as { isAnonymous?: boolean }).isAnonymous
-            ? (req.user as { id: number }).id
-            : null;
-          if (anonId != null) {
-            const [upgraded] = await db
-              .update(usersTable)
-              .set({ name, email, avatarUrl, googleId, isAnonymous: false })
-              .where(and(eq(usersTable.id, anonId), eq(usersTable.isAnonymous, true)))
-              .returning();
-            if (upgraded) return done(null, upgraded);
-          }
-          const [user] = await db
-            .insert(usersTable)
-            .values({ name, email, avatarUrl, googleId })
-            .returning();
-          return done(null, user);
-        } catch (err) {
-          return done(err as Error);
-        }
-      }
-    )
-  );
-}
 
 passport.serializeUser((user: Express.User, done) => {
   done(null, (user as { id: number }).id);
@@ -166,35 +76,6 @@ passport.deserializeUser(async (id: number, done) => {
     done(err);
   }
 });
-
-router.get("/auth/google", (_req, res, next) => {
-  if (!GOOGLE_CONFIGURED) {
-    res.status(503).send("Google Sign-In is not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
-    return;
-  }
-  passport.authenticate("google", { accessType: "offline" })(res.req, res, next);
-});
-
-router.get(
-  "/auth/google/callback",
-  (req, res, next) => {
-    if (!GOOGLE_CONFIGURED) { res.redirect("/?error=auth_failed"); return; }
-    passport.authenticate("google", { failureRedirect: `${frontendURL}/?error=auth_failed` })(req, res, next);
-  },
-  (req, res) => {
-    // passport.authenticate has already logged the user in; rotate the session
-    // id (re-logging into the fresh session) to defeat fixation, then save
-    // before redirect to avoid a race.
-    const u = req.user as Express.User | undefined;
-    if (!u) { res.redirect(`${frontendURL}/?error=auth_failed`); return; }
-    loginFreshSession(req, u, (err) => {
-      if (err) { res.redirect(`${frontendURL}/?error=auth_failed`); return; }
-      req.session.save(() => {
-        res.redirect(`${frontendURL}/dashboard`);
-      });
-    });
-  }
-);
 
 // ─── Outbound-mail account setup (one-time) ─────────────────────────────────
 // Visit /api/auth/scheduler/setup while logged into Google Workspace as

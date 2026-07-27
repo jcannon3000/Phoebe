@@ -222,32 +222,6 @@ export default function CobreathePage() {
   // idle timer would otherwise dim/sleep the phone mid-sit.
   useKeepAwake(mode === "breathing");
 
-  // Apple Music over the breath (native plugin CobreatheMusic; no-ops on web and
-  // until a real catalog playlist + an Apple Music subscription exist). Opt-in.
-  // Start when the breath is active AND the user enabled it; stop on exit/unmount.
-  const [musicOn, setMusicOn] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:cobreathe-music") === "1"; } catch { return false; }
-  });
-  const toggleMusic = () => setMusicOn((on) => {
-    const next = !on;
-    try { localStorage.setItem("phoebe:cobreathe-music", next ? "1" : "0"); } catch { /* ignore */ }
-    return next;
-  });
-  useEffect(() => {
-    const ev = (mode === "breathing" && musicOn) ? "phoebe:cobreathe-music-start" : "phoebe:cobreathe-music-stop";
-    window.dispatchEvent(new CustomEvent(ev));
-  }, [mode, musicOn]);
-  useEffect(() => () => { window.dispatchEvent(new CustomEvent("phoebe:cobreathe-music-stop")); }, []);
-  // The toggle only appears when music can ACTUALLY play: iOS + the native
-  // CobreatheMusic plugin registered + a real playlist configured (native-shell
-  // sets __cobreatheMusicReady). Never a control that silently does nothing.
-  const musicAvailable = (() => {
-    const cap = (window as unknown as { Capacitor?: { getPlatform?: () => string; Plugins?: Record<string, unknown> } }).Capacitor;
-    return cap?.getPlatform?.() === "ios"
-      && !!cap?.Plugins?.["CobreatheMusic"]
-      && (window as unknown as { __cobreatheMusicReady?: boolean }).__cobreatheMusicReady === true;
-  })();
-
   // Garden-mate photo sync: while breathing, follow the earliest online garden-
   // mate's photo order (or lead if first). Gated on showPresence inside the hook.
   const { user } = useAuth();
