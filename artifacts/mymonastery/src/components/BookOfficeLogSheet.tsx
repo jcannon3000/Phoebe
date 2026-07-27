@@ -4,14 +4,12 @@ const WARM = "#F0EDE6";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 // BookOfficeLogSheet — the same bottom-sheet shell LogSheet uses, for the
-// physical-BCP office: a "Log" button (marks the office prayed, same flag
-// BookOfficeLogRow's inline "I prayed it" writes) and, instead of "Not
-// today" (there's no "skip the office" concept), "Page numbers and
+// physical-BCP office: a "Log" button (marks the office prayed) and, instead
+// of "Not today" (there's no "skip the office" concept), "Page numbers and
 // readings" — the way through to the in-app guide for whoever wants it.
-//
-// Shared between DailyProgressBody's own rawCard hero path and
-// dashboard.tsx's PrayerOfficeCard, since the latter is what actually
-// renders the visible home hero when the office leads.
+// Opened from the hero's "Log" pill (dashboard.tsx's PrayerOfficeCard),
+// which is the component that actually renders the visible home hero when
+// the office leads.
 export function BookOfficeLogSheet({
   side,
   title,

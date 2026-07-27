@@ -1518,12 +1518,6 @@ export default function WayOfLoveRuleFlow({
   if (step === "morning-way" || step === "evening-way") {
     const side: OfficeSide = step === "morning-way" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
-    const officeSub = side === "morning"
-      ? t("wol_rule.pray_offices_sub_morning", { defaultValue: "The full Morning Prayer office." })
-      : t("wol_rule.pray_offices_sub_evening", { defaultValue: "The full Evening Prayer office." });
-    const devotionSub = side === "morning"
-      ? t("wol_rule.pray_devotion_sub_morning", { defaultValue: "A short form of Morning Prayer." })
-      : t("wol_rule.pray_devotion_sub_evening", { defaultValue: "A short form of Evening Prayer." });
     return shell(
       <>
         {backRow(goPrev)}
@@ -1568,16 +1562,24 @@ export default function WayOfLoveRuleFlow({
           })()}
           {(() => {
             const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
-            const bcpSub = prayBySide[side] === "offices" ? officeSub
-              : prayBySide[side] === "devotion" ? devotionSub
-              : prayBySide[side] === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
-              : t("wol_rule.pray_bcp_sub", { defaultValue: "Choose from three options: Psalms, Devotion, or Office." });
+            // Always the generic "three options" line here, even once a
+            // specific form is picked — the form itself (Psalms/Devotion/
+            // Office) is chosen on the NEXT slide, so collapsing this row's
+            // subtitle down to just the selected form's description (as it
+            // used to) hid that the other two are still available under
+            // this same choice.
+            const bcpSub = t("wol_rule.pray_bcp_sub", { defaultValue: "Prayer with the BCP — Psalms, Devotion, or the full Office." });
             return choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => {
               if (bcpOn) return; // already selected — nothing to switch
               touchedRef.current = true;
               // Selecting BCP replaces any per-side contemplation on this side
               // (silent Contemplation OR the Creation Prayer breath).
               if (contemplationBySide[side]) toggleContemplationSide(side);
+              // Switching evening AWAY from Examen shouldn't leave the
+              // Examen add-on toggle silently still "on" — it was only on
+              // because Examen WAS this side's prayer; that implication
+              // doesn't carry over to a different evening pick.
+              if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               choosePrayBySide(side, bcpForm[side]);
             });
           })()}
@@ -1596,6 +1598,7 @@ export default function WayOfLoveRuleFlow({
               const on = contemplationBySide[side] && contemplationStyle === "silent";
               if (on) return; // already selected — nothing to switch
               touchedRef.current = true;
+              if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               choosePrayBySide(side, "none");
               if (!contemplationBySide[side]) toggleContemplationSide(side);
               chooseContemplationStyle("silent");
@@ -1616,6 +1619,7 @@ export default function WayOfLoveRuleFlow({
               const on = contemplationBySide[side] && contemplationStyle === "cobreathe";
               if (on) return; // already selected — nothing to switch
               touchedRef.current = true;
+              if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               choosePrayBySide(side, "none");
               if (!contemplationBySide[side]) toggleContemplationSide(side);
               chooseContemplationStyle("cobreathe");

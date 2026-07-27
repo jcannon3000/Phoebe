@@ -3620,64 +3620,50 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
       : programmedLevel === "office"
         ? (isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙")
         : "Pray Together 🙏🏽";
-    const openBookLog = entryIsBook && !prayedToday;
-    const card = (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={openBookLog ? () => setBookLogOpen(true) : undefined}
-        className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{
-          background: "rgba(46,107,64,0.14)",
-          border: "1px solid rgba(46,107,64,0.4)",
-        }}
-      >
-        <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-          <p
-            className="font-semibold min-w-0 truncate"
-            style={{
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              margin: 0,
-              lineHeight: 1.2,
-              fontSize: 16,
-            }}
-          >
-            {title}
-          </p>
-          <div
-            className="rounded-full text-center shrink-0"
-            style={{
-              background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.28)",
-              color: prayedToday ? "rgba(168,197,160,0.9)" : "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 13,
-              fontWeight: 500,
-              padding: "6px 14px",
-              border: prayedToday
-                ? "1px solid rgba(46,107,64,0.22)"
-                : "1px solid rgba(46,107,64,0.45)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")} <span aria-hidden>→</span></>}
+    return (
+      <Link href={ctaHref} className="block">
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative flex rounded-xl overflow-hidden cursor-pointer"
+          style={{
+            background: "rgba(46,107,64,0.14)",
+            border: "1px solid rgba(46,107,64,0.4)",
+          }}
+        >
+          <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+            <p
+              className="font-semibold min-w-0 truncate"
+              style={{
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                margin: 0,
+                lineHeight: 1.2,
+                fontSize: 16,
+              }}
+            >
+              {title}
+            </p>
+            <div
+              className="rounded-full text-center shrink-0"
+              style={{
+                background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.28)",
+                color: prayedToday ? "rgba(168,197,160,0.9)" : "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                padding: "6px 14px",
+                border: prayedToday
+                  ? "1px solid rgba(46,107,64,0.22)"
+                  : "1px solid rgba(46,107,64,0.45)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")} <span aria-hidden>→</span></>}
+            </div>
           </div>
         </div>
-      </div>
-    );
-    return (
-      <>
-        {openBookLog ? card : <Link href={ctaHref} className="block">{card}</Link>}
-        {bookLogOpen && (
-          <BookOfficeLogSheet
-            side={officeSide}
-            title={bookSheetTitle}
-            onClose={() => setBookLogOpen(false)}
-            onOpenGuide={() => { setBookLogOpen(false); setLocation(`/begin-prayer?side=${officeSide}`); }}
-            t={t}
-          />
-        )}
-      </>
+      </Link>
     );
   }
 
@@ -3787,14 +3773,19 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                 </div>
               </Link>
             </div>
-          ) : (
-            (() => {
-              const heroCta = (
+          ) : entryIsBook ? (
+            // Physical-BCP office: two equal-width pills instead of one CTA —
+            // "Begin" walks into the office intro/page-number screen exactly
+            // like the normal CTA; "Log" opens the same quick-log popup the
+            // custom-practice cards use (Log / Page numbers and readings),
+            // for whoever just wants to mark today's office prayed from their
+            // own book without opening the in-app guide at all.
+            <div className="mt-[12px] flex items-stretch gap-2">
+              <Link href={ctaHref} className="flex-1">
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={entryIsBook ? () => setBookLogOpen(true) : undefined}
-                  className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+                  className="rounded-xl text-center cursor-pointer"
                   style={{
                     background: "rgba(46,107,64,0.22)",
                     color: "#F0EDE6",
@@ -3805,11 +3796,46 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                     border: "1px solid rgba(46,107,64,0.45)",
                   }}
                 >
-                  {ctaCopy} <span aria-hidden>→</span>
+                  Begin <span aria-hidden>→</span>
                 </div>
-              );
-              return entryIsBook ? heroCta : <Link href={ctaHref}>{heroCta}</Link>;
-            })()
+              </Link>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setBookLogOpen(true)}
+                className="flex-1 rounded-xl text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.10)",
+                  color: "rgba(168,197,160,0.9)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  padding: "7px 12px",
+                  border: "1px solid rgba(46,107,64,0.22)",
+                }}
+              >
+                Log
+              </div>
+            </div>
+          ) : (
+            <Link href={ctaHref}>
+              <div
+                role="button"
+                tabIndex={0}
+                className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  padding: "7px 12px",
+                  border: "1px solid rgba(46,107,64,0.45)",
+                }}
+              >
+                {ctaCopy} <span aria-hidden>→</span>
+              </div>
+            </Link>
           )}
       </div>
     </div>
