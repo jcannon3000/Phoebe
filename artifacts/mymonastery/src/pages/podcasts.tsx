@@ -303,7 +303,7 @@ export default function PodcastsPage() {
   // Wide landscape backdrop on the web; the bundled leaf photo on native.
   // Pick ONCE per mount (rotates to a fresh Wide photo each visit) — without the
   // memo it re-picked a new random on every render, flickering the backdrop.
-  const podcastBg = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null), []);
+  const podcastBg = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [tab, setTab] = useState<"discover" | "listen-list">("discover");

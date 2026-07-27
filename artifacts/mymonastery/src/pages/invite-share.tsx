@@ -73,18 +73,21 @@ export default function InviteSharePage() {
     >
       {/* Backdrop — the shared page recipe: one still leaf photo held low under
           a dark wash, on zIndex -1 inside an isolated stacking context. NEVER
-          position:fixed (iOS flash). See reference_page_backdrop_pattern. */}
+          position:fixed (iOS flash). See reference_page_backdrop_pattern.
+          Lighter wash than before (the photo was nearly invisible under it) —
+          the frosted panel below carries legibility now, not a near-opaque
+          gradient. */}
       {bgPhoto && (
         <>
           <img
             src={bgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.2, zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.34, zIndex: -1 }}
           />
           <div
             aria-hidden
-            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.66) 0%, rgba(8,22,15,0.84) 55%, rgba(8,22,15,0.94) 100%)" }}
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.62) 55%, rgba(8,22,15,0.78) 100%)" }}
           />
         </>
       )}
@@ -103,41 +106,48 @@ export default function InviteSharePage() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col px-7 pb-10 max-w-md mx-auto w-full">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
-          <p className="text-[12px] uppercase tracking-[0.2em] font-semibold mt-6 mb-3" style={{ color: "rgba(240,237,230,0.7)" }}>
-            {t("invite_share.eyebrow", { defaultValue: "Invite someone" })}
-          </p>
-          <h1 className="text-[30px] font-semibold leading-tight mb-4" style={{ color: WARM }}>
-            {t("invite_share.title", { defaultValue: "Give someone a way to pray every day" })}
-          </h1>
-          <p className="text-[17px] leading-relaxed" style={{ color: WARM, fontFamily: SERIF }}>
-            {t("invite_share.lede", {
-              defaultValue:
-                "Most people who want to pray daily don't lack the desire — they lack a form to put it in. Sharing Phoebe hands someone that form: a simple, unhurried rhythm they can keep, and a way to grow into the prayer life of the church.",
-            })}
-          </p>
-        </motion.div>
-
+      <div className="flex-1 flex flex-col justify-center px-7 pb-10 max-w-md mx-auto w-full">
+        {/* Frosted panel — the same shell every hero card in the app uses
+            (office/Examen/Creation/Guided Prayer hero, WhatsNextCard): neutral
+            frosted glass + sage outline. Without it the copy sat directly on
+            the bare photo/wash with nothing to hold it. */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-          className="mt-8 flex flex-col items-center"
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl overflow-hidden"
+          style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}
         >
-          <button
-            type="button"
-            onClick={handleShare}
-            className="w-full rounded-full px-8 py-4 text-[17px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer" }}
-          >
-            {t("invite_share.share_cta", { defaultValue: "Share Phoebe" })}
-          </button>
-          <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? WARM : "rgba(240,237,230,0.6)" }}>
-            {justCopied
-              ? t("invite_share.copied", { defaultValue: "Link copied ✓" })
-              : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
-          </p>
+          <div className="px-6 py-7">
+            <p className="text-[12px] uppercase tracking-[0.2em] font-semibold mb-3" style={{ color: "rgba(240,237,230,0.7)" }}>
+              {t("invite_share.eyebrow", { defaultValue: "Invite someone" })}
+            </p>
+            <h1 className="text-[28px] font-semibold leading-tight mb-4" style={{ color: WARM }}>
+              {t("invite_share.title", { defaultValue: "Give someone a way to pray every day" })}
+            </h1>
+            <p className="text-[16px] leading-relaxed mb-8" style={{ color: WARM, fontFamily: SERIF }}>
+              {t("invite_share.lede", {
+                defaultValue:
+                  "Most people who want to pray daily don't lack the desire — they lack a form to put it in. Sharing Phoebe hands someone that form: a simple, unhurried rhythm they can keep, and a way to grow into the prayer life of the church.",
+              })}
+            </p>
+
+            <div className="flex flex-col items-center">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="w-full rounded-full px-8 py-4 text-[17px] font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer" }}
+              >
+                {t("invite_share.share_cta", { defaultValue: "Share Phoebe" })}
+              </button>
+              <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? WARM : "rgba(240,237,230,0.6)" }}>
+                {justCopied
+                  ? t("invite_share.copied", { defaultValue: "Link copied ✓" })
+                  : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
+              </p>
+            </div>
+          </div>
         </motion.div>
       </div>
     </div>
