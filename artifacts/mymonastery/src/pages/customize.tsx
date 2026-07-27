@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import {
   getSideLevel, setSideLevel, setSideEntry,
@@ -13,14 +12,14 @@ import {
   setPsalmCycle, OFFICE_PREFS_EVENT,
   type ReflectionSource,
 } from "@/lib/officePrefs";
-import { getGuestSilenceGoalMin, setGuestSilenceGoalMin, getGuestStepGoal, setGuestStepGoal } from "@/lib/guestSeed";
+import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
-// Four dropdowns (Daily Prayer, Newsletter, Silence, Daily Steps [iOS only]),
-// styled like the office/psalms "before you begin" pill chooser — category on
+// Three dropdowns (Daily Prayer, Newsletter, Silence), styled like the
+// office/psalms "before you begin" pill chooser — category on
 // the left, the current value + a caret on the right, a native <select>
 // invisibly layered on top so it's a real dropdown on tap. Writes straight to
 // the same device-local prefs the seeded guest rule + full customizer read, so
@@ -85,15 +84,15 @@ export default function CustomizePage() {
   }, [guest]);
 
   // A signed-in "light" account (real, but not device-local) has its silence
-  // goal + step goal on the server; a device-local guest keeps them local.
-  const { data: officePrefs, isLoading: officePrefsLoading } = useQuery<{ contemplationGoalMinutes?: number; dailyStepGoal?: number }>({
+  // goal on the server; a device-local guest keeps it local.
+  const { data: officePrefs, isLoading: officePrefsLoading } = useQuery<{ contemplationGoalMinutes?: number }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     enabled: !guest,
   });
-  // A guest's local values are available synchronously; a light account's
-  // saved goals need this query to resolve first — render those two rows only
-  // once we actually KNOW the value, so a light account never briefly sees a
+  // A guest's local value is available synchronously; a light account's
+  // saved goal needs this query to resolve first — render the row only once
+  // we actually KNOW the value, so a light account never briefly sees a
   // wrong default (e.g. "5 min") before their real saved goal paints.
   const goalsReady = guest || !officePrefsLoading;
 
@@ -102,12 +101,9 @@ export default function CustomizePage() {
   const [silenceMin, setSilenceMin] = useState<number>(() =>
     guest ? (getGuestSilenceGoalMin() || 5) : 5,
   );
-  const [stepGoal, setStepGoalState] = useState<number>(() => (guest ? getGuestStepGoal() : 0));
-
   // Once office-prefs load for a light (non-guest) account, adopt its saved
-  // goals instead of the guest fallback defaults above.
+  // goal instead of the guest fallback default above.
   const effectiveSilenceMin = guest ? silenceMin : (officePrefs?.contemplationGoalMinutes || silenceMin);
-  const effectiveStepGoal = guest ? stepGoal : (officePrefs?.dailyStepGoal ?? stepGoal);
 
   const applyDailyPrayer = (choice: DailyPrayer) => {
     // Re-selecting the current anchor is a no-op — without this, re-picking
@@ -200,27 +196,12 @@ export default function CustomizePage() {
     writeSilenceGoal(min, { splitAcrossSides: dailyPrayer === "contemplation" });
   };
 
-  const applySteps = (goal: number) => {
-    setStepGoalState(goal);
-    if (guest) setGuestStepGoal(goal);
-    else {
-      // Update the cached office-prefs too — effectiveStepGoal prefers the
-      // fetched value (?? never falls through to local state since the server
-      // always returns a number), so without this the row snaps back to the
-      // stale goal until some later refetch.
-      qc.setQueryData(["/api/me/office-prefs"], (old: Record<string, unknown> | undefined) =>
-        ({ ...(old ?? {}), dailyStepGoal: goal }));
-      void apiRequest("PUT", "/api/me/office-prefs", { dailyStepGoal: goal }).catch(() => { /* best-effort */ });
-    }
-  };
-
   // Contemplative Prayer counts silence as the day's TOTAL across two sits, so
   // its steps are 10-minute (each side gets a clean half); every other anchor
   // keeps the finer 5-minute goal steps.
   const SILENCE_OPTS = dailyPrayer === "contemplation"
     ? [10, 20, 30, 40, 50, 60]
     : [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
-  const STEP_OPTS = [5000, 7500, 10000, 12500, 15000];
 
   const row = (label: string, value: string, opts: Array<{ value: string; label: string }>, onChange: (v: string) => void) => (
     <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(24,46,34,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
@@ -270,12 +251,6 @@ export default function CustomizePage() {
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
           {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}
-
-          {/* Daily steps — Apple Health, iOS only. */}
-          {isNativeShell() && goalsReady && row("Daily steps", String(effectiveStepGoal), [
-            { value: "0", label: "Off" },
-            ...STEP_OPTS.map((g) => ({ value: String(g), label: `${g.toLocaleString()} steps` })),
-          ], (v) => applySteps(parseInt(v, 10) || 0))}
         </div>
 
         {/* Every row above already applies the moment it's changed — this
