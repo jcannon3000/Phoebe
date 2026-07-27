@@ -69,31 +69,42 @@ export default function InvitePage() {
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.55) 0%, rgba(8,18,12,0.75) 60%, rgba(8,18,12,0.9) 100%)" }} />
         </>
       )}
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-16 max-w-md mx-auto">
-        <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.7)" }}>
-          {t("invite.eyebrow", { defaultValue: "You're invited" })}
-        </p>
-        <h1 className="text-[28px] font-semibold leading-tight mb-5">
-          {t("invite.title", { defaultValue: "Someone thought you'd want to pray with them" })}
-        </h1>
-        <p className="text-[15px] leading-relaxed mb-8" style={{ color: SAGE, fontFamily: "Georgia, serif" }}>
-          {t("invite.body", {
-            defaultValue:
-              "Phoebe is a quiet way to keep a daily prayer rhythm — the Book of Common Prayer, contemplation, the Examen — and to share that rhythm with your church community. Someone invited you into their prayer life; Phoebe is how they keep it, and how you can join them in it.",
-          })}
-        </p>
-        <a
-          href={APP_STORE_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-full px-8 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98] mb-4"
-          style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)" }}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
+        <div
+          className="flex flex-col items-center text-center px-8 py-9 max-w-md w-full"
+          style={{
+            borderRadius: 24,
+            background: "rgba(22,46,32,0.42)",
+            backdropFilter: "blur(11px)",
+            WebkitBackdropFilter: "blur(11px)",
+            border: "1px solid rgba(46,107,64,0.30)",
+          }}
         >
-          {t("invite.get_the_app", { defaultValue: "Get Phoebe on the App Store" })}
-        </a>
-        <Link href="/" className="text-[13px] underline" style={{ color: "rgba(143,175,150,0.75)" }}>
-          {t("invite.continue_web", { defaultValue: "Continue on the web instead" })}
-        </Link>
+          <p className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.7)" }}>
+            {t("invite.eyebrow", { defaultValue: "You're invited" })}
+          </p>
+          <h1 className="text-[28px] font-semibold leading-tight mb-5">
+            {t("invite.title", { defaultValue: "Someone thought you'd want to pray with them" })}
+          </h1>
+          <p className="text-[15px] leading-relaxed mb-8" style={{ color: SAGE, fontFamily: "Georgia, serif" }}>
+            {t("invite.body", {
+              defaultValue:
+                "Phoebe is a quiet way to keep a daily prayer rhythm — the Book of Common Prayer, contemplation, the Examen — and to share that rhythm with your church community. Someone invited you into their prayer life; Phoebe is how they keep it, and how you can join them in it.",
+            })}
+          </p>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full px-8 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98] mb-4"
+            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)" }}
+          >
+            {t("invite.get_the_app", { defaultValue: "Get Phoebe on the App Store" })}
+          </a>
+          <Link href="/" className="text-[13px] underline" style={{ color: "rgba(143,175,150,0.75)" }}>
+            {t("invite.continue_web", { defaultValue: "Continue on the web instead" })}
+          </Link>
+        </div>
       </div>
     </div>
   );

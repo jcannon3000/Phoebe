@@ -72,15 +72,6 @@ const SLIDES: Slide[] = [
     ],
     mock: "dashboard",
   },
-  // Praying WITH, not FOR — the communal pivot. Not a social feed; a shared
-  // rhythm, elastic to each life, that quietly holds a community together.
-  {
-    kind: "statement",
-    headline: "The same words, the same day",
-    body: [
-      "Some at dawn, some on a train, some at midnight — praying the same psalm, the same day. Not praying for each other from a distance, but praying with each other: one shared rhythm, elastic to each life, quietly holding a community together.",
-    ],
-  },
   // The invitation — just the name and the ask. The app icon anchors it
   // (see ClosingSlide); no sub copy underneath.
   {

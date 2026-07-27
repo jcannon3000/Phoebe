@@ -1,6 +1,8 @@
+import { useState, type CSSProperties } from "react";
 import { Layout } from "@/components/layout";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // The About page — a short description of Phoebe. English only by design.
 // Public: a logged-out visitor (from the welcome screen's "About" pill) can
@@ -10,9 +12,26 @@ import { useAuth } from "@/hooks/useAuth";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
 
+// A still leaf photo behind everything, same recipe as invite/invite-share
+// (page backdrop pattern: absolute inset-0 + gradient wash, zIndex -1 inside
+// an isolated stacking context — NEVER position:fixed, that flashes on iOS).
+// Picked once per mount.
+function useBgPhoto(): string | null {
+  return useState(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null))[0];
+}
+
+// Frosted-glass card recipe shared by the slideshow card and the Privacy/
+// Terms pills, so they read as panels floating over the photo rather than
+// flat tinted boxes.
+const FROST: CSSProperties = {
+  backdropFilter: "blur(11px)",
+  WebkitBackdropFilter: "blur(11px)",
+};
+
 export default function AboutPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const bgPhoto = useBgPhoto();
 
   if (isLoading) return null;
 
@@ -29,6 +48,7 @@ export default function AboutPage() {
             onClick={() => setLocation("/about-deck")}
             className="w-full transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{
+              ...FROST,
               marginTop: 18,
               display: "flex",
               alignItems: "center",
@@ -72,6 +92,7 @@ export default function AboutPage() {
             onClick={() => setLocation("/privacy")}
             className="transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{
+              ...FROST,
               padding: "9px 18px",
               borderRadius: 999,
               background: "rgba(46,107,64,0.18)",
@@ -89,6 +110,7 @@ export default function AboutPage() {
             onClick={() => setLocation("/terms")}
             className="transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{
+              ...FROST,
               padding: "9px 18px",
               borderRadius: 999,
               background: "rgba(46,107,64,0.18)",
@@ -106,14 +128,30 @@ export default function AboutPage() {
       </div>
   );
 
-  // Signed in → the full app shell. Signed out → a clean public page with a
-  // simple way back to the welcome screen.
-  if (user) return <Layout>{body}</Layout>;
+  // Signed in → the full app shell (Layout's own backdrop). Signed out → a
+  // clean public page with its own photo + wash, same recipe as invite/
+  // invite-share (isolation:isolate + absolute inset-0, zIndex -1 — NEVER
+  // position:fixed, that flashes on iOS).
+  if (user) return <Layout bgPhoto={bgPhoto} bgOpacity={0.22}>{body}</Layout>;
   return (
     <div
-      className="min-h-screen"
-      style={{ background: "#091A10", paddingTop: "var(--safe-top)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      className="relative min-h-screen"
+      style={{ background: "#091A10", paddingTop: "var(--safe-top)", paddingBottom: "env(safe-area-inset-bottom, 0px)", isolation: "isolate" }}
     >
+      {bgPhoto && (
+        <>
+          <img
+            src={bgPhoto}
+            alt=""
+            aria-hidden
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.22, zIndex: -1 }}
+          />
+          <div
+            aria-hidden
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.6) 0%, rgba(8,22,15,0.8) 55%, rgba(8,22,15,0.92) 100%)" }}
+          />
+        </>
+      )}
       <header className="px-6 pt-6 pb-2 max-w-2xl mx-auto">
         <Link href="/" className="text-sm font-medium" style={{ fontFamily: FONT, color: "#8FAF96" }}>
           ← Phoebe

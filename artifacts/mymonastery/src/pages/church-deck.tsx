@@ -214,9 +214,6 @@ function buildSlides(t: TFunction): Slide[] {
 // and the teal Contemplation card.
 function DashboardMock() {
   const { t } = useTranslation();
-  const avatar = (bg: string, key: number) => (
-    <div key={key} className="w-5 h-5 rounded-full" style={{ background: bg, border: "1.5px solid #091A10" }} />
-  );
   const dot = (filled: boolean, key: number) => (
     <span
       key={key}
@@ -242,17 +239,21 @@ function DashboardMock() {
       <p className="text-[14px] font-semibold leading-tight" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_date")}</p>
       <p className="text-[7.5px] uppercase tracking-[0.14em] mb-3 mt-0.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_tagline")}</p>
 
-      {/* Office hero — Book of Common Prayer */}
+      {/* Hero — Simple Guided Prayer, the new-user default. Matches the
+          real GuidedPrayerHomeCard hero: leading emoji (not an eyebrow),
+          title, subtitle, full-width CTA. No avatar row — the home no
+          longer shows "prayed with" faces next to a practice's CTA. */}
       <div className="rounded-xl overflow-hidden flex mb-2" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.4)" }}>
         <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
         <div className="flex-1 px-3 py-3">
-          <p className="text-[8px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}>{t("church_deck.mock_home_office_eyebrow")}</p>
-          <p className="text-[17px] font-semibold mt-0.5" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_office_title")} 🌅</p>
-          <p className="text-[9.5px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>{t("church_deck.mock_home_office_sub")}</p>
-          <div className="flex items-center justify-between mt-2.5">
-            <div className="flex -space-x-1.5">{avatar("#6B8B5A", 4)}{avatar("#8B7A4E", 5)}{avatar("#5A8B7A", 6)}</div>
-            <div className="text-[10px] font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.22)", color: C.text, border: "1px solid rgba(46,107,64,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_office_cta")} →</div>
+          <div className="flex items-start gap-2">
+            <span className="text-[19px] leading-none flex-shrink-0">🙌</span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_office_title")}</p>
+              <p className="text-[9px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>{t("church_deck.mock_home_office_sub")}</p>
+            </div>
           </div>
+          <div className="text-[10px] font-semibold text-center px-3 py-1.5 rounded-full mt-2.5" style={{ background: "rgba(46,107,64,0.22)", color: C.text, border: "1px solid rgba(46,107,64,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_office_cta")} →</div>
         </div>
       </div>
 
