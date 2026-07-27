@@ -14,6 +14,7 @@ import { openExternalThenMarkRead } from "@/lib/openExternal";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
@@ -355,23 +356,25 @@ export default function GuidedPrayerPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
+              className="w-full flex flex-col items-center"
               style={{ maxWidth: 480, textAlign: "center" }}
             >
-              <p className="text-[11px] uppercase tracking-[0.2em] font-semibold" style={{ color: EYEBROW, marginBottom: 18 }}>
-                {t("guided_prayer.whats_next", { defaultValue: "What's next" })}
-              </p>
-              <p style={{ fontSize: 34, marginBottom: 14 }} aria-hidden>📖</p>
-              <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5.2vw, 28px)", lineHeight: 1.25, marginBottom: 12 }}>
-                {whatsNext.name}
-              </h2>
-              <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.6 }}>
-                {t("guided_prayer.whats_next_sub", { defaultValue: "Today's reflection" })}
-              </p>
+              {/* Same "Up next" card + Done pill the office slideshow's own close
+                  uses (prayer-mode.tsx's PrayerCompletedSlide) — every practice
+                  hands off to what's next the same way, not its own bespoke look. */}
+              <WhatsNextCard
+                emoji="📖"
+                eyebrow={t("guided_prayer.whats_next", { defaultValue: "What's next" })}
+                title={whatsNext.name}
+                blurb={t("guided_prayer.whats_next_sub", { defaultValue: "Today's reflection" })}
+                cta={t("guided_prayer.read_it", { defaultValue: "Read it" })}
+                onGo={() => openExternalThenMarkRead(whatsNext.url, whatsNext.markRead, { reader: true })}
+              />
               <button
                 type="button"
                 onClick={() => setLocation("/dashboard")}
-                className="mt-7 text-[13px] underline"
-                style={{ color: "rgba(143,175,150,0.75)", background: "transparent", border: "none", cursor: "pointer", fontFamily: FONT }}
+                className="mt-7 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "var(--oh-cta, #2D5E3F)", color: WARM, cursor: "pointer", fontFamily: FONT }}
               >
                 {t("guided_prayer.back_home", { defaultValue: "Back to home" })}
               </button>

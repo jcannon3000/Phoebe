@@ -6,11 +6,16 @@
 // nothing about your music leaves the device. You add to it two ways:
 //   • paste an Apple Music / Spotify share link (opens externally — a plain
 //     deep link, no permission or API call needed)
-//   • search the Spotify catalogue (Spotify Web API, once Spotify is wired).
-// Apple Music has no in-app integration — Phoebe never requests Apple Music
-// access or calls its catalogue API (owner).
+//   • search the catalogue — Apple Music via the server's developer-token
+//     proxy (GET /api/apple-music/search, see api-server/routes/apple-music.ts;
+//     needs no user sign-in and never prompts for Apple Music access) and
+//     Spotify via the Spotify Web API, once Spotify is wired.
+// There is no in-app Apple Music PLAYBACK and no Apple Music sign-in anywhere
+// in Phoebe (owner) — catalogue search is a read-only lookup against a public
+// API, not a personal-library integration.
 
 import { getValidAccessToken } from "@/lib/spotify";
+import { apiRequest } from "@/lib/queryClient";
 
 export type SacredKind = "artist" | "song" | "album" | "playlist";
 export type SacredService = "apple" | "spotify" | "other";
@@ -132,16 +137,27 @@ export function parseMusicLink(raw: string): ParsedLink | null {
 // ——— Catalogue search ———
 export type SearchResult = { kind: SacredKind; title: string; subtitle?: string; url: string; artworkUrl?: string; service: SacredService; appleId?: string };
 
-/** Whether live catalogue search is available right now (needs a Spotify token). */
+/** Whether live catalogue search is available right now — the Apple Music
+ *  developer-token proxy (no sign-in needed, works for everyone once the
+ *  server has its key configured) or a connected Spotify account. */
 export async function catalogSearchAvailable(): Promise<boolean> {
+  try {
+    const r = await apiRequest<{ configured?: boolean }>("GET", "/api/apple-music/status");
+    if (r?.configured) return true;
+  } catch { /* ignore — fall through to Spotify */ }
   try { return !!(await getValidAccessToken()); } catch { return false; }
 }
 
-/** Search the Spotify catalogue (songs / albums / playlists). Returns [] when
- *  Spotify isn't connected. */
+/** Search the catalogue — Apple Music first (via the server's developer-token
+ *  proxy, no sign-in required), then Spotify if that's connected. Returns []
+ *  when neither is available. */
 export async function searchCatalog(query: string): Promise<SearchResult[]> {
   const q = query.trim();
   if (!q) return [];
+  try {
+    const r = await apiRequest<{ results?: SearchResult[] }>("GET", `/api/apple-music/search?term=${encodeURIComponent(q)}`);
+    if (Array.isArray(r?.results) && r.results.length) return r.results;
+  } catch { /* fall through to Spotify */ }
   const token = await getValidAccessToken().catch(() => null);
   if (!token) return [];
   try {

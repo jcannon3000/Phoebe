@@ -2516,23 +2516,26 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
   const onClick = () => goTo(`/guided-prayer?side=${side}`);
   const rgb = "46,107,64";
   if (hero) {
+    // Same neutral frosted shell + sage outline + green accent every hero card
+    // uses (matches the office/Examen/Creation Prayer hero exactly) — the
+    // practice's own identity lives in the eyebrow/title copy, not a tinted
+    // card background. This one used to carry its own rose tint + an inline
+    // emoji next to the title, reading as a different, older card family.
     return (
       <div
         className="relative flex rounded-3xl overflow-hidden"
-        style={{ background: `rgba(${rgb},0.13)`, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid rgba(${rgb},0.40)` }}
+        style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-        <div className="flex-1 px-5 py-5">
-          <div className="flex items-start gap-3.5">
-            <span className="text-[34px] leading-none flex-shrink-0">🙌</span>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-[22px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
-              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif" }}>Praise, Confession, Thanksgiving, Supplication</p>
-            </div>
-          </div>
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
+        <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+          <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
+            Guided Prayer
+          </p>
+          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙌 {title}</p>
+          <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Praise, Confession, Thanksgiving, Supplication</p>
           {done ? (
             <div className="mt-[12px] flex items-stretch gap-2">
-              <div aria-label="Prayer completed today" className="flex-1 rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
+              <div aria-label="Prayer completed today" className="flex-1 rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
                 Prayer completed <span aria-hidden>✓</span>
               </div>
               <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="flex-1 rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>

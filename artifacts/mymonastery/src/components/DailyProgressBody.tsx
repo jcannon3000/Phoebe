@@ -1042,8 +1042,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb: podcastsDone ? kept : t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }),
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
     }] : []),
-    // The Examen is an end-of-day reflection — it belongs to evening.
-    ...(examenActive ? [{ ...examenCard, slot: examenSlot }] : []),
+    // The Examen is an end-of-day reflection — it belongs to evening. Suppressed
+    // when the evening anchor itself IS the Examen (getSideLevel === "examen"):
+    // that's already rendered above as the "evening" card (retitled "The Examen"
+    // by officeTitle), so this standalone add-on card would otherwise double it.
+    ...(examenActive && getSideLevel("evening") !== "examen" ? [{ ...examenCard, slot: examenSlot }] : []),
     ...(prayerListActive ? [{
       key: "prayer-list", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "96,140,180", done: prayerListDone, href: "/intentions?pray=1",
       title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }),
@@ -1357,16 +1360,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
                 otherwise — that per-child value is what should differ, not
                 this wrapper. */}
             <AnimatePresence>
-              {upcomingDisplay.map((c, i) => (
-                <motion.div
-                  key={c.key}
-                  layout={!!celebrateKey}
-                  exit={c.key === celebrateKey ? { opacity: 0, y: 10, transition: { duration: 0.26, ease: "easeIn" } } : undefined}
-                  {...enterUp(i + (heroLeads ? 1 : 0))}
-                >
-                  {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (heroLeads ? 1 : 0)))}
-                </motion.div>
-              ))}
+              {upcomingDisplay.map((c, i) => {
+                const enter = enterUp(i + (heroLeads ? 1 : 0));
+                return (
+                  <motion.div
+                    key={c.key}
+                    // Always on (not just during a celebrateKey mount) — a card can
+                    // also drop out of Next from an inline completion on THIS same
+                    // mounted instance (tapping Log on Reading/Podcasts/Prayer List,
+                    // etc.), and the cards below it need the same smooth reflow up
+                    // rather than snapping into place.
+                    layout
+                    layoutDependency={upcomingDisplay.length}
+                    exit={c.key === celebrateKey ? { opacity: 0, y: 10, transition: { duration: 0.26, ease: "easeIn" } } : { opacity: 0, transition: { duration: 0.2 } }}
+                    {...enter}
+                    transition={{ ...enter.transition, layout: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}
+                  >
+                    {renderCard(c, i === 0 && leadPulse, tintFor(i), blurLand(i + (heroLeads ? 1 : 0)))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         </>
@@ -1377,20 +1390,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         <div className={doneGapCls}>
           <motion.div {...enterUp(doneBase)}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
           <div className="flex flex-col gap-2">
-            {completedDisplay.map((c, i) => (
-              <motion.div
-                key={c.key}
-                layout={!!celebrateKey}
-                // The just-released card gets a real fade-UP entrance (it's
-                // NEW here); every other Done card is already sitting there,
-                // so it stays instant like the rest of a warm return-visit.
-                {...(c.key === celebrateKey
-                  ? { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const } }
-                  : enterUp(doneBase + i))}
-              >
-                {renderCard(c, false, tintFor(doneBase + i), blurLand(doneBase + i))}
-              </motion.div>
-            ))}
+            {completedDisplay.map((c, i) => {
+              // Always on — a card newly arriving in Done (from an inline
+              // completion, not just the celebrate-navigation flow) needs the
+              // rest of this list to smoothly reflow down, not snap.
+              const enter = c.key === celebrateKey
+                ? { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const } }
+                : enterUp(doneBase + i);
+              return (
+                <motion.div
+                  key={c.key}
+                  layout
+                  layoutDependency={completedDisplay.length}
+                  {...enter}
+                  transition={{ ...enter.transition, layout: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}
+                >
+                  {renderCard(c, false, tintFor(doneBase + i), blurLand(doneBase + i))}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}

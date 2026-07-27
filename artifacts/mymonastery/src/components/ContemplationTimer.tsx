@@ -14,6 +14,7 @@ import { resolveContemplationSideForSit } from "@/lib/contemplationSideDone";
 import { enqueueSession } from "@/lib/sessionOutbox";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
+import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 
@@ -1393,38 +1394,27 @@ export function ContemplationTimer({
               the caller passed one (the standalone Contemplation page), so a
               contemplation-only rhythm still ends on somewhere to go. */}
           {phase === "whats-next" && whatsNext && (
-            <>
-              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-                {whatsNext.eyebrow ?? t("contemplation_timer.whats_next", { defaultValue: "What's next" })}
-              </p>
-              <button
-                type="button"
-                onClick={() => { const go = whatsNext.onGo; handleClose(); go(); }}
-                className="w-full rounded-2xl px-5 py-4 mb-5 text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
-                style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", cursor: "pointer", maxWidth: 340 }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-[26px] leading-none" aria-hidden>{whatsNext.emoji}</span>
-                  <div className="min-w-0">
-                    <p className="text-[16px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{whatsNext.title}</p>
-                    {whatsNext.sub && (
-                      <p className="text-[12.5px] mt-0.5" style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK }}>{whatsNext.sub}</p>
-                    )}
-                  </div>
-                </div>
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] mt-3" style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}>
-                  {whatsNext.cta} →
-                </p>
-              </button>
+            <div className="w-full flex flex-col items-center" style={{ maxWidth: 340 }}>
+              {/* Same "Up next" card the office slideshow's own close uses
+                  (prayer-mode.tsx's PrayerCompletedSlide) — every practice hands
+                  off to what's next the same way, not its own bespoke card. */}
+              <WhatsNextCard
+                emoji={whatsNext.emoji}
+                eyebrow={whatsNext.eyebrow ?? t("contemplation_timer.whats_next", { defaultValue: "What's next" })}
+                title={whatsNext.title}
+                blurb={whatsNext.sub}
+                cta={whatsNext.cta}
+                onGo={() => { const go = whatsNext.onGo; handleClose(); go(); }}
+              />
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-full px-10 py-3 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                className="mt-5 rounded-full px-10 py-3 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "transparent", color: "rgba(200,212,192,0.75)", border: "1px solid rgba(46,107,64,0.35)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
               >
                 {t("contemplation_timer.done", { defaultValue: "Done" })}
               </button>
-            </>
+            </div>
           )}
         </div>
 

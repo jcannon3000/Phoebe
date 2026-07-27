@@ -43,7 +43,7 @@ export type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd";
+      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd" | "leader-rule";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -1638,6 +1638,48 @@ function OfficeFddMock() {
   );
 }
 
+/* ── A leader's rule of life, ready to take up (real CommunityRuleCard content) ── */
+function LeaderRuleMock() {
+  const lines = ["Morning — Daily Office at 7:00am", "Evening — Daily Devotion at 8:30pm", "Silence — 10 min a day", "Practices — Examen · Audio Divina"];
+  return (
+    <MockPhone>
+      <p className="text-[9px] uppercase tracking-[0.2em] font-semibold mb-1.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}>
+        St. Aidan's
+      </p>
+      <div className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
+        <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
+        <div className="flex-1 px-3.5 py-3">
+          <div className="flex items-start gap-2.5">
+            <span className="text-xl" aria-hidden>🕯️</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}>
+                Our rule of life
+              </p>
+              <p className="text-[13.5px] mt-0.5 font-semibold leading-snug" style={{ color: C.text, fontFamily: C.font }}>
+                One rhythm, kept together
+              </p>
+              <div className="mt-1.5 space-y-0.5">
+                {lines.map((l, i) => (
+                  <p key={i} className="text-[11px] leading-snug" style={{ color: "#C8D4C0", fontFamily: C.font }}>{l}</p>
+                ))}
+              </div>
+              <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>
+                Taken up 41 times
+              </p>
+              <div
+                className="rounded-full px-4 py-1.5 text-[12px] font-semibold mt-2.5 inline-block"
+                style={{ background: "rgba(46,107,64,0.85)", color: C.text, border: "1px solid rgba(46,107,64,0.6)", fontFamily: C.font }}
+              >
+                Take up this rhythm
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
 const MOCK_MAP: Record<string, () => ReactElement> = {
   "prayer-requests": PrayerRequestsMock,
   "prayer-notification": PrayerNotificationMock,
@@ -1655,6 +1697,7 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   gatherings: GatheringsMock,
   customizer: CustomizerMock,
   "office-fdd": OfficeFddMock,
+  "leader-rule": LeaderRuleMock,
 };
 
 function FeatureDemoSlide({

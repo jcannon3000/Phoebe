@@ -1265,8 +1265,15 @@ export default function WayOfLoveRuleFlow({
     "contemplative",
     ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
     ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
-    ...(contemplative.examen ? (["examen-when"] as Step[]) : []),
-    ...(contemplative.cobreathe ? (["cobreathe-when"] as Step[]) : []),
+    // Skip the "when" detail step when a side's own prayer already IS the
+    // Examen / Creation Prayer (its slot is fixed by that side, not a pick the
+    // additional-practice step should re-ask for) — the "contemplative" step's
+    // checkbox for that practice is already hidden in that case (see
+    // examenAlreadyPrimary / creationAlreadyPrimary below), but its boolean
+    // state can still be stale-true from before that side's pick was made, so
+    // this list has to re-check the same condition rather than trust the flag.
+    ...(contemplative.examen && !(prayBySide.morning === "examen" || prayBySide.evening === "examen") ? (["examen-when"] as Step[]) : []),
+    ...(contemplative.cobreathe && !(contemplationStyle === "cobreathe" && (contemplationBySide.morning || contemplationBySide.evening)) ? (["cobreathe-when"] as Step[]) : []),
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -1533,9 +1540,10 @@ export default function WayOfLoveRuleFlow({
             aren't offered in this flow. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {/* Simple Guided Prayer leads the list (owner). On EVENING the row
-              keeps its "Simple Guided Prayer" label but functions as the
-              Examen — subtitle and selected-level both follow the Examen,
-              matching the same morning-PACT/evening-Examen pairing already
+              functions as the Examen — subtitle, label, and selected-level all
+              follow the Examen (labeled "Simple Prayerful Reflection" rather
+              than "Simple Guided Prayer", since PACT itself is a morning shape)
+              — matching the same morning-PACT/evening-Examen pairing already
               shipped in the light /customize picker. */}
           {(() => {
             const isEveningExamen = side === "evening";
@@ -1543,9 +1551,12 @@ export default function WayOfLoveRuleFlow({
             const sub = isEveningExamen
               ? t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God." })
               : t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise, Confession, Thanksgiving, Supplication." });
+            const label = isEveningExamen
+              ? t("wol_rule.pray_prayerful_reflection_label", { defaultValue: "Simple Prayerful Reflection" })
+              : t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" });
             return choiceRow(
               selected,
-              `🙌 ${t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" })}`,
+              `🙌 ${label}`,
               sub,
               () => {
                 if (selected) return; // already selected
