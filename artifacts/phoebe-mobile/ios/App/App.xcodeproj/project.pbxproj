@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		08F20CA26752CE8FF31F2584 /* CobreatheMusicPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11ECE480749DBD2DF051B315 /* CobreatheMusicPlugin.swift */; };
 		1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -56,7 +55,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		11ECE480749DBD2DF051B315 /* CobreatheMusicPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CobreatheMusicPlugin.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -158,7 +156,6 @@
 				PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */,
 				PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */,
 				FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */,
-				11ECE480749DBD2DF051B315 /* CobreatheMusicPlugin.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -344,7 +341,6 @@
 				B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */,
 				B1B1E001000000000000000C /* MainViewController.swift in Sources */,
 				1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */,
-				08F20CA26752CE8FF31F2584 /* CobreatheMusicPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
