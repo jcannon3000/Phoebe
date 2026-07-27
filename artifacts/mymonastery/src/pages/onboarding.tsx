@@ -176,7 +176,16 @@ export default function Onboarding() {
         isolation: "isolate",
         fontFamily: "'Space Grotesk', sans-serif",
         paddingTop: "var(--safe-top)",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        // The native shell keeps the WebView viewport FIXED when the keyboard
+        // opens (Keyboard.resizeMode: "none" in capacitor.config) — it never
+        // resizes the page to make room. Without a scrollable container here,
+        // the keyboard just overlaid the sign-in/sign-up button with no way
+        // to reach it short of dismissing the keyboard first. overflowY:auto
+        // + the --kb-inset bottom padding below (native-shell.ts's
+        // wireKeyboardInsets) is the same fix prayer-request-new.tsx and
+        // moment-new.tsx already use for this exact problem.
+        overflowY: "auto",
+        overflowX: "hidden",
       }}
     >
       {/* Leaf backdrop + darkening gradient — the same glass-on-foliage ground
@@ -206,7 +215,10 @@ export default function Onboarding() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-12">
+      <main
+        className="flex-1 flex flex-col items-center justify-start px-4 pt-12"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px) + 48px)" }}
+      >
         <div className="w-full max-w-sm mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 12 }}

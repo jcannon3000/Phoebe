@@ -1006,21 +1006,19 @@ function OpeningSplash() {
       blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : getSideLevel("evening") === "examen" ? "Review the day with God" : "Mark the day's end with the office",
       rgb: "46,107,64" },
   ];
-  // From the AFTERNOON on (noon onward), "what's next" LEADS WITH EVENING (owner)
-  // — once the day has turned, the evening office is what's ahead, so it surfaces
-  // and sorts FIRST rather than nagging an undone morning. Before noon the normal
-  // morning→evening order holds. The evening slot is included from noon so it can
-  // lead (its own card still won't be tappable until its 5pm window — the splash
-  // just points ahead to it).
-  const afternoon = hour >= 12;
+  // Evening only enters the running once its office window actually opens at
+  // 5pm — matching the real gate DailyProgressBody's Next list uses. It used
+  // to lead from noon (a deliberate earlier design), but that meant the
+  // splash could suggest "Evening Prayer" as the very next thing at 1pm,
+  // hours before it's actually time — corrected per the owner.
+  const eveningOpen = hour >= 17;
   const rankOf = (slot: CustomSlot): number =>
-    afternoon && slot === "evening" ? -1 : SLOT_RANK[slot];
+    eveningOpen && slot === "evening" ? -1 : SLOT_RANK[slot];
   const firstUp = nextCandidates
     // Only surface a practice whose slot window is open — mirrors the
     // daily-progress time-gate so the home "what's next" never offers a
-    // tappable practice before its window (Midday 10 / Afternoon 2 / Evening 5) —
-    // except the evening office, which is allowed to LEAD from noon.
-    .filter((c) => c.active && !c.done && (isSlotOpen(c.slot) || (afternoon && c.slot === "evening")))
+    // tappable practice before its window (Midday 10 / Afternoon 2 / Evening 5).
+    .filter((c) => c.active && !c.done && isSlotOpen(c.slot))
     .sort((a, b) => rankOf(a.slot) - rankOf(b.slot))[0];
   const nextUp: { emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean } | null =
     firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb, logOnly: firstUp.logOnly } : null;
