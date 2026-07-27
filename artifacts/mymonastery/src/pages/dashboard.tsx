@@ -2532,7 +2532,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
             Guided Prayer
           </p>
           <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙌 {title}</p>
-          <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Praise, Confession, Thanksgiving, Supplication</p>
+          <p className="text-[13.5px] mt-1 leading-snug" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>Three Minutes to Start Your Day</p>
           {done ? (
             <div className="mt-[12px] flex items-stretch gap-2">
               <div aria-label="Prayer completed today" className="flex-1 rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
@@ -2567,7 +2567,7 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
             {title} 🙌
           </p>
           <p className="truncate" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
-            Praise, Confession, Thanksgiving, Supplication
+            Three Minutes to Start Your Day
           </p>
         </div>
         <div

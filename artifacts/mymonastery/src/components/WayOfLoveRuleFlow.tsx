@@ -1550,7 +1550,7 @@ export default function WayOfLoveRuleFlow({
             const selected = isEveningExamen ? prayBySide[side] === "examen" : prayBySide[side] === "guidedPrayer";
             const sub = isEveningExamen
               ? t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God." })
-              : t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Praise, Confession, Thanksgiving, Supplication." });
+              : t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Three Minutes to Start Your Day" });
             const label = isEveningExamen
               ? t("wol_rule.pray_prayerful_reflection_label", { defaultValue: "Simple Prayerful Reflection" })
               : t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" });

@@ -776,7 +776,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const officeBlurbFor = (side: "morning" | "evening"): string => {
     const lvl = getSideLevel(side);
     if (lvl === "examen") return t("rhythm.blurb_examen", { defaultValue: "Review the day with God" });
-    if (lvl === "guided-prayer") return t("rhythm.blurb_guided_prayer", { defaultValue: "Praise, Confession, Thanksgiving, Supplication" });
+    if (lvl === "guided-prayer") return t("rhythm.blurb_guided_prayer", { defaultValue: "Three Minutes to Start Your Day" });
     if (lvl === "reflect-sit") return t("rhythm.blurb_contemplation", { defaultValue: "Loving God in silence" });
     if (lvl === "psalms") return t("rhythm.blurb_psalms", { defaultValue: "Today's appointed psalms" });
     return side === "morning"

@@ -989,7 +989,7 @@ function OpeningSplash() {
   const nextCandidates: NextCand[] = [
     { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅",
       label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : getSideLevel("morning") === "guided-prayer" ? "Simple Guided Prayer" : "Morning prayer",
-      blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : getSideLevel("morning") === "guided-prayer" ? "Praise, Confession, Thanksgiving, Supplication" : "Begin the day with the office",
+      blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : getSideLevel("morning") === "guided-prayer" ? "Three Minutes to Start Your Day" : "Begin the day with the office",
       rgb: "46,107,64" },
     ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
     { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "Loving God in silence", rgb: "62,124,122" },

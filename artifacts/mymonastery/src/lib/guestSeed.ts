@@ -2,16 +2,23 @@
 // of life into the same device-local officePrefs the customizer uses, ONCE, so
 // a brand-new person lands on a home that's already going:
 //
-//   Morning Psalms (Daily Office Lectionary) · Evening Psalms (same cycle) ·
+//   Morning Simple Guided Prayer (PACT) · Evening the Examen ·
 //   Forward Day by Day · a 5-minute silence daily goal (its own single goal
 //   card with a progress bar — NOT the per-side contemplation cards).
+//
+// Matches the same morning-PACT/evening-Examen new-user default the light
+// /customize picker and getSideLevel()'s own fallback both already use
+// (owner, 2026-07-26) — this seed used to write "psalms"/"psalms" instead,
+// which pre-dated that decision and silently overrode it for every guest
+// (setSideLevel writes an EXPLICIT level, so getSideLevel's fallback never
+// even got consulted for a seeded device).
 //
 // Adjustable afterward in Daily progress → Customize, exactly like any rule.
 // (The after-noon "morning belongs to tomorrow" rule lives in
 // DailyProgressBody now — for guests it applies EVERY day, not just the seed
 // day.) See memory "project_public_no_login".
 
-import { setSideLevel, setSideEntry, setReflectionSource, setSideReflection, getExplicitSideLevel, setPsalmCycle, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
 
@@ -52,11 +59,8 @@ export function seedGuestRule(): void {
     }
     // Respect an existing rule (e.g. a device that used the app signed-in).
     if (getExplicitSideLevel("morning") || getExplicitSideLevel("evening")) return;
-    setSideLevel("morning", "psalms");
-    setSideLevel("evening", "psalms");
-    setSideEntry("morning", "read");
-    setSideEntry("evening", "read");
-    setPsalmCycle("office"); // the Daily Office Lectionary (calendar-based)
+    setSideLevel("morning", "guided-prayer");
+    setSideLevel("evening", "examen");
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
     setSideReflection("evening", "fdd");

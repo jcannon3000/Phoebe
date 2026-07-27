@@ -136,7 +136,7 @@ export function useWidgetSync(): void {
       const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
       if (lvl === "reflect-sit") return "Contemplative Prayer";
       if (lvl === "examen") return "Review the day";
-      if (lvl === "guided-prayer") return "Praise, Confession, Thanksgiving, Supplication";
+      if (lvl === "guided-prayer") return "Three Minutes to Start Your Day";
       return "Book of Common Prayer";
     };
     const officeSubtitle = (isMorning: boolean): string =>
