@@ -2,15 +2,19 @@
 // settings page, and the App Store listing — must render for logged-out
 // users, so this page doesn't use <Layout> or useAuth.
 //
+// Rewritten July 27, 2026 against the current codebase — replaces the
+// prior version, which described Phoebe as invite-only and promised a
+// Mute feature that does not exist.
+//
 // Apple Review Guideline 1.2 requires apps with user-generated content
 // to (a) present an EULA to users and (b) make the no-tolerance policy
 // for objectionable content unambiguous. Section 5 ("Community Standards
 // and Acceptable Use") is the load-bearing piece for that requirement;
-// Section 9 ("Additional Terms for Apple App Store Users") is the Apple
-// Licensed Application Schedule that Apple requires every custom iOS
-// EULA to incorporate. If you rewrite, keep both sections intact.
+// Section 9 ("Apple App Store additional terms") is the Apple Licensed
+// Application Schedule that Apple requires every custom iOS EULA to
+// incorporate. If you rewrite, keep both sections intact.
 
-const LAST_UPDATED = "May 28, 2026";
+const LAST_UPDATED = "July 27, 2026";
 const CONTACT_EMAIL = "invites@withphoebe.app";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -26,17 +30,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         {children}
       </div>
     </section>
-  );
-}
-
-function SubHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      className="text-base font-semibold mt-4 mb-1"
-      style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-    >
-      {children}
-    </h3>
   );
 }
 
@@ -65,487 +58,481 @@ export function TermsBody() {
         Last updated {LAST_UPDATED}
       </p>
 
-        <div className="mb-8 space-y-3 text-sm leading-relaxed" style={{ color: "#C8D4C0" }}>
-          <p>
-            Welcome to Phoebe. These Terms of Use (the "Terms") are an agreement between you and Jeremy Cannon, an
-            individual sole proprietor doing business as Phoebe ("Phoebe," "we," "us," or "our"), and they govern
-            your use of the Phoebe mobile and web application, including any related services we offer (together,
-            the "Service"). Phoebe is a private, invite-only app for small faith communities to share prayer life
-            together.
-          </p>
-          <p>
-            Please read these Terms carefully. They include an arbitration agreement and a class-action waiver in
-            Section 14 that affect how disputes between you and us are resolved.
-          </p>
-        </div>
+      <p className="text-sm leading-relaxed mb-4" style={{ color: "#C8D4C0" }}>
+        Welcome to Phoebe. These Terms of Use (the "Terms") are an
+        agreement between you and Jeremy Cannon, an individual sole
+        proprietor doing business as Phoebe ("Phoebe," "we," "us," or
+        "our"), and they govern your use of the Phoebe mobile and web
+        application, including any related services we offer (together,
+        the "Service"). Phoebe is an app for keeping a daily practice of
+        Christian prayer, on your own or alongside a small community.
+      </p>
+      <p className="text-sm leading-relaxed mb-8" style={{ color: "#C8D4C0" }}>
+        Please read these Terms carefully. They include an arbitration
+        agreement and a class-action waiver in Section 14 that affect how
+        disputes between you and us are resolved.
+      </p>
 
-        <Section title="1. Acceptance of these Terms">
-          <p>
-            By creating an account, downloading, installing, or using Phoebe, you agree to these Terms and to our
-            Privacy Policy. If you don't agree, don't use the Service. If you're using Phoebe on behalf of a
-            community, group, or organization, you represent that you have authority to accept these Terms on its
-            behalf.
-          </p>
-        </Section>
+      <Section title="1. Acceptance of these Terms">
+        <p>
+          By creating an account, using Phoebe as a guest, downloading,
+          installing, or otherwise using the Service, you agree to these
+          Terms and to our Privacy Policy. If you don't agree, don't use
+          the Service. If you're using Phoebe on behalf of a community,
+          parish, or organization, you represent that you have authority
+          to accept these Terms on its behalf.
+        </p>
+      </Section>
 
-        <Section title="2. Eligibility">
-          <p>
-            You must be at least 13 years old to use Phoebe. We don't allow children under 13 to create accounts or
-            use the Service, and we don't knowingly collect information from anyone under 13. If you are between
-            13 and the age of majority where you live, you may use Phoebe only with the consent and supervision of
-            a parent or legal guardian who accepts these Terms on your behalf.
-          </p>
-          <p>
-            Phoebe is invite-only. You need a valid invite token or a community invite link from someone already in
-            a Phoebe community to register an account.
-          </p>
-        </Section>
+      <Section title="2. Eligibility and how you get access">
+        <p>
+          You must be at least 13 years old to use Phoebe. We don't allow
+          children under 13 to create accounts or use the Service, and we
+          don't knowingly collect information from anyone under 13. If you
+          are between 13 and the age of majority where you live, you may
+          use Phoebe only with the consent and supervision of a parent or
+          legal guardian who accepts these Terms on your behalf.
+        </p>
+        <p>
+          There is more than one way to use Phoebe. You can create an
+          account through open signup on the web or in the app. You can
+          use Phoebe as a guest, without creating an account at all. Or
+          you can arrive through an invite link that another user sends
+          you, either to join their group or simply to try the app — an
+          invite link is one path in among several, not a requirement.
+          Phoebe is not an invite-only app, and no invitation is needed to
+          register.
+        </p>
+      </Section>
 
-        <Section title="3. Your Account">
-          <p>You're responsible for:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              Providing accurate registration information (including a real email address and display name) and
-              keeping that information current.
-            </li>
-            <li>
-              Keeping your password confidential. Don't share your credentials with anyone, and don't let anyone
-              else use your account.
-            </li>
-            <li>
-              Everything that happens under your account. If you think someone's accessed your account without
-              permission, tell us right away at <MailLink />.
-            </li>
-          </ul>
-          <p>
-            You may have only one account at a time, and you may not transfer your account to anyone else.
-          </p>
-        </Section>
+      <Section title="3. Your account, and using Phoebe as a guest">
+        <p>
+          If you register, you're responsible for the accuracy of the
+          information you give us, for keeping your password confidential,
+          and for everything that happens under your account. Tell us
+          promptly at <MailLink /> if you believe someone else has gained
+          access to it. You may not share your account, sell it, or
+          transfer it to anyone else.
+        </p>
+        <p>
+          <strong>Guest use.</strong> You can use Phoebe's core prayer
+          practices as a guest, without an account. A guest session
+          belongs to the device you're using rather than to you: it can't
+          be signed into from another device, we can't recover it if you
+          clear your device storage or delete the app, and we have no way
+          to verify that a guest session belongs to any particular person.
+          Guest data is stored on your device, not on our servers, so
+          there is nothing for us to restore. If you want your practice
+          history to persist across devices, or to survive a lost phone,
+          create an account. These Terms apply in full to guest use.
+        </p>
+        <p>
+          Group participation, push notification reminders, and
+          server-synced history require an account, because each of them
+          depends on us knowing who you are across sessions and devices.
+        </p>
+      </Section>
 
-        <Section title="4. License to Use Phoebe">
-          <p>
-            Subject to your compliance with these Terms, we grant you a personal, non-exclusive, non-transferable,
-            non-sublicensable, revocable, limited license to download, install, and use Phoebe on devices you own
-            or control, solely for your own personal, non-commercial use as part of your faith community.
-          </p>
-          <p>You don't get any other rights. In particular, you may not:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              Copy, modify, translate, reverse engineer, decompile, or disassemble the Service, except to the
-              extent applicable law expressly permits despite this limitation.
-            </li>
-            <li>
-              Rent, lease, lend, sell, redistribute, sublicense, or otherwise commercialize the Service or any
-              part of it.
-            </li>
-            <li>Use the Service to build a competing product, scrape it, or extract its data in bulk.</li>
-            <li>Remove or alter any copyright, trademark, or other proprietary notices.</li>
-            <li>Use the Service in any way not expressly permitted by these Terms.</li>
-          </ul>
-          <p>
-            Phoebe and all related logos, content we provide, and software are owned by Jeremy Cannon or his
-            licensors and are protected by copyright, trademark, and other laws.
-          </p>
-        </Section>
+      <Section title="4. License to use Phoebe">
+        <p>
+          We grant you a personal, limited, non-exclusive,
+          non-transferable, revocable license to use the Service for your
+          own personal, non-commercial devotional and community use, in
+          accordance with these Terms. We reserve all rights not expressly
+          granted here. You may not copy, modify, reverse engineer,
+          decompile, scrape, resell, or create derivative works from the
+          Service or any part of it, or attempt to gain unauthorized
+          access to our systems or another user's account. Phoebe's name,
+          logo, design, and software are ours or our licensors'.
+        </p>
+        <p>
+          Phoebe is free. There are no subscriptions, in-app purchases, or
+          fees of any kind, and we don't process payments. If that ever
+          changes, we'll say so clearly before it applies to you.
+        </p>
+      </Section>
 
-        <Section title="5. Community Standards and Acceptable Use">
-          <p>
-            Phoebe exists to support prayer and care between members of a small faith community. We have{" "}
-            <strong>zero tolerance</strong> for objectionable content and abusive behavior on the Service.
-          </p>
-          <p>You agree not to post, send, or share — and not to use Phoebe to facilitate — any of the following:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              Content that sexualizes, exploits, or endangers minors in any way. This is an absolute prohibition
-              and any violation will be reported to the appropriate authorities.
-            </li>
-            <li>Pornography or sexually explicit content of any kind.</li>
-            <li>
-              Hate speech, or content that attacks or demeans people based on race, ethnicity, national origin,
-              religion, disability, gender, gender identity, sexual orientation, age, or any other protected
-              characteristic.
-            </li>
-            <li>Harassment, bullying, stalking, threats, or intimidation of any person.</li>
-            <li>
-              Graphic violence or content that promotes, glorifies, or instructs others in violence.
-            </li>
-            <li>
-              Content that promotes, encourages, or instructs others in self-harm, suicide, or eating disorders.
-            </li>
-            <li>Discriminatory content of any kind.</li>
-            <li>
-              Spam, scams, phishing, pyramid schemes, fundraising schemes, or unsolicited advertising or
-              promotional material.
-            </li>
-            <li>
-              Impersonation of any other person — including other Phoebe users, religious leaders, or public
-              figures — or misrepresentation of your affiliation with any person or organization.
-            </li>
-            <li>Content that infringes anyone's intellectual property, privacy, publicity, or other rights.</li>
-            <li>
-              Content that's illegal where you are or where the recipient is, or that promotes illegal activity.
-            </li>
-            <li>
-              Malware, viruses, or anything that interferes with the normal operation of the Service or any
-              user's device.
-            </li>
-            <li>Attempts to bypass our security, rate limits, invite system, or moderation tools.</li>
-          </ul>
-          <p>
-            Violations may result in immediate suspension or termination of your account, removal of your content,
-            and where appropriate, referral to law enforcement. Our decisions on these matters are final.
-          </p>
-        </Section>
+      <Section title="5. Community standards and acceptable use">
+        <p>
+          Phoebe exists to help people pray together. Some conduct is
+          incompatible with that, and with the safety of the people here.
+          You agree not to use the Service to:
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            Harass, threaten, stalk, bully, defame, or intimidate anyone.
+          </li>
+          <li>
+            Post or share content that sexualizes minors in any way, or
+            that constitutes child sexual abuse material. We report this
+            to the appropriate authorities and permanently ban the account
+            without warning.
+          </li>
+          <li>
+            Post sexually explicit content, graphic violence, or content
+            that promotes self-harm, suicide, or disordered eating.
+          </li>
+          <li>
+            Post hate speech, or content that attacks or demeans people on
+            the basis of race, ethnicity, national origin, religion,
+            disability, sex, gender identity, sexual orientation, or age.
+          </li>
+          <li>
+            Impersonate another person, misrepresent your affiliation with
+            a parish, diocese, or organization, or falsely present
+            yourself as clergy.
+          </li>
+          <li>
+            Use the Service to solicit, advertise, spam, recruit for a
+            commercial venture, or conduct any commercial activity.
+          </li>
+          <li>
+            Post content you don't have the right to post, including
+            copyrighted text, liturgy, music, or images belonging to
+            someone else.
+          </li>
+          <li>
+            Attempt to identify, deanonymize, or compile information about
+            other users, including followers of a group whose identities
+            the app deliberately keeps private from anyone other than that
+            group's admins.
+          </li>
+          <li>
+            Interfere with the Service's operation, security, or
+            availability, or use it to distribute malware.
+          </li>
+          <li>Break the law, or help someone else break it.</li>
+        </ul>
+        <p>
+          If you're an admin of a group, you're also responsible for the
+          content you post to it and for how you use the visibility that
+          role gives you over your group's followers and members.
+        </p>
+        <p>
+          We may remove content or suspend accounts that violate these
+          standards. We're a very small operation and we don't
+          pre-moderate content, so we rely on reports from users to know
+          when something is wrong.
+        </p>
+      </Section>
 
-        <Section title="6. Your Content">
-          <p>
-            "Your Content" means everything you submit to or through Phoebe — prayer requests, Lectio Divina
-            reflections, letters, one-to-one messages, group reflections and comments, podcast recommendations,
-            prayers you record for another member, intentions, practice notes, RSVPs, your display name and
-            profile photo, and anything else you create on the Service.
-          </p>
-          <p>
-            <strong>You keep ownership of Your Content.</strong> You grant us a limited, non-exclusive,
-            royalty-free, worldwide license to store, host, reproduce, display, and transmit Your Content solely as
-            needed to operate, maintain, secure, and provide the Service to you and the community members you've
-            shared it with. This license ends when you delete the content or your account, except for content
-            that's already been shared with another user (their copy may persist) and except to the extent we're
-            required to keep records by law.
-          </p>
-          <p>
-            We <strong>do not</strong> use Your Content to train AI or machine-learning models. We don't sell Your
-            Content. We don't share it with advertisers. We don't share it outside the practices, traditions,
-            circles, and one-to-one letter recipients you've shared it with, except as described in our Privacy
-            Policy (for example, with the small set of infrastructure vendors needed to run the Service).
-          </p>
-          <p>
-            You're responsible for Your Content. You represent that you have all the rights needed to share it on
-            Phoebe and that sharing it doesn't violate these Terms or any law.
-          </p>
-          <p>
-            We don't pre-screen Your Content, but we may review, refuse, or remove it at any time if we reasonably
-            believe it violates these Terms.
-          </p>
-        </Section>
+      <Section title="6. Your content">
+        <p>
+          Everything you create in Phoebe belongs to you. That includes
+          your prayer list, your notes and reflections, the custom
+          practices you define, weekly plans and uploaded files if you're
+          a group leader, standing intercessions, opportunities you post,
+          and rule-of-life requests you send.
+        </p>
+        <p>
+          You grant us a limited license to store, reproduce, and display
+          your content solely for the purpose of operating the Service and
+          delivering it to the people you've directed it to. We don't use
+          your content to train machine learning models, we don't sell it,
+          we don't publish it, and we don't share it outside the groups and
+          recipients you've shared it with. Your personal content is
+          private to you unless you take a specific action to share it.
+        </p>
+        <p>
+          You're responsible for your content, including having the right
+          to post it. If you delete your content or your account, we remove
+          it as described in the Privacy Policy — with the narrow exception
+          of content you posted to a group as its admin, which may remain
+          with that group so its shared record isn't broken by one person
+          leaving.
+        </p>
+      </Section>
 
-        <Section title="7. Reporting and Blocking">
-          <p>Phoebe gives you two tools to handle problems with other users or content:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              <strong>Report.</strong> Every user, prayer request, prayer word, and letter has a Report option. Use
-              it to flag content or behavior that violates these Terms. Our admin reviews reports within 24 hours
-              and takes action where appropriate, which can include removing content, warning a user, or
-              terminating an account.
-            </li>
-            <li>
-              <strong>Mute.</strong> You can silently mute another user at any time. Muting hides their content
-              from you without notifying them.
-            </li>
-          </ul>
-          <p>
-            For anything urgent, or anything you'd rather not file in the app, email <MailLink />.
-          </p>
-        </Section>
+      <Section title="7. Reporting">
+        <p>
+          If you see content or behavior that violates Section 5, report
+          it. There is a report control in the app, and you can always
+          write to us directly at <MailLink />. A report tells us what was
+          reported, who reported it, and what the content was, so we can
+          look at it in context.
+        </p>
+        <p>
+          We review reports and act on them ourselves — there's no
+          automated moderation system standing between you and a person.
+          Depending on what we find, we may remove content, warn a user,
+          remove someone from a group, or suspend or terminate an account.
+          Reports of content sexualizing minors are acted on immediately.
+        </p>
+        <p>
+          If you feel unsafe around a specific person in a group, you can
+          also leave that group at any time, and you can ask us to remove
+          you from it if you'd rather we handle it. Tell us and we will.
+        </p>
+      </Section>
 
-        <Section title="8. Termination">
-          <p>
-            <strong>You may terminate at any time.</strong> Go to Settings → Delete account and confirm by typing
-            your account email. Deletion is immediate and permanent: your account and all user-owned content are
-            removed right away and cannot be recovered, and we revoke any Google authorization we still hold. If
-            you'd like a copy first, export your data as JSON (Settings → Export my data) before you delete.
-          </p>
-          <p>
-            <strong>We may terminate or suspend your account</strong> at any time, with or without notice, if:
-          </p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>You violate these Terms;</li>
-            <li>
-              We believe your conduct creates risk or legal exposure for us, other users, or the Service;
-            </li>
-            <li>
-              We're required to do so by law or by a regulator, court, or law-enforcement request;
-            </li>
-            <li>
-              Your account has been inactive for an extended period (currently 12 months); or
-            </li>
-            <li>We discontinue the Service.</li>
-          </ul>
-          <p>
-            Sections that by their nature should survive termination — including User Content licenses already
-            exercised, Disclaimer of Warranties, Limitation of Liability, Indemnification, Governing Law, and
-            Miscellaneous — survive.
-          </p>
-        </Section>
+      <Section title="8. Termination">
+        <p>
+          You can stop using Phoebe whenever you like, and you can delete
+          your account from Settings at any time. Deletion is permanent and
+          immediate.
+        </p>
+        <p>
+          We may suspend or terminate your access if you violate these
+          Terms, if we're required to by law, or if we discontinue the
+          Service. Where the circumstances allow it, we'll give you notice
+          and a chance to export your data first; where a violation is
+          serious enough — anything involving minors, threats, or the
+          safety of other users — we may act immediately and without
+          notice. Sections 6, 10, 11, 12, 14, and 16 survive termination.
+        </p>
+      </Section>
 
-        <Section title="9. Additional Terms for Apple App Store Users">
-          <p>
-            If you downloaded Phoebe from the Apple App Store, the following additional terms apply. To the extent
-            they conflict with anything else in these Terms, this Section controls for the iOS app:
-          </p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              <strong>Parties.</strong> These Terms are between you and Jeremy Cannon only, not with Apple Inc.
-              ("Apple"). Apple is not responsible for Phoebe or its content.
-            </li>
-            <li>
-              <strong>Scope of license.</strong> The license we grant you in Section 4 is limited to a
-              non-transferable license to use Phoebe on any Apple-branded products you own or control, as permitted
-              by the Usage Rules in the Apple Media Services Terms and Conditions, except that Phoebe may also be
-              accessed and used by other accounts associated with you via Family Sharing or volume purchasing.
-            </li>
-            <li>
-              <strong>Maintenance and support.</strong> We — not Apple — are solely responsible for providing any
-              maintenance and support for Phoebe. Apple has no obligation whatsoever to furnish any maintenance or
-              support services for Phoebe.
-            </li>
-            <li>
-              <strong>Warranty.</strong> We — not Apple — are responsible for any product warranties, whether
-              express or implied by law, to the extent they aren't effectively disclaimed. If Phoebe fails to
-              conform to any applicable warranty, you may notify Apple, and Apple will refund the purchase price
-              for the app to you (which is zero, because Phoebe is free). To the maximum extent permitted by
-              applicable law, Apple has no other warranty obligation whatsoever with respect to Phoebe.
-            </li>
-            <li>
-              <strong>Product claims.</strong> We — not Apple — are responsible for addressing any claims by you
-              or any third party relating to Phoebe or your possession or use of Phoebe, including: (i) product
-              liability claims; (ii) any claim that Phoebe fails to conform to any applicable legal or regulatory
-              requirement; and (iii) claims arising under consumer protection, privacy, or similar legislation.
-            </li>
-            <li>
-              <strong>Intellectual property.</strong> If a third party claims that Phoebe or your possession and
-              use of Phoebe infringes that third party's intellectual property rights, we — not Apple — will be
-              solely responsible for the investigation, defense, settlement, and discharge of any such claim.
-            </li>
-            <li>
-              <strong>Legal compliance.</strong> You represent and warrant that (i) you are not located in a
-              country that is subject to a U.S. Government embargo or designated by the U.S. Government as a
-              "terrorist supporting" country, and (ii) you are not listed on any U.S. Government list of
-              prohibited or restricted parties.
-            </li>
-            <li>
-              <strong>Third-party terms.</strong> You must comply with any applicable third-party terms of
-              agreement when using Phoebe (for example, your wireless data service agreement).
-            </li>
-            <li>
-              <strong>Third-party beneficiary.</strong> You and we acknowledge and agree that Apple and Apple's
-              subsidiaries are third-party beneficiaries of these Terms, and that upon your acceptance of these
-              Terms, Apple will have the right (and will be deemed to have accepted the right) to enforce these
-              Terms against you as a third-party beneficiary.
-            </li>
-          </ul>
-        </Section>
+      <Section title="9. Apple App Store additional terms">
+        <p>
+          These terms apply if you obtained Phoebe from the Apple App
+          Store. They form the Licensed Application End User License
+          Agreement between you and us, not between you and Apple.
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <strong>Acknowledgement.</strong> You and we acknowledge that
+            these Terms are concluded between you and us only, and not
+            with Apple. Apple is not responsible for Phoebe or its
+            content.
+          </li>
+          <li>
+            <strong>Scope of license.</strong> The license granted to you
+            for Phoebe is a non-transferable license to use the app on any
+            Apple-branded product that you own or control, as permitted by
+            the Usage Rules in the Apple Media Services Terms and
+            Conditions.
+          </li>
+          <li>
+            <strong>Maintenance and support.</strong> We are solely
+            responsible for providing any maintenance and support services
+            for Phoebe. Apple has no obligation to furnish any maintenance
+            or support services.
+          </li>
+          <li>
+            <strong>Warranty.</strong> We are solely responsible for any
+            product warranties, whether express or implied by law, to the
+            extent not effectively disclaimed. If Phoebe fails to conform
+            to any applicable warranty, you may notify Apple, and Apple
+            will refund the purchase price (if any) to you. To the maximum
+            extent permitted by applicable law, Apple has no other
+            warranty obligation whatsoever with respect to Phoebe.
+          </li>
+          <li>
+            <strong>Product claims.</strong> We, not Apple, are
+            responsible for addressing any claims relating to Phoebe,
+            including product liability claims, any claim that Phoebe
+            fails to conform to a legal or regulatory requirement, and
+            claims arising under consumer protection or similar
+            legislation.
+          </li>
+          <li>
+            <strong>Intellectual property claims.</strong> In the event of
+            any third-party claim that Phoebe infringes that third party's
+            intellectual property rights, we, not Apple, are solely
+            responsible for the investigation, defense, settlement, and
+            discharge of that claim.
+          </li>
+          <li>
+            <strong>Legal compliance.</strong> You represent and warrant
+            that you are not located in a country subject to a U.S.
+            Government embargo or designated as a "terrorist supporting"
+            country, and that you are not listed on any U.S. Government
+            list of prohibited or restricted parties.
+          </li>
+          <li>
+            <strong>Third-party beneficiary.</strong> Apple and its
+            subsidiaries are third-party beneficiaries of these Terms, and
+            upon your acceptance, Apple has the right (and is deemed to
+            have accepted the right) to enforce these Terms against you as
+            a third-party beneficiary.
+          </li>
+        </ul>
+      </Section>
 
-        <Section title="10. Disclaimer of Warranties">
-          <p>
-            PHOEBE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITH ALL FAULTS AND WITHOUT WARRANTY OF ANY KIND. TO
-            THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, WE DISCLAIM ALL WARRANTIES, WHETHER EXPRESS, IMPLIED,
-            STATUTORY, OR OTHERWISE, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
-            TITLE, QUIET ENJOYMENT, NON-INFRINGEMENT, AND ANY WARRANTIES ARISING OUT OF COURSE OF DEALING OR USAGE
-            OF TRADE.
-          </p>
-          <p>
-            WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, SECURE, ERROR-FREE, FREE OF VIRUSES OR
-            HARMFUL COMPONENTS, ACCURATE, RELIABLE, OR AVAILABLE AT ANY PARTICULAR TIME OR LOCATION; THAT
-            NOTIFICATIONS WILL BE DELIVERED ON TIME OR AT ALL; OR THAT THE SERVICE WILL MEET YOUR REQUIREMENTS.
-            YOUR USE OF THE SERVICE IS AT YOUR SOLE RISK.
-          </p>
-          <p>
-            Some jurisdictions don't allow the exclusion of certain warranties, so some of the above exclusions
-            may not apply to you.
-          </p>
-        </Section>
+      <Section title="10. Disclaimer of warranties">
+        <p>
+          Phoebe is provided "as is" and "as available," without
+          warranties of any kind, whether express, implied, or statutory.
+          To the fullest extent permitted by law, we disclaim all implied
+          warranties, including merchantability, fitness for a particular
+          purpose, title, and non-infringement. We don't warrant that the
+          Service will be uninterrupted, timely, secure, or error-free,
+          that reminders or notifications will always be delivered, or
+          that any content will be accurate or available.
+        </p>
+        <p>
+          Phoebe is a devotional tool, not a substitute for pastoral care,
+          medical care, or mental health care. Content in the app,
+          including material from partner organizations, is offered for
+          reflection and is not professional advice. If you are in crisis,
+          please contact a qualified professional or an emergency service
+          in your area.
+        </p>
+        <p>
+          Some jurisdictions don't allow the exclusion of certain
+          warranties, so parts of this section may not apply to you.
+        </p>
+      </Section>
 
-        <Section title="11. Limitation of Liability">
-          <p>
-            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL JEREMY CANNON OR ANY OF HIS
-            AFFILIATES, AGENTS, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL,
-            EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, REVENUES, DATA, GOODWILL, OR OTHER
-            INTANGIBLE LOSSES, ARISING OUT OF OR RELATING TO THESE TERMS OR YOUR USE OF (OR INABILITY TO USE) THE
-            SERVICE, REGARDLESS OF THE LEGAL THEORY AND EVEN IF WE'VE BEEN ADVISED OF THE POSSIBILITY OF SUCH
-            DAMAGES.
-          </p>
-          <p>
-            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, OUR TOTAL AGGREGATE LIABILITY TO YOU FOR ALL CLAIMS
-            ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICE WILL NOT EXCEED THE GREATER OF (A) THE
-            AMOUNT YOU PAID US IN THE TWELVE (12) MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM (WHICH IS ZERO,
-            BECAUSE PHOEBE IS FREE) AND (B) FIFTY U.S. DOLLARS (US$50) — WHICHEVER IS LOWER.
-          </p>
-          <p>
-            Some jurisdictions don't allow the limitation or exclusion of liability for incidental or
-            consequential damages, so some of the above may not apply to you. In those jurisdictions, our
-            liability is limited to the smallest amount permitted by law.
-          </p>
-        </Section>
+      <Section title="11. Limitation of liability">
+        <p>
+          To the fullest extent permitted by law, we will not be liable
+          for any indirect, incidental, special, consequential, exemplary,
+          or punitive damages, or for any loss of data, goodwill, or
+          profits, arising out of or relating to your use of the Service —
+          even if we've been advised of the possibility.
+        </p>
+        <p>
+          Our total liability for all claims relating to the Service will
+          not exceed one hundred U.S. dollars ($100) or the amount you
+          have paid us in the twelve months before the claim, whichever is
+          greater. Phoebe is free, so in most cases this will be $100.
+        </p>
+        <p>
+          Some jurisdictions don't allow these limitations, so parts of
+          this section may not apply to you. Nothing here limits liability
+          for fraud, gross negligence, or anything else that can't be
+          limited by law.
+        </p>
+      </Section>
 
-        <Section title="12. Indemnification">
-          <p>
-            You agree to defend, indemnify, and hold harmless Jeremy Cannon and his affiliates, agents, and
-            licensors from and against any claims, liabilities, damages, losses, and expenses (including
-            reasonable attorneys' fees) arising out of or in any way connected with:
-          </p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Your Content;</li>
-            <li>Your use of the Service;</li>
-            <li>Your breach of these Terms; or</li>
-            <li>Your violation of any law or the rights of any third party.</li>
-          </ul>
-          <p>
-            We reserve the right to assume the exclusive defense and control of any matter otherwise subject to
-            indemnification by you, in which case you'll cooperate with us in asserting any available defenses.
-          </p>
-        </Section>
+      <Section title="12. Indemnification">
+        <p>
+          You agree to indemnify and hold harmless Jeremy Cannon, doing
+          business as Phoebe, from any claims, damages, losses,
+          liabilities, and expenses (including reasonable legal fees)
+          arising out of your use of the Service, your content, or your
+          violation of these Terms or of anyone else's rights.
+        </p>
+      </Section>
 
-        <Section title="13. Copyright Complaints (DMCA)">
-          <p>
-            We respect the intellectual property rights of others and ask you to do the same. If you believe
-            content on Phoebe infringes your copyright, send a written notice to our designated agent at{" "}
-            <MailLink /> with the subject line "DMCA Notice."
-          </p>
-          <p>Under 17 U.S.C. § 512(c)(3), a valid notice must include:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              A physical or electronic signature of the owner (or person authorized to act on behalf of the
-              owner) of the copyright that's allegedly infringed;
-            </li>
-            <li>
-              Identification of the copyrighted work claimed to have been infringed (or, if multiple works, a
-              representative list);
-            </li>
-            <li>
-              Identification of the material that's claimed to be infringing or to be the subject of infringing
-              activity, with enough detail for us to locate it;
-            </li>
-            <li>Your contact information — address, telephone number, and email;</li>
-            <li>
-              A statement that you have a good-faith belief that the use of the material in the manner complained
-              of is not authorized by the copyright owner, its agent, or the law; and
-            </li>
-            <li>
-              A statement, made under penalty of perjury, that the information in the notice is accurate and that
-              you are the copyright owner or authorized to act on the owner's behalf.
-            </li>
-          </ul>
-          <p>
-            We may remove or disable access to material claimed to be infringing and will, in appropriate
-            circumstances, terminate repeat infringers' accounts. If you believe material was removed in error,
-            you can submit a counter-notice meeting the requirements of 17 U.S.C. § 512(g).
-          </p>
-        </Section>
+      <Section title="13. Copyright and DMCA">
+        <p>
+          We respect copyright, and Phoebe carries a lot of content that
+          belongs to other people — liturgy, devotional writing, music,
+          and podcasts among it. If you believe content in Phoebe
+          infringes your copyright, send a notice to <MailLink /> including:
+          your contact information; a description of the work you say is
+          infringed; a description of the material in Phoebe you're
+          objecting to and where to find it; a statement that you have a
+          good-faith belief the use isn't authorized; a statement that the
+          information in your notice is accurate and, under penalty of
+          perjury, that you're the owner or authorized to act for the
+          owner; and your physical or electronic signature.
+        </p>
+        <p>
+          We'll remove or disable access to material we determine is
+          infringing, and we may terminate accounts of repeat infringers.
+          If your content was removed and you believe that was a mistake,
+          you can send a counter-notice to the same address with
+          equivalent detail.
+        </p>
+      </Section>
 
-        <Section title="14. Governing Law and Disputes">
-          <p>
-            These Terms are governed by the laws of the Commonwealth of Virginia, without regard to its
-            conflict-of-laws rules. The federal and state courts located in the City of Richmond, Virginia have
-            exclusive jurisdiction for any matter not subject to arbitration.
-          </p>
-          <SubHeading>Informal resolution first</SubHeading>
-          <p>
-            Before starting an arbitration or filing a lawsuit, you agree to try to resolve any dispute informally
-            first. Send a written notice describing the dispute to <MailLink />. We'll do the same with you. If we
-            haven't resolved the dispute within 60 days after the notice is received, either of us may proceed
-            under this Section.
-          </p>
-          <SubHeading>Binding arbitration</SubHeading>
-          <p>
-            You and we agree that any dispute, claim, or controversy arising out of or relating to these Terms or
-            the Service that isn't resolved informally will be resolved by binding individual arbitration
-            administered by JAMS under its Streamlined Arbitration Rules then in effect. The arbitration will be
-            conducted in the English language, and judgment on the award may be entered in any court of competent
-            jurisdiction. The arbitrator — not any federal, state, or local court — has exclusive authority to
-            resolve any dispute relating to the interpretation, applicability, enforceability, or formation of
-            this arbitration agreement, including any claim that all or part of it is void or voidable.
-          </p>
-          <SubHeading>Class-action waiver</SubHeading>
-          <p>
-            YOU AND WE AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN AN INDIVIDUAL CAPACITY, AND NOT
-            AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, OR REPRESENTATIVE PROCEEDING. The
-            arbitrator may not consolidate more than one person's claims and may not preside over any form of
-            representative or class proceeding.
-          </p>
-          <SubHeading>Carve-outs</SubHeading>
-          <p>
-            Either of us may bring an individual action in small-claims court for disputes within that court's
-            jurisdiction, and either of us may seek injunctive or other equitable relief in court for actual or
-            threatened infringement, misappropriation, or violation of intellectual property rights.
-          </p>
-          <SubHeading>If any of this is unenforceable where you live</SubHeading>
-          <p>
-            Some U.S. states and some jurisdictions outside the United States (including the European Union) give
-            consumers rights that can't be waived. Nothing in these Terms is intended to limit those rights. To
-            the extent any part of this Section 14 is unenforceable in your jurisdiction, that part doesn't apply
-            to you, and the rest of these Terms continues in effect.
-          </p>
-        </Section>
+      <Section title="14. Governing law, arbitration, and class-action waiver">
+        <p>
+          These Terms are governed by the laws of the Commonwealth of
+          Virginia, without regard to its conflict-of-laws rules, except
+          that the Federal Arbitration Act governs the arbitration
+          provisions below.
+        </p>
+        <p>
+          <strong>Talk to us first.</strong> If you have a dispute, please
+          email <MailLink /> and describe it. Most problems can be
+          resolved this way, and both of us agree to try for at least 60
+          days before starting a formal proceeding.
+        </p>
+        <p>
+          <strong>Arbitration.</strong> If we can't resolve it informally,
+          you and we agree that any dispute arising out of or relating to
+          these Terms or the Service will be resolved by binding
+          individual arbitration administered by the American Arbitration
+          Association under its Consumer Arbitration Rules, rather than in
+          court. The arbitration will take place in the Commonwealth of
+          Virginia or, at your election, by telephone, video, or document
+          submission. An arbitrator can award the same individual relief a
+          court could.
+        </p>
+        <p>
+          <strong>Exceptions.</strong> Either of us may bring a claim in
+          small claims court if it qualifies, and either of us may seek
+          injunctive relief in court to stop unauthorized use or misuse of
+          the Service or infringement of intellectual property.
+        </p>
+        <p>
+          <strong>Class-action waiver.</strong> You and we agree to bring
+          claims only in an individual capacity, and not as a plaintiff or
+          class member in any class, collective, consolidated, or
+          representative proceeding. The arbitrator may not consolidate
+          more than one person's claims. If this waiver is found
+          unenforceable as to a particular claim, that claim proceeds in
+          court rather than in arbitration.
+        </p>
+        <p>
+          <strong>Your right to opt out.</strong> You can reject this
+          arbitration agreement by emailing <MailLink /> within 30 days of
+          first accepting these Terms, with your name and a statement that
+          you're opting out of arbitration. Opting out costs you nothing
+          and changes nothing else about your use of Phoebe.
+        </p>
+        <p>
+          If you live outside the United States, nothing here deprives you
+          of the protections of the mandatory consumer law of the country
+          where you live, or of your right to bring proceedings in your
+          local courts where that law gives you that right.
+        </p>
+      </Section>
 
-        <Section title="15. Changes to These Terms">
-          <p>
-            We may update these Terms from time to time. When we do, we'll change the "Last updated" date at the
-            top, and for material changes we'll surface a notice in the app before the changes take effect. If
-            you keep using Phoebe after the changes take effect, that means you accept the updated Terms. If you
-            don't accept them, you can stop using the Service and delete your account.
-          </p>
-        </Section>
+      <Section title="15. Changes to these Terms">
+        <p>
+          We may update these Terms as Phoebe changes, and the date at the
+          top will always reflect the last revision. If a change is
+          material, we'll notify you in the app before it takes effect
+          rather than relying on you to notice. Continuing to use Phoebe
+          after a change takes effect means you accept the updated Terms.
+          If you don't accept them, stop using the Service and delete your
+          account.
+        </p>
+      </Section>
 
-        <Section title="16. Miscellaneous">
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              <strong>Entire agreement.</strong> These Terms, together with our Privacy Policy and any other
-              policies we reference, are the entire agreement between you and us about the Service and replace
-              any earlier agreements on that subject.
-            </li>
-            <li>
-              <strong>Severability.</strong> If any part of these Terms is held to be invalid or unenforceable,
-              the rest remains in full effect.
-            </li>
-            <li>
-              <strong>No waiver.</strong> Our failure to enforce any right or provision of these Terms isn't a
-              waiver of that right or provision.
-            </li>
-            <li>
-              <strong>Assignment.</strong> You may not assign or transfer these Terms or any rights under them
-              without our prior written consent. We may assign these Terms or any rights under them to any
-              successor in interest of any business associated with the Service, without notice.
-            </li>
-            <li>
-              <strong>Force majeure.</strong> We aren't liable for any delay or failure to perform caused by
-              events beyond our reasonable control, including acts of God, natural disasters, war, terrorism,
-              riots, embargoes, acts of civil or military authorities, fires, floods, accidents, pandemics,
-              strikes, or shortages of transportation facilities, fuel, energy, labor, or materials.
-            </li>
-            <li>
-              <strong>Survival.</strong> Provisions that by their nature should survive termination of these
-              Terms will survive — for example, Sections 6 (licenses already granted), 10, 11, 12, 13, 14, and 16.
-            </li>
-            <li>
-              <strong>Headings.</strong> Section headings are for convenience only and don't affect
-              interpretation.
-            </li>
-            <li>
-              <strong>Relationship.</strong> Nothing in these Terms creates any agency, partnership, joint
-              venture, or employment relationship between you and us.
-            </li>
-          </ul>
-        </Section>
+      <Section title="16. Miscellaneous">
+        <p>
+          These Terms, together with the Privacy Policy, are the entire
+          agreement between you and us about the Service. If any provision
+          is held unenforceable, the rest stays in effect. Our failure to
+          enforce a provision isn't a waiver of it. You may not assign
+          these Terms; we may assign them in connection with a transfer of
+          the Service, in which case we'll tell you. Nothing in these
+          Terms creates a partnership, employment, or agency relationship
+          between us. We aren't liable for failures caused by events
+          outside our reasonable control.
+        </p>
+      </Section>
 
-        <Section title="17. Third-Party Content and Links">
-          <p>
-            Phoebe surfaces content from other people and organizations — for example, daily-office and
-            contemplative podcasts, the Washington National Cathedral's livestream, daily reflections and
-            Scripture readings, and links to other websites and meeting tools. That content and those sites are
-            owned and operated by third parties, not by us. We don't create, control, endorse, or guarantee
-            third-party content, and we're not responsible for it or for the practices of the sites it lives on.
-            When you play, view, or open it, your use may be subject to that third party's own terms and privacy
-            policy, and your device may connect to them directly (our Privacy Policy explains what that
-            involves). You access third-party content at your own discretion.
-          </p>
-        </Section>
+      <Section title="17. Third-party content and links">
+        <p>
+          Phoebe embeds and links to content from other organizations,
+          including podcasts, daily reflections, scripture and lectionary
+          sources, a cathedral livestream, and meeting links a group adds.
+          We don't control that content, we don't endorse everything in
+          it, and we're not responsible for it. Each of those
+          organizations has its own terms and privacy policy, which govern
+          your use of their content once you're there. Where a group adds
+          a meeting or calendar link, that link is the group's, not ours.
+        </p>
+        <p>
+          Where a group schedules a gathering, Google delivers the
+          calendar invite to attendees on the group's behalf; our Privacy
+          Policy explains what that involves.
+        </p>
+      </Section>
 
-        <Section title="18. Contact">
-          <p>
-            For legal notices, policy questions, copyright complaints, or anything else about these Terms, email{" "}
-            <MailLink />.
-          </p>
-        </Section>
+      <Section title="18. Contact">
+        <p>
+          For legal notices, policy questions, copyright complaints, or
+          anything else about these Terms, email <MailLink />.
+        </p>
+      </Section>
     </>
   );
 }
