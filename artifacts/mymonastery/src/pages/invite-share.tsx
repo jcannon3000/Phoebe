@@ -95,7 +95,7 @@ export default function InviteSharePage() {
           type="button"
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-1 rounded-full px-2 py-1.5 transition-opacity hover:opacity-80"
-          style={{ color: "rgba(143,175,150,0.85)", background: "transparent", border: "none", cursor: "pointer" }}
+          style={{ color: "rgba(240,237,230,0.85)", background: "transparent", border: "none", cursor: "pointer" }}
           aria-label={t("common.back", { defaultValue: "Back" })}
         >
           <ChevronLeft size={20} />
@@ -105,13 +105,13 @@ export default function InviteSharePage() {
 
       <div className="flex-1 flex flex-col px-7 pb-10 max-w-md mx-auto w-full">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
-          <p className="text-[12px] uppercase tracking-[0.2em] font-semibold mt-6 mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+          <p className="text-[12px] uppercase tracking-[0.2em] font-semibold mt-6 mb-3" style={{ color: "rgba(240,237,230,0.7)" }}>
             {t("invite_share.eyebrow", { defaultValue: "Invite someone" })}
           </p>
-          <h1 className="text-[30px] font-semibold leading-tight mb-4">
+          <h1 className="text-[30px] font-semibold leading-tight mb-4" style={{ color: WARM }}>
             {t("invite_share.title", { defaultValue: "Give someone a way to pray every day" })}
           </h1>
-          <p className="text-[17px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF }}>
+          <p className="text-[17px] leading-relaxed" style={{ color: WARM, fontFamily: SERIF }}>
             {t("invite_share.lede", {
               defaultValue:
                 "Most people who want to pray daily don't lack the desire — they lack a form to put it in. Sharing Phoebe hands someone that form: a simple, unhurried rhythm they can keep, and a way to grow into the prayer life of the church.",
@@ -133,36 +133,12 @@ export default function InviteSharePage() {
           >
             {t("invite_share.share_cta", { defaultValue: "Share Phoebe" })}
           </button>
-          <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? "#8FAF96" : "rgba(143,175,150,0.6)" }}>
+          <p className="text-[14px] mt-3 text-center" style={{ color: justCopied ? WARM : "rgba(240,237,230,0.6)" }}>
             {justCopied
               ? t("invite_share.copied", { defaultValue: "Link copied ✓" })
               : t("invite_share.share_note", { defaultValue: "Sends a link to Phoebe. On an iPhone it opens straight to the App Store." })}
           </p>
         </motion.div>
-
-        <div className="mt-8 flex flex-col gap-3">
-          {gifts.map((g, i) => (
-            <motion.div
-              key={g.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.32 + i * 0.09 }}
-              className="rounded-2xl px-4 py-3.5 flex gap-3.5"
-              style={{
-                background: "rgba(22,46,32,0.42)",
-                backdropFilter: "blur(11px)",
-                WebkitBackdropFilter: "blur(11px)",
-                border: "1px solid rgba(46,107,64,0.30)",
-              }}
-            >
-              <span className="text-[17px] leading-none flex-shrink-0 mt-0.5" aria-hidden>{g.emoji}</span>
-              <div className="min-w-0">
-                <p className="text-[14.5px] font-semibold leading-snug" style={{ color: WARM }}>{g.title}</p>
-                <p className="text-[13px] mt-1 leading-snug" style={{ color: SAGE }}>{g.body}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
       </div>
     </div>
   );

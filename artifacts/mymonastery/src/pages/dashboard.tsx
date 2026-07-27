@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, isValidElement } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
-import { LEAF_PHOTOS, HOME_LEAF_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, HOME_LEAF_PHOTOS, WATER_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
 import { useHomeTheme } from "@/lib/homeTheme";
 import { FROST } from "@/lib/frost";
 import { motion, AnimatePresence } from "framer-motion";
@@ -5567,6 +5567,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const homeTheme = useHomeTheme();
   const homeBgPhoto = useMemo(
     () => {
+      // Native shows the OpeningSplash overlay first, always on SPLASH_PHOTO
+      // (a fixed, preloaded image — see earthPhotos.ts). If the home behind it
+      // then picked its own random photo, fading the splash out swapped to a
+      // DIFFERENT image — reading as the background "reloading" rather than
+      // the splash simply lifting off the home that was already there. Reuse
+      // the exact same photo so the reveal is seamless (skipped for the water
+      // theme, which is a deliberate different backdrop, and for web, which
+      // never shows the splash overlay in the first place).
+      if (isNativeShell() && homeTheme !== "water" && SPLASH_PHOTO) return SPLASH_PHOTO;
       const set = homeTheme === "water" && WATER_PHOTOS.length > 0
         ? WATER_PHOTOS
         : HOME_LEAF_PHOTOS;
