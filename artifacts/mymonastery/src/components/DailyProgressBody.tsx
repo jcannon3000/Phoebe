@@ -929,6 +929,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       : t("rhythm.card_creation", { defaultValue: "Creation Prayer" });
   const creationBlurb = (done: boolean): string =>
     done ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" });
+  // The physical-BCP "book" entry mode only means anything for the generic
+  // office/devotion/community card below — Examen, Psalms, Contemplation,
+  // Simple Guided Prayer, FDD, and Creation Prayer all render their OWN
+  // dedicated home card elsewhere and are never reached by this one, but
+  // getSideEntry is a side-wide setting that can go stale (e.g. left over
+  // from a prior BCP setup) independent of the side's current level — so it
+  // must be re-checked here rather than trusted on its own, or a stale
+  // "book" entry would pop the physical-office quick-log sheet over the
+  // wrong practice entirely.
+  const isBookEntry = (side: "morning" | "evening") => {
+    if (getSideEntry(side) !== "book") return false;
+    const level = getSideLevel(side);
+    return level === "office" || level === "devotion" || level === "intercessions";
+  };
   const rawCards = [
     // Morning drops off Daily progress once the morning is past (afternoon) and
     // it wasn't prayed — we don't nag about a missed morning in Next; past noon
@@ -944,7 +958,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // (like a custom practice) instead of walking straight into the office
       // page-number guide; "Page numbers and readings" is the way through
       // for anyone who actually wants that page.
-      ...(getSideEntry("morning") === "book" && !morningDone ? { onClick: () => setBookLogSide("morning") } : {}),
+      ...(isBookEntry("morning") && !morningDone ? { onClick: () => setBookLogSide("morning") } : {}),
     }] : []),
     ...(eveningActive ? [{
       // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
@@ -960,7 +974,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 17,
-      ...(getSideEntry("evening") === "book" && !eveningDone ? { onClick: () => setBookLogSide("evening") } : {}),
+      ...(isBookEntry("evening") && !eveningDone ? { onClick: () => setBookLogSide("evening") } : {}),
     }] : []),
     // Reflection cards lead the morning (default second, right after Morning).
     // One card per reflection newsletter the user follows — each its own card +
@@ -1056,7 +1070,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // when the evening anchor itself IS the Examen (getSideLevel === "examen"):
     // that's already rendered above as the "evening" card (retitled "The Examen"
     // by officeTitle), so this standalone add-on card would otherwise double it.
-    ...(examenActive && getSideLevel("evening") !== "examen" ? [{ ...examenCard, slot: examenSlot }] : []),
+    ...(examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen" ? [{ ...examenCard, slot: examenSlot }] : []),
     ...(prayerListActive ? [{
       key: "prayer-list", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "96,140,180", done: prayerListDone, href: "/intentions?pray=1",
       title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }),

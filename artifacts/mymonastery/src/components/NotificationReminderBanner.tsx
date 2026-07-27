@@ -46,7 +46,12 @@ export function NotificationReminderBanner() {
       }
     }
     if (!webPushCapable()) return "granted"; // can't do anything here — don't nag
-    return Notification.permission as PermState;
+    // DOM Notification.permission is "default" | "denied" | "granted" — it
+    // never returns "prompt". Map "default" (never asked) to our "prompt"
+    // state, or the banner would only ever show for users who already
+    // explicitly denied, missing the never-asked majority it exists for.
+    const raw = Notification.permission;
+    return raw === "default" ? "prompt" : (raw as PermState);
   };
 
   useEffect(() => {
@@ -88,11 +93,16 @@ export function NotificationReminderBanner() {
       if (isNativeShell()) {
         // Reuses the exact flow PushPermissionPrompt fires — requests
         // permission, registers with APNs/FCM, and POSTs the device token.
+        // "Turning on…" stays disabled until one of these fires (or the
+        // OS dialog result never arrives) rather than clearing on the
+        // synchronous `return` below, which used to re-enable the button
+        // while the permission prompt was still on screen.
         const onReady = () => { setPermission("granted"); cleanup(); };
         const onDenied = () => { setPermission("denied"); cleanup(); };
         const cleanup = () => {
           window.removeEventListener("phoebe:push-ready", onReady);
           window.removeEventListener("phoebe:push-denied", onDenied);
+          setWorking(false);
         };
         window.addEventListener("phoebe:push-ready", onReady, { once: true });
         window.addEventListener("phoebe:push-denied", onDenied, { once: true });
@@ -104,9 +114,9 @@ export function NotificationReminderBanner() {
       if (permission === "granted") {
         await ensureWebPushSubscription().catch(() => { /* non-fatal */ });
       }
+      setWorking(false);
     } catch (err) {
       console.warn("[notif-reminder] enable failed:", err);
-    } finally {
       setWorking(false);
     }
   }
