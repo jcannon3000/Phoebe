@@ -53,14 +53,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // event into the app so the web layer can navigate to the journal.
     var onJournal: (() -> Void)?
 
-    // ONE cookie jar for every in-app browser instance, persisted to disk.
-    // A fresh WKWebViewConfiguration defaults to its own process pool, which
-    // means a consent cookie set in one visit isn't reliably visible to the
-    // next; sharing the pool (plus the persistent default store) keeps the
-    // "accept cookies" choice so banners don't reappear every time.
-    private static let sharedProcessPool = WKProcessPool()
-
-    // The persistent store above is supposed to keep a site's "accept" choice,
+    // The persistent store below is supposed to keep a site's "accept" choice,
     // but iOS tracking prevention clears the script/third-party storage these
     // sources (CAC, Bible.com, SSJE) park consent in, so the bar returns every
     // visit. This web view is OURS and the page is its top document, so we may
@@ -146,7 +139,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     static func makeConfiguration() -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
-        config.processPool = sharedProcessPool
         config.websiteDataStore = WKWebsiteDataStore.default()   // persistent
         let content = WKUserContentController()
         content.addUserScript(cookieHideScript)

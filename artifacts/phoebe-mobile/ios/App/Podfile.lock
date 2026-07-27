@@ -1,7 +1,7 @@
 PODS:
-  - Capacitor (8.4.0):
+  - Capacitor (8.4.2):
     - CapacitorCordova
-  - CapacitorApp (8.1.0):
+  - CapacitorApp (8.1.1):
     - Capacitor
   - CapacitorBrowser (8.0.3):
     - Capacitor
@@ -9,10 +9,10 @@ PODS:
     - Capacitor
   - CapacitorCommunityKeepAwake (8.0.1):
     - Capacitor
-  - CapacitorCordova (8.4.0)
+  - CapacitorCordova (8.4.2)
   - CapacitorHaptics (8.0.2):
     - Capacitor
-  - CapacitorKeyboard (8.0.3):
+  - CapacitorKeyboard (8.0.5):
     - Capacitor
   - CapacitorLocalNotifications (8.2.0):
     - Capacitor
@@ -30,27 +30,27 @@ PODS:
     - Capacitor
 
 DEPENDENCIES:
-  - "Capacitor (from `../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios`)"
-  - "CapacitorApp (from `../../../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.4.0/node_modules/@capacitor/app`)"
+  - "Capacitor (from `../../../../node_modules/.pnpm/@capacitor+ios@8.4.2_@capacitor+core@8.4.0/node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../../../node_modules/.pnpm/@capacitor+app@8.1.1_@capacitor+core@8.4.0/node_modules/@capacitor/app`)"
   - "CapacitorBrowser (from `../../../../node_modules/.pnpm/@capacitor+browser@8.0.3_@capacitor+core@8.4.0/node_modules/@capacitor/browser`)"
   - "CapacitorCommunityContacts (from `../../../../node_modules/.pnpm/@capacitor-community+contacts@7.2.0_@capacitor+core@8.4.0/node_modules/@capacitor-community/contacts`)"
   - "CapacitorCommunityKeepAwake (from `../../../../node_modules/.pnpm/@capacitor-community+keep-awake@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor-community/keep-awake`)"
-  - "CapacitorCordova (from `../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios`)"
+  - "CapacitorCordova (from `../../../../node_modules/.pnpm/@capacitor+ios@8.4.2_@capacitor+core@8.4.0/node_modules/@capacitor/ios`)"
   - "CapacitorHaptics (from `../../../../node_modules/.pnpm/@capacitor+haptics@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/haptics`)"
-  - "CapacitorKeyboard (from `../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.3_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard`)"
+  - "CapacitorKeyboard (from `../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.5_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard`)"
   - "CapacitorLocalNotifications (from `../../../../node_modules/.pnpm/@capacitor+local-notifications@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/local-notifications`)"
   - "CapacitorPreferences (from `../../../../node_modules/.pnpm/@capacitor+preferences@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/preferences`)"
   - "CapacitorPushNotifications (from `../../../../node_modules/.pnpm/@capacitor+push-notifications@8.1.1_@capacitor+core@8.4.0/node_modules/@capacitor/push-notifications`)"
   - "CapacitorShare (from `../../../../node_modules/.pnpm/@capacitor+share@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/share`)"
   - "CapacitorSplashScreen (from `../../../../node_modules/.pnpm/@capacitor+splash-screen@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/splash-screen`)"
   - "CapacitorStatusBar (from `../../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/status-bar`)"
-  - "CapgoCapacitorNativeBiometric (from `../../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.4.5_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-native-biometric`)"
+  - "CapgoCapacitorNativeBiometric (from `../../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.6.2_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-native-biometric`)"
 
 EXTERNAL SOURCES:
   Capacitor:
-    :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios"
+    :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.4.2_@capacitor+core@8.4.0/node_modules/@capacitor/ios"
   CapacitorApp:
-    :path: "../../../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.4.0/node_modules/@capacitor/app"
+    :path: "../../../../node_modules/.pnpm/@capacitor+app@8.1.1_@capacitor+core@8.4.0/node_modules/@capacitor/app"
   CapacitorBrowser:
     :path: "../../../../node_modules/.pnpm/@capacitor+browser@8.0.3_@capacitor+core@8.4.0/node_modules/@capacitor/browser"
   CapacitorCommunityContacts:
@@ -58,11 +58,11 @@ EXTERNAL SOURCES:
   CapacitorCommunityKeepAwake:
     :path: "../../../../node_modules/.pnpm/@capacitor-community+keep-awake@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor-community/keep-awake"
   CapacitorCordova:
-    :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/ios"
+    :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.4.2_@capacitor+core@8.4.0/node_modules/@capacitor/ios"
   CapacitorHaptics:
     :path: "../../../../node_modules/.pnpm/@capacitor+haptics@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/haptics"
   CapacitorKeyboard:
-    :path: "../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.3_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard"
+    :path: "../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.5_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard"
   CapacitorLocalNotifications:
     :path: "../../../../node_modules/.pnpm/@capacitor+local-notifications@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/local-notifications"
   CapacitorPreferences:
@@ -76,17 +76,17 @@ EXTERNAL SOURCES:
   CapacitorStatusBar:
     :path: "../../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/status-bar"
   CapgoCapacitorNativeBiometric:
-    :path: "../../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.4.5_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-native-biometric"
+    :path: "../../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.6.2_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-native-biometric"
 
 SPEC CHECKSUMS:
-  Capacitor: 75bd117ba037a51bb0f19ded32c67f4b3bc16600
-  CapacitorApp: 449ffe26375e96f8aaaee625ac6e01e5c57c8650
+  Capacitor: 52f999235b8bd6a7d01694753f4f4d54d182e3a3
+  CapacitorApp: 305bd13c44f6f9d164e2ee66a4faa956ed8c0e06
   CapacitorBrowser: c987c73d09d8bd3b5ec13f06338b1e14d5d2be69
   CapacitorCommunityContacts: 12008d6650ba80d7bb948a70fe31fec6813d49dc
   CapacitorCommunityKeepAwake: d41922812644562e94a79acaf7f41e6d9413af8c
-  CapacitorCordova: 71d81f350e6c30bf2a846593b5c480fbd68e9bac
+  CapacitorCordova: 345eacdc4c8282415446aea4acd8c77d82480bd4
   CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
-  CapacitorKeyboard: 31c8285d92c9d1410071d52449f16d2c6673b6f4
+  CapacitorKeyboard: b6b0744890cdb1d9a96e2cafcc9253fdcc55de3b
   CapacitorLocalNotifications: 2615aa008f608b95d3921a778ee1988abf1e6148
   CapacitorPreferences: cca2021f386efb75947c850334447d9ff22b14f1
   CapacitorPushNotifications: ec08d589c226a2c0db7c032ec1bf5b044ec85f8e
@@ -95,6 +95,6 @@ SPEC CHECKSUMS:
   CapacitorStatusBar: 01d5763b4ed720de5ce2edbc938de6a98f4c8f32
   CapgoCapacitorNativeBiometric: c9a116d9516b3f52dd335aea6a0c5073be36fe5a
 
-PODFILE CHECKSUM: c00286ec881c474e04d6afe4224285dd90670ec0
+PODFILE CHECKSUM: 7927f2276de9344cc54c619c60c62591826f66e6
 
 COCOAPODS: 1.16.2
