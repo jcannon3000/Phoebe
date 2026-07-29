@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { BCP_PRAYERS } from "@/lib/bcp-prayers";
-import { usePilotMode } from "@/hooks/usePilotMode";
 
 // ── Personal prayer list ("intentions") ───────────────────────────────────
 // A private list of the people / things you're holding in prayer. Add free
-// text or a person; pray through them in a quiet slideshow (counts as the daily
-// "Prayer List" practice); and — optionally — post one to your community or
-// your circle so others can pray along (reusing the prayer-request infra).
+// text or a person; pray through them in a quiet slideshow (counts as the
+// daily "Prayer List" practice). No community-sharing here — prayer requests
+// are off for everyone, so this list is private only, no exceptions.
 //
 // Modelled on Gratitude (private log) + the Psalms reader (the slideshow).
 
@@ -36,9 +34,8 @@ type Intention = {
   sharedRequestId: number | null;
   createdAt: string;
 };
-type Group = { id: number; name: string; slug: string; emoji?: string | null };
 
-// The line we pray / share for an intention.
+// The line we pray for an intention.
 function headline(it: Intention): string {
   return it.kind === "person" ? (it.personName || "Someone") : (it.body || "");
 }
@@ -65,17 +62,8 @@ function daysOnList(createdAt: string): string {
   if (days === 1) return "1 day on your list";
   return `${days} days on your list`;
 }
-function shareBody(it: Intention): string {
-  if (it.kind === "person") {
-    const base = `Praying for ${it.personName || "someone dear to me"}`;
-    return it.body ? `${base} — ${it.body}` : base;
-  }
-  return it.body;
-}
-
 export default function IntentionsPage() {
   const { t } = useTranslation();
-  const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -90,17 +78,10 @@ export default function IntentionsPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
 
   // ── Add composer ─────────────────────────────────────────────────────────
-  // One field. Private by default; "Sharing" also posts a prayer request to
-  // your circle so others can pray along, and "Ongoing" shares it without the
-  // 7-day expiry. Existing person items still display and edit.
-  const { isPilot } = usePilotMode();
+  // One field, private only — no community-sharing here (prayer requests are
+  // off for everyone). Existing person items still display and edit.
   const [text, setText] = useState("");
-  const [audience, setAudience] = useState<"private" | "shared">("private");
-  // Community cadence: "one-time" surfaces first on others' lists and leaves a
-  // person's list once they've prayed it (or after 7 days); "ongoing" stays.
-  const [cadence, setCadence] = useState<"one-time" | "ongoing">("one-time");
   const [submitting, setSubmitting] = useState(false);
-  const sharing = audience === "shared";
   const addMut = useMutation({
     mutationFn: (payload: { kind: string; body?: string; personName?: string }) =>
       apiRequest("POST", "/api/prayer-intentions", payload) as Promise<{ intention: Intention }>,
@@ -110,21 +91,8 @@ export default function IntentionsPage() {
     if (!canAdd || submitting) return;
     setSubmitting(true);
     try {
-      const created = await addMut.mutateAsync({ kind: "text", body: text });
-      // The intention is saved — clear the composer now so a failed share can't
-      // strand the typed text and tempt a duplicate submit.
-      setText(""); setAudience("private"); setCadence("one-time");
-      if (sharing) {
-        try {
-          const req = await apiRequest("POST", "/api/prayer-requests", {
-            body: text,
-            isAnonymous: false,
-            ...(cadence === "ongoing" ? { ongoing: true } : { oneTime: true }),
-          }) as { id?: number; request?: { id?: number } };
-          const reqId = req?.request?.id ?? req?.id ?? null;
-          if (reqId != null) await patchMut.mutateAsync({ id: created.intention.id, shared: true, sharedRequestId: reqId });
-        } catch { /* saved privately; the share failed (e.g. request cap) — retry via the per-item Share button */ }
-      }
+      await addMut.mutateAsync({ kind: "text", body: text });
+      setText("");
     } catch { /* creating the intention failed */ }
     finally { setSubmitting(false); invalidate(); }
   };
@@ -151,28 +119,38 @@ export default function IntentionsPage() {
     setEditingId(null);
   };
 
-  // ── Share sheet ──────────────────────────────────────────────────────────
-  const [shareFor, setShareFor] = useState<Intention | null>(null);
-
-  // ── Pray-through → the MAIN slideshow ────────────────────────────────────
-  // "Pray through your list" no longer uses a separate UI. Every entry point
-  // (this page's button, the daily-progress prayer-list card, the prayer-list
-  // page, the home card) flows into the main community prayer slideshow, which
-  // now folds in the viewer's own private prayers as "Your Prayer" slides. The
-  // ?pray=1 deep-link redirects there too.
+  // ── Pray-through — this list only, not the community slideshow ──────────
+  // A quiet, private walkthrough of just what's on THIS list — never routed
+  // through /prayer-mode (that's the community/office flow; it doesn't belong
+  // here for an account just praying their own list). The ?pray=1 deep link
+  // (daily-progress card, home card) opens straight into it.
   const startedPraying = (() => {
     try { return new URLSearchParams(window.location.search).get("pray") === "1"; } catch { return false; }
   })();
+  const [praying, setPraying] = useState(false);
   useEffect(() => {
-    if (startedPraying) setLocation("/prayer-mode?reset=1");
-  }, [startedPraying, setLocation]);
+    if (startedPraying) setPraying(true);
+  }, [startedPraying]);
+  const finishPraying = () => {
+    markPracticeDoneToday("prayer-list");
+    setPraying(false);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("pray");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* ignore */ }
+  };
 
-  const seg = (label: string, on: boolean, onClick: () => void) => (
-    <button type="button" onClick={onClick} className="flex-1 rounded-full text-[13px] font-semibold py-2 transition-opacity active:scale-[0.98]"
-      style={{ fontFamily: FONT, color: on ? WARM : SAGE, background: on ? `rgba(${RGB},0.32)` : "transparent", border: `1px solid rgba(${RGB},${on ? 0.5 : 0.22})` }}>
-      {label}
-    </button>
-  );
+  if (praying) {
+    return (
+      <PrayThrough
+        intentions={active}
+        bgPhoto={bgPhoto}
+        onClose={() => setPraying(false)}
+        onFinish={finishPraying}
+      />
+    );
+  }
 
   return (
     <Layout bgPhoto={bgPhoto}>
@@ -186,7 +164,7 @@ export default function IntentionsPage() {
         </div>
 
         {active.length > 0 && (
-          <button type="button" onClick={() => setLocation("/prayer-mode?reset=1")}
+          <button type="button" onClick={() => setPraying(true)}
             className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{ background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 16, padding: "15px 24px" }}>
             {t("intentions.pray_through", { defaultValue: "Pray through your list" })} <span aria-hidden>→</span>
@@ -200,31 +178,10 @@ export default function IntentionsPage() {
             rows={3}
             className="w-full rounded-xl px-3.5 py-2.5 text-[15px] outline-none resize-none"
             style={{ background: "rgba(0,0,0,0.25)", color: WARM, fontFamily: FONT, border: `1px solid rgba(${RGB},0.25)` }} />
-          {/* Pilot is personal-only: no "share with the community" — the list
-              stays private, so the audience toggle is hidden entirely. */}
-          {!isPilot && (
-          <div className="flex gap-2 mt-3">
-            {seg(t("intentions.private", { defaultValue: "On my list" }), !sharing, () => setAudience("private"))}
-            {seg(t("intentions.sharing", { defaultValue: "With the community" }), sharing, () => setAudience("shared"))}
-          </div>
-          )}
-          {sharing && (
-            <>
-              <div className="flex gap-2 mt-2">
-                {seg(t("intentions.cadence_one_time", { defaultValue: "One time" }), cadence === "one-time", () => setCadence("one-time"))}
-                {seg(t("intentions.ongoing", { defaultValue: "Ongoing" }), cadence === "ongoing", () => setCadence("ongoing"))}
-              </div>
-              <p className="text-[11.5px] mt-2 px-1 leading-snug" style={{ color: SAGE, fontFamily: FONT }}>
-                {cadence === "one-time"
-                  ? t("intentions.cadence_one_time_hint", { defaultValue: "Shows first on the community's list and leaves once each person has prayed it — or after 7 days." })
-                  : t("intentions.cadence_ongoing_hint", { defaultValue: "Stays on the community's prayer list until you mark it answered or remove it." })}
-              </p>
-            </>
-          )}
           <button type="button" onClick={submitAdd} disabled={!canAdd || submitting}
             className="w-full rounded-full mt-3 text-[14px] font-semibold py-2.5 transition-opacity active:scale-[0.98]"
             style={{ background: canAdd ? `rgba(${RGB},0.85)` : "rgba(255,255,255,0.08)", color: canAdd ? WARM : "rgba(240,237,230,0.4)", fontFamily: FONT, cursor: canAdd ? "pointer" : "default" }}>
-            {sharing ? t("intentions.add_share", { defaultValue: "Add & share" }) : t("intentions.add", { defaultValue: "Add to my list" })}
+            {t("intentions.add", { defaultValue: "Add to my list" })}
           </button>
         </div>
 
@@ -275,7 +232,6 @@ export default function IntentionsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                      {!bcp && !isPilot && <RowBtn label={t("intentions.share", { defaultValue: "Share" })} emoji="📣" onClick={() => setShareFor(it)} />}
                       <RowBtn label={t("common.edit", { defaultValue: "Edit" })} emoji="✎" onClick={() => startEdit(it)} />
                       <RowBtn label={t("common.delete", { defaultValue: "Delete" })} emoji="🗑" onClick={() => delMut.mutate(it.id)} />
                     </div>
@@ -313,14 +269,6 @@ export default function IntentionsPage() {
           </>
         )}
       </div>
-
-      {shareFor && (
-        <ShareSheet
-          intention={shareFor}
-          onClose={() => setShareFor(null)}
-          onShared={(reqId) => { patchMut.mutate({ id: shareFor.id, shared: true, sharedRequestId: reqId ?? null }); setShareFor(null); }}
-        />
-      )}
     </Layout>
   );
 }
@@ -331,65 +279,6 @@ function RowBtn({ label, emoji, onClick }: { label: string; emoji: string; onCli
       style={{ background: "rgba(255,255,255,0.06)", color: "rgba(240,237,230,0.85)", fontFamily: FONT, border: "1px solid rgba(255,255,255,0.1)" }}>
       <span aria-hidden style={{ marginRight: 4 }}>{emoji}</span>{label}
     </button>
-  );
-}
-
-// ── Share sheet — post the intention to a community or your circle ─────────
-function ShareSheet({ intention, onClose, onShared }: { intention: Intention; onClose: () => void; onShared: (reqId: number | null) => void }) {
-  const { t } = useTranslation();
-  const { data: groupsData } = useQuery<{ groups: Group[] }>({
-    queryKey: ["/api/groups"],
-    queryFn: () => apiRequest("GET", "/api/groups") as Promise<{ groups: Group[] }>,
-  });
-  const groups = groupsData?.groups ?? [];
-  const body = shareBody(intention);
-  const [busy, setBusy] = useState(false);
-
-  const requestIdFrom = (r: unknown): number | null => {
-    const o = r as { id?: number; request?: { id?: number } } | null;
-    return o?.request?.id ?? o?.id ?? null;
-  };
-  const shareTo = async (fn: () => Promise<unknown>) => {
-    if (busy) return;
-    setBusy(true);
-    try { onShared(requestIdFrom(await fn())); }
-    catch { setBusy(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-3xl p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-        style={{ background: "#0F2417", border: `1px solid rgba(${RGB},0.3)` }} onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "rgba(255,255,255,0.2)" }} />
-        <p className="text-[16px] font-bold mb-1" style={{ color: WARM, fontFamily: FONT }}>{t("intentions.share_title", { defaultValue: "Ask others to pray along" })}</p>
-        <p className="text-[13px] mb-4" style={{ color: SAGE, fontFamily: FONT }}>{t("intentions.share_sub", { defaultValue: "We'll post this so they can pray with you:" })}</p>
-        <div className="rounded-xl px-3.5 py-3 mb-4" style={{ background: "rgba(0,0,0,0.25)", border: `1px solid rgba(${RGB},0.2)` }}>
-          <p className="text-[14px] italic" style={{ color: "#E8E4D8", fontFamily: "Georgia, serif" }}>{body}</p>
-        </div>
-        <div className="space-y-2">
-          {groups.map((g) => (
-            <button key={g.id} type="button" disabled={busy} onClick={() => shareTo(() => apiRequest("POST", `/api/groups/${g.slug}/prayer-requests`, { body, isAnonymous: false }))}
-              className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left transition-opacity active:scale-[0.99]"
-              style={{ background: `rgba(${RGB},0.16)`, border: `1px solid rgba(${RGB},0.3)` }}>
-              <span aria-hidden className="text-xl flex-shrink-0">{g.emoji || "🏘️"}</span>
-              <span className="flex-1 min-w-0 text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{g.name}</span>
-              <span aria-hidden style={{ color: `rgba(${RGB},0.7)` }}>›</span>
-            </button>
-          ))}
-          <button type="button" disabled={busy} onClick={() => shareTo(() => apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: 7 }))}
-            className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left transition-opacity active:scale-[0.99]"
-            style={{ background: `rgba(${RGB},0.16)`, border: `1px solid rgba(${RGB},0.3)` }}>
-            <span aria-hidden className="text-xl flex-shrink-0">🤲</span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{t("intentions.share_circle", { defaultValue: "My circle" })}</span>
-              <span className="block text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>{t("intentions.share_circle_sub", { defaultValue: "The people who pray for you" })}</span>
-            </span>
-            <span aria-hidden style={{ color: `rgba(${RGB},0.7)` }}>›</span>
-          </button>
-        </div>
-        <button type="button" onClick={onClose} className="w-full text-center text-[13px] mt-4 py-2" style={{ color: SAGE, fontFamily: FONT }}>{t("common.cancel", { defaultValue: "Cancel" })}</button>
-      </div>
-    </div>
   );
 }
 

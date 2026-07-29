@@ -2433,6 +2433,73 @@ function PrayerListHomeCard() {
   );
 }
 
+// ── Prayer List section — its own section on the home screen, never part of
+// the Next/Done routine (the intentions themselves are already woven into
+// the offices as slides — this is just the private-list surface). Empty →
+// a single "Start prayer list" invite; non-empty → one card per intention,
+// each opening the private pray-through slideshow for the whole list.
+function PrayerListSection() {
+  const [, setLocation] = useLocation();
+  const intentions = useActivePrayerIntentions();
+  const hasIntentions = intentions.length > 0;
+  return (
+    <div className="mt-5">
+      <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+        Prayer List
+      </p>
+      {!hasIntentions ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setLocation("/intentions")}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation("/intentions"); }}
+          className="relative flex rounded-xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ background: "rgba(96,140,180,0.10)", border: "1px solid rgba(96,140,180,0.3)" }}
+        >
+          <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+          <div className="flex-1 px-4 py-3 flex items-center justify-between gap-2">
+            <p className="text-sm" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              Keep who and what you're praying for
+            </p>
+            <span className="text-[13px] font-semibold flex-shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              Start →
+            </span>
+          </div>
+        </div>
+      ) : (
+      <div className="flex flex-col gap-2">
+        {intentions.map((it, i) => (
+          <div
+            key={i}
+            role="button"
+            tabIndex={0}
+            onClick={() => setLocation("/intentions?pray=1")}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation("/intentions?pray=1"); }}
+            className="relative flex rounded-xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(22,46,32,0.33)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(200,212,192,0.25)" }}
+          >
+            <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+            <div className="flex-1 px-4 py-3 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Private to you
+              </p>
+              <p className="text-sm leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
+                {it.headline}
+              </p>
+              {it.subline && (
+                <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
+                  {it.subline}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      )}
+    </div>
+  );
+}
+
 function ExamenHomeCard({ hero = false }: { hero?: boolean } = {}) {
   // Hero layout — the big "what's next" card, mirroring the office hero, when
   // the Examen is set as this side's daily prayer (usually evening). Same green
@@ -6944,6 +7011,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           the Next list empties and the Done section holds every
                           kept card (owner). */}
                       <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
+                      <PrayerListSection />
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
                           Rest. (It self-hides when no weekly practice is on.)
@@ -6996,6 +7064,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     {/* Keep the completed cards on the home — Done section. */}
                     <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
+                    <PrayerListSection />
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
                     {/* Bare — WeeklyRhythm owns its per-card cascade (see the
@@ -7027,6 +7096,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   leadCard={null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                 />
+                <PrayerListSection />
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
