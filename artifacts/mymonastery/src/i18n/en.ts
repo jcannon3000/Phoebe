@@ -4448,7 +4448,7 @@ export const en = {
     m3_body: "Call to mind the actual gifts of these last hours or days — a face, a small relief, an unexpected kindness, a lesson learned the hard way. Gratitude grows in the particular, not the general. Let yourself remember one true thing, rather than reaching for everything at once.",
     m4_title: "Supplication",
     m4_lead: "Bring what weighs on you, without pretending.",
-    m4_body: "Ask plainly — for yourself, and for the ones who live in your heart even when they are far away. Nothing is too small to matter here, and nothing too large to carry. Then, having asked, practice letting go: leave it in hands more capable than your own.",
+    m4_body: "Ask plainly — for yourself, and for the ones who live in your heart even when they are far away. Nothing is too small to matter here, and nothing too large to carry.",
   },
   // About page (pages/about.tsx).
   about: {

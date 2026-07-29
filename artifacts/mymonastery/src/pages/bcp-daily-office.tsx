@@ -744,6 +744,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // Silence path of the contemplative pause: once the user chooses to sit, the
   // pause slide swaps to a resting view until they continue.
   const [silencePauseActive, setSilencePauseActive] = useState(false);
+  // Selected sit length on the contemplative-pause picker (5/10/20 min).
+  // Purely a selection today — the inline rest that follows is self-paced
+  // (Continue whenever ready), matching this office pause's existing
+  // no-timer design; kept as a real preference in case it later drives an
+  // actual countdown.
+  const [pauseMinutes, setPauseMinutes] = useState(10);
   // Warmed promise for the community-intercession data, so /prayer-mode can open
   // straight onto the first intercession instead of its "Gathering…" loader.
   const intercessionPrefetchRef = useRef<Promise<unknown> | null>(null);
@@ -2118,20 +2124,57 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
                     Take a breath. Bring anything else on your heart to prayer.
                   </p>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
+                  <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, lineHeight: 1.6, color: FAINT_GREEN, maxWidth: 400, margin: 0 }}>
+                    Someone you haven't named, a worry that surfaced this morning, the world that needs holding.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={next}
+                    style={{ padding: "13px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Continue →
+                  </button>
+                  <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 14, color: FAINT_GREEN, margin: "6px 0 0" }}>
+                    or pause for a time of contemplative prayer
+                  </p>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 340, padding: 14, borderRadius: 20, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.25)", background: "rgba(var(--ot-green, 46,107,64),0.08)" }}
+                  >
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                      {[5, 10, 20].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setPauseMinutes(m)}
+                          style={{
+                            flex: 1,
+                            padding: "12px 0",
+                            borderRadius: 14,
+                            border: pauseMinutes === m ? "1px solid rgba(var(--ot-sage, 143,175,150),0.6)" : "1px solid rgba(var(--ot-sage, 143,175,150),0.25)",
+                            background: pauseMinutes === m ? "rgba(var(--ot-green, 46,107,64),0.35)" : "rgba(var(--ot-green, 46,107,64),0.12)",
+                            color: "var(--oh-ink, #F0EDE6)",
+                            fontFamily: SPACE_GROTESK,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1 }}>{m}</div>
+                          <div style={{ fontSize: 11, color: FAINT_GREEN }}>min</div>
+                        </button>
+                      ))}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setSilencePauseActive(true)}
-                      style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                      style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "none", background: "rgba(var(--ot-green, 46,107,64),0.9)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      🕯️ Contemplation
+                      🕯️ Begin contemplation
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowCreationBreath(true)}
-                      style={{ padding: "13px 28px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                      style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      🌍 Creation Prayer
+                      🌍 Cobreathe — breathe together
                     </button>
                   </div>
                 </>
