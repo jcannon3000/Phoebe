@@ -435,13 +435,13 @@ export function useRhythmState(): RhythmState {
   // Personal prayer list — a logging-first practice (prayed through its
   // slideshow); appears only when selected in the customizer AND only when the
   // prayer-request feature is available to this account (pilot-group-only,
-  // 2026-07-22). Gated here at the source so every consumer — the home card,
-  // the menu progress ring, the weekly grid — treats it as inactive at once.
-  // Prayer requests are OFF for everyone, no exceptions (matches
-  // usePrayerRequestsEnabled) — the pilot/super-admin carve-out here was
-  // stale and still lit the My Prayer List home card for those accounts.
-  const prayerRequestsEnabled = false;
-  const prayerListActive = prayerRequestsEnabled && homeCardActive(hl, "prayer-list");
+  // 2026-07-29 — "My Prayer List" now reads the private list (prayer_
+  // intentions), not the community prayer_requests garden, so it no longer
+  // needs to ride on prayerRequestsEnabled (which stays permanently false —
+  // community prayer requests are off for everyone, no exceptions). Gating
+  // the private list on that flag was stale and blocked the restored
+  // feature entirely.
+  const prayerListActive = homeCardActive(hl, "prayer-list");
   const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the

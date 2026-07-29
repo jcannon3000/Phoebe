@@ -28,6 +28,7 @@ import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -722,6 +723,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   }, [celebrateKey]);
   const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, prayerListActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, prayerListDone, customAnchors } = useRhythmState();
   const { user } = useAuth();
+  // Empty list → invite starting one rather than "Pray through your list"
+  // (there's nothing to pray through yet).
+  const activeIntentions = useActivePrayerIntentions();
+  const hasIntentions = activeIntentions.length > 0;
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
   // contemplation cards give way to ONE "Silence" goal card with a live
@@ -1047,10 +1052,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // by officeTitle), so this standalone add-on card would otherwise double it.
     ...(examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen" ? [{ ...examenCard, slot: examenSlot }] : []),
     ...(prayerListActive ? [{
-      key: "prayer-list", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "96,140,180", done: prayerListDone, href: "/intentions?pray=1",
-      title: t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }),
-      blurb: prayerListDone ? kept : t("rhythm.blurb_prayer_list", { defaultValue: "Pray through your list" }),
-      cta: t("rhythm.pray", { defaultValue: "Pray" }), later: false,
+      key: "prayer-list", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "96,140,180", done: prayerListDone,
+      href: hasIntentions ? "/intentions?pray=1" : "/intentions",
+      title: hasIntentions ? t("rhythm.card_prayer_list", { defaultValue: "My Prayer List" }) : t("rhythm.card_prayer_list_empty", { defaultValue: "Prayer List" }),
+      blurb: prayerListDone ? kept : hasIntentions ? t("rhythm.blurb_prayer_list", { defaultValue: "Pray through your list" }) : t("rhythm.blurb_prayer_list_empty", { defaultValue: "Keep who and what you're praying for" }),
+      cta: hasIntentions ? t("rhythm.pray", { defaultValue: "Pray" }) : t("rhythm.start_prayer_list", { defaultValue: "Start prayer list" }), later: false,
     }] : []),
   ];
   // Stable sort by time-of-day slot (Array.prototype.sort is stable), so within
