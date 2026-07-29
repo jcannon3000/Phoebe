@@ -4,6 +4,17 @@ export type SlideType =
   // (pilot-group-only). Renders a choice: breathe (Co-Breathe) or sit in
   // silence. Client-spliced in the office deck; never sent by the server.
   | "contemplative_pause"
+  // A quiet listing of the reader's own private prayer list (see
+  // prayer_intentions / /intentions), spliced in client-side right before
+  // the contemplative_pause slide for signed-up accounts who have at least
+  // one active (unanswered) intention. Never sent by the server. Not an
+  // editor — just a listing + a link to /intentions to add/edit.
+  | "prayer_intentions"
+  // The "before you go" prompt composer — seven full-width prompt pills;
+  // tapping one opens an in-place textarea to write a new prayer, saved to
+  // the private list (and optionally shared with the community). Spliced in
+  // right after contemplative_pause, for signed-up accounts only.
+  | "prayer_prompts"
   // Intro / threshold slide shown before the office or devotion
   // begins — names the liturgy and the tradition it belongs to.
   | "office_intro"

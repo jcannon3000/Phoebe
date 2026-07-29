@@ -70,20 +70,18 @@ const SLIDES: Slide[] = [
   // 8 — Prayer moves into the ordinary spaces of the day.
   {
     kind: "statement",
-    headline: "Not another event",
+    headline: "",
     body: [
       "Rather than asking people to attend another event or work through another curriculum, Phoebe carries prayer into the ordinary spaces of daily life: the morning commute, a lunch break, or the quiet before bed. It does not remove the pressures of modern life, but it helps people establish a steady practice in the midst of them.",
     ],
   },
   // 9 — The Way of Love framework.
   {
-    kind: "feature-combo",
-    label: "",
+    kind: "statement",
     headline: "The Way of Love",
     body: [
       "The framework is built around Bishop Michael Curry's Way of Love, offering an accessible rule of life that serves as an entry point into the lifelong process of becoming more like Jesus.",
     ],
-    mock: "prayer-rhythm",
   },
   // 10 — The app carries part of the process; communities carry the rest.
   {
@@ -109,7 +107,7 @@ const SLIDES: Slide[] = [
     body: [
       "Phoebe gives churches a way to sustain that process within the conditions of modern life. In the past, formation was often held by everyone gathering at the same time each week. But work, family, school, and shifting schedules now make that rhythm harder to maintain. Phoebe allows the process to continue between gatherings, with each person practicing within the realities of their own life while knowing that others are moving in the same direction.",
     ],
-    mock: "leader-rule",
+    mock: "dashboard",
   },
   // 13 — Not a replacement for in-person community.
   {

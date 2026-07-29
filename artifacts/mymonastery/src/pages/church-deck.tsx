@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ReactElement } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -327,12 +327,14 @@ function StatementSlide({
 }) {
   return (
     <div className="max-w-3xl mx-auto w-full">
-      <h2
-        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        {slide.headline}
-      </h2>
+      {slide.headline && (
+        <h2
+          className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          {slide.headline}
+        </h2>
+      )}
       <div className="space-y-4 md:space-y-6">
         {slide.body.map((p, i) => (
           <p
@@ -1954,14 +1956,44 @@ export function DeckShell({
   const [index, setIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
 
+  // The outgoing slide, held only long enough to play its fade-out, then
+  // cleared by our own timer — NOT by AnimatePresence's exit-complete
+  // callback. That callback is driven by framer-motion's internal rAF
+  // scheduler, which browsers suspend while the tab/webview is backgrounded
+  // (app-switch, notification, brief tab-away mid-transition); when that
+  // happens the callback never fires and the old slide is stuck in the DOM
+  // forever, fully faded but never unmounted. A plain setTimeout still
+  // fires once the tab is foregrounded again, so driving removal ourselves
+  // makes the crossfade resilient to that. Keep SLIDE_TRANSITION_MS in sync
+  // with the transition duration below.
+  const SLIDE_TRANSITION_MS = 350;
+  const [prevIndex, setPrevIndex] = useState<number | null>(null);
+  const transitioningRef = useRef(false);
+  const prevClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goTo = useCallback((updater: (i: number) => number) => {
+    if (transitioningRef.current) return;
+    setIndex((i) => {
+      const nextIndex = updater(i);
+      if (nextIndex === i) return i;
+      transitioningRef.current = true;
+      setPrevIndex(i);
+      if (prevClearTimer.current) clearTimeout(prevClearTimer.current);
+      prevClearTimer.current = setTimeout(() => {
+        setPrevIndex(null);
+        transitioningRef.current = false;
+      }, SLIDE_TRANSITION_MS);
+      return nextIndex;
+    });
+  }, []);
+
   const next = useCallback(
-    () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
-    [slides.length],
+    () => goTo((i) => Math.min(i + 1, slides.length - 1)),
+    [goTo, slides.length],
   );
   const prev = useCallback(() => {
     setAutoPlay(false); // Going back stops auto-advance
-    setIndex((i) => Math.max(i - 1, 0));
-  }, []);
+    goTo((i) => Math.max(i - 1, 0));
+  }, [goTo]);
 
   // Auto-advance every 7s (slide 2 = 2s) — stops when user goes back
   useEffect(() => {
@@ -2081,7 +2113,7 @@ export function DeckShell({
           {slides.map((_, i) => (
             <button
               key={i}
-              onClick={() => setIndex(i)}
+              onClick={() => goTo(() => i)}
               className="rounded-full transition-all"
               style={{
                 width: i === index ? 20 : 6,
@@ -2103,26 +2135,36 @@ export function DeckShell({
       </div>
 
       {/* Slide — click right half to advance. Each slide is absolutely
-          positioned within this box so an exiting slide never shares flex
-          layout space with the one entering — sharing space is what let
-          popLayout's flow-removal math fight the flex centering below and
-          leave exiting slides stuck mid-fade (never reaching opacity 0). */}
+          positioned within this box so the outgoing and incoming slide never
+          share flex layout space. The outgoing slide (prevIndex) is plain
+          state we clear ourselves after SLIDE_TRANSITION_MS — see goTo —
+          rather than an AnimatePresence exit, so it's guaranteed to unmount
+          even if the fade-out animation itself never gets to visually
+          finish (e.g. the tab was backgrounded mid-transition). */}
       <div
         className="relative flex-1 cursor-pointer"
         onClick={handleSlideClick}
       >
-        <AnimatePresence initial={false}>
+        {prevIndex !== null && (
           <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto"
+            key={prevIndex}
+            initial={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 0, y: -8 }}
+            transition={{ duration: SLIDE_TRANSITION_MS / 1000, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto pointer-events-none"
           >
-            {renderSlide(slide)}
+            {renderSlide(slides[prevIndex])}
           </motion.div>
-        </AnimatePresence>
+        )}
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: SLIDE_TRANSITION_MS / 1000, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute inset-0 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto"
+        >
+          {renderSlide(slide)}
+        </motion.div>
       </div>
 
       {/* Nav — positioned over slide so phone shadow isn't clipped */}

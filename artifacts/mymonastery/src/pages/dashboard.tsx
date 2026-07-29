@@ -20,6 +20,7 @@ import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgress
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
+import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
@@ -2412,17 +2413,17 @@ function PracticeHomeCard({
   );
 }
 
-// Personal prayer list — opens straight into "pray through your list" (the
-// slideshow), the action that counts toward the daily Prayer List practice.
+// Personal prayer list — the private list (prayer_intentions), not the
+// community garden. Empty list → invites starting one; a non-empty list →
+// opens straight into the /intentions pray-through slideshow.
 function PrayerListHomeCard() {
+  const intentions = useActivePrayerIntentions();
+  const hasIntentions = intentions.length > 0;
   return (
     <PracticeHomeCard
-      // Pray through the MAIN community prayer slideshow — which now folds in
-      // your own private prayers (isOwnPrayer "Your Prayer" slides) — rather
-      // than the separate /intentions pray-through UI.
-      href="/prayer-mode?reset=1"
-      label="My Prayer List 🕊️"
-      cta="Pray"
+      href="/intentions"
+      label={hasIntentions ? "My Prayer List 🕊️" : "Prayer List 🕊️"}
+      cta={hasIntentions ? "Pray" : "Start prayer list"}
       tintBg="rgba(96,140,180,0.12)"
       tintBorder="rgba(96,140,180,0.35)"
       pillBg="rgba(96,140,180,0.28)"
@@ -6070,7 +6071,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -7090,9 +7091,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 case "listening":
                   return null;
                 case "prayer-list":
-                  // Prayer list removed from the home screen (owner) — reachable
-                  // from the side menu / deep links instead.
-                  return null;
+                  // The private prayer list (prayer_intentions), restored to the
+                  // home screen — not the old community garden card (that stays
+                  // off, per owner). Empty list → "Start prayer list".
+                  return <PrayerListHomeCard />;
                 case "examen":
                   return <ExamenHomeCard />;
                 case "cac":

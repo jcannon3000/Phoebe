@@ -26,6 +26,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
+import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
@@ -296,6 +297,27 @@ function buildPrayerIntentionsSlide(
     isScrollable: true,
     scrollHint: null,
     metadata: { side: mode, intentions: items },
+  };
+}
+
+// The "before you go" prompt composer — spliced in right AFTER the
+// contemplative pause (see the splice effect below), for signed-up accounts
+// only. Unlike the listing slide above, this one is unconditional on having
+// existing intentions — its whole purpose is inviting a NEW one.
+function buildPrayerPromptsSlide(): Slide {
+  return {
+    id: "prayer-prompts",
+    type: "prayer_prompts",
+    emoji: "🕊️",
+    eyebrow: "",
+    title: null,
+    content: "",
+    isCallAndResponse: false,
+    callAndResponseLines: [],
+    bcpReference: null,
+    isScrollable: true,
+    scrollHint: null,
+    metadata: {},
   };
 }
 
@@ -705,6 +727,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       return prev;
     });
   }, [activeIntentions, resolvedMode]);
+  // Splice the "before you go" prompt composer in right after the
+  // contemplative pause (or, if that's absent, right before the General
+  // Thanksgiving) — signed-up accounts only, unconditional on already having
+  // intentions, since its point is inviting a NEW one.
+  useEffect(() => {
+    if (!signedUp) return;
+    setSlides((prev) => {
+      const ppIdx = prev.findIndex((s) => s.type === "prayer_prompts");
+      if (ppIdx >= 0) return prev;
+      const pauseIdx = prev.findIndex((s) => s.type === "contemplative_pause");
+      const gtIdx = prev.findIndex((s) => s.type === "general_thanksgiving");
+      const anchorIdx = pauseIdx >= 0 ? pauseIdx + 1 : gtIdx;
+      if (anchorIdx <= 0) return prev;
+      setSlideIdx((cur) => (cur >= anchorIdx ? cur + 1 : cur));
+      return [...prev.slice(0, anchorIdx), buildPrayerPromptsSlide(), ...prev.slice(anchorIdx)];
+    });
+  }, [signedUp]);
   // The salutation ("The Lord be with you") is an MP/EP exchange — Compline
   // has no such dialogue, so it gets the rubric labels but no extra slide.
   const canSalute = resolvedMode === "morning" || resolvedMode === "evening";
@@ -2200,6 +2239,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 Add to your list
               </button>
             </div>
+          ) : currentSlide.type === "prayer_prompts" ? (
+            // "Before you go" prompt composer — write a new prayer for the
+            // private list (or share it), then continue. Sits right after
+            // the contemplative pause.
+            <PrayerPromptsSlide onContinue={next} />
           ) : currentSlide.type === "contemplative_pause" ? (
             // Contemplative pause — the moment in the Prayers that replaces the
             // community intercessions for accounts without the prayer-request
