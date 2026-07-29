@@ -2104,10 +2104,10 @@ export function DeckShell({
 
       {/* Slide — click right half to advance */}
       <div
-        className="flex-1 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto cursor-pointer"
+        className="relative flex-1 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto cursor-pointer"
         onClick={handleSlideClick}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 10 }}

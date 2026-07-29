@@ -3,76 +3,130 @@
 // Slide) so it looks exactly like the app; only the copy is About-specific.
 import { DeckShell, type Slide } from "./church-deck";
 
+// One paragraph of the About-page essay per slide, in order, with a mock
+// wherever the paragraph names something concrete the app actually shows
+// (the customizer, the home "Next" list, a rule of life, gatherings) —
+// purely narrative/theological paragraphs stay text-only statements.
 const SLIDES: Slide[] = [
-  // 1 — Title over the real home mock.
+  // 1 — Title / thesis, over the real home mock.
   {
     kind: "title",
     headline: "Phoebe",
-    sub: "The prayer life of the church, made accessible.",
+    sub: "From distributing spiritual content to cultivating shared spiritual practice — and the belonging that grows from it.",
     mock: "dashboard",
   },
-  // 2 — The front door: everything exists and is free, just scattered.
+  // 2 — Not a resources problem.
   {
     kind: "statement",
-    headline: "One seamless routine",
+    headline: "Not a lack of resources",
     body: [
-      "Phoebe brings together the prayers, psalms, and readings of the Episcopal Church and beyond — scattered across websites, books, and lectionaries — into one front door.",
+      "For many Christians today, the problem is not a lack of resources about prayer. There are countless books, podcasts, devotionals, Bible apps, and studies. What is missing for many people is a way to sustain the daily habit itself.",
     ],
   },
-  // 3 — Make it yours: the customizer / rule of life.
+  // 3 — Daniel.
+  {
+    kind: "statement",
+    headline: "The same old resistance",
+    body: [
+      "The Prophet Daniel met resistance to praying three times a day in his own turbulent time. The causes look different for us, but we face resistance all the same: the pace of modern life, endless distractions, and the fragmentation of our attention. Many people genuinely want to pray. They simply struggle to return to it day after day.",
+    ],
+  },
+  // 4 — Cultivating a Daily Habit: the customizable routine (Duolingo).
   {
     kind: "feature-combo",
-    label: "",
-    headline: "Make it yours",
+    label: "Cultivating a Daily Habit",
+    headline: "A routine, not a library",
     body: [
-      "Add pieces one at a time, or all at once, and shape a rhythm around the life you actually live.",
+      "The Phoebe app makes it easier to build and sustain a daily rhythm of prayer. Drawing on principles used by habit-forming apps such as Duolingo, it guides each person through a customizable routine rather than presenting prayer as a library of resources to browse.",
     ],
     mock: "customizer",
   },
-  // 4 — A daily habit you can keep: the week at a glance.
+  // 5 — One step at a time, mark it complete: the real home view.
   {
     kind: "feature-combo",
     label: "",
-    headline: "A daily habit you can keep",
+    headline: "One step at a time",
     body: [
-      "Morning and evening, held as a gentle rhythm — never a streak to protect, just prayer, met each day.",
-    ],
-    mock: "prayer-rhythm",
-  },
-  // 5 — See what's next up: the real home view.
-  {
-    kind: "feature-combo",
-    label: "",
-    headline: "See what's next up",
-    body: [
-      "Open Phoebe and it shows you the next thing to pray, made for the pace of modern life.",
+      "Each practice is presented one step at a time, always showing what comes next and allowing the user to mark it complete — not to reward streaks or punish inconsistency, but to reduce friction and make it easier to return the following day.",
     ],
     mock: "dashboard",
   },
-  // 6 — Not praying alone: a quiet text interlude, no mock.
-  {
-    kind: "statement",
-    headline: "Not praying alone",
-    body: [
-      "Some at dawn, some on a train, some at midnight — praying the same psalm, the same day, together.",
-    ],
-  },
-  // 7 — Pray alongside your leader: a leader's rule of life, ready to take up.
+  // 6 — The Way of Love framework.
   {
     kind: "feature-combo",
     label: "",
-    headline: "Pray alongside your leader",
+    headline: "The Way of Love",
     body: [
-      "A leader can program their own daily rhythm of prayer and invite you to walk it alongside them.",
+      "The framework is built around Bishop Michael Curry's Way of Love, offering an accessible rule of life that serves as an entry point into the lifelong process of becoming more like Jesus.",
+    ],
+    mock: "prayer-rhythm",
+  },
+  // 7 — The app carries part of the process; communities carry the rest.
+  {
+    kind: "statement",
+    headline: "Carried day to day",
+    body: [
+      "The app carries part of that process. It helps hold the intention to pray from one day to the next. Across the history of the Church, communities have also helped sustain people in their walk with God.",
+    ],
+  },
+  // 8 — Walking Together: the rabbinic yoke.
+  {
+    kind: "statement",
+    headline: "Walking Together",
+    body: [
+      "When Jesus invited his disciples to take up his yoke, he was drawing on the rabbinic practice of apprenticeship: learning a way of life by walking alongside a teacher.",
+    ],
+  },
+  // 9 — A leader's shared rhythm, ready to take up.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "A shared rhythm",
+    body: [
+      "Phoebe gives churches a way to recover that pattern. Clergy and lay leaders can invite people into a shared rhythm of prayer that continues throughout the week, each person practicing within the realities of their own life while knowing that others are moving in the same direction.",
     ],
     mock: "leader-rule",
   },
-  // 8 — Carried to you: the Phoebe-name / deacon origin story.
+  // 10 — Not a social network.
   {
     kind: "statement",
-    headline: "Carried to you",
+    headline: "Not a social network",
     body: [
-      "Phoebe takes its name from the deacon who carried Paul's letter to the Romans — the church's prayer, carried to you.",
+      "Phoebe does not attempt to create connection online by becoming a social network for the Church. Instead, it sustains the daily practices people undertake in their own lives, creating a shared context for relationships to grow through in-person gatherings.",
+    ],
+  },
+  // 11 — Different stages, same direction.
+  {
+    kind: "statement",
+    headline: "Moving in the same direction",
+    body: [
+      "Members of a group using Phoebe may be at very different stages. Some may be establishing a regular prayer life for the first time. Others may have prayed the Daily Office for years. What holds them together is not following the same routine or being at the same point, but moving in the same direction — toward becoming more like Jesus.",
+    ],
+  },
+  // 12 — Gathering, whenever fits.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "Gather when it fits",
+    body: [
+      "Groups can gather whenever it best fits their context to encourage one another, reflect on what God is doing in their lives, and continue growing together. Each gathering becomes one moment within a longer process of formation. Rather than ending when a retreat, course, or parish event is over, Phoebe carries its intention into the ordinary days that follow.",
+    ],
+    mock: "gatherings",
+  },
+  // 13 — Hebrews 10.
+  {
+    kind: "statement",
+    headline: "Hebrews 10",
+    body: [
+      "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
+    ],
+  },
+  // 14 — The close: belonging as a byproduct of a shared process.
+  {
+    kind: "statement",
+    headline: "The conditions for belonging",
+    body: [
+      "Young adults are hungry for meaningful connection, but simply gathering people in the same room is not enough to create it. Leaders can use Phoebe to create the conditions for belonging as people enter a meaningful process together — cultivating a habit of prayer in their own lives, supporting one another when they gather, and walking together in the life of discipleship.",
     ],
   },
   // The invitation — just the name and the ask. The app icon anchors it
