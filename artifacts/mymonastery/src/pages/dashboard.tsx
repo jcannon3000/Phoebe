@@ -21,6 +21,7 @@ import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
@@ -2444,10 +2445,13 @@ type DashIntention = { id: number; kind: "text" | "person"; personName: string; 
 // section links out to at the bottom.
 function PrayerListSection() {
   const [, setLocation] = useLocation();
+  const prayerListEnabled = usePrayerListEnabled();
   const { data } = useQuery<{ intentions: DashIntention[] }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions") as Promise<{ intentions: DashIntention[] }>,
+    enabled: prayerListEnabled,
   });
+  if (!prayerListEnabled) return null;
   const intentions = (data?.intentions ?? []).filter((i) => !i.answered);
   const hasIntentions = intentions.length > 0;
   const headline = (it: DashIntention) => (it.kind === "person" ? (it.personName || "Someone") : (it.body || ""));

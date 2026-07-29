@@ -12,6 +12,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { SPIRITUAL_JOURNEY, JOURNEY_TOTAL, CENTERING_PRAYER, CENTERING_TOTAL } from "@/lib/spiritualJourney";
 import { WAY_OF_LOVE, WOL_TOTAL } from "@/lib/wayOfLoveCourse";
 import { useCourseProgress } from "@/lib/courseProgress";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 
 interface LearnTopic {
   id: string;
@@ -27,6 +28,7 @@ interface LearnTopic {
 export default function LearnPage() {
   const { user, isLoading } = useAuth();
   const signedUp = !!user && !user.isAnonymous;
+  const prayerListEnabled = usePrayerListEnabled();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [activeTopic, setActiveTopic] = useState<LearnTopic | null>(null);
@@ -210,7 +212,7 @@ export default function LearnPage() {
               </button>
             </div>
 
-            {!signedUp && (
+            {!signedUp && prayerListEnabled && (
               <button
                 onClick={() => setLocation("/signin")}
                 className="w-full text-left rounded-2xl px-5 py-4 mt-3 transition-opacity hover:opacity-90 active:scale-[0.99]"

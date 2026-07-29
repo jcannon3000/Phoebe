@@ -5,6 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { MenuHub, type MenuHubGroup } from "@/components/MenuHub";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useTranslation } from "react-i18next";
@@ -31,6 +32,7 @@ export default function MenuPage() {
   const { isGuest } = useGuestMode();
   const officesOnly = user?.accessTier === "offices-only";
   const signedUp = !!user && !user.isAnonymous;
+  const prayerListEnabled = usePrayerListEnabled();
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -79,7 +81,7 @@ export default function MenuPage() {
       // Prayer List — a private list of who & what you're holding in prayer,
       // prayed through in a quiet slideshow; optionally shareable to a
       // community / circle. Account-scoped data, so hidden for guests.
-      ...(signedUp ? [{ emoji: "🕊️", label: t("menu.prayer_list", { defaultValue: "Prayer List" }), sub: t("menu.prayer_list_sub", { defaultValue: "Your own list of who & what you're praying for" }), onClick: () => go("/intentions") }] : []),
+      ...(signedUp && prayerListEnabled ? [{ emoji: "🕊️", label: t("menu.prayer_list", { defaultValue: "Prayer List" }), sub: t("menu.prayer_list_sub", { defaultValue: "Your own list of who & what you're praying for" }), onClick: () => go("/intentions") }] : []),
     ],
   });
 

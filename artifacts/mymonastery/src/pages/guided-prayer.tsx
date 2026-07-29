@@ -18,6 +18,7 @@ import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 
 // ── Simple Guided Prayer (PACT) ─────────────────────────────────────────────
 // A four-movement outline — Praise, Confession, Thanksgiving, Supplication —
@@ -185,8 +186,9 @@ export default function GuidedPrayerPage() {
   // for the Examen: this page doubles as the Examen when the side's actual
   // configured level is "examen" (relabeled "Simple Guided Prayer" here),
   // and the Examen shouldn't pick up an unrelated tail practice.
+  const prayerListEnabled = usePrayerListEnabled();
   const activeIntentions = useActivePrayerIntentions();
-  const showPrayerList = getSideLevel(side) !== "examen" && activeIntentions.length > 0;
+  const showPrayerList = prayerListEnabled && getSideLevel(side) !== "examen" && activeIntentions.length > 0;
 
   const isIntro = step === 0;
   const isClosing = step === MOVEMENTS.length + 1;

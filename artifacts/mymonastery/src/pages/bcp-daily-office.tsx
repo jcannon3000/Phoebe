@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
-import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
+import { usePrayerRequestsEnabled, usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
@@ -571,6 +571,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // A real signed-up account (not a guest / anonymous device session) — gates
   // the private prayer-list slide below. Mirrors menu.tsx's signedUp check.
   const signedUp = !!viewerUser && !viewerUser.isAnonymous;
+  const prayerListEnabled = usePrayerListEnabled();
   const { isPilot } = usePilotMode();
   // PUBLIC no-login version — HARD REQUIREMENT: the office must NEVER enter
   // the community intercession slideshow in guest mode. Guests get the same
@@ -693,7 +694,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const { data: intentionsData } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: signedUp,
+    enabled: signedUp && prayerListEnabled,
     staleTime: 60_000,
   });
   const activeIntentions = useMemo(
@@ -732,7 +733,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // Thanksgiving) — signed-up accounts only, unconditional on already having
   // intentions, since its point is inviting a NEW one.
   useEffect(() => {
-    if (!signedUp) return;
+    if (!signedUp || !prayerListEnabled) return;
     setSlides((prev) => {
       const ppIdx = prev.findIndex((s) => s.type === "prayer_prompts");
       if (ppIdx >= 0) return prev;

@@ -12,6 +12,7 @@ import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { PointedLine } from "@/components/PointedLine";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
+import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -176,12 +177,13 @@ export default function PsalmsPage() {
   // Own private prayer list, tacked on as the final slide — the same seat
   // the community intercessions would fold into the office. No examen-style
   // exclusion needed here: Psalms never doubles as another practice.
+  const prayerListEnabled = usePrayerListEnabled();
   const activeIntentions = useActivePrayerIntentions();
   const slides = useMemo(() => {
     const base = buildSlides(data?.psalms ?? []);
-    if (base.length === 0 || activeIntentions.length === 0) return base;
+    if (!prayerListEnabled || base.length === 0 || activeIntentions.length === 0) return base;
     return [...base, { kind: "prayer-list" as const, items: activeIntentions }];
-  }, [data, activeIntentions]);
+  }, [data, activeIntentions, prayerListEnabled]);
   const total = slides.length;
   const [index, setIndex] = useState(0);
   // Finishing hands off to a DIFFERENT page (/prayer-mode's closing slide, or

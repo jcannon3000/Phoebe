@@ -20,3 +20,17 @@ export function usePrayerRequestsEnabled(): boolean {
   useAuth();
   return false;
 }
+
+// Whether the PRIVATE prayer list (prayer_intentions) is surfaced anywhere —
+// the home screen section, the menu entry, and the tail slides woven into
+// the BCP office / Simple Guided Prayer / Psalms.
+//
+// Product decision (2026-07-29): turned OFF for everyone, same day it was
+// restored — the owner wants both the old community prayer-request feature
+// AND this private list off. The underlying data/route/API (/intentions,
+// /api/prayer-intentions) stays intact; only the surfaces are hidden. Flip
+// this back to re-enable.
+export function usePrayerListEnabled(): boolean {
+  useAuth();
+  return false;
+}
