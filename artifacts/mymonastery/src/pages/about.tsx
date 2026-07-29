@@ -79,11 +79,72 @@ export default function AboutPage() {
         </p>
 
         <div className="space-y-4">
-          <p style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.72, color: "#E4EADD" }}>
-            Phoebe is an app for cultivating a daily practice of prayer. It brings together resources from across the Episcopal Church and beyond into one seamless routine — with the modern tools to help guide you through building it, and holding it.
+          <p style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.72, color: "#E4EADD", fontStyle: "italic" }}>
+            Phoebe is an app that helps churches move from distributing spiritual content to cultivating shared spiritual practice — and creating the opportunity for belonging in the process.
+          </p>
+
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            For many Christians today, the problem is not a lack of resources about prayer. There are countless books, podcasts, devotionals, Bible apps, and studies. What is missing for many people is a way to sustain the daily habit itself.
           </p>
           <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
-            You can shape your own rhythm — from simply praying the Psalms to the full Daily Office — and pray it however meets you that day: from your own Book of Common Prayer, on the app, by audio, or alongside a cathedral broadcast. Whatever pieces your practice already has — the offices, a daily reflection, a few minutes of silence — Phoebe gathers them into one place. It keeps the depth of the tradition intact and simply changes how it reaches you, meeting you in the busy, dispersed life you actually live. It takes its name from the deacon Phoebe, who carried Paul’s letter to the Romans — entrusted to bring the word to where it needed to go.
+            The Prophet Daniel met resistance to praying three times a day in his own turbulent time. The causes look different for us, but we face resistance all the same: the pace of modern life, endless distractions, and the fragmentation of our attention. Many people genuinely want to pray. They simply struggle to return to it day after day.
+          </p>
+
+          <h2 style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: "#F0EDE6", margin: "22px 0 2px" }}>
+            Cultivating a Daily Habit
+          </h2>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            The Phoebe app makes it easier to build and sustain a daily rhythm of prayer. Drawing on principles used by habit-forming apps such as Duolingo, it guides each person through a customizable routine rather than presenting prayer as a library of resources to browse.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            Each practice is presented one step at a time, always showing what comes next and allowing the user to mark it complete — not to reward streaks or punish inconsistency, but to reduce friction and make it easier to return the following day.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            The framework is built around Bishop Michael Curry's Way of Love, offering an accessible rule of life that serves as an entry point into the lifelong process of becoming more like Jesus.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            The app carries part of that process. It helps hold the intention to pray from one day to the next. Across the history of the Church, communities have also helped sustain people in their walk with God.
+          </p>
+
+          <h2 style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: "#F0EDE6", margin: "22px 0 2px" }}>
+            Walking Together
+          </h2>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            When Jesus invited his disciples to take up his yoke, he was drawing on the rabbinic practice of apprenticeship: learning a way of life by walking alongside a teacher.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            Phoebe gives churches a way to recover that pattern. Clergy and lay leaders can invite people into a shared rhythm of prayer that continues throughout the week, each person practicing within the realities of their own life while knowing that others are moving in the same direction.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            Phoebe does not attempt to create connection online by becoming a social network for the Church. Instead, it sustains the daily practices people undertake in their own lives, creating a shared context for relationships to grow through in-person gatherings.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            Members of a group using Phoebe may be at very different stages. Some may be establishing a regular prayer life for the first time. Others may have prayed the Daily Office for years. What holds them together is not following the same routine or being at the same point, but moving in the same direction — toward becoming more like Jesus.
+          </p>
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            Groups can gather whenever it best fits their context to encourage one another, reflect on what God is doing in their lives, and continue growing together. Each gathering becomes one moment within a longer process of formation. Rather than ending when a retreat, course, or parish event is over, Phoebe carries its intention into the ordinary days that follow.
+          </p>
+
+          <blockquote
+            style={{
+              fontFamily: SERIF,
+              fontStyle: "italic",
+              fontSize: 16,
+              lineHeight: 1.72,
+              color: "#C8D4C0",
+              margin: "22px 0",
+              padding: "2px 0 2px 18px",
+              borderLeft: "2px solid rgba(143,175,150,0.4)",
+            }}
+          >
+            "And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching."
+            <span style={{ display: "block", fontStyle: "normal", fontFamily: FONT, fontSize: 12.5, color: "#7E9A85", marginTop: 8 }}>
+              Hebrews 10
+            </span>
+          </blockquote>
+
+          <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
+            Young adults are hungry for meaningful connection, but simply gathering people in the same room is not enough to create it. Leaders can use Phoebe to create the conditions for belonging as people enter a meaningful process together — cultivating a habit of prayer in their own lives, supporting one another when they gather, and walking together in the life of discipleship.
           </p>
         </div>
 

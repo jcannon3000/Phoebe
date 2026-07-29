@@ -2174,7 +2174,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       onClick={() => setShowCreationBreath(true)}
                       style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                     >
-                      🌍 Cobreathe — breathe together
+                      🌍 Creation Prayer — breathe together
                     </button>
                   </div>
                 </>

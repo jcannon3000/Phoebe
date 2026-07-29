@@ -195,16 +195,20 @@ export default function CobreathePage() {
     // one-time "how it works" intro first.
     wantsStart() ? (cobreatheHowtoSeen() ? "breathing" : "howto") : "intro",
   );
-  // Breath count — 12 by DEFAULT (owner: no selector on this screen anymore).
-  // Reads phoebe:cobreathe-length so the customizer's Creation Prayer "How many
-  // breaths?" preset still applies (the home card's Begin opens at that
-  // length); with nothing saved, it falls back to the 12-breath default.
-  const [lengthBreaths] = useState<number>(() => {
+  // Breath count — 12 by default, adjustable on this screen. Reads/writes
+  // phoebe:cobreathe-length so the customizer's Creation Prayer "How many
+  // breaths?" preset stays in sync with whatever's picked here (the home
+  // card's Begin opens at whichever length was last set, from either place).
+  const [lengthBreaths, setLengthBreaths] = useState<number>(() => {
     try {
       const n = parseInt(localStorage.getItem("phoebe:cobreathe-length") || "", 10);
       return [6, 12, 18, 24, 30, 36].includes(n) ? n : DEFAULT_TOTAL_BREATHS;
     } catch { return DEFAULT_TOTAL_BREATHS; }
   });
+  function chooseLengthBreaths(n: number) {
+    setLengthBreaths(n);
+    try { localStorage.setItem("phoebe:cobreathe-length", String(n)); } catch { /* ignore */ }
+  }
   // One calm LANDSCAPE behind the "before you begin" screen (the top-level
   // curated set — wide landscapes, no leaf close-ups / animals / farm), picked
   // once and faded up under a dark wash. Matches the prayer-intro slides so the
@@ -558,10 +562,37 @@ export default function CobreathePage() {
           <div className="w-full" style={{ maxWidth: 440 }}>
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
 
-            {/* The breath-count selector was removed from this screen (owner):
-                the length is now set ONLY in the customizer's Creation Prayer
-                step (defaulting to 12, phoebe:cobreathe-length) — this "before
-                you begin" screen just invites, it doesn't ask. */}
+            {/* Breath-count selector — restored per owner. Writes the same
+                phoebe:cobreathe-length key the customizer's Creation Prayer
+                "How many breaths?" step reads/writes, so a pick here stays in
+                sync with that preset either direction. */}
+            <div className="flex items-center justify-between" style={{ padding: "10px 2px" }}>
+              <span style={{ color: "rgba(240,237,230,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14.5 }}>
+                {t("cobreathe.how_many_breaths", { defaultValue: "How many breaths?" })}
+              </span>
+              <select
+                value={lengthBreaths}
+                onChange={(e) => chooseLengthBreaths(parseInt(e.target.value, 10))}
+                style={{
+                  background: "rgba(9,26,16,0.5)",
+                  color: WARM,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 14.5,
+                  fontWeight: 600,
+                  border: "1px solid rgba(168,197,160,0.4)",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                {[6, 12, 18, 24, 30, 36].map((n) => (
+                  <option key={n} value={n} style={{ background: "#091A10", color: WARM }}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 13.5, lineHeight: 1.5, marginTop: 4, textAlign: "center" }}>
               {t("cobreathe.invite_note", { defaultValue: "An invitation, not a goal — breathe as many as you have in you, and stop whenever you like." })}
             </p>
