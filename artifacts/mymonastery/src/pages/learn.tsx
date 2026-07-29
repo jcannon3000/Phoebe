@@ -26,6 +26,7 @@ interface LearnTopic {
 
 export default function LearnPage() {
   const { user, isLoading } = useAuth();
+  const signedUp = !!user && !user.isAnonymous;
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [activeTopic, setActiveTopic] = useState<LearnTopic | null>(null);
@@ -208,6 +209,26 @@ export default function LearnPage() {
                 </div>
               </button>
             </div>
+
+            {!signedUp && (
+              <button
+                onClick={() => setLocation("/signin")}
+                className="w-full text-left rounded-2xl px-5 py-4 mt-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(193,154,58,0.10)", border: "1px solid rgba(193,154,58,0.30)" }}
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-2xl leading-none mt-0.5">🕊️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      Log in to create a prayer list
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
+                      Keep a private list of who and what you're holding in prayer.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            )}
         </div>
 
         <p className="text-xs italic text-center mt-8" style={{ color: "rgba(143,175,150,0.5)" }}>

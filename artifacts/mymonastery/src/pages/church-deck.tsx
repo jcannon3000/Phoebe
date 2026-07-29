@@ -2102,19 +2102,23 @@ export function DeckShell({
         </span>
       </div>
 
-      {/* Slide — click right half to advance */}
+      {/* Slide — click right half to advance. Each slide is absolutely
+          positioned within this box so an exiting slide never shares flex
+          layout space with the one entering — sharing space is what let
+          popLayout's flow-removal math fight the flex centering below and
+          leave exiting slides stuck mid-fade (never reaching opacity 0). */}
       <div
-        className="relative flex-1 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto cursor-pointer"
+        className="relative flex-1 cursor-pointer"
         onClick={handleSlideClick}
       >
-        <AnimatePresence mode="popLayout" initial={false}>
+        <AnimatePresence initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full"
+            className="absolute inset-0 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto"
           >
             {renderSlide(slide)}
           </motion.div>

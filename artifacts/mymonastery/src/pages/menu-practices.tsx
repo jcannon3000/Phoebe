@@ -22,7 +22,10 @@ export default function MenuPracticesPage() {
       backHref="/menu"
       groups={[{
         items: [
-          // Contemplation leads the list.
+          // Daily Offices leads the list — also reachable from the BCP page
+          // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
+          { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/offices") },
+          // Contemplation leads the rest of the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
           { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
           // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no

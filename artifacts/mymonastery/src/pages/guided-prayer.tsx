@@ -17,6 +17,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 
 // ── Simple Guided Prayer (PACT) ─────────────────────────────────────────────
 // A four-movement outline — Praise, Confession, Thanksgiving, Supplication —
@@ -179,21 +180,35 @@ export default function GuidedPrayerPage() {
     return followed.find((r) => !r.isReadToday()) ?? null;
   })();
 
+  // The reader's own private prayer list, tacked on at the very end — the
+  // same way the community intercessions fold into the BCP office. Skipped
+  // for the Examen: this page doubles as the Examen when the side's actual
+  // configured level is "examen" (relabeled "Simple Guided Prayer" here),
+  // and the Examen shouldn't pick up an unrelated tail practice.
+  const activeIntentions = useActivePrayerIntentions();
+  const showPrayerList = getSideLevel(side) !== "examen" && activeIntentions.length > 0;
+
   const isIntro = step === 0;
   const isClosing = step === MOVEMENTS.length + 1;
-  const isWhatsNext = step === MOVEMENTS.length + 2;
-  const movement = !isIntro && !isClosing && !isWhatsNext ? MOVEMENTS[step - 1] : null;
+  const whatsNextStep = MOVEMENTS.length + 2;
+  const prayerListStep = whatsNext ? whatsNextStep + 1 : whatsNextStep;
+  const isWhatsNext = whatsNext != null && step === whatsNextStep;
+  const isPrayerList = showPrayerList && step === prayerListStep;
+  const movement = !isIntro && !isClosing && !isWhatsNext && !isPrayerList ? MOVEMENTS[step - 1] : null;
 
   const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
+  const hasTail = whatsNext != null || showPrayerList;
   // One primary action per slide, in the office's bottom control band.
   const primary = isIntro
     ? { label: t("guided_prayer.begin"), onClick: () => setStep(1) }
     : isClosing
-      ? (whatsNext
-          ? { label: t("guided_prayer.whats_next", { defaultValue: "What's next" }), onClick: () => setStep((s) => (s + 1) as typeof step) }
+      ? (hasTail
+          ? { label: whatsNext ? t("guided_prayer.whats_next", { defaultValue: "What's next" }) : t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
           : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
       : isWhatsNext
         ? { label: t("guided_prayer.read_it", { defaultValue: "Read it" }), onClick: () => { if (whatsNext) openExternalThenMarkRead(whatsNext.url, whatsNext.markRead, { reader: true }); } }
+      : isPrayerList
+        ? { label: t("common.done"), onClick: () => setLocation("/dashboard") }
       : { label: isLastMovement ? t("guided_prayer.amen") : t("guided_prayer.continue"), onClick: () => setStep((s) => s + 1) };
 
   return (
@@ -372,11 +387,52 @@ export default function GuidedPrayerPage() {
               />
               <button
                 type="button"
-                onClick={() => setLocation("/dashboard")}
+                onClick={() => (showPrayerList ? setStep((s) => (s + 1) as typeof step) : setLocation("/dashboard"))}
                 className="mt-7 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "var(--oh-cta, #2D5E3F)", color: WARM, cursor: "pointer", fontFamily: FONT }}
               >
-                {t("guided_prayer.back_home", { defaultValue: "Back to home" })}
+                {showPrayerList ? t("guided_prayer.continue") : t("guided_prayer.back_home", { defaultValue: "Back to home" })}
+              </button>
+            </motion.div>
+          )}
+          {isPrayerList && (
+            <motion.div
+              key="prayer-list"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="w-full flex flex-col items-center"
+              style={{ maxWidth: 480, textAlign: "center" }}
+            >
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+                {t("guided_prayer.prayer_list_eyebrow", { defaultValue: "Your Prayer List" })}
+              </p>
+              <div className="w-full flex flex-col gap-2.5" style={{ maxHeight: "42dvh", overflowY: "auto" }}>
+                {activeIntentions.map((it, i) => (
+                  <div
+                    key={i}
+                    className="text-left"
+                    style={{ padding: "13px 16px", borderRadius: 14, border: `1px solid ${ACCENT}`, background: "rgba(9,26,16,0.32)" }}
+                  >
+                    <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: WARM, margin: 0 }}>
+                      {it.headline}
+                    </p>
+                    {it.subline && (
+                      <p style={{ fontFamily: FONT, fontSize: 12.5, color: EYEBROW, margin: "3px 0 0" }}>
+                        {it.subline}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocation("/intentions")}
+                className="mt-5 text-xs"
+                style={{ background: "none", border: "none", color: EYEBROW, cursor: "pointer", fontFamily: FONT }}
+              >
+                {t("guided_prayer.add_to_list", { defaultValue: "Add to your list" })}
               </button>
             </motion.div>
           )}

@@ -3754,7 +3754,7 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS prayers_for CASCADE`);
     await run(client, `DROP TABLE IF EXISTS daily_prayers CASCADE`);
     await run(client, `DROP TABLE IF EXISTS prayer_attentions CASCADE`);
-    await run(client, `DROP TABLE IF EXISTS prayer_intentions CASCADE`);
+    // prayer_intentions restored 2026-07-29 — private prayer list feature un-deleted.
     await run(client, `DROP TABLE IF EXISTS fellow_invites CASCADE`);
     await run(client, `DROP TABLE IF EXISTS fellow_encouragements CASCADE`);
     await run(client, `DROP TABLE IF EXISTS fellow_link_invites CASCADE`);
@@ -3819,6 +3819,12 @@ export async function migrate() {
     await run(client, `DROP TABLE IF EXISTS fellow_plans CASCADE`);
     await run(client, `DROP TABLE IF EXISTS fellow_prefs CASCADE`);
     await run(client, `DROP TABLE IF EXISTS fellows CASCADE`);
+
+    // ── Gathering invitees/calendar-invites removed — a gathering is now a
+    //    posted announcement, not something with an attendee list or RSVP.
+    await run(client, `ALTER TABLE rituals DROP COLUMN IF EXISTS participants`);
+    await run(client, `ALTER TABLE rituals DROP COLUMN IF EXISTS allow_member_invites`);
+    await run(client, `ALTER TABLE meetups DROP COLUMN IF EXISTS google_calendar_event_id`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

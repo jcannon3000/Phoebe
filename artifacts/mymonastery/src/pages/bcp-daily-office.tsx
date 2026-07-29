@@ -275,6 +275,30 @@ function buildConfessionInvitationSlide(mode: "morning" | "evening"): Slide {
   };
 }
 
+// A quiet listing of the reader's own private prayer list, spliced in right
+// before the contemplative pause (see the splice effect below). Not an
+// editor — the dedicated /intentions page stays the only place to add/edit;
+// this just names them as things to hold in prayer during the office.
+function buildPrayerIntentionsSlide(
+  mode: "morning" | "evening" | string,
+  items: Array<{ headline: string; subline: string }>,
+): Slide {
+  return {
+    id: "prayer-intentions",
+    type: "prayer_intentions",
+    emoji: "🕊️",
+    eyebrow: "Your Prayer List",
+    title: null,
+    content: "",
+    isCallAndResponse: false,
+    callAndResponseLines: [],
+    bcpReference: null,
+    isScrollable: true,
+    scrollHint: null,
+    metadata: { side: mode, intentions: items },
+  };
+}
+
 // A contemplative pause offered in the Prayers, where the community
 // intercessions would otherwise hand off, for accounts without the
 // prayer-request feature. The slide itself is a chooser (breathe / silence);
@@ -522,6 +546,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // off this; otherwise the historical exit path is unchanged for
   // beta + community users.
   const { user: viewerUser } = useAuth();
+  // A real signed-up account (not a guest / anonymous device session) — gates
+  // the private prayer-list slide below. Mirrors menu.tsx's signedUp check.
+  const signedUp = !!viewerUser && !viewerUser.isAnonymous;
   const { isPilot } = usePilotMode();
   // PUBLIC no-login version — HARD REQUIREMENT: the office must NEVER enter
   // the community intercession slideshow in guest mode. Guests get the same
@@ -638,6 +665,46 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const isFullOffice =
     resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline";
   const communal = display.prayingMode === "communal" && isFullOffice;
+  // The reader's own private prayer list (see prayer_intentions / /intentions)
+  // — only fetched for a real signed-up account, and only feeds the splice
+  // effect below (never blocks or re-fetches the office deck itself).
+  const { data: intentionsData } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
+    enabled: signedUp,
+    staleTime: 60_000,
+  });
+  const activeIntentions = useMemo(
+    () => (intentionsData?.intentions ?? [])
+      .filter((it) => !it.answered)
+      .map((it) => ({
+        headline: it.kind === "person" ? (it.personName || "Someone") : (it.body || ""),
+        subline: it.kind === "person" ? it.body : "",
+      }))
+      .filter((it) => it.headline),
+    [intentionsData],
+  );
+  // Splice the private prayer-list slide in once the reader's intentions have
+  // loaded — the same seat the contemplative pause holds (right before it, so
+  // it sits with the rest of the Prayers), and remove it again if the list
+  // empties out (last item answered/deleted mid-office). Reactive rather than
+  // built into the initial fetch because /api/prayer-intentions resolves
+  // after the office deck itself.
+  useEffect(() => {
+    setSlides((prev) => {
+      const piIdx = prev.findIndex((s) => s.type === "prayer_intentions");
+      const anchorIdx = prev.findIndex((s) => s.type === "contemplative_pause" || s.type === "general_thanksgiving");
+      if (activeIntentions.length > 0 && piIdx < 0 && anchorIdx > 0) {
+        setSlideIdx((cur) => (cur >= anchorIdx ? cur + 1 : cur));
+        return [...prev.slice(0, anchorIdx), buildPrayerIntentionsSlide(resolvedMode, activeIntentions), ...prev.slice(anchorIdx)];
+      }
+      if (activeIntentions.length === 0 && piIdx >= 0) {
+        setSlideIdx((cur) => (cur > piIdx ? cur - 1 : cur));
+        return prev.filter((s) => s.type !== "prayer_intentions");
+      }
+      return prev;
+    });
+  }, [activeIntentions, resolvedMode]);
   // The salutation ("The Lord be with you") is an MP/EP exchange — Compline
   // has no such dialogue, so it gets the rubric labels but no extra slide.
   const canSalute = resolvedMode === "morning" || resolvedMode === "evening";
@@ -2090,6 +2157,48 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 </button>
               </div>
               )}
+            </div>
+          ) : currentSlide.type === "prayer_intentions" ? (
+            // A quiet listing of the reader's own private prayer list, spliced
+            // in right where the community intercessions would otherwise hand
+            // off — the same seat, just for the things this one reader is
+            // holding. Not an editor; /intentions stays the only place to
+            // add/edit/answer.
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", textAlign: "center", gap: 18, padding: "0 8px" }}>
+              <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0 }}>
+                {currentSlide.eyebrow}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 420, maxHeight: "44dvh", overflowY: "auto" }}>
+                {((currentSlide.metadata as { intentions?: Array<{ headline: string; subline: string }> } | undefined)?.intentions ?? []).map((it, i) => (
+                  <div
+                    key={i}
+                    style={{ padding: "14px 18px", borderRadius: 16, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.22)", background: "rgba(var(--ot-green, 46,107,64),0.08)", textAlign: "left" }}
+                  >
+                    <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 17, lineHeight: 1.4, color: "var(--oh-ink2, #E8E4D8)", margin: 0 }}>
+                      {it.headline}
+                    </p>
+                    {it.subline && (
+                      <p style={{ fontFamily: SPACE_GROTESK, fontSize: 13, color: FAINT_GREEN, margin: "4px 0 0" }}>
+                        {it.subline}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={next}
+                style={{ padding: "13px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+              >
+                Continue →
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewerLocation("/intentions")}
+                style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 13, cursor: "pointer", padding: 0 }}
+              >
+                Add to your list
+              </button>
             </div>
           ) : currentSlide.type === "contemplative_pause" ? (
             // Contemplative pause — the moment in the Prayers that replaces the

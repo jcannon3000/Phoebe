@@ -316,6 +316,7 @@ const MorningPrayerPage = lazy(() => import("./pages/morning-prayer"));
 const MomentsDashboard = lazy(() => import("./pages/moments-dashboard"));
 const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
 const PrayerListPage = lazy(() => import("./pages/prayer-list"));
+const IntentionsPage = lazy(() => import("./pages/intentions"));
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
 const DailyProgressPage = lazy(() => import("./pages/daily-progress"));
@@ -435,6 +436,18 @@ function PrayerGate({ children }: { children: ReactNode }) {
   // than a blank screen. (fetchMe is also timeout-bounded now — see useAuth.)
   if (isLoading) return <RouteFallback />;
   if (!enabled) return <RedirectTo to="/dashboard" />;
+  return <>{children}</>;
+}
+
+// Renders its child page only for a real signed-up account (not a guest /
+// anonymous device session) — used for account-scoped personal data (the
+// private prayer list) that has nothing to do with the pilot-group gate
+// above. Any signed-up account qualifies, pilot group or not.
+function AccountRequiredGate({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuthForGate();
+  const signedUp = !!user && !user.isAnonymous;
+  if (isLoading) return <RouteFallback />;
+  if (!signedUp) return <RedirectTo to="/onboarding" />;
   return <>{children}</>;
 }
 
@@ -648,7 +661,7 @@ function NotificationTapPrewarm() {
 // messages) to the pilot home. No-op entirely when pilot isn't active.
 const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
-  "/prayer-list", "/pray-request/new",
+  "/prayer-list", "/pray-request/new", "/intentions",
   "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
   "/contemplation", "/cobreathe",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
@@ -936,6 +949,7 @@ function Router() {
       <Route path="/pray-breath" component={PrayBreathPage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
+      <Route path="/intentions">{() => <AccountRequiredGate><IntentionsPage /></AccountRequiredGate>}</Route>
       <Route path="/listening" component={ListeningPage} />
       <Route path="/reading-log" component={ReadingLogPage} />
       <Route path="/podcast-log" component={PodcastLogPage} />

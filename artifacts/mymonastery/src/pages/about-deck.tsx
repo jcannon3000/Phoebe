@@ -28,20 +28,36 @@ const SLIDES: Slide[] = [
     kind: "statement",
     headline: "The same old resistance",
     body: [
-      "The Prophet Daniel met resistance to praying three times a day in his own turbulent time. The causes look different for us, but we face resistance all the same: the pace of modern life, endless distractions, and the fragmentation of our attention. Many people genuinely want to pray. They simply struggle to return to it day after day.",
+      "The Prophet Daniel met resistance to praying three times a day in his own turbulent time. The causes look different for us, but we face resistance all the same: the pace of modern life, crowded schedules, endless distractions, and the fragmentation of our attention. Many people genuinely want to pray. They simply struggle to return to it day after day.",
     ],
   },
-  // 4 — Cultivating a Daily Habit: the customizable routine (Duolingo).
+  // 4 — Social acceleration.
+  {
+    kind: "statement",
+    headline: "More isn't the answer",
+    body: [
+      "Sociologists describe part of this experience as social acceleration: the sense that life is moving faster even as more demands are placed upon us. Churches often respond to spiritual hunger by offering more — another program, another gathering, another evening on the calendar. But for people already living with exhaustion and divided attention, adding more activity can deepen the very conditions that make sustained formation difficult.",
+    ],
+  },
+  // 5 — The reframed question.
+  {
+    kind: "statement",
+    headline: "A different question",
+    body: [
+      "Phoebe begins with a different question: how might the Church help people sustain a daily practice of prayer within the realities of their lives, while giving them something meaningful to gather around when their schedules allow?",
+    ],
+  },
+  // 6 — Cultivating a Daily Habit: the customizable routine (Duolingo).
   {
     kind: "feature-combo",
     label: "Cultivating a Daily Habit",
     headline: "A routine, not a library",
     body: [
-      "The Phoebe app makes it easier to build and sustain a daily rhythm of prayer. Drawing on principles used by habit-forming apps such as Duolingo, it guides each person through a customizable routine rather than presenting prayer as a library of resources to browse.",
+      "Phoebe makes it easier to build and sustain a daily rhythm of prayer. Drawing on principles used by habit-forming apps such as Duolingo, it guides each person through a customizable routine rather than presenting prayer as a library of resources to browse.",
     ],
     mock: "customizer",
   },
-  // 5 — One step at a time, mark it complete: the real home view.
+  // 7 — One step at a time, mark it complete: the real home view.
   {
     kind: "feature-combo",
     label: "",
@@ -51,7 +67,15 @@ const SLIDES: Slide[] = [
     ],
     mock: "dashboard",
   },
-  // 6 — The Way of Love framework.
+  // 8 — Prayer moves into the ordinary spaces of the day.
+  {
+    kind: "statement",
+    headline: "Not another event",
+    body: [
+      "Rather than asking people to attend another event or work through another curriculum, Phoebe carries prayer into the ordinary spaces of daily life: the morning commute, a lunch break, or the quiet before bed. It does not remove the pressures of modern life, but it helps people establish a steady practice in the midst of them.",
+    ],
+  },
+  // 9 — The Way of Love framework.
   {
     kind: "feature-combo",
     label: "",
@@ -61,7 +85,7 @@ const SLIDES: Slide[] = [
     ],
     mock: "prayer-rhythm",
   },
-  // 7 — The app carries part of the process; communities carry the rest.
+  // 10 — The app carries part of the process; communities carry the rest.
   {
     kind: "statement",
     headline: "Carried day to day",
@@ -69,7 +93,7 @@ const SLIDES: Slide[] = [
       "The app carries part of that process. It helps hold the intention to pray from one day to the next. Across the history of the Church, communities have also helped sustain people in their walk with God.",
     ],
   },
-  // 8 — Walking Together: the rabbinic yoke.
+  // 11 — Walking Together: the rabbinic yoke.
   {
     kind: "statement",
     headline: "Walking Together",
@@ -77,25 +101,25 @@ const SLIDES: Slide[] = [
       "When Jesus invited his disciples to take up his yoke, he was drawing on the rabbinic practice of apprenticeship: learning a way of life by walking alongside a teacher.",
     ],
   },
-  // 9 — A leader's shared rhythm, ready to take up.
+  // 12 — A leader's shared rhythm, sustained between gatherings.
   {
     kind: "feature-combo",
     label: "",
     headline: "A shared rhythm",
     body: [
-      "Phoebe gives churches a way to recover that pattern. Clergy and lay leaders can invite people into a shared rhythm of prayer that continues throughout the week, each person practicing within the realities of their own life while knowing that others are moving in the same direction.",
+      "Phoebe gives churches a way to sustain that process within the conditions of modern life. In the past, formation was often held by everyone gathering at the same time each week. But work, family, school, and shifting schedules now make that rhythm harder to maintain. Phoebe allows the process to continue between gatherings, with each person practicing within the realities of their own life while knowing that others are moving in the same direction.",
     ],
     mock: "leader-rule",
   },
-  // 10 — Not a social network.
+  // 13 — Not a replacement for in-person community.
   {
     kind: "statement",
-    headline: "Not a social network",
+    headline: "Not a replacement",
     body: [
-      "Phoebe does not attempt to create connection online by becoming a social network for the Church. Instead, it sustains the daily practices people undertake in their own lives, creating a shared context for relationships to grow through in-person gatherings.",
+      "The app does not attempt to replace in-person community or recreate it online. Instead, it holds the shared rhythm while people are apart, so that when they do gather, they are returning to a journey already underway.",
     ],
   },
-  // 11 — Different stages, same direction.
+  // 14 — Different stages, same direction.
   {
     kind: "statement",
     headline: "Moving in the same direction",
@@ -103,17 +127,25 @@ const SLIDES: Slide[] = [
       "Members of a group using Phoebe may be at very different stages. Some may be establishing a regular prayer life for the first time. Others may have prayed the Daily Office for years. What holds them together is not following the same routine or being at the same point, but moving in the same direction — toward becoming more like Jesus.",
     ],
   },
-  // 12 — Gathering, whenever fits.
+  // 15 — Gathering, whenever fits.
   {
     kind: "feature-combo",
     label: "",
     headline: "Gather when it fits",
     body: [
-      "Groups can gather whenever it best fits their context to encourage one another, reflect on what God is doing in their lives, and continue growing together. Each gathering becomes one moment within a longer process of formation. Rather than ending when a retreat, course, or parish event is over, Phoebe carries its intention into the ordinary days that follow.",
+      "Groups can gather whenever it best fits their context to reflect on what God is doing, encourage one another, and deepen relationships. In an age when schedules rarely align for a weekly Bible study or small group, the gathering becomes one moment within a longer process of formation already unfolding throughout the week — not the only thing keeping that process alive.",
     ],
     mock: "gatherings",
   },
-  // 13 — Hebrews 10.
+  // 16 — Carries into the ordinary days that follow.
+  {
+    kind: "statement",
+    headline: "Between the gatherings",
+    body: [
+      "Rather than ending when a retreat, course, or parish event is over, Phoebe carries its intention into the ordinary days that follow. The app supports the daily practice; the gathering gives people an opportunity to reflect on that practice, support one another, and discern where God is leading them.",
+    ],
+  },
+  // 17 — Hebrews 10.
   {
     kind: "statement",
     headline: "Hebrews 10",
@@ -121,7 +153,7 @@ const SLIDES: Slide[] = [
       "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
     ],
   },
-  // 14 — The close: belonging as a byproduct of a shared process.
+  // 18 — The close: belonging as a byproduct of a shared process.
   {
     kind: "statement",
     headline: "The conditions for belonging",

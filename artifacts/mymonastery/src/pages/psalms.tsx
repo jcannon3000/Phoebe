@@ -11,6 +11,7 @@ import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
 import { PointedLine } from "@/components/PointedLine";
+import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 
 // ── /psalms — Praying the Psalms, rendered like the daily office ─────────────
 //
@@ -55,11 +56,14 @@ type Psalm = {
   raw: string;
 };
 
-// A rendered slide: the big psalm title, a chunk of verses, or the doxology.
+// A rendered slide: the big psalm title, a chunk of verses, the doxology, or
+// (tacked on at the end, mirroring how the community intercessions fold into
+// the BCP office) the reader's own private prayer list.
 type PsalmSlide =
   | { kind: "title"; headline: string; bcpRef: string }
   | { kind: "verses"; eyebrow: string; verses: Verse[]; bcpRef: string }
-  | { kind: "gloria"; eyebrow: string };
+  | { kind: "gloria"; eyebrow: string }
+  | { kind: "prayer-list"; items: Array<{ headline: string; subline: string }> };
 
 // A parsed verse: its number + the half-lines (BCP pointing keeps the second
 // half on its own indented line — `indented` drives that visual offset, same
@@ -169,7 +173,15 @@ export default function PsalmsPage() {
   // feature (and its transcription automation), so the psalms page is read-only.
   const [loadingQuote] = useState(() => PSALM_LOADING_QUOTES[Math.floor(Math.random() * PSALM_LOADING_QUOTES.length)]);
 
-  const slides = useMemo(() => buildSlides(data?.psalms ?? []), [data]);
+  // Own private prayer list, tacked on as the final slide — the same seat
+  // the community intercessions would fold into the office. No examen-style
+  // exclusion needed here: Psalms never doubles as another practice.
+  const activeIntentions = useActivePrayerIntentions();
+  const slides = useMemo(() => {
+    const base = buildSlides(data?.psalms ?? []);
+    if (base.length === 0 || activeIntentions.length === 0) return base;
+    return [...base, { kind: "prayer-list" as const, items: activeIntentions }];
+  }, [data, activeIntentions]);
   const total = slides.length;
   const [index, setIndex] = useState(0);
   // Finishing hands off to a DIFFERENT page (/prayer-mode's closing slide, or
@@ -493,6 +505,27 @@ export default function PsalmsPage() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 18, maxWidth: 560, margin: "0 auto" }}>
             <p style={{ color: FAINT_GREEN, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Doxology</p>
             <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 22, lineHeight: 1.6, margin: 0 }}>{GLORIA_PATRI}</p>
+          </div>
+        )}
+
+        {slide?.kind === "prayer-list" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 18, maxWidth: 480, margin: "0 auto" }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>Your Prayer List</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxHeight: "44dvh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              {slide.items.map((it, i) => (
+                <div key={i} style={{ padding: "14px 18px", borderRadius: 16, border: "1px solid rgba(var(--ot-fern, 168,197,160),0.22)", background: "rgba(var(--ot-card, 22,46,32),0.35)", textAlign: "left" }}>
+                  <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 17, lineHeight: 1.4, color: WARM, margin: 0 }}>{it.headline}</p>
+                  {it.subline && <p style={{ fontFamily: FONT, fontSize: 12.5, color: FAINT_GREEN, margin: "4px 0 0" }}>{it.subline}</p>}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setLocation("/intentions"); }}
+              style={{ background: "none", border: "none", color: FAINT_GREEN, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
+            >
+              Add to your list
+            </button>
           </div>
         )}
         </div>

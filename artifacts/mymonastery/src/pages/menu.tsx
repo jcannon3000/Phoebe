@@ -30,6 +30,7 @@ export default function MenuPage() {
   // beta-gated rows are already off since guests aren't beta).
   const { isGuest } = useGuestMode();
   const officesOnly = user?.accessTier === "offices-only";
+  const signedUp = !!user && !user.isAnonymous;
 
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -75,9 +76,10 @@ export default function MenuPage() {
       { emoji: "📖", label: t("menu.bcp"), sub: t("menu.bcp_sub"), onClick: () => go("/menu/bcp") },
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
-      // (The personal "prayer list" now lives inside the community Prayer list
-      // page — reachable via Community → Prayer list — and the Add-prayer
-      // composer's "Keep on my list" option; no separate menu entry.)
+      // Prayer List — a private list of who & what you're holding in prayer,
+      // prayed through in a quiet slideshow; optionally shareable to a
+      // community / circle. Account-scoped data, so hidden for guests.
+      ...(signedUp ? [{ emoji: "🕊️", label: t("menu.prayer_list", { defaultValue: "Prayer List" }), sub: t("menu.prayer_list_sub", { defaultValue: "Your own list of who & what you're praying for" }), onClick: () => go("/intentions") }] : []),
     ],
   });
 
@@ -115,7 +117,6 @@ export default function MenuPage() {
   // Settings is only for people who've actually made an account — not the
   // no-login guest or the anonymous device user. (There's nothing to configure
   // until you sign up; the rhythm lives in Customize, reachable above.)
-  const signedUp = !!user && !user.isAnonymous;
   const account: MenuHubGroup = {
     header: t("menu.hdr_account"),
     items: signedUp
