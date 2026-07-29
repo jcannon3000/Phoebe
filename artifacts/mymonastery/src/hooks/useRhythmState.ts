@@ -441,7 +441,15 @@ export function useRhythmState(): RhythmState {
   // community prayer requests are off for everyone, no exceptions). Gating
   // the private list on that flag was stale and blocked the restored
   // feature entirely.
-  const prayerListActive = homeCardActive(hl, "prayer-list");
+  //
+  // homeCardActive() requires the key to already be IN the saved order —
+  // fine for practices that existed when a user first customized, but every
+  // existing account's saved layout predates this feature (the card never
+  // worked, so nobody would have added it) and simply doesn't list
+  // "prayer-list" at all. Rather than defaulting a brand-new capability to
+  // invisible for every current user, treat it as active unless explicitly
+  // hidden — the customizer can still turn it off from here.
+  const prayerListActive = !(new Set(hl?.hidden ?? []).has("prayer-list"));
   const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
