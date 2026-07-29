@@ -215,19 +215,15 @@ export default function IntentionsPage() {
                     <div className="flex items-start gap-3">
                       <span aria-hidden className="text-base flex-shrink-0 mt-0.5">🙏</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-                          {it.shared
-                            ? t("intentions.shared_label", { defaultValue: "Shared with community" })
-                            : bcp
-                              ? t("intentions.bcp_label", { defaultValue: "Book of Common Prayer" })
-                              : t("intentions.private_label", { defaultValue: "Private to you" })}
-                        </p>
+                        {bcp && (
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+                            {t("intentions.bcp_label", { defaultValue: "Book of Common Prayer" })}
+                          </p>
+                        )}
                         <p className="text-sm leading-snug" style={{ color: "#F0EDE6", fontFamily: FONT, wordBreak: "break-word" }}>{headline(it)}</p>
                         {subline(it) && <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", fontFamily: FONT, wordBreak: "break-word" }}>{subline(it)}</p>}
                         <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
-                          {it.shared
-                            ? `✓ ${t("intentions.shared", { defaultValue: "Shared — others are praying along" })}`
-                            : daysOnList(it.createdAt)}
+                          {daysOnList(it.createdAt)}
                         </p>
                       </div>
                     </div>

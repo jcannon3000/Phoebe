@@ -2433,15 +2433,38 @@ function PrayerListHomeCard() {
   );
 }
 
+type DashIntention = { id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean };
+
 // ── Prayer List section — its own section on the home screen, never part of
 // the Next/Done routine (the intentions themselves are already woven into
 // the offices as slides — this is just the private-list surface). Empty →
 // a single "Start prayer list" invite; non-empty → one card per intention,
-// each opening the private pray-through slideshow for the whole list.
+// each with a "Pray" CTA pill (opens the private pray-through for the whole
+// list) plus its own Edit/Delete buttons underneath — same as /intentions,
+// just surfaced on the home screen too.
 function PrayerListSection() {
   const [, setLocation] = useLocation();
-  const intentions = useActivePrayerIntentions();
+  const qc = useQueryClient();
+  const { data } = useQuery<{ intentions: DashIntention[] }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions") as Promise<{ intentions: DashIntention[] }>,
+  });
+  const intentions = (data?.intentions ?? []).filter((i) => !i.answered);
   const hasIntentions = intentions.length > 0;
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
+  const patchMut = useMutation({
+    mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) => apiRequest("PATCH", `/api/prayer-intentions/${id}`, body),
+    onSuccess: invalidate,
+  });
+  const delMut = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/prayer-intentions/${id}`),
+    onSuccess: invalidate,
+  });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const headline = (it: DashIntention) => (it.kind === "person" ? (it.personName || "Someone") : (it.body || ""));
+  const subline = (it: DashIntention) => (it.kind === "person" ? it.body : "");
+
   return (
     <div className="mt-5">
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -2468,32 +2491,83 @@ function PrayerListSection() {
         </div>
       ) : (
       <div className="flex flex-col gap-2">
-        {intentions.map((it, i) => (
+        {intentions.map((it) => (
           <div
-            key={i}
-            role="button"
-            tabIndex={0}
-            onClick={() => setLocation("/intentions?pray=1")}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation("/intentions?pray=1"); }}
-            className="relative flex rounded-xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
+            key={it.id}
+            className="relative flex rounded-xl overflow-hidden"
             style={{ background: "rgba(22,46,32,0.33)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(200,212,192,0.25)" }}
           >
             <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
             <div className="flex-1 px-4 py-3 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Private to you
-              </p>
-              <p className="text-sm leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
-                {it.headline}
-              </p>
-              {it.subline && (
-                <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
-                  {it.subline}
-                </p>
+              {editingId === it.id ? (
+                <div>
+                  <textarea
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    rows={2}
+                    className="w-full rounded-lg px-3 py-2 text-[14px] outline-none resize-none"
+                    style={{ background: "rgba(0,0,0,0.25)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", border: "1px solid rgba(96,140,180,0.3)" }}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" onClick={() => { patchMut.mutate({ id: it.id, body: editBody }); setEditingId(null); }}
+                      className="text-[12px] font-semibold px-4 py-1.5 rounded-full" style={{ background: "rgba(96,140,180,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      Save
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)}
+                      className="text-[12px] px-4 py-1.5 rounded-full" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", border: "1px solid rgba(143,175,150,0.3)" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
+                        {headline(it)}
+                      </p>
+                      {subline(it) && (
+                        <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
+                          {subline(it)}
+                        </p>
+                      )}
+                    </div>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setLocation("/intentions?pray=1")}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation("/intentions?pray=1"); }}
+                      className="rounded-full text-center shrink-0 cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.97]"
+                      style={{ background: "rgba(96,140,180,0.28)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(96,140,180,0.45)", whiteSpace: "nowrap" }}
+                    >
+                      Pray <span aria-hidden>→</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                    <button type="button" onClick={() => { setEditingId(it.id); setEditBody(it.body); }}
+                      className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-opacity active:scale-[0.97]"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <span aria-hidden style={{ marginRight: 4 }}>✎</span>Edit
+                    </button>
+                    <button type="button" onClick={() => delMut.mutate(it.id)}
+                      className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-opacity active:scale-[0.97]"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <span aria-hidden style={{ marginRight: 4 }}>🗑</span>Delete
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
         ))}
+        <button
+          type="button"
+          onClick={() => setLocation("/intentions")}
+          className="text-[13px] font-medium py-2 text-center transition-opacity active:scale-[0.98]"
+          style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          + Add to your list
+        </button>
       </div>
       )}
     </div>
