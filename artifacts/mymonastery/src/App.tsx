@@ -711,6 +711,10 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
   "/psalms", "/contemplation", "/examen", "/guided-prayer", "/reflect/fdd", "/customize",
+  // The Morning/Evening Prayer + Compline picker — reached from the new
+  // "Daily Offices" row in Practices (a guest-visible menu), so the target
+  // must be guest-allowed too or the tap just bounces back to the dashboard.
+  "/offices",
   // Every one of these is reachable from a home card or menu row the light
   // tier already SEES, so bouncing the tap to the dashboard was a dead end.
   // (This gate is not guests-only: useGuestMode is true for any signed-in
