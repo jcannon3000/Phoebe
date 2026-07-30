@@ -87,7 +87,21 @@ export function NotificationReminderBanner() {
     setShow(permission === "denied" || permission === "prompt");
   }, [permission]);
 
+  // Once the OS/browser has already denied notifications, NO API (ours or
+  // the browser's) can re-open that native dialog — Notification.
+  // requestPermission() just silently resolves back to "denied" with no
+  // prompt at all, and the same is true of the native Capacitor bridge.
+  // Before this the banner showed the same "Turn on" button either way, so
+  // a previously-declined user saw a button that appeared to do nothing.
+  // Once we're in that state, stop trying the API and show the manual path
+  // instead (Settings → Notifications).
+  const [showSettingsHint, setShowSettingsHint] = useState(false);
+
   async function handleEnable() {
+    if (permission === "denied") {
+      setShowSettingsHint((v) => !v);
+      return;
+    }
     setWorking(true);
     try {
       if (isNativeShell()) {
@@ -159,7 +173,11 @@ export function NotificationReminderBanner() {
           className="text-[12px] mt-0.5 leading-snug"
           style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          {t("notif_reminder.body", { defaultValue: "Remember to turn notifications on to build a daily habit." })}
+          {permission === "denied" && showSettingsHint
+            ? t("notif_reminder.settings_hint", { defaultValue: isNativeShell() ? "Open Settings → Notifications → Phoebe, and turn Allow Notifications on." : "Notifications were turned off in your browser. Open your browser's site settings for this page and allow notifications." })
+            : permission === "denied"
+              ? t("notif_reminder.denied_body", { defaultValue: "Notifications are off — this has to be turned back on outside the app." })
+              : t("notif_reminder.body", { defaultValue: "Remember to turn notifications on to build a daily habit." })}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1.5 shrink-0 self-center">
@@ -177,7 +195,11 @@ export function NotificationReminderBanner() {
             opacity: working ? 0.6 : 1,
           }}
         >
-          {working ? t("notif_reminder.enabling", { defaultValue: "Turning on…" }) : t("notif_reminder.enable", { defaultValue: "Turn on" })}
+          {working
+            ? t("notif_reminder.enabling", { defaultValue: "Turning on…" })
+            : permission === "denied"
+              ? t("notif_reminder.how", { defaultValue: "How?" })
+              : t("notif_reminder.enable", { defaultValue: "Turn on" })}
         </button>
         <button
           type="button"
