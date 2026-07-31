@@ -663,7 +663,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/pray-request/new", "/intentions",
   "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
-  "/contemplation", "/cobreathe",
+  "/contemplation", "/cobreathe", "/offices",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",

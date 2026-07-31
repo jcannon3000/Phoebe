@@ -731,11 +731,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // Splice the "before you go" prompt composer in right after the
   // contemplative pause (or, if that's absent, right before the General
   // Thanksgiving) — signed-up accounts only, unconditional on already having
-  // intentions, since its point is inviting a NEW one.
+  // intentions, since its point is inviting a NEW one. Also removes it if
+  // the flag/signed-up state flips off mid-office — this is currently a
+  // static, app-wide flag, but the flag's own doc comment anticipates it
+  // becoming per-account, so the effect needs to react both ways, not just
+  // insert-once.
   useEffect(() => {
-    if (!signedUp || !prayerListEnabled) return;
     setSlides((prev) => {
       const ppIdx = prev.findIndex((s) => s.type === "prayer_prompts");
+      if (!signedUp || !prayerListEnabled) {
+        if (ppIdx < 0) return prev;
+        setSlideIdx((cur) => (cur > ppIdx ? cur - 1 : cur));
+        return prev.filter((s) => s.type !== "prayer_prompts");
+      }
       if (ppIdx >= 0) return prev;
       const pauseIdx = prev.findIndex((s) => s.type === "contemplative_pause");
       const gtIdx = prev.findIndex((s) => s.type === "general_thanksgiving");
@@ -744,7 +752,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       setSlideIdx((cur) => (cur >= anchorIdx ? cur + 1 : cur));
       return [...prev.slice(0, anchorIdx), buildPrayerPromptsSlide(), ...prev.slice(anchorIdx)];
     });
-  }, [signedUp]);
+  }, [signedUp, prayerListEnabled]);
   // The salutation ("The Lord be with you") is an MP/EP exchange — Compline
   // has no such dialogue, so it gets the rubric labels but no extra slide.
   const canSalute = resolvedMode === "morning" || resolvedMode === "evening";
