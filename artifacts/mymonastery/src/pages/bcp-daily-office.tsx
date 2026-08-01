@@ -2282,12 +2282,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       intercessions used to close on ("bring anything else on
                       your heart to prayer"), before the hand-off into
                       /prayer-mode was cut — the intercession FEATURE stays
-                      off, just this framing on the still-live chooser below. */}
+                      off, just this framing on the still-live chooser below.
+                      "Else"/"haven't named" only reads right when a named
+                      prayer_intentions slide actually preceded this one —
+                      otherwise (prayer list off, or empty) there's nothing
+                      prior to be "else" than, so the copy drops that frame. */}
                   <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
-                    Take a breath. Bring anything else on your heart to prayer.
+                    {slides.some((s) => s.type === "prayer_intentions")
+                      ? "Take a breath. Bring anything else on your heart to prayer."
+                      : "Take a breath. Bring what's on your heart to prayer."}
                   </p>
                   <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, lineHeight: 1.6, color: FAINT_GREEN, maxWidth: 400, margin: 0 }}>
-                    Someone you haven't named, a worry that surfaced this morning, the world that needs holding.
+                    {slides.some((s) => s.type === "prayer_intentions")
+                      ? "Someone you haven't named, a worry that surfaced this morning, the world that needs holding."
+                      : "Someone you carry, a worry that surfaced this morning, the world that needs holding."}
                   </p>
                   <button
                     type="button"
