@@ -8,14 +8,49 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Play } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
+import { useCacCourses, courseCompletion, type CacCourse } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useCacDailyReflection } from "@/lib/cacDailyReflection";
 import { hasReadCacToday, CAC_READ_EVENT } from "@/lib/cacReadState";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { CAC, CacFrame, CacBetaPill, useCacLeafBg } from "@/lib/cacTheme";
+
+// Matches HomeLearnSection.tsx's "Continue" row (the real home screen's own
+// in-progress-course card) — same frosted card, eyebrow, title, circular
+// play button, and progress bar, just pointed at a CAC season instead of a
+// YouTube course.
+const WARM = "#F0EDE6";
+const SAGE = "#8FAF96";
+function ContinueCourseRow({ course, completedCount, total, nextTitle }: { course: CacCourse; completedCount: number; total: number; nextTitle: string | null }) {
+  const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+  return (
+    <Link
+      href={`/cac-course/${course.id}`}
+      className="block w-full rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
+      style={{ background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", ...FROST }}
+    >
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10.5px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)", fontFamily: CAC.label }}>
+            Continue · {course.showTitle}
+          </p>
+          <p className="mt-0.5 truncate text-[15px] font-semibold" style={{ color: WARM, fontFamily: CAC.label }}>
+            {nextTitle ?? course.title}
+          </p>
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: "#2D5E3F" }}>
+          <Play size={16} style={{ marginLeft: 2, color: WARM }} />
+        </div>
+      </div>
+      <div className="mt-3 h-1 overflow-hidden rounded-full" style={{ background: "rgba(200,212,192,0.12)" }}>
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#2D5E3F,#5FBF7F)" }} />
+      </div>
+      <p className="mt-1 text-[11px]" style={{ color: SAGE }}>{completedCount} of {total}</p>
+    </Link>
+  );
+}
 
 const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
@@ -85,6 +120,17 @@ export default function CacHomePage() {
   }, []);
 
   const courses = coursesData?.courses ?? [];
+  // Up to 3 in-progress seasons, most-recently-touched first — the same
+  // "Continue" treatment HomeLearnSection.tsx gives the video courses on
+  // the real home screen.
+  const continueCourses = useMemo(() => {
+    return courses
+      .map((c) => ({ course: c, ...courseCompletion(c) }))
+      .filter((c) => c.isStarted && !c.isDone)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 3);
+  }, [courses]);
+
   // Shows with a started (but not necessarily finished) season float to the
   // top — "pick up where you left off" beats browsing from scratch.
   const shows = useMemo(() => {
@@ -147,9 +193,24 @@ export default function CacHomePage() {
             read={reflectionRead}
           />
 
-          {/* Courses */}
+          {/* Continue — up to 3 in-progress seasons, most-recent first. */}
+          {continueCourses.length > 0 && (
+            <div className="mb-8">
+              <div className="mb-2 flex items-center gap-3">
+                <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: CAC.label }}>Courses</h3>
+                <div className="h-px flex-1" style={{ background: "rgba(200,212,192,0.15)" }} />
+              </div>
+              <div className="space-y-2">
+                {continueCourses.map(({ course, completedCount, total, nextTitle }) => (
+                  <ContinueCourseRow key={course.id} course={course} completedCount={completedCount} total={total} nextTitle={nextTitle} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Browse all shows */}
           <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: CAC.label }}>
-            Courses
+            Browse Shows
           </p>
 
           {coursesLoading && (

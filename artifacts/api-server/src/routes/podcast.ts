@@ -973,7 +973,11 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
     const show = SHOWS[slug];
     if (!show) continue;
     const feed = await loadFeed(show, 400);
-    const artwork = feed.feedImage ?? show.artwork ?? null;
+    // Prefer the curated SHOWS registry artwork over the feed's own channel
+    // image — most CAC shows' feeds match it anyway, but "Love Period"'s
+    // Podbean feed serves a different (non-branded) channel logo that broke
+    // the otherwise-consistent CAC cover look across the course grid.
+    const artwork = show.artwork ?? feed.feedImage ?? null;
     // Some feeds tag every real episode with a season but leave trailers /
     // bonus one-offs untagged — grouping those under a fabricated "Season 1"
     // would invent a season that never existed (e.g. a show whose real

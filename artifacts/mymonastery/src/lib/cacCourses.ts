@@ -56,10 +56,20 @@ export function formatDuration(seconds: number | null | undefined): string {
 
 /** A course's completion state, read synchronously (no hook) so the list page
  *  can sort every card in one pass without calling useCourseProgress per row
- *  (hooks can't run in a loop). */
-export function courseCompletion(course: CacCourse): { completedCount: number; total: number; isDone: boolean; isStarted: boolean } {
+ *  (hooks can't run in a loop). `nextTitle` and `updatedAt` support a
+ *  "Continue" row like HomeLearnSection's — the next un-listened episode's
+ *  title, and when progress was last touched (for sorting most-recent-first). */
+export function courseCompletion(course: CacCourse): { completedCount: number; total: number; isDone: boolean; isStarted: boolean; nextTitle: string | null; updatedAt: number } {
   const progress = snapshotProgress(course.id);
   const total = course.episodes.length;
   const completedCount = course.episodes.filter((ep) => progress.completed.includes(ep.id)).length;
-  return { completedCount, total, isDone: total > 0 && completedCount === total, isStarted: !!progress.started };
+  const nextEpisode = course.episodes.find((ep) => !progress.completed.includes(ep.id));
+  return {
+    completedCount,
+    total,
+    isDone: total > 0 && completedCount === total,
+    isStarted: !!progress.started,
+    nextTitle: nextEpisode?.title ?? null,
+    updatedAt: progress.updatedAt ?? 0,
+  };
 }
