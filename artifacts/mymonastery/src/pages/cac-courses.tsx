@@ -77,7 +77,7 @@ export default function CacCoursesPage() {
               <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading the library…</p>
             )}
             {!isLoading && shows.length === 0 && (
-              <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.paperCard, border: `1px solid ${CAC.border}` }}>
+              <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
                 <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                   We couldn't load the CAC library just now. Try again shortly.
                 </p>
@@ -97,7 +97,7 @@ export default function CacCoursesPage() {
                       aspectRatio: "1 / 1",
                       borderRadius: 4,
                       overflow: "hidden",
-                      background: show.artwork ? undefined : CAC.paperCard,
+                      background: show.artwork ? undefined : CAC.card,
                       border: `1px solid ${CAC.border}`,
                       boxShadow: "0 6px 16px rgba(42,36,29,0.10)",
                     }}

@@ -88,10 +88,10 @@ export default function CacCoursePage() {
           {isLoading && !course ? (
             <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading…</p>
           ) : !course ? (
-            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.paperCard, border: `1px solid ${CAC.border}` }}>
+            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that course. Head back to{" "}
-                <Link href="/cac-courses" style={{ color: CAC.rust, textDecoration: "underline" }}>CAC Courses</Link>.
+                <Link href="/cac-courses" style={{ color: CAC.gold, textDecoration: "underline" }}>CAC Courses</Link>.
               </p>
             </div>
           ) : (
@@ -113,7 +113,7 @@ export default function CacCoursePage() {
                     <span>{pct}%</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: CAC.divider }}>
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: CAC.rust }} />
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: CAC.gold }} />
                   </div>
                 </div>
 
@@ -139,14 +139,14 @@ export default function CacCoursePage() {
                     <div
                       key={ep.id}
                       className="flex items-center gap-3 rounded-2xl px-3 py-3"
-                      style={{ background: isUpNext ? "#FBF1E4" : CAC.paperCard, border: `1px solid ${isUpNext ? CAC.rust : CAC.border}` }}
+                      style={{ background: isUpNext ? CAC.cardHi : CAC.card, border: `1px solid ${isUpNext ? CAC.gold : CAC.border}` }}
                     >
                       <button
                         onClick={() => playEpisode(ep)}
                         disabled={!ep.audioUrl}
                         aria-label={playing ? "Pause" : "Play"}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
-                        style={{ background: CAC.rust, color: "#FBF7ED" }}
+                        style={{ background: CAC.ink, color: CAC.bg }}
                       >
                         {playing ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: 2 }} />}
                       </button>
@@ -158,7 +158,7 @@ export default function CacCoursePage() {
                             {ep.title ?? "Untitled episode"}
                           </p>
                           {isUpNext && (
-                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: CAC.rustSoft, color: CAC.rustDark, fontFamily: CAC.label }}>
+                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: CAC.goldSoft, color: CAC.goldDark, fontFamily: CAC.label }}>
                               Up next
                             </span>
                           )}
@@ -176,7 +176,7 @@ export default function CacCoursePage() {
                         className="flex h-10 w-10 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
                       >
                         {done ? (
-                          <CheckCircle2 size={22} style={{ color: CAC.rust }} />
+                          <CheckCircle2 size={22} style={{ color: CAC.gold }} />
                         ) : (
                           <Circle size={22} style={{ color: CAC.border }} />
                         )}

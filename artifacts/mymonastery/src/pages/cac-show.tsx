@@ -48,10 +48,10 @@ export default function CacShowPage() {
           {isLoading && !show ? (
             <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading…</p>
           ) : !show ? (
-            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.paperCard, border: `1px solid ${CAC.border}` }}>
+            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that show. Head back to{" "}
-                <Link href="/cac-courses" style={{ color: CAC.rust, textDecoration: "underline" }}>CAC Courses</Link>.
+                <Link href="/cac-courses" style={{ color: CAC.gold, textDecoration: "underline" }}>CAC Courses</Link>.
               </p>
             </div>
           ) : (
@@ -59,7 +59,7 @@ export default function CacShowPage() {
               <div className="mb-6 flex items-start gap-4">
                 <div
                   className="h-20 w-20 shrink-0 overflow-hidden rounded"
-                  style={{ background: CAC.paperCard, border: `1px solid ${CAC.border}` }}
+                  style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}
                 >
                   {show.artwork && (
                     <img src={show.artwork} alt={show.showTitle} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -89,20 +89,20 @@ export default function CacShowPage() {
                       key={course.id}
                       href={`/cac-course/${course.id}`}
                       className="flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
-                      style={{ background: CAC.paperCard, border: `1px solid ${CAC.border}` }}
+                      style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <p className="truncate text-[15px] font-semibold" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
                             {course.title}
                           </p>
-                          {isDone && <CheckCircle2 size={14} style={{ color: CAC.rust, flexShrink: 0 }} />}
+                          {isDone && <CheckCircle2 size={14} style={{ color: CAC.gold, flexShrink: 0 }} />}
                         </div>
                         <p className="mt-0.5 text-[11.5px]" style={{ color: CAC.inkMuted }}>
                           {total} episode{total === 1 ? "" : "s"}
                         </p>
                         <div className="mt-1.5 h-1 w-full max-w-[220px] overflow-hidden rounded-full" style={{ background: CAC.divider }}>
-                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: CAC.rust }} />
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: CAC.gold }} />
                         </div>
                       </div>
                       <p className="shrink-0 text-[11px]" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
