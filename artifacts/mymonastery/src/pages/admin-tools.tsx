@@ -228,9 +228,9 @@ export default function AdminToolsPage() {
                 />
                 <LinkRow
                   emoji="🌵"
-                  label="CAC Courses (beta)"
-                  description="CAC's shows, grouped by season and played as courses"
-                  onClick={() => setLocation("/cac-courses")}
+                  label="CAC Demo (beta)"
+                  description="Daily meditation + podcast courses — demo home screen"
+                  onClick={() => setLocation("/cac-home")}
                 />
               </>
             )}

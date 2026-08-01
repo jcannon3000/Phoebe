@@ -51,7 +51,7 @@ const FEED_USER_AGENT =
 // serve. Cache stays in-process; a redeploy invalidates it.
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-let cached: { url: string; title: string; fetchedAt: number } | null = null;
+let cached: { url: string; title: string; paragraphs: string[]; fetchedAt: number } | null = null;
 
 // Decode the handful of XML/HTML entities WordPress emits in RSS titles
 // (smart quotes, dashes, ampersands) so the title renders cleanly in the
@@ -80,7 +80,22 @@ function decodeEntities(s: string): string {
 // (b) the WordPress RSS shape is stable. The regex anchors on
 // `<item>` (so we skip the channel-level <link>/<title> at the top,
 // which point at cac.org/) and reads the first <link>/<title> inside.
-function parseFirstItem(xml: string): { url: string; title: string } | null {
+// Turn the feed's <content:encoded> HTML into plain-text paragraphs — no
+// HTML is ever rendered client-side (third-party content, so no
+// dangerouslySetInnerHTML / sanitizer surface to get wrong). Splits on
+// block-level closing tags first so paragraph breaks survive the tag
+// strip, then decodes entities per paragraph.
+function extractParagraphs(html: string): string[] {
+  const blocks = html.split(/<\/(?:p|div|h[1-6]|blockquote|li)>/i);
+  const paragraphs: string[] = [];
+  for (const block of blocks) {
+    const text = decodeEntities(block.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    if (text) paragraphs.push(text);
+  }
+  return paragraphs;
+}
+
+function parseFirstItem(xml: string): { url: string; title: string; paragraphs: string[] } | null {
   const firstItem = xml.match(/<item\b[^>]*>([\s\S]*?)<\/item>/);
   if (!firstItem) return null;
   const block = firstItem[1];
@@ -93,12 +108,14 @@ function parseFirstItem(xml: string): { url: string; title: string } | null {
   if (!/^https?:\/\/(?:www\.)?cac\.org\//i.test(url)) return null;
   const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/);
   const title = titleMatch ? decodeEntities(titleMatch[1]) : "";
-  return { url, title };
+  const contentMatch = block.match(/<content:encoded>\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*<\/content:encoded>/);
+  const paragraphs = contentMatch ? extractParagraphs(contentMatch[1]) : [];
+  return { url, title, paragraphs };
 }
 
-async function resolveToday(): Promise<{ url: string; title: string }> {
+async function resolveToday(): Promise<{ url: string; title: string; paragraphs: string[] }> {
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return { url: cached.url, title: cached.title };
+    return { url: cached.url, title: cached.title, paragraphs: cached.paragraphs };
   }
   // Use AbortController so a slow / hanging RSS fetch doesn't keep
   // the user's tap waiting. 5s is plenty for a healthy WordPress feed
@@ -119,19 +136,19 @@ async function resolveToday(): Promise<{ url: string; title: string }> {
       // Don't poison the cache with the fallback — leave whatever was
       // there (or nothing) so the next request can try again. The
       // fallback is just for THIS response.
-      return { url: FALLBACK_URL, title: "" };
+      return { url: FALLBACK_URL, title: "", paragraphs: [] };
     }
     const xml = await res.text();
     const parsed = parseFirstItem(xml);
     if (!parsed) {
       logger.warn({ bytes: xml.length }, "[cac] could not parse first item");
-      return { url: FALLBACK_URL, title: "" };
+      return { url: FALLBACK_URL, title: "", paragraphs: [] };
     }
     cached = { ...parsed, fetchedAt: Date.now() };
     return parsed;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[cac] feed fetch failed");
-    return { url: FALLBACK_URL, title: "" };
+    return { url: FALLBACK_URL, title: "", paragraphs: [] };
   } finally {
     clearTimeout(timeout);
   }
@@ -164,6 +181,17 @@ router.get("/cac/today-meta", async (_req: Request, res: Response): Promise<void
   const { url, title } = await resolveToday();
   res.setHeader("Cache-Control", "public, max-age=300");
   res.json({ title, url });
+});
+
+// GET /api/cac/today-full → { title, url, paragraphs } — the daily
+// meditation's own text, read in-app instead of linking out. Beta (Admin
+// Tools CAC demo home); paragraphs are plain text only (see
+// extractParagraphs) — never HTML — so the client can render them safely
+// with no sanitizer surface for third-party content to exploit.
+router.get("/cac/today-full", async (_req: Request, res: Response): Promise<void> => {
+  const { url, title, paragraphs } = await resolveToday();
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json({ title, url, paragraphs });
 });
 
 // ── CAC read presence + community journal ──────────────────────────────────

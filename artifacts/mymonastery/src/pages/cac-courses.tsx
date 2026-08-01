@@ -95,15 +95,21 @@ export default function CacCoursesPage() {
                     style={{
                       width: "100%",
                       aspectRatio: "1 / 1",
-                      borderRadius: 4,
+                      borderRadius: 8,
                       overflow: "hidden",
-                      background: show.artwork ? undefined : CAC.card,
+                      padding: 10,
+                      background: CAC.card,
                       border: `1px solid ${CAC.border}`,
                       boxShadow: "0 6px 16px rgba(42,36,29,0.10)",
                     }}
                   >
                     {show.artwork ? (
-                      <img src={show.artwork} alt={show.showTitle} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      <img
+                        src={show.artwork}
+                        alt={show.showTitle}
+                        loading="lazy"
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: 4 }}
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-4xl">🌵</div>
                     )}
