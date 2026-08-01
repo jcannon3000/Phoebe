@@ -110,7 +110,6 @@ export default function CacCoursesPage() {
                       overflow: "hidden",
                       padding: 10,
                       background: CAC.card,
-                      boxShadow: "0 6px 16px rgba(42,36,29,0.10)",
                     }}
                   >
                     {show.artwork ? (

@@ -6,15 +6,63 @@
 // as a pitch/demo surface, not a feature Phoebe ships broadly — hence
 // admin-tools-only rather than the wider isBeta gate the courses pages use.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useCacDailyReflection } from "@/lib/cacDailyReflection";
+import { hasReadCacToday, CAC_READ_EVENT } from "@/lib/cacReadState";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { CAC, CacFrame, CacBetaPill } from "@/lib/cacTheme";
+
+// Compact Phoebe-style "practice card" — the actual dark-frosted, left-striped
+// row from DailyProgressBody.tsx's PracticeCard, since the owner wants this
+// ONE card to read as a real home-screen rhythm card, not the CAC cream/rust
+// theme the rest of this demo wears. Simplified (no celebrate/pulse/progress —
+// this is a single one-off card, not the full rhythm stack), but the same
+// shape: dark frosted card, colored left stripe, leading emoji, title, blurb,
+// and a trailing pill that becomes a ✓ once today's reflection is read.
+const PHOEBE_CARD_RGB = "179,84,58"; // CAC's terracotta accent, in the card's own idiom
+function CacReflectionHomeCard({ title, blurb, loading, read }: { title: string; blurb: string; loading: boolean; read: boolean }) {
+  return (
+    <Link href="/cac-reflection" className="mb-8 block w-full cursor-pointer">
+      <div
+        className="relative flex rounded-3xl overflow-hidden transition-opacity hover:opacity-90 active:scale-[0.99]"
+        style={{ background: "rgba(10,23,15,0.30)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${PHOEBE_CARD_RGB},0.7)` }} />
+        <div className="flex-1 min-w-0 px-4 py-3.5">
+          <div className="flex items-center gap-3">
+            <span className="text-[15px] leading-none flex-shrink-0" aria-hidden>📖</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+                {loading ? "Today's Meditation" : title}
+              </p>
+              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96" }}>
+                {loading ? "Loading…" : blurb}
+              </p>
+            </div>
+            {read ? (
+              <span
+                className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+                style={{ background: `rgba(${PHOEBE_CARD_RGB},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${PHOEBE_CARD_RGB},0.45)` }}
+              >✓</span>
+            ) : (
+              <span
+                className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
+                style={{ minWidth: 84, background: `rgba(${PHOEBE_CARD_RGB},0.85)`, color: "#F0EDE6" }}
+              >
+                Read <span aria-hidden>→</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default function CacHomePage() {
   const { isAdmin } = useBetaStatus();
@@ -23,6 +71,15 @@ export default function CacHomePage() {
   // Re-render when any season's progress changes, so a show you just
   // started jumps to the top without needing a reload.
   useAnyCourseProgressTick();
+  // Re-render when today's reflection gets marked read (cac-reflection.tsx
+  // calls markCacRead() on open) — same tracker the rest of the app's daily-
+  // reflection cards already use (lib/cacReadState.ts).
+  const [reflectionRead, setReflectionRead] = useState(() => hasReadCacToday());
+  useEffect(() => {
+    const onRead = () => setReflectionRead(hasReadCacToday());
+    window.addEventListener(CAC_READ_EVENT, onRead);
+    return () => window.removeEventListener(CAC_READ_EVENT, onRead);
+  }, []);
 
   const courses = coursesData?.courses ?? [];
   // Shows with a started (but not necessarily finished) season float to the
@@ -79,33 +136,13 @@ export default function CacHomePage() {
             <CacBetaPill />
           </div>
 
-          {/* Today's reflection */}
-          <Link
-            href="/cac-reflection"
-            className="mb-8 block rounded-2xl px-5 py-5 transition-opacity hover:opacity-90"
-            style={{ background: CAC.card, border: `1px solid ${CAC.border}`, boxShadow: "0 8px 20px rgba(42,36,29,0.10)" }}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: CAC.goldDark, fontFamily: CAC.label }}>
-              Today's Meditation
-            </p>
-            {reflectionLoading ? (
-              <p className="mt-2 text-sm" style={{ color: CAC.inkMuted }}>Loading…</p>
-            ) : (
-              <>
-                <h2 className="mt-1.5 text-xl font-normal leading-tight" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
-                  {reflection?.title || "Today's Reflection"}
-                </h2>
-                {excerpt && (
-                  <p className="mt-2 line-clamp-3 text-[13.5px] leading-relaxed" style={{ color: CAC.inkMuted, fontFamily: CAC.serif }}>
-                    {excerpt}
-                  </p>
-                )}
-                <p className="mt-3 flex items-center gap-1 text-[12px] font-semibold" style={{ color: CAC.gold, fontFamily: CAC.label }}>
-                  Read today's reflection <ArrowRight size={13} />
-                </p>
-              </>
-            )}
-          </Link>
+          {/* Today's reflection — styled like a real Phoebe home-screen card. */}
+          <CacReflectionHomeCard
+            title={reflection?.title || "Today's Reflection"}
+            blurb={excerpt || "Center for Action and Contemplation"}
+            loading={reflectionLoading}
+            read={reflectionRead}
+          />
 
           {/* Courses */}
           <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(42,36,29,0.55)", fontFamily: CAC.label }}>
@@ -138,7 +175,6 @@ export default function CacHomePage() {
                     overflow: "hidden",
                     padding: 10,
                     background: CAC.card,
-                    boxShadow: "0 6px 16px rgba(42,36,29,0.10)",
                   }}
                 >
                   {show.artwork ? (
