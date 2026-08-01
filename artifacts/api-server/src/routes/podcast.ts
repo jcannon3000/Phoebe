@@ -932,14 +932,27 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
     if (!show) continue;
     const feed = await loadFeed(show, 400);
     const artwork = feed.feedImage ?? show.artwork ?? null;
+    // Some feeds tag every real episode with a season but leave trailers /
+    // bonus one-offs untagged — grouping those under a fabricated "Season 1"
+    // would invent a season that never existed (e.g. a show whose real
+    // seasons start at 3). So: if ANY episode in the feed carries a season
+    // tag, drop the untagged stragglers entirely (they're still reachable
+    // via the normal /podcasts/show browse page, just not as a "course").
+    // Only when a show has NO season tags at all do we fall back to one
+    // single course covering the whole feed, so nothing goes unorganized.
+    const anyTagged = feed.episodes.some((ep) => ep.season !== null);
     const bySeason = new Map<number, EpisodeFull[]>();
     for (const ep of feed.episodes) {
-      // Untagged episodes (a show with no season metadata at all) settle
-      // into Season 1 rather than being dropped.
-      const season = ep.season ?? 1;
-      const list = bySeason.get(season) ?? [];
+      if (ep.season === null) {
+        if (anyTagged) continue; // untagged straggler — skip, not a real season
+        const list = bySeason.get(1) ?? [];
+        list.push(ep);
+        bySeason.set(1, list);
+        continue;
+      }
+      const list = bySeason.get(ep.season) ?? [];
       list.push(ep);
-      bySeason.set(season, list);
+      bySeason.set(ep.season, list);
     }
     const seasons = [...bySeason.keys()].sort((a, b) => a - b);
     for (const season of seasons) {
