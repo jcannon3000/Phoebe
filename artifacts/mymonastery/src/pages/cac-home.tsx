@@ -10,8 +10,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Play } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { X } from "lucide-react";
 import { useCacCourses, courseCompletion, type CacCourse } from "@/lib/cacCourses";
-import { useAnyCourseProgressTick } from "@/lib/courseProgress";
+import { useAnyCourseProgressTick, clearStarted } from "@/lib/courseProgress";
 import { useCacDailyReflection } from "@/lib/cacDailyReflection";
 import { hasReadCacToday, CAC_READ_EVENT } from "@/lib/cacReadState";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -28,13 +29,26 @@ function ContinueCourseRow({ course, completedCount, total, nextTitle }: { cours
   return (
     <Link
       href={`/cac-course/${course.id}`}
-      className="block w-full rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
+      className="relative block w-full rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
       style={{ background: "rgba(9,26,16,0.4)", border: "1px solid rgba(46,107,64,0.38)", ...FROST }}
     >
-      <div className="flex items-center gap-3">
+      <button
+        type="button"
+        aria-label="Remove from active courses"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          clearStarted(course.id);
+        }}
+        className="absolute right-2.5 top-2.5 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-opacity hover:opacity-80"
+        style={{ background: "rgba(0,0,0,0.3)", color: SAGE }}
+      >
+        <X size={12} />
+      </button>
+      <div className="flex items-center gap-3 pr-6">
         <div className="min-w-0 flex-1">
           <p className="text-[10.5px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)", fontFamily: CAC.label }}>
-            Continue · {course.showTitle}
+            Active · {course.showTitle}
           </p>
           <p className="mt-0.5 truncate text-[15px] font-semibold" style={{ color: WARM, fontFamily: CAC.label }}>
             {nextTitle ?? course.title}

@@ -969,10 +969,18 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
   res.setHeader("Cache-Control", "public, max-age=600");
   const showSlugs = PUBLISHERS.cac?.showSlugs ?? [];
   const courses: CacCourse[] = [];
-  for (const slug of showSlugs) {
-    const show = SHOWS[slug];
-    if (!show) continue;
-    const feed = await loadFeed(show, 400);
+  // Fetch all 6 shows' feeds concurrently — each is an independent external
+  // request, so awaiting them one at a time in a for-loop meant a cold cache
+  // (server just started, or the 30-min per-show TTL lapsed) paid the sum of
+  // all 6 round-trips instead of just the slowest one.
+  const showsWithFeeds = await Promise.all(
+    showSlugs
+      .map((slug) => SHOWS[slug])
+      .filter((show): show is Show => !!show)
+      .map(async (show) => ({ show, feed: await loadFeed(show, 400) })),
+  );
+  for (const { show, feed } of showsWithFeeds) {
+    const slug = show.slug;
     // Prefer the curated SHOWS registry artwork over the feed's own channel
     // image — most CAC shows' feeds match it anyway, but "Love Period"'s
     // Podbean feed serves a different (non-branded) channel logo that broke

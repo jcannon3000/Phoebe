@@ -149,6 +149,15 @@ export function markStarted(courseId: string) {
   commit(courseId, { ...s, started: true });
 }
 
+/** "Remove from active courses" — drops the started flag so the course stops
+ *  appearing in Continue rows, without discarding completed-episode progress
+ *  (opening it again later just resumes where it left off). */
+export function clearStarted(courseId: string) {
+  const s = snap(courseId);
+  if (!s.started) return;
+  commit(courseId, { ...s, started: undefined });
+}
+
 /** One-time progress migration when lessons MOVE between courses (e.g. the
  *  five method videos splitting out of the Spiritual Journey into the
  *  Centering Prayer course): copy any of `ids` completed under `fromId` into
@@ -177,6 +186,7 @@ export interface UseCourseProgress {
   toggleComplete: (id: string) => void;
   setLast: (id: string) => void;
   markStarted: () => void;
+  clearStarted: () => void;
 }
 
 export function useCourseProgress(courseId: string): UseCourseProgress {
@@ -198,6 +208,7 @@ export function useCourseProgress(courseId: string): UseCourseProgress {
     toggleComplete: useCallback((id: string) => toggleComplete(courseId, id), [courseId]),
     setLast: useCallback((id: string) => setLast(courseId, id), [courseId]),
     markStarted: useCallback(() => markStarted(courseId), [courseId]),
+    clearStarted: useCallback(() => clearStarted(courseId), [courseId]),
   };
 }
 
