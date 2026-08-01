@@ -4196,7 +4196,14 @@ export default function PrayerModePage() {
             reflectionSource={reflectionSource as Exclude<ReflectionSource, "none">}
             // This closing slide IS the "Prayer completed" hero, so skip the
             // blessing phase (which renders the same hero) — exit straight home.
-            onDone={() => setPhase("news")}
+            // Only detour through the "Coming up" news slide when there's
+            // actually unseen news to show — same gate the auto-route effect
+            // above uses for every other close path. Without this, the
+            // reflection-ending office ALWAYS showed a "Coming up" slide
+            // (falling back to a generic "Go in peace…" line when there was
+            // nothing to show), right after this slide's own "Up next" card
+            // had already pointed to the next thing in the routine.
+            onDone={() => (unseenNews.hasUnseen ? setPhase("news") : void handleDone({ skipBless: true }))}
             visible={slideVisible}
           />
         )}
