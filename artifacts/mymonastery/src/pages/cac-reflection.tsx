@@ -1,9 +1,12 @@
 // ─── CAC Daily Reflection (beta, admin tools only) — read in-app ─────────────
 //
 // The full text of today's CAC daily meditation, read inside Phoebe instead
-// of linking out to cac.org. See lib/cacDailyReflection.ts — paragraphs are
-// plain text only (server-side strip of the feed's HTML), rendered as plain
-// <p> tags, never dangerouslySetInnerHTML.
+// of linking out to cac.org. See lib/cacDailyReflection.ts — each paragraph
+// is whitelist-sanitized HTML from the server (routes/cac.ts
+// sanitizeInlineHtml: a handful of inline tags, every attribute stripped
+// except a scheme-validated href), so it's safe to render here with
+// dangerouslySetInnerHTML — nothing outside that whitelist can have
+// survived the server-side pass.
 
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -61,9 +64,14 @@ export default function CacReflectionPage() {
 
               <div className="mt-6 space-y-4">
                 {data.paragraphs.map((p, i) => (
-                  <p key={i} className="text-[15px] leading-relaxed" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
-                    {p}
-                  </p>
+                  <p
+                    key={i}
+                    className="text-[15px] leading-relaxed [&_a]:font-semibold [&_a]:no-underline [&_a]:text-[#96432C]"
+                    style={{ color: CAC.ink, fontFamily: CAC.serif }}
+                    // Safe: p is whitelist-sanitized HTML from the server
+                    // (sanitizeInlineHtml) — see the note at the top of this file.
+                    dangerouslySetInnerHTML={{ __html: p }}
+                  />
                 ))}
               </div>
 

@@ -14,25 +14,36 @@ import { useMemo } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { useCacCourses } from "@/lib/cacCourses";
+import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
+import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { CAC, CacFrame, CacBetaPill } from "@/lib/cacTheme";
 
 export default function CacCoursesPage() {
   const { isBeta, isAdmin } = useBetaStatus();
   const { data, isLoading } = useCacCourses();
+  // Re-render when any season's progress changes, so a show you just
+  // started jumps to the top without needing a reload.
+  useAnyCourseProgressTick();
 
   const courses = data?.courses ?? [];
   // One tile per show (registry order, preserved from the server response) —
-  // seasons are a level down, on /cac-show/:slug.
+  // seasons are a level down, on /cac-show/:slug. Shows with a started (but
+  // not necessarily finished) season float to the top, ahead of everything
+  // else — "pick up where you left off" beats browsing from scratch.
   const shows = useMemo(() => {
-    const byShow = new Map<string, { showSlug: string; showTitle: string; author: string; artwork: string | null; seasonCount: number }>();
+    const byShow = new Map<string, { showSlug: string; showTitle: string; author: string; artwork: string | null; seasonCount: number; started: boolean }>();
     for (const c of courses) {
+      const started = courseCompletion(c).isStarted;
       const existing = byShow.get(c.showSlug);
-      if (existing) { existing.seasonCount += 1; continue; }
-      byShow.set(c.showSlug, { showSlug: c.showSlug, showTitle: c.showTitle, author: c.author, artwork: c.artwork, seasonCount: 1 });
+      if (existing) {
+        existing.seasonCount += 1;
+        existing.started = existing.started || started;
+        continue;
+      }
+      byShow.set(c.showSlug, { showSlug: c.showSlug, showTitle: c.showTitle, author: c.author, artwork: c.artwork, seasonCount: 1, started });
     }
-    return [...byShow.values()];
+    return [...byShow.values()].sort((a, b) => (a.started === b.started ? 0 : a.started ? -1 : 1));
   }, [courses]);
 
   if (!isBeta && !isAdmin) {
@@ -99,7 +110,6 @@ export default function CacCoursesPage() {
                       overflow: "hidden",
                       padding: 10,
                       background: CAC.card,
-                      border: `1px solid ${CAC.border}`,
                       boxShadow: "0 6px 16px rgba(42,36,29,0.10)",
                     }}
                   >
@@ -114,9 +124,16 @@ export default function CacCoursesPage() {
                       <div className="flex h-full w-full items-center justify-center text-4xl">🌵</div>
                     )}
                   </div>
-                  <p className="mt-2.5 text-[15px] font-semibold leading-tight" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
-                    {show.showTitle}
-                  </p>
+                  <div className="mt-2.5 flex items-center gap-1.5">
+                    <p className="text-[15px] font-semibold leading-tight" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
+                      {show.showTitle}
+                    </p>
+                    {show.started && (
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: CAC.goldSoft, color: CAC.goldDark, fontFamily: CAC.label }}>
+                        Continue
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-0.5 truncate text-[11px] uppercase tracking-wide" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
                     {show.author} · {show.seasonCount} season{show.seasonCount === 1 ? "" : "s"}
                   </p>

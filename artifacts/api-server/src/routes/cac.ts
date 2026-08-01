@@ -80,17 +80,73 @@ function decodeEntities(s: string): string {
 // (b) the WordPress RSS shape is stable. The regex anchors on
 // `<item>` (so we skip the channel-level <link>/<title> at the top,
 // which point at cac.org/) and reads the first <link>/<title> inside.
-// Turn the feed's <content:encoded> HTML into plain-text paragraphs — no
-// HTML is ever rendered client-side (third-party content, so no
-// dangerouslySetInnerHTML / sanitizer surface to get wrong). Splits on
-// block-level closing tags first so paragraph breaks survive the tag
-// strip, then decodes entities per paragraph.
+
+// Same entity table as decodeEntities, but deliberately does NOT unescape
+// &lt;/&gt; — this output is rendered client-side via
+// dangerouslySetInnerHTML (see sanitizeInlineHtml below), so re-expanding
+// an encoded "&lt;script&gt;" back into a literal "<script>" would smuggle
+// a tag straight past the whitelist that already ran. Everything else is
+// safe to decode into plain characters here.
+function decodeEntitiesSafeHtml(s: string): string {
+  return s
+    .replace(/&#8217;|&#x2019;/gi, "’")
+    .replace(/&#8216;|&#x2018;/gi, "‘")
+    .replace(/&#8220;|&#x201C;/gi, "“")
+    .replace(/&#8221;|&#x201D;/gi, "”")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8212;/g, "—")
+    .replace(/&hellip;|&#8230;/gi, "…")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    .trim();
+}
+
+// The daily meditations often bold/link a day name and italicize the
+// attribution ("Sunday" links to that day's own piece, "—Richard Rohr" is
+// the byline) — flattening all of that to plain text lost the shape of the
+// original page. This keeps a small whitelist of inline tags (linked day
+// names, emphasis, line breaks) and drops everything else, so the client
+// can render actual (but tightly bounded) HTML instead of a plain-text
+// dump — still with no dangerouslySetInnerHTML risk, because nothing
+// outside this whitelist can survive: every tag is rewritten from scratch
+// (attributes stripped except a scheme-validated href on <a>), never
+// passed through verbatim.
+const INLINE_ALLOWED = new Set(["a", "strong", "b", "em", "i", "br"]);
+function sanitizeInlineHtml(raw: string): string {
+  let s = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
+  s = s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "");
+  s = s.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g, (_m, closingSlash: string, tagRaw: string, attrs: string) => {
+    const tag = tagRaw.toLowerCase();
+    if (!INLINE_ALLOWED.has(tag)) return "";
+    if (tag === "br") return "<br>";
+    if (closingSlash) return `</${tag}>`;
+    if (tag === "a") {
+      const hrefMatch = attrs.match(/\bhref\s*=\s*"([^"]*)"/i) ?? attrs.match(/\bhref\s*=\s*'([^']*)'/i);
+      const href = hrefMatch ? hrefMatch[1] : "";
+      // Only a real http(s) URL earns a clickable href — anything else
+      // (javascript:, data:, a malformed value, no href at all) degrades to
+      // an inert <a> that still wraps its text, so tag pairing never breaks.
+      if (!/^https?:\/\//i.test(href)) return "<a>";
+      const safeHref = href.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">`;
+    }
+    return `<${tag}>`;
+  });
+  return decodeEntitiesSafeHtml(s).replace(/[ \t\r\n]+/g, " ").trim();
+}
+
+// Turn the feed's <content:encoded> HTML into paragraph-sized, whitelist-
+// sanitized HTML strings (see sanitizeInlineHtml) — splits on block-level
+// closing tags first so paragraph breaks survive, then sanitizes each
+// block independently.
 function extractParagraphs(html: string): string[] {
   const blocks = html.split(/<\/(?:p|div|h[1-6]|blockquote|li)>/i);
   const paragraphs: string[] = [];
   for (const block of blocks) {
-    const text = decodeEntities(block.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
-    if (text) paragraphs.push(text);
+    const safeHtml = sanitizeInlineHtml(block);
+    const hasText = safeHtml.replace(/<[^>]+>/g, "").trim().length > 0;
+    if (hasText) paragraphs.push(safeHtml);
   }
   return paragraphs;
 }
@@ -185,9 +241,11 @@ router.get("/cac/today-meta", async (_req: Request, res: Response): Promise<void
 
 // GET /api/cac/today-full → { title, url, paragraphs } — the daily
 // meditation's own text, read in-app instead of linking out. Beta (Admin
-// Tools CAC demo home); paragraphs are plain text only (see
-// extractParagraphs) — never HTML — so the client can render them safely
-// with no sanitizer surface for third-party content to exploit.
+// Tools CAC demo home). Each paragraph is whitelist-sanitized HTML (see
+// sanitizeInlineHtml) — a small, tightly bounded set of inline tags
+// (a/strong/b/em/i/br), every attribute stripped except a scheme-validated
+// href — so the client can render it with dangerouslySetInnerHTML without
+// third-party content ever being able to inject an unlisted tag.
 router.get("/cac/today-full", async (_req: Request, res: Response): Promise<void> => {
   const { url, title, paragraphs } = await resolveToday();
   res.setHeader("Cache-Control", "public, max-age=300");
