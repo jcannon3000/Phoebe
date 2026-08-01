@@ -226,6 +226,12 @@ export default function AdminToolsPage() {
                   description="Add ministry websites, scrape their events into drafts to review"
                   onClick={() => setLocation("/admin/ministries")}
                 />
+                <LinkRow
+                  emoji="🌵"
+                  label="CAC Courses (beta)"
+                  description="CAC's shows, grouped by season and played as courses"
+                  onClick={() => setLocation("/cac-courses")}
+                />
               </>
             )}
           </div>

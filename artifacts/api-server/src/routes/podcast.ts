@@ -403,6 +403,10 @@ export type EpisodeFull = {
   publishedAt: string | null;
   description: string | null;
   imageUrl: string | null;
+  // <itunes:season> — CAC's shows use this to mark which teaching series
+  // (e.g. which mystic, which Rohr book) an episode belongs to. Most other
+  // shows in the registry don't set it, so this is null there.
+  season: number | null;
 };
 export type ParsedFeed = {
   feedTitle: string | null;
@@ -532,6 +536,8 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
       firstMatch(item, /<itunes:summary>([\s\S]*?)<\/itunes:summary>/i) ??
       firstMatch(item, /<description>([\s\S]*?)<\/description>/i);
     const itemImage = firstMatch(item, /<itunes:image[^>]*\bhref="([^"]+)"/i);
+    const seasonRaw = firstMatch(item, /<itunes:season>([\s\S]*?)<\/itunes:season>/i);
+    const season = seasonRaw && /^\d+$/.test(seasonRaw.trim()) ? parseInt(seasonRaw.trim(), 10) : null;
     const decodedTitle = title ? decodeXmlText(title) : null;
     if (isHiddenEpisode(decodedTitle)) continue; // blocklisted episode
     episodes.push({
@@ -542,6 +548,7 @@ export function parseFeed(xml: string, limit: number): ParsedFeed {
       publishedAt: pub ? pub.trim() : null,
       description: plainTextPreview(desc),
       imageUrl: itemImage ? decodeXmlText(itemImage) : null,
+      season,
     });
   }
   return {
@@ -582,6 +589,7 @@ function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
     publishedAt: null,
     description: null,
     imageUrl: null,
+    season: null,
   }));
   return { feedTitle: fallbackTitle, feedImage: null, feedDescription: null, episodes };
 }
@@ -895,6 +903,62 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
     },
     episodes: feed.episodes,
   });
+});
+
+// ── GET /api/podcasts/cac/courses — CAC shows grouped into season "courses" ──
+// Beta feature. CAC's own shows tag episodes with <itunes:season> (each
+// season is one teaching series — a mystic, a Rohr book, …); we group by
+// season and hand back one "course" per (show, season), oldest episode
+// first, so the client can walk it Coursera-style using the existing
+// course-progress + podcast-player plumbing (see PlayingEpisode.courseComplete,
+// the same mechanism way-of-love-course.tsx already uses).
+export type CacCourse = {
+  id: string;
+  showSlug: string;
+  showTitle: string;
+  author: string;
+  artwork: string | null;
+  season: number;
+  title: string;
+  episodes: EpisodeFull[];
+};
+
+router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, max-age=600");
+  const showSlugs = PUBLISHERS.cac?.showSlugs ?? [];
+  const courses: CacCourse[] = [];
+  for (const slug of showSlugs) {
+    const show = SHOWS[slug];
+    if (!show) continue;
+    const feed = await loadFeed(show, 400);
+    const artwork = feed.feedImage ?? show.artwork ?? null;
+    const bySeason = new Map<number, EpisodeFull[]>();
+    for (const ep of feed.episodes) {
+      // Untagged episodes (a show with no season metadata at all) settle
+      // into Season 1 rather than being dropped.
+      const season = ep.season ?? 1;
+      const list = bySeason.get(season) ?? [];
+      list.push(ep);
+      bySeason.set(season, list);
+    }
+    const seasons = [...bySeason.keys()].sort((a, b) => a - b);
+    for (const season of seasons) {
+      // The feed lists newest-first; a course plays oldest-first.
+      const episodes = [...(bySeason.get(season) ?? [])].reverse();
+      if (episodes.length === 0) continue;
+      courses.push({
+        id: `${slug}-s${season}`,
+        showSlug: slug,
+        showTitle: show.title,
+        author: show.artist,
+        artwork,
+        season,
+        title: seasons.length > 1 ? `Season ${season}` : show.title,
+        episodes,
+      });
+    }
+  }
+  res.json({ courses });
 });
 
 export default router;

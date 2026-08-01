@@ -54,6 +54,14 @@ function snap(courseId: string): CourseProgress {
   return s;
 }
 
+/** A synchronous read for callers that need MANY courses' progress at once
+ *  (e.g. sorting a list of courses) — hooks can't be called in a loop, so
+ *  this bypasses useSyncExternalStore. Pair with useAnyCourseProgressTick to
+ *  re-run the read when something changes. */
+export function snapshotProgress(courseId: string): CourseProgress {
+  return snap(courseId);
+}
+
 function commit(courseId: string, next: CourseProgress) {
   next.updatedAt = Date.now();
   snapshots.set(courseId, next);
@@ -191,4 +199,29 @@ export function useCourseProgress(courseId: string): UseCourseProgress {
     setLast: useCallback((id: string) => setLast(courseId, id), [courseId]),
     markStarted: useCallback(() => markStarted(courseId), [courseId]),
   };
+}
+
+/** Bumps on ANY course's progress write (any courseId), for pages that
+ *  render many courses at once (e.g. sorting a course list by completion)
+ *  and read progress via snapshotProgress() instead of the per-course hook. */
+const tickRef = { current: 0 };
+if (typeof window !== "undefined") {
+  const bump = () => { tickRef.current += 1; };
+  window.addEventListener(EVENT, bump);
+  window.addEventListener("storage", bump);
+}
+
+export function useAnyCourseProgressTick(): number {
+  return useSyncExternalStore(
+    (cb) => {
+      window.addEventListener(EVENT, cb);
+      window.addEventListener("storage", cb);
+      return () => {
+        window.removeEventListener(EVENT, cb);
+        window.removeEventListener("storage", cb);
+      };
+    },
+    () => tickRef.current,
+    () => tickRef.current,
+  );
 }

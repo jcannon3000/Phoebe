@@ -398,6 +398,8 @@ const LearnPage = lazy(() => import("./pages/learn"));
 const SpiritualJourneyPage = lazy(() => import("./pages/spiritual-journey"));
 const CenteringPrayerCoursePage = lazy(() => import("./pages/centering-prayer"));
 const WayOfLoveCoursePage = lazy(() => import("./pages/way-of-love-course"));
+const CacCoursesPage = lazy(() => import("./pages/cac-courses"));
+const CacCoursePage = lazy(() => import("./pages/cac-course"));
 const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
@@ -1020,6 +1022,8 @@ function Router() {
       <Route path="/journey" component={SpiritualJourneyPage} />
       <Route path="/centering-prayer" component={CenteringPrayerCoursePage} />
       <Route path="/way-of-love-course" component={WayOfLoveCoursePage} />
+      <Route path="/cac-courses" component={CacCoursesPage} />
+      <Route path="/cac-course/:id" component={CacCoursePage} />
       <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/vision-deck" component={VisionDeck} />
