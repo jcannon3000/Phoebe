@@ -146,7 +146,7 @@ export default function CacCoursePage() {
                         disabled={!ep.audioUrl}
                         aria-label={playing ? "Pause" : "Play"}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
-                        style={{ background: CAC.ink, color: CAC.bg }}
+                        style={{ background: CAC.gold, color: CAC.card }}
                       >
                         {playing ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: 2 }} />}
                       </button>
