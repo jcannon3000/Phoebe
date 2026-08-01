@@ -1,64 +1,63 @@
-// ─── CAC visual theme — cream + terracotta, full-bleed ───────────────────────
+// ─── CAC demo theme — Phoebe's own frosted-leaf UI ────────────────────────────
 //
-// The CAC Courses beta (pages/cac-courses.tsx, cac-show.tsx, cac-course.tsx)
-// presents the Center for Action and Contemplation's own content, so it wears
-// their brand rather than Phoebe's usual dark-green frosted-glass look: warm
-// cream page, a terracotta accent, and a serif display face — cf. cac.org's
-// "Turning to the Mystics" show page (cream bg, rust "LISTEN ON YOUR
-// PLATFORM" pill, serif heading).
-//
-// Phoebe's global header (Layout) stays dark green — that's shared app
-// chrome, not something this one beta surface should override. CacFrame is
-// the cream field that fills the rest of the page below it, bleeding past
-// Layout's normal content gutter so it reads as its own page rather than a
-// card sitting on Phoebe's usual dark background.
+// Owner (2026-08-01): drop the CAC cream/terracotta reskin — the CAC demo
+// pages (cac-home.tsx, cac-courses.tsx, cac-show.tsx, cac-course.tsx,
+// cac-reflection.tsx) now wear Phoebe's actual visual identity instead of
+// pretending to be a CAC-branded surface: dark frosted-glass cards over a
+// leaf photo backdrop, Space Grotesk type — the same look as
+// CoursePage.tsx / way-of-love-course.tsx. Token names are kept as-is
+// (CAC.ink, CAC.gold, …) so every page that already imports them didn't
+// need a rename, just new values.
 
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 export const CAC = {
-  // Page background — cream, full-bleed.
-  bg: "#F5EFE0",
-  // Nested rows/cards read as "lifted" against the page.
-  card: "#FBF7ED",
-  cardHi: "#F6E4C4",
-  ink: "#2A241D",
-  inkMuted: "#7A6D5C",
-  // Terracotta accent for buttons/progress/done states.
-  gold: "#B3543A",
-  goldDark: "#96432C",
-  goldSoft: "rgba(179,84,58,0.10)",
-  border: "rgba(42,36,29,0.14)",
-  divider: "rgba(42,36,29,0.10)",
-  serif: "Georgia, 'Times New Roman', serif",
+  card: "rgba(9,26,16,0.46)",
+  cardHi: "rgba(18,45,28,0.55)",
+  ink: "#F0EDE6",
+  inkMuted: "#8FAF96",
+  // Accent — Phoebe's green, standing in for the old terracotta everywhere
+  // a "gold/accent" token was used (progress fill, done checkmarks, links).
+  gold: "#5FBF7F",
+  goldDark: "#2D5E3F",
+  goldSoft: "rgba(46,107,64,0.16)",
+  border: "rgba(46,107,64,0.38)",
+  divider: "rgba(200,212,192,0.12)",
+  // Titles now use Phoebe's own display face (Space Grotesk, bold) instead
+  // of the CAC-editorial serif; kept as `serif` to avoid renaming every
+  // call site — value is the only thing that changed.
+  serif: "'Space Grotesk', sans-serif",
   label: "'Space Grotesk', sans-serif",
 } as const;
 
-/** The cream field every CAC Courses page renders its content inside —
- *  bleeds past Layout's normal content gutter (negative margins) so it fills
- *  the page edge-to-edge rather than sitting as an inset card. */
+/** A random leaf-photo backdrop for the CAC demo pages, matching the rest of
+ *  Phoebe's course/practice surfaces. Memoized per mount. */
+export function useCacLeafBg(): string | null {
+  return useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+}
+
+/** No longer a full-bleed cream field — just passes children through. Kept
+ *  so every page that already wraps its content in <CacFrame> didn't need
+ *  restructuring; the actual backdrop now comes from Layout's bgPhoto. */
 export function CacFrame({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="flex-1 -mx-4 -mt-2 flex flex-col px-4 pb-16 pt-6 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8"
-      style={{ background: CAC.bg, minHeight: "70vh" }}
-    >
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }
 
 export function CacBetaPill() {
   return (
     <span
       className="inline-block rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider"
-      style={{ background: CAC.goldSoft, color: CAC.goldDark, fontFamily: CAC.label }}
+      style={{ background: CAC.goldSoft, color: CAC.gold, fontFamily: CAC.label }}
     >
       Beta
     </span>
   );
 }
 
-/** The terracotta pill button — cac.org's "LISTEN ON YOUR PLATFORM" style. */
+const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
+
+/** Phoebe's green pill button, matching CoursePage.tsx / way-of-love-course.tsx. */
 export function CacButton({
   children,
   onClick,
@@ -78,13 +77,14 @@ export function CacButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-[12px] font-bold uppercase tracking-wider transition-opacity hover:opacity-90 disabled:opacity-40"
+      className="inline-flex items-center justify-center gap-1.5 rounded-2xl px-5 py-2.5 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
       style={{
-        background: solid ? CAC.gold : "transparent",
-        color: solid ? CAC.card : CAC.gold,
-        border: solid ? "none" : `1px solid ${CAC.gold}`,
+        background: solid ? "#2D5E3F" : "rgba(46,107,64,0.12)",
+        color: solid ? CAC.ink : CAC.inkMuted,
+        border: solid ? "none" : `1px solid ${CAC.border}`,
         fontFamily: CAC.label,
         cursor: disabled ? "default" : "pointer",
+        ...(solid ? {} : FROST),
       }}
     >
       {children}

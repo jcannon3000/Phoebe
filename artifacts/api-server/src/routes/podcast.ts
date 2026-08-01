@@ -905,6 +905,48 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
   });
 });
 
+// Some CAC shows (e.g. "Turning to the Mystics") dedicate each whole season
+// to one named subject — a mystic, a book — so a bare "Season 6" undersells
+// what's actually there ("Julian of Norwich"). Episode titles usually name
+// that subject somewhere ("Julian of Norwich: Listener Questions", "A
+// Coaching Session on Brother Lawrence", …), so we extract the leading
+// name-like phrase from each title, take the season's most frequent
+// candidate, and only trust it when it's a clear majority — other shows
+// (e.g. "Another Name For Every Thing") mix several guests/topics per
+// season with no single dominant subject, and a low-confidence guess there
+// would be worse than just "Season N".
+const SEASON_NAME_STOP = /^(bonus|dialogue \d+|a coaching session|listener questions|introduction|part \d+|session \d+|the practice|questions about|coming soon)/i;
+function seasonNameCandidates(title: string): string[] {
+  const out: string[] = [];
+  const leading = title.match(/^([A-Z][\w.'’ ]{2,40}?):\s/);
+  if (leading && !SEASON_NAME_STOP.test(leading[1])) out.push(leading[1].trim());
+  const onPhrase = title.match(/\bon ([A-Z][\w.'’]+(?: [A-Z][\w.'’]+){0,3})\b/);
+  if (onPhrase) out.push(onPhrase[1].trim());
+  const studyingPhrase = title.match(/\bStudying ([A-Z][\w.'’]+(?: [A-Z][\w.'’]+){0,3})/);
+  if (studyingPhrase) out.push(studyingPhrase[1].trim());
+  return out;
+}
+function deriveSeasonName(episodes: EpisodeFull[]): string | null {
+  const counts = new Map<string, number>();
+  for (const ep of episodes) {
+    if (!ep.title) continue;
+    for (const name of seasonNameCandidates(ep.title)) {
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [name, count] of counts) {
+    if (count > bestCount) { best = name; bestCount = count; }
+  }
+  // Require real majority support, not just "mentioned more than others" —
+  // a single stray match out of 15 episodes shouldn't become the label.
+  if (best && episodes.length > 0 && bestCount >= 3 && bestCount / episodes.length >= 0.3) {
+    return best;
+  }
+  return null;
+}
+
 // ── GET /api/podcasts/cac/courses — CAC shows grouped into season "courses" ──
 // Beta feature. CAC's own shows tag episodes with <itunes:season> (each
 // season is one teaching series — a mystic, a Rohr book, …); we group by
@@ -959,6 +1001,7 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
       // The feed lists newest-first; a course plays oldest-first.
       const episodes = [...(bySeason.get(season) ?? [])].reverse();
       if (episodes.length === 0) continue;
+      const seasonName = seasons.length > 1 ? deriveSeasonName(episodes) : null;
       courses.push({
         id: `${slug}-s${season}`,
         showSlug: slug,
@@ -966,7 +1009,7 @@ router.get("/podcasts/cac/courses", async (_req: Request, res: Response): Promis
         author: show.artist,
         artwork,
         season,
-        title: seasons.length > 1 ? `Season ${season}` : show.title,
+        title: seasons.length <= 1 ? show.title : seasonName ? `Season ${season}: ${seasonName}` : `Season ${season}`,
         episodes,
       });
     }

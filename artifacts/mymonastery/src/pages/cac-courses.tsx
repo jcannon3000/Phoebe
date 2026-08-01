@@ -3,12 +3,10 @@
 // Owner (2026-08-01): bring CAC's shows back into view. This top level is a
 // square-tile grid of SHOWS ONLY (mirrors podcasts.tsx's Discover grid) —
 // tapping a show goes to /cac-show/:slug, which lists that show's seasons;
-// tapping a season goes to /cac-course/:id, the episode player. Restyled
-// (owner, 2026-08-01) to match cac.org's own look — cream paper, terracotta
-// accent, serif display type — rather than Phoebe's usual dark green frost,
-// since this is presenting CAC's own content under their own visual identity.
-// Beta-only (entry point lives in Admin Tools) while this gets tried against
-// real feeds.
+// tapping a season goes to /cac-course/:id, the episode player. Wears
+// Phoebe's own frosted-leaf UI (lib/cacTheme) rather than a CAC-branded
+// reskin. Beta-only (entry point lives in Admin Tools) while this gets
+// tried against real feeds.
 
 import { useMemo } from "react";
 import { Link } from "wouter";
@@ -17,11 +15,14 @@ import { Layout } from "@/components/layout";
 import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { CAC, CacFrame, CacBetaPill } from "@/lib/cacTheme";
+import { CAC, CacFrame, CacBetaPill, useCacLeafBg } from "@/lib/cacTheme";
+
+const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 export default function CacCoursesPage() {
   const { isBeta, isAdmin } = useBetaStatus();
   const { data, isLoading } = useCacCourses();
+  const leafBg = useCacLeafBg();
   // Re-render when any season's progress changes, so a show you just
   // started jumps to the top without needing a reload.
   useAnyCourseProgressTick();
@@ -48,7 +49,7 @@ export default function CacCoursesPage() {
 
   if (!isBeta && !isAdmin) {
     return (
-      <Layout>
+      <Layout bgPhoto={leafBg}>
         <CacFrame>
           <div className="mx-auto w-full max-w-md px-2 py-16 text-center">
             <p className="text-4xl">🌵</p>
@@ -65,15 +66,15 @@ export default function CacCoursesPage() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={leafBg}>
       <CacFrame>
         <div className="mx-auto w-full max-w-2xl">
           <Link href="/menu" className="mb-4 flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
             <ArrowLeft size={13} /> Menu
           </Link>
           <div className="mb-6">
-            <h1 className="text-3xl font-normal" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
-              Center <em>for</em> Action <em>and</em> Contemplation
+            <h1 className="text-3xl font-bold" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
+              Center for Action and Contemplation
             </h1>
             <p className="mt-2 max-w-lg text-[13px] leading-relaxed" style={{ color: CAC.inkMuted }}>
               Each teacher's show, one season at a time — walk through one like a course, at your own pace.
@@ -88,7 +89,7 @@ export default function CacCoursesPage() {
               <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading the library…</p>
             )}
             {!isLoading && shows.length === 0 && (
-              <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
+              <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
                 <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                   We couldn't load the CAC library just now. Try again shortly.
                 </p>

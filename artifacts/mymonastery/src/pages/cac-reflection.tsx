@@ -62,7 +62,7 @@ export default function CacReflectionPage() {
 
   if (!isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: CAC.bg }}>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "#091A10" }}>
         <p className="text-sm" style={{ color: CAC.inkMuted }}>This is a beta feature — not open yet.</p>
       </div>
     );
@@ -70,7 +70,7 @@ export default function CacReflectionPage() {
 
   if (isLoading || total === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: CAC.bg }}>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "#091A10" }}>
         <p className="text-sm" style={{ color: CAC.inkMuted }}>
           {isLoading ? "Loading today's reflection…" : "We couldn't load today's reflection just now."}
         </p>
@@ -112,7 +112,7 @@ export default function CacReflectionPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: CAC.gold, fontFamily: CAC.label }}>
               Daily Meditation
             </p>
-            <h1 className="mt-3 max-w-lg text-3xl font-normal leading-tight" style={{ color: "#F5EFE0", fontFamily: CAC.serif }}>
+            <h1 className="mt-3 max-w-lg text-3xl font-bold leading-tight" style={{ color: "#F5EFE0", fontFamily: CAC.serif }}>
               {data?.title || "Today's Reflection"}
             </h1>
             <p className="mt-4 text-[13px]" style={{ color: "rgba(245,239,224,0.75)" }}>

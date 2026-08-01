@@ -15,7 +15,9 @@ import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useCacDailyReflection } from "@/lib/cacDailyReflection";
 import { hasReadCacToday, CAC_READ_EVENT } from "@/lib/cacReadState";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { CAC, CacFrame, CacBetaPill } from "@/lib/cacTheme";
+import { CAC, CacFrame, CacBetaPill, useCacLeafBg } from "@/lib/cacTheme";
+
+const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 // Compact Phoebe-style "practice card" — the actual dark-frosted, left-striped
 // row from DailyProgressBody.tsx's PracticeCard, since the owner wants this
@@ -66,6 +68,7 @@ function CacReflectionHomeCard({ title, blurb, loading, read }: { title: string;
 
 export default function CacHomePage() {
   const { isAdmin } = useBetaStatus();
+  const leafBg = useCacLeafBg();
   const { data: coursesData, isLoading: coursesLoading } = useCacCourses();
   const { data: reflection, isLoading: reflectionLoading } = useCacDailyReflection();
   // Re-render when any season's progress changes, so a show you just
@@ -106,7 +109,7 @@ export default function CacHomePage() {
 
   if (!isAdmin) {
     return (
-      <Layout>
+      <Layout bgPhoto={leafBg}>
         <CacFrame>
           <p className="py-16 text-center text-sm" style={{ color: CAC.inkMuted }}>
             This is a beta feature — not open yet.
@@ -117,7 +120,7 @@ export default function CacHomePage() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={leafBg}>
       <CacFrame>
         <div className="mx-auto w-full max-w-2xl">
           <Link href="/admin-tools" className="mb-4 flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
@@ -126,8 +129,8 @@ export default function CacHomePage() {
 
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-normal" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
-                Center <em>for</em> Action <em>and</em> Contemplation
+              <h1 className="text-2xl font-bold" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
+                Center for Action and Contemplation
               </h1>
               <p className="mt-1 text-[12px]" style={{ color: CAC.inkMuted }}>
                 A daily habit around CAC's teaching — demo home screen
@@ -145,7 +148,7 @@ export default function CacHomePage() {
           />
 
           {/* Courses */}
-          <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(42,36,29,0.55)", fontFamily: CAC.label }}>
+          <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: CAC.label }}>
             Courses
           </p>
 
@@ -153,7 +156,7 @@ export default function CacHomePage() {
             <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading the library…</p>
           )}
           {!coursesLoading && shows.length === 0 && (
-            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
+            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't load the CAC library just now. Try again shortly.
               </p>

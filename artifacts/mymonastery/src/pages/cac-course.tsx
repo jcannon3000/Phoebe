@@ -5,7 +5,8 @@
 // way-of-love-course.tsx's shape: episodes play through Phoebe's own podcast
 // player, and finishing one marks it complete via PlayingEpisode
 // .courseComplete — the same mechanism, just with a dynamic episode list
-// instead of a hand-curated one. Styled to match cac.org (see lib/cacTheme).
+// instead of a hand-curated one. Wears Phoebe's own frosted-leaf UI (see
+// lib/cacTheme) rather than a CAC-branded reskin.
 
 import { Link, useParams } from "wouter";
 import { ArrowLeft, CheckCircle2, Circle, ListMusic, Pause, Play } from "lucide-react";
@@ -14,13 +15,16 @@ import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlaye
 import { useCourseProgress } from "@/lib/courseProgress";
 import { useCacCourses, formatDuration, type CacEpisode } from "@/lib/cacCourses";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { CAC, CacFrame, CacButton } from "@/lib/cacTheme";
+import { CAC, CacFrame, CacButton, useCacLeafBg } from "@/lib/cacTheme";
+
+const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 export default function CacCoursePage() {
   const { isBeta, isAdmin } = useBetaStatus();
   const { id } = useParams<{ id: string }>();
   const player = usePodcastPlayer();
   const { completedCount, isComplete, toggleComplete, setLast, markStarted } = useCourseProgress(id ?? "cac-unknown");
+  const leafBg = useCacLeafBg();
 
   const { data, isLoading } = useCacCourses();
   const course = (data?.courses ?? []).find((c) => c.id === id) ?? null;
@@ -63,7 +67,7 @@ export default function CacCoursePage() {
 
   if (!isBeta && !isAdmin) {
     return (
-      <Layout>
+      <Layout bgPhoto={leafBg}>
         <CacFrame>
           <p className="py-16 text-center text-sm" style={{ color: CAC.inkMuted }}>
             This is a beta feature — not open yet.
@@ -74,7 +78,7 @@ export default function CacCoursePage() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={leafBg}>
       <CacFrame>
         <div className="mx-auto w-full max-w-2xl">
           <Link
@@ -88,7 +92,7 @@ export default function CacCoursePage() {
           {isLoading && !course ? (
             <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading…</p>
           ) : !course ? (
-            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
+            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that course. Head back to{" "}
                 <Link href="/cac-courses" style={{ color: CAC.gold, textDecoration: "underline" }}>CAC Courses</Link>.
@@ -97,7 +101,7 @@ export default function CacCoursePage() {
           ) : (
             <>
               <div className="mb-5">
-                <h1 className="text-2xl font-normal" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
+                <h1 className="text-2xl font-bold" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
                   {course.title}
                 </h1>
                 {course.title !== course.showTitle && (
@@ -139,14 +143,14 @@ export default function CacCoursePage() {
                     <div
                       key={ep.id}
                       className="flex items-center gap-3 rounded-2xl px-3 py-3"
-                      style={{ background: isUpNext ? CAC.cardHi : CAC.card, border: `1px solid ${isUpNext ? CAC.gold : CAC.border}` }}
+                      style={{ background: isUpNext ? CAC.cardHi : CAC.card, border: `1px solid ${isUpNext ? CAC.gold : CAC.border}`, ...FROST }}
                     >
                       <button
                         onClick={() => playEpisode(ep)}
                         disabled={!ep.audioUrl}
                         aria-label={playing ? "Pause" : "Play"}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
-                        style={{ background: CAC.gold, color: CAC.card }}
+                        style={{ background: CAC.gold, color: CAC.ink }}
                       >
                         {playing ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: 2 }} />}
                       </button>

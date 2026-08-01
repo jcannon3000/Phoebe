@@ -11,12 +11,15 @@ import { Layout } from "@/components/layout";
 import { useCacCourses, courseCompletion } from "@/lib/cacCourses";
 import { useAnyCourseProgressTick } from "@/lib/courseProgress";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { CAC, CacFrame } from "@/lib/cacTheme";
+import { CAC, CacFrame, useCacLeafBg } from "@/lib/cacTheme";
+
+const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 export default function CacShowPage() {
   const { isBeta, isAdmin } = useBetaStatus();
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading } = useCacCourses();
+  const leafBg = useCacLeafBg();
   useAnyCourseProgressTick();
 
   const seasons = useMemo(
@@ -27,7 +30,7 @@ export default function CacShowPage() {
 
   if (!isBeta && !isAdmin) {
     return (
-      <Layout>
+      <Layout bgPhoto={leafBg}>
         <CacFrame>
           <p className="py-16 text-center text-sm" style={{ color: CAC.inkMuted }}>
             This is a beta feature — not open yet.
@@ -38,7 +41,7 @@ export default function CacShowPage() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={leafBg}>
       <CacFrame>
         <div className="mx-auto w-full max-w-2xl">
           <Link href="/cac-courses" className="mb-4 flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style={{ color: CAC.inkMuted, fontFamily: CAC.label }}>
@@ -48,7 +51,7 @@ export default function CacShowPage() {
           {isLoading && !show ? (
             <p className="py-8 text-center text-sm" style={{ color: CAC.inkMuted }}>Loading…</p>
           ) : !show ? (
-            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}>
+            <div className="rounded-2xl px-5 py-6 text-center" style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}>
               <p className="text-sm leading-relaxed" style={{ color: CAC.inkMuted }}>
                 We couldn't find that show. Head back to{" "}
                 <Link href="/cac-courses" style={{ color: CAC.gold, textDecoration: "underline" }}>CAC Courses</Link>.
@@ -58,15 +61,15 @@ export default function CacShowPage() {
             <>
               <div className="mb-6 flex items-start gap-4">
                 <div
-                  className="h-20 w-20 shrink-0 overflow-hidden rounded"
-                  style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}
+                  className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"
+                  style={{ background: CAC.card }}
                 >
                   {show.artwork && (
                     <img src={show.artwork} alt={show.showTitle} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-2xl font-normal leading-tight" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
+                  <h1 className="text-2xl font-bold leading-tight" style={{ color: CAC.ink, fontFamily: CAC.serif }}>
                     {show.showTitle}
                   </h1>
                   <p className="mt-1 text-[13px]" style={{ color: CAC.inkMuted }}>
@@ -89,7 +92,7 @@ export default function CacShowPage() {
                       key={course.id}
                       href={`/cac-course/${course.id}`}
                       className="flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
-                      style={{ background: CAC.card, border: `1px solid ${CAC.border}` }}
+                      style={{ background: CAC.card, border: `1px solid ${CAC.border}`, ...FROST }}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
