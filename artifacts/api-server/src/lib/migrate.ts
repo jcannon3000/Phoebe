@@ -2830,6 +2830,11 @@ export async function migrate() {
     // PUBLIC no-login version: pilot groups — their members are the only users
     // exempt from the light shape once the guest flag flips.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_pilot_group BOOLEAN NOT NULL DEFAULT false`);
+    // Free-text location (city/state) for the public directory (churches,
+    // parishes) — searchable/browsable alongside name. No geocoding: plain
+    // ILIKE matching, same pattern as the name search already in use.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS city TEXT`);
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS state TEXT`);
     // Per-user daily dedup for the "How can we pray for you?" email.
     // YYYY-MM-DD UTC. NULL = never received.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_invite_email_date TEXT`);

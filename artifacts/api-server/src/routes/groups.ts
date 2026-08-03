@@ -1291,6 +1291,10 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     // Listed on /communities/browse for anyone to find and request to join.
     // Any group admin can flip this (not super-admin-only, unlike isPilotGroup).
     isPublic: z.boolean().optional(),
+    // Free-text location shown on the public directory and searchable
+    // alongside name (no geocoding — plain city/state strings).
+    city: z.string().max(100).optional().or(z.literal("")),
+    state: z.string().max(100).optional().or(z.literal("")),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -1301,6 +1305,8 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   if (parsed.data.emoji !== undefined) updates.emoji = parsed.data.emoji || null;
   if (parsed.data.calendarUrl !== undefined) updates.calendarUrl = parsed.data.calendarUrl || null;
   if (parsed.data.isPublic !== undefined) updates.isPublic = parsed.data.isPublic;
+  if (parsed.data.city !== undefined) updates.city = parsed.data.city.trim() || null;
+  if (parsed.data.state !== undefined) updates.state = parsed.data.state.trim() || null;
 
   // Circle toggle logic. Compose the effective-after-update values so we
   // can enforce "intention required when circle is on" regardless of which
@@ -2438,12 +2444,12 @@ router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
 // Gatherings scoped to a community. Two inclusion paths:
 //   1. `rituals.group_id` = this community's id (the new way — set
 //      by the community-gathering flow).
-//   2. Legacy: pre-group_id gatherings where the ritual's participant
-//      list sits entirely inside this community's member roster
-//      (i.e., every attendee is a joined community member and the
-//      owner is too). These were created before group_id existed,
-//      so they stay "unattached" in the DB — we surface them by
-//      matching their participants against the current roster.
+//   2. Rituals linked via the ritual_groups junction (multi-community
+//      gatherings, see Path 3 below).
+// The old Path 2 "legacy heuristic" (pre-group_id gatherings matched by
+// comparing their invitee list against the community roster) was removed
+// along with the invitee/attendee list itself — a gathering has no
+// participants column to match against anymore.
 // Member-gated, reverse chronological.
 router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
   const user = getUser(req);
@@ -2486,43 +2492,8 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
     .where(eq(ritualsTable.groupId, group.id))
     .orderBy(desc(ritualsTable.createdAt));
 
-  // Path 2: legacy heuristic — rituals with null group_id whose
-  // owner is a current community member AND every participant
-  // (emails) is in the community roster. Non-empty participants
-  // only — we don't want to pull in every tangential personal
-  // ritual a member happens to own.
-  const legacyCandidates = rosterUserIds.size > 0
-    ? await db
-        .select({
-          id: ritualsTable.id,
-          name: ritualsTable.name,
-          description: ritualsTable.description,
-          template: ritualsTable.template,
-          rhythm: ritualsTable.rhythm,
-          frequency: ritualsTable.frequency,
-          dayPreference: ritualsTable.dayPreference,
-          location: ritualsTable.location,
-          meetingUrl: ritualsTable.meetingUrl,
-          createdAt: ritualsTable.createdAt,
-          ownerId: ritualsTable.ownerId,
-          participants: ritualsTable.participants,
-        })
-        .from(ritualsTable)
-        .where(and(
-          isNull(ritualsTable.groupId),
-          inArray(ritualsTable.ownerId, Array.from(rosterUserIds)),
-        ))
-    : [];
-
-  const legacy = legacyCandidates.filter((r) => {
-    const parts = (r.participants as Array<{ email?: string }> | null) ?? [];
-    if (parts.length === 0) return false;
-    // Every listed participant must be in this community's roster.
-    return parts.every((p) => {
-      if (!p || typeof p.email !== "string") return false;
-      return rosterEmails.has(p.email.toLowerCase());
-    });
-  }).map(({ ownerId, participants, ...rest }) => { void ownerId; void participants; return rest; });
+  // Path 2 (legacy invitee-roster heuristic) removed — see comment above.
+  const legacy: typeof explicit = [];
 
   // Path 3: rituals linked to this community via the ritual_groups
   // junction (multi-community gatherings). A gathering can be hosted
@@ -3779,6 +3750,16 @@ router.get("/groups/public", async (req, res): Promise<void> => {
     const nameFilter = q.length >= 2
       ? sql`${groupsTable.name} ILIKE ${`%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`}`
       : undefined;
+    // Optional location search: `?location=` matches against either city or
+    // state (e.g. "Austin" or "TX" or "Austin, TX" both find it) — same
+    // ILIKE + escaping approach as the name filter above, no geocoding.
+    const loc = ((req.query.location as string) || "").trim();
+    const locationFilter = loc.length >= 2
+      ? (() => {
+          const esc = `%${loc.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+          return sql`(${groupsTable.city} ILIKE ${esc} OR ${groupsTable.state} ILIKE ${esc})`;
+        })()
+      : undefined;
     const rows = await db
       .select({
         id: groupsTable.id,
@@ -3787,12 +3768,15 @@ router.get("/groups/public", async (req, res): Promise<void> => {
         slug: groupsTable.slug,
         emoji: groupsTable.emoji,
         isPrayerCircle: groupsTable.isPrayerCircle,
+        city: groupsTable.city,
+        state: groupsTable.state,
         createdAt: groupsTable.createdAt,
       })
       .from(groupsTable)
       .where(and(
         eq(groupsTable.isPublic, true),
         ...(nameFilter ? [nameFilter] : []),
+        ...(locationFilter ? [locationFilter] : []),
       ))
       .orderBy(desc(groupsTable.createdAt));
 

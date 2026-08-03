@@ -30,6 +30,12 @@ export const groupsTable = pgTable("groups", {
   // Default true: every new community is browseable out of the gate.
   // Admins can flip it off later from settings to go private.
   isPublic: boolean("is_public").notNull().default(true),
+  // Free-text location (no geocoding infra in this codebase — see the
+  // now-removed device-location feature in lib/prayLocation.ts). Lets a
+  // public directory (churches, parishes, etc.) be browsed/searched by
+  // city/state alongside name, without any lat/lng or address precision.
+  city: text("city"),
+  state: text("state"),
   // PUBLIC no-login version: a PILOT GROUP's members are the ONLY users who
   // get the FULL app once PHOEBE_GUEST_ENABLED flips — everyone else (guests
   // and ordinary signed-in accounts) gets the light shape. Designated by app

@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
-import { Search } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 
 interface PublicGroup {
   id: number;
@@ -15,6 +15,8 @@ interface PublicGroup {
   slug: string;
   emoji: string | null;
   isPrayerCircle: boolean;
+  city: string | null;
+  state: string | null;
   memberCount: number;
   myStatus: "member" | "pending" | "none";
 }
@@ -48,14 +50,25 @@ export default function CommunitiesBrowsePage() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // A second, independent search box for city/state — matches against
+  // either column server-side (no geocoding, plain text match), same
+  // 2-char minimum + debounce as the name search above.
+  const [locationSearch, setLocationSearch] = useState("");
+  const [debouncedLocation, setDebouncedLocation] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedLocation(locationSearch.trim()), 300);
+    return () => clearTimeout(id);
+  }, [locationSearch]);
+
   const { data, isLoading: groupsLoading } = useQuery<PublicGroupsResponse>({
-    queryKey: ["/api/groups/public", debouncedSearch],
-    queryFn: () => apiRequest(
-      "GET",
-      debouncedSearch.length >= 2
-        ? `/api/groups/public?q=${encodeURIComponent(debouncedSearch)}`
-        : "/api/groups/public",
-    ),
+    queryKey: ["/api/groups/public", debouncedSearch, debouncedLocation],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (debouncedSearch.length >= 2) params.set("q", debouncedSearch);
+      if (debouncedLocation.length >= 2) params.set("location", debouncedLocation);
+      const qs = params.toString();
+      return apiRequest("GET", qs ? `/api/groups/public?${qs}` : "/api/groups/public");
+    },
     enabled: !!user,
   });
 
@@ -123,20 +136,37 @@ export default function CommunitiesBrowsePage() {
           </Link>
         </div>
 
-        <div className="relative">
-          <Search
-            size={15}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "rgba(143,175,150,0.6)" }}
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t("communities_browse.search_placeholder", { defaultValue: "Search communities by name" })}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
-          />
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "rgba(143,175,150,0.6)" }}
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t("communities_browse.search_placeholder", { defaultValue: "Search communities by name" })}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none"
+              style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+            />
+          </div>
+          <div className="relative flex-1">
+            <MapPin
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "rgba(143,175,150,0.6)" }}
+            />
+            <input
+              type="text"
+              value={locationSearch}
+              onChange={e => setLocationSearch(e.target.value)}
+              placeholder={t("communities_browse.location_placeholder", { defaultValue: "City or state" })}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none"
+              style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+            />
+          </div>
         </div>
 
         {groupsLoading ? (
@@ -152,7 +182,7 @@ export default function CommunitiesBrowsePage() {
             }}
           >
             <p className="text-sm" style={{ color: "#8FAF96" }}>
-              {debouncedSearch.length >= 2
+              {debouncedSearch.length >= 2 || debouncedLocation.length >= 2
                 ? t("communities_browse.no_results", { defaultValue: "No communities match that search." })
                 : t("communities_browse.empty_title")}
             </p>
@@ -191,6 +221,12 @@ export default function CommunitiesBrowsePage() {
                       {g.description && (
                         <p className="text-xs mt-1 line-clamp-2" style={{ color: "#8FAF96" }}>
                           {g.description}
+                        </p>
+                      )}
+                      {(g.city || g.state) && (
+                        <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: "rgba(143,175,150,0.65)" }}>
+                          <MapPin size={11} />
+                          {[g.city, g.state].filter(Boolean).join(", ")}
                         </p>
                       )}
                       <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.55)" }}>

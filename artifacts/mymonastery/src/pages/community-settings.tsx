@@ -33,6 +33,10 @@ type Group = {
   // Listed on /communities/browse for anyone signed in to find and request
   // to join. Off by default — most communities are invite-only.
   isPublic?: boolean;
+  // Free-text location (no geocoding) — shown + searchable on the public
+  // directory alongside name.
+  city?: string | null;
+  state?: string | null;
 };
 
 type Intention = {
@@ -62,6 +66,8 @@ export default function CommunitySettingsPage() {
   const [contemplationGoalMinutes, setContemplationGoalMinutes] = useState(20);
   // ── Public directory listing ──────────────────────────────────────────
   const [isPublic, setIsPublic] = useState(false);
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const GOAL_PRESETS = [10, 15, 20, 30];
   const [saved, setSaved] = useState(false);
 
@@ -148,6 +154,8 @@ export default function CommunitySettingsPage() {
       setIsContemplation(group.focus === "contemplation");
       if (group.contemplationGoalMinutes) setContemplationGoalMinutes(group.contemplationGoalMinutes);
       setIsPublic(!!group.isPublic);
+      setCity(group.city ?? "");
+      setState(group.state ?? "");
     }
   }, [group]);
 
@@ -169,6 +177,8 @@ export default function CommunitySettingsPage() {
       focus: isContemplation ? "contemplation" : null,
       contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : null,
       isPublic,
+      city: city || "",
+      state: state || "",
     }),
     onSuccess: () => {
       setSaved(true);
@@ -604,6 +614,38 @@ export default function CommunitySettingsPage() {
               </p>
             </div>
           </label>
+
+          {/* City/State — shown alongside name in the directory and
+              searchable there too (no geocoding, plain text match). Useful
+              for a church/parish so people can find one near them. */}
+          <div className="grid grid-cols-2 gap-3 mt-3.5">
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                {t("community_settings.city_label", { defaultValue: "City" })} <span style={{ opacity: 0.5 }}>{t("community_settings.optional")}</span>
+              </label>
+              <input
+                type="text"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                placeholder="Austin"
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                {t("community_settings.state_label", { defaultValue: "State" })} <span style={{ opacity: 0.5 }}>{t("community_settings.optional")}</span>
+              </label>
+              <input
+                type="text"
+                value={state}
+                onChange={e => setState(e.target.value)}
+                placeholder="TX"
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* ── Pilot group (app super admins only) ───────────────────────────
