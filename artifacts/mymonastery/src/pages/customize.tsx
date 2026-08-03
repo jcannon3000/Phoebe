@@ -9,12 +9,14 @@ import {
   getSideLevel, setSideLevel, setSideEntry,
   getSideContemplation, setSideContemplation, setSideMinutes,
   getReflectionSource, setReflectionSource, setSideReflection,
+  getSideCustomName, setSideCustomName,
   setPsalmCycle, OFFICE_PREFS_EVENT,
   type ReflectionSource,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
+import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -34,7 +36,7 @@ const SOFT_GREEN = "rgba(200,212,192,0.75)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const BG = "#0C1F12";
 
-type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "contemplation";
+type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "contemplation" | "custom";
 
 // "Add a practice" — the same contemplative add-ons the full customizer's
 // "Add an additional practice" step offers (Audio Divina / The Examen /
@@ -63,6 +65,7 @@ function currentDailyPrayer(): DailyPrayer {
   if (lvl === "guided-prayer") return "guided-prayer";
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
+  if (lvl === "custom") return "custom";
   // "Devotions" is no longer a selectable option here — an existing user
   // whose level is still "devotion" (or anything else unmatched) shows
   // "Offices" pre-selected, the closest remaining option.
@@ -77,6 +80,10 @@ export default function CustomizePage() {
   // the guest-only self-heal (and paint guest fallbacks) for a signed-in user.
   const guest = !authLoading && isDeviceLocalGuest(user);
   const qc = useQueryClient();
+  // Keep the "Create your own" name field above the on-screen keyboard (this
+  // page's scrollable area is its own inner overflow-y:auto panel, not the
+  // document — see useKeyboardInputLift for why that needs special handling).
+  useKeyboardInputLift();
 
   // A still leaf backdrop, picked once — matching the office/psalms screens.
   const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -105,6 +112,7 @@ export default function CustomizePage() {
   const goalsReady = guest || !officePrefsLoading;
 
   const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer());
+  const [customName, setCustomName] = useState<string>(() => getSideCustomName("morning"));
   const [newsletter, setNewsletter] = useState<ReflectionSource>(() => getReflectionSource());
   const [silenceMin, setSilenceMin] = useState<number>(() =>
     guest ? (getGuestSilenceGoalMin() || 5) : 5,
@@ -126,7 +134,18 @@ export default function CustomizePage() {
     // Contemplative Prayer would re-clobber an adjusted goal back to 20.
     if (choice === dailyPrayer) return;
     setDailyPrayer(choice);
-    if (choice === "contemplation") {
+    if (choice === "custom") {
+      // A practice the user names themselves IS this side's prayer, on both
+      // sides (same "one pick programs the day" pattern every other anchor
+      // here uses). No per-side contemplation, no home-layout write.
+      setSideLevel("morning", "custom");
+      setSideLevel("evening", "custom");
+      setSideContemplation("morning", false);
+      setSideContemplation("evening", false);
+      setSideCustomName("morning", customName);
+      setSideCustomName("evening", customName);
+      window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+    } else if (choice === "contemplation") {
       // Contemplative Prayer = a silent sit as this side's prayer. Same per-side
       // anchor as Creation Prayer but the "silent" style, so the home renders
       // Morning + Evening Contemplation cards (🕯️, the sit timer). The Silence
@@ -273,7 +292,25 @@ export default function CustomizePage() {
             { value: "psalms", label: "Psalms" },
             { value: "office", label: "Offices" },
             { value: "contemplation", label: "Contemplative Prayer" },
+            { value: "custom", label: "Create your own" },
           ], (v) => applyDailyPrayer(v as DailyPrayer))}
+
+          {dailyPrayer === "custom" && (
+            <div style={{ position: "relative", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(24,46,34,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+              <input
+                value={customName}
+                onChange={(e) => {
+                  const v = e.target.value.slice(0, 40);
+                  setCustomName(v);
+                  setSideCustomName("morning", v);
+                  setSideCustomName("evening", v);
+                }}
+                aria-label="Practice name"
+                placeholder="e.g. The Rosary"
+                style={{ width: "100%", background: "transparent", border: "none", outline: "none", color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600 }}
+              />
+            </div>
+          )}
 
           {row("Newsletter", newsletter, [
             { value: "fdd", label: "Forward Day by Day" },

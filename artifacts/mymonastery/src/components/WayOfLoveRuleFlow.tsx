@@ -60,6 +60,7 @@ import {
   type DefaultOfficeEntry,
 } from "@/lib/officePrefs";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 
 const BG = "#091A10";
@@ -622,45 +623,9 @@ export default function WayOfLoveRuleFlow({
   // the initializer above can miss an existing selection. Guard on touchedRef
   // so it never clobbers a toggle the user already made while auth loaded.
   const extrasHydrated = useRef(false);
-  // Keep a focused custom field above the on-screen keyboard. Capacitor runs
-  // KeyboardResize.None (the webview does NOT shrink when the keyboard opens),
-  // so a field near the bottom can hide behind it. We measure the inset from
-  // visualViewport, give the body that much scroll runway, and lift the focused
-  // field above the keyboard once it has settled.
-  useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return;
-    let raf = 0;
-    const inset = () => Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    const lift = () => {
-      const kb = inset();
-      document.body.style.paddingBottom = kb > 0 ? `${kb}px` : "";
-      const el = document.activeElement;
-      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-      const r = el.getBoundingClientRect();
-      const visibleBottom = window.innerHeight - kb - 24;
-      if (kb > 0 && r.bottom > visibleBottom) {
-        window.scrollBy({ top: r.bottom - visibleBottom + 8, behavior: "smooth" });
-      }
-    };
-    const onFocusIn = (e: FocusEvent) => {
-      const el = e.target;
-      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-      // The keyboard animates in over ~300ms; lift once it has settled, then
-      // again to catch the final viewport.
-      window.setTimeout(lift, 280);
-      window.setTimeout(lift, 520);
-    };
-    const onVV = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(lift); };
-    window.addEventListener("focusin", onFocusIn);
-    vv.addEventListener("resize", onVV);
-    return () => {
-      window.removeEventListener("focusin", onFocusIn);
-      vv.removeEventListener("resize", onVV);
-      cancelAnimationFrame(raf);
-      document.body.style.paddingBottom = "";
-    };
-  }, []);
+  // Keep a focused custom field above the on-screen keyboard (Capacitor runs
+  // KeyboardResize.None, so a field near the bottom can hide behind it).
+  useKeyboardInputLift();
 
   useEffect(() => {
     if (extrasHydrated.current || touchedRef.current || !user?.homeLayout) return;
