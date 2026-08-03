@@ -180,6 +180,29 @@ const guidedPrayerTrackerFor = (side: "morning" | "evening") => (side === "eveni
 export function hasPrayedGuidedPrayerToday(side: "morning" | "evening" = "morning"): boolean { return guidedPrayerTrackerFor(side).hasReadToday(); }
 export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); }
 
+// A side's own "Create your own" practice (level "custom", named via
+// officePrefs.getSideCustomName) — same shape as Simple Guided Prayer above,
+// just a plain tap-to-mark-done instead of a slideshow.
+export const CUSTOM_PRAYER_READ_EVENT = "phoebe:custom-prayer-read";
+function syncCustomPrayerSession(side: "morning" | "evening"): void {
+  // Only when this side's own practice IS this side's prayer — see sideIsSetTo.
+  if (!sideIsSetTo(side, "custom")) return;
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60,
+    slidesCompleted: 99,
+    completed: true,
+    startedAt: now.toISOString(),
+    endedAt: now.toISOString(),
+  }).catch(() => { /* best effort — the local flag already credited it today */ });
+}
+const customPrayerTrackerMorning = makeDailyReadTracker("phoebe:custom-prayer:morning:last-read-day", CUSTOM_PRAYER_READ_EVENT, () => syncCustomPrayerSession("morning"), "morning");
+const customPrayerTrackerEvening = makeDailyReadTracker("phoebe:custom-prayer:evening:last-read-day", CUSTOM_PRAYER_READ_EVENT, () => syncCustomPrayerSession("evening"), "evening");
+const customPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? customPrayerTrackerEvening : customPrayerTrackerMorning);
+export function hasPrayedCustomToday(side: "morning" | "evening" = "morning"): boolean { return customPrayerTrackerFor(side).hasReadToday(); }
+export function markCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).markRead(); }
+
 // Forward Day by Day USED AS a side's prayer — the office slot, not the
 // reflection card. Same shape as Psalms / Simple Guided Prayer above and for the
 // same reason: FDD's global read-flag (`fddTracker` below) is ONE key, so a

@@ -7,6 +7,7 @@ import {
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
   hasPrayedFddToday, FDD_PRAYED_EVENT,
+  hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -213,6 +214,7 @@ export function useRhythmState(): RhythmState {
     fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
     psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
     guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
+    customMorning: hasPrayedCustomToday("morning"), customEvening: hasPrayedCustomToday("evening"),
   }));
   useEffect(() => {
     const recheck = () => {
@@ -222,6 +224,7 @@ export function useRhythmState(): RhythmState {
         fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
         psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
         guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
+        customMorning: hasPrayedCustomToday("morning"), customEvening: hasPrayedCustomToday("evening"),
       });
     };
     // The reflection is read on a separate surface (often the in-app browser),
@@ -236,6 +239,7 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(SSJE_READ_EVENT, recheck);
     window.addEventListener(PSALMS_READ_EVENT, recheck);
     window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
+    window.addEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
     window.addEventListener(FDD_PRAYED_EVENT, recheck);
     window.addEventListener("visibilitychange", recheck);
     window.addEventListener("focus", recheck);
@@ -262,6 +266,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(SSJE_READ_EVENT, recheck);
       window.removeEventListener(PSALMS_READ_EVENT, recheck);
       window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
+      window.removeEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(FDD_PRAYED_EVENT, recheck);
       window.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);
@@ -593,11 +598,13 @@ export function useRhythmState(): RhythmState {
   const morningDone = !!todayOffice?.morning || officeLocal.morning
     || (ml === "fdd" && prayerRead.fddMorning) || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
+    || (ml === "custom" && prayerRead.customMorning)
     || (ml === "examen" && examenKept)
     || (ml === "reflect-sit" && morningSatKept);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
     || (el === "fdd" && prayerRead.fddEvening) || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
+    || (el === "custom" && prayerRead.customEvening)
     || (el === "examen" && examenKept)
     || (el === "reflect-sit" && eveningSatKept);
 

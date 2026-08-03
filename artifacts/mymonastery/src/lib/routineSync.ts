@@ -21,6 +21,8 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:office:level:morning", "phoebe:office:level:evening",
   "phoebe:office:entry:morning", "phoebe:office:entry:evening",
   "phoebe:office:reflection:morning", "phoebe:office:reflection:evening",
+  // Name of a side's own "Create your own" custom practice (level "custom").
+  "phoebe:office:custom-name:morning", "phoebe:office:custom-name:evening",
   // Prayer List + BCP merge (community intercessions prayed within the office).
   "phoebe:office:community-within:morning", "phoebe:office:community-within:evening",
   // Per-side Contemplative Prayer (drives the Morning/Evening Contemplation cards).

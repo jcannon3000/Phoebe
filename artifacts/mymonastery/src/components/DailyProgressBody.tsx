@@ -15,8 +15,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, type ReflectionSource } from "@/lib/officePrefs";
-import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
+import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, type ReflectionSource } from "@/lib/officePrefs";
+import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, markCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -778,6 +778,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (lvl === "guided-prayer") return t("rhythm.blurb_guided_prayer", { defaultValue: "Three Minutes to Start Your Day" });
     if (lvl === "reflect-sit") return t("rhythm.blurb_contemplation", { defaultValue: "Loving God in silence" });
     if (lvl === "psalms") return t("rhythm.blurb_psalms", { defaultValue: "Today's appointed psalms" });
+    if (lvl === "custom") return t("rhythm.blurb_custom", { defaultValue: "Tap to mark done" });
     return side === "morning"
       ? t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" })
       : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" });
@@ -833,6 +834,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Simple Guided Prayer", matching the per-side home card.
     // Just "Guided Prayer" — no Morning/Evening prefix, no "Simple" (owner).
     if (lvl === "guided-prayer") return t("rhythm.card_guided_prayer", { defaultValue: "Guided Prayer" });
+    // A user's own named practice IS this side's prayer — the card reads
+    // whatever they named it (matching the home card), not "… Prayer".
+    if (lvl === "custom") return getSideCustomName(side.toLowerCase() as "morning" | "evening").trim() || `${side} Practice`;
     return prayerKind === "community"
       ? t("rhythm.card_community", { defaultValue: "Pray together" })
       : prayerKind === "devotion"
@@ -930,17 +934,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // an undone morning drops to the "Tomorrow" section (the partition below), so
     // it's included here regardless of the hour rather than silently omitted.
     ...(morningActive ? [{
-      key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
+      key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone,
+      // A user's own named practice has no page to open — tapping just marks
+      // it done for the day, same shape as a custom anchor's check.
+      href: getSideLevel("morning") === "custom" ? "" : "/begin-prayer?side=morning",
+      ...(getSideLevel("morning") === "custom" ? { onClick: () => markCustomPrayed("morning") } : {}),
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
-      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      cta: getSideLevel("morning") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     ...(eveningActive ? [{
       // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
       // so the morning rhythm leads the day; from 3 PM on it becomes the office
       // hero. Opt-in — off by default (evening pref "none").
-      key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "46,107,64", done: eveningDone, href: "/begin-prayer?side=evening",
+      key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "46,107,64", done: eveningDone,
+      href: getSideLevel("evening") === "custom" ? "" : "/begin-prayer?side=evening",
+      ...(getSideLevel("evening") === "custom" ? { onClick: () => markCustomPrayed("evening") } : {}),
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).
@@ -948,7 +958,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? prayed
         : hour >= 20 ? officeTitle("Evening") : eveningBlurb,
       blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
-      cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      cta: getSideLevel("evening") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 17,
     }] : []),
     // Reflection cards lead the morning (default second, right after Morning).

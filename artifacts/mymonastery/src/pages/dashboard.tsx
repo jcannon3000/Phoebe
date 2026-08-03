@@ -23,7 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, getSideCustomName, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
@@ -41,6 +41,7 @@ import {
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
   GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
+  CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -2692,6 +2693,83 @@ function GuidedPrayerHomeCard({ side, hero = false }: { side: "morning" | "eveni
   );
 }
 
+// A user's own named practice — replaces the office card for a side set to
+// "Create your own". No page to open: tapping just marks it done for the day,
+// same one-tap shape as a custom anchor's check, just scoped to a side anchor.
+function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evening"; hero?: boolean }) {
+  const [done, setDone] = useState(() => hasPrayedCustomToday(side));
+  useEffect(() => {
+    const refresh = () => setDone(hasPrayedCustomToday(side));
+    refresh();
+    window.addEventListener(CUSTOM_PRAYER_READ_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(CUSTOM_PRAYER_READ_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [side]);
+  const title = getSideCustomName(side).trim() || "Your Practice";
+  const onClick = () => markCustomPrayed(side);
+  const rgb = "46,107,64";
+  if (hero) {
+    return (
+      <div
+        className="relative flex rounded-3xl overflow-hidden"
+        style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
+        <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+          <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
+            {side === "morning" ? "Morning" : "Evening"}
+          </p>
+          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>✨ {title}</p>
+          {done ? (
+            <div aria-label="Practice completed today" className="mt-[12px] w-full rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
+              Done today <span aria-hidden>✓</span>
+            </div>
+          ) : (
+            <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }} className="mt-[12px] w-full rounded-xl text-center cursor-pointer" style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}>
+              Mark done <span aria-hidden>✓</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={done ? undefined : onClick}
+      onKeyDown={(e) => { if (!done && (e.key === "Enter" || e.key === " ")) onClick(); }}
+      className="relative flex rounded-xl overflow-hidden"
+      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)`, cursor: done ? "default" : "pointer" }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">
+        <div className="min-w-0">
+          <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}>
+            ✨ {title}
+          </p>
+          <p className="truncate" style={{ color: "#D8C2BA", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12.5 }}>
+            {side === "morning" ? "Your morning practice" : "Your evening practice"}
+          </p>
+        </div>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: `rgba(${rgb},0.28)`, color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500,
+            padding: "6px 14px", border: `1px solid rgba(${rgb},0.50)`, whiteSpace: "nowrap",
+          }}
+        >
+          {done ? "Done ✓" : "Mark done"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Creation Prayer home card — replaces the office card for a side set to
 // Creation Prayer. Labels "Morning/Evening Creation Prayer" when BOTH sides are
 // Creation Prayer (so the two cards are distinguishable); just "Creation Prayer"
@@ -3583,6 +3661,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // replaces the office card, side-scoped like Psalms.
   if (getSideLevel(isMorning ? "morning" : "evening") === "guided-prayer") {
     return <GuidedPrayerHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
+  }
+  // Per-user: a practice they named themselves IS this side's prayer → its
+  // card replaces the office card, a plain tap-to-mark-done.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "custom") {
+    return <OwnPracticeHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
   // Per-user: Creation Prayer IS this side's prayer → its card replaces the
   // office card. Labels Morning/Evening Creation Prayer when both sides use it.

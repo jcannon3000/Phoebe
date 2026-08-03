@@ -282,8 +282,8 @@ export type OfficeSide = "morning" | "evening";
 // "fdd" = Forward Day by Day IS this side's prayer (replaces the office card for
 // that side, per-user). "psalms" = Praying the Psalms IS this side's prayer
 // (the appointed psalms, per the chosen cycle). Both per-user, set in Customize.
-export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer";
-const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd", "psalms", "examen", "creation", "guided-prayer"];
+export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer" | "custom";
+const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd", "psalms", "examen", "creation", "guided-prayer", "custom"];
 
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).
@@ -398,6 +398,21 @@ export function getSideReflectionExplicit(side: OfficeSide): ReflectionSource | 
 export function setSideReflection(side: OfficeSide, v: ReflectionSource): void {
   try {
     localStorage.setItem(`phoebe:office:reflection:${side}`, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Name of a side's own custom practice (level "custom" — "Create your own" in
+// the morning/evening way-step). Only meaningful when getSideLevel(side) ===
+// "custom"; otherwise stale/unset.
+export function getSideCustomName(side: OfficeSide): string {
+  try {
+    return localStorage.getItem(`phoebe:office:custom-name:${side}`) ?? "";
+  } catch { return ""; }
+}
+export function setSideCustomName(side: OfficeSide, v: string): void {
+  try {
+    localStorage.setItem(`phoebe:office:custom-name:${side}`, v);
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
   } catch { /* non-fatal */ }
 }
