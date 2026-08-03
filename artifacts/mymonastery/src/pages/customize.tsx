@@ -14,7 +14,7 @@ import {
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { pushRoutineConfig } from "@/lib/routineSync";
-import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
+import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
 // ── /customize — the BASIC customizer for logged-out / device-local sessions ─
 //
@@ -35,6 +35,17 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const BG = "#0C1F12";
 
 type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "contemplation";
+
+// "Add a practice" — the same contemplative add-ons the full customizer's
+// "Add an additional practice" step offers (Audio Divina / The Examen /
+// Contemplative Walk), just ONE at a time here (this page is meant to stay a
+// few quick dropdowns, not a multi-select). Backed by the same home-layout
+// module keys those toggles write in WayOfLoveRuleFlow.tsx.
+type AddPractice = "none" | "listening" | "examen" | "walk";
+const PRACTICE_KEYS: readonly AddPractice[] = ["listening", "examen", "walk"];
+function homeCardOn(hl: HomeLayout | null, key: string): boolean {
+  return !!hl && hl.order.includes(key) && !hl.hidden.includes(key);
+}
 
 // Contemplative Prayer from the basic editor: the SILENCE GOAL is the total
 // daily silence (default 20 min, chosen in 10-min steps), and the two per-side
@@ -102,6 +113,14 @@ export default function CustomizePage() {
   // goal instead of the guest fallback default above.
   const effectiveSilenceMin = guest ? silenceMin : (officePrefs?.contemplationGoalMinutes || silenceMin);
 
+  // "Add a practice" — read straight from the current home layout every render
+  // (a guest's cached copy is instant; a light account's arrives via useAuth's
+  // own /auth/me fetch, gated by authLoading below) until this session makes
+  // its own pick, which then wins locally without waiting on a round-trip.
+  const [addPracticeLocal, setAddPracticeLocal] = useState<AddPractice | null>(null);
+  const currentHomeLayout: HomeLayout | null = guest ? readCachedHomeLayout() : (user?.homeLayout ?? null);
+  const addPractice: AddPractice = addPracticeLocal ?? (PRACTICE_KEYS.find((k) => homeCardOn(currentHomeLayout, k)) ?? "none");
+
   const applyDailyPrayer = (choice: DailyPrayer) => {
     // Re-selecting the current anchor is a no-op — without this, re-picking
     // Contemplative Prayer would re-clobber an adjusted goal back to 20.
@@ -151,6 +170,37 @@ export default function CustomizePage() {
     setReflectionSource(id);
     setSideReflection("morning", id);
     setSideReflection("evening", id);
+    if (user) pushRoutineConfig();
+  };
+
+  // Turn one contemplative add-on on (replacing whichever of the three was on
+  // before) or all the way off ("none"). There's no partial home-layout write
+  // anywhere in the app — every save replaces the whole order/hidden pair —
+  // so this starts from whatever layout already exists (an existing light
+  // account may have one from the full customizer) and only touches the three
+  // practice keys, leaving everything else exactly as it was. A user who has
+  // NEVER saved a layout gets a fresh minimal one seeded from this page's own
+  // choices, with every OTHER opt-in module (reading/Co-Breathe/Prayer List)
+  // explicitly hidden so they don't silently appear just because a layout now
+  // exists where none did before.
+  const applyAddPractice = (choice: AddPractice) => {
+    if (choice === addPractice) return;
+    setAddPracticeLocal(choice);
+    const existing = currentHomeLayout;
+    const otherNewsletters = (["cac", "fdd", "ssje"] as const).filter((n) => n !== newsletter);
+    const baseOrder = existing?.order ?? ["requests", "office", "contemplation", newsletter, "feeds", "ncmp", "podcasts", ...otherNewsletters];
+    const baseHidden = existing?.hidden ?? ["ncmp", "podcasts", "reading", "cobreathe", "prayer-list", ...otherNewsletters];
+    const order = baseOrder.filter((k) => !PRACTICE_KEYS.includes(k as AddPractice));
+    const hidden = new Set(baseHidden.filter((k) => !PRACTICE_KEYS.includes(k as AddPractice)));
+    if (choice !== "none") {
+      const feedsIdx = order.indexOf("feeds");
+      if (feedsIdx >= 0) order.splice(feedsIdx, 0, choice);
+      else order.push(choice);
+    }
+    for (const k of PRACTICE_KEYS) if (k !== "none" && k !== choice) hidden.add(k);
+    const layout: HomeLayout = { order, hidden: [...hidden], v: HOME_LAYOUT_VERSION };
+    if (guest) cacheHomeLayoutLocalOnly(layout);
+    else void saveHomeLayout(layout).catch(() => { /* best-effort */ });
     if (user) pushRoutineConfig();
   };
 
@@ -232,6 +282,17 @@ export default function CustomizePage() {
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
           {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}
+
+          {/* Same three contemplative add-ons as the full customizer's "Add an
+              additional practice" step — just one at a time here. Gated on
+              auth having settled so a light account's saved layout doesn't
+              briefly read as "None" before it loads. */}
+          {!authLoading && row("Add a practice", addPractice, [
+            { value: "none", label: "None" },
+            { value: "listening", label: "Audio Divina" },
+            { value: "examen", label: "The Examen" },
+            { value: "walk", label: "Contemplative Walk" },
+          ], (v) => applyAddPractice(v as AddPractice))}
         </div>
 
         {/* Every row above already applies the moment it's changed — this
