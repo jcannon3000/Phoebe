@@ -96,10 +96,10 @@ type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation
 const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
 type Step =
   | "when"
-  | "morning-way" | "morning-bcp" | "morning-config"
+  | "morning-way" | "morning-bcp" | "morning-custom" | "morning-config"
   | "fdd-mode"
   | "psalms-cycle"
-  | "evening-way" | "evening-bcp" | "evening-config"
+  | "evening-way" | "evening-bcp" | "evening-custom" | "evening-config"
   | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "walk-when"
   | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
@@ -1220,8 +1220,8 @@ export default function WayOfLoveRuleFlow({
     // contemplative multi-select, no per-practice slots, no extras, no weekly.
     ? [
         "when",
-        ...(sides.morning ? (["morning-way", ...(bcpOnSide("morning") ? ["morning-bcp"] : []), "morning-config"] as Step[]) : []),
-        ...(sides.evening ? (["evening-way", ...(bcpOnSide("evening") ? ["evening-bcp"] : []), "evening-config"] as Step[]) : []),
+        ...(sides.morning ? (["morning-way", ...(bcpOnSide("morning") ? ["morning-bcp"] : []), ...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
+        ...(sides.evening ? (["evening-way", ...(bcpOnSide("evening") ? ["evening-bcp"] : []), ...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config"] as Step[]) : []),
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
@@ -1229,8 +1229,8 @@ export default function WayOfLoveRuleFlow({
       ]
     : [
     "when",
-    ...(sides.morning ? (["morning-way", ...(bcpOnSide("morning") ? ["morning-bcp"] : []), "morning-config"] as Step[]) : []),
-    ...(sides.evening ? (["evening-way", ...(bcpOnSide("evening") ? ["evening-bcp"] : []), "evening-config"] as Step[]) : []),
+    ...(sides.morning ? (["morning-way", ...(bcpOnSide("morning") ? ["morning-bcp"] : []), ...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
+    ...(sides.evening ? (["evening-way", ...(bcpOnSide("evening") ? ["evening-bcp"] : []), ...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
@@ -1585,8 +1585,11 @@ export default function WayOfLoveRuleFlow({
           {/* Create your own — name a practice of your own and it BECOMES this
               side's prayer (replaces the office, same as the choices above).
               A plain per-side anchor: no contemplation slot, no session page —
-              the home card is just a tap-to-mark-done for whatever they typed. */}
-          {choiceRow(
+              the home card is just a tap-to-mark-done for whatever they name
+              it, chosen on its own slide right after (morning/evening-custom)
+              rather than an inline field here — full-flow/pilot only, like the
+              BCP-form detail slide above. */}
+          {!guest && choiceRow(
             prayBySide[side] === "ownPractice",
             `✨ ${t("wol_rule.cp_custom", { defaultValue: "Create your own" })}`,
             t("wol_rule.cp_custom_sub", { defaultValue: "Name a practice of your own." }),
@@ -1597,20 +1600,6 @@ export default function WayOfLoveRuleFlow({
               if (contemplationBySide[side]) toggleContemplationSide(side);
               choosePrayBySide(side, "ownPractice");
             },
-          )}
-          {prayBySide[side] === "ownPractice" && (
-            <input
-              value={customNameBySide[side]}
-              onChange={(e) => {
-                const v = e.target.value.slice(0, 40);
-                touchedRef.current = true;
-                setCustomNameBySide((p) => ({ ...p, [side]: v }));
-                setSideCustomName(side, v);
-              }}
-              aria-label={t("wol_rule.cp_custom_name", { defaultValue: "Practice name" })}
-              placeholder={t("wol_rule.cp_custom_placeholder", { defaultValue: "e.g. The Rosary" })}
-              style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
-            />
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
@@ -1644,6 +1633,55 @@ export default function WayOfLoveRuleFlow({
             return choiceRow(prayBySide[side] === form, `${emoji} ${label}`, sub, () => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); });
           })}
         </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── Per-side CUSTOM PRACTICE NAME slide — pick a common practice or type
+  // your own. Its own slide (not inline on the way step) so a lone text field
+  // has room to breathe above the keyboard instead of sitting under a list of
+  // four other choiceRows.
+  if (step === "morning-custom" || step === "evening-custom") {
+    const side: OfficeSide = step === "morning-custom" ? "morning" : "evening";
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const presets = [
+      t("wol_rule.custom_preset_rosary", { defaultValue: "The Rosary" }),
+      t("wol_rule.custom_preset_lectio", { defaultValue: "Lectio Divina" }),
+      t("wol_rule.custom_preset_centering", { defaultValue: "Centering Prayer" }),
+      t("wol_rule.custom_preset_jesus", { defaultValue: "The Jesus Prayer" }),
+      t("wol_rule.custom_preset_devotional", { defaultValue: "Devotional Reading" }),
+    ];
+    const current = customNameBySide[side];
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(cap, t("wol_rule.cp_custom", { defaultValue: "Create your own" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.custom_name_body", { side: cap.toLowerCase(), defaultValue: `What will you pray in the ${cap.toLowerCase()}?` })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {presets.map((label) => choiceRow(current === label, label, "", () => {
+            touchedRef.current = true;
+            setCustomNameBySide((p) => ({ ...p, [side]: label }));
+            setSideCustomName(side, label);
+          }))}
+        </div>
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+          {t("wol_rule.custom_or_write", { defaultValue: "Or write your own" })}
+        </p>
+        <input
+          value={current}
+          onChange={(e) => {
+            const v = e.target.value.slice(0, 40);
+            touchedRef.current = true;
+            setCustomNameBySide((p) => ({ ...p, [side]: v }));
+            setSideCustomName(side, v);
+          }}
+          aria-label={t("wol_rule.cp_custom_name", { defaultValue: "Practice name" })}
+          placeholder={t("wol_rule.cp_custom_placeholder", { defaultValue: "e.g. Walking prayer" })}
+          style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
+        />
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );

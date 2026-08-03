@@ -117,6 +117,13 @@ export default function BeginPrayerPage() {
       setLocation(`/dashboard?fdd=${side}`, { replace: true });
       return;
     }
+    // A practice the user named themselves IS this side's prayer → there's no
+    // dedicated page for it (the home card is a plain tap-to-mark-done), so
+    // land on the home the same way "fdd" above does.
+    if (defaultPrayerLevel === "custom") {
+      setLocation("/dashboard", { replace: true });
+      return;
+    }
     // Creation Prayer IS this side's prayer → the creation-focused devotion
     // (opens with Co-Breathe, then the creation Psalter + prayers). Hidden for
     // now — when off, a stale "creation" pref falls through to the office below.

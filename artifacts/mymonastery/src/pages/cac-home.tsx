@@ -121,8 +121,11 @@ export default function CacHomePage() {
   const { data: coursesData, isLoading: coursesLoading } = useCacCourses();
   const { data: reflection, isLoading: reflectionLoading } = useCacDailyReflection();
   // Re-render when any season's progress changes, so a show you just
-  // started jumps to the top without needing a reload.
-  useAnyCourseProgressTick();
+  // started jumps to the top without needing a reload. The tick number
+  // itself must be a dependency below — `courses` is a stable react-query
+  // array reference, so a plain re-render alone wouldn't recompute either
+  // memo (e.g. clicking a Continue row's × wouldn't remove it from the list).
+  const progressTick = useAnyCourseProgressTick();
   // Re-render when today's reflection gets marked read (cac-reflection.tsx
   // calls markCacRead() on open) — same tracker the rest of the app's daily-
   // reflection cards already use (lib/cacReadState.ts).
@@ -143,7 +146,7 @@ export default function CacHomePage() {
       .filter((c) => c.isStarted && !c.isDone)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 3);
-  }, [courses]);
+  }, [courses, progressTick]);
 
   // Shows with a started (but not necessarily finished) season float to the
   // top — "pick up where you left off" beats browsing from scratch.
@@ -160,7 +163,7 @@ export default function CacHomePage() {
       byShow.set(c.showSlug, { showSlug: c.showSlug, showTitle: c.showTitle, author: c.author, artwork: c.artwork, seasonCount: 1, started });
     }
     return [...byShow.values()].sort((a, b) => (a.started === b.started ? 0 : a.started ? -1 : 1));
-  }, [courses]);
+  }, [courses, progressTick]);
 
   // The home card's teaser line is plain text (not the rich HTML the full
   // reflection page renders) — strip tags/line-breaks from the first

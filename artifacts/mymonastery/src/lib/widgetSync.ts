@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { getSideLevel } from "@/lib/officePrefs";
+import { getSideLevel, getSideCustomName } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
@@ -126,6 +126,9 @@ export function useWidgetSync(): void {
       if (lvl === "reflect-sit") return "Contemplation";
       if (lvl === "examen") return "The Examen";
       if (lvl === "guided-prayer") return "Guided Prayer";
+      // A user's own named practice IS this side's prayer — the widget
+      // names the card after what they typed, matching the home card.
+      if (lvl === "custom") return getSideCustomName(side.toLowerCase() as "morning" | "evening").trim() || `${side} Practice`;
       if (r.prayerKind === "community") return "Pray together";
       if (r.prayerKind === "devotion") return `${side} Devotion`;
       return `${side} Prayer`;
@@ -137,6 +140,7 @@ export function useWidgetSync(): void {
       if (lvl === "reflect-sit") return "Contemplative Prayer";
       if (lvl === "examen") return "Review the day";
       if (lvl === "guided-prayer") return "Three Minutes to Start Your Day";
+      if (lvl === "custom") return "Your own practice";
       return "Book of Common Prayer";
     };
     const officeSubtitle = (isMorning: boolean): string =>
