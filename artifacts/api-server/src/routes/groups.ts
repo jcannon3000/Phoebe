@@ -381,6 +381,21 @@ export async function requireAdmin(groupSlug: string, userId: number) {
   return result;
 }
 
+// A group is a followed feed, not a social room (see project notes) — most
+// joins default to role "follower". Cap how many a person can follow at
+// once so a growing public directory doesn't turn into an unbounded list of
+// feeds nobody actually reads. Counts ANY active membership (follower,
+// member, admin, hidden_admin — anything with joinedAt set), app-wide.
+// Creating your own new group is intentionally NOT capped by this (see
+// POST /groups) — this limits what you follow, not what you lead.
+const MAX_FOLLOWED_GROUPS = 3;
+async function countFollowedGroups(userId: number): Promise<number> {
+  const [row] = await db.select({ c: count() })
+    .from(groupMembersTable)
+    .where(and(eq(groupMembersTable.userId, userId), isNotNull(groupMembersTable.joinedAt)));
+  return row?.c ?? 0;
+}
+
 // Is this user a pilot (beta) user? Designating a hidden admin is gated
 // behind this flag — only pilots can create or change hidden-admin roles.
 async function isBetaUser(userId: number): Promise<boolean> {
@@ -1665,6 +1680,12 @@ router.post(
       return;
     }
 
+    const followedCount = await countFollowedGroups(user.id);
+    if (followedCount >= MAX_FOLLOWED_GROUPS) {
+      res.status(409).json({ error: `You're already following ${MAX_FOLLOWED_GROUPS} communities. Leave one before following another.` });
+      return;
+    }
+
     // Fresh membership. group_members.inviteToken is NOT NULL UNIQUE (it
     // was the per-member invite token in the old model), so we still mint
     // a random one per row to satisfy the constraint even though it's no
@@ -1707,6 +1728,13 @@ router.post(
 
   // Link userId if authenticated
   const user = getUser(req);
+  if (user) {
+    const followedCount = await countFollowedGroups(user.id);
+    if (followedCount >= MAX_FOLLOWED_GROUPS) {
+      res.status(409).json({ error: `You're already following ${MAX_FOLLOWED_GROUPS} communities. Leave one before following another.` });
+      return;
+    }
+  }
   const updates: Record<string, any> = { joinedAt: new Date() };
   if (user) {
     updates.userId = user.id;
@@ -3870,6 +3898,14 @@ router.post("/groups/:slug/request-join", perUserRateLimit("groups_request_join"
       return;
     }
 
+    // Reject upfront rather than let the request sit for an admin who'd
+    // just have to decline it anyway once they hit the same cap on accept.
+    const followedCount = await countFollowedGroups(user.id);
+    if (followedCount >= MAX_FOLLOWED_GROUPS) {
+      res.status(409).json({ error: `You're already following ${MAX_FOLLOWED_GROUPS} communities. Leave one before following another.` });
+      return;
+    }
+
     // Is there already a PENDING request? If so, re-tapping is a no-op and
     // must NOT re-notify admins — otherwise a user could spam every admin's
     // lock screen by hammering this endpoint. We only push when the request is
@@ -3998,6 +4034,15 @@ router.post("/groups/:slug/join-requests/:id/accept", async (req, res): Promise<
       .from(usersTable)
       .where(eq(usersTable.id, reqRow.userId));
     if (!requester) { res.status(404).json({ error: "User not found" }); return; }
+
+    // The requester may have hit the cap on another community between
+    // sending this request and now — re-check at accept time too (the
+    // request-join endpoint already blocks it upfront in the common case).
+    const followedCount = await countFollowedGroups(requester.id);
+    if (followedCount >= MAX_FOLLOWED_GROUPS) {
+      res.status(409).json({ error: `This person is already following ${MAX_FOLLOWED_GROUPS} communities and can't be added to another right now.` });
+      return;
+    }
 
     // Mint the membership (or reactivate a stale row if one exists).
     await db

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { Search, MapPin } from "lucide-react";
@@ -95,10 +95,14 @@ export default function CommunitiesBrowsePage() {
         description: t("communities_browse.request_sent_sub", { defaultValue: "The community's admin will review it. You'll be notified when you're in." }),
       });
     },
-    onError: () => {
+    onError: (err) => {
+      // A rejected request (e.g. the 3-community follow cap) carries a
+      // specific server message worth showing verbatim — everything else
+      // falls back to the generic "check your connection" copy.
+      const specific = err instanceof ApiError ? err.message : undefined;
       toast({
-        title: t("communities_browse.request_failed", { defaultValue: "Couldn't send your request" }),
-        description: t("communities_browse.request_failed_sub", { defaultValue: "Please check your connection and try again." }),
+        title: specific ?? t("communities_browse.request_failed", { defaultValue: "Couldn't send your request" }),
+        description: specific ? undefined : t("communities_browse.request_failed_sub", { defaultValue: "Please check your connection and try again." }),
         variant: "destructive",
       });
     },

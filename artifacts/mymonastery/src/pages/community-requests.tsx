@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { useToast } from "@/hooks/use-toast";
 
 interface JoinRequest {
   id: number;
@@ -60,6 +61,7 @@ export default function CommunityRequestsPage() {
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -95,6 +97,15 @@ export default function CommunityRequestsPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/groups/${slug}/join-requests`] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/pending-join-request-counts"] });
       queryClient.invalidateQueries({ queryKey: [`/api/groups/${slug}`] });
+    },
+    // e.g. the requester has already hit the 3-community follow cap — the
+    // server's message names the actual reason, worth showing verbatim
+    // rather than failing silently (this previously had no onError at all).
+    onError: (err) => {
+      toast({
+        title: err instanceof ApiError ? err.message : "Couldn't accept this request",
+        variant: "destructive",
+      });
     },
   });
 
