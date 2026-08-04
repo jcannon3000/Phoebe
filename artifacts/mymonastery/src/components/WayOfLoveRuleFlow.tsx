@@ -1377,6 +1377,12 @@ export default function WayOfLoveRuleFlow({
 
   // ── Contemplative practices — multi-select (pick any) ─────────────────────
   if (step === "contemplative") {
+    // Creation Prayer is already offered per SIDE via the legacy
+    // contemplationStyle mechanism (a returning user's saved
+    // "cobreathe" style) — only offer it again here as a standalone extra
+    // when NEITHER side already carries it, so a user with it as their
+    // primary prayer doesn't see a confusing duplicate toggle.
+    const creationAlreadyPrimary = contemplationStyle === "cobreathe" && (contemplationBySide.morning || contemplationBySide.evening);
     // Same reasoning for the Examen: since evening's "Simple Guided Prayer" row
     // now doubles as the Examen (see the morning/evening "way" step), a user who
     // reaches this step with evening set that way already has the Examen as
@@ -1393,6 +1399,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
+          {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
@@ -1645,12 +1652,15 @@ export default function WayOfLoveRuleFlow({
   if (step === "morning-custom" || step === "evening-custom") {
     const side: OfficeSide = step === "morning-custom" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
-    const presets = [
-      t("wol_rule.custom_preset_rosary", { defaultValue: "The Rosary" }),
-      t("wol_rule.custom_preset_lectio", { defaultValue: "Lectio Divina" }),
-      t("wol_rule.custom_preset_centering", { defaultValue: "Centering Prayer" }),
-      t("wol_rule.custom_preset_jesus", { defaultValue: "The Jesus Prayer" }),
-      t("wol_rule.custom_preset_devotional", { defaultValue: "Devotional Reading" }),
+    // Offer Phoebe's own contemplative-practice vocabulary as quick picks
+    // (same names/emoji as the "Add an additional practice" step) rather
+    // than devotional names invented for this slide — typing something
+    // else below still covers a genuinely custom practice.
+    const presets: Array<{ emoji: string; label: string }> = [
+      { emoji: "🎵", label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }) },
+      { emoji: "🌗", label: t("wol_rule.cp_examen", { defaultValue: "The Examen" }) },
+      { emoji: "🌍", label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }) },
+      { emoji: "🚶", label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }) },
     ];
     const current = customNameBySide[side];
     return shell(
@@ -1661,7 +1671,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.custom_name_body", { side: cap.toLowerCase(), defaultValue: `What will you pray in the ${cap.toLowerCase()}?` })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {presets.map((label) => choiceRow(current === label, label, "", () => {
+          {presets.map(({ emoji, label }) => choiceRow(current === label, `${emoji} ${label}`, "", () => {
             touchedRef.current = true;
             setCustomNameBySide((p) => ({ ...p, [side]: label }));
             setSideCustomName(side, label);

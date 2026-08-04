@@ -179,10 +179,10 @@ export default function AdminToolsPage() {
               />
             )}
             <LinkRow
-              emoji="🕯️"
-              label="Vision deck"
-              description="The 'technology of holding' story — Phoebe's why"
-              onClick={() => setLocation("/vision-deck")}
+              emoji="🗺️"
+              label="Overview deck"
+              description="Phoebe's why, in 8 slides — the short version of About"
+              onClick={() => setLocation("/overview-deck")}
             />
             {isAdmin && (
               <>
