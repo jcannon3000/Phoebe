@@ -72,8 +72,8 @@ const SLIDES: Slide[] = [
   // repeated itself; this one carries the idea on text alone.
   {
     kind: "feature-text",
-    label: "Walking Together",
-    headline: "Moving in the same direction",
+    label: "",
+    headline: "Walking Together",
     body: [
       "Built on Bishop Michael Curry's Way of Love, Phoebe lets a group move in the same direction between gatherings — each person practicing within the realities of their own life, while knowing others are on the same road.",
     ],
@@ -96,10 +96,22 @@ const SLIDES: Slide[] = [
       "Leaders can use Phoebe to create the conditions for belonging — as people enter a shared process of daily prayer, mutual encouragement, and walking together in the life of discipleship.",
     ],
   },
-  // 10 — Hebrews 11:1, on its own quote slide (public-domain WEB translation).
+  // 10 — Hebrews 10, the same verse the full about-deck uses (unchanged).
   {
-    kind: "quote",
-    text: "Now faith is assurance of things hoped for,\nproof of things not seen.\n\n— Hebrews 11:1",
+    kind: "statement",
+    headline: "Hebrews 10",
+    body: [
+      "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
+    ],
+  },
+  // 11 — The landing thought, echoing the leader-framed opening: Phoebe as a
+  // tool leaders use, not a replacement for their own welcome.
+  {
+    kind: "statement",
+    headline: "A tool for welcome",
+    body: [
+      "Phoebe is a tool for leaders to welcome people into the prayer life of the church — making space for them to find belonging.",
+    ],
   },
   // The invitation — same close as the full deck.
   {
