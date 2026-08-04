@@ -6,7 +6,7 @@ import { loginFreshSession } from "../lib/session";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
 import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
-import { notifyAdminsOfNewMember } from "./groups";
+import { notifyAdminsOfNewMember, countFollowedGroups, MAX_FOLLOWED_GROUPS } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { isSuperAdminUser } from "../lib/superAdmin";
@@ -864,8 +864,15 @@ router.post(
   //   - Community-wide token (communityWideGroupId set): INSERT a fresh
   //     membership row. group_members.invite_token is NOT NULL UNIQUE so
   //     we mint a per-row random token just to satisfy the constraint.
+  // An anon device user upgrading in place (anonUserId above) may already be
+  // following the max via /groups/:slug/join — check the same cap here, or
+  // this auto-join becomes the one path that lets someone exceed it.
+  const followedCount = await countFollowedGroups(user.id);
+  const atFollowCap = followedCount >= MAX_FOLLOWED_GROUPS;
   if (inviteMember) {
-    try {
+    if (atFollowCap) {
+      console.log(`[auth/register] skipped invite auto-join for user ${user.id}: at follow cap`);
+    } else try {
       await db.update(groupMembersTable)
         .set({ userId: user.id, joinedAt: new Date(), name: user.name })
         .where(eq(groupMembersTable.id, inviteMember.id));
@@ -883,7 +890,9 @@ router.post(
       // invite link again to complete the join.
     }
   } else if (communityWideGroupId) {
-    try {
+    if (atFollowCap) {
+      console.log(`[auth/register] skipped community-wide auto-join for user ${user.id}: at follow cap`);
+    } else try {
       await db.insert(groupMembersTable).values({
         groupId: communityWideGroupId,
         userId: user.id,

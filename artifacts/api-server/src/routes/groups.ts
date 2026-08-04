@@ -388,8 +388,8 @@ export async function requireAdmin(groupSlug: string, userId: number) {
 // member, admin, hidden_admin — anything with joinedAt set), app-wide.
 // Creating your own new group is intentionally NOT capped by this (see
 // POST /groups) — this limits what you follow, not what you lead.
-const MAX_FOLLOWED_GROUPS = 3;
-async function countFollowedGroups(userId: number): Promise<number> {
+export const MAX_FOLLOWED_GROUPS = 3;
+export async function countFollowedGroups(userId: number): Promise<number> {
   const [row] = await db.select({ c: count() })
     .from(groupMembersTable)
     .where(and(eq(groupMembersTable.userId, userId), isNotNull(groupMembersTable.joinedAt)));
@@ -4044,19 +4044,37 @@ router.post("/groups/:slug/join-requests/:id/accept", async (req, res): Promise<
       return;
     }
 
-    // Mint the membership (or reactivate a stale row if one exists).
-    await db
-      .insert(groupMembersTable)
-      .values({
-        groupId: result.group.id,
-        userId: requester.id,
-        email: requester.email.toLowerCase(),
-        name: requester.name,
-        role: "follower",
-        inviteToken: crypto.randomBytes(16).toString("hex"),
-        joinedAt: new Date(),
-      })
-      .onConflictDoNothing();
+    // Mint the membership — or reactivate a stale row if one already exists
+    // for this (group, user) pair. There's no DB-level uniqueness on that
+    // pair to lean on (onConflictDoNothing here would target nothing), so
+    // this checks explicitly: the requester could have joined the same
+    // group by invite link in the gap between request-join and this accept,
+    // and a blind insert would leave two rows double-counting one community
+    // against their follow cap.
+    const [existingRow] = await db
+      .select({ id: groupMembersTable.id, joinedAt: groupMembersTable.joinedAt })
+      .from(groupMembersTable)
+      .where(and(eq(groupMembersTable.groupId, result.group.id), eq(groupMembersTable.userId, requester.id)));
+    if (existingRow) {
+      if (!existingRow.joinedAt) {
+        await db.update(groupMembersTable)
+          .set({ joinedAt: new Date(), role: "follower" })
+          .where(eq(groupMembersTable.id, existingRow.id));
+      }
+      // else: already active (joined some other way already) — nothing to do.
+    } else {
+      await db
+        .insert(groupMembersTable)
+        .values({
+          groupId: result.group.id,
+          userId: requester.id,
+          email: requester.email.toLowerCase(),
+          name: requester.name,
+          role: "follower",
+          inviteToken: crypto.randomBytes(16).toString("hex"),
+          joinedAt: new Date(),
+        });
+    }
 
     // Stamp the request as accepted.
     await db

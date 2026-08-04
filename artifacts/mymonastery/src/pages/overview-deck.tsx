@@ -30,6 +30,9 @@ const SLIDES: Slide[] = [
     ],
   },
   // 4 — Cultivating a daily habit, condensed (about-deck's slides 6–7 in one).
+  // Shows the home screen itself — the routine, always naming what's next —
+  // rather than the customizer's when-to-pray picker, which is a setup step,
+  // not the daily experience this slide is describing.
   {
     kind: "feature-combo",
     label: "Cultivating a Daily Habit",
@@ -37,9 +40,21 @@ const SLIDES: Slide[] = [
     body: [
       "Phoebe guides each person through a customizable daily routine rather than a library to browse — one step at a time, always showing what's next, so it's easy to return the following day.",
     ],
-    mock: "customizer",
+    mock: "dashboard",
   },
-  // 5 — Walking Together, condensed (about-deck's Way of Love / Walking
+  // 5 — One office, many ways in (from the original church-deck, unchanged
+  // copy) — the offices aren't a single fixed format; each one flexes to
+  // however someone actually prays.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "One office, prayed your way",
+    body: [
+      "Tap \"How to pray\" on any office and choose how it meets you: a digital slideshow you move through at your own pace, the page numbers for a physical Book of Common Prayer, or listen to it read aloud. Every way keeps the same rhythm.",
+    ],
+    mock: "office-formats",
+  },
+  // 6 — Walking Together, condensed (about-deck's Way of Love / Walking
   // Together / shared-rhythm slides in one).
   {
     kind: "feature-combo",
@@ -50,7 +65,7 @@ const SLIDES: Slide[] = [
     ],
     mock: "dashboard",
   },
-  // 6 — Gathering, whenever fits (about-deck slide 15, condensed).
+  // 7 — Gathering, whenever fits (about-deck slide 15, condensed).
   {
     kind: "feature-combo",
     label: "",
@@ -60,7 +75,7 @@ const SLIDES: Slide[] = [
     ],
     mock: "gatherings",
   },
-  // 7 — The close: belonging as a byproduct (about-deck slide 18, unchanged).
+  // 8 — The close: belonging as a byproduct (about-deck slide 18, unchanged).
   {
     kind: "statement",
     headline: "The conditions for belonging",

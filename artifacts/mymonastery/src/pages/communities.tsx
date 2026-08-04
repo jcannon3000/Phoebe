@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 type Group = {
   id: number; name: string; slug: string; description: string | null;
@@ -50,14 +50,25 @@ export default function CommunitiesPage() {
                 {t("communities.subtitle")}
               </p>
             </div>
-            {isBuilder && (
-              <Link href="/communities/new">
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Always reachable — not just when you have zero communities.
+                  This was previously only offered inside the empty state, so
+                  anyone who'd already joined one had no way to find another. */}
+              <Link href="/communities/browse">
                 <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  <Plus size={14} /> {t("communities.new")}
+                  style={{ background: "transparent", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.4)" }}>
+                  <Search size={14} /> {t("communities.browse_communities", { defaultValue: "Browse" })}
                 </span>
               </Link>
-            )}
+              {isBuilder && (
+                <Link href="/communities/new">
+                  <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                    <Plus size={14} /> {t("communities.new")}
+                  </span>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

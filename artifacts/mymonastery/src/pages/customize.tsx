@@ -65,8 +65,19 @@ function currentDailyPrayer(): DailyPrayer {
   if (lvl === "office") return "office";
   // "Devotions" is no longer a selectable option here — an existing user
   // whose level is still "devotion" (or anything else unmatched) shows
-  // "Offices" pre-selected, the closest remaining option.
+  // "Offices" pre-selected, the closest remaining option. A "custom" level
+  // (named in the full customizer) is handled separately by isOwnPractice
+  // below — this fallback never actually surfaces for that case.
   return "office";
+}
+
+// A practice someone named for themselves in the FULL customizer ("Create
+// your own") has no matching option in this page's short Daily Prayer list —
+// showing a fallback like "Offices" pre-selected here would look correct but
+// silently overwrite their real practice the moment they picked anything.
+// So this page just locks the row read-only instead of guessing.
+function isOwnPracticeSide(): boolean {
+  return getSideLevel("morning") === "custom" || getSideLevel("evening") === "custom";
 }
 
 export default function CustomizePage() {
@@ -105,6 +116,7 @@ export default function CustomizePage() {
   const goalsReady = guest || !officePrefsLoading;
 
   const [dailyPrayer, setDailyPrayer] = useState<DailyPrayer>(() => currentDailyPrayer());
+  const [ownPracticeLocked] = useState<boolean>(() => isOwnPracticeSide());
   const [newsletter, setNewsletter] = useState<ReflectionSource>(() => getReflectionSource());
   const [silenceMin, setSilenceMin] = useState<number>(() =>
     guest ? (getGuestSilenceGoalMin() || 5) : 5,
@@ -235,6 +247,15 @@ export default function CustomizePage() {
     ? [10, 20, 30, 40, 50, 60]
     : [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
 
+  // Read-only version of `row` — same pill, no <select> overlay, no caret.
+  // Used for the Daily Prayer row when it's locked (see isOwnPracticeSide).
+  const staticRow = (label: string, value: string) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(24,46,34,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+      <span style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600 }}>{label}</span>
+      <span style={{ color: SOFT_GREEN, fontFamily: FONT, fontSize: 14.5 }}>{value}</span>
+    </div>
+  );
+
   const row = (label: string, value: string, opts: Array<{ value: string; label: string }>, onChange: (v: string) => void) => (
     <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", borderRadius: 14, padding: "15px 18px", background: "rgba(24,46,34,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(168,197,160,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
       <span style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, fontWeight: 600 }}>{label}</span>
@@ -268,12 +289,14 @@ export default function CustomizePage() {
         </p>
 
         <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 10 }}>
-          {row("Daily Prayer", dailyPrayer, [
-            { value: "guided-prayer", label: "Simple Guided Prayer" },
-            { value: "psalms", label: "Psalms" },
-            { value: "office", label: "Offices" },
-            { value: "contemplation", label: "Contemplative Prayer" },
-          ], (v) => applyDailyPrayer(v as DailyPrayer))}
+          {ownPracticeLocked
+            ? staticRow("Daily Prayer", "Your own practice")
+            : row("Daily Prayer", dailyPrayer, [
+                { value: "guided-prayer", label: "Simple Guided Prayer" },
+                { value: "psalms", label: "Psalms" },
+                { value: "office", label: "Offices" },
+                { value: "contemplation", label: "Contemplative Prayer" },
+              ], (v) => applyDailyPrayer(v as DailyPrayer))}
 
           {row("Newsletter", newsletter, [
             { value: "fdd", label: "Forward Day by Day" },

@@ -100,7 +100,7 @@ type Step =
   | "fdd-mode"
   | "psalms-cycle"
   | "evening-way" | "evening-bcp" | "evening-custom" | "evening-config"
-  | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when" | "walk-when"
+  | "contemplative" | "contemplation-goal"
   | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
@@ -704,18 +704,6 @@ export default function WayOfLoveRuleFlow({
   const [silenceMode, setSilenceMode] = useState<"grow" | "fixed">(() => (user?.silenceLadder?.enabled ? "grow" : "fixed"));
   const silenceModeHydrated = useRef(false);
   const chooseSilenceMode = (m: "grow" | "fixed") => { touchedRef.current = true; setSilenceMode(m); };
-  // Per-practice time-of-day slot for the slotted practices.
-  const [slotByPractice, setSlotByPractice] = useState<Record<"cobreathe" | "listening" | "examen" | "walk", CustomSlot>>(() => ({
-    cobreathe: getPracticeSlot("cobreathe"),
-    listening: getPracticeSlot("listening"),
-    examen: getPracticeSlot("examen"),
-    walk: getPracticeSlot("walk"),
-  }));
-  const chooseSlot = (key: "cobreathe" | "listening" | "examen" | "walk", slot: CustomSlot) => {
-    touchedRef.current = true;
-    setSlotByPractice((p) => ({ ...p, [key]: slot }));
-    setPracticeSlot(key, slot);
-  };
   // Co-Breathe is already placed if the contemplative sit is Co-Breathe rather
   // than silence — then we don't ask for a separate time-of-day or add a
   // standalone card. Contemplative Prayer is now an add-on (contemplative.prayer),
@@ -1241,22 +1229,11 @@ export default function WayOfLoveRuleFlow({
     "contemplation-goal",
     // "Add an additional practice" — Audio Divina, Contemplative Walk, the
     // Examen, and (when neither side already carries it as their primary
-    // prayer) Creation Prayer. Each checked practice gets its own "when in
-    // the day?" detail step right after. The "Add to your day" extras step
-    // (Reading, Podcasts, Prayer List) is still reachable from the Practices
-    // page instead, not here.
+    // prayer) Creation Prayer. No time-of-day detail step after this one
+    // anymore — each is just available all day, not slotted to a part of
+    // the day. The "Add to your day" extras step (Reading, Podcasts, Prayer
+    // List) is still reachable from the Practices page instead, not here.
     "contemplative",
-    ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
-    ...(contemplative.walk ? (["walk-when"] as Step[]) : []),
-    // Skip the "when" detail step when a side's own prayer already IS the
-    // Examen / Creation Prayer (its slot is fixed by that side, not a pick the
-    // additional-practice step should re-ask for) — the "contemplative" step's
-    // checkbox for that practice is already hidden in that case (see
-    // examenAlreadyPrimary / creationAlreadyPrimary below), but its boolean
-    // state can still be stale-true from before that side's pick was made, so
-    // this list has to re-check the same condition rather than trust the flag.
-    ...(contemplative.examen && !(prayBySide.morning === "examen" || prayBySide.evening === "examen") ? (["examen-when"] as Step[]) : []),
-    ...(contemplative.cobreathe && !(contemplationStyle === "cobreathe" && (contemplationBySide.morning || contemplationBySide.evening)) ? (["cobreathe-when"] as Step[]) : []),
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -1401,40 +1378,6 @@ export default function WayOfLoveRuleFlow({
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
-        </div>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
-      </>,
-    );
-  }
-
-  // ── "What time of day?" — slot picker for Co-Breathe / Audio Divina / Examen ─
-  if (step === "cobreathe-when" || step === "audio-when" || step === "examen-when" || step === "walk-when") {
-    const key = step === "cobreathe-when" ? "cobreathe" : step === "audio-when" ? "listening" : step === "walk-when" ? "walk" : "examen";
-    const meta = step === "cobreathe-when"
-      ? { label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }), body: t("wol_rule.when_cobreathe_body", { defaultValue: "When in the day would you like to breathe?" }) }
-      : step === "audio-when"
-        ? { label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }), body: t("wol_rule.when_audio_body", { defaultValue: "Take time to listen to music intentionally as a spiritual practice." }) }
-        : step === "walk-when"
-            ? { label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }), body: t("wol_rule.when_walk_body", { defaultValue: "When in the day would you like to take a contemplative walk?" }) }
-            : { label: t("wol_rule.cp_examen", { defaultValue: "The Examen" }), body: t("wol_rule.when_examen_body", { defaultValue: "When in the day would you like to pray the Examen?" }) };
-    return shell(
-      <>
-        {backRow(goPrev)}
-        {stepHeader(meta.label, meta.label)}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>{meta.body}</p>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.when_label", { defaultValue: "What time of day?" })}
-        </p>
-        <div style={{ position: "relative" }}>
-          <select
-            value={slotByPractice[key]}
-            onChange={(e) => chooseSlot(key, e.target.value as CustomSlot)}
-            aria-label={t("wol_rule.when_label", { defaultValue: "What time of day?" })}
-            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-          >
-            {CUSTOM_SLOTS.map((s) => (<option key={s} value={s}>{SLOT_LABEL[s]}</option>))}
-          </select>
-          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -1652,13 +1595,13 @@ export default function WayOfLoveRuleFlow({
   if (step === "morning-custom" || step === "evening-custom") {
     const side: OfficeSide = step === "morning-custom" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
-    // Offer Phoebe's own contemplative-practice vocabulary as quick picks
-    // (same names/emoji as the "Add an additional practice" step) rather
-    // than devotional names invented for this slide — typing something
-    // else below still covers a genuinely custom practice.
+    // Quick picks below the text field, from Phoebe's own contemplative-
+    // practice vocabulary (same names/emoji as the "Add an additional
+    // practice" step) — minus The Examen, which is already its own primary-
+    // anchor choice on the previous step, so offering it again here would
+    // just be a confusing second way to pick the same thing.
     const presets: Array<{ emoji: string; label: string }> = [
       { emoji: "🎵", label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }) },
-      { emoji: "🌗", label: t("wol_rule.cp_examen", { defaultValue: "The Examen" }) },
       { emoji: "🌍", label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }) },
       { emoji: "🚶", label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }) },
     ];
@@ -1669,16 +1612,6 @@ export default function WayOfLoveRuleFlow({
         {stepHeader(cap, t("wol_rule.cp_custom", { defaultValue: "Create your own" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.custom_name_body", { side: cap.toLowerCase(), defaultValue: `What will you pray in the ${cap.toLowerCase()}?` })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {presets.map(({ emoji, label }) => choiceRow(current === label, `${emoji} ${label}`, "", () => {
-            touchedRef.current = true;
-            setCustomNameBySide((p) => ({ ...p, [side]: label }));
-            setSideCustomName(side, label);
-          }))}
-        </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
-          {t("wol_rule.custom_or_write", { defaultValue: "Or write your own" })}
         </p>
         <input
           value={current}
@@ -1692,6 +1625,16 @@ export default function WayOfLoveRuleFlow({
           placeholder={t("wol_rule.cp_custom_placeholder", { defaultValue: "e.g. Walking prayer" })}
           style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
         />
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+          {t("wol_rule.custom_or_choose", { defaultValue: "Or choose a practice" })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {presets.map(({ emoji, label }) => choiceRow(current === label, `${emoji} ${label}`, "", () => {
+            touchedRef.current = true;
+            setCustomNameBySide((p) => ({ ...p, [side]: label }));
+            setSideCustomName(side, label);
+          }))}
+        </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
@@ -2260,9 +2203,12 @@ export default function WayOfLoveRuleFlow({
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
       step: "contemplation-goal" as Step,
     }] : []),
-    ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Creation Prayer", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
-    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
-    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "contemplative" as Step }] : []),
+    // No time-of-day sub-label anymore — these add-ons are just available
+    // all day (see the "contemplative" step for the "with your prayer"
+    // exception, when Creation Prayer IS the side's primary sit style).
+    ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Creation Prayer", sub: cobreatheIsSideStyle ? "With your prayer" : "Available all day", step: "contemplative" as Step }] : []),
+    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step }] : []),
+    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step }] : []),
     ...(newsletters.length
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),

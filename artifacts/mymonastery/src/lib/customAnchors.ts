@@ -82,6 +82,12 @@ const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
   reading: "afternoon", // was a hardcoded "afternoon"; now user-choosable
 };
 export function getPracticeSlot(key: SlottedPractice): CustomSlot {
+  // Co-Breathe / Audio Divina / the Examen / a contemplative walk no longer
+  // offer a time-of-day picker in the customizer (owner) — they're just
+  // available all day now, so this ignores any slot stored from before that
+  // change rather than resurrecting a stale morning/evening gate. "reading"
+  // is unaffected — its picker still lives on its own customizer step.
+  if (key === "cobreathe" || key === "listening" || key === "examen" || key === "walk") return "anytime";
   try {
     const v = localStorage.getItem(`phoebe:slot:${key}`) as CustomSlot | null;
     return v && CUSTOM_SLOTS.includes(v) ? v : PRACTICE_SLOT_DEFAULT[key];
