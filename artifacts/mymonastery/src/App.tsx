@@ -407,6 +407,7 @@ const ChurchDeck = lazy(() => import("./pages/church-deck"));
 const VisionDeck = lazy(() => import("./pages/vision-deck"));
 const FeaturesDeck = lazy(() => import("./pages/features-deck"));
 const AboutDeck = lazy(() => import("./pages/about-deck"));
+const OverviewDeck = lazy(() => import("./pages/overview-deck"));
 const UserOnboarding = lazy(() => import("./pages/user-onboarding"));
 const PrayerFeedManagePage = lazy(() => import("./pages/prayer-feed-manage"));
 const PrayerFeedsBrowsePage = lazy(() => import("./pages/prayer-feeds-browse"));
@@ -672,7 +673,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",
-  "/about", "/about-deck", "/privacy", "/terms", "/invite", "/invite/share",
+  "/about", "/about-deck", "/overview-deck", "/privacy", "/terms", "/invite", "/invite/share",
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
 // subpaths, not just the index. Same for /cobreathe (intro → breath).
@@ -742,7 +743,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Reference content the guest Resources menu links to.
   "/building-faith",
   "/signin", "/login", "/onboarding",
-  "/about", "/about-deck", "/privacy", "/terms",
+  "/about", "/about-deck", "/overview-deck", "/privacy", "/terms",
   // The invite landing page — a first-time visitor tapping a shared link has
   // no session yet, which useGuestMode treats as a guest; without this the
   // gate bounced them to /dashboard before they ever saw the invite.
@@ -1035,6 +1036,7 @@ function Router() {
       <Route path="/vision-deck" component={VisionDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/about-deck" component={AboutDeck} />
+      <Route path="/overview-deck" component={OverviewDeck} />
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
       <Route path="/prayer-feeds/:slug" component={PrayerFeedDetailPage} />
