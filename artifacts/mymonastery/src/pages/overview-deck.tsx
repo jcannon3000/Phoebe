@@ -89,17 +89,6 @@ const SLIDES: Slide[] = [
       "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
     ],
   },
-  // 9 — The landing thought. Now word-for-word the same as the title
-  // slide's subtitle (by request) — kept here too as a closing echo, not
-  // trimmed as a duplicate; remove if that repetition reads as redundant
-  // rather than intentional.
-  {
-    kind: "statement",
-    headline: "A tool for welcome",
-    body: [
-      "A tool for leaders to welcome people into the prayer life of the church — making space for them to find belonging.",
-    ],
-  },
   // The invitation — same close as the full deck.
   {
     kind: "closing",
