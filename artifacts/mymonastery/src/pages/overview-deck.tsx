@@ -10,7 +10,7 @@ const SLIDES: Slide[] = [
   {
     kind: "title",
     headline: "Phoebe",
-    sub: "From distributing spiritual content to cultivating shared spiritual practice — and the belonging that grows from it.",
+    sub: "Helping church leaders move people from consuming spiritual content to sustaining a daily practice of prayer — and the belonging that grows from it.",
     mock: "dashboard",
   },
   // 2 — The problem, condensed (about-deck's slides 2–4 in one).
@@ -42,7 +42,19 @@ const SLIDES: Slide[] = [
     ],
     mock: "dashboard",
   },
-  // 5 — One office, many ways in (from the original church-deck, unchanged
+  // 5 — A routine shaped around the person, not a fixed program — beyond the
+  // office itself, each person adds whichever contemplative practices fit
+  // their own life.
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "A routine that fits them",
+    body: [
+      "Beyond the daily office, each person can add the contemplative practices that fit their own life — Audio Divina, the Examen, Creation Prayer, a contemplative walk — building a day that's truly theirs, not a program applied the same way to everyone.",
+    ],
+    mock: "contemplative",
+  },
+  // 6 — One office, many ways in (from the original church-deck, unchanged
   // copy) — the offices aren't a single fixed format; each one flexes to
   // however someone actually prays.
   {
@@ -54,18 +66,19 @@ const SLIDES: Slide[] = [
     ],
     mock: "office-formats",
   },
-  // 6 — Walking Together, condensed (about-deck's Way of Love / Walking
-  // Together / shared-rhythm slides in one).
+  // 7 — Walking Together, condensed (about-deck's Way of Love / Walking
+  // Together / shared-rhythm slides in one). No mock here — slide 4 already
+  // showed the home screen, so a second dashboard mock this soon after just
+  // repeated itself; this one carries the idea on text alone.
   {
-    kind: "feature-combo",
+    kind: "feature-text",
     label: "Walking Together",
     headline: "Moving in the same direction",
     body: [
       "Built on Bishop Michael Curry's Way of Love, Phoebe lets a group move in the same direction between gatherings — each person practicing within the realities of their own life, while knowing others are on the same road.",
     ],
-    mock: "dashboard",
   },
-  // 7 — Gathering, whenever fits (about-deck slide 15, condensed).
+  // 8 — Gathering, whenever fits (about-deck slide 15, condensed).
   {
     kind: "feature-combo",
     label: "",
@@ -75,13 +88,18 @@ const SLIDES: Slide[] = [
     ],
     mock: "gatherings",
   },
-  // 8 — The close: belonging as a byproduct (about-deck slide 18, unchanged).
+  // 9 — The close: belonging as a byproduct (about-deck slide 18, unchanged).
   {
     kind: "statement",
     headline: "The conditions for belonging",
     body: [
       "Leaders can use Phoebe to create the conditions for belonging — as people enter a shared process of daily prayer, mutual encouragement, and walking together in the life of discipleship.",
     ],
+  },
+  // 10 — Hebrews 11:1, on its own quote slide (public-domain WEB translation).
+  {
+    kind: "quote",
+    text: "Now faith is assurance of things hoped for,\nproof of things not seen.\n\n— Hebrews 11:1",
   },
   // The invitation — same close as the full deck.
   {

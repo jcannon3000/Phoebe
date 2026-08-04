@@ -43,7 +43,7 @@ export type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd" | "leader-rule";
+      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd" | "leader-rule" | "contemplative";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -1604,6 +1604,66 @@ function CustomizerMock() {
   );
 }
 
+/* ── "Add an additional practice" — the contemplative add-on multi-select ── */
+// Mirrors WayOfLoveRuleFlow's real "contemplative" step: same four rows
+// (Audio Divina, The Examen, Creation Prayer, Contemplative Walk), same
+// checkmark-circle chrome as CustomizerMock above. Two checked, two not —
+// reads as a genuine in-progress pick, not an all-or-nothing state.
+function ContemplativeMock() {
+  const CARD = "rgba(9,26,16,0.5)";
+  const CARD_B = "rgba(46,107,64,0.4)";
+  const CARD_ACTIVE = "rgba(46,107,64,0.34)";
+  const CARD_B_ACTIVE = "rgba(168,197,160,0.7)";
+  const rows = [
+    { emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", on: true },
+    { emoji: "🌗", label: "The Examen", sub: "Review the day with God.", on: false },
+    { emoji: "🌍", label: "Creation Prayer", sub: "Breathing with God's creation.", on: true },
+    { emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", on: false },
+  ];
+  return (
+    <MockPhone>
+      <p className="text-[9px] uppercase tracking-[0.2em] font-semibold mb-1" style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}>
+        Return
+      </p>
+      <h2 className="text-[17px] font-bold mb-1.5" style={{ color: C.text, fontFamily: C.font }}>
+        Add an additional practice
+      </h2>
+      <p className="text-[10.5px] leading-[1.5] mb-3" style={{ color: C.sage, fontFamily: C.font }}>
+        Beyond silence, choose any other contemplative practices for your day — each becomes its own card.
+      </p>
+      <div className="space-y-2">
+        {rows.map((r, i) => (
+          <div
+            key={i}
+            className="rounded-xl overflow-hidden flex items-stretch"
+            style={{ background: r.on ? CARD_ACTIVE : CARD, border: `1px solid ${r.on ? CARD_B_ACTIVE : CARD_B}` }}
+          >
+            <div className="w-1 flex-shrink-0" style={{ background: r.on ? "#A8C5A0" : CARD_B }} />
+            <div className="flex-1 px-3 py-2 flex items-center gap-2.5">
+              <div
+                className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: r.on ? "#A8C5A0" : "transparent", border: r.on ? "none" : "1.5px solid rgba(46,107,64,0.5)" }}
+              >
+                {r.on && <span className="text-[9px] font-bold leading-none" style={{ color: "#0C1F12" }}>✓</span>}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{r.emoji} {r.label}</p>
+                <p className="text-[9px] mt-0.5" style={{ color: C.sage, fontFamily: C.font }}>{r.sub}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div
+        className="rounded-xl text-center mt-3 py-2.5"
+        style={{ background: "rgba(46,107,64,0.55)", border: `1px solid ${CARD_B_ACTIVE}`, color: C.text, fontFamily: C.font, fontSize: 13, fontWeight: 700 }}
+      >
+        Continue
+      </div>
+    </MockPhone>
+  );
+}
+
 /* ── Forward Day by Day — the real home card the office hands you to ── */
 // There's no separate "office ends → FDD" screen in the app; the reflection you
 // picked in the builder simply waits as its own card (the real FddHomeCard,
@@ -1698,6 +1758,7 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   calendar: CalendarMock,
   gatherings: GatheringsMock,
   customizer: CustomizerMock,
+  contemplative: ContemplativeMock,
   "office-fdd": OfficeFddMock,
   "leader-rule": LeaderRuleMock,
 };
