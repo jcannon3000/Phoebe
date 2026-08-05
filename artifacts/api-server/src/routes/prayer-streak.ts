@@ -277,21 +277,24 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
   }
 });
 
-// GET /prayer-streak/office-companions-today?side=morning|evening — garden
-// members who completed THAT SIDE's office today (the viewer's local
+// GET /prayer-streak/office-companions-today?side=morning|evening|any —
+// garden members who completed that office today (the viewer's local
 // today), for the "who else prayed with you" avatar row on the office
-// closing slide. Mirrors the "did I pray today" idiom used elsewhere in this
-// app (format both sides to a YYYY-MM-DD string in the VIEWER's timezone and
-// compare, e.g. the amen-today checks in routes/prayer.ts) rather than a SQL
-// timestamp range — prayer_sessions has no dedicated day column like
-// breath_sessions does, so a loose 2-day lookback plus an exact JS-side
-// day-string match is simpler than deriving precise UTC day boundaries.
+// closing slide and the splash's daily companion row. "any" (used by the
+// splash, which isn't tied to a single side) merges both offices instead
+// of asking the caller to pick one. Mirrors the "did I pray today" idiom
+// used elsewhere in this app (format both sides to a YYYY-MM-DD string in
+// the VIEWER's timezone and compare, e.g. the amen-today checks in
+// routes/prayer.ts) rather than a SQL timestamp range — prayer_sessions has
+// no dedicated day column like breath_sessions does, so a loose 2-day
+// lookback plus an exact JS-side day-string match is simpler than deriving
+// precise UTC day boundaries.
 router.get("/prayer-streak/office-companions-today", async (req: Request, res: Response): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const side = req.query.side === "evening" ? "evening" : "morning";
-  const surface = side === "evening" ? "evening-prayer" : "morning-prayer";
+  const side = req.query.side === "evening" ? "evening" : req.query.side === "any" ? "any" : "morning";
+  const surfaces = side === "any" ? ["morning-prayer", "evening-prayer"] : [side === "evening" ? "evening-prayer" : "morning-prayer"];
 
   try {
     const { getGardenUserIds } = await import("../lib/garden.js");
@@ -309,7 +312,7 @@ router.get("/prayer-streak/office-companions-today", async (req: Request, res: R
       .innerJoin(usersTable, eq(usersTable.id, prayerSessionsTable.userId))
       .where(and(
         inArray(prayerSessionsTable.userId, gardenIds),
-        eq(prayerSessionsTable.surface, surface),
+        inArray(prayerSessionsTable.surface, surfaces),
         eq(prayerSessionsTable.completed, true),
         gte(prayerSessionsTable.endedAt, twoDaysAgo),
       ));
