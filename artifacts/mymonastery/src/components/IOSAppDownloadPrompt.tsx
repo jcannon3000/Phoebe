@@ -56,9 +56,11 @@ export function IOSAppDownloadPrompt() {
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const [location] = useLocation();
-  // Never nudge mid-customize — a new user setting up their rhythm shouldn't
-  // be interrupted by the App Store prompt.
-  const onCustomize = location.includes("rule-of-life");
+  // Never nudge mid-customize, or while on one of the full-screen slide decks
+  // (overview/about/church) — a new user setting up their rhythm, or anyone
+  // still moving through a deck toward "Start praying," shouldn't be
+  // interrupted by the App Store prompt before they've actually reached home.
+  const onCustomize = location.includes("rule-of-life") || location.includes("-deck");
 
   useEffect(() => {
     if (!isIOSWeb()) return;
