@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { ensureWebPushSubscription, webPushCapable } from "@/lib/webPush";
@@ -32,6 +33,7 @@ function phoebeNative(): PhoebeNativeShape | undefined {
 
 export function NotificationReminderBanner() {
   const { t } = useTranslation();
+  const [location] = useLocation();
   const [permission, setPermission] = useState<PermState>("unknown");
   const [show, setShow] = useState(false);
   const [working, setWorking] = useState(false);
@@ -140,7 +142,10 @@ export function NotificationReminderBanner() {
     try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch { /* non-fatal */ }
   }
 
-  if (!show) return null;
+  // A brand-new visitor sees the overview deck before ever reaching home —
+  // don't compete for their attention with a notifications ask until they've
+  // actually landed on the app.
+  if (!show || location === "/overview-deck") return null;
 
   return (
     <div

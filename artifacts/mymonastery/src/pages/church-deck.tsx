@@ -2153,14 +2153,18 @@ export function DeckShell({
       )}
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 px-4 md:px-6 pt-4 md:pt-6 pb-2">
-        <button
-          onClick={() => setLocation(exitTo)}
-          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-100 shrink-0"
-          style={{ color: C.sage, opacity: 0.75 }}
-        >
-          <X size={16} />
-          <span className="hidden md:inline">{t("church_deck.close")}</span>
-        </button>
+        {/* No close/exit control on the first-visit intro deck (stickyAction
+            set) — that flow only ever moves forward, into "Start praying". */}
+        {!stickyAction && (
+          <button
+            onClick={() => setLocation(exitTo)}
+            className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-100 shrink-0"
+            style={{ color: C.sage, opacity: 0.75 }}
+          >
+            <X size={16} />
+            <span className="hidden md:inline">{t("church_deck.close")}</span>
+          </button>
+        )}
 
         {/* Mobile: slim progress bar */}
         <div
@@ -2238,19 +2242,6 @@ export function DeckShell({
 
       {/* Nav — positioned over slide so phone shadow isn't clipped */}
       <div className="relative z-10" style={{ background: "linear-gradient(to top, #091A10 60%, transparent)" }}>
-        {/* The persistent skip-ahead action — every slide except the last,
-            where it takes over the Done button below instead of doubling up. */}
-        {stickyAction && !isLast && (
-          <div className="px-5 md:px-8 pt-4">
-            <button
-              onClick={stickyAction.onClick}
-              className="w-full flex items-center justify-center gap-1.5 px-5 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ background: "#2D5E3F", color: C.text }}
-            >
-              {stickyAction.label}
-            </button>
-          </div>
-        )}
         <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-4">
           <button
             onClick={prev}
@@ -2261,6 +2252,17 @@ export function DeckShell({
             <ChevronLeft size={18} />
             {t("church_deck.back")}
           </button>
+          {/* The persistent skip-ahead action — every slide except the last,
+              where it takes over the Next/Done slot below instead of doubling up. */}
+          {stickyAction && !isLast && (
+            <button
+              onClick={stickyAction.onClick}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "#2D5E3F", color: C.text }}
+            >
+              {stickyAction.label}
+            </button>
+          )}
           {isLast ? (
             <button
               onClick={stickyAction ? stickyAction.onClick : () => setLocation(exitTo)}
