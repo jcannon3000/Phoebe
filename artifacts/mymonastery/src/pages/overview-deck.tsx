@@ -31,10 +31,10 @@ const SLIDES: Slide[] = [
   // not the daily experience this slide is describing.
   {
     kind: "feature-combo",
-    label: "Cultivating a Daily Habit",
-    headline: "A routine, not a library",
+    label: "",
+    headline: "Cultivate a daily habit",
     body: [
-      "Phoebe guides each person through a customizable daily routine rather than a library to browse — one step at a time, always showing what's next, so it's easy to return the following day.",
+      "Phoebe guides each person through a customizable daily routine — a routine, not a library to browse — one step at a time, always showing what's next, so it's easy to return the following day.",
     ],
     mock: "dashboard",
   },

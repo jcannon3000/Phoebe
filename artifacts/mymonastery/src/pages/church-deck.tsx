@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -2258,7 +2259,7 @@ export function DeckShell({
             <button
               onClick={stickyAction.onClick}
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ background: "#2D5E3F", color: C.text }}
+              style={{ ...FROST, border: "1px solid rgba(168,197,160,0.45)", color: C.text }}
             >
               {stickyAction.label}
             </button>
@@ -2267,7 +2268,7 @@ export function DeckShell({
             <button
               onClick={stickyAction ? stickyAction.onClick : () => setLocation(exitTo)}
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ background: "#2D5E3F", color: C.text }}
+              style={{ ...FROST, border: "1px solid rgba(168,197,160,0.45)", color: C.text }}
             >
               {stickyAction ? stickyAction.label : t("church_deck.done")}
             </button>
@@ -2275,7 +2276,7 @@ export function DeckShell({
             <button
               onClick={next}
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity"
-              style={{ background: "#2D5E3F", color: C.text }}
+              style={{ ...FROST, border: "1px solid rgba(168,197,160,0.45)", color: C.text }}
             >
               {t("church_deck.next")}
               <ChevronRight size={18} />
