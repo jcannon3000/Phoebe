@@ -2153,7 +2153,10 @@ export function DeckShell({
         </>
       )}
       {/* Top bar */}
-      <div className="flex items-center justify-between gap-4 px-4 md:px-6 pt-4 md:pt-6 pb-2">
+      <div
+        className="flex items-center justify-between gap-4 px-4 md:px-6 pb-2"
+        style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
+      >
         {/* No close/exit control on the first-visit intro deck (stickyAction
             set) — that flow only ever moves forward, into "Start praying". */}
         {!stickyAction && (
