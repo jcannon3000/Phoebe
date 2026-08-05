@@ -41,7 +41,7 @@ import {
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
   GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
-  CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed,
+  CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed, unmarkCustomPrayed,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -2710,6 +2710,10 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
   }, [side]);
   const title = getSideCustomName(side).trim() || "Your Practice";
   const onClick = () => markCustomPrayed(side);
+  // Tapping again once done UN-marks it — a real toggle, not a one-way stamp.
+  // Without this, "Not today" had no path back to undone and the header
+  // pill's dot never cleared (the underlying day-flag never actually reset).
+  const onUnmark = () => unmarkCustomPrayed(side);
   const rgb = "46,107,64";
   if (hero) {
     return (
@@ -2724,7 +2728,15 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
           </p>
           <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>✨ {title}</p>
           {done ? (
-            <div aria-label="Practice completed today" className="mt-[12px] w-full rounded-xl text-center" style={{ background: `rgba(${rgb},0.10)`, color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Practice completed today — tap to undo"
+              onClick={onUnmark}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onUnmark(); }}
+              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              style={{ background: `rgba(${rgb},0.10)`, color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.22)` }}
+            >
               Done today <span aria-hidden>✓</span>
             </div>
           ) : (
@@ -2740,10 +2752,10 @@ function OwnPracticeHomeCard({ side, hero = false }: { side: "morning" | "evenin
     <div
       role="button"
       tabIndex={0}
-      onClick={done ? undefined : onClick}
-      onKeyDown={(e) => { if (!done && (e.key === "Enter" || e.key === " ")) onClick(); }}
+      onClick={done ? onUnmark : onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") (done ? onUnmark() : onClick()); }}
       className="relative flex rounded-xl overflow-hidden"
-      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)`, cursor: done ? "default" : "pointer" }}
+      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)`, cursor: "pointer" }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3 min-w-0">

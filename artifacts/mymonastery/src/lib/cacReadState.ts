@@ -89,6 +89,20 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
       // Fire-and-forget; an unauthenticated/offline call just no-ops.
       try { syncRead(ymd); } catch { /* best effort */ }
     },
+    /** Clear today's mark (only if it's actually set today) + notify listeners
+     *  — the undo half of markRead, for surfaces where re-tapping an
+     *  already-done card should toggle it back off rather than no-op re-mark
+     *  the same day. Local-only: there's no matching "un-sync" call, since the
+     *  server-side session row this credited is a historical fact either way. */
+    unmarkRead(): void {
+      if (this.getLastReadDay() !== todayLocalISO()) return;
+      try {
+        localStorage.removeItem(storageKey);
+        window.dispatchEvent(new Event(eventName));
+      } catch {
+        /* private mode / quota — non-fatal */
+      }
+    },
     /** Event name to subscribe to for hot updates from other surfaces. */
     eventName,
   };
@@ -202,6 +216,10 @@ const customPrayerTrackerEvening = makeDailyReadTracker("phoebe:custom-prayer:ev
 const customPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? customPrayerTrackerEvening : customPrayerTrackerMorning);
 export function hasPrayedCustomToday(side: "morning" | "evening" = "morning"): boolean { return customPrayerTrackerFor(side).hasReadToday(); }
 export function markCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).markRead(); }
+// Tapping an already-done "Create your own" card should un-mark it (a real
+// toggle), not silently re-stamp the same day — see the home-card wiring in
+// dashboard.tsx / DailyProgressBody.tsx.
+export function unmarkCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).unmarkRead(); }
 
 // Forward Day by Day USED AS a side's prayer — the office slot, not the
 // reflection card. Same shape as Psalms / Simple Guided Prayer above and for the
