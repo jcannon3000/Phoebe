@@ -80,7 +80,7 @@ export default function AboutPage() {
 
         <div className="space-y-4">
           <p style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.72, color: "#E4EADD", fontStyle: "italic" }}>
-            Phoebe is an app that helps churches move from distributing spiritual content to cultivating shared spiritual practice — and creating the opportunity for belonging in the process.
+            Phoebe is a tool for leaders to welcome people into the prayer life of the church — making space for them to find belonging.
           </p>
 
           <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
@@ -100,7 +100,7 @@ export default function AboutPage() {
             Cultivating a Daily Habit
           </h2>
           <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
-            Phoebe makes it easier to build and sustain a daily rhythm of prayer. Drawing on principles used by habit-forming apps such as Duolingo, it guides each person through a customizable routine rather than presenting prayer as a library of resources to browse.
+            Phoebe helps leaders move from distributing spiritual content to cultivating shared spiritual practice. It makes it easier to build and sustain a daily rhythm of prayer — drawing on principles used by habit-forming apps such as Duolingo, guiding each person through a customizable routine rather than presenting prayer as a library of resources to browse.
           </p>
           <p style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.72, color: "#D5DECD" }}>
             Each practice is presented one step at a time, always showing what comes next and allowing the user to mark it complete — not to reward streaks or punish inconsistency, but to reduce friction and make it easier to return the following day.
