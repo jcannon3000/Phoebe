@@ -25,20 +25,37 @@ const SLIDES: Slide[] = [
     sub: "A tool for leaders to welcome people into the prayer life of the church — making space for them to find belonging.",
     mock: "dashboard",
   },
-  // 2 — Cultivating a daily habit, condensed (about-deck's slides 6–7 in one).
+  // 2 — The "why" before the "what": the essay's core diagnosis, compressed
+  // to one sentence, so the next screen doesn't have to justify itself with
+  // no groundwork. Deliberately NOT the full Daniel/social-acceleration
+  // argument — that belongs in the essay/grant materials, building the case
+  // before someone opens the app. Here, they've already opened it; this is
+  // just enough context to earn what follows.
+  {
+    kind: "statement",
+    headline: "The real gap",
+    body: [
+      "There's no shortage of resources on prayer. What's missing is a way to sustain the habit itself.",
+    ],
+  },
+  // 3 — Cultivating a daily habit, condensed (about-deck's slides 6–7 in one).
   // Shows the home screen itself — the routine, always naming what's next —
   // rather than the customizer's when-to-pray picker, which is a setup step,
-  // not the daily experience this slide is describing.
+  // not the daily experience this slide is describing. Restores two things
+  // the condensed version had lost: the non-punitive design promise ("not to
+  // reward streaks or punish inconsistency" — a real differentiator next to
+  // Duolingo-style apps) and the concrete daily-life grounding that makes the
+  // habit feel achievable inside a real day.
   {
     kind: "feature-combo",
     label: "",
     headline: "Cultivate a daily habit",
     body: [
-      "Phoebe guides each person through a customizable daily routine — one step at a time, always showing what's next, so it's easy to return the following day.",
+      "Phoebe guides each person through a customizable daily routine — one step at a time, always showing what's next. It isn't about rewarding streaks or punishing inconsistency; it's about making it easy to return the following day, whether that's the morning commute, a lunch break, or the quiet before bed.",
     ],
     mock: "dashboard",
   },
-  // 3 — Making the office itself easier to pray (from the original
+  // 4 — Making the office itself easier to pray (from the original
   // church-deck, unchanged copy) — moved ahead of the personalization slide
   // below: the office's own flexibility is the more basic point, worth
   // making before layering on additional practices.
@@ -51,7 +68,7 @@ const SLIDES: Slide[] = [
     ],
     mock: "office-formats",
   },
-  // 4 — A routine shaped around the person, not a fixed program — beyond the
+  // 5 — A routine shaped around the person, not a fixed program — beyond the
   // office itself, each person adds whichever contemplative practices fit
   // their own life.
   {
@@ -63,7 +80,7 @@ const SLIDES: Slide[] = [
     ],
     mock: "contemplative",
   },
-  // 5 — Walking Together, condensed (about-deck's Way of Love / Walking
+  // 6 — Walking Together, condensed (about-deck's Way of Love / Walking
   // Together / shared-rhythm slides in one). No mock here — slide 2 already
   // showed the home screen, so a second dashboard mock this soon after just
   // repeated itself; this one carries the idea on text alone.
@@ -75,7 +92,7 @@ const SLIDES: Slide[] = [
       "Built on Bishop Michael Curry's Way of Love, Phoebe lets a group move in the same direction between gatherings — each person practicing within the realities of their own life, while knowing others are on the same road.",
     ],
   },
-  // 6 — Gathering, whenever fits (about-deck slide 15, condensed).
+  // 7 — Gathering, whenever fits (about-deck slide 15, condensed).
   {
     kind: "feature-combo",
     label: "",
@@ -85,15 +102,18 @@ const SLIDES: Slide[] = [
     ],
     mock: "gatherings",
   },
-  // 7 — The close: belonging as a byproduct (about-deck slide 18, unchanged).
+  // 8 — The close: belonging as a byproduct (about-deck slide 18). Restores
+  // the essay's real claim — gathering alone doesn't create connection — so
+  // the belonging claim has the contrast that makes it interesting, not a
+  // generic assertion.
   {
     kind: "statement",
     headline: "The conditions for belonging",
     body: [
-      "Leaders can use Phoebe to create the conditions for belonging — as people enter a shared process of daily prayer, mutual encouragement, and walking together in the life of discipleship.",
+      "Simply gathering people in the same room isn't enough to create belonging. Leaders can use Phoebe to create the conditions for it instead — as people enter a shared process of daily prayer, mutual encouragement, and walking together in the life of discipleship.",
     ],
   },
-  // 8 — Hebrews 10, the same verse the full about-deck uses (unchanged).
+  // 9 — Hebrews 10, the same verse the full about-deck uses (unchanged).
   {
     kind: "statement",
     headline: "Hebrews 10",
@@ -101,7 +121,7 @@ const SLIDES: Slide[] = [
       "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
     ],
   },
-  // 9 — The close: what young adults are actually looking for (mirrors the
+  // 10 — The close: what young adults are actually looking for (mirrors the
   // final paragraph of about.tsx's essay, right before its own close).
   {
     kind: "statement",
@@ -114,7 +134,7 @@ const SLIDES: Slide[] = [
   {
     kind: "closing",
     body: [],
-    featured: ["Pray daily", "with Phoebe"],
+    featured: ["Cultivate a habit of prayer", "together with Phoebe"],
   },
 ];
 
