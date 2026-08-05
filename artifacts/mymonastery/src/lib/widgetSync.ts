@@ -165,7 +165,12 @@ export function useWidgetSync(): void {
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
       { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
-      { active: r.prayerListActive, done: r.prayerListDone, slot: "anytime", title: "My Prayer List", eyebrow: "Your intentions", subtitle: "Pray through your list", cta: "Pray", kind: "office" },
+      // Prayer List is NOT a routine anchor here either — same exclusion as
+      // DailyProgressBody.tsx (see its comment there): it's woven into the
+      // offices and gets its own always-visible section, not a Next/Done slot,
+      // so it must never preempt the real next-up item (it used to, via its
+      // "anytime" slot outranking Evening Prayer for any account with an
+      // active, undone list).
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
