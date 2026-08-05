@@ -721,6 +721,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
   const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors } = useRhythmState();
+  // On the common (fast, cached) path `ready` flips true well under a beat, so
+  // we stay silent rather than flash a skeleton nobody needed. But the
+  // rhythm queries this waits on carry NO offline/timeout fallback for a
+  // signed-in user (unlike most of this app's other gates), and the persisted
+  // query cache is deliberately busted once a day (a new localDayBuster) — so
+  // the FIRST home load of the day, on a slow connection, could leave this
+  // whole section returning null (nothing at all) for many seconds, reading
+  // as broken rather than loading. Show a real skeleton once `ready` has
+  // actually taken a moment, so a slow load is visibly "still coming" instead
+  // of silently absent.
+  const [showLoadSkeleton, setShowLoadSkeleton] = useState(false);
+  useEffect(() => {
+    if (ready) { setShowLoadSkeleton(false); return; }
+    const id = window.setTimeout(() => setShowLoadSkeleton(true), 700);
+    return () => window.clearTimeout(id);
+  }, [ready]);
   const { user } = useAuth();
   // PUBLIC no-login version: a guest's rhythm is device-local — signed out OR
   // the anonymous device user (which exists only for push). The per-side
@@ -1325,7 +1341,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   });
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
-  if (!ready) return null;
+  // A load that's still not ready after 700ms gets a real skeleton instead of
+  // staying silent — see showLoadSkeleton above.
+  if (!ready) {
+    if (!showLoadSkeleton) return null;
+    return (
+      <div className="space-y-3" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
+        ))}
+      </div>
+    );
+  }
 
   // Gap above Done: when Next still has cards, a smaller gap reads right; when
   // the hero (or nothing) is the only thing in Next it needs more breathing room.
