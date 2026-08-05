@@ -101,7 +101,7 @@ type Step =
   | "psalms-cycle"
   | "evening-way" | "evening-bcp" | "evening-custom" | "evening-config"
   | "contemplative" | "contemplation-goal"
-  | "learn" | "extras" | "custom" | "weekly" | "done"
+  | "learn" | "extras" | "custom" | "notifications" | "weekly" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
 // later (you receive a rule, you don't compose one from a blank trellis). Each
@@ -464,6 +464,11 @@ export default function WayOfLoveRuleFlow({
     }
     return "5";
   });
+  // Notification style — closing step. "gentle" (default) = today's one
+  // reminder per side; "nudge" = also send the ~3h-later follow-up when that
+  // side's office/practice still isn't done. Guests can pick it but it isn't
+  // persisted anywhere until they have an account (no office-prefs row yet).
+  const [notificationStyle, setNotificationStyle] = useState<"gentle" | "nudge">("gentle");
   // Per-side configuration — each chosen side gets its own way + method + time.
   // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
   // no saved level defaults to "devotion", not the more involved "community".
@@ -761,7 +766,7 @@ export default function WayOfLoveRuleFlow({
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
 
-  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null }>({
+  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null; notificationStyle?: "gentle" | "nudge" }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -842,6 +847,7 @@ export default function WayOfLoveRuleFlow({
       const eOn = prefs.evening !== "none";
       setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
     }
+    if (prefs.notificationStyle === "nudge") setNotificationStyle("nudge");
   }, [prefs]);
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
@@ -1013,6 +1019,7 @@ export default function WayOfLoveRuleFlow({
       evening: sides.evening && reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
       morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
       eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
+      notificationStyle,
     })
       // Sync the silence ladder AFTER office-prefs lands so, when enabled, the
       // server's current rung (which /me/silence-ladder writes into
@@ -1202,6 +1209,7 @@ export default function WayOfLoveRuleFlow({
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
         "custom",
+        "notifications",
       ]
     : pilot
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
@@ -1214,6 +1222,7 @@ export default function WayOfLoveRuleFlow({
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
         "custom",
+        "notifications",
       ]
     : [
     "when",
@@ -1241,6 +1250,9 @@ export default function WayOfLoveRuleFlow({
     // Globally OFF for now (owner) — skip the step while WEEKLY_PRACTICES_ENABLED
     // is false so the customizer never offers a practice that won't appear.
     ...(WEEKLY_PRACTICES_ENABLED ? (["weekly"] as Step[]) : []),
+    // Notification style closes every flow — after the routine itself is
+    // built, decide how insistently the app follows up on it.
+    "notifications",
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
@@ -2053,12 +2065,10 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            {/* When the weekly step follows (main flow), Continue there; the
-                pilot/guest flows still end here and save. */}
-            <button onClick={orderedSteps.includes("weekly") ? goNext : commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-              {orderedSteps.includes("weekly")
-                ? t("ruleOfLife.continue", { defaultValue: "Continue" })
-                : t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
+            {/* Notifications (every flow's true final step) always follows —
+                weekly first when that's enabled. Saving happens there now. */}
+            <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {t("ruleOfLife.continue", { defaultValue: "Continue" })}
             </button>
             <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
@@ -2136,13 +2146,40 @@ export default function WayOfLoveRuleFlow({
           );
         })()}
         <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            {t("wol_rule.finish_weekly", { defaultValue: "Save my rhythm" })}
+          <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            {t("ruleOfLife.continue", { defaultValue: "Continue" })}
           </button>
           <button onClick={() => setStep("custom")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
             <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
           </button>
         </div>
+      </>,
+    );
+  }
+
+  // ── Notifications — the closing step of every flow. Gentle (today's one
+  // reminder per side) vs Nudge (also chase with a ~3h-later follow-up when
+  // that side's office/practice still isn't done). Saves the whole rhythm. ──
+  if (step === "notifications") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.notifications_eyebrow", { defaultValue: "Notifications" }), t("wol_rule.notifications_title", { defaultValue: "How should Phoebe remind you?" }))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+          {choiceRow(
+            notificationStyle === "gentle",
+            `🕊️ ${t("wol_rule.notifications_gentle", { defaultValue: "Gentle" })}`,
+            t("wol_rule.notifications_gentle_sub", { defaultValue: "One reminder per side — no chasing." }),
+            () => setNotificationStyle("gentle"),
+          )}
+          {choiceRow(
+            notificationStyle === "nudge",
+            `🔔 ${t("wol_rule.notifications_nudge", { defaultValue: "Nudge" })}`,
+            t("wol_rule.notifications_nudge_sub", { defaultValue: "Also send a follow-up about three hours later if you haven't prayed yet." }),
+            () => setNotificationStyle("nudge"),
+          )}
+        </div>
+        {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
       </>,
     );
   }

@@ -2012,9 +2012,14 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
-    // Evening follow-up reminder dedup — a second nudge ~2h after the initial
+    // Evening follow-up reminder dedup — a second nudge ~3h after the initial
     // evening reminder if evening prayer still isn't done and it's before 10pm.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_followup_sent_date TEXT`);
+    // Morning follow-up reminder dedup (same idea, morning side).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_followup_sent_date TEXT`);
+    // "gentle" (one reminder per side) vs "nudge" (also send the follow-up
+    // above). Chosen in the customizer's closing Notifications step.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_style TEXT NOT NULL DEFAULT 'gentle'`);
     // Daily contemplation goal (minutes; 0 = off) + per-day nudge dedup stamp
     // + whether the ~7pm nudge is enabled (default true).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER NOT NULL DEFAULT 0`);

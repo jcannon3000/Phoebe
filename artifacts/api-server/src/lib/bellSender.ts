@@ -710,10 +710,14 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
 }
 
 // ─── Evening office FOLLOW-UP reminder ──────────────────────────────────────
-// A single SECOND nudge ~2h after the initial evening reminder, only if evening
+// A single SECOND nudge ~3h after the initial evening reminder, only if evening
 // prayer still isn't done and it's before 10pm local. Deduped per local day via
 // parish_office_evening_followup_sent_date, independent of the initial reminder.
-const EVENING_FOLLOWUP_HOURS_AFTER = 2;
+// Opt-in: only fires for users on notification_style = 'nudge' (customizer's
+// closing Notifications step / Settings → Daily reminders); the default
+// "gentle" style gets just the one reminder per side, same as before this
+// existed.
+const EVENING_FOLLOWUP_HOURS_AFTER = 3;
 const EVENING_FOLLOWUP_CUTOFF_HOUR = 22; // 10pm local — never nudge later
 
 // Add whole hours to a HH:MM string, clamped to 23:59 (a follow-up that would
@@ -744,7 +748,7 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
         eq(prayerFeedsTable.id, usersTable.parishFeedId),
         eq(prayerFeedsTable.kind, "parish"),
       ))
-      .where(sql`${usersTable.parishOfficeEveningPref} != 'none'`);
+      .where(sql`${usersTable.parishOfficeEveningPref} != 'none' AND ${usersTable.notificationStyle} = 'nudge'`);
 
     for (const r of rows) {
       try {
@@ -795,6 +799,88 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
     }
   } catch (err) {
     logger.error({ err }, "[office-reminder] evening follow-up sender failed");
+  }
+}
+
+// ─── Morning office FOLLOW-UP reminder ──────────────────────────────────────
+// Mirrors the evening follow-up above for the morning side: a single SECOND
+// nudge ~3h after the initial morning reminder, only if morning prayer still
+// isn't done and it's before the cutoff hour. Deduped per local day via
+// parish_office_morning_followup_sent_date. Opt-in via notification_style =
+// 'nudge', same gate as the evening follow-up.
+const MORNING_FOLLOWUP_HOURS_AFTER = 3;
+const MORNING_FOLLOWUP_CUTOFF_HOUR = 12; // noon local — a morning nudge past midday stops making sense
+
+export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        morningPref: usersTable.parishOfficeMorningPref,
+        morningTime: usersTable.parishOfficeMorningTime,
+        morningSentDate: usersTable.parishOfficeMorningSentDate,
+        followupSentDate: usersTable.parishOfficeMorningFollowupSentDate,
+        parishFeedId: usersTable.parishFeedId,
+        parishTitle: prayerFeedsTable.title,
+        parishTimezone: prayerFeedsTable.timezone,
+      })
+      .from(usersTable)
+      .leftJoin(prayerFeedsTable, and(
+        eq(prayerFeedsTable.id, usersTable.parishFeedId),
+        eq(prayerFeedsTable.kind, "parish"),
+      ))
+      .where(sql`${usersTable.parishOfficeMorningPref} != 'none' AND ${usersTable.notificationStyle} = 'nudge'`);
+
+    for (const r of rows) {
+      try {
+        const tz = r.parishTimezone || r.userTimezone || "America/New_York";
+        const today = todayInZone(tz);
+        // At most one follow-up per local day; and only after the INITIAL morning
+        // reminder has been evaluated today (so we truly follow up on a sent nudge).
+        if (r.followupSentDate === today) continue;
+        if (r.morningSentDate !== today) continue;
+        // Before noon local only.
+        const { hour } = getCurrentTimeInTz(tz);
+        if (hour >= MORNING_FOLLOWUP_CUTOFF_HOUR) continue;
+        // ~3h after the (per-user) morning target time.
+        const morningTarget = r.morningTime || DEFAULT_MORNING_TIME;
+        const followupTarget = addHoursToHHMM(morningTarget, MORNING_FOLLOWUP_HOURS_AFTER);
+        if (!opts.forceNow && !isWithinTickWindow(tz, followupTarget)) continue;
+
+        // Still not prayed? (approximate UTC start of today in user-tz; covers UTC-14)
+        const sinceUtc = new Date(`${today}T00:00:00Z`);
+        sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+        const morningSessions = await db
+          .select({ endedAt: prayerSessionsTable.endedAt })
+          .from(prayerSessionsTable)
+          .where(and(
+            eq(prayerSessionsTable.userId, r.userId),
+            inArray(prayerSessionsTable.surface, ["morning-prayer", "morning-devotion"]),
+            gte(prayerSessionsTable.endedAt, sinceUtc),
+          ));
+        const prayedMorningToday = morningSessions.some(s => {
+          if (!s.endedAt) return false;
+          return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
+        });
+        if (prayedMorningToday) {
+          // Already prayed — stamp so we don't re-evaluate this user today.
+          await db.update(usersTable).set({ parishOfficeMorningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
+          continue;
+        }
+        try {
+          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle });
+          logger.info({ userId: r.userId }, "[office-reminder] morning FOLLOW-UP push sent");
+          await db.update(usersTable).set({ parishOfficeMorningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
+        } catch (err) {
+          logger.warn({ err, userId: r.userId }, "[office-reminder] morning follow-up push failed");
+        }
+      } catch (err) {
+        logger.error({ err, userId: r.userId }, "[office-reminder] morning follow-up processing failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[office-reminder] morning follow-up sender failed");
   }
 }
 
@@ -1280,6 +1366,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // { name: "life-event-followup",   run: runLifeEventFollowUpSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "parish-office-followup", run: runParishOfficeEveningFollowUpSender },
+  { name: "parish-office-morning-followup", run: runParishOfficeMorningFollowUpSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.

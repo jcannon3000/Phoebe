@@ -75,6 +75,9 @@ type OfficePrefs = {
   contemplationReminderEnabled?: boolean;
   // Sunday-evening weekly Way of Love review reminder (opt-out).
   weeklyReviewReminder?: boolean;
+  // "gentle" (default) = one reminder per side. "nudge" = also send a
+  // follow-up ~3h later if that side's office/practice still isn't done.
+  notificationStyle?: "gentle" | "nudge";
 };
 
 // Small inline row used by OfficeReminderSettings. Renders a labeled
@@ -768,6 +771,48 @@ function OfficeReminderSettings() {
             onChange={(time) => save.mutate({ eveningTime: time })}
           />
         )}
+      </SettingsCard>
+
+      <SettingsCard>
+        <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+          {t("settings.notification_style_label", { defaultValue: "Notification style" })}
+        </p>
+        {([
+          { value: "gentle" as const, label: t("settings.notification_style_gentle", { defaultValue: "Gentle" }), sub: t("settings.notification_style_gentle_sub", { defaultValue: "One reminder per side — no chasing." }) },
+          { value: "nudge" as const, label: t("settings.notification_style_nudge", { defaultValue: "Nudge" }), sub: t("settings.notification_style_nudge_sub", { defaultValue: "Also send a follow-up ~3 hours later if you haven't prayed yet." }) },
+        ]).map((opt, i) => {
+          const isSelected = (data?.notificationStyle ?? "gentle") === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => save.mutate({ notificationStyle: opt.value })}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                  {opt.sub}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </SettingsCard>
 
       {/* The daily contemplation goal lives on the Contemplation page; the

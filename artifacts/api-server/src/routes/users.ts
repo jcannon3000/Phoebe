@@ -219,6 +219,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
         contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
         weeklyReviewReminder: usersTable.weeklyReviewReminder,
+        notificationStyle: usersTable.notificationStyle,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -315,6 +316,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 5,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
       weeklyReviewReminder: u?.weeklyReviewReminder ?? true,
+      notificationStyle: u?.notificationStyle ?? "gentle",
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -366,6 +368,11 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   if (typeof body.weeklyReviewReminder === "boolean") {
     update.weeklyReviewReminder = body.weeklyReviewReminder;
+  }
+  // "gentle" (one reminder per side) vs "nudge" (also send the morning/evening
+  // follow-up ~3h later if that side still isn't done). Customizer + Settings.
+  if (typeof body.notificationStyle === "string" && (body.notificationStyle === "gentle" || body.notificationStyle === "nudge")) {
+    update.notificationStyle = body.notificationStyle;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {
