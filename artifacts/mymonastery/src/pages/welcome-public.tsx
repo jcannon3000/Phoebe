@@ -75,6 +75,16 @@ export default function WelcomePublicPage() {
     if (isLoading && !firstOpenGuest) return;
     if (isRealUser) { setLocation("/dashboard"); return; }
     if (PHOEBE_GUEST_ENABLED) {
+      // A brand-new WEB visitor sees the overview deck first, instead of
+      // seeding + landing on home immediately — native has its own (retired)
+      // first-open path and isn't part of this. Its persistent/closing
+      // "Start praying" button runs the exact seed+land-on-home sequence
+      // below itself (see overview-deck.tsx's ?intro=1 mode), so this is a
+      // detour in front of the normal flow, not a second path to maintain.
+      if (firstOpenGuest && !isNativeShell()) {
+        setLocation("/overview-deck?intro=1", { replace: true });
+        return;
+      }
       seedGuestRule();
       // Silently provision the anonymous DEVICE user (no credentials, normal
       // session cookie) so push tokens + reminders + prefs sync work — the UX

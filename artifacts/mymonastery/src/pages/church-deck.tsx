@@ -2005,12 +2005,20 @@ export function DeckShell({
   // advances fast; other decks (e.g. About) pass quickIndex={-1} to disable it.
   quickIndex = 2,
   quickMs = 3000,
+  stickyAction,
 }: {
   slides: Slide[];
   exitTo?: string;
   autoAdvanceMs?: number;
   quickIndex?: number;
   quickMs?: number;
+  /** An always-reachable primary action, shown as a persistent full-width
+   *  button above the Back/Next row on every slide EXCEPT the last — where
+   *  it takes over the closing "Done" button's slot instead, so the same
+   *  action that let someone skip ahead mid-deck is exactly what's waiting
+   *  for them at the end too. Used by the first-open web landing deck's
+   *  "Start praying" CTA (see overview-deck.tsx's ?intro=1 mode). */
+  stickyAction?: { label: string; onClick: () => void };
 }) {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
@@ -2229,35 +2237,49 @@ export function DeckShell({
       </div>
 
       {/* Nav — positioned over slide so phone shadow isn't clipped */}
-      <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-6 relative z-10"
-        style={{ background: "linear-gradient(to top, #091A10 60%, transparent)" }}>
-        <button
-          onClick={prev}
-          disabled={isFirst}
-          className="flex items-center gap-1.5 text-sm transition-opacity disabled:opacity-0 disabled:pointer-events-none"
-          style={{ color: C.sage }}
-        >
-          <ChevronLeft size={18} />
-          {t("church_deck.back")}
-        </button>
-        {isLast ? (
-          <button
-            onClick={() => setLocation(exitTo)}
-            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ background: "#2D5E3F", color: C.text }}
-          >
-            {t("church_deck.done")}
-          </button>
-        ) : (
-          <button
-            onClick={next}
-            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity"
-            style={{ background: "#2D5E3F", color: C.text }}
-          >
-            {t("church_deck.next")}
-            <ChevronRight size={18} />
-          </button>
+      <div className="relative z-10" style={{ background: "linear-gradient(to top, #091A10 60%, transparent)" }}>
+        {/* The persistent skip-ahead action — every slide except the last,
+            where it takes over the Done button below instead of doubling up. */}
+        {stickyAction && !isLast && (
+          <div className="px-5 md:px-8 pt-4">
+            <button
+              onClick={stickyAction.onClick}
+              className="w-full flex items-center justify-center gap-1.5 px-5 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "#2D5E3F", color: C.text }}
+            >
+              {stickyAction.label}
+            </button>
+          </div>
         )}
+        <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-4">
+          <button
+            onClick={prev}
+            disabled={isFirst}
+            className="flex items-center gap-1.5 text-sm transition-opacity disabled:opacity-0 disabled:pointer-events-none"
+            style={{ color: C.sage }}
+          >
+            <ChevronLeft size={18} />
+            {t("church_deck.back")}
+          </button>
+          {isLast ? (
+            <button
+              onClick={stickyAction ? stickyAction.onClick : () => setLocation(exitTo)}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "#2D5E3F", color: C.text }}
+            >
+              {stickyAction ? stickyAction.label : t("church_deck.done")}
+            </button>
+          ) : (
+            <button
+              onClick={next}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity"
+              style={{ background: "#2D5E3F", color: C.text }}
+            >
+              {t("church_deck.next")}
+              <ChevronRight size={18} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

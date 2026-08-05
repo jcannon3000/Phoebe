@@ -3,7 +3,19 @@
 // the full 19-slide essay is too much. Reuses the church deck's shell,
 // styling, navigation, and real app-faithful mocks (DeckShell + Slide) so it
 // looks exactly like the app; only the copy is trimmed.
+//
+// ?intro=1 — the WEB landing mode: a brand-new signed-out visitor (see
+// welcome-public.tsx's first-open redirect) sees this deck FIRST, with a
+// persistent "Start praying" button (DeckShell's stickyAction) instead of
+// the plain Close/Done — tapping it (mid-deck or at the end) runs the exact
+// same seed-guest-rule + land-on-home sequence welcome-public.tsx otherwise
+// runs immediately, so the deck is a detour in front of that flow, not a
+// separate path.
+import { useLocation, useSearch } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { DeckShell, type Slide } from "./church-deck";
+import { seedGuestRule } from "@/lib/guestSeed";
+import { ensureAnonymousUser } from "@/lib/guestProvision";
 
 const SLIDES: Slide[] = [
   // 1 — Title / thesis, over the real home mock.
@@ -98,5 +110,26 @@ const SLIDES: Slide[] = [
 ];
 
 export default function OverviewDeckPage() {
-  return <DeckShell slides={SLIDES} exitTo="/about" autoAdvanceMs={12000} quickIndex={-1} />;
+  const [, setLocation] = useLocation();
+  const search = useSearch();
+  const qc = useQueryClient();
+  const isIntro = new URLSearchParams(search).get("intro") === "1";
+
+  const startPraying = () => {
+    seedGuestRule();
+    void ensureAnonymousUser().then((created) => {
+      if (created) qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    });
+    setLocation("/dashboard", { replace: true });
+  };
+
+  return (
+    <DeckShell
+      slides={SLIDES}
+      exitTo="/about"
+      autoAdvanceMs={12000}
+      quickIndex={-1}
+      stickyAction={isIntro ? { label: "Start praying →", onClick: startPraying } : undefined}
+    />
+  );
 }
