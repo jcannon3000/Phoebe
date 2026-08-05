@@ -67,7 +67,7 @@ export default function AboutPage() {
                 View slideshow
               </span>
               <span style={{ display: "block", fontFamily: FONT, fontSize: 12.5, color: "#A8C5A0", marginTop: 2 }}>
-                See Phoebe in nine slides
+                See Phoebe in ten slides
               </span>
             </span>
             <span aria-hidden style={{ fontSize: 18, color: "#A8C5A0" }}>→</span>

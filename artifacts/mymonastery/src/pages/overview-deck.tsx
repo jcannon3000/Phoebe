@@ -34,7 +34,7 @@ const SLIDES: Slide[] = [
     label: "",
     headline: "Cultivate a daily habit",
     body: [
-      "Phoebe guides each person through a customizable daily routine — a routine, not a library to browse — one step at a time, always showing what's next, so it's easy to return the following day.",
+      "Phoebe guides each person through a customizable daily routine — one step at a time, always showing what's next, so it's easy to return the following day.",
     ],
     mock: "dashboard",
   },
@@ -99,6 +99,15 @@ const SLIDES: Slide[] = [
     headline: "Hebrews 10",
     body: [
       "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
+    ],
+  },
+  // 9 — The close: what young adults are actually looking for (mirrors the
+  // final paragraph of about.tsx's essay, right before its own close).
+  {
+    kind: "statement",
+    headline: "A habit, not a library",
+    body: [
+      "Young adults are looking for help forming a habit, not a library of features.",
     ],
   },
   // The invitation — same close as the full deck.
