@@ -405,6 +405,24 @@ struct PhoebeTodayView: View {
 }
 
 // ── Widget ────────────────────────────────────────────────────────────────
+// The app's frosted-glass-over-photo look, baked into a single pre-blurred,
+// pre-darkened static image (WidgetLeafBG, in this target's own asset catalog
+// — WidgetKit can't reach the main app's web-bundled photos or reliably layer
+// live blur/material over a custom image on home-screen families). A top-to-
+// bottom gradient wash on top mirrors the same recipe used across the deck/
+// about/splash screens, so text stays legible over the photo underneath.
+private var widgetPhotoBackground: some View {
+    ZStack {
+        Image("WidgetLeafBG")
+            .resizable()
+            .scaledToFill()
+        LinearGradient(
+            colors: [phoebeGreen.opacity(0.55), phoebeGreen.opacity(0.88)],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+}
+
 struct PhoebeWidget: Widget {
     let kind = "PhoebeWidget"
     var body: some WidgetConfiguration {
@@ -412,7 +430,11 @@ struct PhoebeWidget: Widget {
             let view = PhoebeWidgetView(stats: entry.stats)
                 .widgetURL(URL(string: entry.stats.deepLink))
             if #available(iOS 17.0, *) {
-                view.containerBackground(phoebeGreen, for: .widget)
+                // Lock-screen accessory families are always rendered by the
+                // system in forced monochrome/vibrant regardless of what's
+                // supplied here, so the photo only actually shows on the
+                // home-screen (.systemSmall/.systemMedium) families below.
+                view.containerBackground(for: .widget) { widgetPhotoBackground }
             } else {
                 view.padding().background(phoebeGreen)
             }
