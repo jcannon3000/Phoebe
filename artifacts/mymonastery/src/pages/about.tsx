@@ -45,7 +45,7 @@ export default function AboutPage() {
             Phoebe
           </h1>
           <button
-            onClick={() => setLocation("/about-deck")}
+            onClick={() => setLocation("/overview-deck")}
             className="w-full transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{
               ...FROST,
@@ -67,7 +67,7 @@ export default function AboutPage() {
                 View slideshow
               </span>
               <span style={{ display: "block", fontFamily: FONT, fontSize: 12.5, color: "#A8C5A0", marginTop: 2 }}>
-                See Phoebe in ten slides
+                See Phoebe in nine slides
               </span>
             </span>
             <span aria-hidden style={{ fontSize: 18, color: "#A8C5A0" }}>→</span>
