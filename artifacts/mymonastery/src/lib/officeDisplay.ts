@@ -158,6 +158,18 @@ export function themeColorForBackdrop(backdrop: OfficeBackdrop): string {
   return "#102816"; // the app's default deep green (matches index.html)
 }
 
+// The exact "--oh-bg2" value the office's loading veil (bcp-daily-office.tsx)
+// paints with, per backdrop. Screens earlier in the office's own navigation
+// chain (begin-prayer.tsx's redirect screen) use this to pre-paint the SAME
+// color the veil is about to mount with — instead of a hardcoded green that
+// then snaps to the user's real backdrop (Paper's cream, Water's blue) the
+// instant the veil actually arrives, which is what read as a "flash."
+export function officeVeilBg(backdrop: OfficeBackdrop): string {
+  if (backdrop === "paper") return PAPER_THEME_VARS["--oh-bg2"] ?? "#F3ECDC";
+  if (backdrop === "water") return WATER_THEME_VARS["--oh-bg2"] ?? "#081320";
+  return "#091A10"; // matches bcp-daily-office.tsx's own BG fallback exactly
+}
+
 // The stepped text sizes (A− / A+). 1 = today's size.
 export const OFFICE_FONT_SCALES = [0.85, 1, 1.15, 1.3] as const;
 

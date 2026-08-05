@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getSideLevel, getSideEntry, getSideContemplation, type OfficeSide } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
+import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
 
 // /begin-prayer — landing page for the iOS "Begin prayer" home-screen
 // shortcut. iOS quick actions are static (configured in Info.plist),
@@ -221,9 +222,11 @@ export default function BeginPrayerPage() {
     setLocation(ctaHref, { replace: true });
   }, [authLoading, user, officePrefs, officeHistory, prefsLoading, historyLoading, setLocation]);
 
-  // Render a full-screen office-colored field (NOT a blank/white frame) while
-  // we resolve the destination. Tapping the home card then fades dark → dark
-  // into the office's own fade-up entrance, instead of flashing white between
-  // two dark screens — which is what made the hand-off feel abrupt.
-  return <div style={{ minHeight: "100dvh", background: "#091A10" }} />;
+  // Render a full-screen field in the SAME color the office's own loading
+  // veil is about to mount with (not a hardcoded green) — a user on the
+  // Paper or Water backdrop was getting a green screen here that then
+  // snapped to their real cream/blue backdrop the instant the veil arrived,
+  // which read as a flash. Tapping the home card now fades dark/paper/water
+  // → the SAME dark/paper/water into the office's own fade-up entrance.
+  return <div style={{ minHeight: "100dvh", background: officeVeilBg(getOfficeBackdrop()) }} />;
 }
