@@ -43,6 +43,7 @@ import { LEAF_PHOTOS, PLANET_PHOTOS, WATER_PHOTOS } from "@/lib/earthPhotos";
 import { OfficeDisplaySheet, useOfficeDisplay, fontScaleWrapStyle } from "@/components/OfficeDisplaySheet";
 import { officeThemeStyle, themeColorForBackdrop } from "@/lib/officeDisplay";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
+import { CompanionFaces, companionNamesLine } from "@/components/CompanionFaces";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getPracticeSlot, SLOT_RANK, type CustomSlot } from "@/lib/customAnchors";
@@ -1234,22 +1235,30 @@ function HabitSlide({
   onDone,
   visible,
   isEvening = false,
-  coPrayers = [],
 }: {
   onDone: () => void;
   visible: boolean;
   /** True when the office just finished was an evening one. Gates the
-   *  "Ignatian Examen" pill — the Examen is an end-of-day practice. */
+   *  "Ignatian Examen" pill — the Examen is an end-of-day practice — and
+   *  picks which side's "who else prayed today" companions to fetch. */
   isEvening?: boolean;
-  /** People the viewer prayed for this week — surfaced as the
-   *  "you prayed for N people" recap under the rhythm card. */
-  coPrayers?: Array<{ id: number; name: string | null; avatarUrl: string | null }>;
 }) {
   // The Examen is pilot-only, so the pill only shows for pilot users
   // with pilot view on — same gate as the menu entry.
   const { isBeta } = useBetaStatus();
   const { isPilot } = usePilotMode();
   const { t } = useTranslation();
+
+  // Garden members who completed THIS side's office today — the same
+  // "who else did it with you" idea as Creation Prayer's closing summary,
+  // mirrored here via CompanionFaces (see office-companions-today).
+  const side = isEvening ? "evening" : "morning";
+  const { data: companionsData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null }>; companionCount: number }>({
+    queryKey: ["/api/prayer-streak/office-companions-today", side],
+    queryFn: () => apiRequest("GET", `/api/prayer-streak/office-companions-today?side=${side}`),
+    staleTime: 30_000,
+  });
+  const officeCompanions = companionsData?.companions ?? [];
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
   // localStorage for the freshly-finished office so the slide reflects
@@ -1352,18 +1361,25 @@ function HabitSlide({
         <TodaysRhythm />
       </motion.div>
 
-      {/* "You prayed for N people this week" — the community recap, moved here
-          from the prior closing slide so it sits under the daily-progress
-          rhythm. */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.18 }}
-        className="w-full flex flex-col items-center"
-        style={{ gap: 16 }}
-      >
-        {/* Fellows off: no "prayed with you" community recap on the devotion close. */}
-      </motion.div>
+      {/* Who else in your garden prayed this office today — the same "who did
+          it with you" pattern as Creation Prayer's closing summary. */}
+      {officeCompanions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.18 }}
+          className="w-full flex flex-col items-center"
+          style={{ gap: 10 }}
+        >
+          <CompanionFaces companions={officeCompanions} edgeColor="var(--oh-bg, #0A1C14)" />
+          <p
+            className="text-[13.5px]"
+            style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+          >
+            You prayed with {companionNamesLine(officeCompanions)} this {isEvening ? "evening" : "morning"}.
+          </p>
+        </motion.div>
+      )}
 
       {/* Ignatian Examen — evening-only (end-of-day prayer) and pilot-only. */}
       <div className="flex items-center justify-center flex-wrap" style={{ gap: 10 }}>
@@ -2511,17 +2527,6 @@ export default function PrayerModePage() {
     queryFn: () => apiRequest("GET", "/api/prayer-streak"),
     enabled: !!user,
     staleTime: 30_000,
-  });
-
-  // People whose prayer requests this user prayed for in the last 7
-  // days — surfaced as an avatar rail on the closing slide so the user
-  // sees who their prayers landed on this week. Excludes anonymous
-  // requests. Capped at 12 server-side; we render 5 + tail.
-  const { data: coPrayersData } = useQuery<{ people: Array<{ id: number; name: string | null; avatarUrl: string | null }> }>({
-    queryKey: ["/api/prayer-streak/co-prayers-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
-    enabled: !!user,
-    staleTime: 60_000,
   });
 
   // Creating a prayer request from the final slide ("How can the community
@@ -4218,7 +4223,7 @@ export default function PrayerModePage() {
           <OfficeCloseEventsSlide onDone={() => handleDone({ skipBless: true })} visible={slideVisible} />
         )}
         {phase === "habit" && (
-          <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} coPrayers={coPrayersData?.people ?? []} />
+          <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} />
         )}
         {phase === "blessing" && (
           <PrayerCompletedSlide onDone={exitToFinish} visible={slideVisible} />

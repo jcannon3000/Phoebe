@@ -5,6 +5,7 @@ import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import { collectForToday } from "@/lib/creationLiturgy";
+import { CompanionFaces, companionNamesLine } from "@/components/CompanionFaces";
 
 // ── CobreatheSummary ─────────────────────────────────────────────────────────
 //
@@ -23,10 +24,6 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
-
-function initials(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
-}
 
 export function CobreatheSummary({
   breathsTaken = DEFAULT_TOTAL_BREATHS,
@@ -186,23 +183,11 @@ export function CobreatheSummary({
                   </p>
                 )}
                 {companions.length > 0 && (() => {
-                  const names = companions.map((c) => (c.name ?? "").trim().split(/\s+/)[0]).filter(Boolean);
-                  const shown = names.slice(0, 2);
-                  const extra = companions.length - shown.length;
-                  const line = shown.length === 0 ? ""
-                    : extra > 0 ? `${shown.join(", ")}, and ${extra} other${extra === 1 ? "" : "s"}`
-                    : shown.join(" and ");
+                  const line = companionNamesLine(companions);
                   return (
                     <div className="flex flex-col items-center mb-6">
-                      <div className="flex items-center mb-2">
-                        {companions.slice(0, 6).map((c, i) => (
-                          <div key={c.userId} className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-                            style={{ width: 32, height: 32, marginLeft: i === 0 ? 0 : -8, border: "1.5px solid #0A1C14", background: "rgba(62,124,122,0.45)", zIndex: 10 - i }}>
-                            {c.avatarUrl
-                              ? <img src={c.avatarUrl} alt={c.name ?? ""} className="w-full h-full object-cover" />
-                              : <span style={{ color: WARM, fontSize: 11, fontWeight: 700, fontFamily: SPACE_GROTESK }}>{initials(c.name ?? "·")}</span>}
-                          </div>
-                        ))}
+                      <div className="mb-2">
+                        <CompanionFaces companions={companions} edgeColor="#0A1C14" />
                       </div>
                       {line && (
                         <p className="text-[13.5px]" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>

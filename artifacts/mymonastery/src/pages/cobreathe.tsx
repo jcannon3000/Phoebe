@@ -123,49 +123,6 @@ type BreathState = {
   allBreaths: number;
 };
 
-// Two-letter fallback for a companion with no avatar.
-function initials(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
-}
-
-// First names, prose-joined: "Maria", "Maria and James", "Maria, James, and 3 others".
-function companionLine(companions: Companion[], totalCount: number): string {
-  const names = companions.map((c) => (c.name ?? "").trim().split(/\s+/)[0]).filter(Boolean).slice(0, 2);
-  if (names.length === 0) return "";
-  const extra = totalCount - names.length;
-  if (extra <= 0) return names.join(" and ");
-  return `${names.join(", ")}, and ${extra} other${extra === 1 ? "" : "s"}`;
-}
-
-// Overlapping face row for garden members who cobreathed today.
-function Faces({ companions }: { companions: Companion[] }) {
-  if (companions.length === 0) return null;
-  return (
-    <div className="flex items-center">
-      {companions.slice(0, 6).map((c, i) => (
-        <div
-          key={c.userId}
-          className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-          style={{
-            marginLeft: i === 0 ? 0 : -8,
-            border: "1.5px solid #0F2818",
-            background: "rgba(62,124,122,0.45)",
-            zIndex: 10 - i,
-          }}
-        >
-          {c.avatarUrl ? (
-            <img src={c.avatarUrl} alt={c.name ?? ""} className="w-full h-full object-cover" />
-          ) : (
-            <span style={{ color: WARM, fontSize: 10, fontWeight: 700, fontFamily: SPACE_GROTESK }}>
-              {initials(c.name ?? "")}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // One-time "how it works" intro shown to a first-time Co-Breather after Begin.
 const COBREATHE_HOWTO_KEY = "phoebe:cobreathe-howto-seen";
 function cobreatheHowtoSeen(): boolean {
@@ -441,7 +398,6 @@ export default function CobreathePage() {
   const state = doneState ?? today ?? null;
   // "N other people" — subtract the caller once they're in the count.
   const others = Math.max(0, (state?.count ?? 0) - (state?.done ? 1 : 0));
-  const withLine = state ? companionLine(state.companions, state.companionCount) : "";
 
   // The prayer slideshow is the intro to the practice — a full-screen immersive
   // overlay (no Layout chrome), rendered before the "before you begin" screen.

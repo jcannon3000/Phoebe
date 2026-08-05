@@ -277,6 +277,60 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
   }
 });
 
+// GET /prayer-streak/office-companions-today?side=morning|evening — garden
+// members who completed THAT SIDE's office today (the viewer's local
+// today), for the "who else prayed with you" avatar row on the office
+// closing slide. Mirrors the "did I pray today" idiom used elsewhere in this
+// app (format both sides to a YYYY-MM-DD string in the VIEWER's timezone and
+// compare, e.g. the amen-today checks in routes/prayer.ts) rather than a SQL
+// timestamp range — prayer_sessions has no dedicated day column like
+// breath_sessions does, so a loose 2-day lookback plus an exact JS-side
+// day-string match is simpler than deriving precise UTC day boundaries.
+router.get("/prayer-streak/office-companions-today", async (req: Request, res: Response): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const side = req.query.side === "evening" ? "evening" : "morning";
+  const surface = side === "evening" ? "evening-prayer" : "morning-prayer";
+
+  try {
+    const { getGardenUserIds } = await import("../lib/garden.js");
+    const gardenIds = await getGardenUserIds(sessionUser.id);
+    if (gardenIds.length === 0) { res.json({ companions: [], companionCount: 0 }); return; }
+
+    const [u] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, sessionUser.id));
+    const tz = u?.timezone || "UTC";
+    const today = todayInTz(tz);
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+    const rows = await db
+      .select({ userId: prayerSessionsTable.userId, endedAt: prayerSessionsTable.endedAt, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(prayerSessionsTable)
+      .innerJoin(usersTable, eq(usersTable.id, prayerSessionsTable.userId))
+      .where(and(
+        inArray(prayerSessionsTable.userId, gardenIds),
+        eq(prayerSessionsTable.surface, surface),
+        eq(prayerSessionsTable.completed, true),
+        gte(prayerSessionsTable.endedAt, twoDaysAgo),
+      ));
+
+    // "Today" is judged in the VIEWER's own tz for every row, not each
+    // companion's own tz — matches the app-wide "did I pray today" convention.
+    const seen = new Map<number, { userId: number; name: string | null; avatarUrl: string | null }>();
+    for (const r of rows) {
+      if (r.userId === sessionUser.id) continue;
+      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(r.endedAt);
+      if (ymd !== today) continue;
+      if (!seen.has(r.userId)) seen.set(r.userId, { userId: r.userId, name: r.name, avatarUrl: r.avatarUrl });
+    }
+
+    res.json({ companions: Array.from(seen.values()).slice(0, 6), companionCount: seen.size });
+  } catch (err) {
+    console.error("[prayer-streak:office-companions-today] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /prayer-streak/co-prayers-week — returns the distinct people the
 // caller has prayed for in the last 7 days, derived from
 // prayer_request_amens joined back to prayer_requests for the owner.
