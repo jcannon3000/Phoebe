@@ -447,3 +447,26 @@ export async function getPsalm(psalmNumber: number): Promise<string> {
   const page = 585 + Math.floor((psalmNumber / 150) * 223);
   return `[Psalm ${psalmNumber} — see BCP p. ${page}]`;
 }
+
+/**
+ * Trim a full BCP psalm text down to just verses [startVerse, endVerse]
+ * (inclusive) — for a novena day citing only a portion of a psalm, rather
+ * than always presenting the whole thing. Each verse in the stored text
+ * begins a line with "<number> "; a trailing Gloria Patri block (if any)
+ * is dropped along with everything past the requested range.
+ */
+export function trimPsalmToVerses(fullText: string, startVerse: number, endVerse: number): string {
+  const lines = fullText.split("\n");
+  const out: string[] = [];
+  let including = false;
+  for (const line of lines) {
+    const m = line.match(/^(\d+)\s/);
+    if (m) {
+      const n = Number(m[1]);
+      including = n >= startVerse && n <= endVerse;
+      if (n > endVerse) break;
+    }
+    if (including) out.push(line);
+  }
+  return out.join("\n").trim();
+}

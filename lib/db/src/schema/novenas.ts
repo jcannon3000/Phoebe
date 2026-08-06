@@ -44,6 +44,9 @@ export const novenaDaysTable = pgTable("novena_days", {
   // already-verified 1979 BCP translation) in ahead of `body` at render
   // time, rather than re-transcribing psalm text into seed data by hand.
   psalmNumber: integer("psalm_number"),
+  // Optional "start-end" verse range (e.g. "1-8") — trims the spliced psalm
+  // text to just those verses instead of the whole psalm. Null = whole psalm.
+  psalmVerseRange: text("psalm_verse_range"),
 }, (t) => ({
   uniqDay: uniqueIndex("uniq_novena_day").on(t.novenaId, t.dayNumber),
 }));

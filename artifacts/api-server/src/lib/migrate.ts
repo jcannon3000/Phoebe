@@ -2,7 +2,6 @@ import { pool } from "@workspace/db";
 import { logger } from "./logger";
 import { NOVENA_TERESA } from "./seedData/novenaTeresa";
 import { NOVENA_CARMEL } from "./seedData/novenaCarmel";
-import { NOVENA_CREATION } from "./seedData/novenaCreation";
 import { NOVENA_FRANCIS } from "./seedData/novenaFrancis";
 import { NOVENA_DISCERNMENT } from "./seedData/novenaDiscernment";
 
@@ -3985,12 +3984,18 @@ export async function migrate() {
       legacyTitles: ["Novena of Our Lady of Mount Carmel"],
       days: NOVENA_CARMEL.days,
     });
-    await seedNovena({
-      code: "creation", title: NOVENA_CREATION.title, saint: NOVENA_CREATION.saint, sourceNote: NOVENA_CREATION.sourceNote,
-      history: NOVENA_CREATION.history, intention: NOVENA_CREATION.intention, dayCount: NOVENA_CREATION.dayCount,
-      legacyTitles: ["Nine Days of Prayer with Creation"],
-      days: NOVENA_CREATION.days,
-    });
+    // "Nine Days of Prayer with Creation" — pulled from the app per owner
+    // decision (its content sourcing needed more work than a quick pass
+    // could responsibly deliver). Archived rather than deleted: no user had
+    // started it, but archiving is the FK-safe pattern this schema already
+    // uses to hide a novena from the library without touching novena_days /
+    // novena_progress. Not re-seeded going forward.
+    try {
+      await client.query(`UPDATE novenas SET archived_at = NOW() WHERE code = 'creation' AND archived_at IS NULL`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "Novena archive warning");
+    }
     await seedNovena({
       code: "francis", title: NOVENA_FRANCIS.title, saint: NOVENA_FRANCIS.saint, sourceNote: NOVENA_FRANCIS.sourceNote,
       history: NOVENA_FRANCIS.history, intention: NOVENA_FRANCIS.intention, dayCount: NOVENA_FRANCIS.dayCount,
