@@ -132,7 +132,8 @@ const DAY_TITLES = [
 ];
 
 export const NOVENA_TERESA = {
-  title: "Novena of St. Teresa of Ávila",
+  code: "teresa",
+  title: "A Novena of St. Teresa of Ávila",
   saint: "St. Teresa of Ávila",
   sourceNote:
     "“Novena of Saint Teresa,” from The Carmelite Manual, compiled by John Spratt, Dublin, 1846, pp. 477-488. Public domain.",

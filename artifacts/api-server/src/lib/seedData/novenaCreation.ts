@@ -150,7 +150,8 @@ const DAYS: Array<{ dayNumber: number; title: string; psalmNumber: number; body:
 ];
 
 export const NOVENA_CREATION = {
-  title: "Nine Days of Prayer with Creation",
+  code: "creation",
+  title: "A Novena for Creation",
   saint: null as string | null,
   sourceNote:
     "A Phoebe compilation: 1979 BCP Psalter texts, paired with public-domain quotations " +

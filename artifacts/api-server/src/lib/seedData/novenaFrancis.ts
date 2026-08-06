@@ -252,7 +252,8 @@ const DAYS: Array<{ dayNumber: number; title: string; body: string }> = [
 ];
 
 export const NOVENA_FRANCIS = {
-  title: "Nine Days with St. Francis of Assisi",
+  code: "francis",
+  title: "A Novena of St. Francis of Assisi",
   saint: "St. Francis of Assisi",
   sourceNote:
     "“Novena in Honour of our Holy Father St. Francis,” from Manual of the Arch-Confraternity of " +

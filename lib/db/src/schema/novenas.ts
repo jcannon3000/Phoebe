@@ -6,6 +6,13 @@ import { usersTable } from "./users";
 // the library isn't locked to the classic nine-day form.
 export const novenasTable = pgTable("novenas", {
   id: serial("id").primaryKey(),
+  // Stable identifier for the seeder to match on — title is a display value
+  // that can be renamed at any time (e.g. "Novena of Saint Teresa" ->
+  // "Novena of St. Teresa of Ávila"); matching seed rows by title meant a
+  // rename never actually updated the row, it just silently seeded a
+  // duplicate under the new title while the old row (with the user's real
+  // progress attached) kept its stale title forever. code never changes.
+  code: text("code").unique(),
   title: text("title").notNull(),
   saint: text("saint"),
   // How the text reached us — required for anything presented as a

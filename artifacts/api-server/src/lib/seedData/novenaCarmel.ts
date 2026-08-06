@@ -298,7 +298,8 @@ function formatDay(d: { title: string; meditations: Meditation[] }): string {
 }
 
 export const NOVENA_CARMEL = {
-  title: "Novena of Our Lady of Mount Carmel",
+  code: "carmel",
+  title: "A Novena of Our Lady of Mount Carmel",
   saint: "The Blessed Virgin Mary, under her title of Mount Carmel",
   sourceNote:
     "“Novena of the Immaculate Virgin Mary of Mount Carmel,” from The Carmelite Manual, compiled by John Spratt, Dublin, 1846, pp. 449-476. Public domain.",

@@ -140,6 +140,7 @@ const DAYS: Array<{ dayNumber: number; title: string; psalmNumber: number; colle
 ];
 
 export const NOVENA_DISCERNMENT = {
+  code: "discernment",
   title: "A Novena for Personal Discernment",
   saint: null as string | null,
   sourceNote:

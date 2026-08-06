@@ -1331,6 +1331,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       later={c.later}
       laterLabel={("laterLabel" in c && c.laterLabel) ? (c.laterLabel as string) : t("rhythm.later", { defaultValue: "Later" })}
       progress={(c as { progress?: { current: number; goal: number } }).progress}
+      alwaysShowProgress={(c as { alwaysShowProgress?: boolean }).alwaysShowProgress}
       blurbCycle={(c as { blurbCycle?: string[] }).blurbCycle}
       onClick={"onClick" in c ? (c.onClick as (() => void) | undefined) : undefined}
       doneCta={(c as { doneCta?: string }).doneCta}
