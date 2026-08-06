@@ -188,15 +188,13 @@ export function useWidgetSync(): void {
     // today (a passed slot is "tomorrow", not next). Falls back to summary.
     const next = ordered.find((i) => !i.done && !isSlotPast(i.slot, now)) ?? null;
 
-    // The CORE anchor dots (Morning · Reflection · Silence · Evening) — kept as
-    // the compact home-pill set the widget already renders, driven by
-    // useRhythmState's aggregates so they can't drift.
-    const dots: number[] = [
-      ...(r.morningActive ? [r.morningDone ? 1 : 0] : []),
-      ...r.reflections.map((rf) => (rf.done ? 1 : 0)),
-      ...(r.silenceActive ? [r.silenceDone ? 1 : 0] : []),
-      ...(r.eveningActive ? [r.eveningDone ? 1 : 0] : []),
-    ];
+    // One dot per active anchor in the person's ACTUAL routine — the same
+    // `ordered` list "next" is resolved from, so the widget can never show a
+    // different count than the real home screen. This used to be a hardcoded
+    // 4-slot set (morning/reflection/a stale "silence" field/evening) that
+    // silently dropped cobreathe, listening, walk, reading, examen, per-side
+    // contemplation, and custom anchors from the count.
+    const dots: number[] = ordered.map((i) => (i.done ? 1 : 0));
     const totalAnchors = dots.length;
     const doneCount = dots.filter((d) => d === 1).length;
 
