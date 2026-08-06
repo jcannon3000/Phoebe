@@ -306,7 +306,7 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
       <h1
         className={
           slide.headline.length > 130
-            ? "text-2xl md:text-4xl font-medium mb-4 md:mb-6 leading-snug"
+            ? "text-xl md:text-3xl font-medium mb-4 md:mb-6 leading-snug"
             : "text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
         }
         style={{ color: slide.muted ? C.sage : C.text, fontFamily: C.font }}
