@@ -160,8 +160,11 @@ export default function NovenaPage() {
               transition={{ duration: 0.5, ease: "easeOut" }}
               style={{ maxWidth: 480, textAlign: "center" }}
             >
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 6, lineHeight: 1.5 }}>
+                {novena.title}{novena.saint ? ` — ${novena.saint}` : ""}
+              </p>
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {novena.title}{novena.saint ? ` — ${novena.saint}` : ""} · Day {novena.currentDay} of {novena.dayCount}
+                Day {novena.currentDay} of {novena.dayCount}
               </p>
               <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
                 {novena.day?.title ?? `Day ${novena.currentDay}`}
