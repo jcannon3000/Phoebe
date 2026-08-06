@@ -249,10 +249,10 @@ export default function NovenaPage() {
                 {novena.title}{novena.saint ? ` — ${novena.saint}` : ""}
               </p>
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                Day {novena.currentDay} of {novena.dayCount}
+                Day {novena.displayDayNumber} of {novena.dayCount}
               </p>
               <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
-                {novena.day?.title ?? `Day ${novena.currentDay}`}
+                {novena.day?.title ?? `Day ${novena.displayDayNumber}`}
               </h1>
             </motion.div>
           )}
@@ -302,7 +302,7 @@ export default function NovenaPage() {
               </h2>
               <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4.2vw, 17px)", lineHeight: 1.55 }}>
                 {novenaDone
-                  ? `Day ${novena.currentDay} of ${novena.dayCount} is prayed. Come back tomorrow for the next day.`
+                  ? `Day ${novena.displayDayNumber} of ${novena.dayCount} is prayed. Come back tomorrow for the next day.`
                   : "Mark today's day complete when you're ready."}
               </p>
             </motion.div>

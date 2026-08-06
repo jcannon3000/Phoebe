@@ -168,6 +168,8 @@ export const NOVENA_CREATION = {
     "To open nine days of attention to the created world — water, mountains, seasons, animals, sky, " +
     "our calling to tend the earth, rest, and blessing — as a way of praying, not just thinking, about " +
     "creation care.",
+  // Kept last in the library list — after even Mount Carmel (sortOrder 100).
+  sortOrder: 200,
   dayCount: 9,
   days: DAYS,
 };

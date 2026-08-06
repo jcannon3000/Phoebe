@@ -41,7 +41,6 @@ export default function NovenaDetailPage() {
 
   const isCurrent = activeNovena?.novenaId === novenaId;
   const [mode, setMode] = useState<Mode>(null);
-  const [confirmSwitch, setConfirmSwitch] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
   const start = useMutation({
@@ -68,7 +67,6 @@ export default function NovenaDetailPage() {
   const otherActive = activeNovena && !isCurrent;
 
   function beginFlow() {
-    if (otherActive) { setConfirmSwitch(true); return; }
     setMode("choose");
   }
 
@@ -150,20 +148,27 @@ export default function NovenaDetailPage() {
             </div>
           ) : mode === "choose" ? (
             <div style={{ background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 16 }}>
-              <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Would you like this to replace your daily prayer, or be in addition to it?</p>
+              {otherActive && (
+                <div style={{ background: "rgba(9,26,16,0.5)", border: `1px solid ${CARD_BORDER}`, borderRadius: 12, padding: "10px 12px", marginBottom: 14 }}>
+                  <p style={{ fontSize: 12.5, color: SAGE, margin: 0, lineHeight: 1.5 }}>
+                    This will stop <strong style={{ color: WARM }}>{activeNovena!.title}</strong>, currently in your routine.
+                  </p>
+                </div>
+              )}
+              <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Add this as another practice in your routine for the next nine days?</p>
               <p style={{ fontSize: 12.5, color: SAGE, marginBottom: 16, lineHeight: 1.5 }}>
-                Replacing takes over morning or evening prayer for these nine days — what you normally pray there returns once the novena ends. In addition rides alongside your routine as its own card.
+                It rides alongside your routine as its own card. If you'd rather it take over morning or evening prayer instead — what you normally pray there returns once the novena ends — choose that below.
               </p>
               <div className="flex flex-col gap-2">
-                <button type="button" onClick={chooseReplace} disabled={start.isPending}
-                  className="rounded-full py-2.5 px-6 disabled:opacity-60"
-                  style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
-                  Replace morning or evening prayer
-                </button>
                 <button type="button" onClick={chooseAddition} disabled={start.isPending}
                   className="rounded-full py-2.5 px-6 disabled:opacity-60"
+                  style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
+                  Add to my routine
+                </button>
+                <button type="button" onClick={chooseReplace} disabled={start.isPending}
+                  className="rounded-full py-2.5 px-6 disabled:opacity-60"
                   style={{ background: "transparent", color: WARM, fontFamily: FONT, fontSize: 14, fontWeight: 700, border: `1px solid ${SAGE}`, cursor: "pointer" }}>
-                  Add alongside my routine
+                  Replace morning or evening prayer instead
                 </button>
                 <button type="button" onClick={() => setMode(null)} style={{ background: "none", border: "none", color: FAINT, fontFamily: FONT, fontSize: 12.5, cursor: "pointer", marginTop: 4 }}>
                   Cancel
@@ -198,26 +203,6 @@ export default function NovenaDetailPage() {
             >
               {isCurrent ? "Continue" : "Begin"}
             </button>
-          )}
-
-          {confirmSwitch && (
-            <div className="fixed inset-0 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.6)", zIndex: 20 }}>
-              <div className="rounded-2xl p-5 max-w-sm w-full" style={{ background: "#0F2818", border: `1px solid ${CARD_BORDER}`, fontFamily: FONT, color: WARM }}>
-                <p className="mb-4" style={{ fontSize: 14, lineHeight: 1.5 }}>
-                  Stop {activeNovena?.title ?? "your current novena"} and start {novena.title}?
-                </p>
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setConfirmSwitch(false)} className="px-4 py-2 rounded-full text-sm" style={{ color: SAGE, background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
-                  <button
-                    onClick={() => { setConfirmSwitch(false); setMode("choose"); }}
-                    className="px-4 py-2 rounded-full text-sm font-semibold"
-                    style={{ background: "#2D5E3F", color: WARM, border: "none", cursor: "pointer" }}
-                  >
-                    Switch
-                  </button>
-                </div>
-              </div>
-            </div>
           )}
         </div>
       </div>

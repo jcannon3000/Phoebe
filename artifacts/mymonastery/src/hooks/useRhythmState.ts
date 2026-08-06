@@ -164,7 +164,7 @@ export type RhythmState = {
    *  anchor card/dot instead of riding alongside as its own. */
   novenaReplacesMorning: boolean;
   novenaReplacesEvening: boolean;
-  novena: { novenaId: number; title: string; saint: string | null; currentDay: number; dayCount: number; replacesSlot: "morning" | "evening" | null; day: { title: string | null; body: string } | null } | null;
+  novena: { novenaId: number; title: string; saint: string | null; currentDay: number; displayDayNumber: number; dayCount: number; replacesSlot: "morning" | "evening" | null; day: { title: string | null; body: string } | null } | null;
 };
 
 // Is an optional-practice card surfaced on the user's home layout? A card
@@ -433,13 +433,13 @@ export function useRhythmState(): RhythmState {
   const { data: novenaData } = useQuery<{
     active: null | {
       novenaId: number; title: string; saint: string | null; dayCount: number;
-      currentDay: number; lastCompletedLocalDate: string | null;
+      currentDay: number; displayDayNumber: number; lastCompletedLocalDate: string | null;
       replacesSlot: "morning" | "evening" | null;
       day: { title: string | null; body: string } | null;
     };
   }>({
     queryKey: ["/api/me/novena", day],
-    queryFn: () => apiRequest("GET", "/api/me/novena"),
+    queryFn: () => apiRequest("GET", `/api/me/novena?localDate=${encodeURIComponent(day)}`),
     staleTime: 30_000,
     enabled: !guest,
   });
@@ -920,7 +920,7 @@ export function useRhythmState(): RhythmState {
     novenaReplacesMorning,
     novenaReplacesEvening,
     novena: activeNovena
-      ? { novenaId: activeNovena.novenaId, title: activeNovena.title, saint: activeNovena.saint, currentDay: activeNovena.currentDay, dayCount: activeNovena.dayCount, replacesSlot: activeNovena.replacesSlot, day: activeNovena.day }
+      ? { novenaId: activeNovena.novenaId, title: activeNovena.title, saint: activeNovena.saint, currentDay: activeNovena.currentDay, displayDayNumber: activeNovena.displayDayNumber, dayCount: activeNovena.dayCount, replacesSlot: activeNovena.replacesSlot, day: activeNovena.day }
       : null,
   };
 }

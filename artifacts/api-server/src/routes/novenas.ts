@@ -94,10 +94,23 @@ router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {
   const [novena] = await db.select().from(novenasTable).where(eq(novenasTable.id, progress.novenaId)).limit(1);
   if (!novena) { res.json({ active: null }); return; }
 
+  // currentDay advances the moment a day is marked complete (see .../complete
+  // below) — so re-opening the reading page later THAT SAME day would
+  // otherwise jump straight to the next, unread day's content while it's
+  // simultaneously flagged "done" (lastCompletedLocalDate === today). Show
+  // the day just completed instead, until a new local day actually arrives.
+  // The finished-novena case (status flips to "completed", currentDay pinned
+  // at dayCount) is exempt — that's genuinely the last day, not a lookahead.
+  const localDate = typeof req.query.localDate === "string" ? req.query.localDate : null;
+  const doneToday = !!localDate && progress.lastCompletedLocalDate === localDate;
+  const displayDayNumber = (doneToday && progress.status === "active" && progress.currentDay > 1)
+    ? progress.currentDay - 1
+    : progress.currentDay;
+
   const [day] = await db
     .select()
     .from(novenaDaysTable)
-    .where(and(eq(novenaDaysTable.novenaId, novena.id), eq(novenaDaysTable.dayNumber, progress.currentDay)))
+    .where(and(eq(novenaDaysTable.novenaId, novena.id), eq(novenaDaysTable.dayNumber, displayDayNumber)))
     .limit(1);
 
   // A day tied to a psalmNumber gets the actual BCP Psalter text (verified,
@@ -116,6 +129,7 @@ router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {
       saint: novena.saint,
       dayCount: novena.dayCount,
       currentDay: progress.currentDay,
+      displayDayNumber,
       lastCompletedLocalDate: progress.lastCompletedLocalDate,
       replacesSlot: progress.replacesSlot as "morning" | "evening" | null,
       day: day ? { title: day.title, body: dayBody } : null,
