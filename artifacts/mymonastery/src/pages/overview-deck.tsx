@@ -152,6 +152,7 @@ export default function OverviewDeckPage() {
     <DeckShell
       slides={SLIDES}
       exitTo="/about"
+      doneTo="/dashboard"
       autoAdvanceMs={12000}
       quickIndex={-1}
       stickyAction={isIntro ? { label: "Start praying →", onClick: startPraying } : undefined}

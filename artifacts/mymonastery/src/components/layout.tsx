@@ -680,7 +680,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, prayerListActive, prayerListDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, customAnchors } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -718,10 +718,10 @@ function DailyProgressPill() {
     // the goal-progress card riding alongside per-side Creation Prayer cards
     // (whose own dots are the per-side entries above).
     ...(silenceGoalCardActive ? [{ key: "silence", done: silenceGoalCardDone }] : []),
-    // "Anytime" all-day anchors (rank right after morning): the prayer-list
-    // card and any custom placed at "anytime" — each renders a card, so each
-    // needs a dot or the pill under-counts the rhythm.
-    ...(prayerListActive ? [{ key: "prayer-list", done: prayerListDone }] : []),
+    // NOTE: Prayer List is NOT a rhythm card — DailyProgressBody deliberately
+    // gives it its own dedicated home-screen section instead of a Next/Done
+    // row (see its rawCards comment), so it must not get a dot here either —
+    // that was over-counting the pill by one whenever prayerListActive.
     ...cDots("anytime"),
     ...cDots("midday"),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),

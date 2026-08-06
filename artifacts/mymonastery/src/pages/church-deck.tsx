@@ -2024,6 +2024,7 @@ function renderSlide(slide: Slide) {
 export function DeckShell({
   slides,
   exitTo = "/",
+  doneTo,
   autoAdvanceMs = 10000,
   // The church deck's slide index 2 is a brief "The week" title that auto-
   // advances fast; other decks (e.g. About) pass quickIndex={-1} to disable it.
@@ -2033,6 +2034,12 @@ export function DeckShell({
 }: {
   slides: Slide[];
   exitTo?: string;
+  /** Where the closing "Done" button lands — defaults to exitTo. Split out
+   *  so mid-deck "Close" (X, top-left) can return to where the deck was
+   *  opened from while finishing the deck lands somewhere more useful
+   *  (e.g. overview-deck.tsx sends "Done" to the dashboard, not back to
+   *  the About page it was launched from). */
+  doneTo?: string;
   autoAdvanceMs?: number;
   quickIndex?: number;
   quickMs?: number;
@@ -2304,7 +2311,7 @@ export function DeckShell({
           )}
           {isLast ? (
             <button
-              onClick={stickyAction ? stickyAction.onClick : () => setLocation(exitTo)}
+              onClick={stickyAction ? stickyAction.onClick : () => setLocation(doneTo ?? exitTo)}
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
               style={{ ...FROST, border: "1px solid rgba(168,197,160,0.45)", color: C.text }}
             >
