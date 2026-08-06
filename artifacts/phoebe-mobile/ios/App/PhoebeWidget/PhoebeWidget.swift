@@ -172,15 +172,14 @@ struct PhoebeWidgetView: View {
         }
     }
 
-    // Hero copy — overridden by the prayer-requests lead when there are new
-    // ones, otherwise the next office / reflection / summary.
-    private var heroEyebrow: String { hasPrayers ? "WAITING" : eyebrow }
-    private var heroTitle: String {
-        if hasPrayers { return stats.newPrayers == 1 ? "1 prayer request 🙏" : "\(stats.newPrayers) prayer requests 🙏" }
-        return displayTitle
-    }
-    private var heroSubtitle: String { hasPrayers ? "Friends are waiting for your prayers" : stats.subtitle }
-    private var heroCta: String { hasPrayers ? "Pray now" : stats.cta }
+    // The medium widget always shows the actual next practice in the day's
+    // rhythm — the app already resolves this the same way the home screen's
+    // Next card does (morning ranks first when it's due; see widgetSync.ts),
+    // so the widget never needs its own separate "waiting" lead to override it.
+    private var heroEyebrow: String { "WHAT'S NEXT" }
+    private var heroTitle: String { displayTitle }
+    private var heroSubtitle: String { stats.subtitle }
+    private var heroCta: String { stats.cta }
 
     private var displayTitle: String {
         if stats.kind == "office" {
@@ -285,11 +284,13 @@ struct PhoebeWidgetView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
-                // Bottom row: the CTA pill on the left, today's rhythm progress
-                // (dots + N/M) on the right — so the widget shows both what's
-                // next AND how far through the day you are.
-                HStack(alignment: .center, spacing: 8) {
-                    if !heroCta.isEmpty {
+                // The CTA pill sits on its own row, pushed to the right — then
+                // today's rhythm progress (dots + N/M) is its own row at the
+                // very bottom, matching the home card's own layout (title/CTA
+                // up top, the progress bar as a full row underneath).
+                if !heroCta.isEmpty {
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
                         HStack(spacing: 4) {
                             Text(heroCta).font(.system(size: 13, weight: .semibold))
                             Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
@@ -299,9 +300,8 @@ struct PhoebeWidgetView: View {
                         .padding(.vertical, 8)
                         .background(Capsule().fill(accentColor))
                     }
-                    Spacer(minLength: 6)
-                    progressDots
                 }
+                progressDots
             }
             .padding(16)
             Spacer(minLength: 0)
@@ -416,8 +416,11 @@ private var widgetPhotoBackground: some View {
         Image("WidgetLeafBG")
             .resizable()
             .scaledToFill()
+        // Lighter than before — the previous wash (0.55–0.88) all but hid the
+        // photo entirely, which read as "no background" rather than the
+        // frosted-over-photo look the rest of the app uses.
         LinearGradient(
-            colors: [phoebeGreen.opacity(0.55), phoebeGreen.opacity(0.88)],
+            colors: [phoebeGreen.opacity(0.35), phoebeGreen.opacity(0.72)],
             startPoint: .top, endPoint: .bottom
         )
     }
