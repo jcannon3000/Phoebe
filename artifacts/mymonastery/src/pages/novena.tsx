@@ -8,6 +8,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { PointedLine } from "@/components/PointedLine";
 
 // ── Novena — today's day, as a slideshow ────────────────────────────────────
 // Same shell as guided-prayer.tsx / the Examen: one passage per slide, dots +
@@ -15,11 +16,21 @@ import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 // paragraph-separated in the seed data) becomes the slides directly — intro
 // names the day and where they are in the novena, then one slide per
 // paragraph, then a close that marks the day complete.
+//
+// A day whose body starts with "Psalm <n>" (novenaDaysTable.psalmNumber, the
+// GET /me/novena route splices the real BCP text ahead of the day's own
+// body) renders that block with the SAME verse-numbered, left-aligned
+// layout the Daily Office psalm slides use (bcp-daily-office.tsx) — not as
+// one more centered paragraph — so a psalm reads the same wherever it
+// appears in the app. Every other paragraph (the devotion/prayer text
+// itself) is left-aligned too, matching the office's own reading slides.
 
 const FONT = "'Space Grotesk', sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const BG = "#0C1F12";
 const WARM = "#F0EDE6";
+const WARM_TEXT = "rgba(240,237,230,0.92)";
+const FAINT_GREEN = "rgba(143,175,150,0.65)";
 const ACCENT = "rgba(143,175,150,0.5)";
 const EYEBROW = "rgba(143,175,150,0.75)";
 const DOT_ON = "#8FAF96";
@@ -40,18 +51,92 @@ function localDay(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
+// A minimal port of bcp-daily-office.tsx's parsePsalmContent — same source
+// format (bcp_texts), same verse/hemistich/Gloria parsing, so a psalm reads
+// identically wherever it's shown in the app.
+type PsalmLine = { text: string; indented: boolean };
+type PsalmEntry = { kind: "verse"; number: string; lines: PsalmLine[] } | { kind: "doxology"; text: string };
+function parsePsalmContent(content: string): PsalmEntry[] {
+  const result: PsalmEntry[] = [];
+  const gloriaMatch = content.match(/\n\s*\n?\s*(Glory to the Father[\s\S]+)$/);
+  const psalmBody = gloriaMatch ? content.slice(0, content.length - gloriaMatch[1].length).trimEnd() : content;
+  const gloria = gloriaMatch ? gloriaMatch[1].trim() : null;
+  const rawLines = psalmBody.split("\n");
+  let current: { number: string; lines: PsalmLine[] } | null = null;
+  for (const raw of rawLines) {
+    const line = raw.replace(/\s+$/, "");
+    if (line === "") continue;
+    const verseMatch = line.match(/^(\d+)\s+(.*)$/);
+    if (verseMatch) {
+      if (current) result.push({ kind: "verse", ...current });
+      current = { number: verseMatch[1], lines: [{ text: verseMatch[2], indented: false }] };
+    } else if (current) {
+      const indented = /^\s/.test(raw);
+      current.lines.push({ text: line.trim(), indented });
+    }
+  }
+  if (current) result.push({ kind: "verse", ...current });
+  if (gloria) result.push({ kind: "doxology", text: gloria });
+  return result;
+}
+
+function PsalmSlide({ psalmNumber, content }: { psalmNumber: string; content: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600, textAlign: "left", width: "100%" }}>
+      <p style={{ color: FAINT_GREEN, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", margin: "0 0 4px" }}>
+        Psalm {psalmNumber}
+      </p>
+      {parsePsalmContent(content).map((v, i) => (
+        v.kind === "verse" ? (
+          <div key={i} style={{ display: "flex", gap: 7 }}>
+            <span style={{ flex: "0 0 auto", minWidth: 16, color: FAINT_GREEN, fontSize: 13, fontFamily: FONT, lineHeight: 1.6, paddingTop: 2 }}>
+              {v.number}
+            </span>
+            <div style={{ flex: 1 }}>
+              {v.lines.map((ln, li) => (
+                <PointedLine
+                  key={li}
+                  text={ln.text}
+                  style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, paddingLeft: ln.indented ? 16 : 0, fontFamily: FONT, whiteSpace: "pre-wrap" }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p key={i} style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: FONT, whiteSpace: "pre-wrap" }}>{v.text}</p>
+        )
+      ))}
+    </div>
+  );
+}
+
 export default function NovenaPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const { novena, novenaDone } = useRhythmState();
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
-  const paragraphs = useMemo(
-    () => (novena?.day?.body ?? "").split(/\n\n+/).map((p) => p.trim()).filter(Boolean),
-    [novena?.day?.body],
-  );
+  // The day's body, split into slides. A "Psalm <n>" paragraph immediately
+  // followed by the psalm's own text (see GET /me/novena's splice) becomes
+  // ONE psalm slide, rendered like the office's psalm slides; every other
+  // paragraph is its own plain text slide.
+  type Slide = { kind: "psalm"; number: string; content: string } | { kind: "text"; text: string };
+  const slides = useMemo<Slide[]>(() => {
+    const raw = (novena?.day?.body ?? "").split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+    const out: Slide[] = [];
+    for (let i = 0; i < raw.length; i++) {
+      const m = raw[i]!.match(/^Psalm (\d+)$/);
+      if (m && raw[i + 1]) {
+        out.push({ kind: "psalm", number: m[1]!, content: raw[i + 1]! });
+        i++;
+      } else {
+        out.push({ kind: "text", text: raw[i]! });
+      }
+    }
+    return out;
+  }, [novena?.day?.body]);
 
-  // step 0 = intro, 1..N = paragraphs, N+1 = closing.
+  // step 0 = intro, 1..N = slides, N+1 = closing.
   const [step, setStep] = useState(0);
 
   const complete = useMutation({
@@ -87,9 +172,9 @@ export default function NovenaPage() {
   }
 
   const isIntro = step === 0;
-  const isClosing = step === paragraphs.length + 1;
-  const paragraphIndex = !isIntro && !isClosing ? step - 1 : -1;
-  const paragraph = paragraphIndex >= 0 ? paragraphs[paragraphIndex] : null;
+  const isClosing = step === slides.length + 1;
+  const slideIndex = !isIntro && !isClosing ? step - 1 : -1;
+  const slide = slideIndex >= 0 ? slides[slideIndex] : null;
 
   const primary = isIntro
     ? { label: "Begin", onClick: () => { setStep(1); try { playOpeningSwell(); } catch { /* non-fatal */ } } }
@@ -97,7 +182,7 @@ export default function NovenaPage() {
       ? (novenaDone
           ? { label: "Done", onClick: () => setLocation("/dashboard") }
           : { label: complete.isPending ? "Marking…" : "Amen — mark today complete", onClick: () => complete.mutate() })
-      : { label: paragraphIndex === paragraphs.length - 1 ? "Continue" : "Continue", onClick: () => setStep((s) => s + 1) };
+      : { label: "Continue", onClick: () => setStep((s) => s + 1) };
 
   return (
     <div className="relative" style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, isolation: "isolate", overflow: "hidden" }}>
@@ -125,7 +210,7 @@ export default function NovenaPage() {
         <button
           type="button"
           onClick={() => {
-            if (step > 0 && step < paragraphs.length + 1) setStep((s) => s - 1);
+            if (step > 0 && step < slides.length + 1) setStep((s) => s - 1);
             else setLocation("/dashboard");
           }}
           style={{ color: EYEBROW, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: FONT, fontSize: 13 }}
@@ -172,17 +257,32 @@ export default function NovenaPage() {
             </motion.div>
           )}
 
-          {paragraph && (
+          {slide && slide.kind === "psalm" && (
             <motion.div
-              key={`p-${paragraphIndex}`}
+              key={`s-${slideIndex}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ maxWidth: 480, textAlign: "center" }}
+              className="w-full"
+              style={{ maxWidth: 560 }}
             >
-              <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: SERIF, fontSize: "clamp(16px, 4.4vw, 20px)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
-                {paragraph}
+              <PsalmSlide psalmNumber={slide.number} content={slide.content} />
+            </motion.div>
+          )}
+
+          {slide && slide.kind === "text" && (
+            <motion.div
+              key={`s-${slideIndex}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="w-full"
+              style={{ maxWidth: 560, textAlign: "left" }}
+            >
+              <p style={{ color: WARM_TEXT, margin: 0, fontFamily: FONT, fontSize: "clamp(16px, 4.4vw, 19px)", lineHeight: 1.65, whiteSpace: "pre-line" }}>
+                {slide.text}
               </p>
             </motion.div>
           )}
@@ -211,10 +311,10 @@ export default function NovenaPage() {
       </main>
 
       <div className="absolute left-0 right-0 flex flex-col items-center" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 22px)", zIndex: 2 }}>
-        {paragraph && (
+        {slide && (
           <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: 16 }}>
-            {paragraphs.map((_, i) => (
-              <span key={i} className="block rounded-full" style={{ width: 6, height: 6, background: i <= paragraphIndex ? DOT_ON : DOT_OFF }} />
+            {slides.map((_, i) => (
+              <span key={i} className="block rounded-full" style={{ width: 6, height: 6, background: i <= slideIndex ? DOT_ON : DOT_OFF }} />
             ))}
           </div>
         )}
