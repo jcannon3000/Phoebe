@@ -43,6 +43,12 @@ export const novenaProgressTable = pgTable("novena_progress", {
   novenaId: integer("novena_id").notNull().references(() => novenasTable.id, { onDelete: "cascade" }),
   currentDay: integer("current_day").notNull().default(1),
   lastCompletedLocalDate: text("last_completed_local_date"),
+  // null (addition — rides alongside the routine as its own card) | "morning"
+  // | "evening" (replace mode — takes over that side's anchor card/dot for
+  // as long as this novena is active; the side's normal content resumes
+  // automatically once status leaves "active", since nothing else reads
+  // replacesSlot when there's no active novena).
+  replacesSlot: text("replaces_slot"),
   // active | completed | abandoned
   status: text("status").notNull().default("active"),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),

@@ -3879,6 +3879,11 @@ export async function migrate() {
         completed_at TIMESTAMPTZ
       )
     `);
+    // replace-vs-addition: null rides alongside the routine as its own card;
+    // "morning"/"evening" takes over that side's anchor for as long as this
+    // novena is active. Added after the initial table — ADD COLUMN for
+    // existing databases.
+    await run(client, `ALTER TABLE novena_progress ADD COLUMN IF NOT EXISTS replaces_slot TEXT`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_novena_progress_user ON novena_progress (user_id)`);
     await run(client, `
       CREATE UNIQUE INDEX IF NOT EXISTS uniq_novena_progress_active_per_user

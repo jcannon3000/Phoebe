@@ -152,7 +152,10 @@ export function useWidgetSync(): void {
     // slot rank then reproduces the home's time-of-day ordering; within a slot
     // the base order below is preserved.
     const items: NextItem[] = [
-      { active: r.morningActive, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office" },
+      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office" },
+      // A novena in "replace" mode takes over its slot's item entirely — same
+      // gate as the rawCards/dotDefs replace-mode entries.
+      { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       ...r.reflections.map((rf) => ({
         active: true, done: rf.done, slot: "morning" as CustomSlot,
         title: REFLECTION_NAME[rf.source] ?? "Today's reflection",
@@ -174,9 +177,10 @@ export function useWidgetSync(): void {
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
       // The active novena — same novenaActive/Done DailyProgressBody's card
       // and the header pill's dot use, so the widget can't drift from either.
-      { active: r.novenaActive, done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
+      { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
-      { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
+      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
+      { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
         title: a.title, eyebrow: "Your practice", subtitle: "A daily practice", cta: "Log", kind: "office" as const,
@@ -258,7 +262,7 @@ export function useWidgetSync(): void {
     r.walkActive, r.walkDone,
     r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
     r.examenActive, r.examenDone,
-    r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title,
+    r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title, r.novenaReplacesMorning, r.novenaReplacesEvening,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
   ]);

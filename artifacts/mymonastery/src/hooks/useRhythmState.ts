@@ -160,7 +160,11 @@ export type RhythmState = {
    *  1-indexed; done is "already prayed today's day". */
   novenaActive: boolean;
   novenaDone: boolean;
-  novena: { novenaId: number; title: string; saint: string | null; currentDay: number; dayCount: number; day: { title: string | null; body: string } | null } | null;
+  /** Set only in "replace" mode — the novena stands in for that side's
+   *  anchor card/dot instead of riding alongside as its own. */
+  novenaReplacesMorning: boolean;
+  novenaReplacesEvening: boolean;
+  novena: { novenaId: number; title: string; saint: string | null; currentDay: number; dayCount: number; replacesSlot: "morning" | "evening" | null; day: { title: string | null; body: string } | null } | null;
 };
 
 // Is an optional-practice card surfaced on the user's home layout? A card
@@ -430,6 +434,7 @@ export function useRhythmState(): RhythmState {
     active: null | {
       novenaId: number; title: string; saint: string | null; dayCount: number;
       currentDay: number; lastCompletedLocalDate: string | null;
+      replacesSlot: "morning" | "evening" | null;
       day: { title: string | null; body: string } | null;
     };
   }>({
@@ -441,6 +446,14 @@ export function useRhythmState(): RhythmState {
   const activeNovena = novenaData?.active ?? null;
   const novenaActive = !!activeNovena;
   const novenaDone = novenaActive && activeNovena!.lastCompletedLocalDate === day;
+  // "Replace" mode — the novena stands in for that side's anchor entirely
+  // (its own card at the "morning"/"evening" slot, no separate anytime
+  // card, and the side's normal office/contemplation content stays
+  // suppressed) rather than riding alongside as an extra card. Reverts
+  // automatically once the novena is no longer active, since nothing reads
+  // these once activeNovena is null.
+  const novenaReplacesMorning = novenaActive && activeNovena!.replacesSlot === "morning";
+  const novenaReplacesEvening = novenaActive && activeNovena!.replacesSlot === "evening";
 
   // Server-backed completion rows for the optional practices (cross-device).
   // Only fetched/used for the practices the user has actually added.
@@ -904,8 +917,10 @@ export function useRhythmState(): RhythmState {
       : null,
     novenaActive,
     novenaDone,
+    novenaReplacesMorning,
+    novenaReplacesEvening,
     novena: activeNovena
-      ? { novenaId: activeNovena.novenaId, title: activeNovena.title, saint: activeNovena.saint, currentDay: activeNovena.currentDay, dayCount: activeNovena.dayCount, day: activeNovena.day }
+      ? { novenaId: activeNovena.novenaId, title: activeNovena.title, saint: activeNovena.saint, currentDay: activeNovena.currentDay, dayCount: activeNovena.dayCount, replacesSlot: activeNovena.replacesSlot, day: activeNovena.day }
       : null,
   };
 }

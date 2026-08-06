@@ -680,7 +680,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -705,7 +705,10 @@ function DailyProgressPill() {
   const cDots = (slot: string) =>
     customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
   const dotDefs = [
-    ...(morningActive ? [{ key: "morning", done: morningDone }] : []),
+    // A novena in "replace" mode takes over this slot's dot entirely — mirrors
+    // DailyProgressBody's rawCards replace-mode entries (same gates).
+    ...(novenaReplacesMorning && novenaActive ? [{ key: "novena-morning", done: novenaDone }] : []),
+    ...(morningActive && !novenaReplacesMorning ? [{ key: "morning", done: morningDone }] : []),
     // Reflection is the DEFAULT second dot (right after Morning) — ahead of any
     // custom morning practice — unless the user reorders their rhythm.
     ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
@@ -724,7 +727,7 @@ function DailyProgressPill() {
     // that was over-counting the pill by one whenever prayerListActive.
     // The active novena rides "anytime" alongside custom anytime anchors —
     // matches DailyProgressBody's rawCards entry (same novenaActive/Done).
-    ...(novenaActive ? [{ key: "novena", done: novenaDone }] : []),
+    ...(novenaActive && !novenaReplacesMorning && !novenaReplacesEvening ? [{ key: "novena", done: novenaDone }] : []),
     ...cDots("anytime"),
     ...cDots("midday"),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
@@ -736,7 +739,8 @@ function DailyProgressPill() {
     ...(podcastsActive ? [{ key: "podcasts", done: podcastsDone }] : []),
     ...(walkActive ? [{ key: "walk", done: walkDone }] : []),
     ...cDots("afternoon"),
-    ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
+    ...(eveningActive && !novenaReplacesEvening ? [{ key: "evening", done: eveningDone }] : []),
+    ...(novenaReplacesEvening && novenaActive ? [{ key: "novena-evening", done: novenaDone }] : []),
     ...(eveningContemplationActive ? [{ key: "contemplation-evening", done: eveningContemplationDone }] : []),
     ...cDots("evening"),
   ];
@@ -1016,7 +1020,14 @@ function OpeningSplash() {
   // these (a Begin CTA on a pure log indicator is misleading).
   type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean };
   const nextCandidates: NextCand[] = [
-    { active: rhythm.morningActive, done: rhythm.morningDone, slot: "morning", emoji: "🌅",
+    // A novena in "replace" mode takes over its slot's candidate entirely —
+    // same gate as the rawCards/dotDefs entries above.
+    ...(rhythm.novenaReplacesMorning && rhythm.novena ? [{ active: rhythm.novenaActive, done: rhythm.novenaDone, slot: "morning" as CustomSlot, emoji: "🕊️", label: rhythm.novena.title, blurb: `Day ${rhythm.novena.currentDay} of ${rhythm.novena.dayCount}`, rgb: "150,120,90" }] : []),
+    ...(rhythm.novenaReplacesEvening && rhythm.novena ? [{ active: rhythm.novenaActive, done: rhythm.novenaDone, slot: "evening" as CustomSlot, emoji: "🕊️", label: rhythm.novena.title, blurb: `Day ${rhythm.novena.currentDay} of ${rhythm.novena.dayCount}`, rgb: "150,120,90" }] : []),
+    ...(rhythm.novenaActive && rhythm.novena && !rhythm.novenaReplacesMorning && !rhythm.novenaReplacesEvening
+      ? [{ active: true, done: rhythm.novenaDone, slot: "anytime" as CustomSlot, emoji: "🕊️", label: rhythm.novena.title, blurb: `Day ${rhythm.novena.currentDay} of ${rhythm.novena.dayCount}`, rgb: "150,120,90" }]
+      : []),
+    { active: rhythm.morningActive && !rhythm.novenaReplacesMorning, done: rhythm.morningDone, slot: "morning", emoji: "🌅",
       label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : getSideLevel("morning") === "guided-prayer" ? "Simple Guided Prayer" : "Morning prayer",
       blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : getSideLevel("morning") === "guided-prayer" ? "Three Minutes to Start Your Day" : "Begin the day with the office",
       rgb: "46,107,64" },
@@ -1030,7 +1041,7 @@ function OpeningSplash() {
     { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
     // The Examen is an end-of-day reflection — evening slot.
     { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
-    { active: rhythm.eveningActive, done: rhythm.eveningDone, slot: "evening", emoji: "🌙",
+    { active: rhythm.eveningActive && !rhythm.novenaReplacesEvening, done: rhythm.eveningDone, slot: "evening", emoji: "🌙",
       label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : getSideLevel("evening") === "examen" ? "The Examen" : "Evening prayer",
       blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : getSideLevel("evening") === "examen" ? "Review the day with God" : "Mark the day's end with the office",
       rgb: "46,107,64" },

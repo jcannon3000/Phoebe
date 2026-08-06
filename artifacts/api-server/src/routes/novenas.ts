@@ -73,6 +73,7 @@ router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {
       dayCount: novena.dayCount,
       currentDay: progress.currentDay,
       lastCompletedLocalDate: progress.lastCompletedLocalDate,
+      replacesSlot: progress.replacesSlot as "morning" | "evening" | null,
       day: day ? { title: day.title, body: day.body } : null,
     },
   });
@@ -107,12 +108,15 @@ router.post("/novenas/:id/start", async (req: Request, res: Response): Promise<v
     return;
   }
 
+  const replacesSlotRaw = req.body?.replacesSlot;
+  const replacesSlot = replacesSlotRaw === "morning" || replacesSlotRaw === "evening" ? replacesSlotRaw : null;
+
   if (existing) {
     await db.update(novenaProgressTable).set({ status: "abandoned" }).where(eq(novenaProgressTable.id, existing.id));
   }
-  await db.insert(novenaProgressTable).values({ userId, novenaId, currentDay: 1 });
+  await db.insert(novenaProgressTable).values({ userId, novenaId, currentDay: 1, replacesSlot });
 
-  res.json({ ok: true, currentDay: 1 });
+  res.json({ ok: true, currentDay: 1, replacesSlot });
 });
 
 router.post("/me/novena/complete", async (req: Request, res: Response): Promise<void> => {

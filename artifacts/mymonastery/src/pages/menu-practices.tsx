@@ -27,6 +27,12 @@ export default function MenuPracticesPage() {
           { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/offices") },
           // Contemplation leads the rest of the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
+          // Novenas sit right after Contemplation (owner). Server-tracked (one
+          // at a time), so guests (device-local state only) don't get an entry
+          // point here.
+          ...(!isGuest ? [
+            { emoji: "🕊️", label: "Novenas", sub: "Nine days of prayer, one day at a time", onClick: () => go("/novena-library") },
+          ] : []),
           { emoji: "🌗", label: "The Examen", sub: "Review the day with God", onClick: () => go("/examen") },
           // PACT — Praise · Ask · Confess · Thanks. Side-less from here (no
           // ?side=), so it logs as a standalone practice rather than closing
@@ -42,11 +48,6 @@ export default function MenuPracticesPage() {
           // Audio Divina sits at the BOTTOM of Practices (owner).
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
-          ] : []),
-          // Novenas — server-tracked (one at a time), so guests (device-local
-          // state only) don't get an entry point here.
-          ...(!isGuest ? [
-            { emoji: "🕊️", label: "Novenas", sub: "Nine days of prayer, one day at a time", onClick: () => go("/novena-library") },
           ] : []),
         ],
       }]}

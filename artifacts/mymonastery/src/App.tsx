@@ -338,6 +338,7 @@ const OfficesPage = lazy(() => import("./pages/offices"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const GuidedPrayerPage = lazy(() => import("./pages/guided-prayer"));
 const NovenaPage = lazy(() => import("./pages/novena"));
+const NovenaDetailPage = lazy(() => import("./pages/novena-detail"));
 const NovenaLibraryPage = lazy(() => import("./pages/novena-library"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
@@ -953,6 +954,7 @@ function Router() {
       <Route path="/examen" component={ExamenPage} />
       <Route path="/guided-prayer" component={GuidedPrayerPage} />
       <Route path="/novena" component={NovenaPage} />
+      <Route path="/novena/:id" component={NovenaDetailPage} />
       <Route path="/novena-library" component={NovenaLibraryPage} />
       <Route path="/contemplation" component={ContemplationPage} />
       <Route path="/psalms" component={PsalmsPage} />

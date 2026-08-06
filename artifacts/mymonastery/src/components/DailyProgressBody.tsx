@@ -390,7 +390,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
@@ -402,6 +402,11 @@ function PracticeCard({
   tint?: number;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
+  /** Keep the progress bar visible even once the card is DONE — for a
+   *  goal that spans the whole practice (a novena's day count), not just
+   *  today (contemplation minutes), where the bar going away on completion
+   *  would hide real information ("day 3 of 9") rather than just noise. */
+  alwaysShowProgress?: boolean;
   /** When a DONE card should still invite action (e.g. contemplation can keep
    *  going past its goal), this CTA replaces the plain ✓ and the card stays
    *  tappable to `href`/`onClick`. */
@@ -535,7 +540,7 @@ function PracticeCard({
                 : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
             </div>
           </div>
-          {progress && progress.goal > 0 && !done && (
+          {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
             <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
               <div
                 className="h-full rounded-full"
@@ -665,7 +670,7 @@ function PracticeCard({
         {/* Progress bar spans the full width below the row — so "Begin" sits
             above it rather than beside it. Hidden once the card is DONE (a full
             bar under a ✓ is just noise). */}
-        {progress && progress.goal > 0 && !done && (
+        {progress && progress.goal > 0 && (!done || alwaysShowProgress) && (
           <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
             <div
               className="h-full rounded-full"
@@ -720,7 +725,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novena } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -949,7 +954,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // it wasn't prayed — we don't nag about a missed morning in Next; past noon
     // an undone morning drops to the "Tomorrow" section (the partition below), so
     // it's included here regardless of the hour rather than silently omitted.
-    ...(morningActive ? [{
+    // A novena in "replace" mode takes over this slot entirely — its own
+    // card here instead of the office/contemplation anchor, so the two
+    // never double up (and never double-count in the pill/widget, which
+    // mirror this same novenaReplacesMorning/Evening gate).
+    ...(novenaReplacesMorning && novena ? [{
+      key: "novena", slot: "morning" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      href: "/novena",
+      title: novena.title,
+      blurb: novenaDone
+        ? kept
+        : t("rhythm.novena_day_of", { day: novena.currentDay, count: novena.dayCount, defaultValue: `Day ${novena.currentDay} of ${novena.dayCount}` }),
+      progress: { current: novena.currentDay - 1, goal: novena.dayCount },
+      alwaysShowProgress: true,
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
+    ...(morningActive && !novenaReplacesMorning ? [{
       key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone,
       // A user's own named practice has no page to open — tapping just marks
       // it done for the day, same shape as a custom anchor's check.
@@ -962,7 +982,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
       cta: getSideLevel("morning") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
-    ...(eveningActive ? [{
+    ...(novenaReplacesEvening && novena ? [{
+      key: "novena", slot: "evening" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      href: "/novena",
+      title: novena.title,
+      blurb: novenaDone
+        ? kept
+        : t("rhythm.novena_day_of", { day: novena.currentDay, count: novena.dayCount, defaultValue: `Day ${novena.currentDay} of ${novena.dayCount}` }),
+      progress: { current: novena.currentDay - 1, goal: novena.dayCount },
+      alwaysShowProgress: true,
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
+    ...(eveningActive && !novenaReplacesEvening ? [{
       // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
       // so the morning rhythm leads the day; from 3 PM on it becomes the office
       // hero. Opt-in — off by default (evening pref "none").
@@ -1078,7 +1109,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // final day is marked done (novenaActive drops the moment the server
     // flips status to "completed"). Progress bar counts completed days
     // (currentDay - 1) toward dayCount, same pattern as the silence goal card.
-    ...(novenaActive && novena ? [{
+    ...(novenaActive && novena && !novenaReplacesMorning && !novenaReplacesEvening ? [{
       key: "novena", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
       href: "/novena",
       title: novena.title,
@@ -1086,6 +1117,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? kept
         : t("rhythm.novena_day_of", { day: novena.currentDay, count: novena.dayCount, defaultValue: `Day ${novena.currentDay} of ${novena.dayCount}` }),
       progress: { current: novena.currentDay - 1, goal: novena.dayCount },
+      alwaysShowProgress: true,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     // Prayer List is NOT a routine anchor — no card here. It's already woven
