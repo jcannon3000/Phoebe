@@ -259,6 +259,16 @@ export const NOVENA_FRANCIS = {
     "the Cord of St. Francis, compiled by the Franciscan Fathers of Stratford, Burns & Oates, " +
     "London, 1878, pp. 61-71. A historical novena in honour of St. Francis, not written by him. " +
     "Public domain.",
+  history:
+    "This novena comes from the Manual of the Arch-Confraternity of the Cord of St. Francis, compiled " +
+    "by the Franciscan Fathers of Stratford and published by Burns & Oates in London in 1878. St. " +
+    "Francis of Assisi (1182-1226) renounced his family's wealth to live in radical poverty, founded " +
+    "the Franciscan order, and is remembered for his humility, his love of creation, and the stigmata " +
+    "he bore in the last two years of his life. This novena was written in his honour, not by him.",
+  intention:
+    "Traditionally prayed to seek Francis's intercession and to grow, day by day, in the virtues that " +
+    "marked his life: humility, poverty of spirit, mortification, patience, love of God, charity, " +
+    "devotion, and readiness for death.",
   dayCount: 9,
   days: DAYS,
 };

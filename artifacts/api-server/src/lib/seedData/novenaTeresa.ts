@@ -136,6 +136,17 @@ export const NOVENA_TERESA = {
   saint: "St. Teresa of Ávila",
   sourceNote:
     "“Novena of Saint Teresa,” from The Carmelite Manual, compiled by John Spratt, Dublin, 1846, pp. 477-488. Public domain.",
+  history:
+    "This novena comes from The Carmelite Manual, compiled by the Irish Carmelite friar John Spratt and " +
+    "published in Dublin in 1846 — a nineteenth-century devotional handbook for lay members of the " +
+    "Carmelite family. St. Teresa of Ávila (1515-1582) was a Spanish Carmelite nun, mystic, and reformer " +
+    "whose writings on prayer — The Interior Castle, The Way of Perfection — remain foundational to the " +
+    "Christian contemplative tradition; she was declared a Doctor of the Church in 1970, one of the first " +
+    "two women so honoured. This novena was written in her honour, not by her.",
+  intention:
+    "Traditionally prayed to seek Teresa's intercession and to grow, as she did, in humility, " +
+    "perseverance in prayer, and single-minded love of God — especially through seasons of dryness or " +
+    "difficulty in the life of prayer.",
   dayCount: 9,
   days: DAY_TITLES.map((title, i) => ({
     dayNumber: i + 1,

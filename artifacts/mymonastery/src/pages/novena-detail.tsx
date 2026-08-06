@@ -19,7 +19,10 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 const CARD_BG = "rgba(9,26,16, 0.34)";
 const CARD_BORDER = "rgba(46,107,64,0.38)";
 
-type Novena = { id: number; title: string; saint: string | null; sourceNote: string | null; dayCount: number };
+type Novena = {
+  id: number; title: string; saint: string | null; sourceNote: string | null; dayCount: number;
+  history: string | null; intention: string | null; isCurrent: boolean; lastCompletedAt: string | null;
+};
 type Mode = "choose" | "slot" | null;
 
 export default function NovenaDetailPage() {
@@ -97,6 +100,20 @@ export default function NovenaDetailPage() {
             {novena.title}
           </h1>
 
+          {novena.history && (
+            <div style={{ background: CARD_BG, backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px", marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: FAINT, margin: "0 0 6px" }}>History</p>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(240,237,230,0.9)", fontFamily: SERIF, margin: 0 }}>{novena.history}</p>
+            </div>
+          )}
+
+          {novena.intention && (
+            <div style={{ background: CARD_BG, backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px", marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: FAINT, margin: "0 0 6px" }}>Intention</p>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(240,237,230,0.9)", fontFamily: SERIF, margin: 0 }}>{novena.intention}</p>
+            </div>
+          )}
+
           {novena.sourceNote && (
             <div style={{ background: CARD_BG, backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px", marginBottom: 20 }}>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: FAINT, margin: "0 0 6px" }}>Source</p>
@@ -108,11 +125,15 @@ export default function NovenaDetailPage() {
             One day rides in your daily routine at a time — it only advances when you mark that day complete, never automatically by the calendar. You can stop at any point.
           </p>
 
-          {isCurrent && (
+          {isCurrent ? (
             <p style={{ fontSize: 13, color: SAGE, marginBottom: 14 }}>
               Day {activeNovena!.currentDay} of {activeNovena!.dayCount} · already in your routine
             </p>
-          )}
+          ) : novena.lastCompletedAt ? (
+            <p style={{ fontSize: 13, color: SAGE, marginBottom: 14 }}>
+              Last completed {new Date(novena.lastCompletedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+            </p>
+          ) : null}
 
           {justAdded ? (
             <div style={{ background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "18px", textAlign: "center", marginBottom: 16 }}>

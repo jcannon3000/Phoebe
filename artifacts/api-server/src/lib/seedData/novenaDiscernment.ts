@@ -147,6 +147,14 @@ export const NOVENA_DISCERNMENT = {
     "1979 BCP Psalter texts, paired with a named BCP occasional collect each day (cited by title " +
     "and page — read the exact text from a Prayer Book or the app's own Daily Office) and original " +
     "Phoebe-written reflections and prayers.",
+  history:
+    "This novena is a Phoebe compilation, written for anyone facing a decision and seeking clarity — " +
+    "it isn't drawn from any historical source or attributed to any particular author. Each day pairs " +
+    "a psalm from the Book of Common Prayer with a named BCP collect and an original reflection.",
+  intention:
+    "To walk a real decision through nine days of prayer — naming the question honestly, quieting the " +
+    "urge to rush, facing fear, being known, offering the choice to God, seeking counsel, giving " +
+    "thanks, and finally stepping forward — rather than deciding alone and in a hurry.",
   dayCount: 9,
   days: DAYS.map((d) => ({
     dayNumber: d.dayNumber,

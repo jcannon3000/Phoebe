@@ -12,6 +12,15 @@ export const novenasTable = pgTable("novenas", {
   // historical prayer (e.g. "Public domain English translation").
   sourceNote: text("source_note"),
   dayCount: integer("day_count").notNull().default(9),
+  // Shown on the preview/detail page alongside sourceNote — history is
+  // about the text/devotion itself (who wrote it, when, why); intention is
+  // what it's traditionally prayed for. Both nullable: a novena can ship
+  // with just sourceNote until these are written.
+  history: text("history"),
+  intention: text("intention"),
+  // Library list order — defaults to 0 (alphabetical-by-title tiebreak);
+  // set higher to push a novena further down the list regardless of title.
+  sortOrder: integer("sort_order").notNull().default(0),
   // Soft-hide from the library without losing anyone's in-progress state.
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

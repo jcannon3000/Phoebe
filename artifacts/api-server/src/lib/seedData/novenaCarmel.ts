@@ -302,6 +302,16 @@ export const NOVENA_CARMEL = {
   saint: "The Blessed Virgin Mary, under her title of Mount Carmel",
   sourceNote:
     "“Novena of the Immaculate Virgin Mary of Mount Carmel,” from The Carmelite Manual, compiled by John Spratt, Dublin, 1846, pp. 449-476. Public domain.",
+  history:
+    "Also drawn from The Carmelite Manual (Dublin, 1846), this novena honours the Blessed Virgin Mary " +
+    "under her title “Our Lady of Mount Carmel” — patroness of the Carmelite Order, whose earliest " +
+    "hermits settled on Mount Carmel in the Holy Land in the twelfth century and looked to Mary as the " +
+    "model of a life wholly given to God.",
+  intention:
+    "Prayed to seek Mary's guidance and protection, and to grow in the Carmelite ideal she represents: " +
+    "an interior life hidden with God, marked by simplicity, silence, and trust.",
+  // Kept last in the library list, regardless of title — owner preference.
+  sortOrder: 100,
   dayCount: 9,
   days: DAYS.map((d, i) => ({
     dayNumber: i + 1,

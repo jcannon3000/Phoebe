@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, novenasTable, novenaDaysTable, novenaProgressTable } from "@workspace/db";
-import { and, eq, asc, isNull } from "drizzle-orm";
+import { and, eq, asc, isNull, inArray, desc } from "drizzle-orm";
 import { getPsalm } from "../lib/scriptureService";
 
 // ── Novenas — a library of nine-day (dayCount) prayer novenas, ridden one
@@ -29,20 +29,54 @@ function uid(req: Request): number | null {
   return typeof u?.id === "number" ? u.id : null;
 }
 
-router.get("/novenas", async (_req: Request, res: Response): Promise<void> => {
+router.get("/novenas", async (req: Request, res: Response): Promise<void> => {
   const rows = await db
     .select({
       id: novenasTable.id,
       title: novenasTable.title,
       saint: novenasTable.saint,
       sourceNote: novenasTable.sourceNote,
+      history: novenasTable.history,
+      intention: novenasTable.intention,
       dayCount: novenasTable.dayCount,
     })
     .from(novenasTable)
     .where(isNull(novenasTable.archivedAt))
-    .orderBy(asc(novenasTable.title));
+    .orderBy(asc(novenasTable.sortOrder), asc(novenasTable.title));
 
-  res.json({ novenas: rows });
+  // For a signed-in user, fold in per-novena "is this the active one" and
+  // "when did I last finish it" — shown on the library cards so a returning
+  // user can see their history at a glance, not just start/continue.
+  const userId = uid(req);
+  let currentNovenaId: number | null = null;
+  const lastCompletedByNovena = new Map<number, string>();
+  if (userId !== null && rows.length > 0) {
+    const novenaIds = rows.map((r) => r.id);
+    const progressRows = await db
+      .select({
+        novenaId: novenaProgressTable.novenaId,
+        status: novenaProgressTable.status,
+        completedAt: novenaProgressTable.completedAt,
+      })
+      .from(novenaProgressTable)
+      .where(and(eq(novenaProgressTable.userId, userId), inArray(novenaProgressTable.novenaId, novenaIds)))
+      .orderBy(desc(novenaProgressTable.completedAt));
+
+    for (const p of progressRows) {
+      if (p.status === "active") currentNovenaId = p.novenaId;
+      if (p.status === "completed" && p.completedAt && !lastCompletedByNovena.has(p.novenaId)) {
+        lastCompletedByNovena.set(p.novenaId, p.completedAt.toISOString());
+      }
+    }
+  }
+
+  res.json({
+    novenas: rows.map((r) => ({
+      ...r,
+      isCurrent: r.id === currentNovenaId,
+      lastCompletedAt: lastCompletedByNovena.get(r.id) ?? null,
+    })),
+  });
 });
 
 router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {

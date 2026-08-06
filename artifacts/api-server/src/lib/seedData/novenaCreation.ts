@@ -157,6 +157,16 @@ export const NOVENA_CREATION = {
     "(St. Francis of Assisi, Julian of Norwich, Henry David Thoreau, William Wordsworth, " +
     "and the ancient Midrash Kohelet Rabbah) and original Phoebe-written reflections and " +
     "prayers. Not drawn from any modern copyrighted Season of Creation guide.",
+  history:
+    "This novena is a Phoebe compilation, not a historical devotion. It draws on the psalms of the " +
+    "Daily Office and public-domain reflections on creation — from St. Francis of Assisi, Julian of " +
+    "Norwich, Thoreau, Wordsworth, and an ancient Jewish text — gathered here for the first time as a " +
+    "nine-day sequence. It was written for Phoebe in the spirit of the wider Christian “Season of " +
+    "Creation” observance (September 1 - October 4), though it may be prayed at any time of year.",
+  intention:
+    "To open nine days of attention to the created world — water, mountains, seasons, animals, sky, " +
+    "our calling to tend the earth, rest, and blessing — as a way of praying, not just thinking, about " +
+    "creation care.",
   dayCount: 9,
   days: DAYS,
 };

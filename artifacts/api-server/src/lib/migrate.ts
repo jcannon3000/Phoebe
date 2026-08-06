@@ -3870,6 +3870,12 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_novena_day ON novena_days (novena_id, day_number)`);
+    // Shown on the preview/detail page alongside source_note. sort_order lets
+    // the library list override alphabetical-by-title for a given novena.
+    // Added after the initial table.
+    await run(client, `ALTER TABLE novenas ADD COLUMN IF NOT EXISTS history TEXT`);
+    await run(client, `ALTER TABLE novenas ADD COLUMN IF NOT EXISTS intention TEXT`);
+    await run(client, `ALTER TABLE novenas ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0`);
     // When set, the route splices the actual BCP Psalter text (bcp_texts) in
     // ahead of `body` at render time, instead of re-transcribing psalm text
     // by hand into seed data. Added after the initial table.
@@ -3901,12 +3907,12 @@ export async function migrate() {
     // "does a novena with this exact title already exist", so re-running
     // never duplicates it but an admin could still delete + re-seed by
     // editing the title.
-    try {
+try {
       const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_TERESA.title]);
       if (!existing.rowCount) {
         const inserted = await client.query(
-          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
-          [NOVENA_TERESA.title, NOVENA_TERESA.saint, NOVENA_TERESA.sourceNote, NOVENA_TERESA.dayCount],
+          `INSERT INTO novenas (title, saint, source_note, history, intention, sort_order, day_count) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [NOVENA_TERESA.title, NOVENA_TERESA.saint, NOVENA_TERESA.sourceNote, NOVENA_TERESA.history, NOVENA_TERESA.intention, (NOVENA_TERESA as { sortOrder?: number }).sortOrder ?? 0, NOVENA_TERESA.dayCount],
         ) as unknown as { rows: Array<{ id: number }> };
         const novenaId = inserted.rows[0]!.id;
         for (const day of NOVENA_TERESA.days) {
@@ -3916,6 +3922,13 @@ export async function migrate() {
           );
         }
         logger.info({ novenaId }, "Seeded novena: " + NOVENA_TERESA.title);
+      } else {
+        // Backfill history/intention/sort_order onto a row seeded before
+        // these columns existed.
+        await client.query(
+          `UPDATE novenas SET history = $1, intention = $2, sort_order = $3 WHERE id = $4`,
+          [NOVENA_TERESA.history, NOVENA_TERESA.intention, (NOVENA_TERESA as { sortOrder?: number }).sortOrder ?? 0, existing.rows[0]!.id],
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -3925,8 +3938,8 @@ export async function migrate() {
       const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_CARMEL.title]);
       if (!existing.rowCount) {
         const inserted = await client.query(
-          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
-          [NOVENA_CARMEL.title, NOVENA_CARMEL.saint, NOVENA_CARMEL.sourceNote, NOVENA_CARMEL.dayCount],
+          `INSERT INTO novenas (title, saint, source_note, history, intention, sort_order, day_count) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [NOVENA_CARMEL.title, NOVENA_CARMEL.saint, NOVENA_CARMEL.sourceNote, NOVENA_CARMEL.history, NOVENA_CARMEL.intention, NOVENA_CARMEL.sortOrder ?? 0, NOVENA_CARMEL.dayCount],
         ) as unknown as { rows: Array<{ id: number }> };
         const novenaId = inserted.rows[0]!.id;
         for (const day of NOVENA_CARMEL.days) {
@@ -3936,6 +3949,11 @@ export async function migrate() {
           );
         }
         logger.info({ novenaId }, "Seeded novena: " + NOVENA_CARMEL.title);
+      } else {
+        await client.query(
+          `UPDATE novenas SET history = $1, intention = $2, sort_order = $3 WHERE id = $4`,
+          [NOVENA_CARMEL.history, NOVENA_CARMEL.intention, NOVENA_CARMEL.sortOrder ?? 0, existing.rows[0]!.id],
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -3945,8 +3963,8 @@ export async function migrate() {
       const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_CREATION.title]);
       if (!existing.rowCount) {
         const inserted = await client.query(
-          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
-          [NOVENA_CREATION.title, NOVENA_CREATION.saint, NOVENA_CREATION.sourceNote, NOVENA_CREATION.dayCount],
+          `INSERT INTO novenas (title, saint, source_note, history, intention, sort_order, day_count) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [NOVENA_CREATION.title, NOVENA_CREATION.saint, NOVENA_CREATION.sourceNote, NOVENA_CREATION.history, NOVENA_CREATION.intention, (NOVENA_CREATION as { sortOrder?: number }).sortOrder ?? 0, NOVENA_CREATION.dayCount],
         ) as unknown as { rows: Array<{ id: number }> };
         const novenaId = inserted.rows[0]!.id;
         for (const day of NOVENA_CREATION.days) {
@@ -3956,6 +3974,11 @@ export async function migrate() {
           );
         }
         logger.info({ novenaId }, "Seeded novena: " + NOVENA_CREATION.title);
+      } else {
+        await client.query(
+          `UPDATE novenas SET history = $1, intention = $2, sort_order = $3 WHERE id = $4`,
+          [NOVENA_CREATION.history, NOVENA_CREATION.intention, (NOVENA_CREATION as { sortOrder?: number }).sortOrder ?? 0, existing.rows[0]!.id],
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -3965,8 +3988,8 @@ export async function migrate() {
       const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_FRANCIS.title]);
       if (!existing.rowCount) {
         const inserted = await client.query(
-          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
-          [NOVENA_FRANCIS.title, NOVENA_FRANCIS.saint, NOVENA_FRANCIS.sourceNote, NOVENA_FRANCIS.dayCount],
+          `INSERT INTO novenas (title, saint, source_note, history, intention, sort_order, day_count) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [NOVENA_FRANCIS.title, NOVENA_FRANCIS.saint, NOVENA_FRANCIS.sourceNote, NOVENA_FRANCIS.history, NOVENA_FRANCIS.intention, (NOVENA_FRANCIS as { sortOrder?: number }).sortOrder ?? 0, NOVENA_FRANCIS.dayCount],
         ) as unknown as { rows: Array<{ id: number }> };
         const novenaId = inserted.rows[0]!.id;
         for (const day of NOVENA_FRANCIS.days) {
@@ -3976,6 +3999,11 @@ export async function migrate() {
           );
         }
         logger.info({ novenaId }, "Seeded novena: " + NOVENA_FRANCIS.title);
+      } else {
+        await client.query(
+          `UPDATE novenas SET history = $1, intention = $2, sort_order = $3 WHERE id = $4`,
+          [NOVENA_FRANCIS.history, NOVENA_FRANCIS.intention, (NOVENA_FRANCIS as { sortOrder?: number }).sortOrder ?? 0, existing.rows[0]!.id],
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -3985,8 +4013,8 @@ export async function migrate() {
       const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_DISCERNMENT.title]);
       if (!existing.rowCount) {
         const inserted = await client.query(
-          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
-          [NOVENA_DISCERNMENT.title, NOVENA_DISCERNMENT.saint, NOVENA_DISCERNMENT.sourceNote, NOVENA_DISCERNMENT.dayCount],
+          `INSERT INTO novenas (title, saint, source_note, history, intention, sort_order, day_count) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [NOVENA_DISCERNMENT.title, NOVENA_DISCERNMENT.saint, NOVENA_DISCERNMENT.sourceNote, NOVENA_DISCERNMENT.history, NOVENA_DISCERNMENT.intention, (NOVENA_DISCERNMENT as { sortOrder?: number }).sortOrder ?? 0, NOVENA_DISCERNMENT.dayCount],
         ) as unknown as { rows: Array<{ id: number }> };
         const novenaId = inserted.rows[0]!.id;
         for (const day of NOVENA_DISCERNMENT.days) {
@@ -3996,6 +4024,11 @@ export async function migrate() {
           );
         }
         logger.info({ novenaId }, "Seeded novena: " + NOVENA_DISCERNMENT.title);
+      } else {
+        await client.query(
+          `UPDATE novenas SET history = $1, intention = $2, sort_order = $3 WHERE id = $4`,
+          [NOVENA_DISCERNMENT.history, NOVENA_DISCERNMENT.intention, (NOVENA_DISCERNMENT as { sortOrder?: number }).sortOrder ?? 0, existing.rows[0]!.id],
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

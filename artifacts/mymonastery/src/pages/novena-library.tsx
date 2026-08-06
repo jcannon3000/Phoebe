@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useRhythmState } from "@/hooks/useRhythmState";
 import { MenuHub } from "@/components/MenuHub";
 
 // Browse the novena library — same MenuHub list pattern as Courses (menu-learn.tsx).
@@ -10,11 +9,18 @@ import { MenuHub } from "@/components/MenuHub";
 // starting it immediately; that page holds the source/attribution info, the
 // Start button, and the replace-vs-addition + slot-picker flow.
 
-type Novena = { id: number; title: string; saint: string | null; sourceNote: string | null; dayCount: number };
+type Novena = {
+  id: number; title: string; saint: string | null; sourceNote: string | null; dayCount: number;
+  isCurrent: boolean; lastCompletedAt: string | null;
+};
+
+function formatLastCompleted(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 export default function NovenaLibraryPage() {
   const [, setLocation] = useLocation();
-  const { novena: activeNovena } = useRhythmState();
 
   const { data } = useQuery<{ novenas: Novena[] }>({
     queryKey: ["/api/novenas"],
@@ -32,12 +38,14 @@ export default function NovenaLibraryPage() {
       backHref="/menu/practices"
       groups={[{
         items: novenas.map((n) => {
-          const isCurrent = activeNovena?.novenaId === n.id;
+          const bits = [n.saint, `${n.dayCount} days`];
+          if (n.isCurrent) bits.push("In your routine");
+          else if (n.lastCompletedAt) bits.push(`Last completed ${formatLastCompleted(n.lastCompletedAt)}`);
           return {
             emoji: "🕊️",
             label: n.title,
-            sub: [n.saint, `${n.dayCount} days`].filter(Boolean).join(" · ") + (isCurrent ? " · In your routine" : ""),
-            dot: isCurrent,
+            sub: bits.filter(Boolean).join(" · "),
+            dot: n.isCurrent,
             onClick: () => setLocation(`/novena/${n.id}`),
           };
         }),
