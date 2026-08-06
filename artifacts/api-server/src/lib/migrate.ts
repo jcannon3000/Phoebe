@@ -1,5 +1,7 @@
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
+import { NOVENA_TERESA } from "./seedData/novenaTeresa";
+import { NOVENA_CARMEL } from "./seedData/novenaCarmel";
 
 // Minimal structural type for the object pool.connect() gives us — just
 // what run() actually uses. Previously typed as
@@ -3835,6 +3837,98 @@ export async function migrate() {
     await run(client, `ALTER TABLE rituals DROP COLUMN IF EXISTS participants`);
     await run(client, `ALTER TABLE rituals DROP COLUMN IF EXISTS allow_member_invites`);
     await run(client, `ALTER TABLE meetups DROP COLUMN IF EXISTS google_calendar_event_id`);
+
+    // ── Novenas — a nine-day (dayCount-configurable) library entry, ridden
+    //    one day at a time in the daily routine. novena_progress tracks
+    //    AT MOST ONE active novena per user (partial unique index below) —
+    //    currentDay advances only when the user marks that day complete,
+    //    never by the calendar; last_completed_local_date is how "already
+    //    prayed today's day" resets each morning (same convention as
+    //    practice_completion's local_date — client supplies its own
+    //    timezone's today).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS novenas (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        saint TEXT,
+        source_note TEXT,
+        day_count INTEGER NOT NULL DEFAULT 9,
+        archived_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS novena_days (
+        id SERIAL PRIMARY KEY,
+        novena_id INTEGER NOT NULL REFERENCES novenas(id) ON DELETE CASCADE,
+        day_number INTEGER NOT NULL,
+        title TEXT,
+        body TEXT NOT NULL
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_novena_day ON novena_days (novena_id, day_number)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS novena_progress (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        novena_id INTEGER NOT NULL REFERENCES novenas(id) ON DELETE CASCADE,
+        current_day INTEGER NOT NULL DEFAULT 1,
+        last_completed_local_date TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        completed_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_novena_progress_user ON novena_progress (user_id)`);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_novena_progress_active_per_user
+      ON novena_progress (user_id) WHERE status = 'active'
+    `);
+
+    // Seed the novena library — a plain INSERT (not runOnce) guarded by
+    // "does a novena with this exact title already exist", so re-running
+    // never duplicates it but an admin could still delete + re-seed by
+    // editing the title.
+    try {
+      const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_TERESA.title]);
+      if (!existing.rowCount) {
+        const inserted = await client.query(
+          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [NOVENA_TERESA.title, NOVENA_TERESA.saint, NOVENA_TERESA.sourceNote, NOVENA_TERESA.dayCount],
+        ) as unknown as { rows: Array<{ id: number }> };
+        const novenaId = inserted.rows[0]!.id;
+        for (const day of NOVENA_TERESA.days) {
+          await client.query(
+            `INSERT INTO novena_days (novena_id, day_number, title, body) VALUES ($1, $2, $3, $4)`,
+            [novenaId, day.dayNumber, day.title, day.body],
+          );
+        }
+        logger.info({ novenaId }, "Seeded novena: " + NOVENA_TERESA.title);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "Novena seed warning");
+    }
+    try {
+      const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_CARMEL.title]);
+      if (!existing.rowCount) {
+        const inserted = await client.query(
+          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [NOVENA_CARMEL.title, NOVENA_CARMEL.saint, NOVENA_CARMEL.sourceNote, NOVENA_CARMEL.dayCount],
+        ) as unknown as { rows: Array<{ id: number }> };
+        const novenaId = inserted.rows[0]!.id;
+        for (const day of NOVENA_CARMEL.days) {
+          await client.query(
+            `INSERT INTO novena_days (novena_id, day_number, title, body) VALUES ($1, $2, $3, $4)`,
+            [novenaId, day.dayNumber, day.title, day.body],
+          );
+        }
+        logger.info({ novenaId }, "Seeded novena: " + NOVENA_CARMEL.title);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "Novena seed warning");
+    }
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

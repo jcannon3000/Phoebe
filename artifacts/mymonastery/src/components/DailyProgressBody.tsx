@@ -720,7 +720,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novena } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1074,6 +1074,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // that's already rendered above as the "evening" card (retitled "The Examen"
     // by officeTitle), so this standalone add-on card would otherwise double it.
     ...(examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen" ? [{ ...examenCard, slot: examenSlot }] : []),
+    // The active novena — one card while it's in progress, gone once the
+    // final day is marked done (novenaActive drops the moment the server
+    // flips status to "completed"). Progress bar counts completed days
+    // (currentDay - 1) toward dayCount, same pattern as the silence goal card.
+    ...(novenaActive && novena ? [{
+      key: "novena", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      href: "/novena",
+      title: novena.title,
+      blurb: novenaDone
+        ? kept
+        : t("rhythm.novena_day_of", { day: novena.currentDay, count: novena.dayCount, defaultValue: `Day ${novena.currentDay} of ${novena.dayCount}` }),
+      progress: { current: novena.currentDay - 1, goal: novena.dayCount },
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
     // Prayer List is NOT a routine anchor — no card here. It's already woven
     // into the offices (BCP office / Simple Guided Prayer / Psalms) as
     // slides, and gets its own dedicated section on the home screen (see

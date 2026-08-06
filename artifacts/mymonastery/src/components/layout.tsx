@@ -680,7 +680,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -722,6 +722,9 @@ function DailyProgressPill() {
     // gives it its own dedicated home-screen section instead of a Next/Done
     // row (see its rawCards comment), so it must not get a dot here either —
     // that was over-counting the pill by one whenever prayerListActive.
+    // The active novena rides "anytime" alongside custom anytime anchors —
+    // matches DailyProgressBody's rawCards entry (same novenaActive/Done).
+    ...(novenaActive ? [{ key: "novena", done: novenaDone }] : []),
     ...cDots("anytime"),
     ...cDots("midday"),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),

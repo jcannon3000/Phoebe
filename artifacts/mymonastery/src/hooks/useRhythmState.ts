@@ -154,6 +154,13 @@ export type RhythmState = {
   /** "Grow my silence" ladder state when enabled (else null) — the current rung
    *  drives contemplationGoalMin; daysToNext/nextLevel feed the card. */
   silenceLadder: { level: number; levelDays: number; daysToNext: number; nextLevel: number; atMax: boolean } | null;
+  /** The user's active novena (server-tracked, at most one at a time) — a
+   *  card + dot ONLY while one is active; it drops out of the routine once
+   *  the ninth (or however many) day is completed. currentDay/dayCount are
+   *  1-indexed; done is "already prayed today's day". */
+  novenaActive: boolean;
+  novenaDone: boolean;
+  novena: { novenaId: number; title: string; saint: string | null; currentDay: number; dayCount: number; day: { title: string | null; body: string } | null } | null;
 };
 
 // Is an optional-practice card surfaced on the user's home layout? A card
@@ -414,6 +421,26 @@ export function useRhythmState(): RhythmState {
     staleTime: 30_000,
     enabled: !guest,
   });
+
+  // The user's active novena (if any) — server-tracked, one at a time.
+  // currentDay only ever advances via POST /me/novena/complete, never by the
+  // calendar; lastCompletedLocalDate vs today (`day`) is what makes the card
+  // read "done" for the rest of today and reset fresh tomorrow.
+  const { data: novenaData } = useQuery<{
+    active: null | {
+      novenaId: number; title: string; saint: string | null; dayCount: number;
+      currentDay: number; lastCompletedLocalDate: string | null;
+      day: { title: string | null; body: string } | null;
+    };
+  }>({
+    queryKey: ["/api/me/novena", day],
+    queryFn: () => apiRequest("GET", "/api/me/novena"),
+    staleTime: 30_000,
+    enabled: !guest,
+  });
+  const activeNovena = novenaData?.active ?? null;
+  const novenaActive = !!activeNovena;
+  const novenaDone = novenaActive && activeNovena!.lastCompletedLocalDate === day;
 
   // Server-backed completion rows for the optional practices (cross-device).
   // Only fetched/used for the practices the user has actually added.
@@ -874,6 +901,11 @@ export function useRhythmState(): RhythmState {
     contemplationStyle,
     silenceLadder: ladderEnabled && ladderData?.enabled && typeof ladderData.level === "number"
       ? { level: ladderData.level, levelDays: ladderData.levelDays ?? 0, daysToNext: ladderData.daysToNext ?? 0, nextLevel: ladderData.nextLevel ?? ladderData.level, atMax: !!ladderData.atMax }
+      : null,
+    novenaActive,
+    novenaDone,
+    novena: activeNovena
+      ? { novenaId: activeNovena.novenaId, title: activeNovena.title, saint: activeNovena.saint, currentDay: activeNovena.currentDay, dayCount: activeNovena.dayCount, day: activeNovena.day }
       : null,
   };
 }

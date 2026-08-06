@@ -43,6 +43,11 @@ export default function MenuPracticesPage() {
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           ] : []),
+          // Novenas — server-tracked (one at a time), so guests (device-local
+          // state only) don't get an entry point here.
+          ...(!isGuest ? [
+            { emoji: "🕊️", label: "Novenas", sub: "Nine days of prayer, one day at a time", onClick: () => go("/novena-library") },
+          ] : []),
         ],
       }]}
     />

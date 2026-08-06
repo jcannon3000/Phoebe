@@ -172,6 +172,9 @@ export function useWidgetSync(): void {
       // "anytime" slot outranking Evening Prayer for any account with an
       // active, undone list).
       { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
+      // The active novena — same novenaActive/Done DailyProgressBody's card
+      // and the header pill's dot use, so the widget can't drift from either.
+      { active: r.novenaActive, done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       { active: r.eveningActive, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
@@ -255,6 +258,7 @@ export function useWidgetSync(): void {
     r.walkActive, r.walkDone,
     r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
     r.examenActive, r.examenDone,
+    r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,
   ]);
