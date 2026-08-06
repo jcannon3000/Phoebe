@@ -19,7 +19,7 @@ const C = {
 
 // ─── Slide types ────────────────────────────────────────────────────────────
 export type Slide =
-  | { kind: "title"; headline: string; sub?: string; muted?: boolean; mock?: "dashboard" }
+  | { kind: "title"; headline: string; sub?: string; muted?: boolean; small?: boolean; mock?: "dashboard" }
   | { kind: "statement"; headline: string; body: string[] }
   | { kind: "feature-text"; label: string; headline: string; body: string[] }
   | {
@@ -46,6 +46,8 @@ export type Slide =
       body: string[];
       mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "gatherings-compact" | "customizer" | "office-fdd" | "leader-rule" | "contemplative";
       stacked?: boolean;
+      headlineSize?: "sm" | "lg";
+      bodySize?: "lg";
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
   | { kind: "quote"; text: string }
@@ -305,7 +307,7 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
     <div className="flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
       <h1
         className={
-          slide.headline.length > 130
+          slide.small || slide.headline.length > 130
             ? "text-xl md:text-3xl font-medium mb-4 md:mb-6 leading-snug"
             : "text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
         }
@@ -1807,7 +1809,13 @@ function FeatureComboSlide({
             </p>
           )}
           <h2
-            className="text-2xl md:text-3xl font-semibold mb-4 leading-tight"
+            className={
+              slide.headlineSize === "sm"
+                ? "text-2xl md:text-2xl font-semibold mb-4 leading-tight"
+                : slide.headlineSize === "lg"
+                  ? "text-3xl md:text-4xl font-semibold mb-4 leading-tight"
+                  : "text-2xl md:text-3xl font-semibold mb-4 leading-tight"
+            }
             style={{ color: C.text, fontFamily: C.font }}
           >
             {slide.headline}
@@ -1846,7 +1854,13 @@ function FeatureComboSlide({
           {slide.label}
         </p>
         <h2
-          className="text-2xl md:text-3xl font-semibold mb-4 leading-tight"
+          className={
+            slide.headlineSize === "sm"
+              ? "text-2xl md:text-2xl font-semibold mb-4 leading-tight"
+              : slide.headlineSize === "lg"
+                ? "text-3xl md:text-4xl font-semibold mb-4 leading-tight"
+                : "text-2xl md:text-3xl font-semibold mb-4 leading-tight"
+          }
           style={{ color: C.text, fontFamily: C.font }}
         >
           {slide.headline}
@@ -1855,7 +1869,11 @@ function FeatureComboSlide({
           {slide.body.map((p, i) => (
             <p
               key={i}
-              className="text-sm md:text-base leading-relaxed font-light"
+              className={
+                slide.bodySize === "lg"
+                  ? "text-base md:text-lg leading-relaxed font-light"
+                  : "text-sm md:text-base leading-relaxed font-light"
+              }
               style={{ color: C.text, fontFamily: C.font, whiteSpace: "pre-line" }}
             >
               {p}

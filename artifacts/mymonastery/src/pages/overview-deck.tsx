@@ -30,13 +30,12 @@ const SLIDES: Slide[] = [
   // no groundwork. Deliberately NOT the full Daniel/social-acceleration
   // argument — that belongs in the essay/grant materials, building the case
   // before someone opens the app. Here, they've already opened it; this is
-  // just enough context to earn what follows. Styled as a centered, muted
-  // "title" slide — same treatment as church-deck's "Here is what a week
-  // looks like inside Phoebe" beat — rather than a headline+body statement.
+  // just enough context to earn what follows. Styled as a centered "title"
+  // slide, small and white.
   {
     kind: "title",
     headline: "There's no shortage of resources on prayer — what's missing is a way to sustain the habit itself.",
-    muted: true,
+    small: true,
   },
   // 3 — Cultivating a daily habit, condensed (about-deck's slides 6–7 in one).
   // Shows the home screen itself — the routine, always naming what's next —
@@ -54,6 +53,7 @@ const SLIDES: Slide[] = [
       "Phoebe guides each person through a customizable daily routine — one step at a time, always showing what's next.",
     ],
     mock: "dashboard",
+    headlineSize: "lg",
   },
   // 4 — Making the office itself easier to pray (from the original
   // church-deck, unchanged copy) — moved ahead of the personalization slide
@@ -67,6 +67,7 @@ const SLIDES: Slide[] = [
       "Tap \"How to pray\" on any office and choose how it meets you: a digital slideshow you move through at your own pace, the page numbers for a physical Book of Common Prayer, or listen to it read aloud.",
     ],
     mock: "office-formats",
+    headlineSize: "sm",
   },
   // 5 — A routine shaped around the person, not a fixed program — beyond the
   // office itself, each person adds whichever contemplative practices fit
@@ -74,7 +75,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "A routine that fits them",
+    headline: "A routine that fits",
     body: [
       "Each person can add the contemplative practices that fit their own life, building a day that's truly theirs, not a program applied the same way to everyone.",
     ],
@@ -101,6 +102,8 @@ const SLIDES: Slide[] = [
       "When schedules do align, the gathering becomes a moment of reflection within a longer process already unfolding all week — not the only thing keeping it alive.",
     ],
     mock: "gatherings-compact",
+    headlineSize: "lg",
+    bodySize: "lg",
   },
   // 8 — The close: belonging as a byproduct (about-deck slide 18). Restores
   // the essay's real claim — gathering alone doesn't create connection — so
@@ -114,11 +117,14 @@ const SLIDES: Slide[] = [
     ],
   },
   // 9 — Hebrews 10, the same verse the full about-deck uses. Styled as a
-  // centered title slide — the "Hebrews 10" label dropped, the verse itself
-  // large — rather than a headline+body statement.
+  // centered title slide — the verse itself is the headline; the citation
+  // ("Hebrews 10:24-25") sits small underneath, like a caption, rather than
+  // a "Hebrews 10" label above the verse.
   {
     kind: "title",
     headline: "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
+    small: true,
+    sub: "Hebrews 10:24-25",
   },
   // The invitation — same close as the full deck.
   {
