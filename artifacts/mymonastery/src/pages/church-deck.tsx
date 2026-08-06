@@ -51,7 +51,7 @@ export type Slide =
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
   | { kind: "quote"; text: string }
-  | { kind: "closing"; body: string[]; featured: string[] };
+  | { kind: "closing"; body: string[]; featured: string[]; caption?: string };
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
 function buildSlides(t: TFunction): Slide[] {
@@ -1930,6 +1930,14 @@ function ClosingSlide({
             {line}
           </p>
         ))}
+        {slide.caption && (
+          <p
+            className="text-sm md:text-base font-light pt-2"
+            style={{ color: C.sage, fontFamily: C.font }}
+          >
+            {slide.caption}
+          </p>
+        )}
       </motion.div>
       {/* The name's story — and the invitation (last line brightened). */}
       <motion.div

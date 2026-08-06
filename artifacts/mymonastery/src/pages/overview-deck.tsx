@@ -126,11 +126,28 @@ const SLIDES: Slide[] = [
     small: true,
     sub: "Hebrews 10:24-25",
   },
+  // 10 — Who built this and why.
+  {
+    kind: "statement",
+    headline: "",
+    body: [
+      "Phoebe is a project by Episcopal seminarians Anabelle Helsell and Jeremy Cannon, backed by a grant from the TryTank Research Institute at Virginia Theological Seminary.",
+    ],
+  },
+  // 11 — The story behind the project.
+  {
+    kind: "statement",
+    headline: "",
+    body: [
+      "Anabelle was the 2025 Liddell Award recipient for outstanding young adult ministry in New York. Jeremy was a postulant at Holy Cross Monastery, where they met on the feast of Thomas the Apostle, the patron saint of architects. Together, they set out to build Phoebe, to make monastic wisdom accessible to young adults in the modern world.",
+    ],
+  },
   // The invitation — same close as the full deck.
   {
     kind: "closing",
     body: [],
     featured: ["Cultivate a habit of prayer", "together with Phoebe"],
+    caption: "Inspired by monastic wisdom",
   },
 ];
 
