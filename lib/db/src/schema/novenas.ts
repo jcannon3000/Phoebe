@@ -24,6 +24,10 @@ export const novenaDaysTable = pgTable("novena_days", {
   dayNumber: integer("day_number").notNull(),
   title: text("title"),
   body: text("body").notNull(),
+  // When set, the route splices the actual BCP Psalter text (bcp_texts,
+  // already-verified 1979 BCP translation) in ahead of `body` at render
+  // time, rather than re-transcribing psalm text into seed data by hand.
+  psalmNumber: integer("psalm_number"),
 }, (t) => ({
   uniqDay: uniqueIndex("uniq_novena_day").on(t.novenaId, t.dayNumber),
 }));

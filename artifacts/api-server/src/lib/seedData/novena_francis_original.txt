@@ -1,0 +1,356 @@
+"Novena in Honour of our Holy Father St. Francis"
+from Manual of the Arch-Confraternity of the Cord of St. Francis
+Compiled by the Franciscan Fathers of Stratford
+Burns & Oates, London, 1878, pp. 61-71
+Internet Archive identifier: ManualCordOfSFrancis
+Rights statement: Public Domain Mark 1.0
+
+Source footnote (printed at the foot of p. 61, marked with an asterisk in
+the original): "Taken from one printed in Rome for the solemn Novena at
+Ara-cœli."
+
+EDITORIAL NOTE: This is an OCR-assisted transcription verified against the
+scanned page images at archive.org/details/ManualCordOfSFrancis. Obvious
+single-character OCR mis-scans (e.g. "Prater" for the ligatured "Prayer",
+"OP"/"Hut" for the running headers' "OF"/"But", "w r ere" for "were") have
+been silently corrected where the intended word is unambiguous. Two
+genuinely uncertain OCR spots are flagged in place with [sic — OCR unclear]
+rather than guessed. Original spelling, capitalization, and punctuation are
+otherwise preserved as printed, including the closing "Amen. Three Our
+Fathers, Hail Marys, and Glory be, &c." formula (abbreviated to "as above"
+after the First Day in the original, expanded here in the structured
+seed data for readability — see the editorial note in novenaFrancis.ts).
+
+This is a historical novena in honour of St. Francis of Assisi (1182-1226) —
+composed by others in his honour, not written by him. It reflects
+nineteenth-century Roman Catholic devotional practice, including references
+to the Third Order and to Franciscan confraternity customs of its time.
+
+================================================================================
+
+Novena in Honour of our Holy Father St. Francis.
+
+First Day.
+Humility of St. Francis.
+
+Precisely in the same degree that St. Francis became great in the eyes of
+men, he became little in his own. He considered himself the greatest
+sinner in the world, and could never be induced to receive the priesthood.
+In order to lower himself in the opinion of those who revered his virtues,
+he published his faults, and got his companions to heap injuries and
+reproaches upon him; then, after listening to them with a countenance full
+of joy, he thanked them for having told him the truth without disguise. It
+was his greatest happiness to obey others; although the founder of his
+Order, he relinquished its government, and said that he would obey as
+cheerfully the youngest as the oldest in the Order. Holy Church, the best
+judge of virtue, calls him by excellence the humble St. Francis, and it is
+said that as a recompense for his profound humility God has given him one
+of the highest places left vacant by the rebel angels, whose pride was the
+cause of their fall.
+
+Prayer.
+
+O Sweet Saviour! it was in Thy school that St. Francis studied that
+profound humility, and advanced therein with giant strides; and I, who am
+covered with sins, am unable to subdue the pride of my heart. Let Thy holy
+grace aid me to humble myself as I ought, and in order that the spirit of
+pride may never more lead me into error, grant that, like St. Francis, I
+may embrace the humiliations of Thy Cross. O glorious St. Francis! may I
+ever strive to imitate thy humility: may I love, like thee, to see myself
+trampled upon by all men, and may I never forget that my true happiness
+consists, not in the honours of this world, but in suffering humiliations,
+and rejoicing in them for the love of God. Amen.
+
+Three Our Fathers, Hail Marys, and Glory be, &c.
+
+Second Day.
+On the Poverty of St. Francis.
+
+It may truly be said that evangelical poverty was St. Francis' favourite
+virtue. His father having pressed him to renounce his patrimony, he gave
+up all, even his last article of clothing, and from that moment chose
+poverty as his inheritance. It appeared to him an inestimable gift, which
+he begged from God with many prayers and tears. When in Rome, he besought
+the holy Apostles Peter and Paul to obtain it for him; and they, delighted
+with so sublime a prayer, assured him that God accorded him the favour he
+asked. He called poverty his sister, his mother, his spouse, his queen; he
+spoke of it with profound emotion; he lamented that men had so completely
+neglected it, and did all in his power that they should prize and love it.
+If he saw any one who appeared poorer and more destitute than himself, he
+made it the subject of holy self-reproach, and excited in his heart a
+great jealousy lest he should be surpassed in love for his dear poverty.
+In a word, no one ever desired riches so ardently as he desired to be poor
+for the love of God.
+
+Prayer.
+
+O my Jesus! who can help being moved in considering the poverty which
+Thou and Thy Holy Mother didst endure for our sake? It was on this St.
+Francis frequently meditated with tears; and no sooner had he discovered
+the excellence of a virtue so esteemed and loved by Thee, than he embraced
+it with ardour, and could find no repose but in its possession. O Lord,
+grant that, moved by such powerful examples, I may strip myself of all
+inordinate affection for the things of this world, that so I may be able
+truly to say, with my Seraphic Father: My God and my all.
+
+O Holy Father! obtain for me but one drop of that sweetness thou didst
+find in the practice of poverty; that so I may no longer regard it with
+the eyes of a foolish world, but with thine, and may be attracted by the
+charms it acquired from the poor and lowly lives of Jesus and Mary. Amen.
+
+Three Our Fathers, &c., as above.
+
+Third Day.
+On the Mortification of St. Francis.
+
+One of the blessed companions of our Holy Father said, that had St.
+Francis had the strong constitution and robust health he desired, no one
+would have led so mortified and penitent a life as he would. From the
+very outset of his religious career he observed so many Lents each year,
+that but a short interval elapsed between each, so that his fast was
+almost perpetual. His choicest dish consisted of a few herbs seasoned
+with ashes or cold water. Whenever it happened that, through sickness, he
+was compelled to make use of flesh meat, he took care to do penance for
+this indulgence as soon as he recovered, by redoubling his austerities.
+The hair-shirt, the discipline, long vigils and tears, were his delights.
+He vanquished temptation by rolling himself in the winter snow, on
+thorns, or on red-hot cinders; he sought constantly new ways of
+mortifying his flesh, and had so accustomed his body to suffering, that
+it seemed to be perfectly submitted to the spirit; to such an extent,
+that when the spirit desired to practise some act of virtue, the body,
+so far from rebelling, appeared on the contrary to co-operate willingly
+in its performance.
+
+Prayer.
+
+O my Dear Redeemer! what a difference between the conduct of St. Francis
+and mine! He led so pure a life, and treated himself so severely; and I,
+after so many sins, only seek to indulge myself, and the very name of
+penance fills me with fear. O my God! may his example arouse me from this
+dangerous repose, and excite me to suffer a thousand deaths rather than
+offend Thee by satisfying my sensuality; and this is the resolution I
+form by the help of thy holy grace.
+
+O illustrious Penitent! at thy last hour thou didst ask pardon of thy
+body for having treated it with such rigour; do not permit that, through
+a false tenderness, I may neglect to mortify mine during this life, lest
+at the hour of death I regret in vain the cares I have bestowed on it.
+Amen.
+
+Three Our Fathers, &c., as above.
+
+Fourth Day.
+On St. Francis' Patience.
+
+When St. Francis beheld for the first time the vision of Jesus crucified,
+he heard Him say these words: "If thou wilt come after me, deny thyself,
+take up thy cross and follow me." No sooner had he heard this, than he
+embraced the cross with heroic patience, and throughout the whole of the
+perfect life he undertook to lead, he had many occasions of practising it
+in the highest degree. His austerities having rendered him pale and
+languid, people thought he had lost the use of his reason, and made him
+an object of mockery; they assailed him with cries and insults, and even
+went so far as to cast mud and stones at him; but he passed along as
+though he did not perceive it. He supported with the same equanimity the
+ill-treatment of his father, of robbers, of the Saracens, and even of the
+demons. He was afflicted with many severe pains and ailments; and,
+particularly during the latter years of his life, he suffered so much
+that he appeared almost like a skeleton. Nevertheless he looked upon
+these sufferings as so many gifts of God.
+
+Prayer.
+
+O my Saviour! when will I also find as much joy in pains and sufferings,
+as in sweetness and consolations? Ah! I have only to think of Thy bitter
+passion in order to do so. Then I will adore and love in all things Thy
+Divine Will. I ask it of Thee with the profoundest humility of heart; I
+am confident Thou wilt grant it to me, and from this moment I thank Thee
+for all the afflictions it may please Thee to send me. Alas! wert Thou to
+send me a thousand times greater ones, they would never be in proportion
+to my sins.
+
+O Glorious St. Francis! may thy patience sustain me, and convince me of
+that great truth thou didst love to teach; that the perfect happiness and
+true glory of those who serve God consist in suffering willingly for His
+love. Amen.
+
+Three Our Fathers, &c., as above.
+
+Fifth Day.
+On St. Francis' love of God.
+
+St. Francis was so inflamed with divine love, that he appeared like a
+Seraph, and received the title of Seraphic. In his youth he formed the
+sublime resolution of never refusing anything asked of him for the love
+of God. It was this love which stripped him of all he possessed; it was
+this love which carried him three times into the midst of the infidels,
+that he might shed his blood for the glory of God; this love was the
+principle of all his labours for the salvation of his neighbour; for he
+believed it impossible to be loved by God, unless he did all in his power
+to save the souls purchased with the Blood of Jesus Christ. At the very
+mention of the love of God, St. Francis burned with a celestial fire, and
+this was often the cause of his extraordinary languors and ecstasies. In
+fine, as St. Francis of Sales remarked, Our Holy Father's death was
+caused by the ardour of divine love.
+
+Prayer.
+
+O my God! it was not without reason that St. Bonaventure compared St.
+Francis to a burning coal, all consumed with the fire of Thy love. What a
+source of shame for me, that while creatures served our holy Father as
+steps by which to ascend to Thee, they are for me a constant occasion of
+offending Thy Infinite Majesty, and of neglecting Thy service! Pardon me,
+O Lord! and grant me but a spark of that holy fire which consumed Thy
+servant, that, like him, I may no longer have any desire but to please
+Thee, and consecrate myself wholly to the glory of Thy holy name. O
+Seraph of love, let thy example draw all my inclinations towards that
+abyss of goodness, that so henceforward I may find no pain but in what
+offends God, no consolation but in labouring and suffering for His love.
+Amen.
+
+Three Our Fathers, &c., as above.
+
+Sixth Day.
+St. Francis' Charity for his Neighbour.
+
+Had any one been able to penetrate into the heart of St. Francis, he
+would have discovered therein a wonderful combination of gentleness and
+love for his neighbour. In his youth he stripped himself of his garments
+to clothe a poor soldier, and on other occasions he divided them that he
+might give part to the needy. To serve those suffering from leprosy was
+one of his favourite occupations; in the sufferings of others he beheld
+those which Jesus Christ endured for our sake, and whenever he cast his
+eyes upon a poor person, his heart was moved to compassion. But the
+salvation of souls was the principal object of his charity; he desired,
+were it possible, to convert and sanctify all the nations of the earth;
+for that end he never ceased to labour and pray; not content with
+employing his disciples in the work, he laboured in person for the
+salvation of souls, traversing provinces and kingdoms; and the vineyard
+of the Lord, watered with his sweat, produced wonderful fruits of grace,
+of which not the least was the Third Order.
+
+Prayer.
+
+O my Jesus! how far am I from imitating those bright examples of
+Christian charity? How often does not self-love make me forget my duties
+towards others! O Lord, I sincerely repent of my hard-heartedness;
+henceforward I will look upon each of my brethren as a second self; and
+as sin is the greatest misfortune which can befall them, I beseech Thee,
+O my God, to afflict me as Thou pleasest, but deign to preserve them from
+so great an evil.
+
+And do Thou, O holy and compassionate Father, obtain for me a heart like
+thine, with which I may consider my neighbour, not according to the
+dictates of self-love, but according to those of that tender charity
+which binds me to him in the profession of the same Faith, and in the
+imitation of the life, and the practice of the teachings of our Divine
+Lord. Amen.
+
+Three Our Fathers, &c., as above.
+
+Seventh Day.
+St. Francis' devotion to the Mysteries of Our Lord's Life.
+
+St. Francis prepared for the principal feasts by observing long Lents,
+during which he not only fasted, but also passed his time in fervent
+meditations and other exercises of solid piety. He had a great devotion
+to our Lord's Nativity, and celebrated it in so tender and touching a
+manner, that all were moved to an extraordinary degree. In order to
+recompense his servant, our Lord deigned to repose under the form of an
+infant, in the crib St. Francis had prepared. The holy patriarch shed
+bitter tears when he thought of the passion of Our Saviour; it was at the
+same time his model, his book, and the ordinary subject of his
+discourses. It was impossible to see him communicate without being
+penetrated by devotion, and the ineffable sweetness he experienced
+therein often raised him into ecstasy.
+
+Prayer.
+
+O Sweet Jesus! Thy mysteries were a heavenly mine, from which St. Francis
+drew forth immense treasures of sanctity; and I think I honour them very
+much when I perform languidly some exterior exercises of piety, with a
+mind filled with a thousand vanities. Ah! teach me Thyself, O Lord, what
+Thou wilt I should do. I adore and love Thee in Thy life, and passion,
+and death; deign to show me Thy ways and my duties.
+
+And thou St. Francis, perfect model of devotion, aid me to praise God,
+not only with my lips, but also with my heart, by my actions and my
+whole life. Amen.
+
+Three Our Fathers, &c., as above.
+
+Eighth Day.
+On the Sacred Stigmata of St. Francis.
+
+The life of St. Francis had many points of resemblance to that of Our
+Divine Lord; but the impression of the Wounds of Jesus on the body of His
+holy servant was the perfection and seal of that divine conformity. Our
+Saviour appeared to him under the form of a bright Seraph crucified; and
+after having wounded his heart with love by the contemplation of his
+ravishing beauty, and by mysterious words of ineffable sweetness, he
+wounded the very body of His servant; imprinting in his hands and feet
+and side a lifelike image of the wounds He had received for the salvation
+of the world. This was accompanied by an excessive anguish, which the
+holy patriarch endured during the two years it pleased God to spare him
+to manifest to the eyes of men the precious marks of our redemption.
+
+Prayer.
+
+Who, O Lord, can praise Thee worthily for so admirable a work? Thou
+didst desire that the wounds of Thy servant, recalling Thine own, should
+excite us to render Thee love for the inestimable benefit of Thy bitter
+passion: be Thou for ever blessed for this mark of Thy Fatherly care!
+Deign, O God, to accomplish the desire with which the sight of those holy
+wounds inspire me; make me die to the world and to myself, that I may
+live solely for Thee.
+
+O Blessed Father! increase, by the ardours of thy love, the sentiments
+which thy holy wounds arouse within me; that while saluting them with
+profound respect, I may understand the words they whisper to me: "Love
+tenderly that God, who by an excess of goodness has deigned to suffer
+and die for the love of thee."
+
+Three Our Fathers, &c., as above.
+
+Ninth Day.
+On the happy death of St. Francis.
+
+The death of St. Francis was one of the most touching spectacles the
+world has ever seen. At his last hour, remembering the nakedness of our
+Saviour on the cross, he stretched himself naked on the earth in order to
+imitate Him. The Superior offered him a habit, saying that he lent it to
+him as an alms; and St. Francis, rejoicing to be faithful unto death to
+his dear poverty, received it with thanksgiving. He asked them to read
+aloud the history of the passion according to St. John; then he recited
+the 141st Psalm, and while reciting the last verse: "Lead my soul out of
+prison, that I may praise thy name: the just wait for me until thou
+reward me," he rendered his soul sweetly to God.
+
+That holy soul was seen to mount to eternal glory, like a lovely star
+ascending the heavens; his body remained on earth, no longer thin and
+worn, but youthful and marvellously white, made beautiful by the
+stigmata received from his Lord.
+
+Prayer.
+
+O my Jesus! how precious is the death of Thy Saints! St. Francis, at its
+approach, expressed by fervent thanksgivings the excess of his joy, and
+called upon his Brothers to aid him in singing Thy praises. Grant me the
+grace to lead a life similar in some degree to his, that, like him, I may
+die the death of the Saints. O Holy Father, ask this favour for thy
+unworthy child. Make me humble and mortified, patient and charitable; and
+when my last hour comes, do thou stand near and aid me, and lead me to
+the feet of thy Lord and mine. Amen.
+
+Three Our Fathers, &c.
+
+================================================================================
+
+EDITORIAL NOTE ON OMITTED MATERIAL: The Manual's surrounding pages (before
+p. 61 and after p. 71) contain material specific to the Arch-Confraternity
+of the Cord — indulgence grants attached to confraternity membership, the
+Rosary of the Seven Joys of the Blessed Virgin, and similar nineteenth-
+century Roman Catholic devotional-society material. None of that is part
+of the Novena itself (pp. 61-71) and none of it is reproduced here or in
+the app's seed data — Phoebe presents the Novena as a devotion in its own
+right, not as a confraternity-membership document.

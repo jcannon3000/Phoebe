@@ -2,6 +2,9 @@ import { pool } from "@workspace/db";
 import { logger } from "./logger";
 import { NOVENA_TERESA } from "./seedData/novenaTeresa";
 import { NOVENA_CARMEL } from "./seedData/novenaCarmel";
+import { NOVENA_CREATION } from "./seedData/novenaCreation";
+import { NOVENA_FRANCIS } from "./seedData/novenaFrancis";
+import { NOVENA_DISCERNMENT } from "./seedData/novenaDiscernment";
 
 // Minimal structural type for the object pool.connect() gives us — just
 // what run() actually uses. Previously typed as
@@ -3867,6 +3870,10 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_novena_day ON novena_days (novena_id, day_number)`);
+    // When set, the route splices the actual BCP Psalter text (bcp_texts) in
+    // ahead of `body` at render time, instead of re-transcribing psalm text
+    // by hand into seed data. Added after the initial table.
+    await run(client, `ALTER TABLE novena_days ADD COLUMN IF NOT EXISTS psalm_number INTEGER`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS novena_progress (
         id SERIAL PRIMARY KEY,
@@ -3929,6 +3936,66 @@ export async function migrate() {
           );
         }
         logger.info({ novenaId }, "Seeded novena: " + NOVENA_CARMEL.title);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "Novena seed warning");
+    }
+    try {
+      const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_CREATION.title]);
+      if (!existing.rowCount) {
+        const inserted = await client.query(
+          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [NOVENA_CREATION.title, NOVENA_CREATION.saint, NOVENA_CREATION.sourceNote, NOVENA_CREATION.dayCount],
+        ) as unknown as { rows: Array<{ id: number }> };
+        const novenaId = inserted.rows[0]!.id;
+        for (const day of NOVENA_CREATION.days) {
+          await client.query(
+            `INSERT INTO novena_days (novena_id, day_number, title, body, psalm_number) VALUES ($1, $2, $3, $4, $5)`,
+            [novenaId, day.dayNumber, day.title, day.body, day.psalmNumber ?? null],
+          );
+        }
+        logger.info({ novenaId }, "Seeded novena: " + NOVENA_CREATION.title);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "Novena seed warning");
+    }
+    try {
+      const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_FRANCIS.title]);
+      if (!existing.rowCount) {
+        const inserted = await client.query(
+          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [NOVENA_FRANCIS.title, NOVENA_FRANCIS.saint, NOVENA_FRANCIS.sourceNote, NOVENA_FRANCIS.dayCount],
+        ) as unknown as { rows: Array<{ id: number }> };
+        const novenaId = inserted.rows[0]!.id;
+        for (const day of NOVENA_FRANCIS.days) {
+          await client.query(
+            `INSERT INTO novena_days (novena_id, day_number, title, body) VALUES ($1, $2, $3, $4)`,
+            [novenaId, day.dayNumber, day.title, day.body],
+          );
+        }
+        logger.info({ novenaId }, "Seeded novena: " + NOVENA_FRANCIS.title);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "Novena seed warning");
+    }
+    try {
+      const existing = await client.query(`SELECT id FROM novenas WHERE title = $1`, [NOVENA_DISCERNMENT.title]);
+      if (!existing.rowCount) {
+        const inserted = await client.query(
+          `INSERT INTO novenas (title, saint, source_note, day_count) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [NOVENA_DISCERNMENT.title, NOVENA_DISCERNMENT.saint, NOVENA_DISCERNMENT.sourceNote, NOVENA_DISCERNMENT.dayCount],
+        ) as unknown as { rows: Array<{ id: number }> };
+        const novenaId = inserted.rows[0]!.id;
+        for (const day of NOVENA_DISCERNMENT.days) {
+          await client.query(
+            `INSERT INTO novena_days (novena_id, day_number, title, body, psalm_number) VALUES ($1, $2, $3, $4, $5)`,
+            [novenaId, day.dayNumber, day.title, day.body, day.psalmNumber ?? null],
+          );
+        }
+        logger.info({ novenaId }, "Seeded novena: " + NOVENA_DISCERNMENT.title);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

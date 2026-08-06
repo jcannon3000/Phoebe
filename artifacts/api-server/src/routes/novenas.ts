@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, novenasTable, novenaDaysTable, novenaProgressTable } from "@workspace/db";
 import { and, eq, asc, isNull } from "drizzle-orm";
+import { getPsalm } from "../lib/scriptureService";
 
 // ── Novenas — a library of nine-day (dayCount) prayer novenas, ridden one
 //    day at a time in the daily routine. At most one ACTIVE novena per user
@@ -65,6 +66,15 @@ router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {
     .where(and(eq(novenaDaysTable.novenaId, novena.id), eq(novenaDaysTable.dayNumber, progress.currentDay)))
     .limit(1);
 
+  // A day tied to a psalmNumber gets the actual BCP Psalter text (verified,
+  // already in bcp_texts) spliced in ahead of the day's own body, rather than
+  // re-transcribing psalm text by hand into seed data.
+  let dayBody = day?.body ?? "";
+  if (day?.psalmNumber) {
+    const psalmText = await getPsalm(day.psalmNumber);
+    dayBody = `Psalm ${day.psalmNumber}\n\n${psalmText}\n\n${dayBody}`;
+  }
+
   res.json({
     active: {
       novenaId: novena.id,
@@ -74,7 +84,7 @@ router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {
       currentDay: progress.currentDay,
       lastCompletedLocalDate: progress.lastCompletedLocalDate,
       replacesSlot: progress.replacesSlot as "morning" | "evening" | null,
-      day: day ? { title: day.title, body: day.body } : null,
+      day: day ? { title: day.title, body: dayBody } : null,
     },
   });
 });
