@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ReactElement } from "react";
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -44,7 +44,7 @@ export type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "customizer" | "office-fdd" | "leader-rule" | "contemplative";
+      mock: "dashboard" | "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings" | "gatherings-compact" | "customizer" | "office-fdd" | "leader-rule" | "contemplative";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -304,7 +304,11 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
   ) : (
     <div className="flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
       <h1
-        className="text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
+        className={
+          slide.headline.length > 130
+            ? "text-2xl md:text-4xl font-medium mb-4 md:mb-6 leading-snug"
+            : "text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
+        }
         style={{ color: slide.muted ? C.sage : C.text, fontFamily: C.font }}
       >
         {slide.headline}
@@ -342,7 +346,7 @@ function StatementSlide({
             key={i}
             className="text-base md:text-xl leading-relaxed font-light"
             style={{
-              color: C.sage,
+              color: C.text,
               fontFamily: C.font,
               whiteSpace: "pre-line",
             }}
@@ -380,7 +384,7 @@ function FeatureTextSlide({
             key={i}
             className="text-base md:text-xl leading-relaxed font-light"
             style={{
-              color: C.sage,
+              color: C.text,
               fontFamily: C.font,
               whiteSpace: "pre-line",
             }}
@@ -1279,7 +1283,7 @@ function CalendarMock() {
 }
 
 /* ── Gatherings — timeline view (matches actual gatherings.tsx) ── */
-function GatheringsMock() {
+function GatheringsMock({ compact }: { compact?: boolean } = {}) {
   const { t } = useTranslation();
   const groups = [
     {
@@ -1292,9 +1296,9 @@ function GatheringsMock() {
     {
       label: t("church_deck.mock_gatherings_thursday"),
       highlight: false,
-      events: [
-        { time: t("church_deck.mock_gatherings_study_time"), title: t("church_deck.mock_gatherings_study"), location: t("church_deck.mock_gatherings_library"), people: t("church_deck.mock_gatherings_people_study"), kind: "phoebe" as const },
-      ],
+      events: compact
+        ? [{ time: t("church_deck.mock_gatherings_study_time"), title: "Phoebe Fellowship", location: t("church_deck.mock_gatherings_library"), people: t("church_deck.mock_gatherings_people_study"), kind: "phoebe" as const }]
+        : [{ time: t("church_deck.mock_gatherings_study_time"), title: t("church_deck.mock_gatherings_study"), location: t("church_deck.mock_gatherings_library"), people: t("church_deck.mock_gatherings_people_study"), kind: "phoebe" as const }],
     },
     {
       label: t("church_deck.mock_gatherings_saturday"),
@@ -1303,7 +1307,7 @@ function GatheringsMock() {
         { time: t("church_deck.mock_gatherings_morning_time"), title: t("church_deck.mock_gatherings_morning_prayer"), location: t("church_deck.mock_gatherings_chapel"), people: t("church_deck.mock_gatherings_regulars", { count: 4 }), kind: "phoebe" as const },
       ],
     },
-  ];
+  ].slice(0, compact ? 2 : undefined);
   return (
     <MockPhone>
       <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>
@@ -1758,6 +1762,7 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   gatherings: GatheringsMock,
+  "gatherings-compact": () => <GatheringsMock compact />,
   customizer: CustomizerMock,
   contemplative: ContemplativeMock,
   "office-fdd": OfficeFddMock,
@@ -1812,7 +1817,7 @@ function FeatureComboSlide({
               <p
                 key={i}
                 className="text-sm md:text-base leading-relaxed font-light"
-                style={{ color: C.sage, fontFamily: C.font, whiteSpace: "pre-line" }}
+                style={{ color: C.text, fontFamily: C.font, whiteSpace: "pre-line" }}
               >
                 {p}
               </p>
@@ -1851,7 +1856,7 @@ function FeatureComboSlide({
             <p
               key={i}
               className="text-sm md:text-base leading-relaxed font-light"
-              style={{ color: C.sage, fontFamily: C.font, whiteSpace: "pre-line" }}
+              style={{ color: C.text, fontFamily: C.font, whiteSpace: "pre-line" }}
             >
               {p}
             </p>
@@ -1925,7 +1930,7 @@ function ClosingSlide({
                   ? "text-lg md:text-2xl font-normal leading-relaxed pt-1"
                   : "text-base md:text-xl font-light leading-relaxed"
               }
-              style={{ color: isLast ? C.text : C.sage, fontFamily: C.font }}
+              style={{ color: C.text, fontFamily: C.font }}
             >
               {line}
             </p>
@@ -2133,11 +2138,11 @@ export function DeckShell({
   const isFirst = index === 0;
   const isLast = index === slides.length - 1;
   // A leaf photo backdrop under the deck (matches the home / splash), washed dark
-  // so the slides stay legible. Held stable for the whole deck (NOT keyed to the
-  // slide index) so it doesn't reload / hard-cut a new image on every advance.
-  const [bgPhoto] = useState<string | null>(() =>
-    LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null,
-  );
+  // so the slides stay legible. Cycles to a different photo each slide, keyed to
+  // the index — crossfaded (not hard-cut) over the same duration as the slide
+  // transition itself.
+  const bgPhoto =
+    LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[index % LEAF_PHOTOS.length]! : null;
 
   return (
     <div
@@ -2148,7 +2153,19 @@ export function DeckShell({
     >
       {bgPhoto && (
         <>
-          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />
+          <AnimatePresence>
+            <motion.img
+              key={bgPhoto}
+              src={bgPhoto}
+              alt=""
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.42 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: SLIDE_TRANSITION_MS / 1000, ease: "linear" }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+            />
+          </AnimatePresence>
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
         </>
       )}

@@ -42,7 +42,7 @@ function isDesktopWeb(): boolean {
 }
 
 // Prayer surfaces the banner must never cover.
-const QUIET_PREFIXES = ["/bcp", "/prayer-mode", "/rule-of-life", "/cobreathe", "/contemplation", "/psalms"];
+const QUIET_PREFIXES = ["/bcp", "/prayer-mode", "/rule-of-life", "/cobreathe", "/contemplation", "/psalms", "/overview-deck", "/church-deck"];
 
 export function DesktopAppPrompt() {
   const { t } = useTranslation();

@@ -38,18 +38,7 @@ const SLIDES: Slide[] = [
     headline: "There's no shortage of resources on prayer — what's missing is a way to sustain the habit itself.",
     muted: true,
   },
-  // 3 — What young adults are actually looking for (mirrors the final
-  // paragraph of about.tsx's essay) — moved up from the close: it's a sharper,
-  // punchier restatement of slide 2's diagnosis, so it belongs right beside
-  // it reinforcing the "why," not way down by the closing CTA.
-  {
-    kind: "statement",
-    headline: "A habit, not a library",
-    body: [
-      "Young adults are looking for help forming a habit, not a library of features.",
-    ],
-  },
-  // 4 — Cultivating a daily habit, condensed (about-deck's slides 6–7 in one).
+  // 3 — Cultivating a daily habit, condensed (about-deck's slides 6–7 in one).
   // Shows the home screen itself — the routine, always naming what's next —
   // rather than the customizer's when-to-pray picker, which is a setup step,
   // not the daily experience this slide is describing. Restores two things
@@ -62,11 +51,11 @@ const SLIDES: Slide[] = [
     label: "",
     headline: "Cultivate a daily habit",
     body: [
-      "Phoebe guides each person through a customizable daily routine — one step at a time, always showing what's next. It isn't about rewarding streaks or punishing inconsistency; it's about making it easy to return the following day, whether that's the morning commute, a lunch break, or the quiet before bed.",
+      "Phoebe guides each person through a customizable daily routine — one step at a time, always showing what's next.",
     ],
     mock: "dashboard",
   },
-  // 5 — Making the office itself easier to pray (from the original
+  // 4 — Making the office itself easier to pray (from the original
   // church-deck, unchanged copy) — moved ahead of the personalization slide
   // below: the office's own flexibility is the more basic point, worth
   // making before layering on additional practices.
@@ -75,11 +64,11 @@ const SLIDES: Slide[] = [
     label: "",
     headline: "Making the offices easier to pray",
     body: [
-      "Tap \"How to pray\" on any office and choose how it meets you: a digital slideshow you move through at your own pace, the page numbers for a physical Book of Common Prayer, or listen to it read aloud. Every way keeps the same rhythm.",
+      "Tap \"How to pray\" on any office and choose how it meets you: a digital slideshow you move through at your own pace, the page numbers for a physical Book of Common Prayer, or listen to it read aloud.",
     ],
     mock: "office-formats",
   },
-  // 6 — A routine shaped around the person, not a fixed program — beyond the
+  // 5 — A routine shaped around the person, not a fixed program — beyond the
   // office itself, each person adds whichever contemplative practices fit
   // their own life.
   {
@@ -87,11 +76,11 @@ const SLIDES: Slide[] = [
     label: "",
     headline: "A routine that fits them",
     body: [
-      "Beyond the daily office, each person can add the contemplative practices that fit their own life — Audio Divina, the Examen, Creation Prayer, a contemplative walk — building a day that's truly theirs, not a program applied the same way to everyone.",
+      "Each person can add the contemplative practices that fit their own life, building a day that's truly theirs, not a program applied the same way to everyone.",
     ],
     mock: "contemplative",
   },
-  // 7 — Walking Together, condensed (about-deck's Way of Love / Walking
+  // 6 — Walking Together, condensed (about-deck's Way of Love / Walking
   // Together / shared-rhythm slides in one). No mock here — slide 2 already
   // showed the home screen, so a second dashboard mock this soon after just
   // repeated itself; this one carries the idea on text alone.
@@ -103,7 +92,7 @@ const SLIDES: Slide[] = [
       "Built on Bishop Michael Curry's Way of Love, Phoebe lets a group move in the same direction towards becoming more like Jesus between gatherings — each person practicing within the realities of their own life, while knowing others are on the same road of discipleship.",
     ],
   },
-  // 8 — Gathering, whenever fits (about-deck slide 15, condensed).
+  // 7 — Gathering, whenever fits (about-deck slide 15, condensed).
   {
     kind: "feature-combo",
     label: "",
@@ -111,9 +100,9 @@ const SLIDES: Slide[] = [
     body: [
       "When schedules do align, the gathering becomes a moment of reflection within a longer process already unfolding all week — not the only thing keeping it alive.",
     ],
-    mock: "gatherings",
+    mock: "gatherings-compact",
   },
-  // 9 — The close: belonging as a byproduct (about-deck slide 18). Restores
+  // 8 — The close: belonging as a byproduct (about-deck slide 18). Restores
   // the essay's real claim — gathering alone doesn't create connection — so
   // the belonging claim has the contrast that makes it interesting, not a
   // generic assertion.
@@ -124,13 +113,12 @@ const SLIDES: Slide[] = [
       "Simply gathering people in the same room or being added to a group chat isn't enough to create belonging. Leaders can use Phoebe to create the conditions for it instead — as people enter a shared process of daily prayer, mutual encouragement, and walking together in the life of discipleship, as described in Hebrews.",
     ],
   },
-  // 10 — Hebrews 10, the same verse the full about-deck uses (unchanged).
+  // 9 — Hebrews 10, the same verse the full about-deck uses. Styled as a
+  // centered title slide — the "Hebrews 10" label dropped, the verse itself
+  // large — rather than a headline+body statement.
   {
-    kind: "statement",
-    headline: "Hebrews 10",
-    body: [
-      "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
-    ],
+    kind: "title",
+    headline: "“And let us consider how we may spur one another on toward love and good deeds, not giving up meeting together, as some are in the habit of doing, but encouraging one another — and all the more as you see the Day approaching.”",
   },
   // The invitation — same close as the full deck.
   {
