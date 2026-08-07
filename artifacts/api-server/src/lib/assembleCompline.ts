@@ -392,17 +392,15 @@ export async function assembleCompline(
   );
 
   // 5. Short lesson — BCP p. 132. One of the four appointed Compline
-  //    readings, embedded inline (1–3 verses each, no chunking
-  //    needed). Title slide + body slide, mirroring the shape of the
-  //    full Office's lesson_title + lesson_verses pattern.
+  //    readings, embedded inline (1–3 verses each, no chunking needed).
+  //    Body slide ONLY — no lesson_title card. The full Office needs that
+  //    title slide because its lesson is a long lectionary passage the
+  //    reader opens elsewhere (hence its "Open your Bible, or read online"
+  //    + Read-online pill). Compline's reading is two verses printed right
+  //    here on the very next slide, so the title card was showing the
+  //    reference and a link to go read what the reader was already about
+  //    to be handed — a dead beat in a nine-slide office.
   const lessonBody = T.lessonByRef[today.lesson.ref] ?? today.lesson.text;
-  slides.push(
-    slide(id(), "lesson_title", "📖", T.eyebrowLesson, "", {
-      title: today.lesson.ref,
-      bcpReference: "BCP p. 132",
-      metadata: { compline: true, lessonRef: today.lesson.ref },
-    }),
-  );
   slides.push(
     slide(id(), "lesson", "📖", today.lesson.ref.toUpperCase(), lessonBody, {
       title: today.lesson.ref,

@@ -3576,49 +3576,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           {/* Office welcome slide — same chooser, defaulting to the full Office
               (the reader can drop to a Devotion or the Intercessions feed). */}
           {(resolvedMode === "morning" || resolvedMode === "evening") && slideIdx === 0 && !onComplete && renderWayChooser()}
-          {/* Compline first-slide alternate. Compline is the after-8pm
-              default, but a user who'd rather pray Evening Prayer (the
-              Evening Devotion's broader option-set is the natural step
-              back into the earlier office) needs a door to it without
-              backing out to the chooser. One pill — "Evening Prayer" —
-              that lands on the Evening Devotion's first slide, where
-              the existing Intercessions + Full Office pills surface
-              the other two depths. Same gating as the devotion block
-              above (first slide only, not the closing celebration,
-              hidden for offices-only). */}
-          {resolvedMode === "compline" && slideIdx === 0 && !onComplete && !officesOnlyViewer && (
-            <div
-              style={{
-                marginTop: 28,
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                alignItems: "center",
-                gap: 8,
-                paddingTop: 16,
-                borderTop: `1px solid ${BORDER}`,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setViewerLocation("/bcp/daily-devotions?mode=early-evening-devotion")}
-                style={{
-                  background: "rgba(var(--ot-green, 46,107,64),0.10)",
-                  border: "1px solid rgba(var(--ot-green, 46,107,64),0.32)",
-                  borderRadius: 999,
-                  color: "rgba(var(--ot-fern, 168,197,160),0.95)",
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  padding: "7px 14px",
-                }}
-              >
-                Evening Prayer
-              </button>
-            </div>
-          )}
+          {/* Compline's welcome slide used to carry an "Evening Prayer" pill
+              (a door back to the Evening Devotion) under a divider. Removed
+              per owner: Compline is its own office, chosen deliberately, and
+              offering a step back into an earlier one on the threshold slide
+              muddied that. Backing out to the chooser still reaches Evening
+              Prayer for anyone who opened Compline by mistake. */}
         </div>
         {/* Bottom clearance spacer — see the paddingBottom note above. Being a
             real box (not container padding), it survives iOS WKWebView's

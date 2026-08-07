@@ -366,7 +366,7 @@ export function useRhythmState(): RhythmState {
   // OFFICE_DONE_EVENT lets an in-place quick-log refresh the home without a nav.
   const [officeLocal, setOfficeLocal] = useState(() => ({
     morning: officeLocalDone(["morning", "morning-devotion"]),
-    evening: officeLocalDone(["evening", "early-evening-devotion", "compline"]),
+    evening: officeLocalDone(["evening", "early-evening-devotion"]),
     // Compline tracked on its own too — as an opt-in add-on card it needs a
     // done-flag independent of the evening anchor (which compline also
     // satisfies, hence its presence in BOTH lists).
@@ -375,7 +375,7 @@ export function useRhythmState(): RhythmState {
   useEffect(() => {
     const recheck = () => setOfficeLocal({
       morning: officeLocalDone(["morning", "morning-devotion"]),
-      evening: officeLocalDone(["evening", "early-evening-devotion", "compline"]),
+      evening: officeLocalDone(["evening", "early-evening-devotion"]),
       compline: officeLocalDone(["compline"]),
     });
     window.addEventListener(OFFICE_DONE_EVENT, recheck);
@@ -679,6 +679,11 @@ export function useRhythmState(): RhythmState {
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
     || (el === "custom" && prayerRead.customEvening)
     || (el === "examen" && examenKept)
+    // Compline satisfies the evening anchor ONLY when it IS that anchor.
+    // officeLocal.evening deliberately no longer folds the compline flag in
+    // (see officeLocalDone's sides list): as a standalone add-on card,
+    // praying Compline is its own act and must not tick Evening Prayer.
+    || (el === "compline" && officeLocal.compline)
     || (el === "reflect-sit" && eveningSatKept);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
@@ -711,9 +716,17 @@ export function useRhythmState(): RhythmState {
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   // Compline is an OFFICE, so its done-state comes from the office flags (the
-  // office viewer's local stamp, or the server's evening office history) —
-  // not the practice_completion table the logging-first practices use.
-  const complineDone = complineActive && (officeLocal.compline || !!todayOffice?.evening);
+  // office viewer's local stamp) — not the practice_completion table the
+  // logging-first practices use.
+  //
+  // ONLY its own flag. This used to also accept `todayOffice.evening`, which
+  // meant praying Evening Prayer silently ticked the separate Compline card
+  // too — two distinct offices sharing one completion token, the same
+  // shared-flag class of bug as the Psalms/office one. When Compline is the
+  // EVENING ANCHOR (el === "compline") it isn't a separate card at all — it
+  // satisfies eveningDone below and complineActive is false — so there's no
+  // case where the two should credit each other.
+  const complineDone = complineActive && officeLocal.compline;
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);

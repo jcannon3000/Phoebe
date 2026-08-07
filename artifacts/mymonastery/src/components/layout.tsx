@@ -682,7 +682,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
+  const { ready, morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -744,6 +744,10 @@ function DailyProgressPill() {
     ...(eveningActive && !novenaReplacesEvening ? [{ key: "evening", done: eveningDone }] : []),
     ...(novenaReplacesEvening && novenaActive ? [{ key: "novena-evening", done: novenaDone }] : []),
     ...(eveningContemplationActive ? [{ key: "contemplation-evening", done: eveningContemplationDone }] : []),
+    // Compline closes the day — its own dot, after Evening Prayer. Its own
+    // done-flag too: praying Evening Prayer must not fill this dot (they're
+    // two distinct offices; see useRhythmState's complineDone).
+    ...(complineActive ? [{ key: "compline", done: complineDone }] : []),
     ...cDots("evening"),
   ];
   // Fellows are turned off for now — we no longer ping fellows when three dots
@@ -1038,6 +1042,9 @@ function OpeningSplash() {
     { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Creation Prayer", blurb: "12 breaths with all creation", rgb: "62,124,122" },
     { active: rhythm.listeningActive, done: rhythm.listeningDone, slot: getPracticeSlot("listening"), emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" },
     { active: rhythm.walkActive, done: rhythm.walkDone, slot: getPracticeSlot("walk"), emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" },
+    // Compline — fixed to the evening slot (it's the night office; the 7pm
+    // "not yet" state lives on the card, see DailyProgressBody's complineCard).
+    { active: rhythm.complineActive, done: rhythm.complineDone, slot: "evening" as CustomSlot, emoji: "🌙", label: "Compline", blurb: "The night office", rgb: "90,100,140" },
     ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150", logOnly: true })),
     { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "108,140,180", logOnly: true },
     { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },

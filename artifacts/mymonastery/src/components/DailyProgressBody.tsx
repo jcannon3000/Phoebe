@@ -22,6 +22,7 @@ import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToda
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
+import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
@@ -851,6 +852,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // practice (matching the home hero), not "… Prayer".
     if (lvl === "reflect-sit") return t("rhythm.card_contemplation", { defaultValue: "Contemplation" });
     if (lvl === "examen") return t("rhythm.card_examen", { defaultValue: "The Examen" });
+    // Compline IS this side's office (the evening BCP-form choice) — name the
+    // card for the office actually prayed, not "Evening Prayer".
+    if (lvl === "compline") return t("rhythm.card_compline", { defaultValue: "Compline" });
     // Simple Guided Prayer (PACT) IS this side's prayer — "Morning/Evening
     // Simple Guided Prayer", matching the per-side home card.
     // Just "Guided Prayer" — no Morning/Evening prefix, no "Simple" (owner).
@@ -1253,6 +1257,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   useEffect(() => {
     onRemainingCount?.(remainingCount);
   }, [remainingCount, onRemainingCount]);
+  // ── The whole-routine swell ──────────────────────────────────────────────
+  // Nothing left undone, AND we arrived here off a fresh completion
+  // (celebrateKey — set by the practice we just came back from, read once at
+  // mount): the practice that just finished was the LAST one. That earns the
+  // app's one big sound — the chapel tone walked up its three octave steps so
+  // you hear the progression climb — plus a haptic on each step.
+  //
+  // Gated on celebrateKey, not on remainingCount alone: without it, merely
+  // opening the home on an already-finished day would replay the swell on
+  // every visit. Gated on `ready` too, since remainingCount is 0 while the
+  // rhythm queries are still settling and that zero means "unknown", not
+  // "done". The ref makes it fire exactly once per mount.
+  const sweptRef = useRef(false);
+  useEffect(() => {
+    if (sweptRef.current) return;
+    if (!ready || !celebrateKey || remainingCount !== 0) return;
+    sweptRef.current = true;
+    playRoutineCompleteSwell();
+  }, [ready, celebrateKey, remainingCount]);
   const upcomingDisplay = (() => {
     const all = visibleCards.filter((c) => (!c.done || c.key === pinnedKey) && !(guestMorningTomorrow && c.key === morningAnchorKey));
     if (maxUpcoming == null) return all;

@@ -89,7 +89,7 @@ const SIDES = ["morning", "evening"] as const;
 // "none" = no office anchor for this side (e.g. contemplation-only). The
 // contemplation/fdd/examen values remain only so an OLD saved level still reads
 // back (prayFromLevel) and migrates forward on the next save.
-type PrayChoice = "none" | "community" | "devotion" | "offices" | "contemplation" | "fdd" | "psalms" | "examen" | "creation" | "guidedPrayer" | "ownPractice";
+type PrayChoice = "none" | "community" | "devotion" | "offices" | "compline" | "contemplation" | "fdd" | "psalms" | "examen" | "creation" | "guidedPrayer" | "ownPractice";
 
 // Creation Prayer lengths — 6-breath increments, mirroring the /cobreathe
 // page's own Length dropdown (default 12).
@@ -220,13 +220,18 @@ const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer" | "custom"> = {
+const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "office" | "reflect-sit" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer" | "custom" | "compline"> = {
   // No office anchor on this side — its level clears to "ask" (no office card).
   // Any Contemplative / Examen the user picked surface as their OWN cards.
   none: "ask",
   community: "intercessions",
   devotion: "devotion",
   offices: "office",
+  // Compline IS this side's office — the night office standing in for
+  // Evening Prayer, for someone whose evening anchor is the shorter
+  // bedtime liturgy. Evening-only in the UI (see the way step); the
+  // level itself is side-agnostic.
+  compline: "compline",
   // Contemplation as the primary form of prayer for this side — "reflect-sit"
   // is the handled office level for a contemplative sit (begin-prayer routes it
   // to the silence timer).
@@ -254,6 +259,7 @@ const PRAY_LEVEL: Record<PrayChoice, "ask" | "intercessions" | "devotion" | "off
 // choice so Customize opens with the user's current pick selected.
 function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "office") return "offices";
+  if (level === "compline") return "compline";
   if (level === "devotion") return "devotion";
   if (level === "intercessions") return "community";
   if (level === "reflect-sit") return "contemplation";
@@ -279,7 +285,7 @@ function anchorFromLevel(level: string | null | undefined, side?: "morning" | "e
   // add-on, not an anchor" rule did) meant reopening the customizer always
   // showed evening's Simple Guided Prayer as unselected.
   if (p === "examen" && side === "evening") return p;
-  return p === "offices" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" || p === "guidedPrayer" || p === "ownPractice" ? p : "none";
+  return p === "offices" || p === "compline" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" || p === "guidedPrayer" || p === "ownPractice" ? p : "none";
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).
@@ -288,6 +294,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   community: "pray-intercessions",
   devotion: "pray-devotion",
   offices: "pray-office",
+  compline: "pray-compline",
   contemplation: "pray-reflect-sit",
   fdd: "pray-fdd",
   psalms: "pray-psalms",
@@ -308,6 +315,8 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   community: "devotion",
   devotion: "devotion",
   offices: "office",
+  // Compline is a full (if short) office — same office-flavoured nudge.
+  compline: "office",
   contemplation: "devotion",
   // FDD as morning prayer gets the lighter nudge that just opens the practice.
   fdd: "devotion",
@@ -483,10 +492,10 @@ export default function WayOfLoveRuleFlow({
   // Which BCP form the "With the Book of Common Prayer" option commits to
   // (Psalms / Devotion / Office). Seeded from the current per-side level so
   // re-opening Customize keeps the chosen form.
-  const [bcpForm, setBcpForm] = useState<Record<OfficeSide, "offices" | "devotion" | "psalms">>(() => {
-    const form = (s: OfficeSide): "offices" | "devotion" | "psalms" => {
+  const [bcpForm, setBcpForm] = useState<Record<OfficeSide, "offices" | "devotion" | "psalms" | "compline">>(() => {
+    const form = (s: OfficeSide): "offices" | "devotion" | "psalms" | "compline" => {
       const p = prayFromLevel(getSideLevel(s));
-      return p === "offices" || p === "devotion" || p === "psalms" ? p : "offices";
+      return p === "offices" || p === "devotion" || p === "psalms" || p === "compline" ? p : "offices";
     };
     return { morning: form("morning"), evening: form("evening") };
   });
@@ -913,11 +922,16 @@ export default function WayOfLoveRuleFlow({
     // latter is only offered there when NEITHER side already carries it, so
     // the two paths never fight over the same card.
     const wantCobreathe = (contemplationStyle === "cobreathe" && anyContemplation) || contemplative.cobreathe;
+    // Compline earns a home card ONLY as a standalone add-on. When it's a
+    // side's office ANCHOR (the evening way-step choice) that side's own card
+    // IS Compline, so a second "compline" module would double it on the home —
+    // same one-practice-two-paths guard wantCobreathe applies above.
+    const wantComplineCard = contemplative.compline && prayBySide.evening !== "compline" && prayBySide.morning !== "compline";
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
-      ...(contemplative.compline ? ["compline"] : []),
+      ...(wantComplineCard ? ["compline"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
@@ -927,7 +941,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
-      ...(contemplative.compline ? [] : ["compline"]),
+      ...(wantComplineCard ? [] : ["compline"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
@@ -1066,11 +1080,16 @@ export default function WayOfLoveRuleFlow({
     // latter is only offered there when NEITHER side already carries it, so
     // the two paths never fight over the same card.
     const wantCobreathe = (contemplationStyle === "cobreathe" && anyContemplation) || contemplative.cobreathe;
+    // Compline earns a home card ONLY as a standalone add-on. When it's a
+    // side's office ANCHOR (the evening way-step choice) that side's own card
+    // IS Compline, so a second "compline" module would double it on the home —
+    // same one-practice-two-paths guard wantCobreathe applies above.
+    const wantComplineCard = contemplative.compline && prayBySide.evening !== "compline" && prayBySide.morning !== "compline";
     const onKeys = [
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
-      ...(contemplative.compline ? ["compline"] : []),
+      ...(wantComplineCard ? ["compline"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
@@ -1080,7 +1099,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
-      ...(contemplative.compline ? [] : ["compline"]),
+      ...(wantComplineCard ? [] : ["compline"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
@@ -1384,6 +1403,13 @@ export default function WayOfLoveRuleFlow({
     // their evening prayer — offering it again here as an "additional" extra
     // would be a confusing duplicate toggle for the same practice.
     const examenAlreadyPrimary = prayBySide.morning === "examen" || prayBySide.evening === "examen";
+    // Same reasoning again for Compline: it's offered on the evening "way"
+    // step as a BCP anchor (after Office). Someone who chose it there already
+    // prays Compline as their evening office — re-offering it here as an
+    // "additional" practice would be a second toggle for the same office, and
+    // (worse) would put a duplicate Compline card on the home next to the
+    // evening anchor that already IS Compline.
+    const complineAlreadyPrimary = prayBySide.evening === "compline" || prayBySide.morning === "compline";
     return shell(
       <>
         {backRow(goPrev)}
@@ -1392,7 +1418,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.contemplative_body", { defaultValue: "Beyond silence, choose any other contemplative practices for your day — each becomes its own card." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
+          {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
@@ -1582,7 +1608,11 @@ export default function WayOfLoveRuleFlow({
   if (step === "morning-bcp" || step === "evening-bcp") {
     const side: OfficeSide = step === "morning-bcp" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
-    const forms = (!pilot ? (["psalms", "devotion", "offices"] as const) : (["devotion", "offices"] as const));
+    // Compline sits after Office, and only in the evening — it IS the night
+    // office, so offering it as a morning form would be nonsense.
+    const baseForms = (!pilot ? (["psalms", "devotion", "offices"] as const) : (["devotion", "offices"] as const));
+    const forms: ReadonlyArray<"psalms" | "devotion" | "offices" | "compline"> =
+      side === "evening" ? [...baseForms, "compline"] : baseForms;
     return shell(
       <>
         {backRow(goPrev)}
@@ -1592,13 +1622,15 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {forms.map((form) => {
-            const label = form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
+            const label = form === "compline" ? t("wol_rule.pray_compline_label", { defaultValue: "Compline" })
+              : form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
               : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
               : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
-            const sub = form === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
+            const sub = form === "compline" ? t("wol_rule.pray_compline_sub", { defaultValue: "The night office, at the close of day." })
+              : form === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
               : form === "devotion" ? (side === "morning" ? t("wol_rule.pray_devotion_sub_morning", { defaultValue: "A short form of Morning Prayer." }) : t("wol_rule.pray_devotion_sub_evening", { defaultValue: "A short form of Evening Prayer." }))
               : (side === "morning" ? t("wol_rule.pray_offices_sub_morning", { defaultValue: "The full Morning Prayer office." }) : t("wol_rule.pray_offices_sub_evening", { defaultValue: "The full Evening Prayer office." }));
-            const emoji = form === "psalms" ? "📜" : "📖";
+            const emoji = form === "compline" ? "🌙" : form === "psalms" ? "📜" : "📖";
             return choiceRow(prayBySide[side] === form, `${emoji} ${label}`, sub, () => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); });
           })}
         </div>
@@ -1701,14 +1733,18 @@ export default function WayOfLoveRuleFlow({
               {t("wol_rule.bcp_form_body_short", { defaultValue: "Which form?" })}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
-              {(["psalms", "devotion", "offices"] as const).map((form) => {
-                const label = form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
+              {((side === "evening"
+                ? (["psalms", "devotion", "offices", "compline"] as const)
+                : (["psalms", "devotion", "offices"] as const)) as ReadonlyArray<"psalms" | "devotion" | "offices" | "compline">).map((form) => {
+                const label = form === "compline" ? t("wol_rule.pray_compline_label", { defaultValue: "Compline" })
+                  : form === "psalms" ? t("wol_rule.pray_psalms_label", { defaultValue: "Praying the Psalms" })
                   : form === "devotion" ? `${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`
                   : `${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`;
-                const sub = form === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
+                const sub = form === "compline" ? t("wol_rule.pray_compline_sub", { defaultValue: "The night office, at the close of day." })
+                  : form === "psalms" ? t("wol_rule.pray_psalms_sub", { defaultValue: "The appointed psalms, prayed each day." })
                   : form === "devotion" ? (side === "morning" ? t("wol_rule.pray_devotion_sub_morning", { defaultValue: "A short form of Morning Prayer." }) : t("wol_rule.pray_devotion_sub_evening", { defaultValue: "A short form of Evening Prayer." }))
                   : (side === "morning" ? t("wol_rule.pray_offices_sub_morning", { defaultValue: "The full Morning Prayer office." }) : t("wol_rule.pray_offices_sub_evening", { defaultValue: "The full Evening Prayer office." }));
-                const emoji = form === "psalms" ? "📜" : "📖";
+                const emoji = form === "compline" ? "🌙" : form === "psalms" ? "📜" : "📖";
                 return choiceRow(prayBySide[side] === form, `${emoji} ${label}`, sub, () => { setBcpForm((p) => ({ ...p, [side]: form })); choosePrayBySide(side, form); });
               })}
             </div>

@@ -182,6 +182,9 @@ export function useWidgetSync(): void {
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
       { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, title: "Way of Love", eyebrow: "A podcast episode", subtitle: "Listen to today's episode", cta: "Listen", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
+      // Compline rides the evening slot — same fixed placement the home card
+      // and the header dot use (it IS the night office, so no slot picker).
+      { active: r.complineActive, done: r.complineDone, slot: "evening", title: "Compline", eyebrow: "The night office", subtitle: "Hand the day to God", cta: "Begin", kind: "office" },
       { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
       // Prayer List is NOT a routine anchor here either — same exclusion as
       // DailyProgressBody.tsx (see its comment there): it's woven into the
@@ -283,7 +286,7 @@ export function useWidgetSync(): void {
     r.eveningContemplationActive, r.eveningContemplationDone,
     r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
-    r.walkActive, r.walkDone,
+    r.walkActive, r.walkDone, r.complineActive, r.complineDone,
     r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
     r.examenActive, r.examenDone,
     r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title, r.novenaReplacesMorning, r.novenaReplacesEvening,

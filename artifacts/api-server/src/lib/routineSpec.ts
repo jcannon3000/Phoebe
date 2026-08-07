@@ -19,7 +19,16 @@ const HOME_MODULE_KEYS = [
 ] as const;
 
 const ALLOWED_PREFS = new Set(["none", "office", "devotion"]);
-const ALLOWED_LEVELS = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit"]);
+// Every level officePrefs.ts's OfficeLevel can hold. This list had gone stale —
+// it was missing fdd/psalms/examen/creation/guided-prayer/custom, so a
+// prescribed routine whose anchor was any of those silently fell back to "ask"
+// on adoption (the adopter got no office at all). Same silently-drops-a-valid-
+// value class of bug as the home-layout allowlist. Keep in sync with
+// mymonastery/src/lib/officePrefs.ts's OFFICE_LEVELS.
+const ALLOWED_LEVELS = new Set([
+  "ask", "devotion", "office", "intercessions", "reflect-sit",
+  "fdd", "psalms", "examen", "creation", "guided-prayer", "custom", "compline",
+]);
 // A real clock time (00:00–23:59). The old /^\d{2}:\d{2}$/ accepted "99:99",
 // which sailed through to the reminder cron and silently disabled that side's
 // notifications for everyone who adopted the spec.

@@ -490,6 +490,43 @@ export function playBreathTone(octaveStep: number = 0) {
   }
 }
 
+/**
+ * The whole-routine swell — the one big sound in the app, saved for the
+ * moment a person finishes EVERY practice in their day.
+ *
+ * It isn't a new sound: it's the app's own chapel tone (playBreathTone)
+ * walked up its three octave steps one at a time — 0 → 1 → 2 — so you hear
+ * the progression climb rather than one flat chord. Each step is a ~7s pad,
+ * fired ~1.1s apart, so the earlier voices are still ringing when the next
+ * enters and the three stack into a single rising swell that resolves on
+ * its own. That's the same 0/1/2 progression the prayer slideshow walks
+ * across its slides, collapsed into one gesture — the day's arc in three
+ * seconds, ending where the slideshow's fourth slide would have reset.
+ *
+ * A matching haptic rides each step (native only; no-op on web), so the
+ * swell is felt climbing as well as heard.
+ *
+ * Fire-and-forget, and deliberately NOT called for an ordinary practice
+ * completion — a sound this large only means something if it's rare.
+ */
+export function playRoutineCompleteSwell() {
+  // ~1.1s apart: long enough to hear each step arrive as its own event,
+  // short enough that step 0 (2.5s swell-in) is still climbing when step 2
+  // lands, so they read as one build instead of three separate chimes.
+  const STEP_MS = 1100;
+  for (let step = 0; step <= 2; step++) {
+    window.setTimeout(() => {
+      try { playBreathTone(step); } catch { /* audio blocked — silent */ }
+      try {
+        // The native shell maps "celebration" to its smoothSwell payload
+        // (see swellHaptic / native-shell wireHaptics). One per tone so the
+        // hand feels the same three-step climb the ear does.
+        window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "celebration" } }));
+      } catch { /* no window / dispatch failed — ignore */ }
+    }, step * STEP_MS);
+  }
+}
+
 // Navigation swells + the office slide chime are removed per product direction
 // (no sound on opening a prayer or advancing slides). Both stay exported as
 // no-ops so their many call sites keep compiling; the chapel tone lives on as

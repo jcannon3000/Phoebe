@@ -282,8 +282,8 @@ export type OfficeSide = "morning" | "evening";
 // "fdd" = Forward Day by Day IS this side's prayer (replaces the office card for
 // that side, per-user). "psalms" = Praying the Psalms IS this side's prayer
 // (the appointed psalms, per the chosen cycle). Both per-user, set in Customize.
-export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer" | "custom";
-const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd", "psalms", "examen", "creation", "guided-prayer", "custom"];
+export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd" | "psalms" | "examen" | "creation" | "guided-prayer" | "custom" | "compline";
+const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd", "psalms", "examen", "creation", "guided-prayer", "custom", "compline"];
 
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).

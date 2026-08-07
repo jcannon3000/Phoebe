@@ -87,6 +87,13 @@ export default function BeginPrayerPage() {
       return;
     }
 
+    // Compline IS this side's office → open the night office directly. Like
+    // psalms/examen above it's self-contained (stamps its own office flag on
+    // completion), so it needs no time-of-day or prayed-today branching.
+    if (defaultPrayerLevel === "compline") {
+      setLocation(`/bcp/daily-office?mode=compline`, { replace: true });
+      return;
+    }
     // Praying the Psalms IS this side's prayer → open the psalms reader directly
     // (begin=1 skips the "before you begin" intro — they already chose psalms).
     if (defaultPrayerLevel === "psalms") {
