@@ -255,7 +255,6 @@ struct PhoebeWidgetView: View {
     // medium widget that mirrors the home "what's next" card.
     private var homeMedium: some View {
         HStack(spacing: 0) {
-            Rectangle().fill(accentColor).frame(width: 4)
             VStack(alignment: .leading, spacing: 5) {
                 Text(heroEyebrow)
                     .font(sgBold(11))
@@ -274,22 +273,18 @@ struct PhoebeWidgetView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
-                // The CTA pill sits on its own row, pushed to the right — then
-                // today's rhythm progress (dots + N/M) is its own row at the
-                // very bottom, matching the home card's own layout (title/CTA
-                // up top, the progress bar as a full row underneath).
+                // The CTA pill sits on its own row at the left, under the
+                // title/subtitle — matches the home card's own button
+                // placement (left-aligned, not pushed to the trailing edge).
                 if !heroCta.isEmpty {
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        HStack(spacing: 4) {
-                            Text(heroCta).font(sgBold(13))
-                            Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
-                        }
-                        .foregroundColor(phoebeWarm)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(accentColor))
+                    HStack(spacing: 4) {
+                        Text(heroCta).font(sgBold(13))
+                        Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
                     }
+                    .foregroundColor(phoebeWarm)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(accentColor))
                 }
             }
             .padding(16)
