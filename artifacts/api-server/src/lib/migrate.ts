@@ -3886,6 +3886,12 @@ export async function migrate() {
     // ahead of `body` at render time, instead of re-transcribing psalm text
     // by hand into seed data. Added after the initial table.
     await run(client, `ALTER TABLE novena_days ADD COLUMN IF NOT EXISTS psalm_number INTEGER`);
+    // Declared on the schema (lib/db/src/schema/novenas.ts) but this ALTER
+    // was never actually added — Drizzle's select() queries every declared
+    // column, so GET /api/me/novena has been failing with "column
+    // novena_days.psalm_verse_range does not exist" on every call in
+    // production. This is THE root cause of "novenas aren't working."
+    await run(client, `ALTER TABLE novena_days ADD COLUMN IF NOT EXISTS psalm_verse_range TEXT`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS novena_progress (
         id SERIAL PRIMARY KEY,
