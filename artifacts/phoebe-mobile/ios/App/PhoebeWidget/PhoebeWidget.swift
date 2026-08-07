@@ -311,7 +311,6 @@ struct PhoebeWidgetView: View {
                         .background(Capsule().fill(accentColor))
                     }
                 }
-                progressDots
             }
             .padding(16)
             Spacer(minLength: 0)
@@ -319,22 +318,38 @@ struct PhoebeWidgetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
+    // Same "what's next" story as the medium widget, just condensed to fit —
+    // no dots/count here either, matching homeMedium's move away from a
+    // progress readout toward always naming the next thing to pray.
     private var homeSmall: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 5) {
-                Image(systemName: "leaf.fill").font(.system(size: 13)).foregroundColor(accentColor)
-                Text("Phoebe").font(sgBold(13)).foregroundColor(phoebeWarm.opacity(0.75))
+                Image(systemName: "leaf.fill").font(.system(size: 12)).foregroundColor(accentColor)
+                Text("Phoebe").font(sgBold(12)).foregroundColor(phoebeWarm.opacity(0.75))
             }
-            Spacer()
-            Text("\(stats.doneCount) of \(stats.totalAnchors)").font(sgBold(34)).foregroundColor(phoebeWarm)
-            Text("done today").font(sgRegular(12)).foregroundColor(phoebeWarm.opacity(0.75))
-            HStack(spacing: 5) {
-                ForEach(Array(stats.dotList.enumerated()), id: \.offset) { _, done in
-                    anchorDot(done: done)
+            Spacer(minLength: 4)
+            Text(heroEyebrow)
+                .font(sgBold(10))
+                .tracking(1.2)
+                .foregroundColor(phoebeSage.opacity(0.65))
+                .lineLimit(1)
+            Text(heroTitle)
+                .font(sgBold(17))
+                .foregroundColor(phoebeWarm)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            if !heroCta.isEmpty {
+                HStack(spacing: 4) {
+                    Text(heroCta).font(sgBold(12))
+                    Image(systemName: "arrow.right").font(.system(size: 10, weight: .semibold))
                 }
-            }.padding(.top, 6)
-            Spacer()
-            Text(stats.todayLine).font(sgBold(12)).foregroundColor(phoebeWarm.opacity(0.85)).lineLimit(1)
+                .foregroundColor(phoebeWarm)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(accentColor))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -423,9 +438,16 @@ struct PhoebeTodayView: View {
 // about/splash screens, so text stays legible over the photo underneath.
 private var widgetPhotoBackground: some View {
     ZStack {
+        // scaledToFill() has nothing to fill against without an explicit
+        // frame — left implicit, the image sized itself to its own aspect
+        // ratio instead of the widget's bounds, leaving bare edges. Force it
+        // to the full container, then clip so the overflow from scaledToFill
+        // doesn't bleed past the widget's rounded corners.
         Image("WidgetLeafBG")
             .resizable()
             .scaledToFill()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         // Lighter than before — the previous wash (0.55–0.88) all but hid the
         // photo entirely, which read as "no background" rather than the
         // frosted-over-photo look the rest of the app uses.
@@ -434,6 +456,7 @@ private var widgetPhotoBackground: some View {
             startPoint: .top, endPoint: .bottom
         )
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
 }
 
 struct PhoebeWidget: Widget {

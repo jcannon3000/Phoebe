@@ -1349,6 +1349,13 @@ declare global {
       // its own "turn notifications on" reminder without side effects; the
       // actual request still goes through requestPushPermission() above.
       checkPushPermission?: () => Promise<"granted" | "denied" | "prompt">;
+      // Whether the user currently has a PhoebeWidget instance placed on a
+      // Home/Lock Screen — WidgetKit's getCurrentConfigurations is the only
+      // API for this (see PhoebeWidgetPlugin.swift's isActive). Lets the app
+      // show its own "Add a widget" prompt only to someone who hasn't
+      // already added one. false (not a rejected promise) on web/Android,
+      // where the widget doesn't exist.
+      hasActiveWidget?: () => Promise<boolean>;
     };
   }
 }
@@ -1439,6 +1446,15 @@ function exposePublicApi() {
         cap?.Plugins?.PhoebeWidget?.update?.({ data: payload })?.catch(() => {});
       } catch {
         /* ignore — widget updates are best-effort */
+      }
+    },
+    async hasActiveWidget() {
+      try {
+        const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, { isActive?: () => Promise<{ active?: boolean }> }> } }).Capacitor;
+        const result = await cap?.Plugins?.PhoebeWidget?.isActive?.();
+        return !!result?.active;
+      } catch {
+        return false;
       }
     },
     isNative() {

@@ -10,6 +10,12 @@
 // read. This writes straight to UserDefaults(suiteName:) on the App Group.
 //
 // JS side: PhoebeNative.updateWidget(state) → Capacitor.Plugins.PhoebeWidget.update({ data }).
+//
+// isActive: lets the app show/hide its own "Add a widget" prompt based on
+// whether the user has actually placed one — WidgetKit's own
+// getCurrentConfigurations(completion:) is the only API for this (there's
+// no way to ask iOS "is a widget on the home/lock screen" any more directly
+// than "does this app currently have any configured widget instances").
 
 import Foundation
 import Capacitor
@@ -21,6 +27,7 @@ public class PhoebeWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "PhoebeWidget"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isActive", returnType: CAPPluginReturnPromise),
     ]
 
     static let appGroup = "group.app.withphoebe.mobile"
@@ -35,5 +42,20 @@ public class PhoebeWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
             WidgetCenter.shared.reloadAllTimelines()
         }
         call.resolve()
+    }
+
+    @objc func isActive(_ call: CAPPluginCall) {
+        guard #available(iOS 14.0, *) else {
+            call.resolve(["active": false])
+            return
+        }
+        WidgetCenter.shared.getCurrentConfigurations { result in
+            switch result {
+            case .success(let infos):
+                call.resolve(["active": !infos.isEmpty])
+            case .failure:
+                call.resolve(["active": false])
+            }
+        }
     }
 }

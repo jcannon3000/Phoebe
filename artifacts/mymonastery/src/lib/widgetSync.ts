@@ -64,6 +64,11 @@ type NextItem = {
   subtitle: string;
   cta: string;
   kind: "office" | "reflect";
+  // True only for the morning/evening slot's actual anchor (the office
+  // itself, or a novena standing in for it in "replace" mode) — sorted
+  // ahead of anything else sharing that slot so "what's next" always
+  // surfaces the office over an add-on like Contemplation or the Examen.
+  isPrimary?: boolean;
 };
 
 export function useWidgetSync(): void {
@@ -152,10 +157,10 @@ export function useWidgetSync(): void {
     // slot rank then reproduces the home's time-of-day ordering; within a slot
     // the base order below is preserved.
     const items: NextItem[] = [
-      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office" },
+      { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office", isPrimary: true },
       // A novena in "replace" mode takes over its slot's item entirely — same
-      // gate as the rawCards/dotDefs replace-mode entries.
-      { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
+      // gate as the rawCards/dotDefs replace-mode entries — so it's primary too.
+      { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
       ...r.reflections.map((rf) => ({
         active: true, done: rf.done, slot: "morning" as CustomSlot,
         title: REFLECTION_NAME[rf.source] ?? "Today's reflection",
@@ -166,6 +171,7 @@ export function useWidgetSync(): void {
       { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       { active: r.cobreatheActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
+      { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, title: "Way of Love", eyebrow: "A podcast episode", subtitle: "Listen to today's episode", cta: "Listen", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
       { active: r.readingActive, done: r.readingDone, slot: getPracticeSlot("reading"), title: "Reading", eyebrow: "Your reading rule", subtitle: "Log today's reading", cta: "Log", kind: "office" },
       // Prayer List is NOT a routine anchor here either — same exclusion as
@@ -179,8 +185,8 @@ export function useWidgetSync(): void {
       // and the header pill's dot use, so the widget can't drift from either.
       { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
-      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office" },
-      { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
+      { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office", isPrimary: true },
+      { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
         title: a.title, eyebrow: "Your practice", subtitle: "A daily practice", cta: "Log", kind: "office" as const,
@@ -188,9 +194,15 @@ export function useWidgetSync(): void {
     ];
 
     const active = items.filter((i) => i.active);
-    // Stable sort by time-of-day slot (Array.prototype.sort is stable) — the same
-    // ordering DailyProgressBody applies to its cards.
-    const ordered = [...active].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
+    // Stable sort by time-of-day slot (Array.prototype.sort is stable), then —
+    // within a slot — the office/replacing-novena item first, so "what's next"
+    // always surfaces the morning/evening anchor over an add-on sharing that
+    // slot (e.g. Morning Contemplation as an extra, alongside Morning Prayer).
+    const ordered = [...active].sort((a, b) => {
+      const slotDiff = SLOT_RANK[a.slot] - SLOT_RANK[b.slot];
+      if (slotDiff !== 0) return slotDiff;
+      return (a.isPrimary ? 0 : 1) - (b.isPrimary ? 0 : 1);
+    });
     // "Next" = the first not-done practice whose slot HASN'T already passed
     // today (a passed slot is "tomorrow", not next). Falls back to summary.
     const next = ordered.find((i) => !i.done && !isSlotPast(i.slot, now)) ?? null;

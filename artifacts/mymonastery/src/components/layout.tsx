@@ -133,6 +133,21 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // below is repeated further down because it sits inside this
   // function and the queries are declared above their consumer.
   const earlyOfficesOnly = user?.accessTier === "offices-only";
+  // "Add Widget" menu row — only worth showing on the native app (a widget is
+  // a home-screen concept, meaningless on web) AND only once we've actually
+  // asked iOS and confirmed the user has no widget placed yet. Defaults to
+  // not-shown while loading/on web, never a flash of the row for someone who
+  // already has one.
+  const native = isNativeShell();
+  const { data: hasActiveWidget } = useQuery<boolean>({
+    queryKey: ["native-has-active-widget"],
+    queryFn: () => {
+      const bridge = (window as unknown as { PhoebeNative?: { hasActiveWidget?: () => Promise<boolean> } }).PhoebeNative;
+      return bridge?.hasActiveWidget ? bridge.hasActiveWidget() : Promise.resolve(true);
+    },
+    enabled: open && native,
+    staleTime: 60_000,
+  });
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
@@ -419,6 +434,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {/* El Jardín is NOT a main-menu entry — it lives as an option
                   INSIDE the Admin Tools page (/admin/tools). */}
               <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/about")} />
+              {/* Add Widget — last thing in the menu, native app only, and
+                  only for someone WidgetKit confirms has no widget placed. */}
+              {native && hasActiveWidget === false && (
+                <MenuRow emoji="🏠" label={t("menu.add_widget", { defaultValue: "Add Widget" })} onClick={() => navigate("/add-widget")} />
+              )}
             </div>
 
             {/* ── Sign out / (signed-out guest) quiet Sign in ── the guest row

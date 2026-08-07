@@ -3992,6 +3992,14 @@ export async function migrate() {
     // novena_progress. Not re-seeded going forward.
     try {
       await client.query(`UPDATE novenas SET archived_at = NOW() WHERE code = 'creation' AND archived_at IS NULL`);
+      // Defensive: if anyone actually started it before it was pulled, don't
+      // leave their progress row pinned to "active" — that would both show a
+      // ghost card for a novena no longer in the library AND (per the
+      // one-active-novena-at-a-time rule) sit there as their "current" one
+      // until they happened to start something else with confirmSwitch.
+      await client.query(
+        `UPDATE novena_progress SET status = 'abandoned' WHERE status = 'active' AND novena_id IN (SELECT id FROM novenas WHERE code = 'creation')`,
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       logger.warn({ msg }, "Novena archive warning");

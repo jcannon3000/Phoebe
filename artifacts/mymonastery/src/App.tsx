@@ -340,6 +340,7 @@ const GuidedPrayerPage = lazy(() => import("./pages/guided-prayer"));
 const NovenaPage = lazy(() => import("./pages/novena"));
 const NovenaDetailPage = lazy(() => import("./pages/novena-detail"));
 const NovenaLibraryPage = lazy(() => import("./pages/novena-library"));
+const AddWidgetPage = lazy(() => import("./pages/add-widget"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
 const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
@@ -956,6 +957,7 @@ function Router() {
       <Route path="/novena" component={NovenaPage} />
       <Route path="/novena/:id" component={NovenaDetailPage} />
       <Route path="/novena-library" component={NovenaLibraryPage} />
+      <Route path="/add-widget" component={AddWidgetPage} />
       <Route path="/contemplation" component={ContemplationPage} />
       <Route path="/psalms" component={PsalmsPage} />
       <Route path="/cobreathe/about" component={CobreatheAboutPage} />
