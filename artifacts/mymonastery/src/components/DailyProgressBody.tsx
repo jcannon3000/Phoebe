@@ -700,7 +700,7 @@ function PracticeCard({
   return <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
+export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void }) {
   const { t } = useTranslation();
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
@@ -725,7 +725,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -926,6 +926,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
+  // Compline is only reachable after 7pm (complineActive already folds that
+  // gate in — see useRhythmState.ts), so unlike walk/cobreathe/listening it
+  // doesn't need a customizer-configurable slot: it's always "evening".
+  const complineCard = {
+    key: "compline", emoji: "🌙", rgb: "90,100,140", done: complineDone, href: "/bcp/daily-office?mode=compline",
+    title: t("rhythm.card_compline", { defaultValue: "Compline" }),
+    blurb: complineDone ? kept : t("rhythm.blurb_compline", { defaultValue: "The night office" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
   // Every rhythm card carries the time of day it belongs to (its CustomSlot).
   // We assemble them in a sensible base order, then STABLE-sort by that slot so
   // the list ALWAYS reads morning → midday → afternoon → evening, whatever mix
@@ -1107,6 +1116,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
+    // complineActive already folds in the after-7pm gate (useRhythmState.ts)
+    // — fixed to "evening" since there's no earlier time it could ever show.
+    ...(complineActive ? [{ ...complineCard, slot: "evening" as CustomSlot }] : []),
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{
       key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180", done: readingDone, href: "/reading-log",
@@ -1222,6 +1234,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // While the completion moment is pinned, the just-done card stays in Next
   // (that's the whole point — the user watches it finish there first).
   const pinnedKey = pinnedInNext ? celebrateKey : null;
+  // Strictly undone cards — NOT the pinned-celebration inclusion above (that
+  // card is actually done, just lingering in Next for the animation), and
+  // not a guest's morning deferred to tomorrow (it isn't "left today"). Plus
+  // the office/contemplation hero when it's leading — it's excluded from
+  // visibleCards for rendering (see heroSide filter above) but is undone by
+  // construction whenever it exists. This is the same "what's left of your
+  // rhythm today" count the Next section shows, minus the pinned exception —
+  // reported upward so callers (the iOS app-icon badge) can mirror it exactly
+  // instead of hand-rolling a second, driftable copy of this logic.
+  const remainingCount =
+    visibleCards.filter((c) => !c.done && !(guestMorningTomorrow && c.key === morningAnchorKey)).length
+    + (heroLeads ? 1 : 0);
+  useEffect(() => {
+    onRemainingCount?.(remainingCount);
+  }, [remainingCount, onRemainingCount]);
   const upcomingDisplay = (() => {
     const all = visibleCards.filter((c) => (!c.done || c.key === pinnedKey) && !(guestMorningTomorrow && c.key === morningAnchorKey));
     if (maxUpcoming == null) return all;

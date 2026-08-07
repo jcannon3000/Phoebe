@@ -657,6 +657,7 @@ export default function WayOfLoveRuleFlow({
       audio: homeCardOn(user.homeLayout, "listening"),
       examen: examenSeed,
       walk: homeCardOn(user.homeLayout, "walk"),
+      compline: homeCardOn(user.homeLayout, "compline"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
     setContemplationBySide((p) => touchedRef.current ? p : {
@@ -677,14 +678,15 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit")),
     audio: homeCardOn(user?.homeLayout, "listening"),
     examen: homeCardOn(user?.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
     walk: homeCardOn(user?.homeLayout, "walk"),
+    compline: homeCardOn(user?.homeLayout, "compline"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "compline") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -915,6 +917,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
+      ...(contemplative.compline ? ["compline"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
@@ -924,6 +927,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
+      ...(contemplative.compline ? [] : ["compline"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
@@ -1066,6 +1070,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? ["prayer-list"] : []),
       ...(extras.reading ? ["reading"] : []),
       ...(extras.podcasts ? ["podcasts"] : []),
+      ...(contemplative.compline ? ["compline"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
@@ -1075,6 +1080,7 @@ export default function WayOfLoveRuleFlow({
       ...(extras.prayerList ? [] : ["prayer-list"]),
       ...(extras.reading ? [] : ["reading"]),
       ...(extras.podcasts ? [] : ["podcasts"]),
+      ...(contemplative.compline ? [] : ["compline"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
@@ -1138,7 +1144,7 @@ export default function WayOfLoveRuleFlow({
     setPrayBySide({ morning: preset.pray, evening: preset.evening ?? preset.pray });
     setCommunityWithOffice({ morning: false, evening: false });
     setContemplationStyle("silent");
-    setContemplative({ cobreathe: false, audio: false, examen: false, walk: false });
+    setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, compline: false });
     // A starter rule's silence applies to whichever sides it turns on.
     setContemplationBySide({
       morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
@@ -1386,6 +1392,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.contemplative_body", { defaultValue: "Beyond silence, choose any other contemplative practices for your day — each becomes its own card." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
@@ -2243,6 +2250,7 @@ export default function WayOfLoveRuleFlow({
     // No time-of-day sub-label anymore — these add-ons are just available
     // all day (see the "contemplative" step for the "with your prayer"
     // exception, when Creation Prayer IS the side's primary sit style).
+    ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step }] : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Creation Prayer", sub: cobreatheIsSideStyle ? "With your prayer" : "Available all day", step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step }] : []),

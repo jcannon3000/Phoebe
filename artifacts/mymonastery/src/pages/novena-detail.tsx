@@ -8,6 +8,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { playOpeningSwell } from "@/lib/amenFeedback";
+import { NOVENAS_ENABLED } from "@/lib/novenaFlag";
 
 // Novena preview — a slideshow, same shell as novena.tsx's reading deck (and
 // guided-prayer/the Examen): title, then one slide per piece of context
@@ -80,9 +81,16 @@ export default function NovenaDetailPage() {
   const { novena: activeNovena, morningActive, eveningActive, ready: rhythmReady } = useRhythmState();
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
+  // Novenas hidden for all users — see lib/novenaFlag.ts. Menu entry points
+  // are gone; this is defense-in-depth against a stale bookmark/deep link.
+  useEffect(() => {
+    if (!NOVENAS_ENABLED) setLocation("/dashboard");
+  }, [setLocation]);
+
   const { data, isLoading: novenasLoading } = useQuery<{ novenas: Novena[] }>({
     queryKey: ["/api/novenas"],
     queryFn: () => apiRequest("GET", "/api/novenas"),
+    enabled: NOVENAS_ENABLED,
   });
   const novena = (data?.novenas ?? []).find((n) => n.id === novenaId) ?? null;
   const isCurrent = activeNovena?.novenaId === novenaId;

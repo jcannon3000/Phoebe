@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { MenuHub } from "@/components/MenuHub";
+import { NOVENAS_ENABLED } from "@/lib/novenaFlag";
 
 // Browse the novena library — same MenuHub list pattern as Courses (menu-learn.tsx).
 // Tapping a card opens its preview/detail page (/novena/:id) rather than
@@ -22,9 +23,16 @@ function formatLastCompleted(iso: string): string {
 export default function NovenaLibraryPage() {
   const [, setLocation] = useLocation();
 
+  // Novenas hidden for all users — see lib/novenaFlag.ts. Menu entry points
+  // are gone; this is defense-in-depth against a stale bookmark/deep link.
+  useEffect(() => {
+    if (!NOVENAS_ENABLED) setLocation("/dashboard");
+  }, [setLocation]);
+
   const { data } = useQuery<{ novenas: Novena[] }>({
     queryKey: ["/api/novenas"],
     queryFn: () => apiRequest("GET", "/api/novenas"),
+    enabled: NOVENAS_ENABLED,
   });
 
   const novenas = useMemo(() => data?.novenas ?? [], [data]);

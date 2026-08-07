@@ -33,6 +33,7 @@ import { isFirstOpen } from "@/lib/firstOpen";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { readCachedHomeLayout } from "@/lib/homeLayoutCache";
+import { NOVENAS_ENABLED } from "@/lib/novenaFlag";
 
 // How the user has chosen to pray the daily office — drives whether the
 // Morning/Evening anchor reads "Prayer", "Devotion", or "Pray together".
@@ -116,6 +117,9 @@ export type RhythmState = {
   readingActive: boolean;
   podcastsActive: boolean;
   walkActive: boolean;
+  /** Compline (the night office) as an opt-in add-on card — only ever true
+   *  from 7pm local on, since it's the office for the end of the day. */
+  complineActive: boolean;
   cobreatheActive: boolean;
   prayerListActive: boolean;
   examenDone: boolean;
@@ -123,6 +127,7 @@ export type RhythmState = {
   readingDone: boolean;
   podcastsDone: boolean;
   walkDone: boolean;
+  complineDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
@@ -362,11 +367,16 @@ export function useRhythmState(): RhythmState {
   const [officeLocal, setOfficeLocal] = useState(() => ({
     morning: officeLocalDone(["morning", "morning-devotion"]),
     evening: officeLocalDone(["evening", "early-evening-devotion", "compline"]),
+    // Compline tracked on its own too — as an opt-in add-on card it needs a
+    // done-flag independent of the evening anchor (which compline also
+    // satisfies, hence its presence in BOTH lists).
+    compline: officeLocalDone(["compline"]),
   }));
   useEffect(() => {
     const recheck = () => setOfficeLocal({
       morning: officeLocalDone(["morning", "morning-devotion"]),
       evening: officeLocalDone(["evening", "early-evening-devotion", "compline"]),
+      compline: officeLocalDone(["compline"]),
     });
     window.addEventListener(OFFICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -451,7 +461,12 @@ export function useRhythmState(): RhythmState {
     // Gate on having any account at all, matching what the server accepts.
     enabled: !!user,
   });
-  const activeNovena = novenaData?.active ?? null;
+  // Novenas hidden for all users per owner request — see lib/novenaFlag.ts.
+  // Every consumer (layout.tsx dots, DailyProgressBody's anytime card,
+  // widgetSync) reads novenaActive/novena off this hook, so forcing both to
+  // their "nothing active" values here hides it everywhere without
+  // touching each call site.
+  const activeNovena = NOVENAS_ENABLED ? (novenaData?.active ?? null) : null;
   const novenaActive = !!activeNovena;
   const novenaDone = novenaActive && activeNovena!.lastCompletedLocalDate === day;
   // "Replace" mode — the novena stands in for that side's anchor entirely
@@ -476,6 +491,11 @@ export function useRhythmState(): RhythmState {
   const podcastsActive = homeCardActive(hl, "podcasts");
   // Contemplative Walk — a slotted contemplative practice, logged like reading.
   const walkActive = homeCardActive(hl, "walk");
+  // Compline — the night office, offered as a contemplative add-on card. Only
+  // ever surfaces from 7pm on (it IS the night office; a Compline card sitting
+  // in the rhythm at 9am is just noise), so the card disappears from Next
+  // during the day and appears at 19:00 local.
+  const complineActive = homeCardActive(hl, "compline") && new Date().getHours() >= 19;
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.
@@ -503,7 +523,7 @@ export function useRhythmState(): RhythmState {
   // invisible for every current user, treat it as active unless explicitly
   // hidden — the customizer can still turn it off from here.
   const prayerListActive = !(new Set(hl?.hidden ?? []).has("prayer-list"));
-  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || prayerListActive;
+  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || complineActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -685,6 +705,10 @@ export function useRhythmState(): RhythmState {
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
+  // Compline is an OFFICE, so its done-state comes from the office flags (the
+  // office viewer's local stamp, or the server's evening office history) —
+  // not the practice_completion table the logging-first practices use.
+  const complineDone = complineActive && (officeLocal.compline || !!todayOffice?.evening);
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
@@ -846,6 +870,7 @@ export function useRhythmState(): RhythmState {
     ...(readingActive ? [readingDone] : []),
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
+    ...(complineActive ? [complineDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
@@ -899,6 +924,7 @@ export function useRhythmState(): RhythmState {
     readingActive,
     podcastsActive,
     walkActive,
+    complineActive,
     cobreatheActive,
     prayerListActive,
     examenDone,
@@ -906,6 +932,7 @@ export function useRhythmState(): RhythmState {
     readingDone,
     podcastsDone,
     walkDone,
+    complineDone,
     cobreatheDone,
     prayerListDone,
     customAnchors,

@@ -246,7 +246,12 @@ export default function NovenaPage() {
               style={{ maxWidth: 480, textAlign: "center" }}
             >
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 6, lineHeight: 1.5 }}>
-                {novena.title}{novena.saint ? ` — ${novena.saint}` : ""}
+                {/* Don't repeat the saint's name if the title already ends
+                    with it (e.g. "A Novena of St. Francis of Assisi") —
+                    only append when it adds new information (e.g. "A Novena
+                    of Our Lady of Mount Carmel" + "The Blessed Virgin Mary,
+                    under her title of Mount Carmel"). */}
+                {novena.title}{novena.saint && !novena.title.endsWith(novena.saint) ? ` — ${novena.saint}` : ""}
               </p>
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
                 Day {novena.displayDayNumber} of {novena.dayCount}

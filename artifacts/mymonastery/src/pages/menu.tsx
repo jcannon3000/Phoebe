@@ -82,11 +82,8 @@ export default function MenuPage() {
       // prayed through in a quiet slideshow; optionally shareable to a
       // community / circle. Account-scoped data, so hidden for guests.
       ...(signedUp && prayerListEnabled ? [{ emoji: "🕊️", label: t("menu.prayer_list", { defaultValue: "Prayer List" }), sub: t("menu.prayer_list_sub", { defaultValue: "Your own list of who & what you're praying for" }), onClick: () => go("/intentions") }] : []),
-      // Novenas also get their own top-level entry point (above Learn) — also
-      // reachable from Practices, same as Daily Offices gets both a Pray-group
-      // row and its own /menu/bcp entry point above. Server-tracked (one at a
-      // time), so guests (device-local state only) don't get an entry here.
-      ...(signedUp ? [{ emoji: "🕊️", label: "Novenas", sub: "Nine days of prayer, one day at a time", onClick: () => go("/novena-library") }] : []),
+      // Novenas hidden for all users per owner request (2026-08-07) — see
+      // useRhythmState.ts's NOVENAS_ENABLED comment for why.
     ],
   });
 
