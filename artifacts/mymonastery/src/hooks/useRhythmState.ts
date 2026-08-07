@@ -491,11 +491,16 @@ export function useRhythmState(): RhythmState {
   const podcastsActive = homeCardActive(hl, "podcasts");
   // Contemplative Walk — a slotted contemplative practice, logged like reading.
   const walkActive = homeCardActive(hl, "walk");
-  // Compline — the night office, offered as a contemplative add-on card. Only
-  // ever surfaces from 7pm on (it IS the night office; a Compline card sitting
-  // in the rhythm at 9am is just noise), so the card disappears from Next
-  // during the day and appears at 19:00 local.
-  const complineActive = homeCardActive(hl, "compline") && new Date().getHours() >= 19;
+  // Compline — the night office, offered as a contemplative add-on card.
+  // complineActive means "the user has this in their rhythm" (mirrors every
+  // other *Active flag — never time-gated, so the card is reliably present
+  // in Next and the customizer reflects the choice immediately after
+  // saving). The 7pm-only rule is a "not yet" state on that SAME card
+  // (DailyProgressBody sets later: hour < 19), exactly how Evening Prayer
+  // stays visible all day but shows "Later" until its own hour — not an
+  // on/off toggle that makes the card vanish, which read as "it isn't
+  // holding" when it was actually just correctly absent before 7pm.
+  const complineActive = homeCardActive(hl, "compline");
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.

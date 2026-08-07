@@ -926,14 +926,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
-  // Compline is only reachable after 7pm (complineActive already folds that
-  // gate in — see useRhythmState.ts), so unlike walk/cobreathe/listening it
-  // doesn't need a customizer-configurable slot: it's always "evening".
+  // Compline is only reachable after 7pm, but — like Evening Prayer below —
+  // the card itself stays in Next all day as a disabled "Later" state
+  // rather than disappearing outright (complineActive, from useRhythmState,
+  // is now just "the user has this in their rhythm", never time-gated; a
+  // card that vanishes when unselected-vs-not-yet-time are conflated read
+  // as "Compline isn't holding" once it was picked). No customizer time
+  // picker needed since it's always "evening" — the gate itself is the slot.
   const complineCard = {
     key: "compline", emoji: "🌙", rgb: "90,100,140", done: complineDone, href: "/bcp/daily-office?mode=compline",
     title: t("rhythm.card_compline", { defaultValue: "Compline" }),
     blurb: complineDone ? kept : t("rhythm.blurb_compline", { defaultValue: "The night office" }),
-    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: hour < 19,
   };
   // Every rhythm card carries the time of day it belongs to (its CustomSlot).
   // We assemble them in a sensible base order, then STABLE-sort by that slot so
