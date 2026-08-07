@@ -16,7 +16,6 @@ import { playOpeningSwell } from "@/lib/amenFeedback";
 // with addition presented first/primary — instead of a separate popup.
 
 const FONT = "'Space Grotesk', sans-serif";
-const SERIF = "Georgia, 'Times New Roman', serif";
 const BG = "#0C1F12";
 const WARM = "#F0EDE6";
 const EYEBROW = "rgba(143,175,150,0.75)";
@@ -199,7 +198,7 @@ export default function NovenaDetailPage() {
                   <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
                     {slide.kind === "history" ? "History" : slide.kind === "intention" ? "Intention" : "Source"}
                   </p>
-                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: SERIF, fontSize: "clamp(16px, 4.4vw, 20px)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(18px, 4.8vw, 23px)", lineHeight: 1.55, whiteSpace: "pre-line" }}>
                     {slide.text}
                   </p>
                 </>
@@ -207,7 +206,7 @@ export default function NovenaDetailPage() {
               {slide.kind === "close" && (
                 <>
                   <p style={{ fontSize: 36, marginBottom: 16 }} aria-hidden>🕊️</p>
-                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: SERIF, fontSize: "clamp(16px, 4.4vw, 20px)", lineHeight: 1.6 }}>
+                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(18px, 4.8vw, 23px)", lineHeight: 1.55 }}>
                     One day rides in your daily routine at a time — it only advances when you mark that day complete, never automatically by the calendar. You can stop at any point.
                   </p>
                 </>

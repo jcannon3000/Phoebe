@@ -1083,6 +1083,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
+    // The active novena — one card while it's in progress, gone once the
+    // final day is marked done (novenaActive drops the moment the server
+    // flips status to "completed"). Progress bar counts completed days
+    // (currentDay - 1) toward dayCount, same pattern as the silence goal card.
+    // Placed ahead of the optional practices below (not after them): those
+    // often share this same "anytime" slot rank, and Next's cap (maxUpcoming,
+    // see dashboard.tsx) slices off whatever falls past position 7 — a novena
+    // the person deliberately started is the one card that should never be
+    // the thing silently pushed out by a passive add-on practice.
+    ...(novenaActive && novena && !novenaReplacesMorning && !novenaReplacesEvening ? [{
+      key: "novena", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
+      href: "/novena",
+      title: novena.title,
+      blurb: novenaDone
+        ? kept
+        : t("rhythm.novena_day_of", { day: novena.currentDay, count: novena.dayCount, defaultValue: `Day ${novena.currentDay} of ${novena.dayCount}` }),
+      progress: { current: novena.currentDay - 1, goal: novena.dayCount },
+      alwaysShowProgress: true,
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
     // Optional practices ride at the time of day the user chose for each.
     ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
@@ -1105,21 +1125,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // that's already rendered above as the "evening" card (retitled "The Examen"
     // by officeTitle), so this standalone add-on card would otherwise double it.
     ...(examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen" ? [{ ...examenCard, slot: examenSlot }] : []),
-    // The active novena — one card while it's in progress, gone once the
-    // final day is marked done (novenaActive drops the moment the server
-    // flips status to "completed"). Progress bar counts completed days
-    // (currentDay - 1) toward dayCount, same pattern as the silence goal card.
-    ...(novenaActive && novena && !novenaReplacesMorning && !novenaReplacesEvening ? [{
-      key: "novena", slot: "anytime" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
-      href: "/novena",
-      title: novena.title,
-      blurb: novenaDone
-        ? kept
-        : t("rhythm.novena_day_of", { day: novena.currentDay, count: novena.dayCount, defaultValue: `Day ${novena.currentDay} of ${novena.dayCount}` }),
-      progress: { current: novena.currentDay - 1, goal: novena.dayCount },
-      alwaysShowProgress: true,
-      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-    }] : []),
     // Prayer List is NOT a routine anchor — no card here. It's already woven
     // into the offices (BCP office / Simple Guided Prayer / Psalms) as
     // slides, and gets its own dedicated section on the home screen (see
