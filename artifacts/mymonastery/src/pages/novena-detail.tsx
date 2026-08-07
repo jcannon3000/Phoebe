@@ -77,7 +77,7 @@ export default function NovenaDetailPage() {
   const novenaId = Number(params.id);
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
-  const { novena: activeNovena, morningActive, eveningActive } = useRhythmState();
+  const { novena: activeNovena, morningActive, eveningActive, ready: rhythmReady } = useRhythmState();
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const { data, isLoading: novenasLoading } = useQuery<{ novenas: Novena[] }>({
@@ -113,12 +113,18 @@ export default function NovenaDetailPage() {
   // goes through the deck first (history/intention/source), THEN reaches the
   // switch-ask at the end via next()'s normal isLast handling — otherActive
   // is only used to word that ask, not to skip getting there.
+  // MUST wait on rhythmReady: activeNovena comes from useRhythmState's own
+  // (slower) query, so on the first render after the library data lands it's
+  // still null and isCurrent is false. Latching skipChecked at that moment
+  // meant the redirect never re-ran once the real active novena arrived —
+  // clicking the novena that IS in your routine dropped you on the intro deck
+  // instead of today's prayer, which read as "novenas aren't working."
   useEffect(() => {
-    if (skipChecked || !novena) return;
+    if (skipChecked || !novena || !rhythmReady) return;
     setSkipChecked(true);
     if (isCurrent) { setLocation("/novena"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [novena, isCurrent, skipChecked]);
+  }, [novena, isCurrent, skipChecked, rhythmReady]);
 
   if (!novena) {
     return (

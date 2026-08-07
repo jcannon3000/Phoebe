@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 import { shareInvite } from "@/lib/shareInvite";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
 
 // ── /invite/share ─────────────────────────────────────────────────────────
 //
@@ -82,20 +83,22 @@ export default function InviteSharePage() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center px-7 pb-10 max-w-md mx-auto w-full">
-        {/* No card — the title sits directly on the photo/wash backdrop, the
-            same big-title treatment splash/hero copy uses elsewhere in the
-            app, rather than boxed inside a frosted panel. */}
+      <div className="flex-1 flex flex-col justify-center px-6 pb-10 max-w-md mx-auto w-full">
+        {/* Frosted panel over the leaf photo — the same recipe the rest of
+            the app's photo-backed surfaces use (see lib/frost.ts), rather
+            than bare text directly on the wash. */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl px-6 py-8"
+          style={{ ...FROST, border: "1px solid rgba(46,107,64,0.38)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
         >
           <p className="text-[12px] uppercase tracking-[0.2em] font-semibold mb-3" style={{ color: "rgba(240,237,230,0.7)" }}>
             {t("invite_share.eyebrow", { defaultValue: "Invite someone" })}
           </p>
-          <h1 className="text-[36px] font-semibold leading-tight mb-5" style={{ color: WARM, fontFamily: FONT }}>
-            {t("invite_share.title", { defaultValue: "Give someone a way to pray every day" })}
+          <h1 className="text-[32px] font-semibold leading-tight mb-5" style={{ color: WARM, fontFamily: FONT }}>
+            {t("invite_share.title", { defaultValue: "Welcome someone into the prayer life of the church" })}
           </h1>
           <p className="text-[16px] leading-relaxed mb-8" style={{ color: WARM, fontFamily: SERIF }}>
             {t("invite_share.lede", {
