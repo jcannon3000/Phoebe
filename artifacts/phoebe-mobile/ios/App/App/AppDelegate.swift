@@ -87,8 +87,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return "/begin-prayer"
         case "app.withphoebe.mobile.shortcut.contemplation":
             return "/contemplation"
+        case "app.withphoebe.mobile.shortcut.offices":
+            return "/offices"
+        // The old "New prayer request" shortcut is gone — prayer requests are
+        // off for everyone, so /pray-request/new was a dead surface. Kept
+        // mapped (not deleted) so an upgraded install whose cached shortcut
+        // still carries the old type lands somewhere real instead of nowhere.
         case "app.withphoebe.mobile.shortcut.prayer-request-new":
-            return "/pray-request/new"
+            return "/offices"
         // The "Write a letter" shortcut is gone — Letters were removed from the
         // app and /letters/new 404s. Its Info.plist entry is deleted too.
         default:

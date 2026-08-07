@@ -2389,7 +2389,7 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
 // doesn't do anything." (Earlier this list was 4 keys and gratitude /
 // examen rows on /customize-home couldn't be turned on at all because
 // the server kept stripping them out on the way to the DB.)
-const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

@@ -136,14 +136,20 @@
 			<string>UIApplicationShortcutIconTypePause</string>
 		</dict>
 		<dict>
+			<!-- Was "New prayer request" (/pray-request/new) — prayer
+			     requests are off for everyone now, so that shortcut
+			     opened a dead surface. Replaced with the Daily Offices
+			     picker, which is live and is the app's other main
+			     entry point. New type identifier so devices don't
+			     reuse the cached prayer-request shortcut. -->
 			<key>UIApplicationShortcutItemType</key>
-			<string>app.withphoebe.mobile.shortcut.prayer-request-new</string>
+			<string>app.withphoebe.mobile.shortcut.offices</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>New prayer request</string>
+			<string>Daily Offices</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
-			<string>Share what to carry</string>
+			<string>Morning, Evening, Compline</string>
 			<key>UIApplicationShortcutItemIconType</key>
-			<string>UIApplicationShortcutIconTypeAdd</string>
+			<string>UIApplicationShortcutIconTypeBookmark</string>
 		</dict>
 	</array>
 </dict>

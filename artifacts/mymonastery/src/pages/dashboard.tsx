@@ -6262,7 +6262,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
@@ -6271,7 +6271,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "compline", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -6536,15 +6536,25 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     }
   }, [dashPrayerRequests]);
 
-  // Sync the iOS app-icon badge to the live unprayed count whenever
-  // the dashboard's data settles. Without this the badge could only
-  // grow (via APNs pushes) and never shrink after the user prays —
-  // see PhoebeBadgePlugin.swift for why the native layer hands the
-  // count over to the web layer. No-op on web (setBadge guards on
-  // Capacitor.isNativePlatform internally).
+  // Live "how many practices are left today" count, reported up by whichever
+  // DailyProgressBody is currently mounted (see its onRemainingCount prop) —
+  // the SAME Next-list math the home renders, so the badge can never drift
+  // from what the user actually sees as undone. Previously the badge tracked
+  // newPrayersCount (other people's prayer requests waiting for an amen),
+  // which read as a stuck/mystery "1" — a request with nothing visibly
+  // pending on the home screen. Practices are what the badge means now.
+  const [practicesRemaining, setPracticesRemaining] = useState(0);
+  const handleRemainingCount = useCallback((n: number) => setPracticesRemaining(n), []);
+
+  // Sync the iOS app-icon badge to the live remaining-practices count
+  // whenever it changes. Without this the badge could only grow (via APNs
+  // pushes) and never shrink after a practice is completed — see
+  // PhoebeBadgePlugin.swift for why the native layer hands the count over to
+  // the web layer. No-op on web (setBadge guards on Capacitor.isNativePlatform
+  // internally).
   //
   // Two trigger points:
-  //  1. newPrayersCount changes (user prays, data invalidates, count drops).
+  //  1. practicesRemaining changes (a practice is completed, count drops).
   //  2. The tab becomes visible again (returning from a push, or
   //     foregrounding the iOS app). APNs may have set the badge while
   //     we were backgrounded; resync to our authoritative count so a
@@ -6554,7 +6564,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       .PhoebeNative;
     if (!native?.setBadge) return;
     const sync = () => {
-      native.setBadge?.(newPrayersCount).catch(() => { /* non-fatal */ });
+      native.setBadge?.(practicesRemaining).catch(() => { /* non-fatal */ });
     };
     sync();
     const onVisibility = () => {
@@ -6566,7 +6576,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", sync);
     };
-  }, [newPrayersCount]);
+  }, [practicesRemaining]);
 
   const isLoading = momentsLoading;
 
@@ -7143,7 +7153,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       {/* Keep the day's rhythm on the home even when complete —
                           the Next list empties and the Done section holds every
                           kept card (owner). */}
-                      <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
+                      <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
                       <PrayerListSection />
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
@@ -7196,7 +7206,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     {/* Keep the completed cards on the home — Done section. */}
-                    <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
+                    <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
                     <PrayerListSection />
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
@@ -7228,6 +7238,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                      the prayer list below instead of a separate top card. */
                   leadCard={null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
+                  onRemainingCount={handleRemainingCount}
                 />
                 <PrayerListSection />
                 {/* The in-rhythm "Coming up" event teaser was removed — events

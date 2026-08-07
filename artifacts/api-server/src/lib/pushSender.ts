@@ -951,22 +951,18 @@ export async function sendNewPrayerRequestPush(
   const display = opts.isAnonymous
     ? "Someone"
     : ((opts.authorName || "Someone").split(/\s+/)[0] || "Someone");
-  // Compute badge after the new request has been written — getUnprayedCount
-  // queries the DB directly, so the just-inserted request is included.
-  // Failures here are non-fatal: if the count blows up we still want
-  // the push to land, just without a badge.
-  let badge: number | undefined;
-  try {
-    const { getUnprayedCount } = await import("./unprayedCount");
-    badge = await getUnprayedCount(recipientUserId);
-  } catch (err) {
-    logger.warn({ err, recipientUserId }, "[push] failed to compute unprayed badge count");
-  }
+  // No badge. The app-icon badge means ONE thing — how many practices are
+  // left in today's rhythm — and the client is its only author (see
+  // dashboard.tsx's setBadge sync off DailyProgressBody's remainingCount).
+  // This used to send getUnprayedCount (unprayed prayer REQUESTS), a
+  // different number entirely, so a push would overwrite the practice count
+  // with an unrelated one and the icon would show e.g. 1 while three
+  // practices were still undone. Leaving `badge` undefined means APNs
+  // doesn't touch the icon at all and the client's value stands.
   return sendPushToUser(recipientUserId, {
     title: `${display} is asking for your prayers`,
     body: "Open Phoebe to pray for them.",
     path: `/prayer-requests/${opts.prayerRequestId}`,
-    badge,
     // Shared thread-id across ALL pending prayer-request pushes — iOS
     // auto-groups same-thread notifications into a single stack on
     // the lock screen, so a user with three or four unprayed asks
@@ -1203,24 +1199,15 @@ export async function sendNewGroupMomentPush(
   // Intercessions are treated as prayer requests on the client: the
   // recipient should be able to tap the push, land directly on the
   // prayer slideshow, and pray the new intercession without first
-  // navigating to a community page. The app-icon badge also reflects
-  // the latest unprayed count so the request is visible at a glance
-  // before the user opens the app.
+  // navigating to a community page.
+  // No badge — see sendNewPrayerRequestPush above. The icon count means
+  // "practices left today" and is client-owned; sending an unprayed-
+  // intercession count here overwrote it with an unrelated number.
   const isIntercession = opts.templateType === "intercession";
-  let badge: number | undefined;
-  if (isIntercession) {
-    try {
-      const { getUnprayedCount } = await import("./unprayedCount");
-      badge = await getUnprayedCount(userId);
-    } catch (err) {
-      logger.warn({ err, userId }, "[push] failed to compute unprayed badge for intercession");
-    }
-  }
   return sendPushToUser(userId, {
     title: opts.momentName || "Phoebe",
     body: `${opts.creatorName} ${verb}.`,
     path: isIntercession ? `/prayer-mode` : `/communities/${opts.groupSlug}`,
-    badge,
     threadId: `group-moment-${opts.groupSlug}`,
     sound: PHOEBE_SOUND_MID,
   });
@@ -1552,7 +1539,9 @@ export function sendWeeklyDigestPush(
     body,
     path: "/prayer-mode?queue=feed-digest",
     threadId: "weekly-digest",
-    badge: 1,
+    // No badge. This hardcoded `badge: 1` was the most likely cause of an
+    // icon stuck on "1" while three practices were still undone — see
+    // sendNewPrayerRequestPush for why the badge is client-owned.
   });
 }
 
