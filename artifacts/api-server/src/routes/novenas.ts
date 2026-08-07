@@ -54,16 +54,26 @@ router.get("/novenas", async (req: Request, res: Response): Promise<void> => {
     const novenaIds = rows.map((r) => r.id);
     const progressRows = await db
       .select({
+        id: novenaProgressTable.id,
         novenaId: novenaProgressTable.novenaId,
         status: novenaProgressTable.status,
         completedAt: novenaProgressTable.completedAt,
       })
       .from(novenaProgressTable)
       .where(and(eq(novenaProgressTable.userId, userId), inArray(novenaProgressTable.novenaId, novenaIds)))
-      .orderBy(desc(novenaProgressTable.completedAt));
+      // completedAt is null for every active row (a tie), so without a
+      // tie-break this picked whichever active row the DB happened to
+      // return last — GET /me/novena orders by id desc, so match that
+      // here too, or the two endpoints can disagree about which novena
+      // is "current" if more than one active row ever exists at once.
+      .orderBy(desc(novenaProgressTable.completedAt), desc(novenaProgressTable.id));
 
     for (const p of progressRows) {
-      if (p.status === "active") currentNovenaId = p.novenaId;
+      // Rows are ordered most-recent-first — take the FIRST active row we
+      // see and stop overwriting; the previous version kept overwriting on
+      // every active row, so with ties (every active row has completedAt
+      // null) it silently landed on the OLDEST one instead of the newest.
+      if (p.status === "active" && currentNovenaId === null) currentNovenaId = p.novenaId;
       if (p.status === "completed" && p.completedAt && !lastCompletedByNovena.has(p.novenaId)) {
         lastCompletedByNovena.set(p.novenaId, p.completedAt.toISOString());
       }
@@ -83,10 +93,16 @@ router.get("/me/novena", async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
 
+  // The partial unique index (migrate.ts) should guarantee at most one
+  // active row per user, but ORDER BY + LIMIT 1 here (matching GET /novenas
+  // below) means that even if that ever drifts, both endpoints agree on
+  // which row wins — the most recently started one — instead of picking
+  // arbitrary, possibly DIFFERENT rows and disagreeing with each other.
   const [progress] = await db
     .select()
     .from(novenaProgressTable)
     .where(and(eq(novenaProgressTable.userId, userId), eq(novenaProgressTable.status, "active")))
+    .orderBy(desc(novenaProgressTable.id))
     .limit(1);
 
   if (!progress) { res.json({ active: null }); return; }
@@ -169,10 +185,29 @@ router.post("/novenas/:id/start", async (req: Request, res: Response): Promise<v
   const replacesSlotRaw = req.body?.replacesSlot;
   const replacesSlot = replacesSlotRaw === "morning" || replacesSlotRaw === "evening" ? replacesSlotRaw : null;
 
-  if (existing) {
-    await db.update(novenaProgressTable).set({ status: "abandoned" }).where(eq(novenaProgressTable.id, existing.id));
+  // Transactional — a double-tap (or any two concurrent requests) racing
+  // between the abandon and the insert could otherwise both pass the
+  // "existing" check above and each insert their own active row, leaving
+  // two — the exact ambiguity GET /me/novena and GET /novenas above just
+  // got hardened against, but better to make it impossible here too.
+  try {
+    await db.transaction(async (tx) => {
+      if (existing) {
+        await tx.update(novenaProgressTable).set({ status: "abandoned" }).where(eq(novenaProgressTable.id, existing.id));
+      }
+      await tx.insert(novenaProgressTable).values({ userId, novenaId, currentDay: 1, replacesSlot });
+    });
+  } catch (err: unknown) {
+    // The partial unique index (one active row per user) rejecting a
+    // genuine race is the one case worth a clear response instead of a
+    // bare 500 — the client can just retry.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("uniq_novena_progress_active_per_user")) {
+      res.status(409).json({ error: "active_exists" });
+      return;
+    }
+    throw err;
   }
-  await db.insert(novenaProgressTable).values({ userId, novenaId, currentDay: 1, replacesSlot });
 
   res.json({ ok: true, currentDay: 1, replacesSlot });
 });
