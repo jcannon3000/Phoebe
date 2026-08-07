@@ -153,6 +153,16 @@ struct PhoebeProvider: TimelineProvider {
     }
 }
 
+// ── Fonts ─────────────────────────────────────────────────────────────────
+// Space Grotesk — the app's actual typeface (SpaceGrotesk-Regular.ttf /
+// -Bold.ttf, bundled in this target and registered via Info.plist's
+// UIAppFonts), instead of the system font, so the home-screen widget reads
+// like the rest of the app. Only two static weights are available (no
+// synthetic bolding), so "semibold" text uses the Bold face — visually the
+// closer match of the two.
+private func sgRegular(_ size: CGFloat) -> Font { .custom("SpaceGrotesk-Regular", size: size) }
+private func sgBold(_ size: CGFloat) -> Font { .custom("SpaceGrotesk-Bold", size: size) }
+
 // ── Views ─────────────────────────────────────────────────────────────────
 struct PhoebeWidgetView: View {
     @Environment(\.widgetFamily) var family
@@ -207,7 +217,7 @@ struct PhoebeWidgetView: View {
                 anchorDot(done: done)
             }
             Text("\(stats.doneCount)/\(stats.totalAnchors)")
-                .font(.system(size: 12, weight: .semibold))
+                .font(sgBold(12))
                 .foregroundColor(phoebeSage)
                 .padding(.leading, 2)
         }
@@ -268,17 +278,17 @@ struct PhoebeWidgetView: View {
             Rectangle().fill(accentColor).frame(width: 4)
             VStack(alignment: .leading, spacing: 5) {
                 Text(heroEyebrow)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(sgBold(11))
                     .tracking(1.6)
                     .foregroundColor(phoebeSage.opacity(0.65))
                 Text(heroTitle)
-                    .font(.system(size: 23, weight: .bold))
+                    .font(sgBold(23))
                     .foregroundColor(phoebeWarm)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if !heroSubtitle.isEmpty {
                     Text(heroSubtitle)
-                        .font(.system(size: 13))
+                        .font(sgRegular(13))
                         .foregroundColor(phoebeSage)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -292,7 +302,7 @@ struct PhoebeWidgetView: View {
                     HStack(spacing: 0) {
                         Spacer(minLength: 0)
                         HStack(spacing: 4) {
-                            Text(heroCta).font(.system(size: 13, weight: .semibold))
+                            Text(heroCta).font(sgBold(13))
                             Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
                         }
                         .foregroundColor(phoebeWarm)
@@ -313,18 +323,18 @@ struct PhoebeWidgetView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 5) {
                 Image(systemName: "leaf.fill").font(.system(size: 13)).foregroundColor(accentColor)
-                Text("Phoebe").font(.system(size: 13, weight: .semibold)).foregroundColor(phoebeWarm.opacity(0.75))
+                Text("Phoebe").font(sgBold(13)).foregroundColor(phoebeWarm.opacity(0.75))
             }
             Spacer()
-            Text("\(stats.doneCount) of \(stats.totalAnchors)").font(.system(size: 34, weight: .bold)).foregroundColor(phoebeWarm)
-            Text("done today").font(.system(size: 12)).foregroundColor(phoebeWarm.opacity(0.75))
+            Text("\(stats.doneCount) of \(stats.totalAnchors)").font(sgBold(34)).foregroundColor(phoebeWarm)
+            Text("done today").font(sgRegular(12)).foregroundColor(phoebeWarm.opacity(0.75))
             HStack(spacing: 5) {
                 ForEach(Array(stats.dotList.enumerated()), id: \.offset) { _, done in
                     anchorDot(done: done)
                 }
             }.padding(.top, 6)
             Spacer()
-            Text(stats.todayLine).font(.system(size: 12, weight: .medium)).foregroundColor(phoebeWarm.opacity(0.85)).lineLimit(1)
+            Text(stats.todayLine).font(sgBold(12)).foregroundColor(phoebeWarm.opacity(0.85)).lineLimit(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
