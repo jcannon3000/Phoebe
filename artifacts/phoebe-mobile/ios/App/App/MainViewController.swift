@@ -4,14 +4,18 @@
 // CAPBridgeViewController to register PhoebeWidgetPlugin EXPLICITLY.
 //
 // Why: Capacitor auto-discovers app-target plugins through the
-// Objective-C runtime, and that works for the in-app plugins that ARE
-// referenced elsewhere in Swift (PhoebeAudio, BibleBrowser, PhoebeBadge).
-// But PhoebeWidget is referenced ONLY in its own definition file, so this
-// Cap 8 build's linker dead-strips the class and it never appears in
-// window.Capacitor.Plugins. Registering the instance here in
-// capacitorDidLoad() is the path Capacitor documents for app-embedded
-// plugins and guarantees the Home Screen widget actually receives data
-// (PhoebeWidget.update writes the App Group + reloads WidgetKit).
+// Objective-C runtime, but that only holds for a plugin class something
+// else in Swift actually REFERENCES. A plugin referenced only in its own
+// definition file gets dead-stripped by this Cap 8 build's linker and
+// never appears in window.Capacitor.Plugins — the JS side then silently
+// no-ops through its optional chaining, with no error anywhere.
+//
+// Only BibleBrowser survives on its own (BibleWebViewController
+// references it). Every other in-app plugin must be registered here.
+// This comment used to claim PhoebeAudio and PhoebeBadge were referenced
+// elsewhere too; neither was, and both were dead-stripped for it.
+// Before adding a plugin, grep for a REAL (non-comment) Swift reference —
+// a mention in a comment does not keep the symbol alive.
 
 import UIKit
 import Capacitor
@@ -38,6 +42,16 @@ class MainViewController: CAPBridgeViewController {
         // sheet for the web view (Save to Files as PDF / AirPrint / share).
         // Referenced only in its own file, so register it explicitly like the rest.
         bridge?.registerPluginInstance(PhoebePrintPlugin())
+        // PhoebeBadge — THE reason the app-icon badge looked "hardcoded to 1".
+        // Nothing in Swift referenced PhoebeBadgePlugin (the one mention was a
+        // COMMENT in AppDelegate), so it was dead-stripped and
+        // window.Capacitor.Plugins.PhoebeBadge was undefined. native-shell's
+        // setBadge guards on `if (plugin?.setBadge)`, so every call the
+        // dashboard made — including setBadge(0) on a fully-kept day — silently
+        // did nothing. The icon was therefore only ever written by APNs pushes
+        // and just kept whatever number the last one sent. Registering it makes
+        // the client the badge's actual author, as intended.
+        bridge?.registerPluginInstance(PhoebeBadgePlugin())
     }
 
     // Edge-to-edge: render the WebView UNDER a transparent status bar
