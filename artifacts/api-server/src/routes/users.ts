@@ -278,7 +278,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         AND (
           -- Office/devotion counts only when the slideshow was finished
           -- (completed = TRUE); national-cathedral stays an attestation tap.
-          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
+          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
         )
     `);
@@ -538,6 +538,13 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
         CASE
           WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
           WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
+          -- Compline is its OWN side, never folded into 'evening'. It can be
+          -- either the evening ANCHOR (a user whose evening BCP form is
+          -- Compline) or a standalone add-on card alongside Evening Prayer —
+          -- only the client knows which. Reporting it separately lets the
+          -- client credit the right thing; folding it into 'evening' here
+          -- would tick Evening Prayer for every add-on user.
+          WHEN surface = 'compline' THEN 'compline'
         END AS side
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
@@ -545,7 +552,7 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           -- The office/devotion only counts once the slideshow is finished
           -- (closing Amen/Done or the book attestation set completed=TRUE).
           -- A partial sit that auto-commits on unmount has completed=FALSE.
-          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
+          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
           -- Listening to the read-aloud office podcast counts once the listener
           -- crosses 60% — the client posts that row with completed = TRUE.
@@ -553,23 +560,24 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);
-    const byDay = new Map<string, { morning: boolean; evening: boolean }>();
+    const byDay = new Map<string, { morning: boolean; evening: boolean; compline: boolean }>();
     for (const r of rows.rows) {
-      const slot = byDay.get(r.day) ?? { morning: false, evening: false };
+      const slot = byDay.get(r.day) ?? { morning: false, evening: false, compline: false };
       if (r.side === "morning") slot.morning = true;
       if (r.side === "evening") slot.evening = true;
+      if (r.side === "compline") slot.compline = true;
       byDay.set(r.day, slot);
     }
     // Build the 7-day window in user-tz, oldest first.
     const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
     const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
-    const days: { ymd: string; morning: boolean; evening: boolean }[] = [];
+    const days: { ymd: string; morning: boolean; evening: boolean; compline: boolean }[] = [];
     for (let i = 6; i >= 0; i--) {
       const dt = new Date(Date.UTC(ty, tm - 1, td));
       dt.setUTCDate(dt.getUTCDate() - i);
       const ymd = dt.toISOString().slice(0, 10);
-      const slot = byDay.get(ymd) ?? { morning: false, evening: false };
-      days.push({ ymd, morning: slot.morning, evening: slot.evening });
+      const slot = byDay.get(ymd) ?? { morning: false, evening: false, compline: false };
+      days.push({ ymd, morning: slot.morning, evening: slot.evening, compline: slot.compline });
     }
     res.json({ days });
   } catch (err) {
@@ -629,11 +637,13 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
           CASE
             WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral') THEN 'morning'
             WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
+            -- Its own side, never folded into 'evening' — see office-history-week.
+            WHEN surface = 'compline' THEN 'compline'
           END AS side
         FROM prayer_sessions
         WHERE user_id = ${sessionUserId}
           AND (
-            (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
+            (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
             OR (surface = 'national-cathedral' AND duration_seconds >= 180)
           )
           AND ended_at >= NOW() - INTERVAL '8 days'
@@ -681,9 +691,11 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
 
     const morning = new Set<string>();
     const evening = new Set<string>();
+    const compline = new Set<string>();
     for (const r of officeRows.rows) {
       if (r.side === "morning") morning.add(r.day);
       if (r.side === "evening") evening.add(r.day);
+      if (r.side === "compline") compline.add(r.day);
     }
     // Total contemplative minutes per local day (in-app sits + Apple Health),
     // then fill the day only when it meets the daily goal. No goal set → any
@@ -730,6 +742,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       ymd,
       morning: morning.has(ymd),
       evening: evening.has(ymd),
+      compline: compline.has(ymd),
       contemplation: contemplation.has(ymd),
       reflection: reflection.has(ymd),
       listening: listening.has(ymd),

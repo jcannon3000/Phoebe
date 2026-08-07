@@ -423,7 +423,7 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
-  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
+  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean; compline: boolean }> }>({
     // Date-scoped so a day rollover always re-fetches instead of serving the
     // pre-midnight cached week (same reasoning as contemplation-stats' key).
     // Without `day` here, an app backgrounded overnight came back holding
@@ -683,7 +683,7 @@ export function useRhythmState(): RhythmState {
     // officeLocal.evening deliberately no longer folds the compline flag in
     // (see officeLocalDone's sides list): as a standalone add-on card,
     // praying Compline is its own act and must not tick Evening Prayer.
-    || (el === "compline" && officeLocal.compline)
+    || (el === "compline" && (officeLocal.compline || !!todayOffice?.compline))
     || (el === "reflect-sit" && eveningSatKept);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
@@ -726,7 +726,7 @@ export function useRhythmState(): RhythmState {
   // EVENING ANCHOR (el === "compline") it isn't a separate card at all — it
   // satisfies eveningDone below and complineActive is false — so there's no
   // case where the two should credit each other.
-  const complineDone = complineActive && officeLocal.compline;
+  const complineDone = complineActive && (officeLocal.compline || !!todayOffice?.compline);
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);

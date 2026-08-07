@@ -265,11 +265,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -306,6 +306,9 @@ export function WeeklyGridCard() {
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.evening }] : []),
     ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
+    // Compline closes the day — its own row, reading its own server flag
+    // (never d.evening; the two offices are tracked separately end to end).
+    ...(complineActive ? [{ id: "compline", emoji: "🌙", label: t("rhythm.row_compline", { defaultValue: "Compline" }), rgb: "90,100,140", doneFor: (d: Day) => !!d.compline }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
     // The user's own custom anchors — one row each, filled from local per-day
     // history (it fills in going forward; no backfill before this shipped).
