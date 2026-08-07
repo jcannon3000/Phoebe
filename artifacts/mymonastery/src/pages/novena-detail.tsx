@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useLocation, useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -46,6 +46,32 @@ type Novena = {
 // "slot" is the morning/evening sub-choice, "added" is the confirmation.
 type Stage = "deck" | "options" | "slot" | "added";
 
+// A long History/Intention/Source paragraph reads as cramped (and can
+// overflow) on one mobile slide — split it at paragraph, then sentence,
+// breaks into chunks under maxChars so each stays comfortably on-screen.
+function splitSlideText(text: string, maxChars = 420): string[] {
+  const paragraphs = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let current = "";
+  const flush = () => { if (current.trim()) chunks.push(current.trim()); current = ""; };
+  for (const para of paragraphs) {
+    if (para.length > maxChars) {
+      // A single overlong paragraph — break on sentence boundaries instead.
+      const sentences = para.split(/(?<=[.!?])\s+/);
+      for (const sentence of sentences) {
+        if (current.length + sentence.length + 1 > maxChars) flush();
+        current += (current ? " " : "") + sentence;
+      }
+      flush();
+      continue;
+    }
+    if (current.length + para.length + 2 > maxChars) flush();
+    current += (current ? "\n\n" : "") + para;
+  }
+  flush();
+  return chunks.length > 0 ? chunks : [text];
+}
+
 export default function NovenaDetailPage() {
   const params = useParams<{ id: string }>();
   const novenaId = Number(params.id);
@@ -54,7 +80,7 @@ export default function NovenaDetailPage() {
   const { novena: activeNovena, morningActive, eveningActive } = useRhythmState();
   const backdropPhoto = useMemo(() => pickWideBackground() ?? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
-  const { data } = useQuery<{ novenas: Novena[] }>({
+  const { data, isLoading: novenasLoading } = useQuery<{ novenas: Novena[] }>({
     queryKey: ["/api/novenas"],
     queryFn: () => apiRequest("GET", "/api/novenas"),
   });
@@ -65,6 +91,8 @@ export default function NovenaDetailPage() {
 
   const [step, setStep] = useState(0);
   const [stage, setStage] = useState<Stage>("deck");
+  const [skipChecked, setSkipChecked] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const start = useMutation({
     mutationFn: (replacesSlot: "morning" | "evening" | null) =>
@@ -72,26 +100,55 @@ export default function NovenaDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/me/novena"] });
       qc.invalidateQueries({ queryKey: ["/api/novenas"] });
+      setErrorMsg(null);
       setStage("added");
     },
+    onError: () => {
+      setErrorMsg("Something went wrong adding this — try again in a moment.");
+    },
   });
+
+  // Coming from Practices/the library with a novena ALREADY active — either
+  // this one (isCurrent) or a different one (otherActive) — skip the read-
+  // through deck entirely: they already know what it is, and what they need
+  // is the decision (continue, or the switch ask), not the info again.
+  useEffect(() => {
+    if (skipChecked || !novena) return;
+    setSkipChecked(true);
+    if (isCurrent) { setLocation("/novena"); return; }
+    if (otherActive) { setStage("options"); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [novena, isCurrent, otherActive, skipChecked]);
 
   if (!novena) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT }} className="flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p style={{ color: EYEBROW }}>Loading…</p>
+        {novenasLoading ? (
+          <p style={{ color: EYEBROW }}>Loading…</p>
+        ) : (
+          <>
+            <p style={{ color: EYEBROW, fontSize: 13 }}>This novena isn't available anymore.</p>
+            <button type="button" onClick={() => setLocation("/novena-library")} style={{ color: SAGE, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 13, textDecoration: "underline" }}>
+              Back to the library
+            </button>
+          </>
+        )}
       </div>
     );
   }
 
   // The fixed slides — title, then only the pieces this novena actually has,
-  // then the closing slide with the primary action.
-  type Slide = { kind: "title" } | { kind: "history"; text: string } | { kind: "intention"; text: string } | { kind: "source"; text: string } | { kind: "close" };
+  // then the closing slide with the primary action. A long History/Intention/
+  // Source is split into multiple same-kind slides (part label in the
+  // eyebrow) rather than crowding one mobile screen.
+  type Slide = { kind: "title" } | { kind: "history" | "intention" | "source"; text: string; part?: string } | { kind: "close" };
+  const textSlides = (kind: "history" | "intention" | "source", text: string | null): Slide[] =>
+    text ? splitSlideText(text).map((chunk, i, all) => ({ kind, text: chunk, part: all.length > 1 ? `${i + 1}/${all.length}` : undefined })) : [];
   const slides: Slide[] = [
     { kind: "title" },
-    ...(novena.history ? [{ kind: "history" as const, text: novena.history }] : []),
-    ...(novena.intention ? [{ kind: "intention" as const, text: novena.intention }] : []),
-    ...(novena.sourceNote ? [{ kind: "source" as const, text: novena.sourceNote }] : []),
+    ...textSlides("history", novena.history),
+    ...textSlides("intention", novena.intention),
+    ...textSlides("source", novena.sourceNote),
     { kind: "close" },
   ];
   const slide = slides[step]!;
@@ -197,8 +254,9 @@ export default function NovenaDetailPage() {
                 <>
                   <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
                     {slide.kind === "history" ? "History" : slide.kind === "intention" ? "Intention" : "Source"}
+                    {slide.part ? ` · ${slide.part}` : ""}
                   </p>
-                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(18px, 4.8vw, 23px)", lineHeight: 1.55, whiteSpace: "pre-line" }}>
+                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4.2vw, 19px)", lineHeight: 1.5, whiteSpace: "pre-line" }}>
                     {slide.text}
                   </p>
                 </>
@@ -206,7 +264,7 @@ export default function NovenaDetailPage() {
               {slide.kind === "close" && (
                 <>
                   <p style={{ fontSize: 36, marginBottom: 16 }} aria-hidden>🕊️</p>
-                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(18px, 4.8vw, 23px)", lineHeight: 1.55 }}>
+                  <p style={{ color: "rgba(240,237,230,0.9)", margin: 0, fontFamily: FONT, fontSize: "clamp(15px, 4.2vw, 19px)", lineHeight: 1.5 }}>
                     One day rides in your daily routine at a time — it only advances when you mark that day complete, never automatically by the calendar. You can stop at any point.
                   </p>
                 </>
@@ -236,11 +294,14 @@ export default function NovenaDetailPage() {
               <p style={{ fontSize: 13.5, color: SAGE, marginBottom: 24, lineHeight: 1.55 }}>
                 It rides alongside your routine as its own card. If you'd rather it take over morning or evening prayer instead — what you normally pray there returns once the novena ends — choose that below.
               </p>
+              {errorMsg && (
+                <p style={{ color: "#E8A87C", fontSize: 12.5, marginBottom: 12 }}>{errorMsg}</p>
+              )}
               <div className="flex flex-col gap-2.5">
                 <button type="button" onClick={chooseAddition} disabled={start.isPending}
                   className="rounded-full py-3 px-6 disabled:opacity-60"
                   style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT, fontSize: 14.5, fontWeight: 700, border: "none", cursor: "pointer" }}>
-                  Add to my routine
+                  {start.isPending ? "Adding…" : "Add to my routine"}
                 </button>
                 <button type="button" onClick={chooseReplace} disabled={start.isPending}
                   className="rounded-full py-3 px-6 disabled:opacity-60"
@@ -263,6 +324,9 @@ export default function NovenaDetailPage() {
               <p style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(18px, 4.6vw, 22px)", marginBottom: 20 }}>
                 Which prayer should it replace?
               </p>
+              {errorMsg && (
+                <p style={{ color: "#E8A87C", fontSize: 12.5, marginBottom: 12 }}>{errorMsg}</p>
+              )}
               <div className="flex flex-col gap-2.5">
                 <button type="button" onClick={() => start.mutate("morning")} disabled={start.isPending}
                   className="rounded-full py-3 px-6 disabled:opacity-60"

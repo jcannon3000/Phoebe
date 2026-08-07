@@ -208,26 +208,6 @@ struct PhoebeWidgetView: View {
         return stats.kind == "summary" ? "THE DAY IS KEPT" : "NEXT UP"
     }
 
-    // Daily-progress dots — one per applicable anchor (Morning · Reflection ·
-    // Evening), filled when done, plus an "N/M" count. Reflects how far through
-    // today's rhythm the user is.
-    private var progressDots: some View {
-        HStack(spacing: 5) {
-            ForEach(Array(stats.dotList.enumerated()), id: \.offset) { _, done in
-                anchorDot(done: done)
-            }
-            Text("\(stats.doneCount)/\(stats.totalAnchors)")
-                .font(sgBold(12))
-                .foregroundColor(phoebeSage)
-                .padding(.leading, 2)
-        }
-    }
-    private func anchorDot(done: Bool) -> some View {
-        Image(systemName: done ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 13))
-            .foregroundColor(done ? accentColor : phoebeSage.opacity(0.4))
-    }
-
     var body: some View {
         switch family {
         case .accessoryInline:

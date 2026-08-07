@@ -441,7 +441,15 @@ export function useRhythmState(): RhythmState {
     queryKey: ["/api/me/novena", day],
     queryFn: () => apiRequest("GET", `/api/me/novena?localDate=${encodeURIComponent(day)}`),
     staleTime: 30_000,
-    enabled: !guest,
+    // `guest` (isDeviceLocalGuest) tracks isAnonymous — but Practices/the
+    // library gate novena REACHABILITY on useGuestMode's isGuest (pilot
+    // group / super-admin), a different flag. An anonymous-provisioned
+    // account that's also a pilot member or super admin could reach the
+    // library, start a novena (the server only checks it has a user id at
+    // all), and then never see it anywhere that reads this query — the
+    // active-novena card, the switch-ask, all of it silently staying null.
+    // Gate on having any account at all, matching what the server accepts.
+    enabled: !!user,
   });
   const activeNovena = novenaData?.active ?? null;
   const novenaActive = !!activeNovena;

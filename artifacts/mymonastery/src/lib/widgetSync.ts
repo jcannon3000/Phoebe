@@ -169,7 +169,16 @@ export function useWidgetSync(): void {
         cta: "Read", kind: "reflect" as const,
       })),
       { active: r.morningContemplationActive, done: r.morningContemplationDone, slot: "morning", title: "Morning Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
-      { active: r.cobreatheActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
+      // The solo "Silence" goal card — shown whenever there's a minutes goal
+      // but no per-side contemplation card carries it (same gate as rawCards'
+      // "silence" card in DailyProgressBody). Was missing entirely, which
+      // undercounted totalAnchors/dots for the default guest shape.
+      { active: r.silenceGoalCardActive, done: r.silenceGoalCardDone, slot: "anytime", title: "Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
+      // cobreatheStandaloneActive (not raw cobreatheActive) — when Creation
+      // Prayer is riding as the per-side Morning/Evening Contemplation card
+      // instead, the standalone card above is suppressed (same gate as
+      // rawCards), so this must be too or it double-counts.
+      { active: r.cobreatheStandaloneActive, done: r.cobreatheDone, slot: getPracticeSlot("cobreathe"), title: "Creation Prayer", eyebrow: "A prayer for the earth", subtitle: "Twelve breaths, prayed together", cta: "Begin", kind: "office" },
       { active: r.listeningActive, done: r.listeningDone, slot: getPracticeSlot("listening"), title: "Audio Divina", eyebrow: "Sacred listening", subtitle: "Music as a way of prayer", cta: "Begin", kind: "reflect" },
       { active: r.podcastsActive, done: r.podcastsDone, slot: "afternoon" as CustomSlot, title: "Way of Love", eyebrow: "A podcast episode", subtitle: "Listen to today's episode", cta: "Listen", kind: "reflect" },
       { active: r.walkActive, done: r.walkDone, slot: getPracticeSlot("walk"), title: "Contemplative Walk", eyebrow: "Prayer in motion", subtitle: "Walk and pray", cta: "Log", kind: "office" },
@@ -180,7 +189,10 @@ export function useWidgetSync(): void {
       // so it must never preempt the real next-up item (it used to, via its
       // "anytime" slot outranking Evening Prayer for any account with an
       // active, undone list).
-      { active: r.examenActive, done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
+      // Suppressed when a side's own anchor IS the Examen (already rendered
+      // above via officeTitle's "The Examen" rename) — same gate as
+      // rawCards' standalone Examen card, else the widget could show it twice.
+      { active: r.examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen", done: r.examenDone, slot: getPracticeSlot("examen"), title: "The Examen", eyebrow: "Review the day", subtitle: "Look back with God", cta: "Begin", kind: "office" },
       // The active novena — same novenaActive/Done DailyProgressBody's card
       // and the header pill's dot use, so the widget can't drift from either.
       { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
