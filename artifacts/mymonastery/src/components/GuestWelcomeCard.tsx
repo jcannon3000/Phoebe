@@ -57,6 +57,11 @@ export function GuestWelcomeCard() {
           ? "You've begun. Return each day and let the rhythm hold you — one practice at a time."
           : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
       </p>
+      {!hasPrayed && (
+        <p className="text-[13.5px] mt-1.5" style={{ color: "rgba(200,212,192,0.78)", fontFamily: FONT, lineHeight: 1.55 }}>
+          To customize your routine, go to "Shape your routine" in the menu.
+        </p>
+      )}
     </div>
   );
 }
