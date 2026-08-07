@@ -29,6 +29,29 @@ function uid(req: Request): number | null {
   return typeof u?.id === "number" ? u.id : null;
 }
 
+// TEMPORARY debug endpoint — dumps every raw novena_progress row for the
+// caller, so a live disagreement between GET /novenas and GET /me/novena
+// can be diagnosed from actual data instead of re-reading the route code
+// for the tenth time. Safe to delete once the novena flow is confirmed
+// solid — it's read-only and scoped to req.user, no cross-user leakage.
+router.get("/me/novena/debug", async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const allRows = await db
+    .select()
+    .from(novenaProgressTable)
+    .where(eq(novenaProgressTable.userId, userId))
+    .orderBy(desc(novenaProgressTable.id));
+  const activeRows = allRows.filter((r) => r.status === "active");
+  res.json({
+    userId,
+    totalRows: allRows.length,
+    activeRowCount: activeRows.length,
+    allRows,
+    warning: activeRows.length > 1 ? "MORE THAN ONE ACTIVE ROW — this is the bug." : null,
+  });
+});
+
 router.get("/novenas", async (req: Request, res: Response): Promise<void> => {
   const rows = await db
     .select({
