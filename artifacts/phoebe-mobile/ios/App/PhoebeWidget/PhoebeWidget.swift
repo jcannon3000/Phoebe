@@ -259,7 +259,7 @@ struct PhoebeWidgetView: View {
                 Text(heroEyebrow)
                     .font(sgBold(11))
                     .tracking(1.6)
-                    .foregroundColor(phoebeSage.opacity(0.65))
+                    .foregroundColor(phoebeWarm.opacity(0.75))
                 Text(heroTitle)
                     .font(sgBold(23))
                     .foregroundColor(phoebeWarm)
@@ -268,7 +268,7 @@ struct PhoebeWidgetView: View {
                 if !heroSubtitle.isEmpty {
                     Text(heroSubtitle)
                         .font(sgRegular(13))
-                        .foregroundColor(phoebeSage)
+                        .foregroundColor(phoebeWarm.opacity(0.85))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -405,33 +405,12 @@ struct PhoebeTodayView: View {
 }
 
 // ── Widget ────────────────────────────────────────────────────────────────
-// The app's frosted-glass-over-photo look, baked into a single pre-blurred,
-// pre-darkened static image (WidgetLeafBG, in this target's own asset catalog
-// — WidgetKit can't reach the main app's web-bundled photos or reliably layer
-// live blur/material over a custom image on home-screen families). A top-to-
-// bottom gradient wash on top mirrors the same recipe used across the deck/
-// about/splash screens, so text stays legible over the photo underneath.
+// A plain solid fill — the photo (WidgetLeafBG) never rendered reliably
+// inside the widget extension despite correct target membership, and was
+// dropped per owner request rather than keep chasing it. Solid color side-
+// steps the whole class of "is it loading / is it filling the frame" bugs.
 private var widgetPhotoBackground: some View {
-    ZStack {
-        // scaledToFill() has nothing to fill against without an explicit
-        // frame — left implicit, the image sized itself to its own aspect
-        // ratio instead of the widget's bounds, leaving bare edges. Force it
-        // to the full container, then clip so the overflow from scaledToFill
-        // doesn't bleed past the widget's rounded corners.
-        Image("WidgetLeafBG")
-            .resizable()
-            .scaledToFill()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-        // Lighter than before — the previous wash (0.55–0.88) all but hid the
-        // photo entirely, which read as "no background" rather than the
-        // frosted-over-photo look the rest of the app uses.
-        LinearGradient(
-            colors: [phoebeGreen.opacity(0.35), phoebeGreen.opacity(0.72)],
-            startPoint: .top, endPoint: .bottom
-        )
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    phoebeGreen
 }
 
 struct PhoebeWidget: Widget {
