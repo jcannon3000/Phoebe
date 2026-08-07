@@ -34,7 +34,20 @@ public class PhoebeBadgePlugin: CAPPlugin, CAPBridgedPlugin {
         let clamped = max(0, count)
         DispatchQueue.main.async {
             if #available(iOS 16.0, *) {
-                UNUserNotificationCenter.current().setBadgeCount(clamped) { _ in }
+                // setBadgeCount silently fails (its own error, discarded by
+                // the caller) when notification authorization was never
+                // granted — the icon is then left wherever the last APNs
+                // push set it via aps.badge, which reads as "the badge is
+                // stuck/wrong" from the JS side even though this call
+                // "succeeded" (call.resolve() always fired regardless of
+                // the completion's result). Fall back to the older,
+                // non-authorization-gated API on any error so the count
+                // actually lands either way.
+                UNUserNotificationCenter.current().setBadgeCount(clamped) { error in
+                    if error != nil {
+                        UIApplication.shared.applicationIconBadgeNumber = clamped
+                    }
+                }
             } else {
                 UIApplication.shared.applicationIconBadgeNumber = clamped
             }
