@@ -1219,7 +1219,13 @@ export default function WayOfLoveRuleFlow({
   const needsFddMode = newsletters.includes("fdd");
   // A side that picked "With the Book of Common Prayer" gets a dedicated slide
   // (morning-bcp / evening-bcp) to choose the form — Psalms / Devotion / Office.
-  const bcpOnSide = (s: OfficeSide) => prayBySide[s] === "offices" || prayBySide[s] === "devotion" || prayBySide[s] === "psalms";
+  // Which pray-choices are "a BCP form", i.e. get the extra per-side bcp step.
+  // "compline" MUST be here: it's one of the options that step itself offers,
+  // so leaving it out meant picking Compline flipped bcpOnSide to false and
+  // deleted the very step the user was standing on — orderedSteps shrank (the
+  // progress bar jumped backward) and indexOf(step) went to -1, so goNext's
+  // `i >= 0` guard failed and Continue did nothing.
+  const bcpOnSide = (s: OfficeSide) => prayBySide[s] === "offices" || prayBySide[s] === "devotion" || prayBySide[s] === "psalms" || prayBySide[s] === "compline";
   const orderedSteps: Step[] = guest
     // GUEST (public no-login): when → per-side way + ONE merged config slide
     // (the BCP form + medium + reminder all live on side-config — no separate

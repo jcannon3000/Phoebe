@@ -18,7 +18,26 @@ const FAINT = "rgba(143,175,150,0.55)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CARD_BG = "rgba(9,26,16, 0.297)";
 const CARD_BORDER = "rgba(46,107,64,0.38)";
+// Action-pill colors — the app's existing format language, carried over from
+// the offices page: gold = Forward Movement audio, purple = a broadcast,
+// green = anything else.
+const ACTION_PALETTE = {
+  gold:   { bg: "rgba(212,160,70,0.14)", border: "rgba(212,160,70,0.38)", color: "#F0DCA8" },
+  purple: { bg: "rgba(120,80,180,0.16)", border: "rgba(120,80,180,0.42)", color: "#E0D0F5" },
+  green:  { bg: "rgba(46,107,64,0.18)",  border: "rgba(46,107,64,0.45)",  color: "#A8C5A0" },
+} as const;
 
+/** A small pill sitting UNDER a card — an alternate way into the same thing
+ *  (listen to it, watch it) rather than a separate menu entry. Rendered
+ *  outside the card's own <button> so we never nest interactive elements. */
+export interface MenuHubAction {
+  emoji: string;
+  label: string;
+  /** Matches the app's format language: gold = audio, purple = broadcast,
+   *  green = everything else. */
+  variant?: "gold" | "purple" | "green";
+  onClick: () => void;
+}
 export interface MenuHubItem {
   emoji: string;
   label: string;
@@ -26,6 +45,11 @@ export interface MenuHubItem {
   badge?: string;
   /** A small green dot to the right — "there's something new here". */
   dot?: boolean;
+  /** Dims the card without disabling it — for something that isn't its
+   *  time of day yet but is still tappable (the offices page's "later"
+   *  offices). Purely visual. */
+  muted?: boolean;
+  actions?: MenuHubAction[];
   onClick: () => void;
 }
 export interface MenuHubGroup {
@@ -87,12 +111,12 @@ export function MenuHub({
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {g.items.map((it, ii) => (
+                  <div key={ii}>
                   <button
-                    key={ii}
                     type="button"
                     onClick={() => { playOpeningSwell(2); it.onClick(); }}
                     className="w-full transition-opacity hover:opacity-90"
-                    style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: CARD_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px" }}
+                    style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: CARD_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px", opacity: it.muted ? 0.62 : 1 }}
                   >
                     <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{it.emoji}</span>
                     <span style={{ flex: 1, minWidth: 0 }}>
@@ -111,6 +135,28 @@ export function MenuHub({
                     )}
                     <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
                   </button>
+                  {/* Alternate formats of the SAME item (listen / watch),
+                      outside the card button so we never nest buttons. */}
+                  {it.actions && it.actions.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, paddingLeft: 4 }}>
+                      {it.actions.map((a, ai) => {
+                        const p = ACTION_PALETTE[a.variant ?? "green"];
+                        return (
+                          <button
+                            key={ai}
+                            type="button"
+                            onClick={a.onClick}
+                            className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-90"
+                            style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color, borderRadius: 999, padding: "7px 14px", fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+                          >
+                            <span aria-hidden>{a.emoji}</span>
+                            <span>{a.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  </div>
                 ))}
               </div>
             </div>

@@ -57,7 +57,13 @@ export function GuestWelcomeCard() {
           ? "You've begun. Return each day and let the rhythm hold you — one practice at a time."
           : "Phoebe carries a simple daily rhythm of prayer, laid out below. Each day it will walk you through it, one practice at a time."}
       </p>
-      {!hasPrayed && (
+      {/* The customize hint rides the SECOND card — the returning "Develop a
+          daily habit" state — not "Begin here". On day one the ask is simply
+          to pray what's already laid out; pointing a brand-new user at the
+          customizer first gives them a settings errand before they've prayed
+          anything. Once they've begun, shaping the rhythm is the natural
+          next move. */}
+      {hasPrayed && (
         <p className="text-[13.5px] mt-1.5" style={{ color: "rgba(200,212,192,0.78)", fontFamily: FONT, lineHeight: 1.55 }}>
           To customize your routine, go to "Shape your routine" in the menu.
         </p>
