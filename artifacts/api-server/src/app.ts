@@ -299,6 +299,36 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
     });
 });
 
+// ─── Android App Links association file ────────────────────────────────────
+// Android's counterpart to the apple-app-site-association route above.
+// Verified at install time against the Android app's AndroidManifest.xml
+// autoVerify intent-filter (host withphoebe.app). ANDROID_SHA256_CERT_FINGERPRINTS
+// is a comma-separated list of the app's signing-certificate SHA-256
+// fingerprints (uppercase, colon-separated hex, e.g. from `keytool -list -v
+// -keystore <release>.keystore` or the Play Console's App Signing page) —
+// unset until a real release keystore exists, at which point set the env var
+// and this starts working with no code change. Debug and release keystores
+// have different fingerprints, so both should be listed once known (a debug
+// build won't App-Link without its own fingerprint present here too).
+app.get("/.well-known/assetlinks.json", (_req, res) => {
+  const bundleId = process.env["APPLE_BUNDLE_ID"] ?? "app.withphoebe.mobile";
+  const fingerprints = (process.env["ANDROID_SHA256_CERT_FINGERPRINTS"] ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  res
+    .setHeader("Content-Type", "application/json")
+    .setHeader("Cache-Control", "public, max-age=3600")
+    .json([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: bundleId,
+          sha256_cert_fingerprints: fingerprints,
+        },
+      },
+    ]);
+});
+
 // (The standalone letters-app formerly served at /mail was removed with the
 // Letters feature.)
 

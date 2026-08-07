@@ -22,6 +22,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- App Links — Android's counterpart to iOS's associated-domains
+                 universal links (App.entitlements). autoVerify makes Android
+                 check https://withphoebe.app/.well-known/assetlinks.json at
+                 install time; once verified, tapping a withphoebe.app link
+                 anywhere on the device opens this app instead of the browser,
+                 same as the iOS side already does. The web app's own router
+                 (native-shell.ts's appUrlOpen listener, already
+                 platform-agnostic — see devicePlatform()) handles the actual
+                 path once Android delivers the Intent. No path restriction
+                 here (Android verifies at the domain level); everything not
+                 meaningfully deep-linkable just lands on the matching page. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="withphoebe.app" />
+            </intent-filter>
+
         </activity>
 
         <provider
