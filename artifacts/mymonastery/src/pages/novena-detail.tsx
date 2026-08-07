@@ -108,17 +108,17 @@ export default function NovenaDetailPage() {
     },
   });
 
-  // Coming from Practices/the library with a novena ALREADY active — either
-  // this one (isCurrent) or a different one (otherActive) — skip the read-
-  // through deck entirely: they already know what it is, and what they need
-  // is the decision (continue, or the switch ask), not the info again.
+  // Clicking the novena that's ALREADY active goes straight to today's
+  // prayer — no point re-reading its own info page. A DIFFERENT novena still
+  // goes through the deck first (history/intention/source), THEN reaches the
+  // switch-ask at the end via next()'s normal isLast handling — otherActive
+  // is only used to word that ask, not to skip getting there.
   useEffect(() => {
     if (skipChecked || !novena) return;
     setSkipChecked(true);
-    if (isCurrent) { setLocation("/novena"); return; }
-    if (otherActive) { setStage("options"); }
+    if (isCurrent) { setLocation("/novena"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [novena, isCurrent, otherActive, skipChecked]);
+  }, [novena, isCurrent, skipChecked]);
 
   if (!novena) {
     return (
