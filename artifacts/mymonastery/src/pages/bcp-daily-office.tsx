@@ -1184,11 +1184,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }
   // Start warming as soon as this office is known to contain intercessions, so
   // the data is loading in the background while the reader prays through the
-  // psalms / lessons and reaches the portal.
+  // psalms / lessons and reaches the portal. ALSO warm once the reader is
+  // within the last three slides regardless of a portal — every office
+  // finish (Amen/Done, in handleEnd/amen() below) lands on
+  // /prayer-mode?closingOnly=1, and that page can't render ANYTHING until
+  // these same three queries resolve (frozenSlides is phase-independent).
+  // Without this, an office with no mid-deck portal warmed nothing, so the
+  // closing summary always opened cold — the "Gathering the prayers of your
+  // community…" loader flashing right after the closing collect's Amen.
   useEffect(() => {
-    if (slides.some((sl) => sl.type === "intercessions_portal")) void prefetchIntercessions();
+    if (slides.length === 0) return;
+    if (slides.some((sl) => sl.type === "intercessions_portal") || slideIdx >= slides.length - 3) {
+      void prefetchIntercessions();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slides]);
+  }, [slides, slideIdx]);
 
   // Hand the user off into /prayer-mode for the community
   // intercession slideshow, with a return URL that lands them right
@@ -1400,7 +1410,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     clearOfficeReminderNotifications();
     if (onComplete) { onComplete(); return; }
     if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
-    setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+    // Same warm-cache handoff as amen()/handleEnd — closingOnly=1 can't
+    // render until these queries resolve, so warm them first.
+    void prefetchIntercessions().finally(() => {
+      setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+    });
   }
 
   // Hand into the prayer-mode intercessions slideshow from the book
@@ -1646,7 +1660,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // celebration page; that branch is handled by handleEnd below
     // (Amen path doesn't currently distinguish parish-only — kept
     // consistent with the prior behaviour for the Amen path).
-    setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+    // closingOnly=1 still can't render anything until the same three
+    // queries prefetchIntercessions() warms resolve (frozenSlides is
+    // phase-independent) — the last-three-slides effect above already
+    // started this, so by now it should resolve near-instantly.
+    void prefetchIntercessions().finally(() => {
+      setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+    });
   }
 
   // Start whatever the reader chose in the way-to-pray dropdown. Staying on the
@@ -3725,7 +3745,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 // office finish exited without the recap; user
                 // explicitly wanted the habit-rhythm screen for every
                 // office completion.
-                setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+                // Same warm-cache handoff as amen() above — the last-
+                // three-slides effect already started this fetch, so
+                // it should resolve near-instantly here rather than
+                // opening prayer-mode cold into its "Gathering the
+                // prayers of your community…" loader.
+                void prefetchIntercessions().finally(() => {
+                  setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+                });
               }
             };
             const handler = isIntercessionSlide

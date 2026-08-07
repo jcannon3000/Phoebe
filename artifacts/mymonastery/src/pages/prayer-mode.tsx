@@ -1924,17 +1924,32 @@ function PrayerCompletedSlide({
   visible,
   doneLabel,
   reflectionSource = null,
+  isEvening = false,
 }: {
   onDone: () => void;
   visible: boolean;
   doneLabel?: string;
   reflectionSource?: Exclude<ReflectionSource, "none"> | null;
+  /** Picks which side's "who else prayed today" companions to fetch —
+   *  same idea as HabitSlide's face row, just on this earlier close. */
+  isEvening?: boolean;
 }) {
   const { t } = useTranslation();
   const [, go] = useLocation();
   // The day's rhythm — so once the newsletter is read (or there's none) the close
   // points at WHATEVER ELSE the user has next, not a community tally.
   const rhythm = useRhythmState();
+
+  // Garden members who completed THIS side's office today — same query +
+  // face row as HabitSlide, just surfaced on this earlier "Prayer completed"
+  // close too, right under the title.
+  const side = isEvening ? "evening" : "morning";
+  const { data: companionsData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null }>; companionCount: number }>({
+    queryKey: ["/api/prayer-streak/office-companions-today", side],
+    queryFn: () => apiRequest("GET", `/api/prayer-streak/office-companions-today?side=${side}`),
+    staleTime: 30_000,
+  });
+  const officeCompanions = companionsData?.companions ?? [];
 
   const refl = reflectionSource;
   const reflName = refl === "fdd" ? "Forward Day by Day" : refl === "ssje" ? "Brother, Give Us a Word" : "CAC Daily Meditation";
@@ -2004,6 +2019,26 @@ function PrayerCompletedSlide({
       >
         {t("prayer_mode.prayer_completed", { defaultValue: "Prayer completed" })}
       </motion.p>
+
+      {/* Who else in your garden prayed this office today — same face row
+          as HabitSlide's, just surfaced right on this earlier close too. */}
+      {officeCompanions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.14 }}
+          className="w-full flex flex-col items-center"
+          style={{ gap: 10, marginTop: -10 }}
+        >
+          <CompanionFaces companions={officeCompanions} edgeColor="var(--oh-bg, #0A1C14)" />
+          <p
+            className="text-[13.5px]"
+            style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+          >
+            You prayed with {companionNamesLine(officeCompanions)} this {isEvening ? "evening" : "morning"}.
+          </p>
+        </motion.div>
+      )}
 
       {/* Today's reflection — rendered as the SAME card as the home daily-progress
           rhythm (left bar, 📖, publication, blurb, Read pill → ✓ when done), not a
@@ -4210,6 +4245,7 @@ export default function PrayerModePage() {
             // had already pointed to the next thing in the routine.
             onDone={() => (unseenNews.hasUnseen ? setPhase("news") : void handleDone({ skipBless: true }))}
             visible={slideVisible}
+            isEvening={closingIsEvening}
           />
         )}
         {/* The "Add prayer / Done" ClosingSlide was removed everywhere — this
@@ -4226,7 +4262,7 @@ export default function PrayerModePage() {
           <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} />
         )}
         {phase === "blessing" && (
-          <PrayerCompletedSlide onDone={exitToFinish} visible={slideVisible} />
+          <PrayerCompletedSlide onDone={exitToFinish} visible={slideVisible} isEvening={closingIsEvening} />
         )}
       </div>
 
