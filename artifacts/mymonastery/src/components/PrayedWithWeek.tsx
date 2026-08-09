@@ -4,9 +4,12 @@
  *
  * Counts DISTINCT fellow community members with at least one practice signal
  * this week (any practice, any day — one thing a week is enough to count).
- * AGGREGATE ONLY, by design: the server never returns names or who was
- * missing, and this line never will. Presence, not attendance — the point is
- * "you weren't alone this week," not a register.
+ * The headline count is aggregate-only (no names). The splash variant's face
+ * row is the one deliberate exception (owner-requested, to match Creation
+ * Prayer's closing slide) — it's held to the same k-anonymity floor the
+ * per-group naming already used: faces only render for a group with enough
+ * OTHER members (>= 4, server-side) that showing a few faces can't out
+ * someone whose small circle wouldn't otherwise be named at all.
  *
  * Renders nothing for guests, for people with no communities, or when the
  * count is zero — it should only ever appear as good news.
@@ -18,6 +21,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { CompanionFaces, type Companion } from "@/components/CompanionFaces";
 
 export function PrayedWithWeek({ variant = "home" }: { variant?: "home" | "splash" } = {}) {
   const { t } = useTranslation();
@@ -40,7 +44,7 @@ export function PrayedWithWeek({ variant = "home" }: { variant?: "home" | "splas
     return d.toLocaleDateString("en-CA");
   }, [benediction]);
 
-  const { data } = useQuery<{ count: number; viewerPracticed: boolean; groups?: Array<{ name: string; count: number }> }>({
+  const { data } = useQuery<{ count: number; viewerPracticed: boolean; groups?: Array<{ name: string; count: number }>; companions?: Companion[] }>({
     queryKey: ["/api/me/prayed-with-week", weekStart],
     queryFn: () => apiRequest("GET", `/api/me/prayed-with-week?weekStart=${weekStart}`),
     enabled: !!user && !guest,
@@ -67,13 +71,27 @@ export function PrayedWithWeek({ variant = "home" }: { variant?: "home" | "splas
       : (top.count === 1
           ? t("dashboard.community_prayed_one_group", { name: top.name, defaultValue: `1 person from ${top.name} prayed this week` })
           : t("dashboard.community_prayed_n_group", { count: top.count, name: top.name, defaultValue: `${top.count} people from ${top.name} prayed this week` }));
+    const companions = data?.companions ?? [];
     return (
-      <p
-        className="text-[13px] mt-1"
-        style={{ color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif" }}
-      >
-        🕊️ {gtext}
-      </p>
+      <div className="flex flex-col items-center mt-1">
+        {/* The overlapping face-stack, same treatment as Creation Prayer's
+            closing slide (CobreatheSummary). Only ever populated for the
+            SAME group this line already names, which only happens once that
+            group clears the k-anonymity floor server-side (>= 4 other
+            members) — so a face row can't appear for a circle small enough
+            that showing faces would out someone by itself. */}
+        {companions.length > 0 && (
+          <div className="mb-1.5">
+            <CompanionFaces companions={companions} edgeColor="#0A1C14" />
+          </div>
+        )}
+        <p
+          className="text-[13px]"
+          style={{ color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          🕊️ {gtext}
+        </p>
+      </div>
     );
   }
 

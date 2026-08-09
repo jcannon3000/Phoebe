@@ -4459,9 +4459,10 @@ router.post("/groups/:slug/rule/adopt", async (req, res): Promise<void> => {
 //     each member's own local Sunday there, so weeks align per-member)
 //   • a completed prayer session (offices, contemplation, the breath)
 //   • an amen on the prayer list
-// AGGREGATE ONLY — this endpoint never returns names, ids, or who was
-// missing. Presence, not attendance. viewerPracticed drives the copy ("you
-// prayed with…" vs "…prayed this week"), same signals for the viewer.
+// The headline count is aggregate-only. `companions` (added for the splash's
+// face row, matching Creation Prayer's closing slide) is the one deliberate
+// exception — see its own k-anonymity note below. viewerPracticed drives the
+// copy ("you prayed with…" vs "…prayed this week"), same signals as viewer.
 router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -4516,7 +4517,34 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
       .map(([gid, count]) => ({ name: nameById.get(gid) ?? "your community", count }))
       .sort((a, b) => b.count - a.count);
 
-    res.json({ count: practiced.size, viewerPracticed, groups });
+    // Companion FACES for the splash — real name + avatar, owner-requested
+    // (matches the overlapping-face treatment Creation Prayer's closing slide
+    // already uses). This is a deliberate exception to this endpoint's
+    // original "aggregate only, never names" design, so it's held to the SAME
+    // k-anonymity floor as the named per-group line above: only the group
+    // that already qualified to be named (>= PER_GROUP_MIN_OTHERS other
+    // members) gets faces, and only for that group's own practiced members —
+    // never a cross-group list, which could out someone who prayed but whose
+    // own (small) group didn't clear the floor.
+    let companions: Array<{ userId: number; name: string | null; avatarUrl: string | null }> = [];
+    const topGroupId = groups.length > 0
+      ? [...perGroup.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+      : undefined;
+    if (topGroupId != null) {
+      const topGroupPracticedIds = [...new Set(
+        memberRows
+          .filter((r) => r.groupId === topGroupId && r.userId != null && r.userId !== user.id && practiced.has(r.userId))
+          .map((r) => r.userId as number),
+      )].slice(0, 6);
+      if (topGroupPracticedIds.length > 0) {
+        const rows = await db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+          .from(usersTable)
+          .where(inArray(usersTable.id, topGroupPracticedIds));
+        companions = rows.map((r) => ({ userId: r.id, name: r.name, avatarUrl: r.avatarUrl }));
+      }
+    }
+
+    res.json({ count: practiced.size, viewerPracticed, groups, companions });
   } catch (err) {
     console.error("[prayed-with-week] failed:", err);
     res.status(500).json({ error: "internal_error" });
