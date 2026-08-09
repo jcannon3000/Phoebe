@@ -4520,14 +4520,17 @@ router.get("/me/prayed-with-week", async (req, res): Promise<void> => {
     // Companion FACES for the splash — real name + avatar, owner-requested
     // (matches the overlapping-face treatment Creation Prayer's closing slide
     // already uses). This is a deliberate exception to this endpoint's
-    // original "aggregate only, never names" design, so it's held to the SAME
-    // k-anonymity floor as the named per-group line above: only the group
-    // that already qualified to be named (>= PER_GROUP_MIN_OTHERS other
-    // members) gets faces, and only for that group's own practiced members —
-    // never a cross-group list, which could out someone who prayed but whose
-    // own (small) group didn't clear the floor.
+    // original "aggregate only, never names" design.
+    //
+    // NOT gated by PER_GROUP_MIN_OTHERS (owner: show faces regardless of
+    // group size) — unlike the named per-group line above, which stays
+    // floor-gated. In a small group this means a face row CAN, by itself,
+    // identify exactly who practiced (e.g. "1 person" + their face). That's
+    // the explicit tradeoff requested; if it needs to be dialed back later,
+    // reintroducing the floor here is a one-line change (see git history for
+    // the version that gated on it).
     let companions: Array<{ userId: number; name: string | null; avatarUrl: string | null }> = [];
-    const topGroupId = groups.length > 0
+    const topGroupId = perGroup.size > 0
       ? [...perGroup.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
       : undefined;
     if (topGroupId != null) {

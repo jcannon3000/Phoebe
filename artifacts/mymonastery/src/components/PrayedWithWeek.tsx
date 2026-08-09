@@ -6,10 +6,11 @@
  * this week (any practice, any day — one thing a week is enough to count).
  * The headline count is aggregate-only (no names). The splash variant's face
  * row is the one deliberate exception (owner-requested, to match Creation
- * Prayer's closing slide) — it's held to the same k-anonymity floor the
- * per-group naming already used: faces only render for a group with enough
- * OTHER members (>= 4, server-side) that showing a few faces can't out
- * someone whose small circle wouldn't otherwise be named at all.
+ * Prayer's closing slide) — and, per explicit owner instruction, it is NOT
+ * held to the k-anonymity floor the per-group NAMING still uses: faces show
+ * for the top group regardless of size, so in a small circle a face row can
+ * by itself identify exactly who practiced. That's a known, requested
+ * tradeoff, not an oversight.
  *
  * Renders nothing for guests, for people with no communities, or when the
  * count is zero — it should only ever appear as good news.
@@ -54,6 +55,16 @@ export function PrayedWithWeek({ variant = "home" }: { variant?: "home" | "splas
   const count = data?.count ?? 0;
   if (!user || guest || count < 1) return null;
 
+  // The face row rides ABOVE whichever text line ends up rendering below —
+  // named-group or the group-less fallback — since companions is no longer
+  // tied to the group-naming floor (see the doc comment above).
+  const companions = data?.companions ?? [];
+  const faceRow = variant === "splash" && companions.length > 0 ? (
+    <div className="mb-1.5">
+      <CompanionFaces companions={companions} edgeColor="#0A1C14" />
+    </div>
+  ) : null;
+
   // SPLASH variant: name the community — "You prayed with 5 people from
   // St. Mark's" (the top community's own count, so the sentence stays true
   // for members of several). Falls back to the group-less copy below when
@@ -71,20 +82,9 @@ export function PrayedWithWeek({ variant = "home" }: { variant?: "home" | "splas
       : (top.count === 1
           ? t("dashboard.community_prayed_one_group", { name: top.name, defaultValue: `1 person from ${top.name} prayed this week` })
           : t("dashboard.community_prayed_n_group", { count: top.count, name: top.name, defaultValue: `${top.count} people from ${top.name} prayed this week` }));
-    const companions = data?.companions ?? [];
     return (
       <div className="flex flex-col items-center mt-1">
-        {/* The overlapping face-stack, same treatment as Creation Prayer's
-            closing slide (CobreatheSummary). Only ever populated for the
-            SAME group this line already names, which only happens once that
-            group clears the k-anonymity floor server-side (>= 4 other
-            members) — so a face row can't appear for a circle small enough
-            that showing faces would out someone by itself. */}
-        {companions.length > 0 && (
-          <div className="mb-1.5">
-            <CompanionFaces companions={companions} edgeColor="#0A1C14" />
-          </div>
-        )}
+        {faceRow}
         <p
           className="text-[13px]"
           style={{ color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif" }}
@@ -107,12 +107,24 @@ export function PrayedWithWeek({ variant = "home" }: { variant?: "home" | "splas
         ? t("dashboard.community_prayed_one", { defaultValue: "1 person in your community prayed this week" })
         : t("dashboard.community_prayed_n", { count, defaultValue: `${count} people in your communities prayed this week` }));
 
-  return (
+  const textLine = (
     <p
-      className="text-[13px] mt-1"
+      className="text-[13px]"
       style={{ color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif" }}
     >
       🕊️ {text}
     </p>
+  );
+  // Only the splash variant ever has a face row (faceRow is null for
+  // "home") — skip the extra wrapper div for home so its markup/alignment
+  // stays exactly as it was.
+  if (!faceRow) {
+    return <div className="mt-1">{textLine}</div>;
+  }
+  return (
+    <div className="flex flex-col items-center mt-1">
+      {faceRow}
+      {textLine}
+    </div>
   );
 }
