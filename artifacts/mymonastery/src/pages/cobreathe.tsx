@@ -275,16 +275,28 @@ export default function CobreathePage() {
   // in history, stats, the daily goal, and Apple Health. Called both when the
   // set completes (so a finished Cobreathe counts even if they never tap
   // Finish) and on an early end (>=30s). Guarded so the two paths don't double.
-  const sitLoggedRef = useRef(false);
+  // Tracks what's been logged so far: the seconds already credited, and (for
+  // signed-in users) the prayer_sessions row id to extend. Starts null (never
+  // logged). A guest never gets an id — there's no server row for them.
+  const loggedRef = useRef<{ seconds: number; id: number | null } | null>(null);
   // Latest user for the guest check inside the stable ([]) logSit callback.
   const userRef = useRef(user);
   userRef.current = user;
   const logSit = useCallback((secondsKept: number) => {
-    if (sitLoggedRef.current || secondsKept < 2) return;
-    sitLoggedRef.current = true;
-    // Launched as a per-side Creation Prayer card (/cobreathe?side=morning)? Stamp
-    // the side so it credits THAT side's per-side completion (like a silent
-    // per-side sit), not just the aggregate.
+    if (secondsKept < 2) return;
+    const already = loggedRef.current;
+    // Nothing new to credit — this call isn't longer than what's logged.
+    if (already && secondsKept <= already.seconds) return;
+    // Reached the set (first log): a completed Creation Prayer always lands
+    // in the daily count, even if the user never taps Finish. Breathing past
+    // the 12th breath and tapping Finish calls logSit again with the FULL
+    // elapsed time — extend the same row (PATCH) instead of dropping it on
+    // the floor, which is what silently capped every session at ~12 breaths
+    // before.
+    //
+    // Launched as a per-side Creation Prayer card (/cobreathe?side=morning)?
+    // Stamp the side so it credits THAT side's per-side completion (like a
+    // silent per-side sit), not just the aggregate.
     const sideParam = (() => {
       try {
         const s = new URLSearchParams(window.location.search).get("side");
@@ -311,25 +323,47 @@ export default function CobreathePage() {
       getSideContemplation(s) || (styleIsCobreathe && getSideLevel(s) === "reflect-sit");
     const morningBreath = sideCarriesBreath("morning");
     const eveningBreath = sideCarriesBreath("evening");
-    if (morningBreath || eveningBreath) {
+    // Only stamp the side flag on the first log — it's a same-day "kept"
+    // marker, not a duration, so extending the sit doesn't need to redo it.
+    if (!already && (morningBreath || eveningBreath)) {
       attributeContemplationSit({
         explicitSide: sideParam ?? null,
         activeSides: { morning: morningBreath, evening: eveningBreath },
         kind: "cobreathe",
       });
     }
-    // PUBLIC no-login version: a GUEST has no account to POST prayer_sessions to,
-    // so — exactly like ContemplationTimer — a finished breath logs its whole
-    // minutes to the device-local silence tally the home "Silence" goal card
-    // reads. Without this the breath never advanced a guest's silence goal (the
-    // server session below is invisible to their device-local contemplationMin).
+    // PUBLIC no-login version: a GUEST has no account to POST/PATCH
+    // prayer_sessions, so — exactly like ContemplationTimer — a breath logs
+    // its whole minutes to the device-local silence tally the home
+    // "Silence" goal card reads. Only credit the INCREMENTAL minutes beyond
+    // what's already been added, so extending a sit doesn't double-count.
     if (isDeviceLocalGuest(userRef.current)) {
-      addGuestSilenceMinutes(Math.floor(secondsKept / 60));
+      const priorMinutes = already ? Math.floor(already.seconds / 60) : 0;
+      const deltaMinutes = Math.floor(secondsKept / 60) - priorMinutes;
+      if (deltaMinutes > 0) addGuestSilenceMinutes(deltaMinutes);
+      loggedRef.current = { seconds: secondsKept, id: null };
+      return;
+    }
+    // Reserve this length synchronously so a second call arriving before the
+    // request resolves can't fire a duplicate POST or a stale PATCH.
+    loggedRef.current = { seconds: secondsKept, id: already?.id ?? null };
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sides-today"] });
+    };
+    if (already?.id != null) {
+      // Extend the already-logged row to the fuller elapsed time.
+      void apiRequest("PATCH", `/api/me/contemplation-sessions/${already.id}/duration`, {
+        durationSeconds: secondsKept,
+      })
+        .then(invalidate)
+        .catch(() => { /* best-effort */ });
       return;
     }
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-    void apiRequest("POST", "/api/prayer-sessions", {
+    void apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", {
       surface: "contemplation",
       source: "cobreathe",
       durationSeconds: secondsKept,
@@ -338,10 +372,9 @@ export default function CobreathePage() {
       isPrivate: false,
       ...(sideParam ? { contemplationSide: sideParam } : {}),
     })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sides-today"] });
+      .then((resp) => {
+        loggedRef.current = { seconds: secondsKept, id: resp?.id ?? null };
+        invalidate();
       })
       .catch(() => { /* best-effort */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,9 +383,10 @@ export default function CobreathePage() {
   // Reaching the set records the communal breath AND logs the contemplation sit
   // right away — so a completed Creation Prayer ALWAYS lands in the daily
   // contemplation/silence count, even if the user never taps "Done" (or backs
-  // out at the summary). logSit is idempotent (sitLoggedRef), so the later
-  // handleEnd can't double it; it just can't credit the extra breaths past the
-  // target — a guaranteed count matters more than the last few seconds.
+  // out at the summary). If they keep breathing past the 12th and later tap
+  // Finish, handleEnd calls logSit again with the longer elapsed time and it
+  // EXTENDS the same row (see loggedRef in logSit) rather than being dropped —
+  // a guaranteed early count that still grows to the real total.
   const handleReachTarget = useCallback((secondsKept: number) => {
     record.mutate(secondsKept);
     logSit(secondsKept);

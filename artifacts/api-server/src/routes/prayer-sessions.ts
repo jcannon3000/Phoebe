@@ -755,6 +755,40 @@ router.post("/me/contemplation-sessions", async (req, res): Promise<void> => {
 });
 
 
+// PATCH /api/me/contemplation-sessions/:id/duration — extend a sit's logged
+// duration upward. Cobreathe/Creation Prayer logs a sit the instant the 12th
+// breath completes (so a completed set always counts even if the user never
+// taps Finish) — but breathing past 12 was silently dropped on the floor,
+// since the client had already logged once and nothing revised the row
+// afterward. The client now PATCHes this when the final elapsed time is
+// longer than what was logged. One-directional (only ever grows the value)
+// and clamped to MAX_SESSION_SECONDS so a stale/replayed request can't
+// shrink a session or blow past the same cap POST enforces. Scoped to the
+// owner + contemplation surface, same as visibility below.
+router.patch("/me/contemplation-sessions/:id/duration", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = z.object({ durationSeconds: z.number().int().positive() }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  const capped = Math.min(parsed.data.durationSeconds, MAX_SESSION_SECONDS);
+  try {
+    await db.update(prayerSessionsTable)
+      .set({ durationSeconds: capped, endedAt: new Date() })
+      .where(and(
+        eq(prayerSessionsTable.id, id),
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.surface, "contemplation"),
+        lt(prayerSessionsTable.durationSeconds, capped),
+      ));
+    res.json({ ok: true, durationSeconds: capped });
+  } catch (err) {
+    console.error("[/me/contemplation-sessions/:id/duration PATCH] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // PATCH /api/me/contemplation-sessions/:id/visibility — flip a sit's
 // is_private flag. Used by the contemplation summary's public/private
 // toggle, which records the sit with an initial value and then PATCHes

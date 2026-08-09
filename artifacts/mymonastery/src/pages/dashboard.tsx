@@ -4809,9 +4809,12 @@ function PrayerListCard({
     : isPartial
       ? t("dashboard.more_prayers", { count: partialRemaining })
       : t("dashboard.pending_prayers", { count: pendingCount });
-  const gardenSubtitle = gardenPrayedTodayCount > 0
-    ? t("dashboard.prayed_with_you_today", { count: gardenPrayedTodayCount })
-    : null;
+  // Temporarily off — the "X prayed with you today" rotation line, per
+  // request. Flip this back to the commented condition below to restore it.
+  const gardenSubtitle = null;
+  // const gardenSubtitle = gardenPrayedTodayCount > 0
+  //   ? t("dashboard.prayed_with_you_today", { count: gardenPrayedTodayCount })
+  //   : null;
   const newPrayersSubtitle = newPrayersCount > 0
     ? t("dashboard.new_prayers", { count: newPrayersCount })
     : null;
