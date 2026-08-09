@@ -2119,10 +2119,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               >
                 {currentSlide.title ?? ""}
               </h1>
-              {/* Morning/Evening Prayer keep just the title on the threshold
-                  slide — the long description is dropped (owner). Other intros
-                  (devotion, etc.) still show their line. */}
-              {currentSlide.content && !(resolvedMode === "morning" || resolvedMode === "evening") && (
+              {/* Morning/Evening Prayer (and now Compline, a peer BCP form
+                  reachable from the same evening step) keep just the title on
+                  the threshold slide — the long description is dropped
+                  (owner). Other intros (devotion, etc.) still show their
+                  line. */}
+              {currentSlide.content && !(resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline") && (
                 <p
                   style={{
                     fontSize: 17,
@@ -2147,7 +2149,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   the welcome slides that show the way/method chooser (devotion +
                   morning/evening office) — there the method lives in the
                   chooser's second dropdown instead. */}
-              {!(isDevotion || resolvedMode === "morning" || resolvedMode === "evening") && (
+              {/* Compline joins Morning/Evening in dropping this old button
+                  row too — it never had a real "Listen" option anyway (this
+                  pill pointed at Evening Prayer's audio, not Compline's own
+                  liturgy, which has none), so it was offering a mismatched
+                  alternate rather than a real one. Physical-BCP page numbers
+                  are already printed inline on each slide (bcpReference). */}
+              {!(isDevotion || resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline") && (
               <div
                 style={{
                   display: "flex",

@@ -1538,7 +1538,14 @@ export default function WayOfLoveRuleFlow({
             );
           })()}
           {(() => {
-            const bcpOn = prayBySide[side] === "offices" || prayBySide[side] === "devotion" || prayBySide[side] === "psalms";
+            // Use the SHARED helper, not a hand-inlined copy of its condition.
+            // This line used to re-list offices/devotion/psalms itself and so
+            // silently omitted "compline": someone whose evening prayer IS
+            // Compline reopened the customizer to find the "With the Book of
+            // Common Prayer" row showing nothing selected, even though that's
+            // exactly what they'd chosen. One source of truth so the next form
+            // added to bcpOnSide can't drift out of sync here again.
+            const bcpOn = bcpOnSide(side);
             // Always the generic "three options" line here, even once a
             // specific form is picked — the form itself (Psalms/Devotion/
             // Office) is chosen on the NEXT slide, so collapsing this row's
@@ -2247,6 +2254,7 @@ export default function WayOfLoveRuleFlow({
     const cap = side === "morning" ? "Morning" : "Evening";
     return prayBySide[side] === "community" ? "Community Intercessions"
       : prayBySide[side] === "offices" ? `${cap} Prayer`
+      : prayBySide[side] === "compline" ? "Compline"
       : prayBySide[side] === "psalms" ? "Praying the Psalms"
       : prayBySide[side] === "guidedPrayer" ? `${cap} Simple Guided Prayer`
       : prayBySide[side] === "ownPractice" ? (customNameBySide[side].trim() || `${cap} Practice`)
