@@ -5540,7 +5540,10 @@ export const PSALTER: Record<number, PsalmEntry> = {
 
   119: {
     title: "Beati immaculati",
-    bcpRef: "BCP p. 763",
+    // Was "BCP p. 763" — same page Psalm 118 already claims, which can't be
+    // right for a psalm this long (119 runs many pages on its own).
+    // Corrected against a physical copy (owner, 2026-08).
+    bcpRef: "BCP p. 765",
     content:
 `1 Happy are they whose way is blameless, *
   who walk in the law of the Lord!
