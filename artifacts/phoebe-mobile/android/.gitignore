@@ -40,6 +40,14 @@ captures/
 
 # IntelliJ
 *.iml
+# Ignore the whole .idea/ directory, not just the handful of files the
+# stock Android template lists. Opening this project in Android Studio
+# generates several more (AndroidProjectSystem.xml, compiler.xml, misc.xml,
+# deploymentTargetSelector.xml, migrations.xml, runConfigurations.xml, ...)
+# that the template misses, and every one of them is per-developer IDE
+# state with no value in the repo — without this they'd get committed by
+# whoever runs `git add` after first opening the project.
+.idea/
 .idea/workspace.xml
 .idea/tasks.xml
 .idea/gradle.xml
