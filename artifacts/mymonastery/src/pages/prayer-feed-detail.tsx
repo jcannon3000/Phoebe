@@ -7,6 +7,15 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
+import { addHomeCard, applyCachedHomeLayout, saveHomeLayout } from "@/lib/homeLayoutCache";
+
+// Feeds that put a card straight into the follower's routine when followed.
+// Following VTS adds the Dean's Commentary — the reflection it unlocks —
+// rather than making them go find it in the customizer afterwards. The card
+// is an ordinary home module from then on, so removing it in the customizer
+// works exactly like any other, and addHomeCard(respectRemoval) means a
+// later re-follow won't override that removal.
+const FEED_UNLOCKS_HOME_CARD: Record<string, string> = { vts: "vts" };
 
 // Group upcoming events into a simple agenda — Today / This week / Later —
 // so a feed with several events (e.g. Rural & Migrant Ministry) reads like
@@ -142,7 +151,25 @@ export default function PrayerFeedDetailPage() {
   };
   const subscribe = useMutation({
     mutationFn: () => apiRequest("POST", `/api/prayer-feeds/${slug}/subscribe`, {}),
-    onSuccess: invalidateAfterFollowChange,
+    onSuccess: async () => {
+      // Put the unlocked card into their routine immediately, so following
+      // VTS *does something* visible instead of quietly granting access to
+      // an option buried in the customizer. Best-effort and deliberately
+      // AFTER the subscribe succeeded — a failed layout save must not make
+      // the follow itself look like it failed.
+      const moduleKey = FEED_UNLOCKS_HOME_CARD[slug];
+      if (moduleKey && user) {
+        try {
+          const current = applyCachedHomeLayout(user).homeLayout ?? null;
+          const { layout, changed } = addHomeCard(current, moduleKey, { respectRemoval: true });
+          if (changed) {
+            await saveHomeLayout(layout);
+            qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          }
+        } catch { /* the follow still stands; they can add the card manually */ }
+      }
+      invalidateAfterFollowChange();
+    },
   });
   const unsubscribe = useMutation({
     mutationFn: () => apiRequest("DELETE", `/api/prayer-feeds/${slug}/subscribe`),

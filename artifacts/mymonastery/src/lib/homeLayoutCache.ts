@@ -129,3 +129,40 @@ export function applyCachedHomeLayout<T extends { homeLayout?: HomeLayout | null
   if (!layout) return user;
   return { ...user, homeLayout: layout };
 }
+
+// Add one module to the home layout from OUTSIDE the customizer — used when
+// following a feed should put its card straight into the routine (following
+// the VTS feed adds the Dean's Commentary; see prayer-feed-detail.tsx).
+//
+// Three things it has to get right, none of which the customizer's own
+// addCard() handles, because that one only ever un-hides a key it knows is
+// already in `order`:
+//   • the key may be missing from `order` entirely (never added), so it has
+//     to be appended, not just un-hidden;
+//   • it must be idempotent — following an already-followed feed, or a retry,
+//     must not append a duplicate or move the card;
+//   • it must NOT re-add a card the user has since deliberately removed. We
+//     can't distinguish "never had it" from "removed it" by absence alone,
+//     so `respectRemoval` treats an explicit `hidden` entry as a deliberate
+//     removal and leaves it alone.
+//
+// Returns true if the layout actually changed (so callers can skip the PUT).
+export function addHomeCard(
+  current: HomeLayout | null | undefined,
+  key: string,
+  opts?: { respectRemoval?: boolean },
+): { layout: HomeLayout; changed: boolean } {
+  const order = [...(current?.order ?? [])];
+  const hidden = new Set(current?.hidden ?? []);
+
+  // Deliberately removed → honour that and do nothing.
+  if (opts?.respectRemoval && hidden.has(key)) {
+    return { layout: { order, hidden: [...hidden], v: current?.v ?? HOME_LAYOUT_VERSION }, changed: false };
+  }
+
+  let changed = false;
+  if (hidden.delete(key)) changed = true;
+  if (!order.includes(key)) { order.push(key); changed = true; }
+
+  return { layout: { order, hidden: [...hidden], v: current?.v ?? HOME_LAYOUT_VERSION }, changed };
+}

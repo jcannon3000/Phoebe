@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +35,22 @@ export default function PrayerFeedsBrowsePage() {
   });
   const feeds = feedsQ.data?.feeds ?? [];
 
+  // Client-side search. The discovery list is one small array the page has
+  // already fetched (the API caps it to live + visible-to-you feeds), so
+  // filtering here beats a round-trip per keystroke. Matches title, tagline
+  // AND slug — slug so someone who knows the short name ("vts") finds the
+  // feed without having to type "Virginia Theological Seminary".
+  const [search, setSearch] = useState("");
+  const visibleFeeds = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return feeds;
+    return feeds.filter((f) =>
+      f.title.toLowerCase().includes(q)
+      || (f.tagline ?? "").toLowerCase().includes(q)
+      || f.slug.toLowerCase().includes(q)
+    );
+  }, [feeds, search]);
+
   if (authLoading || !user) return null;
 
   return (
@@ -58,6 +74,24 @@ export default function PrayerFeedsBrowsePage() {
           Subscribe to a cause. Pray for a new specific intention each day.
         </p>
 
+        {/* Search — only worth showing once there's enough to sift through. */}
+        {feeds.length > 3 && (
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search feeds…"
+            aria-label="Search prayer feeds"
+            className="w-full rounded-xl px-3.5 py-2.5 mb-4 text-sm outline-none"
+            style={{
+              background: "rgba(62,124,122,0.08)",
+              border: "1px solid rgba(62,124,122,0.22)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          />
+        )}
+
         {feedsQ.isLoading && (
           <p className="text-sm" style={{ color: "#8FAF96" }}>Loading…</p>
         )}
@@ -71,8 +105,19 @@ export default function PrayerFeedsBrowsePage() {
           </div>
         )}
 
+        {/* Distinct from the "none live yet" case above — there ARE feeds,
+            this search just didn't match any of them. */}
+        {!feedsQ.isLoading && feeds.length > 0 && visibleFeeds.length === 0 && (
+          <div
+            className="rounded-2xl p-5 text-sm"
+            style={{ background: "rgba(62,124,122,0.06)", border: "1px solid rgba(62,124,122,0.18)", color: "#8FAF96" }}
+          >
+            No feeds match “{search.trim()}”.
+          </div>
+        )}
+
         <div className="space-y-2">
-          {feeds.map(f => (
+          {visibleFeeds.map(f => (
             <Link key={f.id} href={`/prayer-feeds/${f.slug}`}>
               <div
                 className="rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-opacity hover:opacity-90"
