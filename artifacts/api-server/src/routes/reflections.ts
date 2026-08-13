@@ -11,8 +11,8 @@ import { and, eq, sql } from "drizzle-orm";
 // reflection today. Reads were tracked in localStorage only, so a read on one
 // device didn't show on another. These endpoints make read-state server-backed
 // so it syncs everywhere. CAC keeps its own cac_reads table (it also powers
-// community read-presence); FDD + SSJE live in reflection_reads. The GET folds
-// all three together. `ymd` is the caller's LOCAL YYYY-MM-DD.
+// community read-presence); FDD + SSJE + VTS live in reflection_reads. The GET
+// folds all four together. `ymd` is the caller's LOCAL YYYY-MM-DD.
 
 const router: IRouter = Router();
 
@@ -24,7 +24,7 @@ function isValidYmd(s: string): boolean {
   const d = new Date(`${s}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
-const SOURCES = new Set(["fdd", "ssje"]);
+const SOURCES = new Set(["fdd", "ssje", "vts"]);
 
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;
@@ -68,6 +68,7 @@ router.get("/me/reflections-read", async (req: Request, res: Response): Promise<
       cac: cacRows.rows.length > 0,
       fdd: present.has("fdd"),
       ssje: present.has("ssje"),
+      vts: present.has("vts"),
     });
   } catch (err) {
     console.error("[/me/reflections-read GET] failed:", err);

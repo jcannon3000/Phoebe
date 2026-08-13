@@ -57,8 +57,8 @@ const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
 // text (no listen/watch equivalents).
 const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
 
-export type ReflectionSource = "cac" | "fdd" | "ssje" | "none";
-const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
+export type ReflectionSource = "cac" | "fdd" | "ssje" | "vts" | "none";
+const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "none"];
 
 export type OfficeAudioSource = "forward-movement" | "church-of-england" | "gregory";
 const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england", "gregory"];
@@ -163,7 +163,7 @@ function visibleHomeReflection(homeLayout: HomeLayoutLike): ReflectionSource | n
   const order = homeLayout.order ?? [];
   const hidden = new Set(homeLayout.hidden ?? []);
   for (const k of order) {
-    if ((k === "cac" || k === "fdd" || k === "ssje") && !hidden.has(k)) {
+    if ((k === "cac" || k === "fdd" || k === "ssje" || k === "vts") && !hidden.has(k)) {
       return k;
     }
   }
@@ -192,6 +192,7 @@ export function setReflectionSource(v: ReflectionSource): void {
 export function getShowCacClose(): boolean { return getReflectionSource() === "cac"; }
 export function getShowFddClose(): boolean { return getReflectionSource() === "fdd"; }
 export function getShowSsjeClose(): boolean { return getReflectionSource() === "ssje"; }
+export function getShowVtsClose(): boolean { return getReflectionSource() === "vts"; }
 // No public setters for the derived booleans — flipping reflection
 // source is a single-radio operation now. Callers use setReflectionSource.
 
@@ -292,13 +293,11 @@ export function getSideLevel(side: OfficeSide): OfficeLevel | null {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
     if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
   } catch { /* private mode */ }
-  // New-user default rule (owner, 2026-07-26): Morning = Simple Guided Prayer
-  // (PACT), Evening = the Examen — the same pairing the light /customize
-  // picker and the full customizer's leading "way" choice both already offer
-  // as the first option. Reflection defaults to CAC + a 5-minute Silence goal
-  // + Co-Breathe, all handled in useRhythmState. Only applies until the user
+  // New-user default rule (owner, 2026-08-12): Morning = Psalms, Evening =
+  // the Examen. Reflection defaults to CAC + a 5-minute Silence goal +
+  // Co-Breathe, all handled in useRhythmState. Only applies until the user
   // explicitly picks a level for that side (stored above).
-  if (side === "morning") return "guided-prayer";
+  if (side === "morning") return "psalms";
   if (side === "evening") return "examen";
   return null;
 }

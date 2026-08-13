@@ -39,6 +39,7 @@ import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
+  VTS_TODAY_URL, VTS_READ_EVENT, hasReadVtsToday, recordVtsOpened, isVtsPublishingDay,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
   GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
   CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed, unmarkCustomPrayed,
@@ -2921,6 +2922,84 @@ export function CacHomeCard() {
               style={{ color: "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
             >
               {cacTitle}
+            </p>
+          )}
+        </div>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: "rgba(46,107,64,0.30)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "6px 14px",
+            border: "1px solid rgba(46,107,64,0.50)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// VTS Dean's Commentary home card — same shape as CacHomeCard above (server-
+// resolved "today's" article, forest-green brand styling, Read/Read again
+// label), since VTS also needs server-side resolution rather than a static
+// same-URL-every-day link.
+function VtsHomeCard() {
+  const [hasRead, setHasRead] = useState(() => hasReadVtsToday());
+  useEffect(() => {
+    const refresh = () => setHasRead(hasReadVtsToday());
+    window.addEventListener(VTS_READ_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(VTS_READ_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  // Today's actual commentary title (scraped from the VTS RSS feed). Only
+  // fetched on a publishing day — no point warming this query on a weekend
+  // the card won't even render.
+  const { data: vtsMeta } = useQuery<{ title: string; url: string }>({
+    queryKey: ["/api/vts/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/vts/today-meta"),
+    staleTime: 30 * 60_000,
+    enabled: isVtsPublishingDay(),
+  });
+  // Weekday-only publisher — no card on Sat/Sun (see isVtsPublishingDay).
+  // Comes AFTER every hook above so hook order stays unconditional.
+  if (!isVtsPublishingDay()) return null;
+  const vtsTitle = vtsMeta?.title ?? "";
+  const onClick = () => {
+    openExternalThenMarkRead(VTS_TODAY_URL, recordVtsOpened, { reader: true });
+  };
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: "rgba(46,107,64,0.14)", border: `1px solid rgba(46,107,64,0.40)` }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,0.9)` }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+          >
+            VTS Dean's Commentary ✝️
+          </p>
+          {vtsTitle && (
+            <p
+              className="truncate"
+              style={{ color: "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
+            >
+              {vtsTitle}
             </p>
           )}
         </div>
@@ -6265,16 +6344,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "reading", "walk", "cobreathe", "compline", "prayer-list", "examen", "cac", "fdd", "ssje", "vts", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "prayer-list", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "compline", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "compline", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the
@@ -6330,7 +6409,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const heroReflectionSource = useEffectiveReflectionSource();
   const dynamicHero = !featuredFeed;
   const reflectKey: HomeModule | null =
-    heroReflectionSource === "cac" || heroReflectionSource === "fdd" || heroReflectionSource === "ssje"
+    heroReflectionSource === "cac" || heroReflectionSource === "fdd" || heroReflectionSource === "ssje" || heroReflectionSource === "vts"
       ? (heroReflectionSource as HomeModule)
       : null;
   const reflectAvailable = reflectKey != null && homeOrder.includes(reflectKey) && !homeHidden.has(reflectKey);
@@ -7324,6 +7403,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   return reflectionIsHero("fdd") ? <FddHomeCard /> : null;
                 case "ssje":
                   return reflectionIsHero("ssje") ? <SsjeHomeCard /> : null;
+                case "vts":
+                  return reflectionIsHero("vts") ? <VtsHomeCard /> : null;
                 case "ncmp":
                   // Self-hides on weekends + outside the broadcast
                   // window; returns null in those cases so the

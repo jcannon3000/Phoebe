@@ -199,7 +199,7 @@ export default function CustomizePage() {
     if (choice === addPractice) return;
     setAddPracticeLocal(choice);
     const existing = currentHomeLayout;
-    const otherNewsletters = (["cac", "fdd", "ssje"] as const).filter((n) => n !== newsletter);
+    const otherNewsletters = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => n !== newsletter);
     const baseOrder = existing?.order ?? ["requests", "office", "contemplation", newsletter, "feeds", "ncmp", "podcasts", ...otherNewsletters];
     const baseHidden = existing?.hidden ?? ["ncmp", "podcasts", "reading", "cobreathe", "prayer-list", ...otherNewsletters];
     const order = baseOrder.filter((k) => !PRACTICE_KEYS.includes(k as AddPractice));
@@ -302,6 +302,7 @@ export default function CustomizePage() {
             { value: "fdd", label: "Forward Day by Day" },
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
             { value: "cac", label: "CAC Daily Meditation" },
+            { value: "vts", label: "VTS Dean's Commentary" },
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
           {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}

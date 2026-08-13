@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, type ReflectionSource } from "@/lib/officePrefs";
-import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
+import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -34,6 +34,7 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
   cac: "CAC Daily Meditation",
+  vts: "VTS Dean's Commentary",
 };
 
 const WARM = "#F0EDE6";
@@ -773,6 +774,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     enabled: reflectionSource === "cac",
   });
   const cacTitle = (cacMeta?.title ?? "").trim();
+  // Same idea for today's VTS Dean's Commentary title.
+  const { data: vtsMeta } = useQuery<{ title?: string }>({
+    queryKey: ["/api/vts/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/vts/today-meta"),
+    staleTime: 60 * 60_000,
+    enabled: reflectionSource === "vts",
+  });
+  const vtsTitle = (vtsMeta?.title ?? "").trim();
   // What you put on for today's Audio Divina — shown as the card's second line
   // once it's done (e.g. the album/track), in place of the generic "kept".
   const { data: listeningLogData } = useQuery<{ entries: Array<{ day: string; what: string }> }>({
@@ -1034,12 +1043,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).
     ...reflections.map((r) => {
-      const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL;
-      const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : markSsjeRead;
+      const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : r.source === "ssje" ? SSJE_TODAY_URL : VTS_TODAY_URL;
+      const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : r.source === "ssje" ? markSsjeRead : markVtsRead;
+      const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : "";
       return {
         key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
         title: PUBLICATION_NAME[r.source],
-        blurb: (r.source === "cac" && cacTitle) ? cacTitle : (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
+        blurb: scrapedTitle || (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
         blurbCycle: undefined,
         onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic, { reader: true }); },
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,

@@ -1,5 +1,5 @@
 import { getFrontendUrl, getInviteBaseUrl } from "../lib/urls";
-import { sendPasswordResetEmail } from "../lib/email";
+import { sendPasswordResetEmail, sendAccountExistsNotice } from "../lib/email";
 import { Router, type IRouter, type Request } from "express";
 import passport from "passport";
 import { loginFreshSession } from "../lib/session";
@@ -10,6 +10,7 @@ import { notifyAdminsOfNewMember, countFollowedGroups, MAX_FOLLOWED_GROUPS } fro
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { isSuperAdminUser } from "../lib/superAdmin";
+import { sanitizeAndValidateDisplayName } from "../lib/displayName";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 
@@ -410,11 +411,11 @@ router.patch("/auth/me/profile", async (req, res): Promise<void> => {
   const updates: Record<string, unknown> = {};
 
   if (name !== undefined) {
-    const trimmed = (name ?? "").trim();
-    if (trimmed.length < 1 || trimmed.length > 100) {
-      res.status(400).json({ error: "Name must be 1–100 characters" }); return;
+    const nameResult = sanitizeAndValidateDisplayName(name, 100);
+    if (!nameResult.ok) {
+      res.status(400).json({ error: nameResult.error }); return;
     }
-    updates.name = trimmed;
+    updates.name = nameResult.value;
   }
 
   if (avatarUrl !== undefined) {
@@ -751,15 +752,11 @@ router.post(
   // collapse zero-width / control characters that a bot could use to
   // submit a "visually empty" name. Also cap at 120 chars so a runaway
   // paste can't bloat the row.
-  const trimmedName = typeof name === "string"
-    ? name.replace(/[​-‍﻿]/g, "").trim()
-    : "";
-  if (trimmedName.length < 1) {
-    res.status(400).json({ error: "Your name is required." }); return;
+  const nameResult = sanitizeAndValidateDisplayName(name, 120);
+  if (!nameResult.ok) {
+    res.status(400).json({ error: nameResult.error }); return;
   }
-  if (trimmedName.length > 120) {
-    res.status(400).json({ error: "Please use a shorter name." }); return;
-  }
+  const trimmedName = nameResult.value;
   if (!password || password.length < 6) {
     res.status(400).json({ error: "Password must be at least 6 characters." }); return;
   }
@@ -767,7 +764,25 @@ router.post(
   const normalizedEmail = email.trim().toLowerCase();
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
   if (existing) {
-    res.status(400).json({ error: "An account with that email already exists." }); return;
+    // Don't confirm account existence in the API response — that's an
+    // enumeration oracle an attacker could use to build a target list for
+    // impersonation/phishing (the same reason /auth/forgot-password below
+    // always responds identically). The real account holder still gets
+    // useful signal, just via their inbox instead of the HTTP response.
+    if (existing.passwordHash) {
+      void sendAccountExistsNotice({
+        to: existing.email,
+        name: existing.name,
+        loginUrl: `${frontendURL}/login`,
+        forgotPasswordUrl: `${frontendURL}/forgot-password`,
+      }).catch((err) => {
+        console.warn("[register] account-exists notice email failed:", err);
+      });
+    }
+    res.status(400).json({
+      error: "We couldn't complete that sign-up. If you already have an account, try logging in instead.",
+    });
+    return;
   }
 
   // ── Eligibility ────────────────────────────────────────────────────────

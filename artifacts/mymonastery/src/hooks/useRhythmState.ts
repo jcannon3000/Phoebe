@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
-  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
+  hasReadCacToday, hasReadFddToday, hasReadSsjeToday, hasReadVtsToday, isVtsPublishingDay,
+  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, VTS_READ_EVENT,
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
   hasPrayedFddToday, FDD_PRAYED_EVENT,
@@ -107,9 +107,9 @@ export type RhythmState = {
   morningContemplationDone: boolean;
   eveningContemplationDone: boolean;
   reflectActive: boolean;
-  /** Each reflection newsletter the user follows (cac/fdd/ssje) — one per chosen
-   *  source, each its OWN card + dot + done-state. Empty when none chosen. */
-  reflections: Array<{ source: "cac" | "fdd" | "ssje"; done: boolean }>;
+  /** Each reflection newsletter the user follows (cac/fdd/ssje/vts) — one per
+   *  chosen source, each its OWN card + dot + done-state. Empty when none chosen. */
+  reflections: Array<{ source: "cac" | "fdd" | "ssje" | "vts"; done: boolean }>;
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   examenActive: boolean;
@@ -253,6 +253,7 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(CAC_READ_EVENT, recheck);
     window.addEventListener(FDD_READ_EVENT, recheck);
     window.addEventListener(SSJE_READ_EVENT, recheck);
+    window.addEventListener(VTS_READ_EVENT, recheck);
     window.addEventListener(PSALMS_READ_EVENT, recheck);
     window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
     window.addEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
@@ -280,6 +281,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(CAC_READ_EVENT, recheck);
       window.removeEventListener(FDD_READ_EVENT, recheck);
       window.removeEventListener(SSJE_READ_EVENT, recheck);
+      window.removeEventListener(VTS_READ_EVENT, recheck);
       window.removeEventListener(PSALMS_READ_EVENT, recheck);
       window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
@@ -606,17 +608,17 @@ export function useRhythmState(): RhythmState {
     enabled: !guest,
   });
 
-  // Server-backed reflection reads (CAC + FDD + SSJE) for today — so the
+  // Server-backed reflection reads (CAC + FDD + SSJE + VTS) for today — so the
   // Reflect anchor is correct on a device that didn't do the reading (e.g. web,
   // after reading on mobile). OR'd with the instant local flag below.
-  const { data: reflRead } = useQuery<{ cac: boolean; fdd: boolean; ssje: boolean }>({
+  const { data: reflRead } = useQuery<{ cac: boolean; fdd: boolean; ssje: boolean; vts: boolean }>({
     queryKey: ["/api/me/reflections-read", day],
     queryFn: () => apiRequest("GET", `/api/me/reflections-read?ymd=${day}`),
     staleTime: 60_000,
     enabled: !guest,
   });
 
-  const reflectDone = reflectLocal || !!reflRead?.cac || !!reflRead?.fdd || !!reflRead?.ssje;
+  const reflectDone = reflectLocal || !!reflRead?.cac || !!reflRead?.fdd || !!reflRead?.ssje || !!reflRead?.vts;
 
   // What the user prays for the office — global default (office-prefs) OR a
   // per-side override. Mirrors the home prayer card's resolution, so the
@@ -846,11 +848,12 @@ export function useRhythmState(): RhythmState {
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
-  const REFLECT_SOURCES = ["fdd", "cac", "ssje"] as const;
-  const reflectDoneFor = (s: "fdd" | "cac" | "ssje"): boolean =>
+  const REFLECT_SOURCES = ["fdd", "cac", "ssje", "vts"] as const;
+  const reflectDoneFor = (s: "fdd" | "cac" | "ssje" | "vts"): boolean =>
     s === "cac" ? (hasReadCacToday() || !!reflRead?.cac)
       : s === "fdd" ? (hasReadFddToday() || !!reflRead?.fdd)
-        : (hasReadSsjeToday() || !!reflRead?.ssje);
+        : s === "ssje" ? (hasReadSsjeToday() || !!reflRead?.ssje)
+          : (hasReadVtsToday() || !!reflRead?.vts);
   const fromLayout = REFLECT_SOURCES.filter((s) => homeCardActive(hl, s));
   // New-user default rule includes a reflection (Forward Day by Day). When the
   // user has NO saved home layout (un-set-up), fall back to the single effective
@@ -858,12 +861,20 @@ export function useRhythmState(): RhythmState {
   // off. A user who HAS customized their layout keeps exactly the reflection
   // cards they chose there (no auto-add). (Guests: same rule against the local
   // cached layout — the seeded guest rule reaches FDD via this fallback.)
-  const reflectFallback: Array<"cac" | "fdd" | "ssje"> =
-    (!hl && (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje"))
+  const reflectFallback: Array<"cac" | "fdd" | "ssje" | "vts"> =
+    (!hl && (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje" || reflectionSource === "vts"))
       ? [reflectionSource]
       : [];
-  const selectedReflections: Array<"cac" | "fdd" | "ssje"> =
+  const chosenReflections: Array<"cac" | "fdd" | "ssje" | "vts"> =
     fromLayout.length > 0 ? [...fromLayout] : reflectFallback;
+  // VTS only publishes weekdays — drop it from the selected set on the
+  // viewer's local weekend so it neither shows a card nor counts as an
+  // undone anchor (see isVtsPublishingDay). Its own card would self-hide
+  // too, but this also keeps reflectActive/reflectDone honest when VTS is
+  // the ONLY chosen source.
+  const selectedReflections = isVtsPublishingDay()
+    ? chosenReflections
+    : chosenReflections.filter((s) => s !== "vts");
   const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
   const reflectActive = reflections.length > 0;
   // Count contemplation PER SIDE (Morning + Evening Contemplation), matching the

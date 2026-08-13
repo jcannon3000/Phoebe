@@ -59,7 +59,7 @@ export function seedGuestRule(): void {
     }
     // Respect an existing rule (e.g. a device that used the app signed-in).
     if (getExplicitSideLevel("morning") || getExplicitSideLevel("evening")) return;
-    setSideLevel("morning", "guided-prayer");
+    setSideLevel("morning", "psalms");
     setSideLevel("evening", "examen");
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");

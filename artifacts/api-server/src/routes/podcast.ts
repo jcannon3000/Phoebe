@@ -33,6 +33,7 @@ import { db, fddAudioMarksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { safeFetch } from "../lib/ssrfGuard";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -806,7 +807,17 @@ function relevance(q: string, title: string, body: string): number {
 // whole library; shows on title/artist (free-text only). Loads every
 // feed (cached per show) in parallel — the first search warms the cache,
 // the rest are instant.
-router.get("/podcasts/search", async (req: Request, res: Response): Promise<void> => {
+// Unauthenticated (search is open to guests) — rate-limited per IP so it
+// can't be used to force repeated cache-miss feed fetches. Feed loads are
+// cached (loadFeed, TTL-based) so a single warm search is cheap, but a
+// scripted client sending many distinct queries in a burst before the
+// cache warms would otherwise cost unbounded outbound fetches.
+router.get("/podcasts/search", rateLimit({
+  name: "podcasts_search",
+  max: 60,
+  windowMs: 60 * 1000,
+  message: "Too many searches — please slow down and try again shortly.",
+}), async (req: Request, res: Response): Promise<void> => {
   const q = String(req.query.q ?? "").trim().toLowerCase();
   const themeKey = String(req.query.theme ?? "").trim();
   const theme = THEMES.find((t) => t.key === themeKey) ?? null;

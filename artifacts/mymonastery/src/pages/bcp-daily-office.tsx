@@ -32,6 +32,7 @@ import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
+import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { PointedLine } from "@/components/PointedLine";
 
@@ -856,14 +857,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // Breathed once per office session; closing the breath advances the office.
   const breathedRef = useRef(false);
   const [showCreationBreath, setShowCreationBreath] = useState(false);
-  // Silence path of the contemplative pause: once the user chooses to sit, the
-  // pause slide swaps to a resting view until they continue.
-  const [silencePauseActive, setSilencePauseActive] = useState(false);
-  // Selected sit length on the contemplative-pause picker (5/10/20 min).
-  // Purely a selection today — the inline rest that follows is self-paced
-  // (Continue whenever ready), matching this office pause's existing
-  // no-timer design; kept as a real preference in case it later drives an
-  // actual countdown.
+  // Silence path of the contemplative pause: "Begin contemplation" opens the
+  // real countdown overlay (ContemplationTimer) at the picked length, same
+  // component /prayer-mode's pause slide uses. This used to just flip a
+  // `silencePauseActive` flag to a static "rest whenever, tap Continue"
+  // screen with no running timer — which read as the sit never actually
+  // starting (it just showed a permanently "paused" card). See
+  // contemplationOpen below.
+  const [contemplationOpen, setContemplationOpen] = useState(false);
+  // Selected sit length on the contemplative-pause picker (5/10/20 min),
+  // passed straight into ContemplationTimer's startMinutes.
   const [pauseMinutes, setPauseMinutes] = useState(10);
   // Warmed promise for the community-intercession data, so /prayer-mode can open
   // straight onto the first intercession instead of its "Gathering…" loader.
@@ -1232,14 +1235,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     setViewerLocation(url);
   }
 
-  // Reset the silence view whenever the reader isn't on the pause slide, so
-  // paging back to it (via the footer) shows the chooser again rather than a
-  // stale resting screen.
+  // Close the contemplation overlay if the reader leaves the pause slide
+  // (e.g. paging back via the footer) while a sit is open, so returning to
+  // it later shows the chooser again rather than a stale open timer.
   useEffect(() => {
-    if (slides[slideIdx]?.type !== "contemplative_pause" && silencePauseActive) {
-      setSilencePauseActive(false);
+    if (slides[slideIdx]?.type !== "contemplative_pause" && contemplationOpen) {
+      setContemplationOpen(false);
     }
-  }, [slideIdx, slides, silencePauseActive]);
+  }, [slideIdx, slides, contemplationOpen]);
 
   // Auto-fire the handoff when the user lands on the intercessions
   // portal — but with a ~4s grace window so the glowing
@@ -1911,6 +1914,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       {showCreationBreath && (
         <CobreatheOverlay open immediateClose onClose={() => { setShowCreationBreath(false); next(); }} />
       )}
+      {/* Contemplative pause's silence path: the real countdown overlay,
+          opened at the picked length. A completed sit advances the office to
+          the next slide (matching Creation Prayer's breath above); backing
+          out just closes the overlay and leaves the chooser in place. */}
+      <ContemplationTimer
+        open={contemplationOpen}
+        startMinutes={pauseMinutes}
+        onClose={(result) => {
+          setContemplationOpen(false);
+          if (result?.completed) next();
+        }}
+      />
       {/* Held-breath load veil — the versicle screen stays on TOP of the office
           and fades out once the deck is ready and the minimum hold (~2.8s) has
           elapsed, so the office (already mounted + settled underneath) is
@@ -2284,99 +2299,83 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           ) : currentSlide.type === "contemplative_pause" ? (
             // Contemplative pause — the moment in the Prayers that replaces the
             // community intercessions for accounts without the prayer-request
-            // feature. A chooser: breathe (Co-Breathe) or sit in silence. The
-            // silence path swaps this card for a resting view with Continue.
+            // feature. A chooser: breathe (Co-Breathe) or sit in silence — the
+            // silence path opens the real ContemplationTimer overlay (see
+            // contemplationOpen) at the picked length, so it actually counts
+            // down instead of showing a static "resting" card with no timer.
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", textAlign: "center", gap: 22, padding: "0 8px" }}>
-              {silencePauseActive ? (
-                <>
-                  <div aria-hidden className="animate-pulse" style={{ width: 12, height: 12, borderRadius: "50%", background: "rgba(var(--ot-sage, 143,175,150),0.85)" }} />
-                  <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 22, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 440, margin: 0 }}>
-                    Rest here a moment. When you are ready, continue.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { setSilencePauseActive(false); next(); }}
-                    style={{ marginTop: 6, padding: "12px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.28)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Continue
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0 }}>
-                    {currentSlide.eyebrow}
-                  </p>
-                  {/* Restored per owner: the same invitation the community
-                      intercessions used to close on ("bring anything else on
-                      your heart to prayer"), before the hand-off into
-                      /prayer-mode was cut — the intercession FEATURE stays
-                      off, just this framing on the still-live chooser below.
-                      "Else"/"haven't named" only reads right when a named
-                      prayer_intentions slide actually preceded this one —
-                      otherwise (prayer list off, or empty) there's nothing
-                      prior to be "else" than, so the copy drops that frame. */}
-                  <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
-                    {slides.some((s) => s.type === "prayer_intentions")
-                      ? "Take a breath. Bring anything else on your heart to prayer."
-                      : "Take a breath. Bring what's on your heart to prayer."}
-                  </p>
-                  <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, lineHeight: 1.6, color: FAINT_GREEN, maxWidth: 400, margin: 0 }}>
-                    {slides.some((s) => s.type === "prayer_intentions")
-                      ? "Someone you haven't named, a worry that surfaced this morning, the world that needs holding."
-                      : "Someone you carry, a worry that surfaced this morning, the world that needs holding."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={next}
-                    style={{ padding: "13px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Continue →
-                  </button>
-                  <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 14, color: FAINT_GREEN, margin: "6px 0 0" }}>
-                    or pause for a time of contemplative prayer
-                  </p>
-                  <div
-                    style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 340, padding: 14, borderRadius: 20, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.25)", background: "rgba(var(--ot-green, 46,107,64),0.08)" }}
-                  >
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                      {[5, 10, 20].map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setPauseMinutes(m)}
-                          style={{
-                            flex: 1,
-                            padding: "12px 0",
-                            borderRadius: 14,
-                            border: pauseMinutes === m ? "1px solid rgba(var(--ot-sage, 143,175,150),0.6)" : "1px solid rgba(var(--ot-sage, 143,175,150),0.25)",
-                            background: pauseMinutes === m ? "rgba(var(--ot-green, 46,107,64),0.35)" : "rgba(var(--ot-green, 46,107,64),0.12)",
-                            color: "var(--oh-ink, #F0EDE6)",
-                            fontFamily: SPACE_GROTESK,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1 }}>{m}</div>
-                          <div style={{ fontSize: 11, color: FAINT_GREEN }}>min</div>
-                        </button>
-                      ))}
-                    </div>
+              <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0 }}>
+                {currentSlide.eyebrow}
+              </p>
+              {/* Restored per owner: the same invitation the community
+                  intercessions used to close on ("bring anything else on
+                  your heart to prayer"), before the hand-off into
+                  /prayer-mode was cut — the intercession FEATURE stays
+                  off, just this framing on the still-live chooser below.
+                  "Else"/"haven't named" only reads right when a named
+                  prayer_intentions slide actually preceded this one —
+                  otherwise (prayer list off, or empty) there's nothing
+                  prior to be "else" than, so the copy drops that frame. */}
+              <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5, color: "var(--oh-ink2, #E8E4D8)", maxWidth: 460, margin: 0 }}>
+                {slides.some((s) => s.type === "prayer_intentions")
+                  ? "Take a breath. Bring anything else on your heart to prayer."
+                  : "Take a breath. Bring what's on your heart to prayer."}
+              </p>
+              <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, lineHeight: 1.6, color: FAINT_GREEN, maxWidth: 400, margin: 0 }}>
+                {slides.some((s) => s.type === "prayer_intentions")
+                  ? "Someone you haven't named, a worry that surfaced this morning, the world that needs holding."
+                  : "Someone you carry, a worry that surfaced this morning, the world that needs holding."}
+              </p>
+              <button
+                type="button"
+                onClick={next}
+                style={{ padding: "13px 30px", borderRadius: 999, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.5)", background: "rgba(var(--ot-green, 46,107,64),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+              >
+                Continue →
+              </button>
+              <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 14, color: FAINT_GREEN, margin: "6px 0 0" }}>
+                or pause for a time of contemplative prayer
+              </p>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 340, padding: 14, borderRadius: 20, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.25)", background: "rgba(var(--ot-green, 46,107,64),0.08)" }}
+              >
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  {[5, 10, 20].map((m) => (
                     <button
+                      key={m}
                       type="button"
-                      onClick={() => setSilencePauseActive(true)}
-                      style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "none", background: "rgba(var(--ot-green, 46,107,64),0.9)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                      onClick={() => setPauseMinutes(m)}
+                      style={{
+                        flex: 1,
+                        padding: "12px 0",
+                        borderRadius: 14,
+                        border: pauseMinutes === m ? "1px solid rgba(var(--ot-sage, 143,175,150),0.6)" : "1px solid rgba(var(--ot-sage, 143,175,150),0.25)",
+                        background: pauseMinutes === m ? "rgba(var(--ot-green, 46,107,64),0.35)" : "rgba(var(--ot-green, 46,107,64),0.12)",
+                        color: "var(--oh-ink, #F0EDE6)",
+                        fontFamily: SPACE_GROTESK,
+                        cursor: "pointer",
+                      }}
                     >
-                      🕯️ Begin contemplation
+                      <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1 }}>{m}</div>
+                      <div style={{ fontSize: 11, color: FAINT_GREEN }}>min</div>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreationBreath(true)}
-                      style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
-                    >
-                      🌍 Creation Prayer — breathe together
-                    </button>
-                  </div>
-                </>
-              )}
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setContemplationOpen(true)}
+                  style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "none", background: "rgba(var(--ot-green, 46,107,64),0.9)", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                >
+                  🕯️ Begin contemplation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreationBreath(true)}
+                  style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                >
+                  🌍 Creation Prayer — breathe together
+                </button>
+              </div>
             </div>
           ) : currentSlide.type === "intercessions_portal" ? (
             // Intro chord for the prayer-mode handoff. The title

@@ -123,6 +123,11 @@ const ssjeTracker = makeDailyReadTracker(
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "ssje", ymd }).catch(() => { /* best effort */ }); },
   "reflect-ssje",
 );
+const vtsTracker = makeDailyReadTracker(
+  "phoebe:vts:last-read-day", "phoebe:vts-read",
+  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "vts", ymd }).catch(() => { /* best effort */ }); },
+  "reflect-vts",
+);
 // Praying the Psalms — the done tracker for the psalms office form.
 // SIDE-SCOPED: morning and evening psalms are tracked separately, so praying the
 // morning psalms doesn't mark the evening side done (a user can have psalms on
@@ -278,6 +283,32 @@ export function recordCacOpened(opts?: { flagReturn?: boolean }): void {
   markCacRead();
   if (opts?.flagReturn) flagReflectionReturn("/reflect/cac");
 }
+
+// ── VTS Dean's Commentary (Virginia Theological Seminary) ──
+// Same shape as CAC: VTS's blog has per-article permalinks (not a same-URL
+// SPA like FDD/SSJE), so "today's" URL has to be resolved server-side —
+// /api/vts/today 302-redirects to the newest post tagged Dean's Commentary
+// (see api-server/src/routes/vts.ts). Read-state rides the shared
+// reflection_reads table (like FDD/SSJE) rather than a bespoke table — no
+// community read-presence/journal for this source, and (unlike CAC/FDD/SSJE)
+// no dedicated /menu/reflections/vts reader page — VTS almost certainly sends
+// X-Frame-Options like CAC does, so it opens externally same as CAC's own
+// "Read" tap; there's just no multi-tab hub entry for it yet.
+export const VTS_TODAY_URL = "https://withphoebe.app/api/vts/today";
+export const VTS_READ_EVENT = vtsTracker.eventName;
+export function getVtsReadDay(): string | null { return vtsTracker.getLastReadDay(); }
+export function hasReadVtsToday(): boolean { return vtsTracker.hasReadToday(); }
+export function markVtsRead(): void { vtsTracker.markRead(); }
+// VTS only publishes Dean's Commentary on weekdays — Saturday/Sunday there's
+// nothing new (the server just keeps serving Friday's post). Rather than
+// show a stale "today's reading" that isn't actually today's, the card and
+// anchor hide entirely on the viewer's local weekend, same treatment NCMP's
+// card gets for its own weekday-only broadcast (see getNcmpState).
+export function isVtsPublishingDay(now: Date = new Date()): boolean {
+  const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+  return day !== 0 && day !== 6;
+}
+export function recordVtsOpened(): void { markVtsRead(); }
 
 // ── Forward Day by Day (Forward Movement) ──
 // FDD's prayer.forwardmovement.org/fdd is an SPA that loads today's

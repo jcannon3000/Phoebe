@@ -22,10 +22,11 @@ const SLOT_LABEL: Record<CustomSlot, string> = {
   afternoon: "Afternoon",
   evening: "Evening",
 };
-const REFLECTION_NAME: Record<"cac" | "fdd" | "ssje", string> = {
+const REFLECTION_NAME: Record<"cac" | "fdd" | "ssje" | "vts", string> = {
   cac: "CAC Daily Meditation",
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
+  vts: "VTS Dean's Commentary",
 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

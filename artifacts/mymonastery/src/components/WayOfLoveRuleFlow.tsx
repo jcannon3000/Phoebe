@@ -355,6 +355,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
+  { id: "vts", label: "✝️ VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
 ];
 
 // A captured routine, identical to what commit() would write — used by the
@@ -537,7 +538,7 @@ export default function WayOfLoveRuleFlow({
   // the customizer only pre-selected one. Fall back to the single effective
   // source / FDD default for an un-set-up user (no saved layout yet).
   const [newsletters, setNewsletters] = useState<ReflectionSource[]>(() => {
-    const fromLayout = (["cac", "fdd", "ssje"] as const).filter((s) => homeCardOn(user?.homeLayout, s));
+    const fromLayout = (["cac", "fdd", "ssje", "vts"] as const).filter((s) => homeCardOn(user?.homeLayout, s));
     if (fromLayout.length > 0) return [...fromLayout];
     const r = getReflectionSource();
     return r && r !== "none" ? [r] : ["fdd"];
@@ -654,7 +655,7 @@ export default function WayOfLoveRuleFlow({
     // Re-seed the reflection multi-select from the layout cards too — same
     // reason: `user` was likely null at the initializer, so an existing
     // cac+fdd+ssje selection would otherwise collapse to one on re-open.
-    const fromLayout = (["cac", "fdd", "ssje"] as const).filter((s) => homeCardOn(user.homeLayout, s));
+    const fromLayout = (["cac", "fdd", "ssje", "vts"] as const).filter((s) => homeCardOn(user.homeLayout, s));
     if (fromLayout.length > 0) setNewsletters([...fromLayout]);
     // Contemplative Prayer + the Examen are add-ons now (not office anchors), so
     // seed them from the saved office LEVEL (reflect-sit / examen) — plus the
@@ -915,7 +916,7 @@ export default function WayOfLoveRuleFlow({
       morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
       eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
     };
-    const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
+    const others = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => !newsletters.includes(n));
     // Creation Prayer earns a home card either through the per-side "way"
     // choice (a side's contemplation IS the breath) OR the standalone
     // "Add an additional practice" toggle (contemplative.cobreathe) — the
@@ -1065,7 +1066,7 @@ export default function WayOfLoveRuleFlow({
     // Rewrite the home to match the rule (the rule is the source of truth):
     // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
     // chosen reflections. Unselected reflections + secondary panels hidden.
-    const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
+    const others = (["cac", "fdd", "ssje", "vts"] as const).filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
     // Examen, Audio Divina (listening), and Co-Breathe come from the

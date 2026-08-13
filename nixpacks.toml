@@ -1,10 +1,13 @@
 [variables]
 NIXPACKS_PNPM_VERSION = "10"
-NIXPACKS_NO_CACHE = "1"
 # Pin >= 22.12 — Vite 7 requires Node "^20.19.0 || >=22.12.0"; the bare "22"
 # resolved to 22.11.0 on the builder, which is BELOW that floor (build warning
 # today, hard failure on a future Vite). 22.12 is the first 22.x that satisfies it.
 NIXPACKS_NODE_VERSION = "22.12.0"
+# `playwright` is a root devDependency (local/CI e2e only) — its postinstall
+# downloads Chromium/Firefox/WebKit (300MB+) otherwise, on every install, for
+# browsers this build never runs.
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
 
 [phases.install]
 cmds = ["pnpm install --no-frozen-lockfile"]
