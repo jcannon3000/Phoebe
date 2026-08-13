@@ -7564,7 +7564,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   if (allEvents.length === 0) return null;
                   const evBase = Math.max(0, rhythm.totalAnchors - rhythm.doneCount) + 1;
                   return (
-                    <div style={{ marginTop: 20 }}>
+                    <div style={{ marginTop: 8 }}>
                       <TimeSection
                         label={t("dashboard.events_title", { defaultValue: "Events" })}
                         items={allEvents}

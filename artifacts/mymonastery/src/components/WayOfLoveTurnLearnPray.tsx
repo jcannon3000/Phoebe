@@ -161,8 +161,8 @@ export function WayOfLoveTurnLearnPray() {
           border as the Next practice cards above (CARD_BORDER in
           DailyProgressBody.tsx) so this reads as one family with them. */}
       <div
-        className="rounded-3xl px-4 py-4"
-        style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.35)" }}
+        className="rounded-3xl px-4 pt-4"
+        style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.35)", paddingBottom: 20 }}
       >
         {(() => {
           const COLS = "28px repeat(7, 1fr)";
