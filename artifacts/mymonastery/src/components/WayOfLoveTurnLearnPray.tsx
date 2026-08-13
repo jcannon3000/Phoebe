@@ -117,8 +117,21 @@ export function WayOfLoveTurnLearnPray() {
     { emoji: "📖", label: "Learn", done: learned, rgb: "96,141,209", historyFor: learnedOn },
     { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "150,120,180", historyFor: prayedOn },
   ];
-  const days = week?.days ?? [];
-  const dayInitials = days.map((d) => {
+  // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
+  // 7 columns to draw the instant this renders — never blank while
+  // /api/me/practice-week is still in flight. Server days (when they land)
+  // are matched in by ymd; a day the server hasn't reported yet just reads
+  // as "not kept" for Learn/Pray until it arrives (Turn never depends on the
+  // server at all — see readTurnedOn).
+  const serverByYmd = new Map((week?.days ?? []).map((d) => [d.ymd, d]));
+  const EMPTY_DAY: PracticeWeekDay = { ymd: "", morning: false, evening: false, compline: false, contemplation: false, reflection: false, examen: false, cobreathe: false };
+  const windowDays: PracticeWeekDay[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const ymd = d.toLocaleDateString("en-CA");
+    return serverByYmd.get(ymd) ?? { ...EMPTY_DAY, ymd };
+  });
+  const dayInitials = windowDays.map((d) => {
     const wd = new Date(`${d.ymd}T12:00:00`).getDay();
     return Number.isNaN(wd) ? "" : ["S", "M", "T", "W", "T", "F", "S"][wd];
   });
@@ -132,88 +145,60 @@ export function WayOfLoveTurnLearnPray() {
         </h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
-      <div className="space-y-2">
-        {rows.map((r) => (
-          <div
-            key={r.label}
-            className="relative w-full flex rounded-3xl overflow-hidden"
-            style={{
-              background: "rgba(26,52,36,0.27)",
-              backdropFilter: "blur(11.34px)",
-              WebkitBackdropFilter: "blur(11.34px)",
-              border: "1px solid rgba(200,212,192,0.35)",
-            }}
-          >
-            <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,${r.done ? 0.7 : 0.3})` }} />
-            <div className="flex-1 px-4 py-3.5 flex items-center gap-3">
-              <span className="text-xl flex-shrink-0" aria-hidden>{r.emoji}</span>
-              <p className="flex-1 text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{r.label}</p>
-              <span
-                className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-                style={r.done
-                  ? { background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(126,210,140,0.5)" }
-                  : { background: "transparent", color: "rgba(182,210,188,0.6)", border: "1px solid rgba(143,175,150,0.25)" }}
-              >
-                {r.done ? "Completed ✓" : "Not yet"}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-      {/* Past 7 days — one dot row per practice, echoing the onboarding
-          mock's grid. Skipped until the week query lands (no flash of an
-          empty grid). */}
-      {days.length > 0 && (
-        <div className="mt-4">
-          <p className="text-center text-[10.5px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-            Past 7 Days
-          </p>
-          {(() => {
-            const COLS = "28px repeat(7, 1fr)";
-            return (
-              <div style={{ display: "grid", rowGap: 8 }}>
-                <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
-                  <div />
-                  {dayInitials.map((ch, i) => (
-                    <span
-                      key={i}
-                      className="text-center text-[10.5px] font-semibold"
-                      style={{ color: i === dayInitials.length - 1 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
-                    >
-                      {ch}
-                    </span>
-                  ))}
-                </div>
-                {rows.map((r) => (
-                  <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
-                    <span className="text-[13px] leading-none" aria-hidden>{r.emoji}</span>
-                    {days.map((d, i) => {
-                      const kept = r.historyFor(d);
-                      const isToday = i === days.length - 1;
-                      return (
-                        <span key={d.ymd} className="flex justify-center">
-                          <span
-                            title={`${r.label} · ${d.ymd}`}
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 999,
-                              background: kept ? `rgba(${r.rgb},0.7)` : "transparent",
-                              border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
-                              outline: isToday ? "1.5px solid rgba(240,237,230,0.55)" : "none",
-                              outlineOffset: 2,
-                            }}
-                          />
-                        </span>
-                      );
-                    })}
-                  </div>
+      {/* Just the "Past 7 Days" dot grid, one row per practice — no separate
+          "Completed" status rows above it (owner): the header already names
+          the three practices, so the dots are the whole card. Always 7
+          columns (windowDays is client-computed) so this never sits blank
+          waiting on the network. */}
+      <div>
+        {(() => {
+          const COLS = "76px repeat(7, 1fr)";
+          return (
+            <div style={{ display: "grid", rowGap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+                <div />
+                {dayInitials.map((ch, i) => (
+                  <span
+                    key={i}
+                    className="text-center text-[10.5px] font-semibold"
+                    style={{ color: i === dayInitials.length - 1 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
+                  >
+                    {ch}
+                  </span>
                 ))}
               </div>
-            );
-          })()}
-        </div>
-      )}
+              {rows.map((r) => (
+                <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[13px] leading-none flex-shrink-0" aria-hidden>{r.emoji}</span>
+                    <span className="text-[12.5px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{r.label}</span>
+                  </span>
+                  {windowDays.map((d, i) => {
+                    const kept = r.historyFor(d);
+                    const isToday = i === windowDays.length - 1;
+                    return (
+                      <span key={d.ymd || i} className="flex justify-center">
+                        <span
+                          title={`${r.label} · ${d.ymd}`}
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 999,
+                            background: kept ? `rgba(${r.rgb},0.7)` : "transparent",
+                            border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
+                            outline: isToday ? "1.5px solid rgba(240,237,230,0.55)" : "none",
+                            outlineOffset: 2,
+                          }}
+                        />
+                      </span>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }
