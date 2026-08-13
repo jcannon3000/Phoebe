@@ -1,5 +1,33 @@
 apply plugin: 'com.android.application'
 
+// ── Release signing ───────────────────────────────────────────────────────
+// Google Play needs a SIGNED .aab; `assembleRelease`/`bundleRelease` produce
+// an unsigned artifact without this. Credentials are read from
+// android/keystore.properties, which is gitignored (see the root .gitignore
+// alongside the Apple .p8/.p12 rules) — the upload key must never be
+// committed. When that file is absent (fresh clone, CI without secrets, any
+// contributor who only builds debug) `releaseSigning` stays null and the
+// release build just falls back to unsigned rather than failing, so nothing
+// that works today breaks.
+//
+// To set it up (one time, owner only):
+//   1. keytool -genkeypair -v -keystore artifacts/phoebe-mobile/android/upload-keystore.jks \
+//        -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+//   2. Create artifacts/phoebe-mobile/android/keystore.properties with:
+//        storeFile=upload-keystore.jks
+//        storePassword=<the password you just chose>
+//        keyAlias=upload
+//        keyPassword=<same password unless you set a separate key password>
+//   3. Back up BOTH files somewhere safe and off-repo (a password manager).
+//      Enrolling in Play App Signing means a lost upload key can be reset by
+//      Google, but a lost keystore with no Play App Signing = you can never
+//      update the app again.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "app.withphoebe.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -21,10 +49,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Only attach the signing config when the credentials actually
+            // exist — otherwise Gradle fails the release build outright
+            // ("keystore file not set") instead of producing the unsigned
+            // artifact it produces today.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

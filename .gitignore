@@ -59,3 +59,12 @@ Thumbs.db
 *.p12
 *.mobileprovision
 AuthKey_*.p8
+
+# Android upload-signing key + its passwords. Same rule as the Apple keys
+# above: NEVER commit these. The keystore is the only thing that proves an
+# upload to Google Play came from us — see android/app/build.gradle's
+# signingConfigs block, which reads android/keystore.properties (this file)
+# and silently skips signing when it's absent, so a fresh clone still builds.
+*.jks
+*.keystore
+keystore.properties
