@@ -22,7 +22,6 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { getSideLevel } from "@/lib/officePrefs";
 import { apiRequest } from "@/lib/queryClient";
 
-const WARM = "#F0EDE6";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 // Settings → Home display exposes an on/off toggle for this card, stored
@@ -130,9 +129,11 @@ export function WayOfLoveTurnLearnPray() {
   // server at all — see readTurnedOn).
   const serverByYmd = new Map((week?.days ?? []).map((d) => [d.ymd, d]));
   const EMPTY_DAY: PracticeWeekDay = { ymd: "", morning: false, evening: false, compline: false, contemplation: false, reflection: false, examen: false, cobreathe: false };
+  // Today FIRST, oldest last (owner) — reverse of the server's own
+  // chronological order, which windowDays intentionally doesn't follow.
   const windowDays: PracticeWeekDay[] = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
+    d.setDate(d.getDate() - i);
     const ymd = d.toLocaleDateString("en-CA");
     return serverByYmd.get(ymd) ?? { ...EMPTY_DAY, ymd };
   });
@@ -176,7 +177,7 @@ export function WayOfLoveTurnLearnPray() {
                   <span
                     key={i}
                     className="text-center text-[10.5px] font-semibold"
-                    style={{ color: i === dayInitials.length - 1 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
+                    style={{ color: i === 0 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
                   >
                     {ch}
                   </span>
@@ -186,7 +187,7 @@ export function WayOfLoveTurnLearnPray() {
                 <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                   <span
                     className="text-center text-[10.5px] font-semibold"
-                    style={{ color: WARM, fontFamily: FONT }}
+                    style={{ color: "rgba(143,175,150,0.45)", fontFamily: FONT }}
                     title={r.label}
                   >
                     {r.label[0]}
@@ -197,7 +198,7 @@ export function WayOfLoveTurnLearnPray() {
                     // practice-week snapshot can lag a few seconds behind a
                     // just-finished practice, which showed today's dot as
                     // still empty right after completing all three.
-                    const isToday = i === windowDays.length - 1;
+                    const isToday = i === 0;
                     const kept = isToday ? r.done : r.historyFor(d);
                     return (
                       <span key={d.ymd || i} className="flex justify-center">

@@ -1539,11 +1539,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       {leadCard && <motion.div {...enterUp(0)} className="mb-3">{leadCard}</motion.div>}
       {(upcomingDisplay.length > 0 || heroLeads) && (
         <>
-          {/* "Next" header removed (owner, may revert) — was:
-              <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
-              Keep a little top air in its place so the cards don't crowd the
-              welcome/date stack above. */}
-          <div className="mt-3 flex flex-col gap-2">
+          {/* The section title fades up with the cascade too (visual only — the
+              haptic ticks are scheduled per CARD, so titles never buzz).
+              mt-3 = a touch more air above "Next" (owner) — the welcome/date
+              stack above was crowding it. */}
+          <motion.div {...enterUp(0)} className="mt-3">{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
+          <div className="flex flex-col gap-2">
             {/* The hero leads the Next list — the office, or (with no office)
                 the morning Contemplation card, above the reflection. */}
             {heroNode && <motion.div {...enterUp(0)}>{heroNode}</motion.div>}
