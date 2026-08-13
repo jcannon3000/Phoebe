@@ -137,20 +137,21 @@ export function WayOfLoveTurnLearnPray() {
 
   return (
     <div className="mt-7">
-      {/* Same header treatment as "This week" (WeeklyRhythm) directly below. */}
-      <div className="flex items-center gap-3 mb-2">
-        <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
-          Weekly Progress
-        </h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
-      {/* Just the "Past 7 Days" dot grid, one row per practice — no separate
-          "Completed" status rows above it (owner): the header already names
-          the three practices, so the dots are the whole card. Always 7
-          columns (windowDays is client-computed) so this never sits blank
-          waiting on the network. Same card treatment as WeeklyGridCard
-          (DailyProgressBody.tsx) so this reads as one family with the
-          weekly-progress card just below it on the home. */}
+      {/* "Past 7 Days" as a centered, small-caps label — matching the
+          onboarding mock's own dot-grid section (owner) — in place of the
+          "This week"-style rule header this card used before. */}
+      <p
+        className="text-center text-[11px] font-semibold uppercase tracking-widest mb-3"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
+      >
+        Past 7 Days
+      </p>
+      {/* One dot row per practice — no separate "Completed" status rows
+          above it (owner): always 7 columns (windowDays is client-computed)
+          so this never sits blank waiting on the network. Same card
+          treatment as WeeklyGridCard (DailyProgressBody.tsx) so this reads
+          as one family with the weekly-progress card just below it on the
+          home. */}
       <div
         className="rounded-2xl px-4 py-4"
         style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.13)" }}
@@ -158,7 +159,7 @@ export function WayOfLoveTurnLearnPray() {
         {(() => {
           const COLS = "28px repeat(7, 1fr)";
           return (
-            <div style={{ display: "grid", rowGap: 8 }}>
+            <div style={{ display: "grid", rowGap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                 <div />
                 {dayInitials.map((ch, i) => (
@@ -187,8 +188,8 @@ export function WayOfLoveTurnLearnPray() {
                         <span
                           title={`${r.label} · ${d.ymd}`}
                           style={{
-                            width: 8,
-                            height: 8,
+                            width: 14,
+                            height: 14,
                             borderRadius: 999,
                             background: kept ? `rgba(${r.rgb},0.7)` : "transparent",
                             border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
