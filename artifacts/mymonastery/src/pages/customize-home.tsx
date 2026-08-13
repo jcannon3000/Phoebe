@@ -133,7 +133,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },
     ssje:         { label: "SSJE Reflections",                   emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },
-    vts:          { label: "VTS Dean's Commentary",              emoji: "✝️", sub: "Weekday commentary from Virginia Theological Seminary" },
+    vts:          { label: "VTS Dean's Commentary",              emoji: "🦩", sub: "Weekday commentary from Virginia Theological Seminary" },
     ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
     podcasts:     { label: t("customize_home.module_podcasts", { defaultValue: "Podcasts" }), emoji: "🎧", sub: t("customize_home.module_podcasts_sub", { defaultValue: "Shows you've added · pick up where you left off" }) },
     requests:     { label: t("customize_home.module_requests"),  emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },

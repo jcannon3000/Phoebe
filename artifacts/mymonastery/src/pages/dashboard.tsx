@@ -2992,7 +2992,7 @@ function VtsHomeCard() {
             className="font-semibold min-w-0 truncate"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
           >
-            VTS Dean's Commentary ✝️
+            VTS Dean's Commentary 🦩
           </p>
           {vtsTitle && (
             <p

@@ -355,7 +355,7 @@ const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
   { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
-  { id: "vts", label: "✝️ VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
+  { id: "vts", label: "🦩 VTS Dean's Commentary", sub: "Virginia Theological Seminary · weekdays" },
 ];
 
 // A captured routine, identical to what commit() would write — used by the
@@ -1610,6 +1610,24 @@ export default function WayOfLoveRuleFlow({
               choosePrayBySide(side, "ownPractice");
             },
           )}
+          {/* Forward Day by Day as the morning prayer itself — morning only,
+              at the bottom of the list (owner). Choosing it also follows it
+              as a daily reflection (see the "learn" step below), so it shows
+              checked there too — same signal in both places. Unchecking it
+              on "learn" later is fine; that step notes when it's still the
+              morning practice even if unchecked as a reflection. */}
+          {side === "morning" && choiceRow(
+            prayBySide[side] === "fdd",
+            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`,
+            t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
+            () => {
+              if (prayBySide[side] === "fdd") return; // already selected
+              touchedRef.current = true;
+              if (contemplationBySide[side]) toggleContemplationSide(side);
+              choosePrayBySide(side, "fdd");
+              setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
+            },
+          )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -1935,7 +1953,15 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.learn_multi_note", { defaultValue: "Pick as many as you like — each gets its own card on your home." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {NEWSLETTERS.map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
+          {NEWSLETTERS.map((n) => {
+            // FDD chosen as the morning PRAYER (not just a reflection) stays
+            // noted here even if unchecked as a reflection below — the two
+            // are independent toggles now (see the morning-way step above).
+            const sub = (n.id === "fdd" && prayBySide.morning === "fdd")
+              ? `${n.sub} · ${t("wol_rule.learn_fdd_morning_note", { defaultValue: "Selected as your morning practice" })}`
+              : n.sub;
+            return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
+          })}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
@@ -2259,6 +2285,7 @@ export default function WayOfLoveRuleFlow({
       : prayBySide[side] === "psalms" ? "Praying the Psalms"
       : prayBySide[side] === "guidedPrayer" ? `${cap} Simple Guided Prayer`
       : prayBySide[side] === "ownPractice" ? (customNameBySide[side].trim() || `${cap} Practice`)
+      : prayBySide[side] === "fdd" ? "Forward Day by Day"
       : `${cap} Devotion`;
   };
   const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [
@@ -2268,7 +2295,7 @@ export default function WayOfLoveRuleFlow({
     ...SIDES.filter((s) => sides[s] && prayBySide[s] !== "none").map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : prayBySide[s] === "guidedPrayer" ? "Praise · Confession · Thanksgiving · Supplication" : prayBySide[s] === "ownPractice" ? "Your own practice" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "psalms" ? (psalmCycle === "monthly" ? "Monthly cycle" : "Daily office cycle") : prayBySide[s] === "guidedPrayer" ? "Praise · Confession · Thanksgiving · Supplication" : prayBySide[s] === "ownPractice" ? "Your own practice" : prayBySide[s] === "fdd" ? "Forward Movement" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     // Per-side contemplative prayer — its own row per side. When the style is

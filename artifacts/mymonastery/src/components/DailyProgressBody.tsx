@@ -1047,7 +1047,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : r.source === "ssje" ? markSsjeRead : markVtsRead;
       const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : "";
       return {
-        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
+        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: r.source === "vts" ? "🦩" : "📖", rgb: "96,141,209", done: r.done, href: "",
         title: PUBLICATION_NAME[r.source],
         blurb: scrapedTitle || (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
         blurbCycle: undefined,
