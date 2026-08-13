@@ -1088,6 +1088,9 @@ function OfficesOnlyExtras() {
 // key and re-checks on the "phoebe:prefs-changed" event we fire below, so the
 // pill appears/disappears immediately without a reload.
 const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
+// The "Turn · Learn · Pray" status band under the daily rhythm on home —
+// read by WayOfLoveTurnLearnPray.tsx itself via the same key/helpers.
+export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
 
 function HomeDisplaySettings() {
   const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
@@ -1096,6 +1099,15 @@ function HomeDisplaySettings() {
     const nextHidden = shown; // currently shown → hide it (and vice-versa)
     setHidden(nextHidden);
     writeLsBool(HIDE_DP_PILL_KEY, nextHidden);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
+
+  const [tlpHidden, setTlpHidden] = useState<boolean>(() => readLsBool(HIDE_TLP_KEY));
+  const tlpShown = !tlpHidden;
+  const toggleTlp = () => {
+    const nextHidden = tlpShown;
+    setTlpHidden(nextHidden);
+    writeLsBool(HIDE_TLP_KEY, nextHidden);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
 
@@ -1121,6 +1133,30 @@ function HomeDisplaySettings() {
           >
             <div
               className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${shown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+
+        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+
+        <button
+          onClick={toggleTlp}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Turn · Learn · Pray
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              The status card under your daily routine on home.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${tlpShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${tlpShown ? "left-[21px]" : "left-[3px]"}`}
               style={{ background: "#F0EDE6" }}
             />
           </div>

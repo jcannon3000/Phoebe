@@ -19,6 +19,7 @@ import { GuestWelcomeCard } from "@/components/GuestWelcomeCard";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
+import { WayOfLoveTurnLearnPray } from "@/components/WayOfLoveTurnLearnPray";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
@@ -7201,6 +7202,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
                 const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
+                // Everything kept → offer to sit again, matching whichever
+                // side's slot the clock is actually in right now.
+                const prayAgainSide: "morning" | "evening" = new Date().getHours() < 17 ? "morning" : "evening";
                 // When you've prayed everyone else's request today, the prayer-list
                 // slot BELOW renders the FULL upcoming schedule — so this block must
                 // NOT also present events (neither the "Next up" teaser nor a
@@ -7229,13 +7233,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <div>
                       <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0 }}>{keptHeader}</motion.div>
-                      {/* All cards done, nothing on the calendar → the "Sit again"
-                          contemplation card stands on its own, cascading in like
-                          the rest of the home (splash-gated + a haptic tick). */}
-                      {/* Keep the day's rhythm on the home even when complete —
-                          the Next list empties and the Done section holds every
-                          kept card (owner). */}
-                      <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                      {/* Kept cards drop off the home once done — the daily
+                          rhythm's spine (Next/Done) is now only shown on
+                          /daily-progress. Once everything's kept, the only
+                          things left here are Turn·Learn·Pray and a "sit
+                          again" invitation (below). */}
+                      <DailyProgressBody showStreak={false} showDone={false} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                      <WayOfLoveTurnLearnPray />
+                      <div className="mt-3">
+                        <ContemplationHomeCard side={prayAgainSide} />
+                      </div>
                       <PrayerListSection />
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
@@ -7287,8 +7294,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
-                    {/* Keep the completed cards on the home — Done section. */}
-                    <DailyProgressBody showStreak={false} showDone={true} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                    {/* Kept cards drop off the home once done — see the
+                        no-events branch note above. */}
+                    <DailyProgressBody showStreak={false} showDone={false} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                    <WayOfLoveTurnLearnPray />
+                    <div className="mt-3">
+                      <ContemplationHomeCard side={prayAgainSide} />
+                    </div>
                     <PrayerListSection />
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
@@ -7309,9 +7321,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                    Contemplation. */}
                 <DailyProgressBody
                   showStreak={false}
-                  /* Show the Done section on the home too — the rhythm reads as
-                     Next + Done, per product direction. */
-                  showDone={true}
+                  /* Done cards drop off the home once kept — the full Next+Done
+                     spine only lives on /daily-progress now. */
+                  showDone={false}
                   /* Cap the Next list at 7 cards on the home; the rest live on
                      /daily-progress. */
                   maxUpcoming={7}
@@ -7322,6 +7334,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                   onRemainingCount={handleRemainingCount}
                 />
+                <WayOfLoveTurnLearnPray />
                 <PrayerListSection />
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}

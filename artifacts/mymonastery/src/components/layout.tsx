@@ -803,11 +803,11 @@ function DailyProgressPill() {
   if (pillHidden) return null;
 
   return (
-    // A READ-OUT, not a button. It used to link to /daily-progress, but that
-    // page is now nearly identical to the home screen, so the tap just moved
-    // the user sideways to the same content (owner). The dots stay — they're
-    // the at-a-glance position in the day — they simply don't navigate.
-    <div
+    // A button again — home no longer keeps kept cards visible once they're
+    // done, so /daily-progress (which still shows the full Next+Done spine)
+    // is the only place left to see today's whole rhythm (owner).
+    <Link
+      href="/daily-progress"
       className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
       style={{
         fontFamily: "'Space Grotesk', sans-serif",
@@ -816,7 +816,6 @@ function DailyProgressPill() {
         color: "#C8D4C0",
         border: "1px solid rgba(200,212,192,0.18)",
       }}
-      role="status"
       aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
       <span className="whitespace-nowrap">{t("header.daily_progress", { defaultValue: "Daily Progress" })}</span>
@@ -856,7 +855,7 @@ function DailyProgressPill() {
           </span>
         );
       })()}
-    </div>
+    </Link>
   );
 }
 
