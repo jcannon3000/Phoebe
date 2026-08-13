@@ -9,10 +9,27 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Phoebe's UI is permanently dark (there is no light mode in the web
+         app), so this theme must be dark too. It used to inherit DayNight,
+         which on a phone in LIGHT mode gave the window a WHITE background —
+         and from targetSdk 35 Android forces edge-to-edge, so Capacitor
+         insets the WebView and that white background showed through as
+         bright strips behind the status bar and the gesture bar. Worse, the
+         status-bar icons are set to light (StatusBar.setStyle(Style.Dark) in
+         native-shell.ts) for Phoebe's dark chrome, so the clock rendered
+         white-on-white and was invisible.
+
+         StatusBar.setBackgroundColor() can't fix this: it wraps
+         Window.setStatusBarColor(), which is a NO-OP from API 35 on. Making
+         the window background itself dark is the fix that actually holds
+         edge-to-edge — the strips now match the app instead of fighting it.
+         #091A10 is the same colour capacitor.config.ts already sets as
+         android.backgroundColor for the WebView, so the two agree. -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/phoebeBackground</item>
     </style>
 
 

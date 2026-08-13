@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phoebe's base dark background. Kept in sync with
+         capacitor.config.ts's android.backgroundColor (the WebView's own
+         background) and with the web app's own #091A10 base, so the native
+         window, the WebView, and the page all agree and there is no flash of
+         a different colour at any point during launch.
+
+         Used as android:windowBackground in AppTheme.NoActionBar — see the
+         comment there for why that specifically (not StatusBar's
+         setBackgroundColor) is what fixes the white edge-to-edge strips on
+         Android 15+. -->
+    <color name="phoebeBackground">#091A10</color>
+</resources>
