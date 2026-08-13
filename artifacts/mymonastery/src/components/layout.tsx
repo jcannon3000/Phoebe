@@ -24,7 +24,6 @@ import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { PrayedWithWeek } from "@/components/PrayedWithWeek";
-import { CompanionFaces, companionNamesLine } from "@/components/CompanionFaces";
 import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -899,31 +898,6 @@ async function fetchAvatarDataUrl(_url: string): Promise<string | null> {
 // One detour: a user who hasn't designed a daily routine gets a "Design your
 // daily routine" slide AFTER the faces (Start → /rule-of-life, or Skip). It's
 // shown at most once a week (ROUTINE_PROMPT_KEY) until they have a routine.
-// Today's office companions — actual faces, distinct from PrayedWithWeek's
-// deliberately name-free weekly aggregate above it. Garden members who
-// completed a Morning or Evening office alongside the viewer TODAY (either
-// side — the splash isn't tied to one). Renders nothing until there's
-// someone to show, same "only ever good news" rule as PrayedWithWeek.
-function TodayOfficeCompanions() {
-  const { user } = useAuth();
-  const { data } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null }> }>({
-    queryKey: ["/api/prayer-streak/office-companions-today", "any"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/office-companions-today?side=any"),
-    enabled: !!user,
-    staleTime: 60_000,
-  });
-  const companions = data?.companions ?? [];
-  if (companions.length === 0) return null;
-  return (
-    <div className="flex flex-col items-center" style={{ gap: 8 }}>
-      <CompanionFaces companions={companions} edgeColor="#0C1F12" />
-      <p className="text-[13px]" style={{ color: "rgba(168,197,160,0.9)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        with {companionNamesLine(companions)} today
-      </p>
-    </div>
-  );
-}
-
 // Splash quote rotation — the third alternate (after the faces + "What's next").
 // Each time the quote slide comes up it shows the next one in turn.
 const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
@@ -1404,10 +1378,6 @@ function OpeningSplash() {
           <div className="mt-6 flex justify-center">
             <PrayedWithWeek variant="splash" />
           </div>
-          {/* Today's actual companions — real faces, a daily (not weekly) signal. */}
-          <div className="mt-4 flex justify-center">
-            <TodayOfficeCompanions />
-          </div>
         </motion.div>
       )}
       {/* Quote — the fallback once the day is kept. A single contemplative line
@@ -1435,10 +1405,6 @@ function OpeningSplash() {
           {/* Praying WITH each other — the aggregate week line (never who). */}
           <div className="mt-6 flex justify-center">
             <PrayedWithWeek variant="splash" />
-          </div>
-          {/* Today's actual companions — real faces, a daily (not weekly) signal. */}
-          <div className="mt-4 flex justify-center">
-            <TodayOfficeCompanions />
           </div>
         </motion.div>
       )}
