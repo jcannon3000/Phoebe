@@ -36,6 +36,7 @@ import { isFirstOpen } from "@/lib/firstOpen";
 import { shouldShowFirstOpenOnboarding, isFirstOpenOnboardingActive, FIRST_OPEN_ONBOARDING_CLOSED_EVENT } from "@/lib/firstOpenOnboarding";
 import { scheduleCascadeHaptics } from "@/lib/cascadeHaptics";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
@@ -2951,6 +2952,7 @@ export function CacHomeCard() {
 // label), since VTS also needs server-side resolution rather than a static
 // same-URL-every-day link.
 function VtsHomeCard() {
+  const entitlements = useEntitlements();
   const [hasRead, setHasRead] = useState(() => hasReadVtsToday());
   useEffect(() => {
     const refresh = () => setHasRead(hasReadVtsToday());
@@ -2968,10 +2970,17 @@ function VtsHomeCard() {
     queryKey: ["/api/vts/today-meta"],
     queryFn: () => apiRequest("GET", "/api/vts/today-meta"),
     staleTime: 30 * 60_000,
-    enabled: isVtsPublishingDay(),
+    // Don't even fetch the title for someone who isn't entitled — the card
+    // won't render, and the request would be a (small) leak of gated content.
+    enabled: isVtsPublishingDay() && entitlements.vts,
   });
+  // Feed-gated: the Dean's Commentary is VTS-follower-only, so the card is
+  // absent entirely until they follow the VTS feed. Belt-and-braces with the
+  // module-list filter in customize-home — this covers a layout saved while
+  // entitled and then unfollowed, which would otherwise keep rendering.
+  if (!entitlements.vts) return null;
   // Weekday-only publisher — no card on Sat/Sun (see isVtsPublishingDay).
-  // Comes AFTER every hook above so hook order stays unconditional.
+  // Both guards come AFTER every hook above so hook order stays unconditional.
   if (!isVtsPublishingDay()) return null;
   const vtsTitle = vtsMeta?.title ?? "";
   const onClick = () => {

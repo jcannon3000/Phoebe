@@ -2240,6 +2240,27 @@ export async function migrate() {
     // so it kept reappearing in slideshows after every deploy.
     await run(client, `UPDATE prayer_feeds SET state = 'live' WHERE slug = 'phoebe-climate' AND state = 'draft'`);
 
+    // Seed the Virginia Theological Seminary feed — same platform-owned
+    // shape as phoebe-climate above (creator_user_id NULL, public so the
+    // /feed/vts landing page resolves). Following this feed is what
+    // ENTITLES a user to VTS-only content: today that's the Dean's
+    // Commentary reflection source, which is hidden from every picker
+    // until you follow (see lib/entitlements.ts + useEntitlements on the
+    // client). The feed row must therefore always exist, or the gate has
+    // nothing to check and the content is unreachable — hence seeding it
+    // here rather than expecting someone to create it in the admin UI.
+    await run(client, `
+      INSERT INTO prayer_feeds (slug, title, tagline, cover_emoji, timezone, state, visibility, creator_user_id)
+      VALUES ('vts', 'Virginia Theological Seminary', 'The Dean''s Commentary, weekdays', '🦩', 'America/New_York', 'live', 'public', NULL)
+      ON CONFLICT DO NOTHING
+    `);
+    // Same defensive re-assertions phoebe-climate needs: keep it
+    // platform-owned and publicly resolvable, and promote a never-launched
+    // draft — but never override a deliberate 'paused' (the admin Off switch).
+    await run(client, `UPDATE prayer_feeds SET creator_user_id = NULL WHERE slug = 'vts' AND creator_user_id IS NOT NULL`);
+    await run(client, `UPDATE prayer_feeds SET visibility = 'public' WHERE slug = 'vts'`);
+    await run(client, `UPDATE prayer_feeds SET state = 'live' WHERE slug = 'vts' AND state = 'draft'`);
+
     // group_announcements gains optional event-shape columns so a single
     // announcement can be flagged as a prayer walk. Climate tab surfaces
     // every upcoming kind='prayer_walk' row across all groups.

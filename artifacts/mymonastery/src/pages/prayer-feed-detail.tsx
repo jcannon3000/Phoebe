@@ -129,13 +129,24 @@ export default function PrayerFeedDetailPage() {
   const events = eventsQ.data?.events ?? [];
 
   // ── Mutations ──────────────────────────────────────────────────────────
+  // Following/unfollowing also changes FEED-GATED ENTITLEMENTS (following
+  // `vts` unlocks the Dean's Commentary — see hooks/useEntitlements). That
+  // query is cached for 5 minutes, so without invalidating it here the user
+  // taps Follow and the thing they just unlocked stays invisible for
+  // minutes. Invalidate both the feed page and the entitlements.
+  const invalidateAfterFollowChange = () => {
+    qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}`] });
+    qc.invalidateQueries({ queryKey: ["/api/me/entitlements"] });
+    // The home feed list is derived from the same subscriptions.
+    qc.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+  };
   const subscribe = useMutation({
     mutationFn: () => apiRequest("POST", `/api/prayer-feeds/${slug}/subscribe`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}`] }),
+    onSuccess: invalidateAfterFollowChange,
   });
   const unsubscribe = useMutation({
     mutationFn: () => apiRequest("DELETE", `/api/prayer-feeds/${slug}/subscribe`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}`] }),
+    onSuccess: invalidateAfterFollowChange,
   });
 
   // Legacy ?play=1 — old dashboard CTA used to deep-link here and

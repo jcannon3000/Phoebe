@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import {
@@ -88,6 +89,7 @@ export default function CustomizePage() {
   // the guest-only self-heal (and paint guest fallbacks) for a signed-in user.
   const guest = !authLoading && isDeviceLocalGuest(user);
   const qc = useQueryClient();
+  const entitlements = useEntitlements();
 
   // A still leaf backdrop, picked once — matching the office/psalms screens.
   const leaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
@@ -298,11 +300,19 @@ export default function CustomizePage() {
                 { value: "contemplation", label: "Contemplative Prayer" },
               ], (v) => applyDailyPrayer(v as DailyPrayer))}
 
+          {/* VTS is feed-gated: the Dean's Commentary only appears once the
+              viewer follows the VTS feed (see useEntitlements). Someone who
+              already had it selected and then unfollowed keeps seeing the
+              row — dropping the option out from under their current choice
+              would silently reset their reflection to something they never
+              picked. */}
           {row("Newsletter", newsletter, [
             { value: "fdd", label: "Forward Day by Day" },
             { value: "ssje", label: "SSJE — Brother, Give Us a Word" },
             { value: "cac", label: "CAC Daily Meditation" },
-            { value: "vts", label: "VTS Dean's Commentary" },
+            ...(entitlements.vts || newsletter === "vts"
+              ? [{ value: "vts", label: "VTS Dean's Commentary" }]
+              : []),
           ], (v) => applyNewsletter(v as ReflectionSource))}
 
           {goalsReady && row("Silence", String(effectiveSilenceMin), SILENCE_OPTS.map((m) => ({ value: String(m), label: `${m} min` })), (v) => applySilence(parseInt(v, 10) || 5))}

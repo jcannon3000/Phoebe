@@ -26,6 +26,7 @@ import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
@@ -409,6 +410,7 @@ export default function WayOfLoveRuleFlow({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
+  const entitlements = useEntitlements();
   const [, setLocation] = useLocation();
   // A brand-new author — nobody has chosen a side level yet — is offered the
   // preset picker ("automatic mode"): four whole rules to adopt and tune, so
@@ -1954,15 +1956,21 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.learn_multi_note", { defaultValue: "Pick as many as you like — each gets its own card on your home." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {NEWSLETTERS.map((n) => {
-            // FDD chosen as the morning PRAYER (not just a reflection) stays
-            // noted here even if unchecked as a reflection below — the two
-            // are independent toggles now (see the morning-way step above).
-            const sub = (n.id === "fdd" && prayBySide.morning === "fdd")
-              ? `${n.sub} · ${t("wol_rule.learn_fdd_morning_note", { defaultValue: "Selected as your morning practice" })}`
-              : n.sub;
-            return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
-          })}
+          {NEWSLETTERS
+            // VTS is feed-gated — hidden until the viewer follows the VTS
+            // feed (useEntitlements). Anyone who already had it selected
+            // still sees the row, so a lapsed follower can see and change
+            // their own choice rather than having it vanish silently.
+            .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes("vts"))
+            .map((n) => {
+              // FDD chosen as the morning PRAYER (not just a reflection) stays
+              // noted here even if unchecked as a reflection below — the two
+              // are independent toggles now (see the morning-way step above).
+              const sub = (n.id === "fdd" && prayBySide.morning === "fdd")
+                ? `${n.sub} · ${t("wol_rule.learn_fdd_morning_note", { defaultValue: "Selected as your morning practice" })}`
+                : n.sub;
+              return choiceRow(newsletters.includes(n.id), n.label, sub, () => toggleNewsletter(n.id));
+            })}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}

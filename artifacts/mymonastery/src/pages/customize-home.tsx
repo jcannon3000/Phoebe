@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { saveHomeLayout } from "@/lib/homeLayoutCache";
 import { getSideLevel, setSideLevel, type OfficeLevel } from "@/lib/officePrefs";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 
 // Customize home screen — two pages:
 //
@@ -530,6 +531,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const MODULE_META = useModuleMeta();
+  const entitlements = useEntitlements();
   const { order, hidden, addCard } = useHomeLayout(user);
 
   // Track which modules the user just added this session so we can
@@ -543,8 +545,15 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
 
   // Modules available to add: hidden ones + any not yet in order. The two
   // fixed anchors (Prayer requests + Pray) are never in this list.
+  // VTS is feed-gated — it isn't offerable until the viewer follows the VTS
+  // feed (useEntitlements). Note this only filters the ADD list: if it's
+  // already on their home (because they were entitled when they added it)
+  // it keeps rendering and stays removable, so unfollowing never strands a
+  // card they can't get rid of.
   const available = HOME_MODULES.filter(
-    (k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts" && (hidden.has(k) || !order.includes(k)),
+    (k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts"
+      && (k !== "vts" || entitlements.vts)
+      && (hidden.has(k) || !order.includes(k)),
   );
 
   return (

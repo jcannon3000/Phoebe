@@ -22,6 +22,7 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { todayInZone } from "../lib/tz";
 import { ensureDailyMomentsForFeeds } from "../lib/feedDailyPromotion";
+import { entitlementsFor } from "../lib/entitlements";
 
 const router: IRouter = Router();
 
@@ -389,6 +390,29 @@ const updateEntrySchema = entrySchema.partial().extend({
 });
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
+
+// GET /api/me/entitlements — which feed-gated content this viewer may see,
+// e.g. { vts: true }. The client hides gated options everywhere they'd
+// otherwise be listed (reflection pickers, home-layout modules, the
+// rule-of-life flow) until the matching flag is true — see
+// hooks/useEntitlements.ts and lib/entitlements.ts for the shared
+// definition of "follows a feed".
+//
+// Deliberately NOT requireAuth: a signed-out or device-local guest has no
+// account to hold a subscription, and the client asks for this on every
+// surface that lists reflections. Answering 401 there would make callers
+// treat the failure as "unknown" and risk flashing gated content; instead
+// they get an honest all-false object.
+router.get("/me/entitlements", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  try {
+    res.json(await entitlementsFor(user?.id ?? null));
+  } catch (err) {
+    console.error("[/me/entitlements] failed:", err);
+    // Fail CLOSED — an error must not unlock gated content.
+    res.json(await entitlementsFor(null));
+  }
+});
 
 // GET /api/prayer-feeds — discovery: every `live` feed. For Phase 2/3
 // beta this is a simple flat list; ranking / curation comes later.

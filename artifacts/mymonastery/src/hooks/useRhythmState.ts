@@ -28,6 +28,7 @@ function currentContemplationKind(): ContemplationKind {
 }
 import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
@@ -193,6 +194,8 @@ function homeCardActive(
 export function useRhythmState(): RhythmState {
   const day = localDay();
   const { user, isLoading: authLoading } = useAuth();
+  // Feed-gated reflections (VTS) — see the selectedReflections filter below.
+  const entitlements = useEntitlements();
   // PUBLIC no-login version: a guest (flag on, auth settled, signed out OR the
   // anonymous device user) runs the WHOLE rhythm on device-local state — every
   // server query below is off, `ready` doesn't wait on them, the home layout
@@ -867,12 +870,17 @@ export function useRhythmState(): RhythmState {
       : [];
   const chosenReflections: Array<"cac" | "fdd" | "ssje" | "vts"> =
     fromLayout.length > 0 ? [...fromLayout] : reflectFallback;
-  // VTS only publishes weekdays — drop it from the selected set on the
-  // viewer's local weekend so it neither shows a card nor counts as an
-  // undone anchor (see isVtsPublishingDay). Its own card would self-hide
-  // too, but this also keeps reflectActive/reflectDone honest when VTS is
-  // the ONLY chosen source.
-  const selectedReflections = isVtsPublishingDay()
+  // Drop VTS from the selected set when it shouldn't count today, so it
+  // neither shows a card nor sits in the rhythm as a permanently-undone
+  // anchor. Two independent reasons:
+  //   • not entitled — the Dean's Commentary is VTS-follower-only, and a
+  //     layout saved while following must stop counting once they unfollow;
+  //   • the weekend — VTS only publishes weekdays (isVtsPublishingDay).
+  // The card self-hides for both too, but doing it here is what keeps
+  // reflectActive/reflectDone honest when VTS is the ONLY chosen source
+  // (otherwise the day could never read as complete).
+  const vtsCountsToday = entitlements.vts && isVtsPublishingDay();
+  const selectedReflections = vtsCountsToday
     ? chosenReflections
     : chosenReflections.filter((s) => s !== "vts");
   const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
