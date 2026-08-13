@@ -37,21 +37,24 @@ export const SPLASH_PHOTO: string = (() => {
   return match ?? LEAF_PHOTOS[0] ?? EARTH_PHOTOS[0] ?? "";
 })();
 
-// Warm the browser/WebView cache for the splash photo as early as the module
-// graph loads, so the splash paints the image immediately instead of flashing
-// its background colour first. Idempotent and best-effort — a failed decode
-// just means the <img> loads normally.
+// Warm the browser/WebView cache for the splash photo AND the app icon it's
+// shown under, as early as the module graph loads — so the splash paints
+// both immediately instead of the photo appearing first and the icon
+// popping in a beat later once its own request finishes (the native
+// WebView doesn't always honor index.html's <link rel=preload> hints the
+// way a desktop browser's preload scanner does, so this JS-level warm-up is
+// the belt to that belt-and-suspenders). Idempotent and best-effort — a
+// failed decode just means the <img> loads normally.
 export function preloadSplashPhoto(): void {
-  if (!SPLASH_PHOTO || typeof document === "undefined") return;
-  try {
-    // Just the Image() fetch. A <link rel=preload> appended from JS lands after
-    // parse, so it's too late for the preload scanner to help — it only earned
-    // a duplicate hint and Chrome's "preloaded but not used within a few
-    // seconds" warning on the loads where the splash never renders.
-    const img = new Image();
-    img.decoding = "async";
-    img.src = SPLASH_PHOTO;
-  } catch { /* non-fatal */ }
+  if (typeof document === "undefined") return;
+  for (const src of [SPLASH_PHOTO, "/phoebe-app-icon.png"]) {
+    if (!src) continue;
+    try {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+    } catch { /* non-fatal */ }
+  }
 }
 
 // The Home Screen subset — used ONLY on the home + daily-progress (a curated set,

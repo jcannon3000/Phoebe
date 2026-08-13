@@ -49,6 +49,12 @@
          this href to the hashed asset URL at build time; keep it in sync with
          SPLASH_PHOTO in src/lib/earthPhotos.ts. -->
     <link rel="preload" as="image" href="/src/assets/leaves/ryunosuke-kikuno-4Rrb8pmQ09w-unsplash.jpg" />
+    <!-- The splash's app-icon image, preloaded the same way — without this
+         the leaf photo painted first and the icon popped in a beat later
+         once its own request finished, reading as a second flash. This one
+         lives in public/ so the URL is stable (no Vite hash to keep in
+         sync). -->
+    <link rel="preload" as="image" href="/phoebe-app-icon.png" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
 
