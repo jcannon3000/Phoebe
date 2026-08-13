@@ -111,10 +111,13 @@ export function WayOfLoveTurnLearnPray() {
   const learned = learnFromReflection || learnFromMorning || learnFromEvening;
   const prayed = rhythm.doneCount > 0;
 
+  // All three rows in shades of green (owner) — varying only in weight, not
+  // hue, matching the app's "green only" rule for weekly-progress rows
+  // (see WeeklyGridCard's CUSTOM_PALETTE).
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = [
     { emoji: "🔄", label: "Turn", done: turned, rgb: "46,107,64", historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: "96,141,209", historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "150,120,180", historyFor: prayedOn },
+    { emoji: "📖", label: "Learn", done: learned, rgb: "84,150,104", historyFor: learnedOn },
+    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "40,96,58", historyFor: prayedOn },
   ];
   // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
   // 7 columns to draw the instant this renders — never blank while
@@ -137,15 +140,20 @@ export function WayOfLoveTurnLearnPray() {
 
   return (
     <div className="mt-7">
-      {/* "Past 7 Days" as a centered, small-caps label — matching the
-          onboarding mock's own dot-grid section (owner) — in place of the
-          "This week"-style rule header this card used before. */}
-      <p
-        className="text-center text-[11px] font-semibold uppercase tracking-widest mb-3"
-        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
-      >
-        Past 7 Days
-      </p>
+      {/* "Past 7 Days" as a centered, small-caps label with a thin rule on
+          either side — matching the onboarding mock's own dot-grid section
+          (owner) — in place of the "This week"-style rule header this card
+          used before. */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+        <p
+          className="text-center text-[11px] font-semibold uppercase tracking-widest flex-shrink-0"
+          style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
+        >
+          Past 7 Days
+        </p>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
       {/* One dot row per practice — no separate "Completed" status rows
           above it (owner): always 7 columns (windowDays is client-computed)
           so this never sits blank waiting on the network. Same card
