@@ -115,7 +115,7 @@ export function HomeLearnSection() {
   });
 
   return (
-    <div className="mt-10" ref={rootRef}>
+    <div className="mt-6" ref={rootRef}>
       {/* Same header recipe as the daily spine's "Next" / "Done" headings
           (DailyProgressBody.sectionHeader) so the sections read as siblings. */}
       <motion.div {...enterUp(0)} className="flex items-center gap-3 mb-2">
