@@ -7,8 +7,13 @@ android {
         applicationId "app.withphoebe.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // versionCode 1 is correct as-is — Play Console tracks its own upload
+        // sequence starting from the first AAB, independent of iOS's build
+        // counter. versionName aligned to iOS's current MARKETING_VERSION
+        // (App.xcodeproj/project.pbxproj) so both platforms show the same
+        // user-facing version string; bump alongside iOS from here on.
         versionCode 1
-        versionName "1.0"
+        versionName "9.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
