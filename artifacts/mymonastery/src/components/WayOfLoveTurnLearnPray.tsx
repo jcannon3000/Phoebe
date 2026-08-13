@@ -111,14 +111,15 @@ export function WayOfLoveTurnLearnPray() {
   const learned = learnFromReflection || learnFromMorning || learnFromEvening;
   const prayed = rhythm.doneCount > 0;
 
-  // All three rows in shades of green (owner) — varying only in weight, not
-  // hue, matching the app's "green only" rule for weekly-progress rows (see
-  // WeeklyGridCard's CUSTOM_PALETTE) — and ordered light -> dark top to
-  // bottom, so the card reads as one vertical gradient.
+  // One shared green across all rows — matching the header's Daily Progress
+  // pill dots (rgba(110,180,130,...) in layout.tsx) and the CTA pill fills
+  // elsewhere on the home, so this card's "kept" color reads as the same
+  // accent everywhere rather than a separate per-row palette.
+  const KEPT_RGB = "110,180,130";
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = [
-    { emoji: "🔄", label: "Turn", done: turned, rgb: "110,178,128", historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: "62,124,80", historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "28,72,44", historyFor: prayedOn },
+    { emoji: "🔄", label: "Turn", done: turned, rgb: KEPT_RGB, historyFor: (d) => readTurnedOn(d.ymd) },
+    { emoji: "📖", label: "Learn", done: learned, rgb: KEPT_RGB, historyFor: learnedOn },
+    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: KEPT_RGB, historyFor: prayedOn },
   ];
   // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
   // 7 columns to draw the instant this renders — never blank while
@@ -205,7 +206,7 @@ export function WayOfLoveTurnLearnPray() {
                             width: 14,
                             height: 14,
                             borderRadius: 999,
-                            background: kept ? `rgba(${r.rgb},0.7)` : "transparent",
+                            background: kept ? `rgba(${r.rgb},0.85)` : "transparent",
                             border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
                           }}
                         />
