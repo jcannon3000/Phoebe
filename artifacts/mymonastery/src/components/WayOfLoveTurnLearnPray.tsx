@@ -112,12 +112,13 @@ export function WayOfLoveTurnLearnPray() {
   const prayed = rhythm.doneCount > 0;
 
   // All three rows in shades of green (owner) — varying only in weight, not
-  // hue, matching the app's "green only" rule for weekly-progress rows
-  // (see WeeklyGridCard's CUSTOM_PALETTE).
+  // hue, matching the app's "green only" rule for weekly-progress rows (see
+  // WeeklyGridCard's CUSTOM_PALETTE) — and ordered light -> dark top to
+  // bottom, so the card reads as one vertical gradient.
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = [
-    { emoji: "🔄", label: "Turn", done: turned, rgb: "46,107,64", historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: "84,150,104", historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "40,96,58", historyFor: prayedOn },
+    { emoji: "🔄", label: "Turn", done: turned, rgb: "110,178,128", historyFor: (d) => readTurnedOn(d.ymd) },
+    { emoji: "📖", label: "Learn", done: learned, rgb: "62,124,80", historyFor: learnedOn },
+    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "28,72,44", historyFor: prayedOn },
   ];
   // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
   // 7 columns to draw the instant this renders — never blank while
@@ -156,13 +157,12 @@ export function WayOfLoveTurnLearnPray() {
       </div>
       {/* One dot row per practice — no separate "Completed" status rows
           above it (owner): always 7 columns (windowDays is client-computed)
-          so this never sits blank waiting on the network. Same card
-          treatment as WeeklyGridCard (DailyProgressBody.tsx) so this reads
-          as one family with the weekly-progress card just below it on the
-          home. */}
+          so this never sits blank waiting on the network. Same rounding +
+          border as the Next practice cards above (CARD_BORDER in
+          DailyProgressBody.tsx) so this reads as one family with them. */}
       <div
-        className="rounded-2xl px-4 py-4"
-        style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.13)" }}
+        className="rounded-3xl px-4 py-4"
+        style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.35)" }}
       >
         {(() => {
           const COLS = "28px repeat(7, 1fr)";
