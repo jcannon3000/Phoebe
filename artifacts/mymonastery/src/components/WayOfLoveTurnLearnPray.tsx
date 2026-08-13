@@ -165,10 +165,11 @@ export function WayOfLoveTurnLearnPray() {
         style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.35)", paddingBottom: 20 }}
       >
         {(() => {
-          const COLS = "repeat(7, 1fr) 20px";
+          const COLS = "20px repeat(7, 1fr)";
           return (
             <div style={{ display: "grid", rowGap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+                <div />
                 {dayInitials.map((ch, i) => (
                   <span
                     key={i}
@@ -178,10 +179,16 @@ export function WayOfLoveTurnLearnPray() {
                     {ch}
                   </span>
                 ))}
-                <div />
               </div>
               {rows.map((r) => (
                 <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+                  <span
+                    className="text-center text-[10.5px] font-semibold"
+                    style={{ color: WARM, fontFamily: FONT }}
+                    title={r.label}
+                  >
+                    {r.label[0]}
+                  </span>
                   {windowDays.map((d, i) => {
                     // Today reads from the live, already-computed state
                     // (r.done) rather than historyFor(d) — the server's
@@ -205,13 +212,6 @@ export function WayOfLoveTurnLearnPray() {
                       </span>
                     );
                   })}
-                  <span
-                    className="text-center text-[10.5px] font-semibold"
-                    style={{ color: WARM, fontFamily: FONT }}
-                    title={r.label}
-                  >
-                    {r.label[0]}
-                  </span>
                 </div>
               ))}
             </div>
