@@ -113,7 +113,7 @@ export function WayOfLoveTurnLearnPray() {
   const prayed = rhythm.doneCount > 0;
 
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = [
-    { emoji: "🌱", label: "Turn", done: turned, rgb: "46,107,64", historyFor: (d) => readTurnedOn(d.ymd) },
+    { emoji: "🔄", label: "Turn", done: turned, rgb: "46,107,64", historyFor: (d) => readTurnedOn(d.ymd) },
     { emoji: "📖", label: "Learn", done: learned, rgb: "96,141,209", historyFor: learnedOn },
     { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: "150,120,180", historyFor: prayedOn },
   ];
