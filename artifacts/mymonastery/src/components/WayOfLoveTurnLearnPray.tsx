@@ -63,11 +63,13 @@ function useTurnedToday(): boolean {
   return turned;
 }
 
-// Which office levels actually carry scripture on their own (a real
-// lectionary lesson or the appointed Psalms) — Contemplation, the Examen,
-// Simple Guided Prayer (PACT), and a custom practice don't, so a side set to
-// one of those must not count toward Learn just because it was kept.
-const SCRIPTURE_LEVELS = new Set(["office", "devotion", "psalms", "fdd"]);
+// Which office levels actually carry a real lectionary lesson — Praying the
+// Psalms doesn't (owner: the Psalter isn't a reading in the same sense the
+// Office/Devotion/Forward Day by Day lesson is), and neither do
+// Contemplation, the Examen, Simple Guided Prayer (PACT), or a custom
+// practice — so a side set to any of those must not count toward Learn just
+// because it was kept.
+const SCRIPTURE_LEVELS = new Set(["office", "devotion", "fdd"]);
 
 // Reuses the same unified matrix WeeklyGridCard reads from — no new
 // server work. Only Turn has no server field (opening the app isn't logged
