@@ -134,11 +134,25 @@ public class PhoebeAudioPlugin extends Plugin {
         }
     }
 
+    // Read a JS number robustly. Do NOT use call.getDouble() for anything
+    // that can exceed Integer range: it only unwraps Double/Float/Integer and
+    // returns the default for everything else, and org.json parses a JS
+    // epoch-millis timestamp (Date.now(), ~1.7e12) as a LONG. So
+    // call.getDouble("at") returned null for every real call and
+    // scheduleBellAt rejected with "missing at" 100% of the time on Android —
+    // i.e. the scheduled closing bell never armed. (Caught by driving the
+    // plugin on a live emulator; it reviews as correct, and the iOS twin is
+    // fine because that bridge hands everything over as Double.)
+    // JSONObject.optDouble coerces Integer/Long/Double/numeric-String alike.
+    private double optNumber(PluginCall call, String name, double fallback) {
+        return call.getData().optDouble(name, fallback);
+    }
+
     @PluginMethod
     public void scheduleBellAt(PluginCall call) {
-        Double atMs = call.getDouble("at");
+        double atMs = optNumber(call, "at", Double.NaN);
         String sound = call.getString("sound", "PhoebeRising-high.caf");
-        if (atMs == null) {
+        if (Double.isNaN(atMs)) {
             call.reject("missing at");
             return;
         }
@@ -210,13 +224,17 @@ public class PhoebeAudioPlugin extends Plugin {
             call.resolve(result);
             return;
         }
-        double durationMs = call.getDouble("durationMs", 1300.0);
-        double peak = call.getDouble("peak", 1.0);
-        // sharpness has no Android amplitude-control analog (it maps to
-        // CHHapticEventParameter.hapticSharpness, a texture/frequency knob
-        // Android's vibration API doesn't expose) — accepted for API parity
-        // with iOS but intentionally unused here.
-        call.getDouble("sharpness", 0.3);
+        // optNumber, not getDouble — same Long-unwrapping trap as scheduleBellAt
+        // above. These values are small enough today that org.json hands them
+        // over as Integer/Double, but using the robust reader everywhere means
+        // a future caller passing a bigger duration can't silently fall back
+        // to the default.
+        double durationMs = optNumber(call, "durationMs", 1300.0);
+        double peak = optNumber(call, "peak", 1.0);
+        // NB: callers also pass `sharpness`, which is deliberately ignored —
+        // it maps to CHHapticEventParameter.hapticSharpness, a texture knob
+        // Android's vibration API has no analog for. Accepted for API parity
+        // with the iOS plugin so native-shell.ts can call both identically.
 
         int steps = 18;
         long[] timings = new long[steps];
