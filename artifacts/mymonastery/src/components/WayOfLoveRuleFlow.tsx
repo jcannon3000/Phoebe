@@ -1591,6 +1591,25 @@ export default function WayOfLoveRuleFlow({
               if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
             },
           )}
+          {/* Forward Day by Day as the morning prayer itself — morning only,
+              above "Create your own" at the bottom of the list (owner).
+              Choosing it also follows it as a daily reflection (see the
+              "learn" step below), so it shows checked there too — same
+              signal in both places. Unchecking it on "learn" later is
+              fine; that step notes when it's still the morning practice
+              even if unchecked as a reflection. */}
+          {side === "morning" && choiceRow(
+            prayBySide[side] === "fdd",
+            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`,
+            t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
+            () => {
+              if (prayBySide[side] === "fdd") return; // already selected
+              touchedRef.current = true;
+              if (contemplationBySide[side]) toggleContemplationSide(side);
+              choosePrayBySide(side, "fdd");
+              setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
+            },
+          )}
           {/* Create your own — name a practice of your own and it BECOMES this
               side's prayer (replaces the office, same as the choices above).
               A plain per-side anchor: no contemplation slot, no session page —
@@ -1608,24 +1627,6 @@ export default function WayOfLoveRuleFlow({
               if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               if (contemplationBySide[side]) toggleContemplationSide(side);
               choosePrayBySide(side, "ownPractice");
-            },
-          )}
-          {/* Forward Day by Day as the morning prayer itself — morning only,
-              at the bottom of the list (owner). Choosing it also follows it
-              as a daily reflection (see the "learn" step below), so it shows
-              checked there too — same signal in both places. Unchecking it
-              on "learn" later is fine; that step notes when it's still the
-              morning practice even if unchecked as a reflection. */}
-          {side === "morning" && choiceRow(
-            prayBySide[side] === "fdd",
-            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`,
-            t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
-            () => {
-              if (prayBySide[side] === "fdd") return; // already selected
-              touchedRef.current = true;
-              if (contemplationBySide[side]) toggleContemplationSide(side);
-              choosePrayBySide(side, "fdd");
-              setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
             },
           )}
         </div>
