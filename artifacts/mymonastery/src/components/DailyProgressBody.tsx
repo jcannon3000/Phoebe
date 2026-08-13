@@ -18,7 +18,7 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, type ReflectionSource } from "@/lib/officePrefs";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, SLOT_RANK, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
@@ -1184,9 +1184,35 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // slides, and gets its own dedicated section on the home screen (see
     // PrayerListSection in dashboard.tsx) rather than a Next/Done rhythm row.
   ];
-  // Stable sort by time-of-day slot (Array.prototype.sort is stable), so within
-  // a slot the base order above is preserved.
-  const sortedCards = [...rawCards].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot]);
+  // The morning- and evening-slotted cards bookend the list (unchanged — a
+  // stable sort on SLOT_RANK, since every card sharing a slot already carries
+  // the same rank, so ties fall back to array order). The middle group
+  // (anytime/midday/afternoon — the optional add-on practices) is instead
+  // reordered to echo the sequence the user actually practiced them in
+  // YESTERDAY, not today's fixed feature order: yesterdayOrderRank below maps
+  // a card key to its position in that sequence; a card with no entry (never
+  // done yesterday, or one of the day-only-tracked keys like a novena or a
+  // custom anchor) falls after everything that DOES have one, per owner.
+  const { data: yesterdayOrderData } = useQuery<{ order: string[] }>({
+    queryKey: ["/api/me/yesterday-order"],
+    queryFn: () => apiRequest("GET", "/api/me/yesterday-order"),
+    staleTime: 5 * 60_000,
+  });
+  const yesterdayOrderRank = new Map((yesterdayOrderData?.order ?? []).map((key, i) => [key, i]));
+  const cardGroup = (slot: CustomSlot): 0 | 1 | 2 => slot === "morning" ? 0 : slot === "evening" ? 2 : 1;
+  const sortedCards = rawCards
+    .map((c, idx) => ({ c, idx }))
+    .sort((a, b) => {
+      const ga = cardGroup(a.c.slot), gb = cardGroup(b.c.slot);
+      if (ga !== gb) return ga - gb;
+      if (ga === 1) {
+        const ra = yesterdayOrderRank.has(a.c.key) ? yesterdayOrderRank.get(a.c.key)! : Infinity;
+        const rb = yesterdayOrderRank.has(b.c.key) ? yesterdayOrderRank.get(b.c.key)! : Infinity;
+        if (ra !== rb) return ra - rb;
+      }
+      return a.idx - b.idx; // stable tiebreak — original base order
+    })
+    .map((x) => x.c);
   // Time-gate each slotted card: you can't complete a practice before its slot's
   // window opens (Midday 10 AM, Afternoon 2 PM, Evening 5 PM). Morning + Anytime
   // are always open. A gated card stays a quiet, non-tappable "Later" card (the

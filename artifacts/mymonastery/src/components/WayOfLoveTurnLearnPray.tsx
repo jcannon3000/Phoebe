@@ -1,11 +1,10 @@
 /**
- * "Turn · Learn · Pray" — the first three of the Way of Love's daily
- * practices, read directly off what the user has already done today rather
- * than logged separately — there's nothing new to tap here, this is a
- * status mirror. Sits under the daily rhythm on the home, bringing back the
- * "Your prayer rhythm" card's visual language from the onboarding tour
- * (owner) as a live card, styled to match WeeklyRhythm's "This week" band
- * directly below it.
+ * "Weekly Progress" — a 7-day dot grid for the first three of the Way of
+ * Love's daily practices (Turn / Learn / Pray), read directly off what the
+ * user has already done rather than logged separately — there's nothing new
+ * to tap here, this is a status mirror. Sits under the daily rhythm on the
+ * home, echoing the "Your prayer rhythm" card's dot-grid from the onboarding
+ * tour (owner), styled to match WeeklyGridCard's card treatment.
  *
  *   Turn  — opening Phoebe at all today. Stamped the moment this card first
  *           mounts for the local day, so it reads true the instant you're
@@ -141,7 +140,7 @@ export function WayOfLoveTurnLearnPray() {
       {/* Same header treatment as "This week" (WeeklyRhythm) directly below. */}
       <div className="flex items-center gap-3 mb-2">
         <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
-          Turn · Learn · Pray
+          Weekly Progress
         </h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
@@ -149,12 +148,17 @@ export function WayOfLoveTurnLearnPray() {
           "Completed" status rows above it (owner): the header already names
           the three practices, so the dots are the whole card. Always 7
           columns (windowDays is client-computed) so this never sits blank
-          waiting on the network. */}
-      <div>
+          waiting on the network. Same card treatment as WeeklyGridCard
+          (DailyProgressBody.tsx) so this reads as one family with the
+          weekly-progress card just below it on the home. */}
+      <div
+        className="rounded-2xl px-4 py-4"
+        style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.13)" }}
+      >
         {(() => {
-          const COLS = "76px repeat(7, 1fr)";
+          const COLS = "28px repeat(7, 20px)";
           return (
-            <div style={{ display: "grid", rowGap: 10 }}>
+            <div style={{ display: "grid", rowGap: 8, justifyContent: "start" }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                 <div />
                 {dayInitials.map((ch, i) => (
@@ -169,10 +173,7 @@ export function WayOfLoveTurnLearnPray() {
               </div>
               {rows.map((r) => (
                 <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-[13px] leading-none flex-shrink-0" aria-hidden>{r.emoji}</span>
-                    <span className="text-[12.5px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{r.label}</span>
-                  </span>
+                  <span className="text-[15px] leading-none" aria-hidden title={r.label}>{r.emoji}</span>
                   {windowDays.map((d, i) => {
                     const kept = r.historyFor(d);
                     const isToday = i === windowDays.length - 1;

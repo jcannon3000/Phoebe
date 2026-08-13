@@ -760,4 +760,65 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
   }
 });
 
+// GET /me/yesterday-order — the order (earliest first) in which the user's
+// optional/anytime practices were actually completed YESTERDAY (user-tz),
+// keyed to match DailyProgressBody's card `key`s. Drives the Next list's
+// middle group (the anytime/midday/afternoon-slotted cards, sandwiched
+// between the fixed morning and evening anchors): the client re-sorts that
+// group to echo yesterday's real order instead of a fixed feature order.
+// Only practices with a real per-completion timestamp are reportable —
+// novenas and custom anchors are tracked by DAY only (no time-of-day), so
+// they're simply absent here; the client leaves those at the end of the
+// group, same as any other practice that wasn't done yesterday at all.
+router.get("/me/yesterday-order", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [meTz] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const tz = meTz?.timezone || "UTC";
+    const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
+    const yDate = new Date(Date.UTC(ty, tm - 1, td));
+    yDate.setUTCDate(yDate.getUTCDate() - 1);
+    const yesterdayYmd = yDate.toISOString().slice(0, 10);
+
+    const [contRows, breathRows, pcRows] = await Promise.all([
+      // The "Contemplation" (silence) anytime card — earliest sit yesterday.
+      db.execute<{ at: string }>(sql`
+        SELECT MIN(ended_at) AS at FROM prayer_sessions
+        WHERE user_id = ${sessionUserId} AND surface = 'contemplation'
+          AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+      `),
+      // Co-Breathe — one row per local day already.
+      db.execute<{ at: string }>(sql`
+        SELECT created_at AS at FROM breath_sessions
+        WHERE user_id = ${sessionUserId} AND day = ${yesterdayYmd}
+        LIMIT 1
+      `),
+      // Audio Divina / Reading / Podcasts / Contemplative Walk.
+      db.execute<{ section: string; at: string }>(sql`
+        SELECT section, MIN(created_at) AS at FROM practice_completion
+        WHERE user_id = ${sessionUserId} AND section IN ('listening', 'reading', 'podcasts', 'walk')
+          AND local_date = ${yesterdayYmd}
+        GROUP BY section
+      `),
+    ]);
+
+    const entries: Array<{ key: string; at: string }> = [];
+    if (contRows.rows[0]?.at) entries.push({ key: "silence", at: contRows.rows[0].at });
+    if (breathRows.rows[0]?.at) entries.push({ key: "cobreathe", at: breathRows.rows[0].at });
+    for (const r of pcRows.rows) {
+      if (r.at) entries.push({ key: r.section, at: r.at });
+    }
+    entries.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+    res.json({ order: entries.map((e) => e.key) });
+  } catch (err) {
+    console.error("[yesterday-order] failed:", err);
+    res.status(500).json({ error: "Failed to load yesterday's order" });
+  }
+});
+
 export default router;
