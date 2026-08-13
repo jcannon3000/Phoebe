@@ -7,7 +7,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, LogIn, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS, SPLASH_PHOTO } from "@/lib/earthPhotos";
-import { getPracticeSlot, SLOT_RANK, isSlotOpen, type CustomSlot } from "@/lib/customAnchors";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
@@ -23,8 +22,6 @@ import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { PrayedWithWeek } from "@/components/PrayedWithWeek";
-import { getSideLevel, getExplicitSideLevel } from "@/lib/officePrefs";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -863,68 +860,18 @@ function DailyProgressPill() {
   );
 }
 
-// Has the user actually designed a daily routine? True once they've EITHER
-// arranged their home (Customize → homeLayout) OR set up their offices via the
-// daily-habit flow (/rule-of-life → office prefs, mirrored to getSideLevel).
-// Drives the once-a-week "Design your daily routine" nudge on the splash —
-// which stops for good the moment either is true.
-function hasDesignedRoutine(u: { homeLayout?: unknown } | null | undefined): boolean {
-  if (u?.homeLayout) return true;
-  // EXPLICIT levels only — the Morning=Psalms new-user default must not read as
-  // "they designed a routine," or the nudge would never show.
-  try { return getExplicitSideLevel("morning") !== null || getExplicitSideLevel("evening") !== null; }
-  catch { return false; }
-}
-const ROUTINE_PROMPT_KEY = "phoebe:routine-prompt-last";
-const ROUTINE_PROMPT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
-
-// Avatar base64 inlining is DISABLED. It stored each co-prayer's photo as a
-// base64 data URL in localStorage to paint the face rail instantly on a cold
-// open — but inlining several images bloats the entry to multiple MB, and
-// parsing/holding + rendering that on every launch pressured WKWebView memory
-// and was CRASHING the app on load. Faces now load from their URL (warmed via
-// an <Image> preload, below). A future instant-paint approach should use a
-// size-bounded native image cache, not localStorage base64.
-async function fetchAvatarDataUrl(_url: string): Promise<string | null> {
-  return null;
-}
-
-// OpeningSplash — the native app-open greeting. It's the EXACT same slide users
-// see at the end of the slideshow (CommunityPrayedRecap: "you prayed for N
-// people this week" + their faces), gently faded up, then faded out after 5s
-// (or when you tap the arrow / anywhere). Native app only — never on web — and
-// only once per app launch, never for logged-out visitors.
-//
-// One detour: a user who hasn't designed a daily routine gets a "Design your
-// daily routine" slide AFTER the faces (Start → /rule-of-life, or Skip). It's
-// shown at most once a week (ROUTINE_PROMPT_KEY) until they have a routine.
-// Splash quote rotation — the third alternate (after the faces + "What's next").
-// Each time the quote slide comes up it shows the next one in turn.
-const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
-  { text: "You do not think yourself into a new way of living, you live yourself into a new way of thinking.", author: "Richard Rohr" },
-  { text: "The proper habitat for truth is human relationships.", author: "Josef Pieper" },
-  { text: "Attention is the rarest and purest form of generosity.", author: "Simone Weil" },
-  { text: "For one only becomes weary of what is new. One never grows weary of the old.", author: "Søren Kierkegaard" },
-  { text: "Whenever the Psalter is abandoned, an incomparable treasure vanishes from the Christian church. With its recovery will come unsuspected power.", author: "Dietrich Bonhoeffer" },
-  { text: "Always we begin again.", author: "Benedict of Nursia" },
-];
-
+// OpeningSplash — the native app-open moment. Stripped down (owner): no
+// greeting, no "what's next" card, no faces, no quote, no routine nudge —
+// just the leaf backdrop and the Phoebe app icon, held for a beat, then
+// faded straight into the home. Native app only — never on web — and only
+// once per app launch, never for logged-out visitors.
 function OpeningSplash() {
   const { user, isLoading: authLoading } = useAuth();
-  const { t } = useTranslation();
   const native = isNativeShell();
-  const [, splashGoTo] = useLocation();
-  // The routine nudge sends people to /rule-of-life, which is beta-gated (it
-  // bounces non-beta users to /dashboard). Match that gate exactly so the
-  // "Design my routine" button never dead-ends.
-  const { isBeta } = useBetaStatus();
-  const [phase, setPhase] = useState<"in" | "routine" | "out" | "gone">(() => {
+  const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
     // Brand-new user (very first launch on this device): NO app-open splash —
-    // land straight on the home with the seeded routine already there. The
-    // recap/quote greeting begins on the second open. Starting "gone" makes the
-    // phase→"gone" effect below stamp splash-done + fire phoebe:splash-done, so
-    // the card cascade un-gates immediately instead of waiting out the fallback.
+    // land straight on the home with the seeded routine already there.
     if (isFirstOpen()) return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
@@ -933,235 +880,34 @@ function OpeningSplash() {
   // launch, and a known URL is what lets us preload it. Falls back to the old
   // forest shot only if the asset glob somehow came back empty.
   const splashLeafPhoto = SPLASH_PHOTO || splashForestPath;
-  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>; total?: number }>({
-    queryKey: ["/api/prayer-streak/community-prayed-month"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),
-    staleTime: 5 * 60_000,
-    enabled: phase !== "gone" && !!user && native,
-  });
-  // Last session's faces, read SYNCHRONOUSLY from localStorage so the rail paints
-  // INSTANTLY on a cold open — no waiting on the network or the React-Query
-  // persister to rehydrate. The live query (above) refreshes them in the
-  // background and the effect below re-saves the latest set for next launch.
-  // Keyed by user id so a PREVIOUS account's faces can never flash for the next
-  // person to sign in on a shared device (the cache outlives a no-logout close).
-  type CachedFaces = { uid: number | null; people: Array<{ id: number; name: string | null; avatarUrl: string | null; avatarData?: string; count?: number }> };
-  const [cachedFaces] = useState<CachedFaces>(() => {
-    if (typeof window === "undefined") return { uid: null, people: [] };
-    try {
-      const rawStr = localStorage.getItem("phoebe:splash-faces");
-      if (!rawStr) return { uid: null, people: [] };
-      // A prior build inlined base64 avatar data here, which can bloat this entry
-      // to several MB — parsing/holding that on every cold launch pressured
-      // WKWebView memory and was crashing the app on load. Drop an oversized
-      // entry (URL-only faces are ~1–2KB) and never carry base64 into the DOM.
-      if (rawStr.length > 50_000) {
-        try { localStorage.removeItem("phoebe:splash-faces"); } catch { /* ignore */ }
-        return { uid: null, people: [] };
-      }
-      const raw = JSON.parse(rawStr);
-      if (raw && typeof raw.uid === "number" && Array.isArray(raw.people)) {
-        const people = raw.people.map((p: { id: number; name: string | null; avatarUrl: string | null; count?: number }) => (
-          { id: p.id, name: p.name, avatarUrl: p.avatarUrl, count: p.count }
-        ));
-        return { uid: raw.uid, people };
-      }
-    } catch { /* ignore */ }
-    return { uid: null, people: [] };
-  });
-  // The splash ALTERNATES between two blocks each app open — the faces and a
-  // quote — instead of showing all at once. ("What's next" was the third block;
-  // it was taken out of rotation because, when its card had nothing to show, it
-  // fell back to the quote AFTER a settle delay, flashing the bare greeting
-  // first.) A localStorage counter advances it; read + increment once on mount.
-  const [splashOpenN] = useState<number>(() => {
-    try {
-      const n = Number(localStorage.getItem("phoebe:splash-alt") || "0");
-      localStorage.setItem("phoebe:splash-alt", String(n + 1));
-      return n;
-    } catch { return 0; }
-  });
-  const hour = new Date().getHours();
-  const rhythm = useRhythmState();
-  // The app-open splash shows WHAT'S NEXT in the user's routine — the first
-  // still-undone anchor in order. It falls back to a contemplative quote once
-  // the day is fully kept (or there's no routine). Both wait for the rhythm to
-  // resolve so the greeting holds without a flash.
-  // WHAT'S NEXT — the first still-undone practice in the SAME time-of-day order
-  // the home cards use (DailyProgressBody), considering EVERY anchor the user
-  // has (incl. journaling, Co-Breathe, reading, podcasts, and CUSTOM practices),
-  // so the splash never pre-empts an earlier "next thing". Evening prayer is
-  // special-cased: it only enters the running from 4pm onward AND, as an
-  // evening-slot card, only wins once everything else is done — so a midday next
-  // thing (a custom practice, journaling, Audio Divina, …) always shows ahead of it.
-  // `logOnly` marks an anchor that's just a "did you do it" log indicator (a
-  // custom practice, journaling, reading, podcasts) — there's no in-app activity
-  // to start, you just tap to log it. The splash hides the "Begin →" pill for
-  // these (a Begin CTA on a pure log indicator is misleading).
-  type NextCand = { active: boolean; done: boolean; slot: CustomSlot; emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean };
-  const nextCandidates: NextCand[] = [
-    // A novena in "replace" mode takes over its slot's candidate entirely —
-    // same gate as the rawCards/dotDefs entries above.
-    ...(rhythm.novenaReplacesMorning && rhythm.novena ? [{ active: rhythm.novenaActive, done: rhythm.novenaDone, slot: "morning" as CustomSlot, emoji: "🕊️", label: rhythm.novena.title, blurb: `Day ${rhythm.novena.currentDay} of ${rhythm.novena.dayCount}`, rgb: "150,120,90" }] : []),
-    ...(rhythm.novenaReplacesEvening && rhythm.novena ? [{ active: rhythm.novenaActive, done: rhythm.novenaDone, slot: "evening" as CustomSlot, emoji: "🕊️", label: rhythm.novena.title, blurb: `Day ${rhythm.novena.currentDay} of ${rhythm.novena.dayCount}`, rgb: "150,120,90" }] : []),
-    ...(rhythm.novenaActive && rhythm.novena && !rhythm.novenaReplacesMorning && !rhythm.novenaReplacesEvening
-      ? [{ active: true, done: rhythm.novenaDone, slot: "anytime" as CustomSlot, emoji: "🕊️", label: rhythm.novena.title, blurb: `Day ${rhythm.novena.currentDay} of ${rhythm.novena.dayCount}`, rgb: "150,120,90" }]
-      : []),
-    { active: rhythm.morningActive && !rhythm.novenaReplacesMorning, done: rhythm.morningDone, slot: "morning", emoji: "🌅",
-      label: getSideLevel("morning") === "psalms" ? "Morning Psalms" : getSideLevel("morning") === "guided-prayer" ? "Simple Guided Prayer" : "Morning prayer",
-      blurb: getSideLevel("morning") === "psalms" ? "Today's appointed psalms" : getSideLevel("morning") === "guided-prayer" ? "Three Minutes to Start Your Day" : "Begin the day with the office",
-      rgb: "46,107,64" },
-    ...rhythm.reflections.map((r) => ({ active: true, done: r.done, slot: "morning" as CustomSlot, emoji: "📖", label: "Today's reflection", blurb: "A few minutes with the day's word", rgb: "96,141,209" })),
-    { active: rhythm.silenceActive, done: rhythm.silenceDone, slot: "morning", emoji: "🕯️", label: "Contemplation", blurb: "Loving God in silence", rgb: "62,124,122" },
-    { active: rhythm.cobreatheActive, done: rhythm.cobreatheDone, slot: getPracticeSlot("cobreathe"), emoji: "🌍", label: "Creation Prayer", blurb: "12 breaths with all creation", rgb: "62,124,122" },
-    { active: rhythm.listeningActive, done: rhythm.listeningDone, slot: getPracticeSlot("listening"), emoji: "🎵", label: "Audio Divina", blurb: "Sacred listening", rgb: "108,140,180" },
-    { active: rhythm.walkActive, done: rhythm.walkDone, slot: getPracticeSlot("walk"), emoji: "🚶", label: "Contemplative walk", blurb: "A walk as prayer", rgb: "120,160,120" },
-    // Compline — fixed to the evening slot (it's the night office; the 7pm
-    // "not yet" state lives on the card, see DailyProgressBody's complineCard).
-    { active: rhythm.complineActive, done: rhythm.complineDone, slot: "evening" as CustomSlot, emoji: "🌙", label: "Compline", blurb: "The night office", rgb: "90,100,140" },
-    ...rhythm.customAnchors.filter((a) => !a.skipped).map((a) => ({ active: true, done: a.done, slot: a.slot, emoji: a.emoji || "✅", label: a.title, blurb: "Your daily practice", rgb: "143,170,150", logOnly: true })),
-    { active: rhythm.readingActive, done: rhythm.readingDone, slot: "afternoon", emoji: "📚", label: "Reading", blurb: "Log what you read", rgb: "108,140,180", logOnly: true },
-    { active: rhythm.podcastsActive, done: rhythm.podcastsDone, slot: "afternoon", emoji: "🎙️", label: "Podcasts", blurb: "Log what you listened to", rgb: "150,120,150", logOnly: true },
-    // The Examen is an end-of-day reflection — evening slot.
-    { active: rhythm.examenActive, done: rhythm.examenDone, slot: "evening", emoji: "🌗", label: "The Examen", blurb: "Review the day with God", rgb: "150,120,180" },
-    { active: rhythm.eveningActive && !rhythm.novenaReplacesEvening, done: rhythm.eveningDone, slot: "evening", emoji: "🌙",
-      label: getSideLevel("evening") === "psalms" ? "Evening Psalms" : getSideLevel("evening") === "examen" ? "The Examen" : "Evening prayer",
-      blurb: getSideLevel("evening") === "psalms" ? "Today's appointed psalms" : getSideLevel("evening") === "examen" ? "Review the day with God" : "Mark the day's end with the office",
-      rgb: "46,107,64" },
-  ];
-  // Evening only enters the running once its office window actually opens at
-  // 5pm — matching the real gate DailyProgressBody's Next list uses. It used
-  // to lead from noon (a deliberate earlier design), but that meant the
-  // splash could suggest "Evening Prayer" as the very next thing at 1pm,
-  // hours before it's actually time — corrected per the owner.
-  const eveningOpen = hour >= 17;
-  const rankOf = (slot: CustomSlot): number =>
-    eveningOpen && slot === "evening" ? -1 : SLOT_RANK[slot];
-  const firstUp = nextCandidates
-    // Only surface a practice whose slot window is open — mirrors the
-    // daily-progress time-gate so the home "what's next" never offers a
-    // tappable practice before its window (Midday 10 / Afternoon 2 / Evening 5).
-    .filter((c) => c.active && !c.done && isSlotOpen(c.slot))
-    .sort((a, b) => rankOf(a.slot) - rankOf(b.slot))[0];
-  const nextUp: { emoji: string; label: string; blurb: string; rgb: string; logOnly?: boolean } | null =
-    firstUp ? { emoji: firstUp.emoji, label: firstUp.label, blurb: firstUp.blurb, rgb: firstUp.rgb, logOnly: firstUp.logOnly } : null;
-  const showWhatsNext = rhythm.ready && !!nextUp;
-  const showQuote = rhythm.ready && !nextUp;
-  // The faces rail is retired; keep the flag (false) so its now-dormant render +
-  // cache effects still compile without ever running.
-  const showFaces = false;
-  // The quote advances each app open.
-  const quote = SPLASH_QUOTES[splashOpenN % SPLASH_QUOTES.length]!;
-  useEffect(() => {
-    if (data === undefined) return;
-    let cancelled = false;
-    (async () => {
-      const people = data.people ?? [];
-      if (!user || people.length === 0) {
-        try { localStorage.removeItem("phoebe:splash-faces"); } catch { /* ignore */ }
-        return;
-      }
-      // Re-use any base64 we already inlined for the same avatar URL (avatars
-      // rarely change), so we only fetch the ones we're missing.
-      const have = new Map<string, string>();
-      for (const p of cachedFaces.people) if (p.avatarUrl && p.avatarData) have.set(p.avatarUrl, p.avatarData);
-      const enriched = await Promise.all(people.map(async (p) => {
-        if (!p.avatarUrl) return { ...p, avatarData: undefined };
-        const existing = have.get(p.avatarUrl);
-        if (existing) return { ...p, avatarData: existing };
-        const inlined = await fetchAvatarDataUrl(p.avatarUrl);
-        return { ...p, avatarData: inlined ?? undefined };
-      }));
-      if (cancelled) return;
-      try { localStorage.setItem("phoebe:splash-faces", JSON.stringify({ uid: user.id, people: enriched })); } catch { /* ignore (quota) */ }
-    })();
-    return () => { cancelled = true; };
-  }, [data, user, cachedFaces]);
-  // Warm the avatar images the moment the co-prayer data lands, so the face
-  // rail doesn't flash white circles while each one downloads. The rendered
-  // <img>s reuse the same in-flight/cached fetch (and carry a green placeholder
-  // background as a belt-and-suspenders, so they never read as white).
-  useEffect(() => {
-    // Warm BOTH the cached faces (what paints on a cold open, instantly from
-    // localStorage) and the live set the moment it lands — so neither flashes a
-    // white circle. De-dup the urls so we don't kick off the same fetch twice.
-    const urls = new Set<string>();
-    for (const p of cachedFaces.people) if (p.avatarUrl) urls.add(p.avatarUrl);
-    for (const p of data?.people ?? []) if (p.avatarUrl) urls.add(p.avatarUrl);
-    for (const url of urls) { const img = new Image(); img.decoding = "async"; img.src = url; }
-  }, [data, cachedFaces]);
-  // Is the "Design your daily routine" nudge due? Only when the user has no
-  // routine yet AND we haven't shown it in the last week.
-  const routineDue = (): boolean => {
-    // Disabled per request — no pop-up inviting users to configure their
-    // routine. The splash fades straight to home; Customize lives on the Daily
-    // progress page (top-right pill) for anyone who wants it.
-    return false;
-  };
-  // Leaving the faces — detour to the routine slide if due (stamping the
-  // week), otherwise fade out to the home as before. The functional updater
-  // makes this a no-op once we've already left "in", so a late-firing timer
-  // can't yank the routine slide away or re-stamp.
-  const advanceFromFaces = () => {
-    const due = routineDue();
-    if (due) { try { localStorage.setItem(ROUTINE_PROMPT_KEY, String(Date.now())); } catch { /* ignore */ } }
-    setPhase((cur) => (cur !== "in" ? cur : due ? "routine" : "out"));
-  };
 
-  // Start the 5s auto-dismiss once auth has resolved (user present) — NOT on a
-  // bare mount. On a native cold start `user` is null while /api/auth/me loads;
-  // stamping the once-per-launch flag then would burn the splash before it ever
-  // renders (the render guard needs `user`). startedRef makes it fire exactly
-  // once, the moment user first appears.
+  // Start the auto-dismiss once auth has resolved (user present) — NOT on a
+  // bare mount. On a native cold start `user` is null while /api/auth/me
+  // loads; stamping the once-per-launch flag then would burn the splash
+  // before it ever renders (the render guard needs `user`). startedRef makes
+  // it fire exactly once, the moment user first appears.
   const startedRef = useRef(false);
   useEffect(() => {
     if (startedRef.current || phase === "gone" || !native || !user) return;
     startedRef.current = true;
     try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
-    // Hold the greeting a beat longer (7.5s) so it doesn't snap away.
-    const id = setTimeout(() => advanceFromFaces(), 7500);
+    // Nothing to read anymore — just the icon — so this is a beat, not a hold.
+    const id = setTimeout(() => setPhase((cur) => (cur === "in" ? "out" : cur)), 1200);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, phase, native]);
   // Unmount is driven by the fade-out's onAnimationComplete (below) so it lands
   // exactly when opacity hits 0 — not a racing timeout that could snap the
   // splash back to visible for a frame (the "flash" on close). This timeout is
   // only a safety net in case the animation callback never fires.
   useEffect(() => {
     if (phase !== "out") return;
-    // Do NOT fire phoebe:home-reveal here: the splash's own green backdrop is
-    // already fading to the home, so a second green LoadReveal curtain sliding
-    // in on top just reads as a flash. The splash fade IS the reveal.
-    const id = setTimeout(() => setPhase("gone"), 1400);
+    const id = setTimeout(() => setPhase("gone"), 900);
     return () => clearTimeout(id);
   }, [phase]);
 
-  // Once the co-prayer query resolves with NOBODY, there's nothing to show —
-  // dismiss right away rather than dwelling on a bare greeting. This also kills
-  // the old "You are held in prayer" blessing that used to flash on every load
-  // while the query was still in flight (people=[] during loading).
-  useEffect(() => {
-    // Once the live query RESOLVES with nobody, dismiss — even if we have cached
-    // faces. The cache is only a cold-open instant-paint stand-in; the moment the
-    // account-scoped query says "nobody this month", that's the truth, so we must
-    // not dwell 5s on last session's stale faces (or a "prayed for you" line that
-    // no longer holds). While data is still loading (undefined) the cache keeps
-    // painting and the 5s timer runs as normal.
-    // Only the FACES variant has nothing to show without co-prayers; the
-    // "What's next" and quote variants always have their own content, so an
-    // empty co-prayer query must NOT dismiss those.
-    if (showFaces && phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
-      advanceFromFaces();
-    }
-    // The fellows / quote variants always have content (the quote is the
-    // fallback when nobody has practiced), so an empty result never dismisses.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, phase, showFaces]);
-
-  // Web (or logged out) → no splash at all.
-  // Tell the home it can start its card cascade only AFTER the splash has faded
-  // down. Fires on every transition to "gone" (incl. never-shown — harmless,
-  // the home only waits when the splash actually showed).
+  // Tell the home it can start its card cascade only AFTER the splash has
+  // faded down. Fires on every transition to "gone" (incl. never-shown —
+  // harmless, the home only waits when the splash actually showed).
   useEffect(() => {
     if (phase === "gone") {
       // Stamp a DONE flag (distinct from "splash-shown", which is set at the
@@ -1180,247 +926,48 @@ function OpeningSplash() {
   // install. Only bail once auth has RESOLVED to no user (web / logged out).
   if (!native || phase === "gone" || (!user && !authLoading)) return null;
 
-  const greeting = hour < 12
-    ? t("splash.morning", { defaultValue: "Good morning" })
-    : hour < 17
-      ? t("splash.afternoon", { defaultValue: "Good afternoon" })
-      : t("splash.evening", { defaultValue: "Good evening" });
-  const firstName = (user?.name ?? "").trim().split(/\s+/)[0] || "";
-
   return (
     <motion.div
-      // Tapping the backdrop advances from the faces (to the routine slide or
-      // home); on the routine slide itself only Start / Skip act, so a stray
-      // tap can't dismiss it.
-      onClick={() => { if (phase === "in") advanceFromFaces(); }}
-      // The backdrop is opaque from the very first frame — so the recap is the
-      // first thing shown (no flash of the home behind it). Only the fade-OUT
-      // animates; the recap's own content gently rises in on top.
+      // The backdrop is opaque from the very first frame — so the leaf photo
+      // is the first thing shown (no flash of the home behind it). Only the
+      // fade-OUT animates.
       initial={{ opacity: 1 }}
       animate={{ opacity: phase === "out" ? 0 : 1 }}
-      transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
+      transition={{ duration: phase === "out" ? 0.7 : 0, ease: "easeInOut" }}
       onAnimationComplete={() => { if (phase === "out") setPhase("gone"); }}
-      className="fixed inset-0 flex flex-col items-center justify-center px-6"
-      style={{
-        background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto",
-        paddingTop: "calc(var(--safe-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
-      }}
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: "none" }}
     >
-      {/* Splash backdrop — a bundled leaf photo (owner: match the leaf imagery
-          used elsewhere, not the old single forest-path shot). Still eager-
-          imported so it paints instantly on a cold open with no flash. A
-          frosted dark wash sits on top so the greeting / faces / quote stay
-          legible over the photo. */}
       <img
         src={splashLeafPhoto}
         alt=""
         aria-hidden
         // Anchor the crop to the BOTTOM of the photo — a tall landscape shot
         // center-cropped left the screen's lower half a dark, empty void with
-        // all the visible detail bunched at the top (owner: flagged from a
-        // screenshot another user sent).
+        // all the visible detail bunched at the top.
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center bottom", zIndex: -1 }}
       />
       <div
         aria-hidden
         style={{
           position: "absolute", inset: 0, zIndex: -1,
-          background: "linear-gradient(180deg, rgba(8,18,12,0.55) 0%, rgba(8,18,12,0.42) 45%, rgba(8,18,12,0.72) 100%)",
+          background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.38) 45%, rgba(8,18,12,0.66) 100%)",
           backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
         }}
       />
-      {phase === "routine" ? (
-        // Design-your-daily-routine nudge — shown after the faces to users who
-        // haven't set up a routine yet (once a week until they have one).
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: "easeOut" }}
-          className="relative flex flex-1 flex-col items-center justify-center text-center w-full"
-          style={{ maxWidth: 420 }}
-        >
-          <div className="text-5xl mb-5">🌿</div>
-          <h2 className="px-4 mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 26, fontWeight: 600, letterSpacing: "-0.01em" }}>
-            {t("splash.routine_title", { defaultValue: "Design your daily routine" })}
-          </h2>
-          <p className="px-7 text-[15.5px] leading-relaxed mb-9" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {t("splash.routine_subtitle", { defaultValue: "A simple rhythm of prayer, shaped to your day — morning, evening, a moment of stillness. It takes about a minute." })}
-          </p>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo("/rule-of-life"); }}
-            className="rounded-full px-9 py-3.5 text-[16px] font-semibold active:scale-[0.98]"
-            style={{ background: "rgba(46,107,64,0.92)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {t("splash.routine_start", { defaultValue: "Design my routine" })} →
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setPhase("out"); }}
-            className="mt-5 text-[14px] font-medium active:opacity-70"
-            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.78)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}
-          >
-            {t("splash.routine_skip", { defaultValue: "Skip for now" })}
-          </button>
-        </motion.div>
-      ) : (
-      <>
-      {/* The greeting is NOT a standalone top line: on the quote splash it would
-          read oddly, so it now rides up with the "up next" card (below) and is
-          simply absent on the quote variant. */}
-      {showFaces && (() => {
-        // Prefer the live set; fall back to last session's cached faces so the
-        // rail paints instantly on a cold open (no network wait) — but ONLY when
-        // the cache belongs to THIS user (never flash a prior account's faces).
-        const cached = cachedFaces.uid === user?.id ? cachedFaces.people : [];
-        const people = (data?.people && data.people.length > 0) ? data.people : cached;
-        // Base64-inlined avatars from a prior cold open, keyed by URL — so even the
-        // freshly-fetched live people paint from the cached photo (zero network
-        // wait) when we already have it. New faces fall back to the live URL and
-        // get inlined for next launch by the effect above.
-        const base64ByUrl = new Map<string, string>();
-        for (const p of cachedFaces.people) if (p.avatarUrl && p.avatarData) base64ByUrl.set(p.avatarUrl, p.avatarData);
-        // Nothing yet (still loading) or nobody → render no content. The empty
-        // case is handled by the dismiss effect above; we never flash the old
-        // "held in prayer" blessing or a bare greeting here.
-        if (people.length === 0) return null;
-        const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
-        const visible = people.slice(0, 7);
-        const overflow = Math.max(0, people.length - visible.length);
-        // Each face (and the total line) FADES UP in a gentle stagger — the
-        // profile pictures rise in one after another rather than popping in.
-        const faceVariant = {
-          hidden: { opacity: 0, y: 14 },
-          show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } },
-        };
-        return (
-          <motion.div
-            className="flex flex-col items-center w-full relative"
-            style={{ maxWidth: 420 }}
-            initial="hidden"
-            animate="show"
-            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
-          >
-            {/* The garden members who prayed with you this month — a single
-                horizontal overlapping rail (capped, with a +N chip), not a grid. */}
-            <div className="flex items-center justify-center -space-x-3">
-              {visible.map((p) => (
-                p.avatarUrl ? (
-                  <motion.img key={p.id} variants={faceVariant} src={base64ByUrl.get(p.avatarUrl) ?? p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" onError={(e) => { const img = e.currentTarget; if (p.avatarUrl && img.src !== p.avatarUrl) img.src = p.avatarUrl; }} className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
-                ) : (
-                  <motion.div key={p.id} variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
-                    {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
-                  </motion.div>
-                )
-              ))}
-              {overflow > 0 && (
-                <motion.div variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}>
-                  +{overflow}
-                </motion.div>
-              )}
-            </div>
-            <motion.p variants={faceVariant} className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {(() => {
-                const n = data?.total ?? people.length;
-                return t("splash.prayed_with_you_total", {
-                  count: n,
-                  defaultValue: `You prayed with ${n} ${n === 1 ? "person" : "people"} this month`,
-                });
-              })()}
-            </motion.p>
-          </motion.div>
-        );
-      })()}
-      {/* What's next in the routine — the first still-undone anchor. Tapping
-          anywhere on the splash fades it to the home, where they begin it. */}
-      {showWhatsNext && nextUp && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="relative w-full text-center"
-          style={{ maxWidth: 460 }}
-        >
-          {/* Greeting — rides up with the card (not a static top line). */}
-          <p className="text-center px-8 mb-8" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}>
-            {firstName ? `${greeting}, ${firstName}` : greeting}
-          </p>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-4" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Up next in your rhythm
-          </p>
-          {/* The same card the home shows for this practice — frosted surface,
-              accent strip, emoji, title, blurb, Begin pill (cardTintBg(0.4) +
-              blur from DailyProgressBody). Tapping anywhere fades to home, where
-              the live card begins it. */}
-          <div className="relative flex rounded-3xl overflow-hidden text-left mx-auto" style={{ maxWidth: 420, background: "rgba(20,42,29,0.306)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)" }}>
-            <div className="w-1 flex-shrink-0" style={{ background: `rgba(${nextUp.rgb},0.7)` }} />
-            <div className="flex-1 min-w-0 px-4 py-3.5">
-              <div className="flex items-center gap-3">
-                <span className="text-xl flex-shrink-0">{nextUp.emoji}</span>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.label}</p>
-                  <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{nextUp.blurb}</p>
-                </div>
-                {/* No "Begin" pill for pure log indicators (custom practices,
-                    journaling, reading, podcasts) — there's nothing to start. */}
-                {!nextUp.logOnly && (
-                  <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: `rgba(${nextUp.rgb},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {t("rhythm.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <p className="mt-5 text-[13px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Tap to begin →
-          </p>
-          {/* Praying WITH each other — the aggregate week line (never who). */}
-          <div className="mt-6 flex justify-center">
-            <PrayedWithWeek variant="splash" />
-          </div>
-        </motion.div>
-      )}
-      {/* Quote — the fallback once the day is kept. A single contemplative line
-          + attribution, centred; rises in immediately (no settle delay). */}
-      {showQuote && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="relative w-full text-center"
-          style={{ maxWidth: 460 }}
-        >
-          <p
-            className="px-4"
-            style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5 }}
-          >
-            “{quote.text}”
-          </p>
-          <p
-            className="mt-5 text-[13px] font-semibold uppercase tracking-[0.18em]"
-            style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {quote.author}
-          </p>
-          {/* Praying WITH each other — the aggregate week line (never who). */}
-          <div className="mt-6 flex justify-center">
-            <PrayedWithWeek variant="splash" />
-          </div>
-        </motion.div>
-      )}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); advanceFromFaces(); }}
-        aria-label="Continue"
-        style={{ position: "absolute", bottom: "6vh", background: "none", border: "none", cursor: "pointer", padding: 16, zIndex: 1 }}
-      >
-        <span style={{ color: "#8FAF96", fontSize: 30, lineHeight: 1 }}>→</span>
-      </button>
-      </>
-      )}
+      <motion.img
+        src="/phoebe-app-icon.png"
+        alt=""
+        aria-hidden
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        style={{ width: 96, height: 96, borderRadius: 22, boxShadow: "0 8px 32px rgba(0,0,0,0.35)" }}
+      />
     </motion.div>
   );
 }
+
 
 // One-time "green curtain" reveal on cold app load: a full-screen wash in the
 // home's own green that fades AND slides DOWN as the content rises into view —
