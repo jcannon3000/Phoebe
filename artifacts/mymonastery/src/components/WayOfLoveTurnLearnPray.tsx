@@ -16,6 +16,7 @@
  *   Pray  — any anchor at all was kept today.
  */
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getSideLevel } from "@/lib/officePrefs";
@@ -141,7 +142,7 @@ export function WayOfLoveTurnLearnPray() {
   });
 
   return (
-    <div className="mt-7">
+    <Link href="/turn-learn-pray" className="block mt-7 transition-opacity hover:opacity-95 active:scale-[0.99]">
       {/* "Past 7 Days" as a centered, small-caps label with a thin rule on
           either side — matching the onboarding mock's own dot-grid section
           (owner) — in place of the "This week"-style rule header this card
@@ -219,6 +220,6 @@ export function WayOfLoveTurnLearnPray() {
           );
         })()}
       </div>
-    </div>
+    </Link>
   );
 }

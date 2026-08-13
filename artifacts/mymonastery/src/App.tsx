@@ -301,6 +301,7 @@ const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
 const WeeklyReviewPage = lazy(() => import("./pages/weekly-review"));
 const VideosPage = lazy(() => import("./pages/videos"));
 const WayOfLoveJourneyPage = lazy(() => import("./pages/way-of-love-journey"));
+const TurnLearnPrayPage = lazy(() => import("./pages/turn-learn-pray"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
 const NewsPage = lazy(() => import("./pages/news"));
@@ -899,6 +900,7 @@ function Router() {
       <Route path="/this-week/review" component={WeeklyReviewPage} />
       <Route path="/this-week" component={WayOfLoveWeekPage} />
       <Route path="/way-of-love" component={WayOfLoveJourneyPage} />
+      <Route path="/turn-learn-pray" component={TurnLearnPrayPage} />
       <Route path="/videos" component={VideosPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
       <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>
