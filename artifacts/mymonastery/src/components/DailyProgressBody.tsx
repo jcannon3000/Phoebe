@@ -455,6 +455,17 @@ function PracticeCard({
   // While celebrating and still showing the old pill, render the card as if it
   // weren't done yet — that's the state we're animating OUT of.
   const showPreDone = !!celebrate && !celebrated;
+  // A progress bar (contemplation minutes, a novena's day count) used to just
+  // PAINT at its final value on mount — a practice finishes on its own page,
+  // so by the time the walk back to home renders this card, the fill is
+  // already sitting there full with nothing to see. Reuse the SAME
+  // showPreDone/celebrated beat the checkmark swap uses: render at 0% while
+  // the pre-completion pill is still showing, then — the instant it flips to
+  // the ✓ (i.e. once the user is actually looking at the home screen) — jump
+  // to the true value, and the bar's existing `transition: width 0.3s`
+  // animates the fill sweeping in right then, not before.
+  const progressFillPct = (p: { current: number; goal: number }) =>
+    showPreDone ? 0 : Math.min(100, Math.round((p.current / p.goal) * 100));
   // Gradual per-card blur-in. When blurDelay is provided we drop the static
   // backdrop-filter from `style` and animate it (both unprefixed + -webkit- so
   // it works across iOS 15.x) from blur(0) → full. It stays at 0 while the card
@@ -549,7 +560,7 @@ function PracticeCard({
             <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
               <div
                 className="h-full rounded-full"
-                style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+                style={{ width: `${progressFillPct(progress)}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
               />
             </div>
           )}
@@ -679,7 +690,7 @@ function PracticeCard({
           <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
             <div
               className="h-full rounded-full"
-              style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+              style={{ width: `${progressFillPct(progress)}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
             />
           </div>
         )}
@@ -715,7 +726,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Read once at mount and consumed immediately, so the moment plays exactly
   // once per completion and never replays on a later visit.
   const [celebrateKey] = useState<string | null>(() => {
-    const recent = readRecentCompletion();
+    // readRecentCompletion's own default (60s) is sized for an in-app
+    // office close, not a reflection — CAC/FDD/SSJE mark themselves read
+    // the INSTANT the card is tapped (before the external site even opens,
+    // see the `mark()` call below), so the stamp's clock starts ticking
+    // before the person has read a word. A real newsletter read easily
+    // runs several minutes; at 60s the stamp had always expired by the time
+    // they walked back, so the card just appeared already in Done with no
+    // moment to see — which is what was reported. 20 minutes comfortably
+    // covers a slow read while still expiring long before a LATER, unrelated
+    // visit could accidentally replay it.
+    const recent = readRecentCompletion(20 * 60_000);
     if (recent) clearRecentCompletion();
     return recent?.key ?? null;
   });
