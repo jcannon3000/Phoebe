@@ -156,9 +156,9 @@ export function WayOfLoveTurnLearnPray() {
         style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.13)" }}
       >
         {(() => {
-          const COLS = "28px repeat(7, 20px)";
+          const COLS = "28px repeat(7, 1fr)";
           return (
-            <div style={{ display: "grid", rowGap: 8, justifyContent: "start" }}>
+            <div style={{ display: "grid", rowGap: 8 }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                 <div />
                 {dayInitials.map((ch, i) => (
@@ -175,8 +175,13 @@ export function WayOfLoveTurnLearnPray() {
                 <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                   <span className="text-[15px] leading-none" aria-hidden title={r.label}>{r.emoji}</span>
                   {windowDays.map((d, i) => {
-                    const kept = r.historyFor(d);
+                    // Today reads from the live, already-computed state
+                    // (r.done) rather than historyFor(d) — the server's
+                    // practice-week snapshot can lag a few seconds behind a
+                    // just-finished practice, which showed today's dot as
+                    // still empty right after completing all three.
                     const isToday = i === windowDays.length - 1;
+                    const kept = isToday ? r.done : r.historyFor(d);
                     return (
                       <span key={d.ymd || i} className="flex justify-center">
                         <span
@@ -187,8 +192,6 @@ export function WayOfLoveTurnLearnPray() {
                             borderRadius: 999,
                             background: kept ? `rgba(${r.rgb},0.7)` : "transparent",
                             border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
-                            outline: isToday ? "1.5px solid rgba(240,237,230,0.55)" : "none",
-                            outlineOffset: 2,
                           }}
                         />
                       </span>
