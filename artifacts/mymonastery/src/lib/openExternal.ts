@@ -50,11 +50,22 @@ export function openExternalThenMarkRead(
 ): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
-  if (native?.isNative?.() && native.openInAppBrowser) {
+  // Gate on whichever method will ACTUALLY be called, not unconditionally on
+  // openInAppBrowser — the old check required openInAppBrowser to exist even
+  // for the reader:true path, which calls openReaderView instead. A native
+  // build exposing openReaderView but not openInAppBrowser (or any other
+  // partial-plugin state) fell through to the web fallback below despite
+  // being genuinely native, marking read the INSTANT the link opened rather
+  // than waiting for the browser to close. That's the "newsletter cards
+  // don't wait until the person comes back" bug: the mark-read + weekly-grid
+  // dot flip fired at tap time, before the article was even shown.
+  const wantsReader = opts?.reader && native?.openReaderView;
+  const nativeMethodAvailable = wantsReader ? native?.openReaderView : native?.openInAppBrowser;
+  if (native?.isNative?.() && nativeMethodAvailable) {
     // Newsletters (reader:true) open in Safari reader view; everything else in
     // the normal in-app browser. Both emit phoebe:browserfinished on close.
-    if (opts?.reader && native.openReaderView) void native.openReaderView(url);
-    else void native.openInAppBrowser(url);
+    if (wantsReader) void native!.openReaderView!(url);
+    else void native!.openInAppBrowser!(url);
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
       markRead();

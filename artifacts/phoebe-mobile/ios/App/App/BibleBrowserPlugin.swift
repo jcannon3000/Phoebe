@@ -90,6 +90,14 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             let onJournal: () -> Void = { [weak self] in
                 self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:open-journal")
             }
+            // Mirrors safariViewControllerDidFinish below (the reader-view
+            // path) — fires the SAME event this plain in-app-browser path
+            // never fired before, which left openExternalThenMarkRead's JS
+            // listener waiting forever and CAC/FDD/most links never marked
+            // read on native.
+            let onDismiss: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
+            }
             // Bible.com host detection. We only try the Universal Link
             // hop for URLs that YouVersion has actually registered —
             // sending a random outbound link through `.universalLinksOnly`
@@ -107,7 +115,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                     BibleBrowser.shared.present(
                         url: url,
                         from: self?.bridge?.viewController,
-                        onJournal: onJournal
+                        onJournal: onJournal,
+                        onDismiss: onDismiss
                     )
                     call.resolve()
                 }
@@ -116,7 +125,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             BibleBrowser.shared.present(
                 url: url,
                 from: self?.bridge?.viewController,
-                onJournal: onJournal
+                onJournal: onJournal,
+                onDismiss: onDismiss
             )
             call.resolve()
         }

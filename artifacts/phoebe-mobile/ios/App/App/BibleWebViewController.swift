@@ -53,6 +53,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // event into the app so the web layer can navigate to the journal.
     var onJournal: (() -> Void)?
 
+    // Invoked once this view controller has actually left the screen, no
+    // matter HOW it got dismissed (Done button, swipe-to-dismiss, or any
+    // future path) — the plugin wires this to fire `phoebe:browserfinished`,
+    // exactly mirroring onJournal above. Before this existed, NOTHING fired
+    // that event for this browser at all (only the separate SFSafariViewController
+    // reader-view path did, via its delegate's safariViewControllerDidFinish),
+    // so openExternalThenMarkRead's "wait for the user to actually close it"
+    // branch just hung forever for every CAC/FDD/regular link — markRead()
+    // never ran. viewDidDisappear is the single, path-agnostic hook for "this
+    // screen is gone now"; guarded with `dismissFired` since it's technically
+    // allowed to be called more than once by UIKit in edge cases and this
+    // must fire exactly once.
+    var onDismiss: (() -> Void)?
+    private var dismissFired = false
+
     // The persistent store below is supposed to keep a site's "accept" choice,
     // but iOS tracking prevention clears the script/third-party storage these
     // sources (CAC, Bible.com, SSJE) park consent in, so the bar returns every
@@ -160,6 +175,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     deinit {
         progressObservation?.invalidate()
         titleObservation?.invalidate()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        // No isBeingDismissed check — this VC is the ROOT of a navigation
+        // controller that's what's actually presented (see the class header),
+        // and isBeingDismissed reads false on a child even while the nav
+        // controller containing it genuinely is being dismissed. viewDidDisappear
+        // still fires correctly on children when their container is dismissed,
+        // so it alone — guarded to fire once — is the reliable signal here.
+        guard !dismissFired else { return }
+        dismissFired = true
+        onDismiss?()
     }
 
     override func viewDidLoad() {
@@ -479,10 +507,11 @@ final class BibleBrowser: NSObject {
         return wv
     }
 
-    func present(url: URL, from presenter: UIViewController?, onJournal: (() -> Void)? = nil) {
+    func present(url: URL, from presenter: UIViewController?, onJournal: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         guard let presenter = presenter else { return }
         let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
         vc.onJournal = onJournal
+        vc.onDismiss = onDismiss
         let nav = UINavigationController(rootViewController: vc)
         nav.overrideUserInterfaceStyle = .dark
         // Keep the top + bottom bars pinned — never collapse/minimize on scroll
