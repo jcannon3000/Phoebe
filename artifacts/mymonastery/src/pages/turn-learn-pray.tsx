@@ -102,32 +102,18 @@ export default function TurnLearnPrayPage() {
   if (!user) { setLocation("/"); return null; }
 
   return (
-    <Layout>
-      {/* Page backdrop — a still leaf photo + frosted gradient wash, same
-          recipe as about.tsx / invite-share.tsx. isolate + absolute inset-0,
-          never position:fixed (that flashes on iOS). */}
-      <div className="relative" style={{ isolation: "isolate" }}>
-        {bgPhoto && (
-          <>
-            <img
-              src={bgPhoto}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ zIndex: -2 }}
-            />
-            <div
-              aria-hidden
-              className="absolute inset-0"
-              style={{
-                zIndex: -1,
-                background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.5) 45%, rgba(8,18,12,0.78) 100%)",
-                backdropFilter: "blur(2px)",
-                WebkitBackdropFilter: "blur(2px)",
-              }}
-            />
-          </>
-        )}
+    // Page backdrop delegated to Layout's own bgPhoto/bgOpacity — this page
+    // used to hand-roll its own img + gradient wash (absolute inset-0 inside
+    // a plain `relative` div), but that div's height is driven by the whole
+    // page's content, which on a page this long (podcast cards + course
+    // lessons + the weekly grid + 3 explanation cards) stretched the photo
+    // across a much taller area than intended, producing the distorted,
+    // awkwardly-cropped backdrop reported. Layout's LayoutBackdrop instead
+    // uses `position: fixed` bound to the viewport (with a decode-aware
+    // fade-in so it doesn't flash) — the same well-tested mechanism most of
+    // the app's pages already use; about.tsx uses this exact prop pattern
+    // for the same photo+wash treatment.
+    <Layout bgPhoto={bgPhoto} bgOpacity={0.4}>
         <div className="max-w-2xl mx-auto w-full pb-24">
           <button
             type="button"
@@ -210,7 +196,6 @@ export default function TurnLearnPrayPage() {
           ))}
           </div>
         </div>
-      </div>
     </Layout>
   );
 }
