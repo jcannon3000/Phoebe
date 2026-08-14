@@ -20,9 +20,8 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { getSideLevel } from "@/lib/officePrefs";
-import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
 import { apiRequest } from "@/lib/queryClient";
+import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
@@ -85,38 +84,6 @@ function useTurnedToday(): boolean {
   return turned;
 }
 
-// Which office levels actually carry a real lectionary lesson — Praying the
-// Psalms doesn't (owner: the Psalter isn't a reading in the same sense the
-// Office/Devotion/Forward Day by Day lesson is), and neither do
-// Contemplation, the Examen, Simple Guided Prayer (PACT), or a custom
-// practice — so a side set to any of those must not count toward Learn just
-// because it was kept.
-const SCRIPTURE_LEVELS = new Set(["office", "devotion", "fdd"]);
-
-// Reuses the same unified matrix WeeklyGridCard reads from — no new
-// server work. Only Turn has no server field (opening the app isn't logged
-// anywhere); its 7-day history comes from the same local per-day stamp
-// useTurnedToday() writes, read back for the prior 6 days too.
-//
-// Carries every field GET /api/me/practice-week actually returns (see
-// routes/users.ts) — a prior version of this type was missing listening/
-// reading/podcasts/walk/prayerList entirely, which silently dropped them
-// from prayedOn() below even though they DO count toward "today" via
-// rhythm.doneCount. That mismatch was the "past day activity didn't hold"
-// bug: log a Contemplative Walk or Audio Divina sit today and TODAY reads
-// correctly (it reads rhythm.doneCount, not prayedOn), but the same kind of
-// day one column over always read as empty, because prayedOn had no field
-// to check it against.
-type PracticeWeekDay = {
-  ymd: string; morning: boolean; evening: boolean; compline: boolean;
-  contemplation: boolean; reflection: boolean; examen: boolean; cobreathe: boolean;
-  listening: boolean; reading: boolean; podcasts: boolean; walk: boolean; prayerList: boolean;
-};
-
-function readTurnedOn(ymd: string): boolean {
-  try { return localStorage.getItem(`phoebe:turn-opened:${ymd}`) === "1"; } catch { return false; }
-}
-
 export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: number } = {}) {
   const rhythm = useRhythmState();
   const turned = useTurnedToday();
@@ -141,96 +108,18 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   // on a slow first load.
   if (!rhythm.ready || hidden) return null;
 
-  // Historical days don't carry which OfficeLevel was chosen that day, only
-  // whether the side was kept — so, like the rest of this card, Learn's
-  // history reads the CURRENT side choices back across the week. A side
-  // switched mid-week will misjudge older days; an acceptable approximation
-  // for a lightweight status mirror, not a source of truth.
-  const morningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("morning") ?? "");
-  const eveningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("evening") ?? "");
-  const learnedOn = (d: PracticeWeekDay) => d.reflection || (morningIsScripture && d.morning) || (eveningIsScripture && d.evening);
-  // User-defined "Create your own" practices (e.g. a Duolingo check-off)
-  // live entirely client-side — they're not in /api/me/practice-week at
-  // all, server or client. Each one keeps its own rolling ~21-day history
-  // in localStorage (getCustomDoneDays), which is exactly what powers ITS
-  // OWN dot on a per-anchor row elsewhere — but was never folded into
-  // Pray's row here, even though a custom anchor DOES count toward
-  // rhythm.doneCount for today. Same current-anchors-judged-retroactively
-  // approximation as morningIsScripture above: if you delete a custom
-  // anchor, its past days drop out of this check along with it.
-  const customAnchorIds = getCustomAnchors().map((a) => a.id);
-  const prayedOnCustom = (ymd: string) => customAnchorIds.some((id) => getCustomDoneDays(id).has(ymd));
-  // Every anchor that can make rhythm.doneCount > 0 for TODAY (see
-  // useRhythmState's allFlags), so a past day reads consistently with how
-  // that same day would have read as "today" — a Walk-only or Audio
-  // Divina-only day is genuinely prayed, not just Turn.
-  const prayedOn = (d: PracticeWeekDay) =>
-    d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe
-    || d.listening || d.reading || d.podcasts || d.walk || d.prayerList
-    || prayedOnCustom(d.ymd);
-
-  const learnFromReflection = rhythm.reflections.some((r) => r.done);
-  const learnFromMorning = rhythm.morningDone && morningIsScripture;
-  const learnFromEvening = rhythm.eveningDone && eveningIsScripture;
-  const learned = learnFromReflection || learnFromMorning || learnFromEvening;
-  const prayed = rhythm.doneCount > 0;
-
-  // Morning / Contemplative / Evening Practice — the same three rows read
-  // through a plain time-of-day lens instead of the Way of Love framework.
-  // Reuses fields the server already returns (no new endpoint): Contemplative
-  // ORs every contemplative anchor (per-side sits, the solo goal card,
-  // Co-Breathe), matching how "prayed" already ORs across anchor types above.
-  const morningPracticeOn = (d: PracticeWeekDay) => d.morning;
-  const eveningPracticeOn = (d: PracticeWeekDay) => d.evening;
-  const contemplativePracticeOn = (d: PracticeWeekDay) => d.contemplation || d.cobreathe;
-  const morningPractice = rhythm.morningDone;
-  const eveningPractice = rhythm.eveningDone;
-  const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
-    || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
-
+  // Extracted to lib/weeklyGrid.ts so the iOS widget can render EXACTLY this
+  // same grid instead of a separately-maintained approximation — this file
+  // already hit drift bugs twice this session from logic living in two
+  // places (missing PracticeWeekDay fields, then a Contemplative-mode gap).
+  const { rows, dayInitials, ymds } = computeWeeklyGrid({ rhythm, week, practiceMode, turned });
   // One shared green across all rows — matching the header's Daily Progress
   // pill dots (rgba(110,180,130,...) in layout.tsx), per owner: back to a
   // single shared accent rather than a per-row gradient (tried both a
   // shared-ramp and a dots-only ramp pushed to its light end; owner wants
   // this card's dots reading as the SAME color as the header pill instead).
   const KEPT_RGB = "110,180,130";
-  const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
-    { emoji: "🌅", label: "Morning", done: morningPractice, rgb: KEPT_RGB, historyFor: morningPracticeOn },
-    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: KEPT_RGB, historyFor: contemplativePracticeOn },
-    { emoji: "🌙", label: "Evening", done: eveningPractice, rgb: KEPT_RGB, historyFor: eveningPracticeOn },
-  ] : [
-    { emoji: "🔄", label: "Turn", done: turned, rgb: KEPT_RGB, historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: KEPT_RGB, historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: KEPT_RGB, historyFor: prayedOn },
-  ];
-  // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
-  // 7 columns to draw the instant this renders — never blank while
-  // /api/me/practice-week is still in flight. Server days (when they land)
-  // are matched in by ymd; a day the server hasn't reported yet just reads
-  // as "not kept" for Learn/Pray until it arrives (Turn never depends on the
-  // server at all — see readTurnedOn).
-  const serverByYmd = new Map((week?.days ?? []).map((d) => [d.ymd, d]));
-  const EMPTY_DAY: PracticeWeekDay = {
-    ymd: "", morning: false, evening: false, compline: false, contemplation: false,
-    reflection: false, examen: false, cobreathe: false,
-    listening: false, reading: false, podcasts: false, walk: false, prayerList: false,
-  };
   const todayYmd = new Date().toLocaleDateString("en-CA");
-  // Oldest FIRST, today LAST (owner) — matches the server's own
-  // chronological order and reads left-to-right like a calendar week,
-  // ending on today. (Previously today led and the week ran backwards,
-  // which read against the grain for anyone used to a normal calendar.)
-  const windowDays: PracticeWeekDay[] = Array.from({ length: 7 }, (_, i) => {
-    const daysAgo = 6 - i;
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    const ymd = d.toLocaleDateString("en-CA");
-    return serverByYmd.get(ymd) ?? { ...EMPTY_DAY, ymd };
-  });
-  const dayInitials = windowDays.map((d) => {
-    const wd = new Date(`${d.ymd}T12:00:00`).getDay();
-    return Number.isNaN(wd) ? "" : ["S", "M", "T", "W", "T", "F", "S"][wd];
-  });
 
   return (
     // Fade-up entrance matching the app's standard cascade (dashboard's
@@ -275,11 +164,11 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
             <div style={{ display: "grid", rowGap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                 <div />
-                {windowDays.map((d, i) => (
+                {ymds.map((ymd, i) => (
                   <span
                     key={i}
                     className="text-center text-[10.5px] font-semibold"
-                    style={{ color: d.ymd === todayYmd ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
+                    style={{ color: ymd === todayYmd ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
                   >
                     {dayInitials[i]}
                   </span>
@@ -294,31 +183,20 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
                   >
                     {r.label[0]}
                   </span>
-                  {windowDays.map((d, i) => {
-                    // Today reads from the live, already-computed state
-                    // (r.done) rather than historyFor(d) — the server's
-                    // practice-week snapshot can lag a few seconds behind a
-                    // just-finished practice, which showed today's dot as
-                    // still empty right after completing all three. Checked
-                    // by ymd, not position — today is now the LAST column
-                    // (see windowDays above), not the first.
-                    const isToday = d.ymd === todayYmd;
-                    const kept = isToday ? r.done : r.historyFor(d);
-                    return (
-                      <span key={d.ymd || i} className="flex justify-center">
-                        <span
-                          title={`${r.label} · ${d.ymd}`}
-                          style={{
-                            width: 14,
-                            height: 14,
-                            borderRadius: 999,
-                            background: kept ? `rgba(${r.rgb},0.85)` : "transparent",
-                            border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
-                          }}
-                        />
-                      </span>
-                    );
-                  })}
+                  {r.kept.map((kept, i) => (
+                    <span key={ymds[i] || i} className="flex justify-center">
+                      <span
+                        title={`${r.label} · ${ymds[i]}`}
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: 999,
+                          background: kept ? `rgba(${KEPT_RGB},0.85)` : "transparent",
+                          border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
+                        }}
+                      />
+                    </span>
+                  ))}
                 </div>
               ))}
             </div>
