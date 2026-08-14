@@ -98,18 +98,8 @@ export function rhythmGradientRgb(i: number, n: number): string {
   // darker green across the day's cards, so the set reads as one family that
   // rests naturally on the dark forest background. No teal/violet drift.
   const hue = 146;                      // Phoebe forest green, held constant
-  // Owner: the CTA pills (which shade by this same rgb, see PracticeCard)
-  // read as basically one flat green in a 4-6 card list — the original
-  // step (0.08 sat / 0.26 light across the FULL card count) was too subtle
-  // to notice row-to-row, even though the ramp itself was real. Widened to
-  // make the top-to-bottom shift actually visible while staying a smooth,
-  // muted single-hue ramp (no hue drift). Checked WCAG contrast against the
-  // CTA text color (WARM, a light cream) across list lengths up to 7 —
-  // every row's contrast only IMPROVES going down (darker bg + light text),
-  // so this can't make any card's CTA text harder to read than the
-  // (unchanged) top card already was.
-  const sat = 0.36 - 0.12 * t;          // chroma eases toward the darker end
-  const light = 0.50 - 0.32 * t;        // muted sage (top) → deep forest (bottom), now a clearly visible per-row step
+  const sat = 0.36 - 0.08 * t;          // chroma eases gently toward the darker end
+  const light = 0.50 - 0.26 * t;        // a notch DARKER overall: muted sage (top) → deep forest (bottom), low card-to-card variance
   // HSL → RGB.
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const hp = hue / 60;

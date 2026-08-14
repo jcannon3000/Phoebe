@@ -23,7 +23,6 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { getSideLevel } from "@/lib/officePrefs";
 import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
 import { apiRequest } from "@/lib/queryClient";
-import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
@@ -189,49 +188,20 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
     || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
 
-  // Per-row shade, same green family + direction the Next-list CTA pills use
-  // (rhythmGradientRgb, DailyProgressBody.tsx) but its OWN, independently
-  // tunable ramp rather than that exact function. The CTA pills put light
-  // (WARM) text directly on top of their fill, so rhythmGradientRgb's light
-  // end is capped short of what would start hurting that text's contrast —
-  // the dots have no text on them at all, so when the owner asked for the
-  // bottom row genuinely pale (not just "the lightest point the shared CTA
-  // ramp already reaches"), reusing that function would have also lightened
-  // the Next list's top CTA pill AND still capped out at the same ceiling
-  // that wasn't light enough. This ramp keeps the dark (top-row) end close
-  // to rhythmGradientRgb's for visual continuity, but pushes the light
-  // (bottom-row) end much further.
-  const ROW_COUNT = 3;
-  function dotGradientRgb(i: number, n: number): string {
-    const t = n <= 1 ? 0 : i / (n - 1);
-    const hue = 146;
-    const sat = 0.26 - 0.10 * t;
-    const light = 0.86 - 0.62 * t;
-    const c = (1 - Math.abs(2 * light - 1)) * sat;
-    const hp = hue / 60;
-    const x = c * (1 - Math.abs((hp % 2) - 1));
-    let r = 0, g = 0, b = 0;
-    if (hp < 1) { r = c; g = x; }
-    else if (hp < 2) { r = x; g = c; }
-    else if (hp < 3) { g = c; b = x; }
-    else if (hp < 4) { g = x; b = c; }
-    else if (hp < 5) { r = x; b = c; }
-    else { r = c; b = x; }
-    const m = light - c / 2;
-    const to = (v: number) => Math.round((v + m) * 255);
-    return `${to(r)},${to(g)},${to(b)}`;
-  }
-  // Reversed (ROW_COUNT-1-i) vs the CTA pills' own top-to-bottom direction —
-  // owner asked for the BOTTOM row here to be the lightest shade.
-  const rowRgb = (i: number) => dotGradientRgb(ROW_COUNT - 1 - i, ROW_COUNT);
+  // One shared green across all rows — matching the header's Daily Progress
+  // pill dots (rgba(110,180,130,...) in layout.tsx), per owner: back to a
+  // single shared accent rather than a per-row gradient (tried both a
+  // shared-ramp and a dots-only ramp pushed to its light end; owner wants
+  // this card's dots reading as the SAME color as the header pill instead).
+  const KEPT_RGB = "110,180,130";
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
-    { emoji: "🌅", label: "Morning", done: morningPractice, rgb: rowRgb(0), historyFor: morningPracticeOn },
-    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: rowRgb(1), historyFor: contemplativePracticeOn },
-    { emoji: "🌙", label: "Evening", done: eveningPractice, rgb: rowRgb(2), historyFor: eveningPracticeOn },
+    { emoji: "🌅", label: "Morning", done: morningPractice, rgb: KEPT_RGB, historyFor: morningPracticeOn },
+    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: KEPT_RGB, historyFor: contemplativePracticeOn },
+    { emoji: "🌙", label: "Evening", done: eveningPractice, rgb: KEPT_RGB, historyFor: eveningPracticeOn },
   ] : [
-    { emoji: "🔄", label: "Turn", done: turned, rgb: rowRgb(0), historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: rowRgb(1), historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: rowRgb(2), historyFor: prayedOn },
+    { emoji: "🔄", label: "Turn", done: turned, rgb: KEPT_RGB, historyFor: (d) => readTurnedOn(d.ymd) },
+    { emoji: "📖", label: "Learn", done: learned, rgb: KEPT_RGB, historyFor: learnedOn },
+    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: KEPT_RGB, historyFor: prayedOn },
   ];
   // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
   // 7 columns to draw the instant this renders — never blank while
