@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,18 @@ import { apiRequest, ApiError } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { Search, MapPin } from "lucide-react";
+
+// One row of GET /api/prayer-feeds — feeds appear in this search alongside
+// communities (see matchingFeeds below).
+interface BrowseFeed {
+  id: number;
+  slug: string;
+  title: string;
+  tagline: string | null;
+  coverEmoji: string | null;
+  subscriberCount: number;
+  isSubscribed: boolean;
+}
 
 interface PublicGroup {
   id: number;
@@ -108,9 +120,37 @@ export default function CommunitiesBrowsePage() {
     },
   });
 
+
+  // Prayer feeds surface in this same search. A feed and a community are
+  // different objects internally (feeds publish content, communities have
+  // rosters and admins) but nobody searching for "VTS" knows or cares which
+  // one it was built as — before this, feeds were only findable on the
+  // separate /prayer-feeds page, so searching here simply never found them.
+  // Filtered client-side: /api/prayer-feeds already returns just the live
+  // feeds visible to this viewer, so it's a small array and the name search
+  // matches title/tagline/slug (slug so "vts" works without typing the full
+  // name). Location search is groups-only — feeds have no city/state.
+  const feedsQ = useQuery<{ feeds: BrowseFeed[] }>({
+    queryKey: ["/api/prayer-feeds"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds"),
+    enabled: !!user,
+  });
+  const matchingFeeds = useMemo(() => {
+    if (debouncedLocation.length >= 2) return [];
+    const all = feedsQ.data?.feeds ?? [];
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q.length < 2) return all;
+    return all.filter((f) =>
+      f.title.toLowerCase().includes(q)
+      || (f.tagline ?? "").toLowerCase().includes(q)
+      || f.slug.toLowerCase().includes(q)
+    );
+  }, [feedsQ.data, debouncedSearch, debouncedLocation]);
+
   if (isLoading || !user) return null;
 
   const groups = data?.groups ?? [];
+
 
   return (
     <Layout>
@@ -173,11 +213,54 @@ export default function CommunitiesBrowsePage() {
           </div>
         </div>
 
+        {/* Feeds matching the search, above the communities. Labelled so the
+            two kinds of result stay legible — following a feed and joining a
+            community are different actions. */}
+        {matchingFeeds.length > 0 && (
+          <div className="mb-4">
+            <p
+              className="text-[10px] uppercase font-semibold mb-2"
+              style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.16em" }}
+            >
+              {t("communities_browse.feeds_heading", { defaultValue: "Feeds to follow" })}
+            </p>
+            <div className="flex flex-col gap-2">
+              {matchingFeeds.map((f) => (
+                <Link key={`feed-${f.id}`} href={`/prayer-feeds/${f.slug}`}>
+                  <div
+                    className="relative flex rounded-xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90"
+                    style={{
+                      background: "rgba(62,124,122,0.10)",
+                      border: "1px solid rgba(62,124,122,0.26)",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <div className="w-1 flex-shrink-0" style={{ background: "#3E7C7A" }} />
+                    <div className="flex-1 p-4 flex items-center gap-3">
+                      <div className="text-xl flex-shrink-0" aria-hidden>{f.coverEmoji ?? "🕊️"}</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>{f.title}</p>
+                        {f.tagline && (
+                          <p className="text-xs mt-0.5 truncate" style={{ color: "#8FAF96" }}>{f.tagline}</p>
+                        )}
+                        <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                          {f.subscriberCount} praying along
+                          {f.isSubscribed && " · ✓ Following"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {groupsLoading ? (
           <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>
             {t("communities_browse.loading")}
           </p>
-        ) : groups.length === 0 ? (
+        ) : groups.length === 0 && matchingFeeds.length === 0 ? (
           <div
             className="rounded-2xl px-5 py-8 text-center"
             style={{

@@ -166,3 +166,27 @@ export function addHomeCard(
 
   return { layout: { order, hidden: [...hidden], v: current?.v ?? HOME_LAYOUT_VERSION }, changed };
 }
+
+// The counterpart to addHomeCard: take a module OUT of the home layout when
+// the thing that granted it goes away (unfollowing the VTS feed revokes the
+// Dean's Commentary — see prayer-feed-detail.tsx).
+//
+// Removes the key from `order` rather than just adding it to `hidden`,
+// because `hidden` means "the user deliberately removed this" — that's the
+// signal addHomeCard(respectRemoval) reads. Writing it there on a REVOKE
+// would forge user intent and permanently suppress the card even if they
+// followed again later. Dropping it from `order` leaves no such trace, so a
+// re-follow cleanly re-adds it.
+export function removeHomeCard(
+  current: HomeLayout | null | undefined,
+  key: string,
+): { layout: HomeLayout; changed: boolean } {
+  const order = (current?.order ?? []).filter((k) => k !== key);
+  // Also clear any stale hidden entry, so the layout doesn't keep carrying a
+  // "removed" marker for a card that's no longer in the layout at all.
+  const hidden = (current?.hidden ?? []).filter((k) => k !== key);
+  const changed =
+    order.length !== (current?.order ?? []).length
+    || hidden.length !== (current?.hidden ?? []).length;
+  return { layout: { order, hidden, v: current?.v ?? HOME_LAYOUT_VERSION }, changed };
+}

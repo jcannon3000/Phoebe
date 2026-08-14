@@ -7,7 +7,8 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
-import { addHomeCard, applyCachedHomeLayout, saveHomeLayout } from "@/lib/homeLayoutCache";
+import { addHomeCard, removeHomeCard, applyCachedHomeLayout, saveHomeLayout } from "@/lib/homeLayoutCache";
+import { getReflectionSource, setReflectionSource, setSideReflection } from "@/lib/officePrefs";
 
 // Feeds that put a card straight into the follower's routine when followed.
 // Following VTS adds the Dean's Commentary — the reflection it unlocks —
@@ -16,6 +17,11 @@ import { addHomeCard, applyCachedHomeLayout, saveHomeLayout } from "@/lib/homeLa
 // works exactly like any other, and addHomeCard(respectRemoval) means a
 // later re-follow won't override that removal.
 const FEED_UNLOCKS_HOME_CARD: Record<string, string> = { vts: "vts" };
+
+// Where a revoked reflection source falls back to. Forward Day by Day is
+// the reflection the seeded starter rule uses (lib/guestSeed) and the first
+// option in every picker, so it's the least surprising landing spot.
+const DEFAULT_REFLECTION_SOURCE = "fdd" as const;
 
 // Group upcoming events into a simple agenda — Today / This week / Later —
 // so a feed with several events (e.g. Rural & Migrant Ministry) reads like
@@ -173,7 +179,39 @@ export default function PrayerFeedDetailPage() {
   });
   const unsubscribe = useMutation({
     mutationFn: () => apiRequest("DELETE", `/api/prayer-feeds/${slug}/subscribe`),
-    onSuccess: invalidateAfterFollowChange,
+    onSuccess: async () => {
+      // Unfollowing REVOKES the gated content, so actively clean the choice
+      // up instead of leaving a selection pointing at something they can no
+      // longer have. Hiding it in the pickers alone isn't enough: the light
+      // customizer renders its current value as
+      // `opts.find(v)?.label ?? opts[0].label`, so a hidden-but-still-saved
+      // "vts" would make the Newsletter row display "Forward Day by Day"
+      // while the stored value stayed vts — the row would misreport their
+      // own setting. Removing the card and resetting the source keeps every
+      // surface telling the truth.
+      const moduleKey = FEED_UNLOCKS_HOME_CARD[slug];
+      if (moduleKey && user) {
+        try {
+          const current = applyCachedHomeLayout(user).homeLayout ?? null;
+          const { layout, changed } = removeHomeCard(current, moduleKey);
+          if (changed) {
+            await saveHomeLayout(layout);
+            qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+          }
+        } catch { /* best-effort — the gate still hides it either way */ }
+        // Fall back to the default reflection if the revoked one was their
+        // chosen source, so they're left with a real reflection rather than
+        // an inert pointer at content they can't open.
+        try {
+          if (getReflectionSource() === moduleKey) {
+            setReflectionSource(DEFAULT_REFLECTION_SOURCE);
+            setSideReflection("morning", DEFAULT_REFLECTION_SOURCE);
+            setSideReflection("evening", DEFAULT_REFLECTION_SOURCE);
+          }
+        } catch { /* best-effort */ }
+      }
+      invalidateAfterFollowChange();
+    },
   });
 
   // Legacy ?play=1 — old dashboard CTA used to deep-link here and
