@@ -23,6 +23,7 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { getSideLevel } from "@/lib/officePrefs";
 import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
 import { apiRequest } from "@/lib/queryClient";
+import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
@@ -154,15 +155,16 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   const learned = learnFromReflection || learnFromMorning || learnFromEvening;
   const prayed = rhythm.doneCount > 0;
 
-  // One shared green across all rows — matching the header's Daily Progress
-  // pill dots (rgba(110,180,130,...) in layout.tsx) and the CTA pill fills
-  // elsewhere on the home, so this card's "kept" color reads as the same
-  // accent everywhere rather than a separate per-row palette.
-  const KEPT_RGB = "110,180,130";
+  // Per-row shade from the SAME ramp the Next-list CTA pills use
+  // (rhythmGradientRgb, DailyProgressBody.tsx) — was one flat green across
+  // all three rows; owner asked for the dots to carry the same visible
+  // top-to-bottom gradient the CTA buttons now do, rather than reading as
+  // a separate, uncolored palette next to them.
+  const ROW_COUNT = 3;
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = [
-    { emoji: "🔄", label: "Turn", done: turned, rgb: KEPT_RGB, historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: KEPT_RGB, historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: KEPT_RGB, historyFor: prayedOn },
+    { emoji: "🔄", label: "Turn", done: turned, rgb: rhythmGradientRgb(0, ROW_COUNT), historyFor: (d) => readTurnedOn(d.ymd) },
+    { emoji: "📖", label: "Learn", done: learned, rgb: rhythmGradientRgb(1, ROW_COUNT), historyFor: learnedOn },
+    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: rhythmGradientRgb(2, ROW_COUNT), historyFor: prayedOn },
   ];
   // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
   // 7 columns to draw the instant this renders — never blank while
