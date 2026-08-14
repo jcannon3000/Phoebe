@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCust
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
-import { markPracticeDoneToday, togglePracticeDoneToday } from "@/lib/practiceCompletion";
+import { markPracticeDoneToday, unmarkPracticeDoneToday } from "@/lib/practiceCompletion";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
@@ -959,16 +959,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const examenSlot: CustomSlot = "evening";
   const walkCard = {
     key: "walk", emoji: "🚶", rgb: "120,160,120", done: walkDone, href: "",
-    // Simplified to a plain tap-to-check toggle, same shape as a custom
-    // anchor's card (toggleCustomDoneToday) and the custom-prayer morning/
-    // evening cards above (markCustomPrayed/unmarkCustomPrayed) — no more
-    // navigating to a separate page with a "where did you walk" form. A
-    // real toggle (tap again to undo), not a one-way stamp: PracticeCard
-    // wraps the WHOLE card in this onClick regardless of done-state.
-    onClick: () => togglePracticeDoneToday("walk"),
+    // Owner: should work like a custom practice — tapping opens the SAME
+    // Log popup a custom anchor's card does (Done / Not today), via the
+    // "walk" sentinel id below, rather than either navigating to a separate
+    // page (the old /walk-log flow) or silently toggling on tap (an earlier,
+    // too-simplified attempt this session).
+    onClick: () => setLogAnchorId("walk"),
     title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }),
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
-    cta: t("rhythm.mark_done", { defaultValue: "Mark done" }), later: false,
+    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
   // Compline is only reachable after 7pm, but — like Evening Prayer below —
   // the card itself stays in Next all day as a disabled "Later" state
@@ -1657,8 +1656,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       {showStreak && <SilenceLadderCard className="mt-4" />}
 
       {/* Log popup for a custom practice — a reading logs an amount
-          (chapter/page/time); a plain practice is just Done / Not today. */}
-      {logAnchorId && (() => {
+          (chapter/page/time); a plain practice is just Done / Not today.
+          "walk" is a sentinel id, not a real custom anchor: Contemplative
+          Walk reuses this exact same sheet (owner: it should work like a
+          custom practice) via onLog/onSkip overrides rather than
+          markCustomDoneToday/setCustomNotToday, since it's a built-in
+          OptionalPractice, not a user-created anchor. */}
+      {logAnchorId === "walk" ? (
+        <LogSheet
+          anchor={{ id: "walk", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶" }}
+          onClose={() => setLogAnchorId(null)}
+          t={t}
+          onLog={() => markPracticeDoneToday("walk")}
+          onSkip={() => unmarkPracticeDoneToday("walk")}
+        />
+      ) : logAnchorId && (() => {
         const a = customAnchors.find((x) => x.id === logAnchorId);
         if (!a) return null;
         return <LogSheet anchor={a} onClose={() => setLogAnchorId(null)} t={t} />;
@@ -1671,14 +1683,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 // Plain anchors get Done / Not today. Reading rituals get a number stepper in
 // their unit (with the daily goal pre-filled and a running total for context),
 // a Log button, and Not today.
+//
+// onLog/onSkip let a caller override what "Done" / "Not today" actually DO,
+// defaulting to markCustomDoneToday/setCustomNotToday when omitted (every
+// existing custom-anchor call site keeps working unchanged). Contemplative
+// Walk reuses this exact sheet via these overrides — it's a built-in
+// OptionalPractice, not a user-created custom anchor, so it needs
+// markPracticeDoneToday/unmarkPracticeDoneToday instead, but should look and
+// behave identically (owner: "it should work like a custom practice").
 function LogSheet({
   anchor,
   onClose,
   t,
+  onLog,
+  onSkip,
 }: {
   anchor: { id: string; title: string; emoji: string; reading?: ReadingConfig };
   onClose: () => void;
   t: (k: string, o?: Record<string, unknown>) => string;
+  onLog?: () => void;
+  onSkip?: () => void;
 }) {
   const reading = anchor.reading;
   const loggedToday = reading ? getReadingToday(anchor.id) : 0;
@@ -1759,7 +1783,7 @@ function LogSheet({
         ) : (
           <button
             type="button"
-            onClick={() => { markCustomDoneToday(anchor.id); onClose(); }}
+            onClick={() => { (onLog ?? (() => markCustomDoneToday(anchor.id)))(); onClose(); }}
             className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
             style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
           >
@@ -1769,7 +1793,7 @@ function LogSheet({
 
         <button
           type="button"
-          onClick={() => { setCustomNotToday(anchor.id); onClose(); }}
+          onClick={() => { (onSkip ?? (() => setCustomNotToday(anchor.id)))(); onClose(); }}
           className="w-full rounded-2xl py-3 mt-2 text-[14px] font-semibold active:scale-[0.99]"
           style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
         >

@@ -285,32 +285,40 @@ struct PhoebeWidgetView: View {
     // homeMedium below for this family (homeMedium is kept for reference/
     // potential reuse but no longer wired to any family).
     private var homeWeeklyGrid: some View {
-        // 20pt row-label column + 7 equal day columns, mirroring the home
-        // card's own `20px repeat(7, 1fr)` CSS grid exactly.
+        // 18pt row-label column + 7 equal day columns, mirroring the home
+        // card's own `20px repeat(7, 1fr)` CSS grid.
         let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
         let rowCount = stats.weeklyLabels.count
         return VStack(alignment: .leading, spacing: 10) {
+            // App identity in the top-left, matching every other Phoebe
+            // surface's leaf + wordmark — a widget with no chrome of its own
+            // otherwise doesn't read as Phoebe's at a glance on a packed
+            // home screen.
+            HStack(spacing: 5) {
+                Image(systemName: "leaf.fill").font(.system(size: 12)).foregroundColor(phoebeWarm.opacity(0.85))
+                Text("Phoebe").font(sgBold(13)).foregroundColor(phoebeWarm.opacity(0.9))
+            }
             Text("PAST 7 DAYS")
                 .font(sgBold(9))
                 .tracking(1.4)
                 .foregroundColor(phoebeWarm.opacity(0.55))
-            VStack(spacing: 8) {
+            VStack(spacing: 9) {
                 ForEach(0..<rowCount, id: \.self) { row in
                     HStack(spacing: 0) {
                         Text(stats.weeklyLabels[row].prefix(1))
-                            .font(sgBold(10))
-                            .foregroundColor(phoebeSage.opacity(0.65))
-                            .frame(width: 20, alignment: .center)
+                            .font(sgBold(11))
+                            .foregroundColor(phoebeWarm.opacity(0.6))
+                            .frame(width: 18, alignment: .center)
                         LazyVGrid(columns: dayCols, spacing: 0) {
                             ForEach(0..<7, id: \.self) { day in
                                 let kept = row < stats.weeklyGrid.count && day < stats.weeklyGrid[row].count
                                     && stats.weeklyGrid[row][day]
                                 Circle()
-                                    .fill(kept ? Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.85) : Color.clear)
+                                    .fill(kept ? Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.9) : Color.clear)
                                     .overlay(
-                                        Circle().stroke(kept ? Color.clear : phoebeSage.opacity(0.28), lineWidth: 1)
+                                        Circle().stroke(kept ? Color.clear : phoebeWarm.opacity(0.35), lineWidth: 1)
                                     )
-                                    .frame(width: 12, height: 12)
+                                    .frame(width: 14, height: 14)
                                     .frame(maxWidth: .infinity)
                             }
                         }
@@ -318,7 +326,11 @@ struct PhoebeWidgetView: View {
                 }
             }
         }
-        .padding(16)
+        // Tighter than the old hero's 16pt — this content should feel like
+        // it fills the whole card (owner: "full bleed"), not float inside a
+        // wide margin.
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
@@ -435,12 +447,28 @@ struct PhoebeTodayView: View {
 }
 
 // ── Widget ────────────────────────────────────────────────────────────────
-// A plain solid fill — the photo (WidgetLeafBG) never rendered reliably
-// inside the widget extension despite correct target membership, and was
-// dropped per owner request rather than keep chasing it. Solid color side-
-// steps the whole class of "is it loading / is it filling the frame" bugs.
+// The app's frosted-glass-over-photo look. A prior attempt at this (see git
+// history) had structurally correct SwiftUI — .resizable().scaledToFill()
+// .frame(...).clipped() — but the photo still never reliably rendered, so
+// it was dropped for a plain fill. Re-attempting now with a REAL, different
+// fix: WidgetLeafBG.imageset's Contents.json mapped the SAME 900x900 file to
+// the 1x, 2x, AND 3x slots simultaneously — not how a normal Xcode
+// single-scale asset is structured — rewritten to a proper single "1x"
+// universal entry. That malformed asset catalog entry is a genuinely new
+// candidate cause, not a repeat of what was already ruled out.
 private var widgetPhotoBackground: some View {
-    phoebeGreen
+    ZStack {
+        Image("WidgetLeafBG")
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+        LinearGradient(
+            colors: [phoebeGreen.opacity(0.35), phoebeGreen.opacity(0.72)],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
 }
 
 struct PhoebeWidget: Widget {
