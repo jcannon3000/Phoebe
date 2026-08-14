@@ -75,7 +75,21 @@ const SCRIPTURE_LEVELS = new Set(["office", "devotion", "fdd"]);
 // server work. Only Turn has no server field (opening the app isn't logged
 // anywhere); its 7-day history comes from the same local per-day stamp
 // useTurnedToday() writes, read back for the prior 6 days too.
-type PracticeWeekDay = { ymd: string; morning: boolean; evening: boolean; compline: boolean; contemplation: boolean; reflection: boolean; examen: boolean; cobreathe: boolean };
+//
+// Carries every field GET /api/me/practice-week actually returns (see
+// routes/users.ts) — a prior version of this type was missing listening/
+// reading/podcasts/walk/prayerList entirely, which silently dropped them
+// from prayedOn() below even though they DO count toward "today" via
+// rhythm.doneCount. That mismatch was the "past day activity didn't hold"
+// bug: log a Contemplative Walk or Audio Divina sit today and TODAY reads
+// correctly (it reads rhythm.doneCount, not prayedOn), but the same kind of
+// day one column over always read as empty, because prayedOn had no field
+// to check it against.
+type PracticeWeekDay = {
+  ymd: string; morning: boolean; evening: boolean; compline: boolean;
+  contemplation: boolean; reflection: boolean; examen: boolean; cobreathe: boolean;
+  listening: boolean; reading: boolean; podcasts: boolean; walk: boolean; prayerList: boolean;
+};
 
 function readTurnedOn(ymd: string): boolean {
   try { return localStorage.getItem(`phoebe:turn-opened:${ymd}`) === "1"; } catch { return false; }
@@ -105,7 +119,13 @@ export function WayOfLoveTurnLearnPray() {
   const morningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("morning") ?? "");
   const eveningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("evening") ?? "");
   const learnedOn = (d: PracticeWeekDay) => d.reflection || (morningIsScripture && d.morning) || (eveningIsScripture && d.evening);
-  const prayedOn = (d: PracticeWeekDay) => d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe;
+  // Every anchor that can make rhythm.doneCount > 0 for TODAY (see
+  // useRhythmState's allFlags), so a past day reads consistently with how
+  // that same day would have read as "today" — a Walk-only or Audio
+  // Divina-only day is genuinely prayed, not just Turn.
+  const prayedOn = (d: PracticeWeekDay) =>
+    d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe
+    || d.listening || d.reading || d.podcasts || d.walk || d.prayerList;
 
   const learnFromReflection = rhythm.reflections.some((r) => r.done);
   const learnFromMorning = rhythm.morningDone && morningIsScripture;
@@ -130,12 +150,20 @@ export function WayOfLoveTurnLearnPray() {
   // as "not kept" for Learn/Pray until it arrives (Turn never depends on the
   // server at all — see readTurnedOn).
   const serverByYmd = new Map((week?.days ?? []).map((d) => [d.ymd, d]));
-  const EMPTY_DAY: PracticeWeekDay = { ymd: "", morning: false, evening: false, compline: false, contemplation: false, reflection: false, examen: false, cobreathe: false };
-  // Today FIRST, oldest last (owner) — reverse of the server's own
-  // chronological order, which windowDays intentionally doesn't follow.
+  const EMPTY_DAY: PracticeWeekDay = {
+    ymd: "", morning: false, evening: false, compline: false, contemplation: false,
+    reflection: false, examen: false, cobreathe: false,
+    listening: false, reading: false, podcasts: false, walk: false, prayerList: false,
+  };
+  const todayYmd = new Date().toLocaleDateString("en-CA");
+  // Oldest FIRST, today LAST (owner) — matches the server's own
+  // chronological order and reads left-to-right like a calendar week,
+  // ending on today. (Previously today led and the week ran backwards,
+  // which read against the grain for anyone used to a normal calendar.)
   const windowDays: PracticeWeekDay[] = Array.from({ length: 7 }, (_, i) => {
+    const daysAgo = 6 - i;
     const d = new Date();
-    d.setDate(d.getDate() - i);
+    d.setDate(d.getDate() - daysAgo);
     const ymd = d.toLocaleDateString("en-CA");
     return serverByYmd.get(ymd) ?? { ...EMPTY_DAY, ymd };
   });
@@ -175,13 +203,13 @@ export function WayOfLoveTurnLearnPray() {
             <div style={{ display: "grid", rowGap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                 <div />
-                {dayInitials.map((ch, i) => (
+                {windowDays.map((d, i) => (
                   <span
                     key={i}
                     className="text-center text-[10.5px] font-semibold"
-                    style={{ color: i === 0 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
+                    style={{ color: d.ymd === todayYmd ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
                   >
-                    {ch}
+                    {dayInitials[i]}
                   </span>
                 ))}
               </div>
@@ -199,8 +227,10 @@ export function WayOfLoveTurnLearnPray() {
                     // (r.done) rather than historyFor(d) — the server's
                     // practice-week snapshot can lag a few seconds behind a
                     // just-finished practice, which showed today's dot as
-                    // still empty right after completing all three.
-                    const isToday = i === 0;
+                    // still empty right after completing all three. Checked
+                    // by ymd, not position — today is now the LAST column
+                    // (see windowDays above), not the first.
+                    const isToday = d.ymd === todayYmd;
                     const kept = isToday ? r.done : r.historyFor(d);
                     return (
                       <span key={d.ymd || i} className="flex justify-center">

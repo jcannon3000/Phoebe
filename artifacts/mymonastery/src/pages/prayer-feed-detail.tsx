@@ -299,9 +299,17 @@ export default function PrayerFeedDetailPage() {
           )}
         </div>
 
-        {/* Subscribe row */}
-        {!isCreator && (
-          <div className="mb-6">
+        {/* Subscribe row. Deliberately NOT gated on !isCreator: for a
+            platform-owned feed (creatorUserId null — e.g. VTS, Phoebe
+            Climate) canEditFeed() grants "manage" to every beta admin, so
+            an admin viewing VTS always had isCreator=true and this whole
+            block was skipped — no Follow button ever appeared for them,
+            even though the server has no rule stopping an admin from
+            subscribing (POST .../subscribe has no isCreator check at all).
+            Managing a feed and personally following it for its entitlement
+            (VTS unlocks the Dean's Commentary — see hooks/useEntitlements)
+            are different things; an admin needs both. */}
+        <div className="mb-6">
             {isSubscribed ? (
               <button
                 onClick={() => unsubscribe.mutate()}
@@ -321,8 +329,7 @@ export default function PrayerFeedDetailPage() {
                 {feed.state === "live" ? t("prayer_feed_detail.subscribe") : t("prayer_feed_detail.coming_soon")}
               </button>
             )}
-          </div>
-        )}
+        </div>
 
         {/* Pray-with-this-feed box — carries the "Pray the full list"
             CTA, which walks every intercession in the feed as one
