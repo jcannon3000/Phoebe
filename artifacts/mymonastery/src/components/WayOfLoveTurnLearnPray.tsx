@@ -101,7 +101,7 @@ export function WayOfLoveTurnLearnPray() {
   const turned = useTurnedToday();
   const hidden = useHiddenPref();
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
-  const { data: week } = useQuery<{ days: PracticeWeekDay[] }>({
+  const { data: week, isLoading: weekLoading, isError: weekIsError, error: weekError, fetchStatus: weekFetchStatus } = useQuery<{ days: PracticeWeekDay[] }>({
     queryKey: ["/api/me/practice-week", tz],
     // `tz` used to be computed here and then only fed into the query KEY —
     // never actually sent. The server fell back to usersTable.timezone,
@@ -203,7 +203,7 @@ export function WayOfLoveTurnLearnPray() {
         onClick={(e) => e.stopPropagation()}
         style={{ fontSize: 9, lineHeight: 1.4, color: "#ffb300", whiteSpace: "pre-wrap", wordBreak: "break-all", padding: 8, background: "rgba(0,0,0,0.5)", borderRadius: 8, marginBottom: 10 }}
       >
-        {`DEBUG tz=${tz} clientTodayYmd=${todayYmd}\nserver days: ${JSON.stringify(week?.days ?? "LOADING")}`}
+        {`DEBUG tz=${tz} clientTodayYmd=${todayYmd}\nfetchStatus=${weekFetchStatus} isLoading=${weekLoading} isError=${weekIsError} error=${weekIsError ? String((weekError as any)?.message ?? weekError) : "none"}\nserver days: ${week?.days ? JSON.stringify(week.days) : "undefined (no response yet)"}`}
       </pre>
       {/* "Past 7 Days" as a centered, small-caps label with a thin rule on
           either side — matching the onboarding mock's own dot-grid section
