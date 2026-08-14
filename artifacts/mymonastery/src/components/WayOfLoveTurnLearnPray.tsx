@@ -189,15 +189,41 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
     || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
 
-  // Per-row shade from the SAME ramp the Next-list CTA pills use
-  // (rhythmGradientRgb, DailyProgressBody.tsx) — was one flat green across
-  // all three rows; owner asked for the dots to carry the same visible
-  // top-to-bottom gradient the CTA buttons now do, rather than reading as
-  // a separate, uncolored palette next to them. Reversed (ROW_COUNT-1-i)
-  // vs the CTA pills' own top-to-bottom direction — owner asked for the
-  // BOTTOM row here to be the lightest shade, not the darkest.
+  // Per-row shade, same green family + direction the Next-list CTA pills use
+  // (rhythmGradientRgb, DailyProgressBody.tsx) but its OWN, independently
+  // tunable ramp rather than that exact function. The CTA pills put light
+  // (WARM) text directly on top of their fill, so rhythmGradientRgb's light
+  // end is capped short of what would start hurting that text's contrast —
+  // the dots have no text on them at all, so when the owner asked for the
+  // bottom row genuinely pale (not just "the lightest point the shared CTA
+  // ramp already reaches"), reusing that function would have also lightened
+  // the Next list's top CTA pill AND still capped out at the same ceiling
+  // that wasn't light enough. This ramp keeps the dark (top-row) end close
+  // to rhythmGradientRgb's for visual continuity, but pushes the light
+  // (bottom-row) end much further.
   const ROW_COUNT = 3;
-  const rowRgb = (i: number) => rhythmGradientRgb(ROW_COUNT - 1 - i, ROW_COUNT);
+  function dotGradientRgb(i: number, n: number): string {
+    const t = n <= 1 ? 0 : i / (n - 1);
+    const hue = 146;
+    const sat = 0.26 - 0.10 * t;
+    const light = 0.86 - 0.62 * t;
+    const c = (1 - Math.abs(2 * light - 1)) * sat;
+    const hp = hue / 60;
+    const x = c * (1 - Math.abs((hp % 2) - 1));
+    let r = 0, g = 0, b = 0;
+    if (hp < 1) { r = c; g = x; }
+    else if (hp < 2) { r = x; g = c; }
+    else if (hp < 3) { g = c; b = x; }
+    else if (hp < 4) { g = x; b = c; }
+    else if (hp < 5) { r = x; b = c; }
+    else { r = c; b = x; }
+    const m = light - c / 2;
+    const to = (v: number) => Math.round((v + m) * 255);
+    return `${to(r)},${to(g)},${to(b)}`;
+  }
+  // Reversed (ROW_COUNT-1-i) vs the CTA pills' own top-to-bottom direction —
+  // owner asked for the BOTTOM row here to be the lightest shade.
+  const rowRgb = (i: number) => dotGradientRgb(ROW_COUNT - 1 - i, ROW_COUNT);
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
     { emoji: "🌅", label: "Morning", done: morningPractice, rgb: rowRgb(0), historyFor: morningPracticeOn },
     { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: rowRgb(1), historyFor: contemplativePracticeOn },
