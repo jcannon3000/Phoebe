@@ -66,10 +66,21 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
   // stamp so the home can play this card's completion moment. The optional
   // practice ids double as their home-card keys.
   if (!wasAlreadyDone) { swellHaptic(); markRecentCompletion(section); }
-  // Fire-and-forget; an unauthenticated/offline call just no-ops.
-  void apiRequest("POST", "/api/practice-completion", {
-    section,
-    localDate,
-    weekStart: weekStartLocalISO(),
-  }).catch(() => { /* best effort */ });
+  // Sync to the server so OTHER devices see this completion — this write is
+  // the ENTIRE cross-device sync mechanism (see useRhythmState's serverDone,
+  // ORed with the local flag above). A silent failure here used to have zero
+  // visibility: the local flag flips regardless (so the logging device shows
+  // "done" no matter what), so a dropped network call looked identical to
+  // success — reported as "logged on web, didn't show on mobile." One retry
+  // after a short delay covers a transient blip; if it still fails, at least
+  // log it so a real failure is diagnosable instead of silently invisible.
+  const payload = { section, localDate, weekStart: weekStartLocalISO() };
+  const post = () => apiRequest("POST", "/api/practice-completion", payload);
+  post().catch(() => {
+    setTimeout(() => {
+      post().catch((err) => {
+        console.error(`[practiceCompletion] sync failed for "${section}" after retry:`, err);
+      });
+    }, 3000);
+  });
 }
