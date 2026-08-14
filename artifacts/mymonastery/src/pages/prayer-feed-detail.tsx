@@ -363,11 +363,18 @@ export default function PrayerFeedDetailPage() {
               </p>
               <button
                 type="button"
-                onClick={() => {
+                // FIXED: markRead()/setPracticeReadToday used to fire HERE,
+                // immediately at tap — completely bypassing
+                // openExternalThenMarkRead's "wait for the browser to close"
+                // mechanism (swellHaptic, a haptic buzz with no read-tracking
+                // effect, was what it actually waited to run). Same bug as
+                // DailyProgressBody.tsx's reflection cards — moved the real
+                // mark into the callback so it only fires on actual return.
+                onClick={() => openExternalThenMarkRead(practice.url, () => {
                   practice.markRead();
                   setPracticeReadToday(true);
-                  openExternalThenMarkRead(practice.url, swellHaptic, { reader: true });
-                }}
+                  swellHaptic();
+                }, { reader: true })}
                 className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90"
                 style={{ background: "#2E6B40", color: "#F0EDE6" }}
               >

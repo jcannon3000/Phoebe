@@ -1079,7 +1079,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         title: PUBLICATION_NAME[r.source],
         blurb: scrapedTitle || (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
         blurbCycle: undefined,
-        onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic, { reader: true }); },
+        // BUG FIXED: `mark()` — the actual read-tracking call that flips this
+        // card's dot — used to fire HERE, immediately at tap time, completely
+        // bypassing openExternalThenMarkRead's whole "wait for the browser to
+        // actually close" mechanism (it was handed `swellHaptic`, a haptic
+        // buzz with no read-tracking effect, as its "markRead" callback — so
+        // on close all that happened was a vibration; the dot had already
+        // flipped the instant they tapped "Read"). This is what "the
+        // reflection animation isn't waiting until I come back" was — the
+        // wait-for-close mechanism itself works correctly (verified: the
+        // reader-view Swift path already fires its dismiss event properly),
+        // this card just never actually used it for the thing that mattered.
+        onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true }),
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
