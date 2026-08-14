@@ -410,7 +410,12 @@ async function evalLadder(userId: number, tz: string, state: LadderState, todayY
   let fromYmd = ladderAddDays(state.lastEvalDate, 1);
   // Bound a long absence so the loop + scan can't run away.
   if (ladderAddDays(fromYmd, 90) < yesterday) fromYmd = ladderAddDays(yesterday, -90);
-  const [sitRows, healthRows] = await Promise.all([
+  // Apple Health / HealthKit integration was removed (privacy simplification)
+  // and contemplation_health_minutes was DROPPED in migrate.ts — this used to
+  // also query that table and 500 on every call, silently breaking the
+  // Silence Ladder's catch-up eval. In-app contemplation sits (prayer_sessions)
+  // are now the sole source.
+  const [sitRows] = await Promise.all([
     db.execute<{ day: string; secs: number }>(sql`
       SELECT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
              COALESCE(SUM(duration_seconds), 0) AS secs
@@ -421,15 +426,9 @@ async function evalLadder(userId: number, tz: string, state: LadderState, todayY
         AND (ended_at AT TIME ZONE ${tz})::date <= ${yesterday}::date
       GROUP BY 1
     `),
-    db.execute<{ day: string; minutes: number }>(sql`
-      SELECT day, COALESCE(SUM(minutes), 0) AS minutes FROM contemplation_health_minutes
-      WHERE user_id = ${userId} AND minutes > 0 AND day >= ${fromYmd} AND day <= ${yesterday}
-      GROUP BY day
-    `),
   ]);
   const minByDay = new Map<string, number>();
   for (const r of sitRows.rows) minByDay.set(r.day, Math.floor(Number(r.secs) / 60));
-  for (const r of healthRows.rows) minByDay.set(r.day, (minByDay.get(r.day) ?? 0) + Number(r.minutes));
 
   let { level, levelDays, missStreak } = state;
   for (let day = fromYmd; day <= yesterday; day = ladderAddDays(day, 1)) {
@@ -458,11 +457,13 @@ router.get("/me/silence-ladder", async (req, res): Promise<void> => {
     if (!state || !state.enabled) { res.json({ enabled: false }); return; }
     const todayYmd = ladderYmd(tz, new Date());
     const evaled = await evalLadder(sessionUserId, tz, state, todayYmd);
-    const [todaySits, todayHealth] = await Promise.all([
+    // Apple Health integration removed — contemplation_health_minutes was
+    // dropped in migrate.ts; this query against it 500'd this whole endpoint
+    // on every call. In-app sits are now the sole source (see evalLadder).
+    const [todaySits] = await Promise.all([
       db.execute<{ secs: number }>(sql`SELECT COALESCE(SUM(duration_seconds),0) AS secs FROM prayer_sessions WHERE user_id = ${sessionUserId} AND surface = 'contemplation' AND (ended_at AT TIME ZONE ${tz})::date = ${todayYmd}::date`),
-      db.execute<{ minutes: number }>(sql`SELECT COALESCE(SUM(minutes),0) AS minutes FROM contemplation_health_minutes WHERE user_id = ${sessionUserId} AND day = ${todayYmd}`),
     ]);
-    const todayMinutes = Math.floor(Number(todaySits.rows[0]?.secs ?? 0) / 60) + Number(todayHealth.rows[0]?.minutes ?? 0);
+    const todayMinutes = Math.floor(Number(todaySits.rows[0]?.secs ?? 0) / 60);
     res.json({
       enabled: true,
       level: evaled.level,
@@ -654,7 +655,13 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const oldestYmd = ymds[0];
 
     // Each query returns the set of local days a practice was completed.
-    const [officeRows, contRows, healthRows, reflRows, cacRows, pcRows, breathRows] = await Promise.all([
+    // NOTE: this used to also query contemplation_health_minutes (Apple
+    // Health mindful minutes) — that table was DROPPED in migrate.ts when
+    // HealthKit integration was removed for privacy, but this route was
+    // never updated, so the whole endpoint has been throwing a 500 on
+    // every call since. In-app contemplation sits (prayer_sessions) are
+    // now the sole source of contemplative minutes.
+    const [officeRows, contRows, reflRows, cacRows, pcRows, breathRows] = await Promise.all([
       // Office, by side — same surfaces + completed gate as office-history-week.
       db.execute<{ day: string; side: string }>(sql`
         SELECT DISTINCT
@@ -683,13 +690,6 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
           AND surface = 'contemplation'
           AND ended_at >= NOW() - INTERVAL '8 days'
         GROUP BY 1
-      `),
-      // External Apple Health mindful minutes (day is already a tz-local ymd),
-      // summed per day to fold into the day's contemplative total.
-      db.execute<{ day: string; minutes: number }>(sql`
-        SELECT day, COALESCE(SUM(minutes), 0) AS minutes FROM contemplation_health_minutes
-        WHERE user_id = ${sessionUserId} AND minutes > 0 AND day >= ${oldestYmd}
-        GROUP BY day
       `),
       // Reflection reads — Forward / SSJE.
       db.execute<{ ymd: string }>(sql`
@@ -722,15 +722,13 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.side === "evening") evening.add(r.day);
       if (r.side === "compline") compline.add(r.day);
     }
-    // Total contemplative minutes per local day (in-app sits + Apple Health),
-    // then fill the day only when it meets the daily goal. No goal set → any
-    // logged minute counts, preserving the old behaviour for goal-less users.
+    // Total contemplative minutes per local day (in-app sits only — Apple
+    // Health integration was removed, see the note above), then fill the day
+    // only when it meets the daily goal. No goal set → any logged minute
+    // counts, preserving the old behaviour for goal-less users.
     const contemplationMinByDay = new Map<string, number>();
     for (const r of contRows.rows) {
       contemplationMinByDay.set(r.day, (contemplationMinByDay.get(r.day) ?? 0) + (Number(r.secs) || 0) / 60);
-    }
-    for (const r of healthRows.rows) {
-      contemplationMinByDay.set(r.day, (contemplationMinByDay.get(r.day) ?? 0) + (Number(r.minutes) || 0));
     }
     const contemplation = new Set<string>();
     for (const [day, mins] of contemplationMinByDay) {
