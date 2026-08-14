@@ -194,6 +194,17 @@ export function WayOfLoveTurnLearnPray() {
 
   return (
     <Link href="/turn-learn-pray" className="block mt-7 transition-opacity hover:opacity-95 active:scale-[0.99]">
+      {/* TEMPORARY DIAGNOSTIC — remove once the missing-yesterday-data report
+          is resolved. Shows exactly what tz the client sent and what the
+          server's practice-week response actually contains, so a screenshot
+          alone can confirm whether the tz fix reached the server and what
+          the raw day flags are, instead of guessing further. */}
+      <pre
+        onClick={(e) => e.stopPropagation()}
+        style={{ fontSize: 9, lineHeight: 1.4, color: "#ffb300", whiteSpace: "pre-wrap", wordBreak: "break-all", padding: 8, background: "rgba(0,0,0,0.5)", borderRadius: 8, marginBottom: 10 }}
+      >
+        {`DEBUG tz=${tz} clientTodayYmd=${todayYmd}\nserver days: ${JSON.stringify(week?.days ?? "LOADING")}`}
+      </pre>
       {/* "Past 7 Days" as a centered, small-caps label with a thin rule on
           either side — matching the onboarding mock's own dot-grid section
           (owner) — in place of the "This week"-style rule header this card
