@@ -43,6 +43,13 @@ struct PhoebeStats {
     var reflectAvailable: Bool // false → user has no reflection source; skip that dot
     var contemplationMin: Int      // today's contemplation minutes (sits + Health)
     var contemplationGoalMin: Int  // daily contemplation goal (0 = no goal set)
+    // "Past 7 Days" grid — the SAME data + row-label mode
+    // (Turn/Learn/Pray, or Morning/Contemplative/Evening if the viewer set
+    // that in Settings) the home card's WayOfLoveTurnLearnPray shows, via
+    // the shared computeWeeklyGrid on the JS side (lib/weeklyGrid.ts).
+    // weeklyGrid[row][day], oldest day first / today last.
+    var weeklyLabels: [String]
+    var weeklyGrid: [[Bool]]
 
     static let placeholder = PhoebeStats(
         kind: "office", eyebrow: "Book of Common Prayer", title: "Evening Devotion",
@@ -51,7 +58,13 @@ struct PhoebeStats {
         nextOffice: "Evening Prayer", newPrayers: 0,
         doneCount: 2, totalAnchors: 4, dots: [1, 1, 0, 1],
         morningDone: true, reflectDone: true, eveningDone: false, reflectAvailable: true,
-        contemplationMin: 7, contemplationGoalMin: 20
+        contemplationMin: 7, contemplationGoalMin: 20,
+        weeklyLabels: ["Turn", "Learn", "Pray"],
+        weeklyGrid: [
+            [true, true, false, true, true, true, true],
+            [true, false, true, true, true, false, true],
+            [true, true, true, true, true, true, false],
+        ]
     )
 
     // Before the app has ever pushed data (or if the App Group store can't be
@@ -72,7 +85,11 @@ struct PhoebeStats {
             newPrayers: 0,
             doneCount: 0, totalAnchors: 3, dots: [],
             morningDone: false, reflectDone: false, eveningDone: false, reflectAvailable: true,
-            contemplationMin: 0, contemplationGoalMin: 0
+            contemplationMin: 0, contemplationGoalMin: 0,
+            // Honestly empty rather than fabricated — the app hasn't pushed
+            // real history yet, so there's nothing kept to show.
+            weeklyLabels: ["Turn", "Learn", "Pray"],
+            weeklyGrid: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)]
         )
     }
 
@@ -111,13 +128,22 @@ struct PhoebeStats {
         let reflectAvailable = (obj["reflectAvailable"] as? NSNumber)?.boolValue ?? true
         let contemplationMin = (obj["contemplationMin"] as? NSNumber)?.intValue ?? 0
         let contemplationGoalMin = (obj["contemplationGoalMin"] as? NSNumber)?.intValue ?? 0
+        // Defaults to the Turn/Learn/Pray labels + an all-empty grid (not
+        // fabricated data) so an older app build's payload — which won't
+        // carry these fields at all — still renders a real, honest grid
+        // rather than a crash or blank space.
+        let weeklyLabels = (obj["weeklyLabels"] as? [String]) ?? ["Turn", "Learn", "Pray"]
+        let weeklyGrid: [[Bool]] = (obj["weeklyGrid"] as? [[Bool]])
+            ?? (obj["weeklyGrid"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
+            ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers,
                            doneCount: doneCount, totalAnchors: totalAnchors, dots: dots,
                            morningDone: morningDone, reflectDone: reflectDone,
                            eveningDone: eveningDone, reflectAvailable: reflectAvailable,
-                           contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin)
+                           contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin,
+                           weeklyLabels: weeklyLabels, weeklyGrid: weeklyGrid)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -245,55 +271,59 @@ struct PhoebeWidgetView: View {
                 }
             }
         case .systemMedium:
-            homeMedium
+            homeWeeklyGrid
         default:
             homeSmall
         }
     }
 
-    // The hero card: eyebrow, big title, subtitle, and a CTA pill — the
-    // medium widget that mirrors the home "what's next" card.
-    private var homeMedium: some View {
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(heroEyebrow)
-                    .font(sgBold(11))
-                    .tracking(1.6)
-                    .foregroundColor(phoebeWarm.opacity(0.75))
-                Text(heroTitle)
-                    .font(sgBold(23))
-                    .foregroundColor(phoebeWarm)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                if !heroSubtitle.isEmpty {
-                    Text(heroSubtitle)
-                        .font(sgRegular(13))
-                        .foregroundColor(phoebeWarm.opacity(0.85))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 4)
-                // The CTA pill sits on its own row at the left, under the
-                // title/subtitle — matches the home card's own button
-                // placement (left-aligned, not pushed to the trailing edge).
-                if !heroCta.isEmpty {
-                    HStack(spacing: 4) {
-                        Text(heroCta).font(sgBold(13))
-                        Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
+    // "Past 7 Days" — the SAME dot grid the home card shows (Turn/Learn/Pray,
+    // or Morning/Contemplative/Evening if the viewer set that in Settings),
+    // fed by widgetSync.ts's shared computeWeeklyGrid so this is never a
+    // separately-drifting approximation. Owner: the wide (.systemMedium)
+    // widget should be this grid, not the "what's next" hero — replaces
+    // homeMedium below for this family (homeMedium is kept for reference/
+    // potential reuse but no longer wired to any family).
+    private var homeWeeklyGrid: some View {
+        // 20pt row-label column + 7 equal day columns, mirroring the home
+        // card's own `20px repeat(7, 1fr)` CSS grid exactly.
+        let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
+        let rowCount = stats.weeklyLabels.count
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("PAST 7 DAYS")
+                .font(sgBold(9))
+                .tracking(1.4)
+                .foregroundColor(phoebeWarm.opacity(0.55))
+            VStack(spacing: 8) {
+                ForEach(0..<rowCount, id: \.self) { row in
+                    HStack(spacing: 0) {
+                        Text(stats.weeklyLabels[row].prefix(1))
+                            .font(sgBold(10))
+                            .foregroundColor(phoebeSage.opacity(0.65))
+                            .frame(width: 20, alignment: .center)
+                        LazyVGrid(columns: dayCols, spacing: 0) {
+                            ForEach(0..<7, id: \.self) { day in
+                                let kept = row < stats.weeklyGrid.count && day < stats.weeklyGrid[row].count
+                                    && stats.weeklyGrid[row][day]
+                                Circle()
+                                    .fill(kept ? Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.85) : Color.clear)
+                                    .overlay(
+                                        Circle().stroke(kept ? Color.clear : phoebeSage.opacity(0.28), lineWidth: 1)
+                                    )
+                                    .frame(width: 12, height: 12)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
                     }
-                    .foregroundColor(phoebeWarm)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(accentColor))
                 }
             }
-            .padding(16)
-            Spacer(minLength: 0)
         }
+        .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
-    // Same "what's next" story as the medium widget, just condensed to fit —
+    // Same "what's next" story as the medium widget used to show, just
+    // condensed to fit —
     // no dots/count here either, matching homeMedium's move away from a
     // progress readout toward always naming the next thing to pray.
     private var homeSmall: some View {

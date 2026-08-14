@@ -1320,6 +1320,13 @@ declare global {
         heroSubtitle?: string | null;
         heroCta?: string | null;        // "" → no button
         heroDeepLink?: string | null;
+        // "Past 7 Days" grid — the SAME data + row-label mode the home
+        // card's WayOfLoveTurnLearnPray shows (Turn/Learn/Pray, or
+        // Morning/Contemplative/Evening if the viewer set that in
+        // Settings). weeklyGrid[row][day], oldest day first / today last,
+        // matching the home card's column order; weeklyLabels[row] names it.
+        weeklyLabels?: string[] | null;
+        weeklyGrid?: boolean[][] | null;
       }) => void;
       isNative: () => boolean;
       // Synchronous front door for Browser.open. The previous bridge
@@ -1433,6 +1440,8 @@ function exposePublicApi() {
           heroSubtitle: state.heroSubtitle ?? null,
           heroCta: state.heroCta ?? null,
           heroDeepLink: state.heroDeepLink ?? null,
+          weeklyLabels: state.weeklyLabels ?? null,
+          weeklyGrid: state.weeklyGrid ?? null,
         });
         window.localStorage.setItem("phoebe:persist:widget", payload);
         // Belt-and-suspenders: also write directly to Preferences in case

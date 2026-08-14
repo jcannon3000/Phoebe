@@ -19,6 +19,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { getSideLevel, getSideCustomName } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
 
 type WidgetState = {
   heroKind: "office" | "reflect" | "summary";
@@ -40,6 +41,12 @@ type WidgetState = {
   reflectAvailable: boolean;
   contemplationMin: number;
   contemplationGoalMin: number;
+  // "Past 7 Days" grid — the SAME data + row-label mode
+  // (Turn/Learn/Pray vs Morning/Contemplative/Evening) the home card shows,
+  // via the shared computeWeeklyGrid (lib/weeklyGrid.ts). weeklyGrid[row][day],
+  // oldest day first / today last, matching the home card's column order.
+  weeklyLabels: string[];
+  weeklyGrid: boolean[][];
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
@@ -104,6 +111,21 @@ export function useWidgetSync(): void {
     queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
     enabled: enabled && cacSource, staleTime: 30 * 60_000,
   });
+  // Same tz + query key WayOfLoveTurnLearnPray.tsx uses for the identical
+  // fetch, so React Query shares the one cached result instead of doubling
+  // the request — this hook and the home card end up reading the exact
+  // same server response.
+  const weekTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
+  const weekQ = useQuery<{ days: PracticeWeekDay[] }>({
+    queryKey: ["/api/me/practice-week", weekTz],
+    queryFn: () => apiRequest("GET", `/api/me/practice-week?tz=${encodeURIComponent(weekTz)}`),
+    enabled, staleTime: 60_000,
+  });
+  // Same key WayOfLoveTurnLearnPray / settings.tsx read/write
+  // (TLP_MODE_KEY) — kept as a literal here rather than importing from
+  // pages/settings.tsx, matching how HIDE_TLP_KEY is already duplicated as
+  // a literal between settings.tsx and the component instead of shared.
+  const practiceMode = (() => { try { return localStorage.getItem("phoebe:tlp-row-mode") === "1"; } catch { return false; } })();
 
   // Stable signatures for the array-valued rhythm state, so the push effect
   // re-runs only when the reflections / custom anchors actually change (their
@@ -255,6 +277,13 @@ export function useWidgetSync(): void {
       heroCta = "";
     }
 
+    // Same shared function the home card renders from (lib/weeklyGrid.ts) —
+    // `turned` is just `true` here rather than reading the local per-day
+    // stamp: this effect only ever runs inside the native app with an
+    // authenticated user, so its running AT ALL already satisfies Turn's
+    // actual definition ("opened Phoebe today").
+    const weekly = computeWeeklyGrid({ rhythm: r, week: weekQ.data, practiceMode, turned: true });
+
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
       heroKind,
@@ -276,11 +305,14 @@ export function useWidgetSync(): void {
       reflectAvailable: r.reflectActive,
       contemplationMin: r.contemplationMin,
       contemplationGoalMin: r.contemplationGoalMin,
+      weeklyLabels: weekly.rows.map((row) => row.label),
+      weeklyGrid: weekly.rows.map((row) => row.kept),
       updatedAt: new Date().toISOString(),
     });
   }, [
     enabled,
     r.ready,
+    weekQ.data, practiceMode,
     r.morningActive, r.morningDone, r.eveningActive, r.eveningDone,
     r.morningContemplationActive, r.morningContemplationDone,
     r.eveningContemplationActive, r.eveningContemplationDone,
