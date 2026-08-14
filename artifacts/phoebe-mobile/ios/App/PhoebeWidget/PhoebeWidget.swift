@@ -302,6 +302,16 @@ struct PhoebeWidgetView: View {
                 .font(sgBold(9))
                 .tracking(1.4)
                 .foregroundColor(phoebeWarm.opacity(0.55))
+            // frame(maxWidth: .infinity) at EVERY level here — a VStack/HStack
+            // in SwiftUI does NOT propagate "fill available width" to its
+            // children automatically; each nesting level has to ask for it
+            // itself. Without this the LazyVGrid (and everything inside it)
+            // only ever took the minimum width its content needed — 7 small
+            // circles worth — leaving the dots clustered in the left third
+            // of the card instead of spanning it like the home card's own
+            // `20px repeat(7, 1fr)` CSS grid does. This is THE disconnect
+            // from the home card that made the widget not "exactly emulate"
+            // it, not a cosmetic tweak.
             VStack(spacing: 9) {
                 ForEach(0..<rowCount, id: \.self) { row in
                     HStack(spacing: 0) {
@@ -322,9 +332,12 @@ struct PhoebeWidgetView: View {
                                     .frame(maxWidth: .infinity)
                             }
                         }
+                        .frame(maxWidth: .infinity)
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
+            .frame(maxWidth: .infinity)
         }
         // Tighter than the old hero's 16pt — this content should feel like
         // it fills the whole card (owner: "full bleed"), not float inside a
