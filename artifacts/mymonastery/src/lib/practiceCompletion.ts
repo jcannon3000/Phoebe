@@ -80,7 +80,20 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
     setTimeout(() => {
       post().catch((err) => {
         console.error(`[practiceCompletion] sync failed for "${section}" after retry:`, err);
+        // Visible, not just logged — nobody's going to open dev tools to
+        // notice a cross-device sync silently failed. A toast (wired up by
+        // PracticeSyncFailedToast in App.tsx) is the only way this failure
+        // becomes something the user can actually act on (retry, or at
+        // least not be confused when another device doesn't show it done).
+        try {
+          window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section } }));
+        } catch { /* non-fatal */ }
       });
     }, 3000);
   });
 }
+
+// Fired when BOTH the initial write and the one retry fail — see
+// markPracticeDoneToday above. Listened for globally (App.tsx) to surface
+// a toast, since this failure is otherwise invisible to the user.
+export const PRACTICE_SYNC_FAILED_EVENT = "phoebe:practice-sync-failed";

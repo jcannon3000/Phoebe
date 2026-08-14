@@ -12,6 +12,7 @@ import { getGuestStepGoal } from "@/lib/guestSeed";
 // the instant a session opens — every device shares one schedule.
 import "@/lib/serverClock";
 import { toast } from "@/hooks/use-toast";
+import { PRACTICE_SYNC_FAILED_EVENT } from "@/lib/practiceCompletion";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
@@ -1092,6 +1093,31 @@ function DayBoundaryRefresh() {
   return null;
 }
 
+// Surfaces markPracticeDoneToday's sync failures (lib/practiceCompletion.ts)
+// as a toast. That write is the ENTIRE cross-device mechanism for practices
+// like Contemplative Walk / Audio Divina — logging it on one device flips a
+// LOCAL flag instantly regardless of whether the server write succeeds, so
+// a dropped network call was previously invisible: the logging device still
+// showed "done," and only another device checking later would ever reveal
+// anything was wrong, with no way to connect that back to a specific failed
+// action. A toast right when it happens is the only way this becomes
+// something the user can act on (retry) rather than a confusing mismatch
+// discovered on a different screen, possibly minutes or devices away.
+function PracticeSyncFailedToast() {
+  useEffect(() => {
+    const onFailed = () => {
+      toast({
+        title: "Couldn't save that",
+        description: "This didn't sync — check your connection and try again.",
+        variant: "destructive",
+      });
+    };
+    window.addEventListener(PRACTICE_SYNC_FAILED_EVENT, onFailed);
+    return () => window.removeEventListener(PRACTICE_SYNC_FAILED_EVENT, onFailed);
+  }, []);
+  return null;
+}
+
 // Refresh react-query caches every time the iOS app returns to the
 // foreground — the native shell dispatches `phoebe:appactive` from
 // Capacitor's appStateChange. Without this, an app that sat in the
@@ -1111,12 +1137,25 @@ function ForegroundRefresh() {
     };
     const onActive = () => {
       const now = Date.now();
+      const awayMs = hiddenAt ? now - hiddenAt : 0;
+      hiddenAt = 0;
+      // ALWAYS refetch practice-completion, regardless of how long the app
+      // was away — this is the one query that has to be fresh on EVERY
+      // resume, because it's the entire mechanism for "I logged something
+      // on another device, does this one see it yet." Cheap: one small
+      // query, not the big fan-out below. Without this, doing exactly what
+      // anyone would naturally do to check cross-device sync — log
+      // something on web, switch to the phone within under a minute — hit
+      // the 60s gate below and got stale cached data back regardless of
+      // whether the write succeeded; staleTime alone doesn't self-trigger a
+      // refetch; it only affects whether an already-occurring trigger is
+      // honored, so under the gate nothing ever re-asked the server.
+      void queryClient.invalidateQueries({ queryKey: ["/api/practice-completion"] });
       // Only re-fire the (large) dashboard fan-out after a real time away —
       // a quick app-switch or returning from the in-app browser shouldn't
       // invalidate the whole cache. The 30s query staleTime already covers
-      // short gaps; we only invalidate after ~60s backgrounded.
-      const awayMs = hiddenAt ? now - hiddenAt : 0;
-      hiddenAt = 0;
+      // short gaps for everything ELSE; we only force-invalidate the rest
+      // after ~60s backgrounded.
       if (awayMs < 60_000) return;
       if (now - lastInvalidate < 5000) return;
       lastInvalidate = now;
@@ -1207,6 +1246,7 @@ function App() {
           <ServerDownScreen />
           <DayBoundaryRefresh />
           <ForegroundRefresh />
+          <PracticeSyncFailedToast />
           <AndroidBackButton />
           <NotificationTapPrewarm />
           <PullToRefresh />
