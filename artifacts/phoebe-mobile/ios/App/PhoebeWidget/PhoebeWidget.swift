@@ -50,6 +50,11 @@ struct PhoebeStats {
     // weeklyGrid[row][day], oldest day first / today last.
     var weeklyLabels: [String]
     var weeklyGrid: [[Bool]]
+    // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S), same
+    // column order as weeklyGrid — mirrors the home card's own header row
+    // (WayOfLoveTurnLearnPray.tsx's dayInitials), which the widget was
+    // missing entirely (owner: "the letters to label the day aren't there").
+    var weeklyDayInitials: [String]
 
     static let placeholder = PhoebeStats(
         kind: "office", eyebrow: "Book of Common Prayer", title: "Evening Devotion",
@@ -64,7 +69,8 @@ struct PhoebeStats {
             [true, true, false, true, true, true, true],
             [true, false, true, true, true, false, true],
             [true, true, true, true, true, true, false],
-        ]
+        ],
+        weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
     )
 
     // Before the app has ever pushed data (or if the App Group store can't be
@@ -89,7 +95,8 @@ struct PhoebeStats {
             // Honestly empty rather than fabricated — the app hasn't pushed
             // real history yet, so there's nothing kept to show.
             weeklyLabels: ["Turn", "Learn", "Pray"],
-            weeklyGrid: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)]
+            weeklyGrid: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)],
+            weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
         )
     }
 
@@ -136,6 +143,7 @@ struct PhoebeStats {
         let weeklyGrid: [[Bool]] = (obj["weeklyGrid"] as? [[Bool]])
             ?? (obj["weeklyGrid"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
             ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
+        let weeklyDayInitials = (obj["weeklyDayInitials"] as? [String]) ?? ["S", "M", "T", "W", "T", "F", "S"]
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers,
@@ -143,7 +151,8 @@ struct PhoebeStats {
                            morningDone: morningDone, reflectDone: reflectDone,
                            eveningDone: eveningDone, reflectAvailable: reflectAvailable,
                            contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin,
-                           weeklyLabels: weeklyLabels, weeklyGrid: weeklyGrid)
+                           weeklyLabels: weeklyLabels, weeklyGrid: weeklyGrid,
+                           weeklyDayInitials: weeklyDayInitials)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -309,6 +318,23 @@ struct PhoebeWidgetView: View {
             // `20px repeat(7, 1fr)` CSS grid does. This is THE disconnect
             // from the home card that made the widget not "exactly emulate"
             // it, not a cosmetic tweak.
+            //
+            // Day-initial header row (S/M/T/W/T/F/S) above the dot rows —
+            // mirrors the home card's own header row, which this widget was
+            // missing entirely.
+            HStack(spacing: 0) {
+                Text("").frame(width: 18)
+                LazyVGrid(columns: dayCols, spacing: 0) {
+                    ForEach(0..<7, id: \.self) { day in
+                        Text(day < stats.weeklyDayInitials.count ? stats.weeklyDayInitials[day] : "")
+                            .font(sgBold(9))
+                            .foregroundColor(phoebeWarm.opacity(0.4))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: .infinity)
             VStack(spacing: 9) {
                 ForEach(0..<rowCount, id: \.self) { row in
                     HStack(spacing: 0) {

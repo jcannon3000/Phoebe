@@ -47,6 +47,7 @@ type WidgetState = {
   // oldest day first / today last, matching the home card's column order.
   weeklyLabels: string[];
   weeklyGrid: boolean[][];
+  weeklyDayInitials: string[];
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
@@ -307,6 +308,7 @@ export function useWidgetSync(): void {
       contemplationGoalMin: r.contemplationGoalMin,
       weeklyLabels: weekly.rows.map((row) => row.label),
       weeklyGrid: weekly.rows.map((row) => row.kept),
+      weeklyDayInitials: weekly.dayInitials,
       updatedAt: new Date().toISOString(),
     });
   }, [

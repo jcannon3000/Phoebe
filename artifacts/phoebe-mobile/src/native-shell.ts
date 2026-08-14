@@ -1327,6 +1327,9 @@ declare global {
         // matching the home card's column order; weeklyLabels[row] names it.
         weeklyLabels?: string[] | null;
         weeklyGrid?: boolean[][] | null;
+        // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S),
+        // oldest day first / today last — same order as weeklyGrid's columns.
+        weeklyDayInitials?: string[] | null;
       }) => void;
       isNative: () => boolean;
       // Synchronous front door for Browser.open. The previous bridge
@@ -1442,6 +1445,7 @@ function exposePublicApi() {
           heroDeepLink: state.heroDeepLink ?? null,
           weeklyLabels: state.weeklyLabels ?? null,
           weeklyGrid: state.weeklyGrid ?? null,
+          weeklyDayInitials: state.weeklyDayInitials ?? null,
         });
         window.localStorage.setItem("phoebe:persist:widget", payload);
         // Belt-and-suspenders: also write directly to Preferences in case
