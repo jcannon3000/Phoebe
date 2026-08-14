@@ -16,6 +16,7 @@
  *   Pray  — any anchor at all was kept today.
  */
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -96,7 +97,7 @@ function readTurnedOn(ymd: string): boolean {
   try { return localStorage.getItem(`phoebe:turn-opened:${ymd}`) === "1"; } catch { return false; }
 }
 
-export function WayOfLoveTurnLearnPray() {
+export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: number } = {}) {
   const rhythm = useRhythmState();
   const turned = useTurnedToday();
   const hidden = useHiddenPref();
@@ -193,6 +194,18 @@ export function WayOfLoveTurnLearnPray() {
   });
 
   return (
+    // Fade-up entrance matching the app's standard cascade (dashboard's
+    // enterUp: opacity 0->1, y 10->0, 0.55s, same ease curve) — this card
+    // had none before and just snapped into place. `cascadeDelay` places it
+    // in the caller's stagger sequence (the dashboard passes one so this
+    // lands AFTER the Next practice cards' own cascade and BEFORE Courses,
+    // matching WeeklyRhythm's identical cascadeBaseDelay prop for the same
+    // purpose); defaults to 0 for the standalone /turn-learn-pray page,
+    // which has no cards above it to wait on. Otherwise self-contained: it
+    // animates from its own first mount, which only happens once
+    // `rhythm.ready` is true (the early return above), so it never fades in
+    // before there's real data to show.
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: cascadeDelay }}>
     <Link href="/turn-learn-pray" className="block mt-7 transition-opacity hover:opacity-95 active:scale-[0.99]">
       {/* "Past 7 Days" as a centered, small-caps label with a thin rule on
           either side — matching the onboarding mock's own dot-grid section
@@ -274,5 +287,6 @@ export function WayOfLoveTurnLearnPray() {
         })()}
       </div>
     </Link>
+    </motion.div>
   );
 }

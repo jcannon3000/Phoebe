@@ -1574,7 +1574,12 @@ export const en = {
   // Communities browse (pages/communities-browse.tsx).
   communities_browse: {
     title: "Find a community",
-    subtitle: "Pick a community on Phoebe. A leader will let you in.",
+    // Rewritten: this page now also lists Feeds (following one needs no
+    // approval), so leading with "a leader will let you in" — true only
+    // for communities — misdescribed half the page. The join-request
+    // footer copy still explains the leader-approval step where it
+    // actually applies.
+    subtitle: "Join a community, or follow a feed for daily content.",
     loading: "Loading communities…",
     empty_title: "No public communities yet.",
     empty_body: "Check back as more parishes join Phoebe.",
