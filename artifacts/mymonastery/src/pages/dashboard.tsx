@@ -120,6 +120,16 @@ export type Moment = {
   myLoggedToday?: boolean | null;
 };
 
+// The layout-reflow transition every home section below the Next/Done list
+// shares (WayOfLoveTurnLearnPray, ContemplationHomeCard, PrayerListSection,
+// WeeklyRhythm, HomeLearnSection). Matches the duration/ease
+// DailyProgressBody's own row-level `layout` cards already use — completing
+// a card there and these sections below sliding up should read as ONE
+// motion, not two different speeds. Module-level so the object identity is
+// stable across renders (Framer Motion re-reads it every frame regardless,
+// but there's no reason to reallocate it on every dashboard render).
+const HOME_REFLOW_TRANSITION = { duration: 0.32, ease: [0.16, 1, 0.3, 1] as const };
+
 // ─── Category color system ──────────────────────────────────────────────────
 
 type Category = "letters" | "practices" | "gatherings" | "feeds";
@@ -7248,25 +7258,40 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           things left here are Turn·Learn·Pray and a "sit
                           again" invitation (below). */}
                       <DailyProgressBody showStreak={false} showDone={false} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
-                      <WayOfLoveTurnLearnPray />
-                      <div className="mt-3">
+                      {/* layout on every section below DailyProgressBody: when a
+                          card above completes and the Next/Done list shrinks,
+                          Framer Motion detects each of these siblings landed at
+                          a new position and glides them into it (FLIP) instead
+                          of letting ordinary document flow snap them up
+                          instantly. HOME_REFLOW_TRANSITION matches the duration/
+                          ease DailyProgressBody's own row-level `layout` cards
+                          already use, so the whole page reads as one motion. */}
+                      <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray /></motion.div>
+                      <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
                         <ContemplationHomeCard side={prayAgainSide} />
-                      </div>
-                      <PrayerListSection />
+                      </motion.div>
+                      <motion.div layout transition={HOME_REFLOW_TRANSITION}><PrayerListSection /></motion.div>
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
                           Rest. (It self-hides when no weekly practice is on.)
                           Sits ABOVE the Learn band (owner). */}
-                      {/* No outer block-fade wrapper — WeeklyRhythm runs its
-                          OWN splash-gated per-card cascade; wrapping it would
-                          multiply opacities and mask the stagger into one fade.
-                          Base delay continues after keptHeader (0) +
-                          contemplationAgain (0.1) above. */}
-                      <WeeklyRhythm cascadeBaseDelay={0.3} />
+                      {/* layout here is safe alongside WeeklyRhythm's own
+                          splash-gated per-card cascade — layout only tracks
+                          this wrapper's OWN box, it doesn't touch the opacity/
+                          y animation happening inside, so the two compose
+                          instead of fighting. Base delay continues after
+                          keptHeader (0) + contemplationAgain (0.1) above. */}
+                      <motion.div layout transition={HOME_REFLOW_TRANSITION}><WeeklyRhythm cascadeBaseDelay={0.3} /></motion.div>
                       {/* An in-flight course stays reachable after the day's
                           rhythm is done — the Learn band renders on the
                           finished-day view too, UNDER the weekly practices. */}
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}><HomeLearnSection /></motion.div>
+                      {/* This wrapper animates TWO things at once (its own fade-in
+                          AND layout reflow), so the layout timing has to be
+                          nested under `transition.layout` rather than passed at
+                          the top level — a bare top-level `transition` drives
+                          every animated property, which would silently shorten
+                          the 0.55s fade to the layout's 0.32s. */}
+                      <motion.div layout initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>
                     </div>
                   );
                 }
@@ -7306,20 +7331,25 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* Kept cards drop off the home once done — see the
                         no-events branch note above. */}
                     <DailyProgressBody showStreak={false} showDone={false} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
-                    <WayOfLoveTurnLearnPray />
-                    <div className="mt-3">
+                    {/* layout on each section below — see HOME_REFLOW_TRANSITION's
+                        definition for why. */}
+                    <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray /></motion.div>
+                    <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
                       <ContemplationHomeCard side={prayAgainSide} />
-                    </div>
-                    <PrayerListSection />
+                    </motion.div>
+                    <motion.div layout transition={HOME_REFLOW_TRANSITION}><PrayerListSection /></motion.div>
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
-                    {/* Bare — WeeklyRhythm owns its per-card cascade (see the
-                        no-events branch note); an outer fade would mask it.
+                    {/* layout composes with WeeklyRhythm's own per-card cascade
+                        (see the no-events branch note); it only tracks this
+                        wrapper's box, not the animation happening inside it.
                         Continues after keptHeader (0) + contemplationAgain (0.1). */}
-                    <WeeklyRhythm cascadeBaseDelay={0.3} />
+                    <motion.div layout transition={HOME_REFLOW_TRANSITION}><WeeklyRhythm cascadeBaseDelay={0.3} /></motion.div>
                     {/* Same finished-day Learn band as the no-events branch,
-                        under the weekly practices. */}
-                    <motion.div {...enterUp(3)}><HomeLearnSection /></motion.div>
+                        under the weekly practices. Nest the layout timing under
+                        transition.layout — a top-level transition would drive
+                        the fade-in too and shorten it from 0.55s to 0.32s. */}
+                    <motion.div layout {...enterUp(3)} transition={{ ...enterUp(3).transition, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>
                   </div>
                 );
               })() : (
@@ -7343,8 +7373,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                   onRemainingCount={handleRemainingCount}
                 />
-                <WayOfLoveTurnLearnPray />
-                <PrayerListSection />
+                {/* layout on every section below the Next list: completing a
+                    card up in DailyProgressBody shrinks it (its own rows
+                    already `layout`-animate their removal), and without this
+                    these sections would just snap up via ordinary document
+                    flow the instant that finished instead of gliding into
+                    their new position alongside it. See
+                    HOME_REFLOW_TRANSITION's definition for the shared timing. */}
+                <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray /></motion.div>
+                <motion.div layout transition={HOME_REFLOW_TRANSITION}><PrayerListSection /></motion.div>
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
@@ -7352,13 +7389,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     Self-hides until the customizer's weekly step enables one.
                     Sits ABOVE the Learn band (owner). cascadeBaseDelay lands it
                     just AFTER the Next→Done cascade above (which caps at 0.7s),
-                    so it reads as one continuous home cascade. */}
-                <WeeklyRhythm cascadeBaseDelay={0.7} />
+                    so it reads as one continuous home cascade. layout composes
+                    with WeeklyRhythm's own per-card cascade without conflict —
+                    it only tracks this wrapper's box. */}
+                <motion.div layout transition={HOME_REFLOW_TRANSITION}><WeeklyRhythm cascadeBaseDelay={0.7} /></motion.div>
                 {/* Learn — continue (or start) a course, UNDER the weekly
                     practices: next episode + play + progress. Video courses are
                     web-only; the iOS shell shows only the Way of Love (audio).
                     See HomeLearnSection. */}
-                <HomeLearnSection />
+                <motion.div layout transition={HOME_REFLOW_TRANSITION}><HomeLearnSection /></motion.div>
                 </>
               )}
             </div>
