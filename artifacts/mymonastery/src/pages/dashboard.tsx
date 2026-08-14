@@ -130,6 +130,30 @@ export type Moment = {
 // but there's no reason to reallocate it on every dashboard render).
 const HOME_REFLOW_TRANSITION = { duration: 0.32, ease: [0.16, 1, 0.3, 1] as const };
 
+// Owner: Courses (HomeLearnSection) and the "Events" TimeSection off the
+// home screen for now — a temporary toggle, not a removal, matching how
+// "Prayer List removed from the home screen" above is handled (a decision
+// to revisit, not dead code). Flip back to true to restore both.
+const SHOW_COURSES_AND_EVENTS = false;
+
+// Settings → Home display's "Done cards" toggle — preset ON (shown), stored
+// under the key settings.tsx writes (HIDE_DONE_KEY there).
+const HIDE_DONE_KEY = "phoebe:hide-home-done";
+
+function readDoneHidden(): boolean {
+  try { return localStorage.getItem(HIDE_DONE_KEY) === "1"; } catch { return false; }
+}
+
+function useDoneShownPref(): boolean {
+  const [hidden, setHidden] = useState(readDoneHidden);
+  useEffect(() => {
+    const onChange = () => setHidden(readDoneHidden());
+    window.addEventListener("phoebe:prefs-changed", onChange);
+    return () => window.removeEventListener("phoebe:prefs-changed", onChange);
+  }, []);
+  return !hidden;
+}
+
 // ─── Category color system ──────────────────────────────────────────────────
 
 type Category = "letters" | "practices" | "gatherings" | "feeds";
@@ -6422,6 +6446,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   //   • all kept:   a community summary (who you prayed with / who prayed
   //                 with you)
   const rhythm = useRhythmState();
+  const doneShownPref = useDoneShownPref();
   // Once every daily prayer anchor is done, the routine drops off the home and
   // the upcoming-events schedule takes its place (the cards still live on the
   // /daily-progress page). Only flips after the rhythm queries settle.
@@ -7257,7 +7282,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           /daily-progress. Once everything's kept, the only
                           things left here are Turn·Learn·Pray and a "sit
                           again" invitation (below). */}
-                      <DailyProgressBody showStreak={false} showDone={false} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                      <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
                       {/* layout on every section below DailyProgressBody: when a
                           card above completes and the Next/Done list shrinks,
                           Framer Motion detects each of these siblings landed at
@@ -7291,7 +7316,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           the top level — a bare top-level `transition` drives
                           every animated property, which would silently shorten
                           the 0.55s fade to the layout's 0.32s. */}
-                      <motion.div layout initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>
+                      {SHOW_COURSES_AND_EVENTS && <motion.div layout initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.3, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>}
                     </div>
                   );
                 }
@@ -7330,7 +7355,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     {/* Kept cards drop off the home once done — see the
                         no-events branch note above. */}
-                    <DailyProgressBody showStreak={false} showDone={false} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                    <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
                     {/* layout on each section below — see HOME_REFLOW_TRANSITION's
                         definition for why. */}
                     <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} /></motion.div>
@@ -7349,7 +7374,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         under the weekly practices. Nest the layout timing under
                         transition.layout — a top-level transition would drive
                         the fade-in too and shorten it from 0.55s to 0.32s. */}
-                    <motion.div layout {...enterUp(3)} transition={{ ...enterUp(3).transition, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>
+                    {SHOW_COURSES_AND_EVENTS && <motion.div layout {...enterUp(3)} transition={{ ...enterUp(3).transition, layout: HOME_REFLOW_TRANSITION }}><HomeLearnSection /></motion.div>}
                   </div>
                 );
               })() : (
@@ -7362,7 +7387,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   showStreak={false}
                   /* Done cards drop off the home once kept — the full Next+Done
                      spine only lives on /daily-progress now. */
-                  showDone={false}
+                  showDone={doneShownPref}
                   /* Cap the Next list at 7 cards on the home; the rest live on
                      /daily-progress. */
                   maxUpcoming={7}
@@ -7397,7 +7422,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     practices: next episode + play + progress. Video courses are
                     web-only; the iOS shell shows only the Way of Love (audio).
                     See HomeLearnSection. */}
-                <motion.div layout transition={HOME_REFLOW_TRANSITION}><HomeLearnSection /></motion.div>
+                {SHOW_COURSES_AND_EVENTS && <motion.div layout transition={HOME_REFLOW_TRANSITION}><HomeLearnSection /></motion.div>}
                 </>
               )}
             </div>
@@ -7592,7 +7617,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     you can always start one. Signed-in only, and never in guest
                     SHAPE: the public home carries no prayer-request composer
                     and no community events. */}
-                {filter === null && !eventsOnly && !!user && !isGuestShape && (() => {
+                {SHOW_COURSES_AND_EVENTS && filter === null && !eventsOnly && !!user && !isGuestShape && (() => {
                   // Events on the home — ONE "Events" section, no time sub-headers
                   // (owner). All upcoming events across today→month, already in
                   // chronological order (the buckets are date-sorted), rendered

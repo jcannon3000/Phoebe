@@ -1097,6 +1097,9 @@ export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
 // history, different lens on what each row means. Read by
 // WayOfLoveTurnLearnPray.tsx via the same key/helpers as the toggles above.
 export const TLP_MODE_KEY = "phoebe:tlp-row-mode";
+// The "Done" section on home (kept cards, below Next) — preset ON; read by
+// dashboard.tsx via the same key/helpers as the toggles above.
+export const HIDE_DONE_KEY = "phoebe:hide-home-done";
 
 function HomeDisplaySettings() {
   const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
@@ -1125,6 +1128,17 @@ function HomeDisplaySettings() {
     const next = !practiceMode;
     setPracticeMode(next);
     writeLsBool(TLP_MODE_KEY, next);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
+
+  // Preset ON (readLsBool defaults false/"not hidden" when the key has
+  // never been written), matching "on, but you can turn them off".
+  const [doneHidden, setDoneHidden] = useState<boolean>(() => readLsBool(HIDE_DONE_KEY));
+  const doneShown = !doneHidden;
+  const toggleDone = () => {
+    const nextHidden = doneShown;
+    setDoneHidden(nextHidden);
+    writeLsBool(HIDE_DONE_KEY, nextHidden);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
 
@@ -1205,6 +1219,30 @@ function HomeDisplaySettings() {
             </button>
           </>
         )}
+
+        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+
+        <button
+          onClick={toggleDone}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Done cards
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              Show what you've already kept today on home, below what's next.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${doneShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${doneShown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
       </SettingsCard>
 
       <div className="mb-8" />

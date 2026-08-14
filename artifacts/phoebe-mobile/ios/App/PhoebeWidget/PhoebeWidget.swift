@@ -290,18 +290,15 @@ struct PhoebeWidgetView: View {
         let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
         let rowCount = stats.weeklyLabels.count
         return VStack(alignment: .leading, spacing: 10) {
-            // App identity in the top-left, matching every other Phoebe
-            // surface's leaf + wordmark — a widget with no chrome of its own
-            // otherwise doesn't read as Phoebe's at a glance on a packed
-            // home screen.
-            HStack(spacing: 5) {
-                Image(systemName: "leaf.fill").font(.system(size: 12)).foregroundColor(phoebeWarm.opacity(0.85))
-                Text("Phoebe").font(sgBold(13)).foregroundColor(phoebeWarm.opacity(0.9))
-            }
+            // App identity in the top-left — a widget with no chrome of its
+            // own otherwise doesn't read as Phoebe's at a glance on a packed
+            // home screen. Wordmark only, no leaf icon (owner).
+            Text("Phoebe").font(sgBold(13)).foregroundColor(phoebeWarm.opacity(0.9))
             Text("PAST 7 DAYS")
                 .font(sgBold(9))
                 .tracking(1.4)
                 .foregroundColor(phoebeWarm.opacity(0.55))
+                .frame(maxWidth: .infinity, alignment: .center)
             // frame(maxWidth: .infinity) at EVERY level here — a VStack/HStack
             // in SwiftUI does NOT propagate "fill available width" to its
             // children automatically; each nesting level has to ask for it
