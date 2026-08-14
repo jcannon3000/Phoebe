@@ -97,3 +97,39 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
 // markPracticeDoneToday above. Listened for globally (App.tsx) to surface
 // a toast, since this failure is otherwise invisible to the user.
 export const PRACTICE_SYNC_FAILED_EVENT = "phoebe:practice-sync-failed";
+
+/** Undo today's mark — same shape as markPracticeDoneToday, mirrored for the
+ *  opposite direction: clear the local flag first (instant, offline-safe),
+ *  then best-effort DELETE the server row with the same one-retry +
+ *  visible-failure pattern. Idempotent — deleting a row that's already
+ *  gone is a no-op server-side. */
+export function unmarkPracticeDoneToday(section: OptionalPractice): void {
+  try {
+    localStorage.removeItem(storageKey(section));
+    window.dispatchEvent(new Event(PRACTICE_DONE_EVENT));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+  const localDate = todayLocalISO();
+  const del = () => apiRequest("DELETE", "/api/practice-completion", { section, localDate });
+  del().catch(() => {
+    setTimeout(() => {
+      del().catch((err) => {
+        console.error(`[practiceCompletion] un-sync failed for "${section}" after retry:`, err);
+        try {
+          window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section } }));
+        } catch { /* non-fatal */ }
+      });
+    }, 3000);
+  });
+}
+
+/** Tap-to-check, tap-to-undo — a real toggle rather than a one-way stamp,
+ *  matching how a custom "Create your own" anchor's card behaves
+ *  (toggleCustomDoneToday, lib/customAnchors.ts) and markCustomPrayed/
+ *  unmarkCustomPrayed (lib/cacReadState.ts). Reads the CURRENT local flag
+ *  (not a server round-trip) so the decision is instant. */
+export function togglePracticeDoneToday(section: OptionalPractice): void {
+  if (hasPracticeDoneToday(section)) unmarkPracticeDoneToday(section);
+  else markPracticeDoneToday(section);
+}

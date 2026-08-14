@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCust
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
-import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { markPracticeDoneToday, togglePracticeDoneToday } from "@/lib/practiceCompletion";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
@@ -958,10 +958,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // The Examen is always an evening practice (no time-of-day picker).
   const examenSlot: CustomSlot = "evening";
   const walkCard = {
-    key: "walk", emoji: "🚶", rgb: "120,160,120", done: walkDone, href: "/walk-log",
+    key: "walk", emoji: "🚶", rgb: "120,160,120", done: walkDone, href: "",
+    // Simplified to a plain tap-to-check toggle, same shape as a custom
+    // anchor's card (toggleCustomDoneToday) and the custom-prayer morning/
+    // evening cards above (markCustomPrayed/unmarkCustomPrayed) — no more
+    // navigating to a separate page with a "where did you walk" form. A
+    // real toggle (tap again to undo), not a one-way stamp: PracticeCard
+    // wraps the WHOLE card in this onClick regardless of done-state.
+    onClick: () => togglePracticeDoneToday("walk"),
     title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }),
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
-    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
+    cta: t("rhythm.mark_done", { defaultValue: "Mark done" }), later: false,
   };
   // Compline is only reachable after 7pm, but — like Evening Prayer below —
   // the card itself stays in Next all day as a disabled "Later" state
