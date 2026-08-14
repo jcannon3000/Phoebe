@@ -1091,6 +1091,12 @@ const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
 // The "Turn · Learn · Pray" status band under the daily rhythm on home —
 // read by WayOfLoveTurnLearnPray.tsx itself via the same key/helpers.
 export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
+// Row-labeling mode for that same weekly grid: the Way of Love's Turn/
+// Learn/Pray framework (default), or a plainer Morning/Contemplative/
+// Evening Practice reading of the SAME three rows — same dots, same
+// history, different lens on what each row means. Read by
+// WayOfLoveTurnLearnPray.tsx via the same key/helpers as the toggles above.
+export const TLP_MODE_KEY = "phoebe:tlp-row-mode";
 
 function HomeDisplaySettings() {
   const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
@@ -1108,6 +1114,17 @@ function HomeDisplaySettings() {
     const nextHidden = tlpShown;
     setTlpHidden(nextHidden);
     writeLsBool(HIDE_TLP_KEY, nextHidden);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
+
+  // true = "Morning / Contemplative / Evening Practice" row labels;
+  // false (default) = "Turn / Learn / Pray". Same three rows, same dots,
+  // same history — just which framework labels them.
+  const [practiceMode, setPracticeMode] = useState<boolean>(() => readLsBool(TLP_MODE_KEY));
+  const togglePracticeMode = () => {
+    const next = !practiceMode;
+    setPracticeMode(next);
+    writeLsBool(TLP_MODE_KEY, next);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
 
@@ -1161,6 +1178,33 @@ function HomeDisplaySettings() {
             />
           </div>
         </button>
+
+        {tlpShown && (
+          <>
+            <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+            <button
+              onClick={togglePracticeMode}
+              className="w-full flex items-center justify-between"
+            >
+              <div className="text-left">
+                <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+                  Morning · Contemplative · Evening
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                  Label those same three rows by time of day instead of Turn · Learn · Pray.
+                </p>
+              </div>
+              <div
+                className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${practiceMode ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+              >
+                <div
+                  className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${practiceMode ? "left-[21px]" : "left-[3px]"}`}
+                  style={{ background: "#F0EDE6" }}
+                />
+              </div>
+            </button>
+          </>
+        )}
       </SettingsCard>
 
       <div className="mb-8" />

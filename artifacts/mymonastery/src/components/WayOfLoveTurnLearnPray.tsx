@@ -47,6 +47,26 @@ function useHiddenPref(): boolean {
   return hidden;
 }
 
+// Row-labeling mode: false (default) = Turn/Learn/Pray (the Way of Love
+// framework); true = Morning/Contemplative/Evening Practice — same three
+// rows, same dots, same history, just which lens labels them. Stored under
+// the key settings.tsx writes (TLP_MODE_KEY there).
+const MODE_KEY = "phoebe:tlp-row-mode";
+
+function readPracticeMode(): boolean {
+  try { return localStorage.getItem(MODE_KEY) === "1"; } catch { return false; }
+}
+
+function usePracticeModePref(): boolean {
+  const [mode, setMode] = useState(readPracticeMode);
+  useEffect(() => {
+    const onChange = () => setMode(readPracticeMode());
+    window.addEventListener("phoebe:prefs-changed", onChange);
+    return () => window.removeEventListener("phoebe:prefs-changed", onChange);
+  }, []);
+  return mode;
+}
+
 function localDay(): string {
   return new Date().toLocaleDateString("en-CA");
 }
@@ -102,6 +122,7 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   const rhythm = useRhythmState();
   const turned = useTurnedToday();
   const hidden = useHiddenPref();
+  const practiceMode = usePracticeModePref();
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { data: week } = useQuery<{ days: PracticeWeekDay[] }>({
     queryKey: ["/api/me/practice-week", tz],
@@ -155,13 +176,30 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   const learned = learnFromReflection || learnFromMorning || learnFromEvening;
   const prayed = rhythm.doneCount > 0;
 
+  // Morning / Contemplative / Evening Practice — the same three rows read
+  // through a plain time-of-day lens instead of the Way of Love framework.
+  // Reuses fields the server already returns (no new endpoint): Contemplative
+  // ORs every contemplative anchor (per-side sits, the solo goal card,
+  // Co-Breathe), matching how "prayed" already ORs across anchor types above.
+  const morningPracticeOn = (d: PracticeWeekDay) => d.morning;
+  const eveningPracticeOn = (d: PracticeWeekDay) => d.evening;
+  const contemplativePracticeOn = (d: PracticeWeekDay) => d.contemplation || d.cobreathe;
+  const morningPractice = rhythm.morningDone;
+  const eveningPractice = rhythm.eveningDone;
+  const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
+    || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
+
   // Per-row shade from the SAME ramp the Next-list CTA pills use
   // (rhythmGradientRgb, DailyProgressBody.tsx) — was one flat green across
   // all three rows; owner asked for the dots to carry the same visible
   // top-to-bottom gradient the CTA buttons now do, rather than reading as
   // a separate, uncolored palette next to them.
   const ROW_COUNT = 3;
-  const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = [
+  const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
+    { emoji: "🌅", label: "Morning", done: morningPractice, rgb: rhythmGradientRgb(0, ROW_COUNT), historyFor: morningPracticeOn },
+    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: rhythmGradientRgb(1, ROW_COUNT), historyFor: contemplativePracticeOn },
+    { emoji: "🌙", label: "Evening", done: eveningPractice, rgb: rhythmGradientRgb(2, ROW_COUNT), historyFor: eveningPracticeOn },
+  ] : [
     { emoji: "🔄", label: "Turn", done: turned, rgb: rhythmGradientRgb(0, ROW_COUNT), historyFor: (d) => readTurnedOn(d.ymd) },
     { emoji: "📖", label: "Learn", done: learned, rgb: rhythmGradientRgb(1, ROW_COUNT), historyFor: learnedOn },
     { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: rhythmGradientRgb(2, ROW_COUNT), historyFor: prayedOn },
