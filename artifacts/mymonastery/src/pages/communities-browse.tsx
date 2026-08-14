@@ -243,10 +243,11 @@ export default function CommunitiesBrowsePage() {
                         {f.tagline && (
                           <p className="text-xs mt-0.5 truncate" style={{ color: "#8FAF96" }}>{f.tagline}</p>
                         )}
-                        <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                          {f.subscriberCount} praying along
-                          {f.isSubscribed && " · ✓ Following"}
-                        </p>
+                        {f.isSubscribed && (
+                          <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                            ✓ Following
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

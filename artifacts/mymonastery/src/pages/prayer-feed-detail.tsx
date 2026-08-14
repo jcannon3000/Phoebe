@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,16 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { addHomeCard, removeHomeCard, applyCachedHomeLayout, saveHomeLayout } from "@/lib/homeLayoutCache";
 import { getReflectionSource, setReflectionSource, setSideReflection } from "@/lib/officePrefs";
+import { VTS_TODAY_URL, markVtsRead, hasReadVtsToday } from "@/lib/cacReadState";
+import { openExternalThenMarkRead } from "@/lib/openExternal";
+import { swellHaptic } from "@/lib/swellHaptic";
+
+// Feeds that unlock a specific daily-reflection practice by following them
+// (see hooks/useEntitlements) — shown as its own CTA card right on the
+// feed's page, not just tucked into the customizer after the fact.
+const FEED_PRACTICE: Record<string, { label: string; url: string; markRead: () => void; hasReadToday: () => boolean }> = {
+  vts: { label: "The Dean's Commentary", url: VTS_TODAY_URL, markRead: markVtsRead, hasReadToday: hasReadVtsToday },
+};
 
 // Feeds that put a card straight into the follower's routine when followed.
 // Following VTS adds the Dean's Commentary — the reflection it unlocks —
@@ -106,6 +116,8 @@ export default function PrayerFeedDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  const practice = slug ? FEED_PRACTICE[slug] : undefined;
+  const [practiceReadToday, setPracticeReadToday] = useState(() => practice?.hasReadToday() ?? false);
 
   useEffect(() => {
     // Prayer feeds are reachable by any signed-in account now — public
@@ -283,9 +295,6 @@ export default function PrayerFeedDetailPage() {
             {feed.tagline && (
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{feed.tagline}</p>
             )}
-            <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-              {t("prayer_feed_detail.praying_along", { count: feed.subscriberCount })}
-            </p>
           </div>
           {isCreator && (
             <Link href={`/prayer-feeds/${slug}/manage`}>
@@ -330,6 +339,43 @@ export default function PrayerFeedDetailPage() {
               </button>
             )}
         </div>
+
+        {/* Following this feed unlocks a specific daily-reflection practice
+            (VTS -> the Dean's Commentary) — surfaced right here, not just
+            tucked into the customizer afterwards. Only for subscribers,
+            since the entitlement itself is follow-gated. */}
+        {practice && isSubscribed && (
+          <div
+            className="mb-6 rounded-2xl overflow-hidden flex"
+            style={{
+              background: "rgba(46,107,64,0.15)",
+              border: "1px solid rgba(46,107,64,0.45)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
+            <div className="flex-1 px-4 py-3.5 min-w-0">
+              <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                📖 {practice.label}
+              </p>
+              <p className="text-sm mt-0.5 mb-3" style={{ color: "#8FAF96" }}>
+                Unlocked by following {feed.title} — today's reflection.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  practice.markRead();
+                  setPracticeReadToday(true);
+                  openExternalThenMarkRead(practice.url, swellHaptic, { reader: true });
+                }}
+                className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90"
+                style={{ background: "#2E6B40", color: "#F0EDE6" }}
+              >
+                {practiceReadToday ? "Read ✓" : `Read today's ${practice.label}`}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Pray-with-this-feed box — carries the "Pray the full list"
             CTA, which walks every intercession in the feed as one
