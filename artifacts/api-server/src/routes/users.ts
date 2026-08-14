@@ -779,12 +779,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     res.json({ days });
   } catch (err) {
     console.error("[practice-week] failed:", err);
-    // TEMP: surface the real underlying message instead of the generic
-    // wrapper, so the client-side debug pane (WayOfLoveTurnLearnPray.tsx)
-    // shows what's actually failing without needing Railway log access.
-    // Revert to the generic message once this is diagnosed.
-    const detail = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: `Failed to load practice week: ${detail}` });
+    res.status(500).json({ error: "Failed to load practice week" });
   }
 });
 
