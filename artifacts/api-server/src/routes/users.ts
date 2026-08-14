@@ -610,7 +610,32 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       .select({ timezone: usersTable.timezone, contemplationGoalMinutes: usersTable.contemplationGoalMinutes })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
-    const tz = meTz?.timezone || "UTC";
+    // usersTable.timezone has no writer anywhere in the codebase — nothing
+    // sets it at registration or afterward, so it's NULL for most accounts
+    // and every "|| UTC" fallback across the app (this route included)
+    // silently buckets days in UTC instead of the user's actual zone. For a
+    // US-based user that shifts anything done in the evening (after ~8pm ET)
+    // into the NEXT UTC calendar day — exactly the "yesterday's evening
+    // practices don't show" symptom this route was built to report on. The
+    // client already resolves its own IANA zone (Intl.DateTimeFormat) for
+    // this exact call but was never sending it — accept it here, prefer it
+    // over the (likely absent) stored value, and opportunistically persist
+    // it so every OTHER endpoint reading usersTable.timezone benefits too,
+    // not just this one grid.
+    const clientTz = typeof req.query.tz === "string" ? req.query.tz : null;
+    const clientTzValid = (() => {
+      if (!clientTz) return false;
+      try { new Intl.DateTimeFormat("en-CA", { timeZone: clientTz }); return true; }
+      catch { return false; }
+    })();
+    const tz = (clientTzValid ? clientTz : null) || meTz?.timezone || "UTC";
+    if (clientTzValid && clientTz !== meTz?.timezone) {
+      // Best-effort — a failed write here shouldn't break the response,
+      // since `tz` above already has the correct value for THIS request
+      // regardless of whether the persist succeeds.
+      db.update(usersTable).set({ timezone: clientTz }).where(eq(usersTable.id, sessionUserId))
+        .catch((err) => console.error("[practice-week] timezone backfill failed:", err));
+    }
     // Daily contemplation goal (minutes; 0 = none). The weekly grid only fills
     // a day's contemplation dot once the day's total contemplative time meets
     // this goal — not on any logged minute. With no goal set, any sit counts.

@@ -20,6 +20,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { getSideLevel } from "@/lib/officePrefs";
+import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
 import { apiRequest } from "@/lib/queryClient";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
@@ -102,7 +103,14 @@ export function WayOfLoveTurnLearnPray() {
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { data: week } = useQuery<{ days: PracticeWeekDay[] }>({
     queryKey: ["/api/me/practice-week", tz],
-    queryFn: () => apiRequest("GET", "/api/me/practice-week"),
+    // `tz` used to be computed here and then only fed into the query KEY —
+    // never actually sent. The server fell back to usersTable.timezone,
+    // which has no writer anywhere and is NULL for most accounts, so day
+    // boundaries silently computed in UTC instead of the viewer's real
+    // zone — anything done after ~8pm ET landed under the wrong UTC day
+    // and vanished from both. Actually sending it lets the server use the
+    // live, correct value (and opportunistically backfill the stored one).
+    queryFn: () => apiRequest("GET", `/api/me/practice-week?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
 
@@ -119,13 +127,25 @@ export function WayOfLoveTurnLearnPray() {
   const morningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("morning") ?? "");
   const eveningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("evening") ?? "");
   const learnedOn = (d: PracticeWeekDay) => d.reflection || (morningIsScripture && d.morning) || (eveningIsScripture && d.evening);
+  // User-defined "Create your own" practices (e.g. a Duolingo check-off)
+  // live entirely client-side — they're not in /api/me/practice-week at
+  // all, server or client. Each one keeps its own rolling ~21-day history
+  // in localStorage (getCustomDoneDays), which is exactly what powers ITS
+  // OWN dot on a per-anchor row elsewhere — but was never folded into
+  // Pray's row here, even though a custom anchor DOES count toward
+  // rhythm.doneCount for today. Same current-anchors-judged-retroactively
+  // approximation as morningIsScripture above: if you delete a custom
+  // anchor, its past days drop out of this check along with it.
+  const customAnchorIds = getCustomAnchors().map((a) => a.id);
+  const prayedOnCustom = (ymd: string) => customAnchorIds.some((id) => getCustomDoneDays(id).has(ymd));
   // Every anchor that can make rhythm.doneCount > 0 for TODAY (see
   // useRhythmState's allFlags), so a past day reads consistently with how
   // that same day would have read as "today" — a Walk-only or Audio
   // Divina-only day is genuinely prayed, not just Turn.
   const prayedOn = (d: PracticeWeekDay) =>
     d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe
-    || d.listening || d.reading || d.podcasts || d.walk || d.prayerList;
+    || d.listening || d.reading || d.podcasts || d.walk || d.prayerList
+    || prayedOnCustom(d.ymd);
 
   const learnFromReflection = rhythm.reflections.some((r) => r.done);
   const learnFromMorning = rhythm.morningDone && morningIsScripture;
