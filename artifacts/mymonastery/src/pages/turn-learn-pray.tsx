@@ -4,7 +4,7 @@
  * one explanation card per practice below it, so a curious tap answers "what
  * counts as each of these?" without leaving the app.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Play } from "lucide-react";
@@ -24,12 +24,34 @@ const FAINT = "rgba(143,175,150,0.55)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CARD_BORDER = "rgba(200,212,192,0.35)";
 
-// Same page-backdrop recipe used elsewhere (about.tsx, invite-share.tsx): a
-// still leaf photo behind everything with a frosted gradient wash — never
-// position:fixed (flashes on iOS); absolute inset-0 inside an isolated
-// stacking context instead. Picked once per mount.
+// Owner: the backdrop should actually rotate, not just pick once and hold
+// for the whole visit — every other page's "rotates" (see contemplation.tsx)
+// only means "a different one next time you MOUNT this page," which reads
+// static if you just sit here. This is a genuinely new behavior: cycles to
+// a fresh random photo every 20s while the page stays open. Layout's own
+// LayoutBackdrop already fades in on a photo-prop change (decode-aware,
+// 0.8s opacity transition), so simply changing what this hook returns is
+// enough to get a smooth crossfade-ish rotation for free — no new
+// transition logic needed here.
+const BG_ROTATE_MS = 20_000;
 function useBgPhoto(): string | null {
-  return useState(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null))[0];
+  const pick = () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null);
+  const [photo, setPhoto] = useState<string | null>(pick);
+  useEffect(() => {
+    if (LEAF_PHOTOS.length <= 1) return; // nothing else to rotate to
+    const id = setInterval(() => {
+      setPhoto((current) => {
+        // Avoid an immediate repeat — with only a couple of photos a plain
+        // random pick would visibly "rotate" back to the same one often.
+        let next = pick();
+        let guard = 0;
+        while (next === current && guard < 5) { next = pick(); guard++; }
+        return next;
+      });
+    }, BG_ROTATE_MS);
+    return () => clearInterval(id);
+  }, []);
+  return photo;
 }
 
 // Maps each explanation card to its Way of Love course lesson — the same
@@ -130,9 +152,6 @@ export default function TurnLearnPrayPage() {
           <h1 className="text-2xl font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
             Weekly Progress
           </h1>
-          <p className="text-[14px] mt-2 mb-2 leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
-            The first three of the Episcopal Church's seven Way of Love practices — the daily spine underneath the weekly ones (Worship, Bless, Go, Rest).
-          </p>
 
           {/* Same card as the home — a status mirror, not a new place to log
               anything. Its own tap target still points here, which is a
@@ -147,6 +166,9 @@ export default function TurnLearnPrayPage() {
             </h2>
             <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
           </div>
+          <p className="text-[14px] mb-2 leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
+            The first three of the Episcopal Church's seven Way of Love practices — the daily spine underneath the weekly ones (Worship, Bless, Go, Rest).
+          </p>
           <div className="flex flex-col gap-3">
           {EXPLANATIONS.map((e) => (
             <div
