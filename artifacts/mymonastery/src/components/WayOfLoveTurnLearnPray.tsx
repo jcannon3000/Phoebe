@@ -193,16 +193,19 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
   // (rhythmGradientRgb, DailyProgressBody.tsx) — was one flat green across
   // all three rows; owner asked for the dots to carry the same visible
   // top-to-bottom gradient the CTA buttons now do, rather than reading as
-  // a separate, uncolored palette next to them.
+  // a separate, uncolored palette next to them. Reversed (ROW_COUNT-1-i)
+  // vs the CTA pills' own top-to-bottom direction — owner asked for the
+  // BOTTOM row here to be the lightest shade, not the darkest.
   const ROW_COUNT = 3;
+  const rowRgb = (i: number) => rhythmGradientRgb(ROW_COUNT - 1 - i, ROW_COUNT);
   const rows: Array<{ emoji: string; label: string; done: boolean; rgb: string; historyFor: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
-    { emoji: "🌅", label: "Morning", done: morningPractice, rgb: rhythmGradientRgb(0, ROW_COUNT), historyFor: morningPracticeOn },
-    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: rhythmGradientRgb(1, ROW_COUNT), historyFor: contemplativePracticeOn },
-    { emoji: "🌙", label: "Evening", done: eveningPractice, rgb: rhythmGradientRgb(2, ROW_COUNT), historyFor: eveningPracticeOn },
+    { emoji: "🌅", label: "Morning", done: morningPractice, rgb: rowRgb(0), historyFor: morningPracticeOn },
+    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, rgb: rowRgb(1), historyFor: contemplativePracticeOn },
+    { emoji: "🌙", label: "Evening", done: eveningPractice, rgb: rowRgb(2), historyFor: eveningPracticeOn },
   ] : [
-    { emoji: "🔄", label: "Turn", done: turned, rgb: rhythmGradientRgb(0, ROW_COUNT), historyFor: (d) => readTurnedOn(d.ymd) },
-    { emoji: "📖", label: "Learn", done: learned, rgb: rhythmGradientRgb(1, ROW_COUNT), historyFor: learnedOn },
-    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: rhythmGradientRgb(2, ROW_COUNT), historyFor: prayedOn },
+    { emoji: "🔄", label: "Turn", done: turned, rgb: rowRgb(0), historyFor: (d) => readTurnedOn(d.ymd) },
+    { emoji: "📖", label: "Learn", done: learned, rgb: rowRgb(1), historyFor: learnedOn },
+    { emoji: "🙏🏽", label: "Pray", done: prayed, rgb: rowRgb(2), historyFor: prayedOn },
   ];
   // Build the 7-day window CLIENT-SIDE (today last) so the grid always has
   // 7 columns to draw the instant this renders — never blank while
