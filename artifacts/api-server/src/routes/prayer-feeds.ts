@@ -421,10 +421,18 @@ router.get("/prayer-feeds", requireAuth, async (req, res): Promise<void> => {
   // Beta members see every live feed in discovery; everyone else
   // (including the offices-only tier) sees only public feeds.
   const beta = await isBetaUser(user.id);
+  // Owner: VTS is the only feed Phoebe surfaces publicly right now —
+  // Anglican Cycle of Prayer, Diocese of New York, and any user/group
+  // feeds stay live in the database (subscribers keep them, and
+  // /api/prayer-feeds/mine + admin tooling are untouched) but drop out of
+  // discovery. Revert by removing this slug filter.
   const rows = await db.select().from(prayerFeedsTable)
-    .where(beta
-      ? eq(prayerFeedsTable.state, "live")
-      : and(eq(prayerFeedsTable.state, "live"), eq(prayerFeedsTable.visibility, "public")))
+    .where(and(
+      beta
+        ? eq(prayerFeedsTable.state, "live")
+        : and(eq(prayerFeedsTable.state, "live"), eq(prayerFeedsTable.visibility, "public")),
+      eq(prayerFeedsTable.slug, "vts"),
+    ))
     .orderBy(desc(prayerFeedsTable.subscriberCount), desc(prayerFeedsTable.createdAt));
 
   // Annotate each row with whether the caller already subscribes.
