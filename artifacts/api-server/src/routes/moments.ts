@@ -1596,16 +1596,28 @@ router.get("/moments", async (req, res): Promise<void> => {
           ...primaryPractices.map(p => p.id),
           ...secondaryPractices.map(p => p.id),
         ]));
-        // Reconcile in the BACKGROUND so the home GET doesn't block on member
-        // writes — a newly-added member's tokens land by their next poll rather
-        // than this response. The dedup Set is filled synchronously so the
-        // post-pass below still skips these practices.
+        // AWAITED (not background) — this pass runs before we read the
+        // viewer's own tokens below. A backgrounded write here used to race
+        // that read: the very first request after this practice's TTL lapsed
+        // (e.g. every reader, once per minute — or every reader again right
+        // after a deploy, since the TTL cache is in-process and a restart
+        // clears it) would query userTokenRows before the grant landed, so a
+        // moment the viewer should see was silently missing that one read —
+        // it "came back" on the next poll once the token existed, which is
+        // why it read as a moment randomly not showing up. The dedup Set is
+        // filled synchronously so the post-pass below still skips these
+        // practices either way.
         for (const id of allPracticeIds) reconciledGroupPracticeIds.add(id);
         // Per-practice throttle: only fire for practices no reader has synced
         // within the TTL, so a shared group isn't re-reconciled once per member.
         const dueGroup = practicesDueForReconcile(lastReconciledGroupPractice, allPracticeIds);
-        if (dueGroup.length > 0) void Promise.all(dueGroup.map(id => reconcileGroupPracticeMembers(id)))
-          .catch(err => console.error("[GET /api/moments] bg group reconcile failed:", err));
+        if (dueGroup.length > 0) {
+          try {
+            await Promise.all(dueGroup.map(id => reconcileGroupPracticeMembers(id)));
+          } catch (err) {
+            console.error("[GET /api/moments] group reconcile failed:", err);
+          }
+        }
       }
 
       // Same pre-reconcile pattern for feed-scoped intercessions:
@@ -1630,9 +1642,18 @@ router.get("/moments", async (req, res): Promise<void> => {
             sql`${sharedMomentsTable.state} != 'archived'`,
           ));
         for (const p of feedPractices) reconciledFeedPracticeIds.add(p.id);
+        // Awaited for the same reason as the group pass above — a feed
+        // intercession (e.g. the Diocese of New York daily entry) whose
+        // token grant is still in flight must not lose the race against
+        // the token read a few lines down.
         const dueFeed = practicesDueForReconcile(lastReconciledFeedPractice, feedPractices.map(p => p.id));
-        if (dueFeed.length > 0) void Promise.all(dueFeed.map(id => reconcileFeedPracticeMembers(id)))
-          .catch(err => console.error("[GET /api/moments] bg feed reconcile failed:", err));
+        if (dueFeed.length > 0) {
+          try {
+            await Promise.all(dueFeed.map(id => reconcileFeedPracticeMembers(id)));
+          } catch (err) {
+            console.error("[GET /api/moments] feed reconcile failed:", err);
+          }
+        }
       }
     } catch (err) {
       console.error("[GET /api/moments] pre-reconcile failed:", err);

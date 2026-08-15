@@ -1002,13 +1002,19 @@ export default function PrayerListPage() {
       });
       entriesByFeed.set(e.feedId, cur);
     }
-    return (subscribedData?.subscriptions ?? []).map((s) => ({
-      feedId: s.feed.id,
-      feedSlug: s.feed.slug,
-      feedTitle: s.feed.title,
-      feedCoverEmoji: s.feed.coverEmoji,
-      entries: entriesByFeed.get(s.feed.id) ?? [],
-    }));
+    return (subscribedData?.subscriptions ?? [])
+      // VTS is practices-only — owner: "VTS Should not have a prayer list
+      // feed / they are only for practices and such." Excluded here same
+      // as the intercessions/events sections on prayer-feed-detail.tsx,
+      // the home "Go" feed cards, and communities-browse search.
+      .filter((s) => s.feed.slug !== "vts")
+      .map((s) => ({
+        feedId: s.feed.id,
+        feedSlug: s.feed.slug,
+        feedTitle: s.feed.title,
+        feedCoverEmoji: s.feed.coverEmoji,
+        entries: entriesByFeed.get(s.feed.id) ?? [],
+      }));
   })();
 
   // Released-unread popup (kept unchanged — it's a separate closing-ritual
