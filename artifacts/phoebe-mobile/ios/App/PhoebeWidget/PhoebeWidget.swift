@@ -313,7 +313,7 @@ struct PhoebeWidgetView: View {
                 Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
                 Spacer()
                 Text("PAST 7 DAYS")
-                    .font(sgBold(9))
+                    .font(sgBold(10.5))
                     .tracking(1.4)
                     .foregroundColor(phoebeWarm.opacity(0.55))
             }
@@ -332,12 +332,12 @@ struct PhoebeWidgetView: View {
             // Day-initial header row (S/M/T/W/T/F/S) above the dot rows —
             // mirrors the home card's own header row, which this widget was
             // missing entirely.
-            // spacing: 6 (not 0) between the label column and the day grid —
+            // spacing: 12 (not 0) between the label column and the day grid —
             // owner: nudge the day columns right a touch without moving the
             // emoji/label column itself. Same gap on both this header row
             // and the dot rows below so S/M/T/... stays lined up above its
             // column's dots.
-            HStack(spacing: 6) {
+            HStack(spacing: 12) {
                 Text("").frame(width: 18)
                 LazyVGrid(columns: dayCols, spacing: 0) {
                     ForEach(0..<7, id: \.self) { day in
@@ -356,7 +356,7 @@ struct PhoebeWidgetView: View {
             .frame(maxWidth: .infinity)
             VStack(spacing: 9) {
                 ForEach(0..<rowCount, id: \.self) { row in
-                    HStack(spacing: 6) {
+                    HStack(spacing: 12) {
                         Text(row < stats.weeklyEmoji.count ? stats.weeklyEmoji[row] : "")
                             .font(.system(size: 11))
                             .frame(width: 18, alignment: .center)
