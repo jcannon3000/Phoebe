@@ -416,6 +416,32 @@ export function setSideCustomName(side: OfficeSide, v: string): void {
   } catch { /* non-fatal */ }
 }
 
+// What a side's card actually calls itself — extracted from DailyProgressBody
+// so /turn-learn-pray's per-slot summary (in Morning/Contemplative/Evening
+// mode) names the SAME practice the home card does instead of a
+// separately-maintained guess that drifts. `prayerKind` is useRhythmState's
+// field of the same name; `t` is the caller's i18n function.
+export function sideOfficeTitle(
+  side: "Morning" | "Evening",
+  prayerKind: string | undefined,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string {
+  const lvl = getSideLevel(side.toLowerCase() as OfficeSide);
+  if (lvl === "psalms") {
+    return t(`rhythm.card_${side.toLowerCase()}_psalms`, { defaultValue: `${side} Psalms` });
+  }
+  if (lvl === "reflect-sit") return t("rhythm.card_contemplation", { defaultValue: "Contemplation" });
+  if (lvl === "examen") return t("rhythm.card_examen", { defaultValue: "The Examen" });
+  if (lvl === "compline") return t("rhythm.card_compline", { defaultValue: "Compline" });
+  if (lvl === "guided-prayer") return t("rhythm.card_guided_prayer", { defaultValue: "Guided Prayer" });
+  if (lvl === "custom") return getSideCustomName(side.toLowerCase() as OfficeSide).trim() || `${side} Practice`;
+  return prayerKind === "community"
+    ? t("rhythm.card_community", { defaultValue: "Pray together" })
+    : prayerKind === "devotion"
+      ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
+      : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
+}
+
 // Confession per side. null = no per-side override → the office uses the
 // shared server pref (bcpShowConfession). When set, the office fetch passes
 // it to /api/office/{morning,evening}?confession=1|0 so the server assembler

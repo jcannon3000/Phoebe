@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, type ReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, type ReflectionSource } from "@/lib/officePrefs";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -394,8 +394,8 @@ export function WeeklyGridCard() {
 
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
-function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate,
+export function PracticeCard({
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, alwaysShowProgress, hero, eyebrow, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4, blurDelay, celebrate, onCheckClick,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Small uppercase label ABOVE the title in the hero layout — mirrors the
@@ -441,6 +441,11 @@ function PracticeCard({
    *  and the border pulses to say "this one is done and on its way to Done".
    *  The card is rendered with done=true; this only drives the transition. */
   celebrate?: boolean;
+  /** When set, a DONE card's plain ✓ (not the doneCta pill — that one stays
+   *  tappable to keep going) becomes its own tap target: stops the click from
+   *  reaching the card's own href/onClick and calls this instead, so tapping
+   *  the check anywhere else on the card still opens the practice as normal. */
+  onCheckClick?: () => void;
 }) {
   const waiting = !!later && !done;
   // Hold the pre-completion pill for a beat so the swap is something the user
@@ -626,8 +631,12 @@ function PracticeCard({
       </span>
     ) : (
       <span
+        role={onCheckClick ? "button" : undefined}
+        tabIndex={onCheckClick ? 0 : undefined}
+        onClick={onCheckClick ? (e) => { e.preventDefault(); e.stopPropagation(); onCheckClick(); } : undefined}
+        onKeyDown={onCheckClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onCheckClick(); } } : undefined}
         className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-        style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
+        style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)`, cursor: onCheckClick ? "pointer" : undefined }}
       >✓</span>
     )
   ) : waiting ? (
@@ -779,6 +788,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
+  // Tapping the ✓ on an already-Done card opens this instead of navigating —
+  // Unlog puts it back in Next, Cancel just closes. Only cards that carry an
+  // onUnlog handler (see the card builders above) are checkmark-tappable;
+  // everything else keeps the plain "check goes nowhere, card body navigates"
+  // behavior it always had.
+  const [unlogTarget, setUnlogTarget] = useState<{ title: string; emoji: string; onUnlog: () => void } | null>(null);
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
   const reflectionSource = useEffectiveReflectionSource();
@@ -874,33 +889,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
     : t("rhythm.contemplation_side_len", { mins, defaultValue: `${mins} minutes of loving God in silence` });
 
-  const officeTitle = (side: "Morning" | "Evening") => {
-    // Praying the Psalms IS this side's prayer → the card reads "Morning Psalms"
-    // / "Evening Psalms" (matching the PsalmsHomeCard hero), not "… Prayer".
-    const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
-    if (lvl === "psalms") {
-      return t(`rhythm.card_${side.toLowerCase()}_psalms`, { defaultValue: `${side} Psalms` });
-    }
-    // Contemplation / the Examen IS this side's prayer → name the card after the
-    // practice (matching the home hero), not "… Prayer".
-    if (lvl === "reflect-sit") return t("rhythm.card_contemplation", { defaultValue: "Contemplation" });
-    if (lvl === "examen") return t("rhythm.card_examen", { defaultValue: "The Examen" });
-    // Compline IS this side's office (the evening BCP-form choice) — name the
-    // card for the office actually prayed, not "Evening Prayer".
-    if (lvl === "compline") return t("rhythm.card_compline", { defaultValue: "Compline" });
-    // Simple Guided Prayer (PACT) IS this side's prayer — "Morning/Evening
-    // Simple Guided Prayer", matching the per-side home card.
-    // Just "Guided Prayer" — no Morning/Evening prefix, no "Simple" (owner).
-    if (lvl === "guided-prayer") return t("rhythm.card_guided_prayer", { defaultValue: "Guided Prayer" });
-    // A user's own named practice IS this side's prayer — the card reads
-    // whatever they named it (matching the home card), not "… Prayer".
-    if (lvl === "custom") return getSideCustomName(side.toLowerCase() as "morning" | "evening").trim() || `${side} Practice`;
-    return prayerKind === "community"
-      ? t("rhythm.card_community", { defaultValue: "Pray together" })
-      : prayerKind === "devotion"
-        ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
-        : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
-  };
+  // Extracted to lib/officePrefs.ts (sideOfficeTitle) so /turn-learn-pray's
+  // Morning/Contemplative/Evening per-slot summary names the same practice
+  // this card does instead of a separately-maintained guess.
+  const officeTitle = (side: "Morning" | "Evening") => sideOfficeTitle(side, prayerKind, t);
 
   // Custom practices slot into the rhythm by their time-of-day: morning ones
   // ride with Morning Prayer, midday after contemplation, afternoon after the
@@ -925,6 +917,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       key: `custom-${a.id}`, emoji: a.emoji || (r ? "📖" : "✅"), rgb: "143,170,150", done: a.done, href: "",
       // Tapping opens the Log popup (reading stepper, or Done / Not today).
       onClick: () => setLogAnchorId(a.id),
+      // Tapping the ✓ on an already-done card opens the Unlog confirm
+      // instead — puts it back in Next rather than re-opening the Log sheet.
+      onUnlog: () => setCustomNotToday(a.id),
       title: a.title,
       blurb,
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
@@ -942,12 +937,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   };
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
+    onUnlog: () => unmarkPracticeDoneToday("listening"),
     title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
     blurb: listeningDone ? (listeningWhat || kept) : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
   const examenCard = {
     key: "examen", emoji: "🌗", rgb: "150,120,180", done: examenDone, href: "/examen",
+    onUnlog: () => unmarkPracticeDoneToday("examen"),
     title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
     blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
@@ -965,6 +962,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // page (the old /walk-log flow) or silently toggling on tap (an earlier,
     // too-simplified attempt this session).
     onClick: () => setLogAnchorId("walk"),
+    onUnlog: () => unmarkPracticeDoneToday("walk"),
     title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }),
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
@@ -1181,12 +1179,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...customAnchors.filter((a) => !a.skipped).map((a) => ({ ...customCard(a), slot: a.slot })),
     ...(readingActive ? [{
       key: "reading", slot: getPracticeSlot("reading"), emoji: "📚", rgb: "108,140,180", done: readingDone, href: "/reading-log",
+      onUnlog: () => unmarkPracticeDoneToday("reading"),
       title: t("rhythm.card_reading", { defaultValue: "Reading" }),
       blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
     }] : []),
     ...(podcastsActive ? [{
       key: "podcasts", slot: "afternoon" as CustomSlot, emoji: "🎙️", rgb: "150,120,150", done: podcastsDone, href: "/podcast-log",
+      onUnlog: () => unmarkPracticeDoneToday("podcasts"),
       title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }),
       blurb: podcastsDone ? kept : t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }),
       cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
@@ -1475,6 +1475,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       pulseOnLoad={splashCleared}
       blurDelay={blurDelay}
       celebrate={celebrating && c.key === celebrateKey}
+      onCheckClick={
+        "onUnlog" in c && c.onUnlog
+          ? () => setUnlogTarget({ title: c.title, emoji: c.emoji, onUnlog: c.onUnlog as () => void })
+          : undefined
+      }
     />
   );
   // The card that LEADS the Next list as a hero: the office hero when there is
@@ -1675,6 +1680,66 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         if (!a) return null;
         return <LogSheet anchor={a} onClose={() => setLogAnchorId(null)} t={t} />;
       })()}
+
+      {/* Tapping the ✓ on a Done card opens this instead of navigating —
+          Unlog puts it back in Next, Cancel just closes. */}
+      {unlogTarget && (
+        <UnlogSheet
+          title={unlogTarget.title}
+          emoji={unlogTarget.emoji}
+          onClose={() => setUnlogTarget(null)}
+          onUnlog={() => { unlogTarget.onUnlog(); setUnlogTarget(null); }}
+          t={t}
+        />
+      )}
+    </div>
+  );
+}
+
+// UnlogSheet — the same bottom-sheet shell as LogSheet (visually), for the
+// opposite moment: confirming you want to take a DONE card back out of Done
+// and into Next. Deliberately just two choices, no stepper — undoing a
+// reading amount isn't this popup's job, it only clears the done flag.
+function UnlogSheet({
+  title, emoji, onClose, onUnlog, t,
+}: {
+  title: string; emoji: string; onClose: () => void; onUnlog: () => void;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-end justify-center"
+      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full"
+        style={{ maxWidth: 460, margin: "0 10px", background: "rgba(6,18,11,0.62)", backdropFilter: "blur(14.4px)", WebkitBackdropFilter: "blur(14.4px)", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <span style={{ fontSize: 26 }}>{emoji || "✅"}</span>
+          <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onUnlog}
+          className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
+          style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+        >
+          {t("rhythm.unlog", { defaultValue: "Unlog" })}
+        </button>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-2xl py-3 mt-2 text-[14px] font-semibold active:scale-[0.99]"
+          style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
+        >
+          {t("common.cancel", { defaultValue: "Cancel" })}
+        </button>
+      </div>
     </div>
   );
 }

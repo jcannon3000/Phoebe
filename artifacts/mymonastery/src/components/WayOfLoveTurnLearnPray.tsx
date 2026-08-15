@@ -57,7 +57,7 @@ function readPracticeMode(): boolean {
   try { return localStorage.getItem(MODE_KEY) !== "0"; } catch { return true; }
 }
 
-function usePracticeModePref(): boolean {
+export function usePracticeModePref(): boolean {
   const [mode, setMode] = useState(readPracticeMode);
   useEffect(() => {
     const onChange = () => setMode(readPracticeMode());

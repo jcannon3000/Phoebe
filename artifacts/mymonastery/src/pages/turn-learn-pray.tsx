@@ -12,11 +12,15 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
-import { WayOfLoveTurnLearnPray } from "@/components/WayOfLoveTurnLearnPray";
+import { WayOfLoveTurnLearnPray, usePracticeModePref } from "@/components/WayOfLoveTurnLearnPray";
+import { PracticeCard } from "@/components/DailyProgressBody";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useCourseProgress } from "@/lib/courseProgress";
 import { WAY_OF_LOVE, resolveWolEpisodes, type PodcastEpisode } from "@/lib/wayOfLoveCourse";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { useRhythmState } from "@/hooks/useRhythmState";
+import { getSideLevel, sideOfficeTitle } from "@/lib/officePrefs";
+import { markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -78,6 +82,32 @@ const EXPLANATIONS: Array<{ letter: string; title: string; blurb: string; lesson
   },
 ];
 
+// The Morning/Contemplative/Evening reading of the same three explanation
+// cards — shown instead of EXPLANATIONS when the viewer has that Settings
+// toggle on. No lessonKey/podcast CTA: Bishop Budde's Way of Love episodes
+// are specifically about Turn/Learn/Pray, not this framing, so it's dropped
+// rather than shown out of context.
+const MCE_EXPLANATIONS: Array<{ letter: string; title: string; blurb: string; slot: "morning" | "contemplative" | "evening" }> = [
+  {
+    letter: "M",
+    title: "Morning",
+    blurb: "Whatever opens your day — Morning Prayer, a devotion, Praying the Psalms, or a practice you've named yourself.",
+    slot: "morning",
+  },
+  {
+    letter: "C",
+    title: "Contemplative",
+    blurb: "Time set aside for silence — a contemplation sit, Creation Prayer, or however you observe it, morning or evening.",
+    slot: "contemplative",
+  },
+  {
+    letter: "E",
+    title: "Evening",
+    blurb: "Whatever closes the day — Evening Prayer, Compline, or your own evening anchor.",
+    slot: "evening",
+  },
+];
+
 interface ShowResponse {
   show?: { slug: string; title: string; artist: string; artwork: string | null };
   episodes?: PodcastEpisode[];
@@ -90,6 +120,35 @@ export default function TurnLearnPrayPage() {
   const bgPhoto = useBgPhoto();
   const player = usePodcastPlayer();
   const { isComplete, setLast, markStarted } = useCourseProgress(WAY_OF_LOVE.id);
+  const practiceMode = usePracticeModePref();
+  const rhythm = useRhythmState();
+  // Same source data computeWeeklyGrid (lib/weeklyGrid.ts) reads for its
+  // Morning/Contemplative/Evening row-done flags — not calling that function
+  // itself here since it also needs a practice-week network fetch this
+  // summary doesn't; these three lines just mirror its one-line expressions.
+  const creationStyle = rhythm.contemplationStyle === "cobreathe";
+  const slotStatus: Record<"morning" | "contemplative" | "evening", { title: string; emoji: string; done: boolean; href: string; onClick?: () => void }> = {
+    morning: {
+      title: sideOfficeTitle("Morning", rhythm.prayerKind, t),
+      emoji: "🌅",
+      done: rhythm.morningDone,
+      href: getSideLevel("morning") === "custom" ? "" : "/begin-prayer?side=morning",
+      onClick: getSideLevel("morning") === "custom" ? () => (rhythm.morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) : undefined,
+    },
+    contemplative: {
+      title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      emoji: creationStyle ? "🌍" : "🕯️",
+      done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone || rhythm.cobreatheDone,
+      href: creationStyle ? "/cobreathe?start=1" : "/contemplation",
+    },
+    evening: {
+      title: sideOfficeTitle("Evening", rhythm.prayerKind, t),
+      emoji: "🌙",
+      done: rhythm.eveningDone,
+      href: getSideLevel("evening") === "custom" ? "" : "/begin-prayer?side=evening",
+      onClick: getSideLevel("evening") === "custom" ? () => (rhythm.eveningDone ? unmarkCustomPrayed("evening") : markCustomPrayed("evening")) : undefined,
+    },
+  };
   const { data } = useQuery<ShowResponse>({
     queryKey: [`/api/podcasts/show/${WAY_OF_LOVE.showSlug}`],
     queryFn: () => apiRequest("GET", `/api/podcasts/show/${WAY_OF_LOVE.showSlug}`),
@@ -162,15 +221,58 @@ export default function TurnLearnPrayPage() {
               "listen" CTA. */}
           <div className="flex items-center gap-3 mt-9 mb-2">
             <h2 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
-              Turn Learn Pray
+              {practiceMode ? "Morning Contemplative Evening" : "Turn Learn Pray"}
             </h2>
             <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
           </div>
           <p className="text-[14px] mb-2 leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
-            The first three of the Episcopal Church's seven Way of Love practices — the daily spine underneath the weekly ones (Worship, Bless, Go, Rest).
+            {practiceMode
+              ? "The same three daily rows above, read by time of day instead of the Way of Love's framing: whatever anchors your morning, whatever contemplative practice you keep, and whatever closes your evening."
+              : "The first three of the Episcopal Church's seven Way of Love practices — the daily spine underneath the weekly ones (Worship, Bless, Go, Rest)."}
           </p>
           <div className="flex flex-col gap-3">
-          {EXPLANATIONS.map((e) => (
+          {practiceMode ? MCE_EXPLANATIONS.map((e) => {
+            const s = slotStatus[e.slot];
+            return (
+              <div
+                key={e.letter}
+                className="relative flex rounded-3xl overflow-hidden"
+                style={{ background: "rgba(46,107,64,0.07)", border: `1px solid ${CARD_BORDER}` }}
+              >
+                <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(110,180,130,0.72)" }} />
+                <div className="flex-1 px-5 py-5">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="flex-shrink-0 flex items-center justify-center rounded-full text-[13px] font-semibold"
+                      style={{ width: 26, height: 26, background: "rgba(110,180,130,0.18)", color: WARM, fontFamily: FONT }}
+                    >
+                      {e.letter}
+                    </span>
+                    <p className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>{e.title}</p>
+                  </div>
+                  <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
+                    {e.blurb}
+                  </p>
+                  {/* The actual practice in this slot today — same compact
+                      card the home screen renders, so this reads as a live
+                      status, not just prose. */}
+                  <div className="mt-3.5">
+                    <PracticeCard
+                      href={s.href}
+                      emoji={s.emoji}
+                      title={s.title}
+                      blurb={s.done ? "Kept today" : "Not yet today"}
+                      cta={t("rhythm.begin", { defaultValue: "Begin" })}
+                      done={s.done}
+                      rgb={e.slot === "contemplative" ? "62,124,122" : "46,107,64"}
+                      later={false}
+                      onClick={s.onClick}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          }) : EXPLANATIONS.map((e) => (
             <div
               key={e.letter}
               className="relative flex rounded-3xl overflow-hidden"
