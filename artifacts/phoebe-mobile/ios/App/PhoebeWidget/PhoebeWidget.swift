@@ -49,6 +49,10 @@ struct PhoebeStats {
     // the shared computeWeeklyGrid on the JS side (lib/weeklyGrid.ts).
     // weeklyGrid[row][day], oldest day first / today last.
     var weeklyLabels: [String]
+    // Per-row emoji (🌅/🕯️/🌙 or 🔄/📖/🙏🏽) — shown as the row label instead
+    // of a letter, matching the home card (owner: "left labels are the
+    // associated emojis from the practice cards").
+    var weeklyEmoji: [String]
     var weeklyGrid: [[Bool]]
     // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S), same
     // column order as weeklyGrid — mirrors the home card's own header row
@@ -65,6 +69,7 @@ struct PhoebeStats {
         morningDone: true, reflectDone: true, eveningDone: false, reflectAvailable: true,
         contemplationMin: 7, contemplationGoalMin: 20,
         weeklyLabels: ["Turn", "Learn", "Pray"],
+        weeklyEmoji: ["🔄", "📖", "🙏🏽"],
         weeklyGrid: [
             [true, true, false, true, true, true, true],
             [true, false, true, true, true, false, true],
@@ -95,6 +100,7 @@ struct PhoebeStats {
             // Honestly empty rather than fabricated — the app hasn't pushed
             // real history yet, so there's nothing kept to show.
             weeklyLabels: ["Turn", "Learn", "Pray"],
+            weeklyEmoji: ["🔄", "📖", "🙏🏽"],
             weeklyGrid: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)],
             weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
         )
@@ -140,6 +146,7 @@ struct PhoebeStats {
         // carry these fields at all — still renders a real, honest grid
         // rather than a crash or blank space.
         let weeklyLabels = (obj["weeklyLabels"] as? [String]) ?? ["Turn", "Learn", "Pray"]
+        let weeklyEmoji = (obj["weeklyEmoji"] as? [String]) ?? ["🔄", "📖", "🙏🏽"]
         let weeklyGrid: [[Bool]] = (obj["weeklyGrid"] as? [[Bool]])
             ?? (obj["weeklyGrid"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
             ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
@@ -151,7 +158,7 @@ struct PhoebeStats {
                            morningDone: morningDone, reflectDone: reflectDone,
                            eveningDone: eveningDone, reflectAvailable: reflectAvailable,
                            contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin,
-                           weeklyLabels: weeklyLabels, weeklyGrid: weeklyGrid,
+                           weeklyLabels: weeklyLabels, weeklyEmoji: weeklyEmoji, weeklyGrid: weeklyGrid,
                            weeklyDayInitials: weeklyDayInitials)
     }
 
@@ -341,9 +348,8 @@ struct PhoebeWidgetView: View {
             VStack(spacing: 9) {
                 ForEach(0..<rowCount, id: \.self) { row in
                     HStack(spacing: 0) {
-                        Text(stats.weeklyLabels[row].prefix(1))
-                            .font(sgBold(11))
-                            .foregroundColor(phoebeWarm.opacity(0.6))
+                        Text(row < stats.weeklyEmoji.count ? stats.weeklyEmoji[row] : "")
+                            .font(.system(size: 11))
                             .frame(width: 18, alignment: .center)
                         LazyVGrid(columns: dayCols, spacing: 0) {
                             ForEach(0..<7, id: \.self) { day in

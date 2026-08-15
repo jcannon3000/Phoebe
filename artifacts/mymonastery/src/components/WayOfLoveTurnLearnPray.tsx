@@ -45,14 +45,16 @@ function useHiddenPref(): boolean {
   return hidden;
 }
 
-// Row-labeling mode: false (default) = Turn/Learn/Pray (the Way of Love
-// framework); true = Morning/Contemplative/Evening Practice — same three
-// rows, same dots, same history, just which lens labels them. Stored under
-// the key settings.tsx writes (TLP_MODE_KEY there).
+// Row-labeling mode: true (default) = Morning/Contemplative/Evening
+// Practice; false = Turn/Learn/Pray (the Way of Love framework) — same
+// three rows, same dots, same history, just which lens labels them. Stored
+// under the key settings.tsx writes (TLP_MODE_KEY there); unset or "1"
+// reads as the default (Morning/Contemplative/Evening), only an explicit
+// "0" (the user toggled it off in Settings) reads as Turn/Learn/Pray.
 const MODE_KEY = "phoebe:tlp-row-mode";
 
 function readPracticeMode(): boolean {
-  try { return localStorage.getItem(MODE_KEY) === "1"; } catch { return false; }
+  try { return localStorage.getItem(MODE_KEY) !== "0"; } catch { return true; }
 }
 
 function usePracticeModePref(): boolean {
@@ -177,11 +179,11 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
               {rows.map((r) => (
                 <div key={r.label} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                   <span
-                    className="text-center text-[10.5px] font-semibold"
-                    style={{ color: "rgba(143,175,150,0.45)", fontFamily: FONT }}
+                    className="text-center text-[11px]"
+                    style={{ fontFamily: FONT }}
                     title={r.label}
                   >
-                    {r.label[0]}
+                    {r.emoji}
                   </span>
                   {r.kept.map((kept, i) => (
                     <span key={ymds[i] || i} className="flex justify-center">

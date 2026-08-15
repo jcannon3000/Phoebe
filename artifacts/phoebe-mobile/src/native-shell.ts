@@ -1326,6 +1326,9 @@ declare global {
         // Settings). weeklyGrid[row][day], oldest day first / today last,
         // matching the home card's column order; weeklyLabels[row] names it.
         weeklyLabels?: string[] | null;
+        // Per-row emoji (🌅/🕯️/🌙 or 🔄/📖/🙏🏽) — the widget shows these as
+        // its row labels instead of a letter, matching the home card.
+        weeklyEmoji?: string[] | null;
         weeklyGrid?: boolean[][] | null;
         // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S),
         // oldest day first / today last — same order as weeklyGrid's columns.
@@ -1444,6 +1447,7 @@ function exposePublicApi() {
           heroCta: state.heroCta ?? null,
           heroDeepLink: state.heroDeepLink ?? null,
           weeklyLabels: state.weeklyLabels ?? null,
+          weeklyEmoji: state.weeklyEmoji ?? null,
           weeklyGrid: state.weeklyGrid ?? null,
           weeklyDayInitials: state.weeklyDayInitials ?? null,
         });

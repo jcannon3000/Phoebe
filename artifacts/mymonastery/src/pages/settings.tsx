@@ -1091,12 +1091,17 @@ const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
 // The "Turn · Learn · Pray" status band under the daily rhythm on home —
 // read by WayOfLoveTurnLearnPray.tsx itself via the same key/helpers.
 export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
-// Row-labeling mode for that same weekly grid: the Way of Love's Turn/
-// Learn/Pray framework (default), or a plainer Morning/Contemplative/
-// Evening Practice reading of the SAME three rows — same dots, same
-// history, different lens on what each row means. Read by
-// WayOfLoveTurnLearnPray.tsx via the same key/helpers as the toggles above.
+// Row-labeling mode for that same weekly grid: Morning/Contemplative/
+// Evening Practice (default), or the Way of Love's Turn/Learn/Pray framing
+// of the SAME three rows — same dots, same history, different lens on what
+// each row means. Defaults ON (true) — unset or "1" reads as
+// Morning/Contemplative/Evening; only an explicit "0" (the user toggled it
+// off) reads as Turn/Learn/Pray. Read by WayOfLoveTurnLearnPray.tsx via the
+// same key/helpers as the toggles above.
 export const TLP_MODE_KEY = "phoebe:tlp-row-mode";
+function readTlpModeDefaultOn(): boolean {
+  try { return localStorage.getItem(TLP_MODE_KEY) !== "0"; } catch { return true; }
+}
 // The "Done" section on home (kept cards, below Next) — preset ON; read by
 // dashboard.tsx via the same key/helpers as the toggles above.
 export const HIDE_DONE_KEY = "phoebe:hide-home-done";
@@ -1123,7 +1128,7 @@ function HomeDisplaySettings() {
   // true = "Morning / Contemplative / Evening Practice" row labels;
   // false (default) = "Turn / Learn / Pray". Same three rows, same dots,
   // same history — just which framework labels them.
-  const [practiceMode, setPracticeMode] = useState<boolean>(() => readLsBool(TLP_MODE_KEY));
+  const [practiceMode, setPracticeMode] = useState<boolean>(readTlpModeDefaultOn);
   const togglePracticeMode = () => {
     const next = !practiceMode;
     setPracticeMode(next);

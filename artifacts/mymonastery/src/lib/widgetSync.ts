@@ -46,6 +46,7 @@ type WidgetState = {
   // via the shared computeWeeklyGrid (lib/weeklyGrid.ts). weeklyGrid[row][day],
   // oldest day first / today last, matching the home card's column order.
   weeklyLabels: string[];
+  weeklyEmoji: string[];
   weeklyGrid: boolean[][];
   weeklyDayInitials: string[];
   updatedAt: string;
@@ -126,7 +127,9 @@ export function useWidgetSync(): void {
   // (TLP_MODE_KEY) — kept as a literal here rather than importing from
   // pages/settings.tsx, matching how HIDE_TLP_KEY is already duplicated as
   // a literal between settings.tsx and the component instead of shared.
-  const practiceMode = (() => { try { return localStorage.getItem("phoebe:tlp-row-mode") === "1"; } catch { return false; } })();
+  // Defaults ON (Morning/Contemplative/Evening) — only an explicit "0" (the
+  // user toggled it off in Settings) reads as Turn/Learn/Pray.
+  const practiceMode = (() => { try { return localStorage.getItem("phoebe:tlp-row-mode") !== "0"; } catch { return true; } })();
 
   // Stable signatures for the array-valued rhythm state, so the push effect
   // re-runs only when the reflections / custom anchors actually change (their
@@ -307,6 +310,7 @@ export function useWidgetSync(): void {
       contemplationMin: r.contemplationMin,
       contemplationGoalMin: r.contemplationGoalMin,
       weeklyLabels: weekly.rows.map((row) => row.label),
+      weeklyEmoji: weekly.rows.map((row) => row.emoji),
       weeklyGrid: weekly.rows.map((row) => row.kept),
       weeklyDayInitials: weekly.dayInitials,
       updatedAt: new Date().toISOString(),
