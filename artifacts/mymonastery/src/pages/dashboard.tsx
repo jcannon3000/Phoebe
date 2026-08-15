@@ -42,7 +42,7 @@ import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
-  VTS_TODAY_URL, VTS_READ_EVENT, hasReadVtsToday, recordVtsOpened, isVtsPublishingDay,
+  VTS_READ_EVENT, hasReadVtsToday, isVtsPublishingDay,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
   GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
   CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed, unmarkCustomPrayed,
@@ -2988,6 +2988,7 @@ export function CacHomeCard() {
 // same-URL-every-day link.
 function VtsHomeCard() {
   const entitlements = useEntitlements();
+  const [, setLocation] = useLocation();
   const [hasRead, setHasRead] = useState(() => hasReadVtsToday());
   useEffect(() => {
     const refresh = () => setHasRead(hasReadVtsToday());
@@ -3018,9 +3019,10 @@ function VtsHomeCard() {
   // Both guards come AFTER every hook above so hook order stays unconditional.
   if (!isVtsPublishingDay()) return null;
   const vtsTitle = vtsMeta?.title ?? "";
-  const onClick = () => {
-    openExternalThenMarkRead(VTS_TODAY_URL, recordVtsOpened, { reader: true });
-  };
+  // In-app slideshow (VTS gave permission to bring the text into Phoebe) —
+  // read-tracking happens there once the reader is actually stepped
+  // through, not just on tap.
+  const onClick = () => setLocation("/vts-reading");
   return (
     <div
       role="button"

@@ -338,6 +338,7 @@ const InvitationsPage = lazy(() => import("./pages/invitations"));
 const BcpPage = lazy(() => import("./pages/bcp"));
 const OfficesPage = lazy(() => import("./pages/offices"));
 const ExamenPage = lazy(() => import("./pages/examen"));
+const VtsReadingPage = lazy(() => import("./pages/vts-reading"));
 const GuidedPrayerPage = lazy(() => import("./pages/guided-prayer"));
 const NovenaPage = lazy(() => import("./pages/novena"));
 const NovenaDetailPage = lazy(() => import("./pages/novena-detail"));
@@ -675,7 +676,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/pray-request/new", "/intentions",
   "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
-  "/contemplation", "/cobreathe", "/offices",
+  "/contemplation", "/cobreathe", "/offices", "/vts-reading",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",
@@ -956,6 +957,7 @@ function Router() {
       <Route path="/invitations" component={InvitationsPage} />
       <Route path="/offices" component={OfficesPage} />
       <Route path="/examen" component={ExamenPage} />
+      <Route path="/vts-reading" component={VtsReadingPage} />
       <Route path="/guided-prayer" component={GuidedPrayerPage} />
       <Route path="/novena" component={NovenaPage} />
       <Route path="/novena/:id" component={NovenaDetailPage} />

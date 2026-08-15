@@ -129,4 +129,119 @@ router.get("/vts/today-meta", async (_req: Request, res: Response): Promise<void
   res.json({ title, url });
 });
 
+// ── Full-text scrape, for the in-app paragraph slideshow ────────────────────
+// VTS gave permission to bring the Dean's Commentary text into Phoebe rather
+// than just linking out. The commentary's body is pasted from Outlook each
+// time (the `x_x_x_elementToProof` / `data-olk-copy-source` class names are
+// Outlook's own clipboard markers), so paragraphs land as bare <div>s, not
+// <p>s — extractParagraphs() below handles both. Scoped to
+// <main class="site-main">...</main> only, which excludes the site header/
+// nav/footer entirely, then drops the "Date: …" line and the trailing
+// "Back to all" button, keeping everything else INCLUDING the closing
+// signature block (the Dean's name/title line reads as the final "paragraph",
+// which is the natural close of the piece, not noise to strip).
+function decodeArticleEntities(s: string): string {
+  return s
+    .replace(/&#8217;|&#x2019;/gi, "’")
+    .replace(/&#8216;|&#x2018;/gi, "‘")
+    .replace(/&#8220;|&#x201C;/gi, "“")
+    .replace(/&#8221;|&#x201D;/gi, "”")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8212;/g, "—")
+    .replace(/&hellip;|&#8230;/gi, "…")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .trim();
+}
+
+function stripTags(html: string): string {
+  return decodeArticleEntities(
+    html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n\s*\n+/g, "\n")
+      .trim(),
+  );
+}
+
+function extractParagraphs(html: string): string[] {
+  const mainMatch = html.match(/<main\b[^>]*class="[^"]*site-main[^"]*"[^>]*>([\s\S]*?)<\/main>/i);
+  if (!mainMatch) return [];
+  const main = mainMatch[1];
+  // <p> blocks are safe to match non-greedy (a <p> never nests another <p>).
+  // <div> blocks are NOT — a naive `<div\b[^>]*>[\s\S]*?<\/div>` matches the
+  // outer wrapper (e.g. `<div class="container">`) and stops at the FIRST
+  // nested </div> it hits, silently swallowing the wrapper's opening tag
+  // plus everything up to that first inner paragraph's own close — which
+  // then reads as one block starting with "Date: …" and gets thrown away
+  // by the date filter below, taking the first real paragraph's text with
+  // it (caught by testing against a live commentary post — paragraph 0
+  // went missing until this was fixed). The negative lookahead below only
+  // matches LEAF divs (no nested <div> inside), which is what every real
+  // paragraph div on this page actually is — wrapper divs simply fail to
+  // match and get skipped entirely, exactly the outcome we want.
+  const pBlocks = main.match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) ?? [];
+  const divBlocks = main.match(/<div\b[^>]*>(?:(?!<\/?div\b)[\s\S])*<\/div>/gi) ?? [];
+  const blocks = [...pBlocks, ...divBlocks];
+  const paragraphs: string[] = [];
+  for (const block of blocks) {
+    const inner = block.replace(/^<[^>]+>/, "").replace(/<[^>]+>$/, "");
+    const text = stripTags(inner);
+    if (!text) continue; // empty spacer divs
+    if (/^date:\s/i.test(text)) continue; // the "Date: August 14, 2026" line
+    if (block.includes('class="btn btn-primary"') && /back to all/i.test(text)) continue;
+    paragraphs.push(text);
+  }
+  return paragraphs;
+}
+
+type TextCacheEntry = { title: string; url: string; paragraphs: string[]; fetchedAt: number };
+let textCached: TextCacheEntry | null = null;
+
+async function resolveTodayText(): Promise<TextCacheEntry> {
+  const { url, title } = await resolveToday();
+  if (textCached && textCached.url === url && Date.now() - textCached.fetchedAt < CACHE_TTL_MS) {
+    return textCached;
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": FEED_USER_AGENT, "Accept-Language": "en-US,en;q=0.9" },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      logger.warn({ status: res.status, url }, "[vts] article fetch non-ok");
+      return { title, url, paragraphs: [], fetchedAt: Date.now() };
+    }
+    const html = await res.text();
+    const paragraphs = extractParagraphs(html);
+    const entry: TextCacheEntry = { title, url, paragraphs, fetchedAt: Date.now() };
+    textCached = entry;
+    return entry;
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err), url }, "[vts] article fetch failed");
+    return { title, url, paragraphs: [], fetchedAt: Date.now() };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// GET /api/vts/today-text → { title, url, paragraphs } — the full commentary
+// body, one entry per paragraph, for the in-app slideshow. `paragraphs: []`
+// means extraction failed (site markup changed, fetch error, etc.) — the
+// client falls back to linking out to `url` rather than showing a broken
+// reader.
+router.get("/vts/today-text", async (_req: Request, res: Response): Promise<void> => {
+  const entry = await resolveTodayText();
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json({ title: entry.title, url: entry.url, paragraphs: entry.paragraphs });
+});
+
 export default router;

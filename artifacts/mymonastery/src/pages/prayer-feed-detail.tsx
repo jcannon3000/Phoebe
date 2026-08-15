@@ -370,11 +370,17 @@ export default function PrayerFeedDetailPage() {
                 // effect, was what it actually waited to run). Same bug as
                 // DailyProgressBody.tsx's reflection cards — moved the real
                 // mark into the callback so it only fires on actual return.
-                onClick={() => openExternalThenMarkRead(practice.url, () => {
-                  practice.markRead();
-                  setPracticeReadToday(true);
-                  swellHaptic();
-                }, { reader: true })}
+                onClick={() => {
+                  // VTS opens the in-app paragraph slideshow (permission was
+                  // given to bring the text into Phoebe) — it marks read
+                  // itself once actually stepped through, not on tap.
+                  if (slug === "vts") { setLocation("/vts-reading"); return; }
+                  openExternalThenMarkRead(practice.url, () => {
+                    practice.markRead();
+                    setPracticeReadToday(true);
+                    swellHaptic();
+                  }, { reader: true });
+                }}
                 className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90"
                 style={{ background: "#2E6B40", color: "#F0EDE6" }}
               >

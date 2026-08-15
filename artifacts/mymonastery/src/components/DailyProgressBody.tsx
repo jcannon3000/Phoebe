@@ -1105,23 +1105,30 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : r.source === "ssje" ? SSJE_TODAY_URL : VTS_TODAY_URL;
       const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : r.source === "ssje" ? markSsjeRead : markVtsRead;
       const scrapedTitle = r.source === "cac" ? cacTitle : r.source === "vts" ? vtsTitle : "";
+      // VTS opens the in-app paragraph slideshow (vts-reading.tsx) — VTS
+      // gave permission to bring the text into Phoebe rather than just
+      // linking out, unlike CAC/FDD/SSJE, which still open externally.
+      const isVts = r.source === "vts";
       return {
-        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: r.source === "vts" ? "🦩" : "📖", rgb: "96,141,209", done: r.done, href: "",
+        key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: isVts ? "🦩" : "📖", rgb: "96,141,209", done: r.done, href: isVts ? "/vts-reading" : "",
         title: PUBLICATION_NAME[r.source],
         blurb: scrapedTitle || (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
         blurbCycle: undefined,
-        // BUG FIXED: `mark()` — the actual read-tracking call that flips this
-        // card's dot — used to fire HERE, immediately at tap time, completely
-        // bypassing openExternalThenMarkRead's whole "wait for the browser to
-        // actually close" mechanism (it was handed `swellHaptic`, a haptic
-        // buzz with no read-tracking effect, as its "markRead" callback — so
-        // on close all that happened was a vibration; the dot had already
-        // flipped the instant they tapped "Read"). This is what "the
-        // reflection animation isn't waiting until I come back" was — the
-        // wait-for-close mechanism itself works correctly (verified: the
-        // reader-view Swift path already fires its dismiss event properly),
-        // this card just never actually used it for the thing that mattered.
-        onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true }),
+        // BUG FIXED (CAC/FDD/SSJE only): `mark()` — the actual read-tracking
+        // call that flips this card's dot — used to fire HERE, immediately
+        // at tap time, completely bypassing openExternalThenMarkRead's whole
+        // "wait for the browser to actually close" mechanism (it was handed
+        // `swellHaptic`, a haptic buzz with no read-tracking effect, as its
+        // "markRead" callback — so on close all that happened was a
+        // vibration; the dot had already flipped the instant they tapped
+        // "Read"). This is what "the reflection animation isn't waiting
+        // until I come back" was — the wait-for-close mechanism itself
+        // works correctly (verified: the reader-view Swift path already
+        // fires its dismiss event properly), this card just never actually
+        // used it for the thing that mattered. VTS has no onClick at all —
+        // it navigates via href and marks read itself once the reader is
+        // actually stepped through (see vts-reading.tsx).
+        ...(isVts ? {} : { onClick: () => openExternalThenMarkRead(url, () => { mark(); swellHaptic(); }, { reader: true }) }),
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
