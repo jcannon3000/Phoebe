@@ -803,11 +803,9 @@ function DailyProgressPill() {
   if (pillHidden) return null;
 
   return (
-    // A button again — home no longer keeps kept cards visible once they're
-    // done, so /daily-progress (which still shows the full Next+Done spine)
-    // is the only place left to see today's whole rhythm (owner).
+    // Owner wants this pill to open the Prayer List page directly.
     <Link
-      href="/daily-progress"
+      href="/intentions"
       className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
       style={{
         fontFamily: "'Space Grotesk', sans-serif",

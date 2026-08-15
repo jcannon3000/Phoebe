@@ -181,42 +181,6 @@ export default function IntentionsPage() {
           </div>
         </div>
 
-        {/* Counts toward Morning/Evening — optional. Doesn't change where
-            the Prayer List card ITSELF appears (that's the routine card
-            above, always shown when there's at least one intention); this
-            only decides whether finishing today's list also fills in
-            that side's Weekly Progress dot, same mechanism Chapel uses. */}
-        <div className="mb-6">
-          <p className="text-[11px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-            {t("intentions.slot_label", { defaultValue: "Counts toward" })}
-          </p>
-          <div className="flex gap-2">
-            {([
-              { id: null as PrayerListSlot, label: t("intentions.slot_neither", { defaultValue: "Neither" }) },
-              { id: "morning" as PrayerListSlot, label: t("intentions.slot_morning", { defaultValue: "Morning" }) },
-              { id: "evening" as PrayerListSlot, label: t("intentions.slot_evening", { defaultValue: "Evening" }) },
-            ]).map((opt) => {
-              const sel = prayerListSlot === opt.id;
-              return (
-                <button
-                  key={String(opt.id)}
-                  type="button"
-                  onClick={() => pickSlot(opt.id)}
-                  className="flex-1 rounded-full text-[12.5px] font-semibold py-2 text-center transition-opacity active:scale-[0.98]"
-                  style={{
-                    background: sel ? `rgba(${RGB},0.85)` : "rgba(255,255,255,0.04)",
-                    color: sel ? WARM : SAGE,
-                    fontFamily: FONT,
-                    border: `1px solid rgba(${RGB},${sel ? 0.6 : 0.25})`,
-                  }}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {active.length > 0 && (
           <button type="button" onClick={() => setPraying(true)}
             className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -388,10 +352,69 @@ function PrayThrough({ intentions, bgPhoto, onClose, onFinish }: {
           {t("common.back", { defaultValue: "Back" })}
         </button>
         <span style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.12em" }}>{i + 1} / {total}</span>
-        <button type="button" onClick={next} className="active:scale-[0.97]" style={{ background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, borderRadius: 999, padding: "11px 26px" }}>
-          {i >= total - 1 ? t("common.done", { defaultValue: "Done" }) : t("common.next", { defaultValue: "Next" })} <span aria-hidden>→</span>
-        </button>
+        <AmenButton slideKey={it.id} onAdvance={next} isLast={i >= total - 1} />
       </div>
     </div>
+  );
+}
+
+// Same 3-second pause-before-Amen used by the community slideshow
+// (prayer-mode.tsx's AmenButton) — a dim progress wash fills over 3s,
+// then the button brightens and "Amen →" fades in. Reused here so
+// praying through your own list has the same unhurried feel instead
+// of a bare Next button you could rip through instantly. Keyed by
+// slideKey so the hold resets cleanly on every slide.
+const AMEN_HOLD_MS = 3000;
+function AmenButton({ slideKey, onAdvance, isLast }: {
+  slideKey: string | number;
+  onAdvance: () => void;
+  isLast: boolean;
+}) {
+  const { t } = useTranslation();
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setReady(false);
+    const timer = window.setTimeout(() => {
+      setReady(true);
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
+    }, AMEN_HOLD_MS);
+    return () => window.clearTimeout(timer);
+  }, [slideKey]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!ready) return;
+        try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
+        onAdvance();
+      }}
+      disabled={!ready}
+      aria-label="Amen"
+      className="active:scale-[0.98] relative overflow-hidden"
+      style={{
+        background: ready ? `rgba(${RGB},0.85)` : `rgba(${RGB},0.18)`,
+        border: `1px solid rgba(${RGB},${ready ? 0.7 : 0.3})`,
+        color: WARM,
+        fontFamily: FONT,
+        fontSize: 15,
+        fontWeight: 600,
+        borderRadius: 999,
+        padding: "11px 26px",
+        minWidth: 140,
+        cursor: ready ? "pointer" : "default",
+        transition: ready ? "background-color 360ms ease-out, border-color 360ms ease-out" : "none",
+      }}
+    >
+      <span
+        aria-hidden
+        key={slideKey}
+        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+        style={{ background: `rgba(${RGB},0.45)`, pointerEvents: "none", opacity: ready ? 0 : 1, transition: "opacity 360ms ease-out" }}
+      />
+      <span style={{ position: "relative", opacity: ready ? 1 : 0, transform: ready ? "translateY(0)" : "translateY(2px)", transition: "opacity 280ms ease-out, transform 280ms ease-out", display: "inline-block" }}>
+        {isLast ? t("common.done", { defaultValue: "Done" }) : "Amen →"}
+      </span>
+    </button>
   );
 }
