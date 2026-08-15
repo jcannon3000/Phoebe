@@ -1,9 +1,13 @@
 /**
- * In-app reader for the VTS Dean's Commentary — one paragraph per slide,
- * left-aligned, same dark/Space-Grotesk visual language as the Daily
- * Office slideshow (bcp-daily-office.tsx), but a lightweight standalone
- * build rather than reusing that file's liturgical engine (which the
- * commentary has nothing in common with beyond the look).
+ * In-app reader for the VTS Dean's Commentary — one paragraph per slide.
+ * Owner: "make sure the ui is like the offices, there some significant
+ * differences for no reason" — this now shares the Daily Office
+ * slideshow's actual header layout (← Back / centered title pill / X
+ * close), color tokens, animated backdrop, and body typography
+ * (bcp-daily-office.tsx), rather than a separately-invented look. Still a
+ * lightweight standalone build, not a reuse of that file's liturgical
+ * engine — the commentary has nothing in common with an office beyond
+ * the visual language.
  *
  * Text comes from api-server's GET /api/vts/today-text, which scrapes and
  * caches today's commentary body server-side (VTS gave permission to bring
@@ -15,15 +19,19 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X } from "lucide-react";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { markVtsRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 
-const BG = "#091A10";
-const WARM = "#F0EDE6";
-const SAGE = "rgba(143,175,150,0.55)";
-const FONT = "'Space Grotesk', system-ui, sans-serif";
+// Same tokens bcp-daily-office.tsx uses (var()-backed so Office display
+// settings — Paper mode, font choice — apply here too, not just there).
+const BG = "var(--oh-bg2, #091A10)";
+const WARM_TEXT = "var(--oh-ink, #F0EDE6)";
+const FAINT_GREEN = "rgba(var(--ot-sage, 143,175,150),0.55)";
+const BORDER = "rgba(var(--ot-mist, 200,212,192),0.15)";
+const SPACE_GROTESK = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 
 type VtsText = { title: string; url: string; paragraphs: string[] };
 
@@ -58,41 +66,58 @@ export default function VtsReadingPage() {
     if (index < total - 1) setIndex((i) => i + 1);
     else close();
   };
-  const prev = () => { if (index > 0) setIndex((i) => i - 1); };
+  const prev = () => { if (index > 0) setIndex((i) => i - 1); else close(); };
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, background: BG, display: "flex",
-        flexDirection: "column", fontFamily: FONT, zIndex: 200,
-      }}
-    >
-      <div className="flex items-center justify-between" style={{ padding: "max(18px, env(safe-area-inset-top)) 18px 12px" }}>
-        {/* Progress dots — one per paragraph, filled up to the current slide. */}
-        <div className="flex items-center gap-1.5" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-          {total > 0 && paragraphs.map((_, i) => (
-            <div
-              key={i}
-              style={{
-                height: 3, flex: 1, maxWidth: 40, borderRadius: 2,
-                background: i <= index ? "rgba(110,180,130,0.85)" : "rgba(143,175,150,0.2)",
-              }}
-            />
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={close}
-          aria-label="Close"
-          style={{ marginLeft: 14, background: "none", border: "none", color: SAGE, cursor: "pointer", padding: 4 }}
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, overflow: "hidden", fontFamily: SPACE_GROTESK }}>
+      <AnimatedBackground base={BG} variant="subtle" fadeTop />
+
+      {/* Top bar — Back / title pill / X. Mirrors the office's own header
+          exactly (bcp-daily-office.tsx), not a separately-invented one. */}
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
+        <div
+          className="max-w-2xl mx-auto w-full px-5 pb-2"
+          style={{
+            display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12,
+            pointerEvents: "auto", paddingTop: "max(1.5rem, env(safe-area-inset-top))",
+          }}
         >
-          <X size={20} />
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={close}
+            style={{ color: FAINT_GREEN, fontSize: 13, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+          >
+            ← Back
+          </button>
+          <span
+            className="rounded-full"
+            style={{
+              background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: `1px solid ${BORDER}`, color: WARM_TEXT, fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", padding: "6px 16px",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220,
+            }}
+          >
+            🗞️ The Dean's Commentary
+          </span>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close"
+              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </header>
 
       <div
-        className="flex-1 flex flex-col justify-center"
-        style={{ padding: "0 24px", maxWidth: 640, margin: "0 auto", width: "100%" }}
+        className="max-w-2xl mx-auto w-full"
+        style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center",
+          padding: "max(96px, calc(env(safe-area-inset-top) + 76px)) 28px max(96px, calc(env(safe-area-inset-bottom) + 60px))",
+        }}
         onClick={(e) => {
           // Tap the left third to go back, the rest to advance — no swipe
           // gesture engine needed for a single-column paragraph reader.
@@ -101,58 +126,38 @@ export default function VtsReadingPage() {
         }}
       >
         {isLoading ? (
-          <p style={{ color: SAGE, fontSize: 15 }}>Loading…</p>
+          <p style={{ color: FAINT_GREEN, fontSize: 15, fontFamily: SPACE_GROTESK }}>Loading…</p>
         ) : total === 0 ? (
           <div style={{ textAlign: "left" }}>
-            <p style={{ color: SAGE, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10 }}>
-              The Dean's Commentary
-            </p>
-            <p style={{ color: WARM, fontSize: 17, lineHeight: 1.6, marginBottom: 24 }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 19, lineHeight: 1.75, fontFamily: SPACE_GROTESK, marginBottom: 24 }}>
               Couldn't load today's commentary here — read it on VTS's own site instead.
             </p>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); if (data?.url) openExternal(data.url, { reader: true }); markReadOnce(); close(); }}
               className="rounded-full text-[14px] font-semibold"
-              style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", padding: "12px 22px", cursor: "pointer" }}
+              style={{ background: "rgba(46,107,64,0.9)", color: WARM_TEXT, border: "1px solid rgba(46,107,64,0.6)", padding: "12px 22px", cursor: "pointer", fontFamily: SPACE_GROTESK }}
             >
               Open on vts.edu
             </button>
           </div>
         ) : (
-          <div style={{ textAlign: "left" }}>
-            {index === 0 && (
-              <p style={{ color: SAGE, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12 }}>
-                The Dean's Commentary{data?.title ? ` · ${data.title}` : ""}
-              </p>
-            )}
-            <p style={{ color: WARM, fontSize: 19, lineHeight: 1.65, whiteSpace: "pre-line", margin: 0 }}>
-              {paragraphs[index]}
-            </p>
-          </div>
+          <p style={{ color: WARM_TEXT, fontSize: 19, lineHeight: 1.75, fontFamily: SPACE_GROTESK, whiteSpace: "pre-line", margin: 0, textAlign: "left" }}>
+            {paragraphs[index]}
+          </p>
         )}
       </div>
 
+      {/* Bottom position readout — same seat the office's own per-slide
+          progress lives in, just plain text (no explicit progress bar in
+          the office either — swipe/tap navigation carries the same load
+          there, this matches rather than adding UI the office doesn't have). */}
       {total > 1 && (
-        <div className="flex items-center justify-between" style={{ padding: "0 18px max(18px, env(safe-area-inset-bottom))" }}>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); prev(); }}
-            disabled={index === 0}
-            aria-label="Previous"
-            style={{ background: "none", border: "none", color: index === 0 ? "rgba(143,175,150,0.25)" : SAGE, cursor: index === 0 ? "default" : "pointer", padding: 8 }}
-          >
-            <ChevronLeft size={22} />
-          </button>
-          <p style={{ color: "rgba(143,175,150,0.4)", fontSize: 12 }}>{index + 1} / {total}</p>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); next(); }}
-            aria-label={index === total - 1 ? "Finish" : "Next"}
-            style={{ background: "none", border: "none", color: SAGE, cursor: "pointer", padding: 8 }}
-          >
-            <ChevronRight size={22} />
-          </button>
+        <div
+          className="max-w-2xl mx-auto w-full flex items-center justify-center"
+          style={{ position: "fixed", left: 0, right: 0, bottom: "max(18px, env(safe-area-inset-bottom))", pointerEvents: "none" }}
+        >
+          <p style={{ color: FAINT_GREEN, fontSize: 12, fontFamily: SPACE_GROTESK }}>{index + 1} / {total}</p>
         </div>
       )}
     </div>

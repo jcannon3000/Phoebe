@@ -9,7 +9,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { addHomeCard, removeHomeCard, applyCachedHomeLayout, saveHomeLayout } from "@/lib/homeLayoutCache";
 import { getReflectionSource, setReflectionSource, setSideReflection } from "@/lib/officePrefs";
-import { VTS_TODAY_URL, markVtsRead, hasReadVtsToday } from "@/lib/cacReadState";
+import { VTS_TODAY_URL, markVtsRead, hasReadVtsToday, isVtsPublishingDay } from "@/lib/cacReadState";
 import { openExternalThenMarkRead } from "@/lib/openExternal";
 import { swellHaptic } from "@/lib/swellHaptic";
 
@@ -19,6 +19,14 @@ import { swellHaptic } from "@/lib/swellHaptic";
 const FEED_PRACTICE: Record<string, { label: string; url: string; markRead: () => void; hasReadToday: () => boolean }> = {
   vts: { label: "The Dean's Commentary", url: VTS_TODAY_URL, markRead: markVtsRead, hasReadToday: hasReadVtsToday },
 };
+
+// "Read today's Dean's Commentary" is wrong on a weekend — VTS only
+// publishes weekdays, so the server keeps serving Friday's post
+// (isVtsPublishingDay). Owner: "if it is the weekend... write read
+// fridays commentary" instead of claiming it's today's.
+function dayPossessive(): string {
+  return isVtsPublishingDay() ? "today" : "Friday";
+}
 
 // Feeds that put a card straight into the follower's routine when followed.
 // Following VTS adds the Dean's Commentary — the reflection it unlocks —
@@ -359,7 +367,7 @@ export default function PrayerFeedDetailPage() {
                 📖 {practice.label}
               </p>
               <p className="text-sm mt-0.5 mb-3" style={{ color: "#8FAF96" }}>
-                Unlocked by following {feed.title} — today's reflection.
+                Unlocked by following {feed.title} — {dayPossessive()}'s reflection.
               </p>
               <button
                 type="button"
@@ -384,7 +392,7 @@ export default function PrayerFeedDetailPage() {
                 className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90"
                 style={{ background: "#2E6B40", color: "#F0EDE6" }}
               >
-                {practiceReadToday ? "Read ✓" : `Read today's ${practice.label}`}
+                {practiceReadToday ? "Read ✓" : `Read ${dayPossessive()}'s ${practice.label}`}
               </button>
             </div>
           </div>

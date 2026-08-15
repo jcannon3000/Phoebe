@@ -5,6 +5,8 @@ import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { markIntentionPrayedToday } from "@/lib/intentionsPrayed";
+import { getPrayerListSlot, setPrayerListSlot, type PrayerListSlot } from "@/lib/prayerListSlot";
 import { BCP_PRAYERS } from "@/lib/bcp-prayers";
 
 // ── Personal prayer list ("intentions") ───────────────────────────────────
@@ -33,7 +35,15 @@ type Intention = {
   shared: boolean;
   sharedRequestId: number | null;
   createdAt: string;
+  // Walked past in PrayThrough today — owner: "I prayed one of my prayers
+  // and it didn't check it off when I came back." Only populated when the
+  // list is fetched with ?ymd= (see the query below).
+  prayedToday: boolean;
 };
+
+function todayLocalISO(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
 
 // The line we pray for an intention.
 function headline(it: Intention): string {
@@ -67,9 +77,17 @@ export default function IntentionsPage() {
   const qc = useQueryClient();
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
+  const todayYmd = useMemo(todayLocalISO, []);
+  // Owner: "make community list an option for morning and evening slots...
+  // if they prayed their community prayers but have not prayed their
+  // morning or evening, fill in the dot in the weekly based on where they
+  // prayed the prayer list." Neither = the list stays a standalone card,
+  // doesn't satisfy either side (the default).
+  const [prayerListSlot, setPrayerListSlotState] = useState<PrayerListSlot>(getPrayerListSlot);
+  const pickSlot = (slot: PrayerListSlot) => { setPrayerListSlotState(slot); setPrayerListSlot(slot); };
   const { data } = useQuery<{ intentions: Intention[] }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions") as Promise<{ intentions: Intention[] }>,
+    queryKey: ["/api/prayer-intentions", todayYmd],
+    queryFn: () => apiRequest("GET", `/api/prayer-intentions?ymd=${todayYmd}`) as Promise<{ intentions: Intention[] }>,
   });
   const intentions = data?.intentions ?? [];
   const active = intentions.filter((i) => !i.answered);
@@ -163,6 +181,42 @@ export default function IntentionsPage() {
           </div>
         </div>
 
+        {/* Counts toward Morning/Evening — optional. Doesn't change where
+            the Prayer List card ITSELF appears (that's the routine card
+            above, always shown when there's at least one intention); this
+            only decides whether finishing today's list also fills in
+            that side's Weekly Progress dot, same mechanism Chapel uses. */}
+        <div className="mb-6">
+          <p className="text-[11px] uppercase tracking-[0.14em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+            {t("intentions.slot_label", { defaultValue: "Counts toward" })}
+          </p>
+          <div className="flex gap-2">
+            {([
+              { id: null as PrayerListSlot, label: t("intentions.slot_neither", { defaultValue: "Neither" }) },
+              { id: "morning" as PrayerListSlot, label: t("intentions.slot_morning", { defaultValue: "Morning" }) },
+              { id: "evening" as PrayerListSlot, label: t("intentions.slot_evening", { defaultValue: "Evening" }) },
+            ]).map((opt) => {
+              const sel = prayerListSlot === opt.id;
+              return (
+                <button
+                  key={String(opt.id)}
+                  type="button"
+                  onClick={() => pickSlot(opt.id)}
+                  className="flex-1 rounded-full text-[12.5px] font-semibold py-2 text-center transition-opacity active:scale-[0.98]"
+                  style={{
+                    background: sel ? `rgba(${RGB},0.85)` : "rgba(255,255,255,0.04)",
+                    color: sel ? WARM : SAGE,
+                    fontFamily: FONT,
+                    border: `1px solid rgba(${RGB},${sel ? 0.6 : 0.25})`,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {active.length > 0 && (
           <button type="button" onClick={() => setPraying(true)}
             className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
@@ -215,6 +269,11 @@ export default function IntentionsPage() {
                     <div className="flex items-start gap-3">
                       <span aria-hidden className="text-base flex-shrink-0 mt-0.5">🙏</span>
                       <div className="flex-1 min-w-0">
+                        {it.prayedToday && (
+                          <p className="text-[11px] font-semibold mb-0.5" style={{ color: "rgba(110,180,130,0.9)", fontFamily: FONT }}>
+                            ✓ {t("intentions.prayed_today", { defaultValue: "Prayed today" })}
+                          </p>
+                        )}
                         {bcp && (
                           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
                             {t("intentions.bcp_label", { defaultValue: "Book of Common Prayer" })}
@@ -286,7 +345,14 @@ function PrayThrough({ intentions, bgPhoto, onClose, onFinish }: {
   const [i, setI] = useState(0);
   const total = intentions.length;
   const it = intentions[i];
-  const next = () => { if (i >= total - 1) { onFinish(); return; } setI((n) => n + 1); };
+  // Marks THIS slide's intention prayed for today the moment the viewer
+  // steps past it — the routine card's "X out of Y" count reads this, not
+  // just the whole-list finish flag below.
+  const next = () => {
+    if (it) markIntentionPrayedToday(it.id);
+    if (i >= total - 1) { onFinish(); return; }
+    setI((n) => n + 1);
+  };
   const back = () => { if (i <= 0) { onClose(); return; } setI((n) => n - 1); };
 
   if (!it) return null;

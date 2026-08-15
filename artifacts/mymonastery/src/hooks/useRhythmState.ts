@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday, hasReadVtsToday, isVtsPublishingDay,
@@ -11,10 +11,12 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getChapelSlotToday } from "@/lib/chapelLog";
+import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
+import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
 // The contemplative practice the user's rhythm is set to — the Creation Prayer
 // breath or the silent sit. Read straight from localStorage (same key the
@@ -138,6 +140,13 @@ export type RhythmState = {
   prayerListDone: boolean;
   communityMealDone: boolean;
   chapelDone: boolean;
+  /** The personal prayer list ("intentions") — real per-item counts for the
+   *  Prayer List routine card. Distinct from prayerListActive/prayerListDone
+   *  above (the older manual all-or-nothing check-off, still used for the
+   *  weekly grid / widget). Card is active whenever intentionsTotalCount > 0
+   *  and done once intentionsPrayedCount reaches it. */
+  intentionsTotalCount: number;
+  intentionsPrayedCount: number;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
   customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; reading?: ReadingConfig; done: boolean; skipped: boolean }>;
@@ -570,6 +579,28 @@ export function useRhythmState(): RhythmState {
   const serverDone = (section: string) =>
     !!completions?.completions?.some((c) => c.section === section && c.localDate === day);
 
+  // Personal prayer list ("intentions") — the Prayer List routine card
+  // reads real counts here (owner: "if someone has at least one prayer in
+  // their prayer list, they should have a card... second line should say
+  // X out of X prayers have been prayed"), not the old single manual
+  // check-off flag. Fetched with ?ymd= so the server can tell us which
+  // items were walked past in PrayThrough today.
+  const qc = useQueryClient();
+  useEffect(() => {
+    const onPrayed = () => qc.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
+    window.addEventListener(INTENTION_PRAYED_EVENT, onPrayed);
+    return () => window.removeEventListener(INTENTION_PRAYED_EVENT, onPrayed);
+  }, [qc]);
+  const { data: intentionsData } = useQuery<{ intentions: Array<{ id: number; answered: boolean; prayedToday: boolean }> }>({
+    queryKey: ["/api/prayer-intentions", day],
+    queryFn: () => apiRequest("GET", `/api/prayer-intentions?ymd=${day}`),
+    staleTime: 30_000,
+    enabled: !guest,
+  });
+  const activeIntentions = (intentionsData?.intentions ?? []).filter((it) => !it.answered);
+  const intentionsTotalCount = activeIntentions.length;
+  const intentionsPrayedCount = activeIntentions.filter((it) => it.prayedToday).length;
+
   // Local midnight of `day` (which is recomputed from the wall clock on every
   // render), NOT a value frozen at mount. If the app stays alive across midnight
   // — backgrounded overnight on iOS, then reopened — a mount-time `useMemo([])`
@@ -693,6 +724,14 @@ export function useRhythmState(): RhythmState {
   // block runs first.
   const morningSatKept = contemplationSideDone.morning || !!sidesToday?.morning;
   const eveningSatKept = contemplationSideDone.evening || !!sidesToday?.evening;
+  // Prayer List (VTS-gated? no — general): same "satisfies a side
+  // regardless of that side's chosen level" mechanism as Chapel, driven by
+  // the user's own morning/evening slot pick (lib/prayerListSlot.ts) —
+  // owner: "if they prayed their community prayers but have not prayed
+  // their morning or evening, fill in the dot... based on where they
+  // prayed the prayer list."
+  const prayerListSlot = getPrayerListSlot();
+  const prayerListSlotDone = intentionsTotalCount > 0 && intentionsPrayedCount >= intentionsTotalCount;
   const morningDone = !!todayOffice?.morning || officeLocal.morning
     || (ml === "fdd" && prayerRead.fddMorning) || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
@@ -702,7 +741,8 @@ export function useRhythmState(): RhythmState {
     // Chapel (VTS-gated): logging Morning Prayer, or Holy Eucharist on a
     // morning-Eucharist day, satisfies Morning regardless of the side's
     // chosen level — chapel attendance IS the morning practice that day.
-    || practiceLocal.chapelSlot === "morning";
+    || practiceLocal.chapelSlot === "morning"
+    || (prayerListSlot === "morning" && prayerListSlotDone);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
     || (el === "fdd" && prayerRead.fddEvening) || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
@@ -716,7 +756,8 @@ export function useRhythmState(): RhythmState {
     || (el === "reflect-sit" && eveningSatKept)
     // Chapel (VTS-gated): Evening Prayer, or Holy Eucharist on Thursday,
     // satisfies Evening regardless of the side's chosen level.
-    || practiceLocal.chapelSlot === "evening";
+    || practiceLocal.chapelSlot === "evening"
+    || (prayerListSlot === "evening" && prayerListSlotDone);
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
   // (a Cobreathe breath logs a contemplation sit, so it's already counted
@@ -1007,6 +1048,8 @@ export function useRhythmState(): RhythmState {
     prayerListDone,
     communityMealDone,
     chapelDone,
+    intentionsTotalCount,
+    intentionsPrayedCount,
     customAnchors,
     totalAnchors,
     doneCount,

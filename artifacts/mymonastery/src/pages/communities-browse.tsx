@@ -137,7 +137,11 @@ export default function CommunitiesBrowsePage() {
   });
   const matchingFeeds = useMemo(() => {
     if (debouncedLocation.length >= 2) return [];
-    const all = feedsQ.data?.feeds ?? [];
+    // VTS excluded — it isn't a community to browse/join here, just the
+    // Dean's Commentary practice-unlock (see prayer-feed-detail.tsx's
+    // FEED_PRACTICE). Owner: "there still is showing up a card for a vts
+    // prayer list in my community tab when there should not be."
+    const all = (feedsQ.data?.feeds ?? []).filter((f) => f.slug !== "vts");
     const q = debouncedSearch.trim().toLowerCase();
     if (q.length < 2) return all;
     return all.filter((f) =>

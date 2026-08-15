@@ -2498,9 +2498,15 @@ function PrayerListSection() {
 
   return (
     <div className="mt-5">
-      <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
-        Prayer List
-      </p>
+      {/* Matches DailyProgressBody's "Next" header exactly (owner: "The
+          Prayer List Section needs a header like Next on the home
+          screen") instead of the plain small-caps label this used to be. */}
+      <div className="flex items-center gap-3 mb-2">
+        <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+          Prayer List
+        </h3>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
       {!hasIntentions ? (
         <div
           role="button"

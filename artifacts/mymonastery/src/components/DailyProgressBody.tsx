@@ -21,6 +21,7 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { logChapel, unlogChapel, type ChapelService } from "@/lib/chapelLog";
+import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
@@ -773,7 +774,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, communityMealActive, chapelActive, communityMealDone, chapelDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, communityMealActive, chapelActive, communityMealDone, chapelDone, intentionsTotalCount, intentionsPrayedCount } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1001,6 +1002,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: chapelDone ? kept : t("rhythm.blurb_chapel", { defaultValue: "Did you attend a communal prayer or worship service today?" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
+  // Prayer List — owner: "if someone has at least one prayer in their
+  // prayer list, they should have a card in their routine that says
+  // prayer list. If they have completed all their prayers, that card
+  // would go to done. The second line should say x out of x prayers have
+  // been prayed." Active whenever there's at least one real intention;
+  // done once every one of them has been walked past in PrayThrough today
+  // (intentionsPrayedCount from useRhythmState, itself backed by
+  // prayer_intention_prayed_days — see lib/intentionsPrayed.ts).
+  const prayerListActiveCard = intentionsTotalCount > 0;
+  const prayerListDoneCard = prayerListActiveCard && intentionsPrayedCount >= intentionsTotalCount;
+  const prayerListCard = {
+    key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard, href: "/intentions?pray=1",
+    title: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }),
+    blurb: t("rhythm.blurb_prayer_list_count", {
+      done: intentionsPrayedCount, total: intentionsTotalCount,
+      defaultValue: `${intentionsPrayedCount} of ${intentionsTotalCount} prayers have been prayed`,
+    }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
   // Compline is only reachable after 7pm, but — like Evening Prayer below —
   // the card itself stays in Next all day as a disabled "Later" state
   // rather than disappearing outright (complineActive, from useRhythmState,
@@ -1219,6 +1239,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Meal with the afternoon/evening one.
     ...(chapelActive ? [{ ...chapelCard, slot: "morning" as CustomSlot }] : []),
     ...(communityMealActive ? [{ ...communityMealCard, slot: "afternoon" as CustomSlot }] : []),
+    // Prayer List rides at whichever slot the viewer picked (see
+    // lib/prayerListSlot.ts) on /intentions, or "anytime" if they never set
+    // one — the card still shows either way, only its POSITION changes.
+    ...(prayerListActiveCard ? [{ ...prayerListCard, slot: (getPrayerListSlot() ?? "anytime") as CustomSlot }] : []),
     // complineActive already folds in the after-7pm gate (useRhythmState.ts)
     // — fixed to "evening" since there's no earlier time it could ever show.
     ...(complineActive ? [{ ...complineCard, slot: "evening" as CustomSlot }] : []),

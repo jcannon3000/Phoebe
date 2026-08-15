@@ -30,7 +30,7 @@ type Row = {
   created_at: string;
 };
 
-function toJson(r: Row) {
+function toJson(r: Row, prayedTodayIds?: Set<number>) {
   return {
     id: r.id,
     kind: r.kind === "person" ? "person" : "text",
@@ -43,11 +43,20 @@ function toJson(r: Row) {
     shared: !!r.shared,
     sharedRequestId: r.shared_request_id,
     createdAt: r.created_at,
+    // Whether this specific item has been walked past in PrayThrough for
+    // the ymd the caller asked about (see ?ymd= below) — powers the
+    // "X out of Y prayers have been prayed" routine card. Omitted (never
+    // true) if the caller didn't send ?ymd=, so an older app build's
+    // request just gets everything false rather than erroring.
+    prayedToday: prayedTodayIds?.has(r.id) ?? false,
   };
 }
 
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 // ── GET /api/prayer-intentions — the caller's own list ─────────────────────
 // Oldest first (a stable order to pray through), unanswered before answered.
+// ?ymd=YYYY-MM-DD (the caller's local day) also returns prayedToday per item.
 router.get("/prayer-intentions", async (req, res) => {
   try {
     const user = getUser(req);
@@ -59,12 +68,69 @@ router.get("/prayer-intentions", async (req, res) => {
         ORDER BY answered ASC, created_at ASC`,
       [user.id],
     );
+    let prayedTodayIds: Set<number> | undefined;
+    const ymd = typeof req.query.ymd === "string" && YMD_RE.test(req.query.ymd) ? req.query.ymd : null;
+    if (ymd && result.rows.length > 0) {
+      const ids = result.rows.map((r) => r.id);
+      const prayed = await pool.query<{ intention_id: number }>(
+        `SELECT intention_id FROM prayer_intention_prayed_days WHERE ymd = $1 AND intention_id = ANY($2::int[])`,
+        [ymd, ids],
+      );
+      prayedTodayIds = new Set(prayed.rows.map((r) => r.intention_id));
+    }
     // `encrypted` tells the client whether at-rest encryption is actually
     // active (a key is configured), so it only shows the "encrypted" note when
     // the claim is true.
-    return res.json({ intentions: result.rows.map(toJson), encrypted: fieldEncryptionActive() });
+    return res.json({ intentions: result.rows.map((r) => toJson(r, prayedTodayIds)), encrypted: fieldEncryptionActive() });
   } catch (err) {
     console.error("GET /prayer-intentions error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/prayer-intentions/:id/pray — mark prayed for a given day ─────
+// Called as PrayThrough (intentions.tsx) walks past each item. Idempotent —
+// re-marking the same (intention, day) is a no-op.
+router.post("/prayer-intentions/:id/pray", async (req, res) => {
+  try {
+    const user = getUser(req);
+    if (!user) return res.status(401).json({ error: "Not authenticated" });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad id" });
+    const ymd = typeof req.body?.ymd === "string" ? req.body.ymd : "";
+    if (!YMD_RE.test(ymd)) return res.status(400).json({ error: "Bad ymd" });
+
+    const owns = await pool.query(`SELECT 1 FROM prayer_intentions WHERE id = $1 AND user_id = $2`, [id, user.id]);
+    if (owns.rowCount === 0) return res.status(404).json({ error: "Not found" });
+
+    await pool.query(
+      `INSERT INTO prayer_intention_prayed_days (intention_id, ymd) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [id, ymd],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /prayer-intentions/:id/pray error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── DELETE /api/prayer-intentions/:id/pray — undo a mark for a given day ───
+router.delete("/prayer-intentions/:id/pray", async (req, res) => {
+  try {
+    const user = getUser(req);
+    if (!user) return res.status(401).json({ error: "Not authenticated" });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad id" });
+    const ymd = typeof req.body?.ymd === "string" ? req.body.ymd : "";
+    if (!YMD_RE.test(ymd)) return res.status(400).json({ error: "Bad ymd" });
+
+    const owns = await pool.query(`SELECT 1 FROM prayer_intentions WHERE id = $1 AND user_id = $2`, [id, user.id]);
+    if (owns.rowCount === 0) return res.status(404).json({ error: "Not found" });
+
+    await pool.query(`DELETE FROM prayer_intention_prayed_days WHERE intention_id = $1 AND ymd = $2`, [id, ymd]);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /prayer-intentions/:id/pray error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

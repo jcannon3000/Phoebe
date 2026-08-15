@@ -3595,6 +3595,23 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS prayer_intentions_user_idx ON prayer_intentions (user_id, answered, created_at)`);
 
+    // Per-intention "prayed today" tracking — owner: the Prayer List
+    // routine card reads "X out of Y prayers have been prayed" from this,
+    // distinct from `answered` (a permanent resolution) and from the old
+    // single practice_completion "prayer-list" flag (a manual all-or-
+    // nothing check-off with no per-item detail). One row per (intention,
+    // local day) the viewer walked past in PrayThrough (intentions.tsx).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_intention_prayed_days (
+        id SERIAL PRIMARY KEY,
+        intention_id INTEGER NOT NULL REFERENCES prayer_intentions(id) ON DELETE CASCADE,
+        ymd TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (intention_id, ymd)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayer_intention_prayed_days_intention_idx ON prayer_intention_prayed_days (intention_id, ymd)`);
+
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this
     // table carries the other daily-reflection sources so the daily-progress
