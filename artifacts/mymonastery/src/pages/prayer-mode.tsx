@@ -17,6 +17,8 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
+import { markIntentionPrayedToday } from "@/lib/intentionsPrayed";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import {
   CAC_TODAY_URL,
   FDD_TODAY_URL,
@@ -163,6 +165,14 @@ interface PrayerSlide {
   attribution: string;
   fullText?: string | null;
   intention?: string | null;
+  // intercession specific — set for a slide built from the viewer's own
+  // private prayer list (prayer_intentions), not a community intercession.
+  // Swaps the eyebrow to "Your Prayer List" and, on Amen, records the
+  // amen against this intention (POST /api/prayer-intentions/:id/pray)
+  // instead of the moment/momentToken check-in path (momentToken is null
+  // here — there's no shared moment behind a private prayer).
+  isPersonal?: boolean;
+  intentionId?: number;
   // intercession specific — "bcp" when the intercession was picked from
   // the Book of Common Prayer. Drives the "From the Book of Common Prayer"
   // attribution caption even when the topic title doesn't exactly match
@@ -769,7 +779,7 @@ function SlideContent({
             style={{ color: "rgba(var(--ot-sage, 143,175,150),0.45)" }}
           >
             {slide.kind === "intercession"
-              ? "Community Intercession"
+              ? (slide.isPersonal ? "Your Prayer List" : "Community Intercession")
               : slide.kind === "circle-intention"
                 ? "Circle Intention"
                 : slide.isOwnPrayer
@@ -2549,6 +2559,19 @@ export default function PrayerModePage() {
   });
   const circleIntentionsData = circleIntentionsQuery.data;
 
+  // The viewer's own private prayer list — owner: "both should show up in
+  // the slideshows," unifying the personal list into the SAME slideshow
+  // instead of a separate (and much plainer) UI. Signed-up accounts only
+  // (mirrors bcp-daily-office.tsx's `signedUp`); default queue only — a
+  // focused queue (queue=new/feed/parish-weekly/feed-digest) is deliberately
+  // narrow and shouldn't gain unrelated slides.
+  const signedUp = !!user && !user.isAnonymous;
+  const { data: myIntentionsData } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
+    enabled: signedUp && !queueMode,
+  });
+
   // (The legacy /api/prayer-feeds/today query lived here. Prayer feeds
   // are now a flat, ongoing list of intercessions — sharedMomentsTable
   // rows with prayer_feed_id set — which reach the slideshow through
@@ -2999,6 +3022,24 @@ export default function PrayerModePage() {
         groups,
       };
     }),
+    // The viewer's own private prayer list — owner: "both should show up
+    // in the slideshows," unifying personal + community into one deck
+    // using this SAME slide template (not the separate, plainer PrayThrough
+    // UI intentions.tsx used to open). Placed right after community
+    // intercessions, same voice/order as the Community-then-My-List layout
+    // on /prayer-list.
+    ...((myIntentionsData?.intentions ?? [])
+      .filter((it) => !it.answered)
+      .map((it): PrayerSlide => ({
+        kind: "intercession" as const,
+        text: it.kind === "person" ? (it.personName || "Someone") : (it.body || ""),
+        intention: it.kind === "person" ? it.body : null,
+        attribution: "",
+        momentToken: null,
+        myUserToken: null,
+        isPersonal: true,
+        intentionId: it.id,
+      }))),
     // Circle intentions — one slide per active intention in every prayer
     // circle the viewer belongs to. Placed right after intercessions because
     // they read in the same voice (the thing being prayed) and before
@@ -3766,6 +3807,16 @@ export default function PrayerModePage() {
           // user can re-amen) instead of swallowing the failure outright.
           queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
         });
+    }
+    // Personal-list slide (owner: unified into this slideshow) — record
+    // against the intention, not a moment; there's no momentToken here.
+    if (current && current.kind === "intercession" && current.isPersonal && typeof current.intentionId === "number") {
+      markIntentionPrayedToday(current.intentionId);
+      // Legacy per-day OptionalPractice flag (weekly-grid row, widget
+      // sync) — used to be set only by intentions.tsx's now-removed
+      // PrayThrough on finishing the whole list. Set per-slide here,
+      // matching how markIntentionPrayedToday itself already works.
+      markPracticeDoneToday("prayer-list");
     }
     if (current && current.kind === "intercession" && current.momentToken) {
       const mt = current.momentToken;

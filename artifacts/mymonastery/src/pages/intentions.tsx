@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
-import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { markIntentionPrayedToday } from "@/lib/intentionsPrayed";
 import { getPrayerListSlot, setPrayerListSlot, type PrayerListSlot } from "@/lib/prayerListSlot";
 import { BCP_PRAYERS } from "@/lib/bcp-prayers";
@@ -137,39 +137,6 @@ export default function IntentionsPage() {
     setEditingId(null);
   };
 
-  // ── Pray-through — this list only, not the community slideshow ──────────
-  // A quiet, private walkthrough of just what's on THIS list — never routed
-  // through /prayer-mode (that's the community/office flow; it doesn't belong
-  // here for an account just praying their own list). The ?pray=1 deep link
-  // (daily-progress card, home card) opens straight into it.
-  const startedPraying = (() => {
-    try { return new URLSearchParams(window.location.search).get("pray") === "1"; } catch { return false; }
-  })();
-  const [praying, setPraying] = useState(false);
-  useEffect(() => {
-    if (startedPraying) setPraying(true);
-  }, [startedPraying]);
-  const finishPraying = () => {
-    markPracticeDoneToday("prayer-list");
-    setPraying(false);
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("pray");
-      window.history.replaceState({}, "", url.toString());
-    } catch { /* ignore */ }
-  };
-
-  if (praying) {
-    return (
-      <PrayThrough
-        intentions={active}
-        bgPhoto={bgPhoto}
-        onClose={() => setPraying(false)}
-        onFinish={finishPraying}
-      />
-    );
-  }
-
   return (
     <Layout bgPhoto={bgPhoto}>
       <div className="max-w-xl mx-auto w-full">
@@ -181,12 +148,20 @@ export default function IntentionsPage() {
           </div>
         </div>
 
+        {/* Owner: "I don't ever want to see this ui" (the old bare
+            "Holding in prayer" slideshow) — "both should show up in the
+            slideshows," unified into the same prayer-mode deck as
+            community prayers. This links out there instead of opening
+            PrayThrough locally. */}
         {active.length > 0 && (
-          <button type="button" onClick={() => setPraying(true)}
-            className="w-full rounded-2xl mb-6 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 16, padding: "15px 24px" }}>
-            {t("intentions.pray_through", { defaultValue: "Pray through your list" })} <span aria-hidden>→</span>
-          </button>
+          <Link href="/prayer-mode?reset=1" className="block mb-6">
+            <div
+              className="w-full rounded-2xl flex items-center justify-center gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{ background: `rgba(${RGB},0.85)`, color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: 16, padding: "15px 24px" }}
+            >
+              {t("intentions.pray_through", { defaultValue: "Pray through your list" })} <span aria-hidden>→</span>
+            </div>
+          </Link>
         )}
 
         {/* Add composer */}
@@ -301,120 +276,3 @@ function RowBtn({ label, emoji, onClick }: { label: string; emoji: string; onCli
   );
 }
 
-// ── Pray-through slideshow — one intention at a time, quiet + dark ─────────
-function PrayThrough({ intentions, bgPhoto, onClose, onFinish }: {
-  intentions: Intention[]; bgPhoto: string | null; onClose: () => void; onFinish: () => void;
-}) {
-  const { t } = useTranslation();
-  const [i, setI] = useState(0);
-  const total = intentions.length;
-  const it = intentions[i];
-  // Marks THIS slide's intention prayed for today the moment the viewer
-  // steps past it — the routine card's "X out of Y" count reads this, not
-  // just the whole-list finish flag below.
-  const next = () => {
-    if (it) markIntentionPrayedToday(it.id);
-    if (i >= total - 1) { onFinish(); return; }
-    setI((n) => n + 1);
-  };
-  const back = () => { if (i <= 0) { onClose(); return; } setI((n) => n - 1); };
-
-  if (!it) return null;
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "#0C1F12", overflow: "hidden", isolation: "isolate", display: "flex", flexDirection: "column" }}>
-      {bgPhoto && (
-        <div style={{ position: "absolute", inset: 0, zIndex: -1 }}>
-          <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.32 }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(12,31,18,0.55) 0%, rgba(12,31,18,0.35) 40%, rgba(12,31,18,0.92) 100%)" }} />
-        </div>
-      )}
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "max(1rem, env(safe-area-inset-top)) 1.25rem 0" }}>
-        <button type="button" onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.12)", color: WARM, fontSize: 18 }}>✕</button>
-      </div>
-
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "0 28px" }}>
-        <p style={{ color: `rgba(${RGB},0.95)`, fontFamily: FONT, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 18 }}>
-          {t("intentions.holding", { defaultValue: "Holding in prayer" })}
-        </p>
-        <p style={{ color: WARM, fontFamily: FONT, fontSize: "clamp(26px, 6vw, 38px)", fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.01em", maxWidth: 520, wordBreak: "break-word" }}>
-          {headline(it)}
-        </p>
-        {subline(it) && (
-          <p style={{ color: "#C8D4C0", fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 18, lineHeight: 1.5, marginTop: 18, maxWidth: 440, wordBreak: "break-word" }}>
-            {subline(it)}
-          </p>
-        )}
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem 1.5rem max(1.5rem, env(safe-area-inset-bottom))", gap: 12 }}>
-        <button type="button" onClick={back} style={{ color: SAGE, fontFamily: FONT, fontSize: 14, background: "none", padding: "8px 4px" }}>
-          {t("common.back", { defaultValue: "Back" })}
-        </button>
-        <span style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 12, letterSpacing: "0.12em" }}>{i + 1} / {total}</span>
-        <AmenButton slideKey={it.id} onAdvance={next} isLast={i >= total - 1} />
-      </div>
-    </div>
-  );
-}
-
-// Same 3-second pause-before-Amen used by the community slideshow
-// (prayer-mode.tsx's AmenButton) — a dim progress wash fills over 3s,
-// then the button brightens and "Amen →" fades in. Reused here so
-// praying through your own list has the same unhurried feel instead
-// of a bare Next button you could rip through instantly. Keyed by
-// slideKey so the hold resets cleanly on every slide.
-const AMEN_HOLD_MS = 3000;
-function AmenButton({ slideKey, onAdvance, isLast }: {
-  slideKey: string | number;
-  onAdvance: () => void;
-  isLast: boolean;
-}) {
-  const { t } = useTranslation();
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    setReady(false);
-    const timer = window.setTimeout(() => {
-      setReady(true);
-      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
-    }, AMEN_HOLD_MS);
-    return () => window.clearTimeout(timer);
-  }, [slideKey]);
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        if (!ready) return;
-        try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
-        onAdvance();
-      }}
-      disabled={!ready}
-      aria-label="Amen"
-      className="active:scale-[0.98] relative overflow-hidden"
-      style={{
-        background: ready ? `rgba(${RGB},0.85)` : `rgba(${RGB},0.18)`,
-        border: `1px solid rgba(${RGB},${ready ? 0.7 : 0.3})`,
-        color: WARM,
-        fontFamily: FONT,
-        fontSize: 15,
-        fontWeight: 600,
-        borderRadius: 999,
-        padding: "11px 26px",
-        minWidth: 140,
-        cursor: ready ? "pointer" : "default",
-        transition: ready ? "background-color 360ms ease-out, border-color 360ms ease-out" : "none",
-      }}
-    >
-      <span
-        aria-hidden
-        key={slideKey}
-        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
-        style={{ background: `rgba(${RGB},0.45)`, pointerEvents: "none", opacity: ready ? 0 : 1, transition: "opacity 360ms ease-out" }}
-      />
-      <span style={{ position: "relative", opacity: ready ? 1 : 0, transform: ready ? "translateY(0)" : "translateY(2px)", transition: "opacity 280ms ease-out, transform 280ms ease-out", display: "inline-block" }}>
-        {isLast ? t("common.done", { defaultValue: "Done" }) : "Amen →"}
-      </span>
-    </button>
-  );
-}

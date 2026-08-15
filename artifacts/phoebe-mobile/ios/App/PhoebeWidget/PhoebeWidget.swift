@@ -302,10 +302,21 @@ struct PhoebeWidgetView: View {
     // potential reuse but no longer wired to any family).
     private var homeWeeklyGrid: some View {
         return VStack(alignment: .leading, spacing: 8) {
-            // App identity top-left, ABOVE the card (owner) — "PAST 7 DAYS"
-            // removed separately: the S/M/T/W/T/F/S header row right below
-            // already says what this grid is, so that label was redundant.
+            // App identity top-left, ABOVE the card (owner).
             Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
+            // "PAST 7 DAYS" caption row — thin rule on either side of a small-caps
+            // label — matches WayOfLoveTurnLearnPray.tsx's own header exactly
+            // (owner: "these are very different" — the widget had dropped this
+            // row entirely). Sits ABOVE the card, same as on the home screen.
+            HStack(spacing: 12) {
+                Rectangle().fill(phoebeWarm.opacity(0.15)).frame(height: 1)
+                Text("PAST 7 DAYS")
+                    .font(sgBold(9))
+                    .tracking(1.1)
+                    .foregroundColor(phoebeSage.opacity(0.55))
+                    .fixedSize()
+                Rectangle().fill(phoebeWarm.opacity(0.15)).frame(height: 1)
+            }
             weeklyGridCard
         }
         // Tighter than the old hero's 16pt — this content should feel like
@@ -323,11 +334,12 @@ struct PhoebeWidgetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    // The card behind the grid itself — border + frost, matching the home
-    // screen's weekly cards (e.g. "This Week at VTS": a translucent dark
-    // fill, a soft light-sage 1px border, blurred glass over whatever sits
-    // behind it). Owner: "a card with a border and frost like it is on the
-    // home screen behind the grid, but the Phoebe name would be above it."
+    // The card behind the grid itself — the exact green-tint + border card
+    // WayOfLoveTurnLearnPray.tsx / VtsWeeklyProgress.tsx render behind this
+    // same grid on the home screen. Owner: "a card with a border and frost
+    // like it is on the home screen behind the grid, but the Phoebe name
+    // would be above it" — then, after a first pass drifted from the real
+    // values: "these are very different."
     private var weeklyGridCard: some View {
         let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
         let rowCount = stats.weeklyLabels.count
@@ -399,16 +411,13 @@ struct PhoebeWidgetView: View {
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
         // Exact match to the card WayOfLoveTurnLearnPray.tsx / VtsWeeklyProgress.tsx
-        // render behind this SAME grid on the home screen: a soft green-tint
-        // fill (rgba(46,107,64,0.07)), a 1px light-sage border
-        // (rgba(200,212,192,0.35)), rounded-3xl corners. Layered with
-        // .ultraThinMaterial for the widget's own frosted-glass feel (owner:
-        // "border and frost") — the web card has no blur of its own since it
-        // never sits over photo content the way this widget does.
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
+        // render behind this SAME grid on the home screen — same two values,
+        // nothing added: a soft green-tint fill (rgba(46,107,64,0.07)) and a
+        // 1px light-sage border (rgba(200,212,192,0.35)), rounded-3xl corners.
+        // (A .ultraThinMaterial layer was tried here for "frost" but it
+        // rendered flat and grayish over the widget's photo background —
+        // nothing like the home card — so it's gone; matching the real values
+        // reads far closer than an invented blur did.)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Color(red: 46/255, green: 107/255, blue: 64/255).opacity(0.07))

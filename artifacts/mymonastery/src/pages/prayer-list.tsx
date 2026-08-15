@@ -1244,6 +1244,18 @@ export default function PrayerListPage() {
           </Link>
         )}
 
+        {/* Add prayer — owner: moved here (under "Pray through the whole
+            list") from the bottom of "Your prayer requests", where it
+            duplicated "+ Add to my list" further down the page. One add
+            entry point per section. */}
+        {focused === null && (
+          <Link href="/pray-request/new" className="block mb-4">
+            <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
+              {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
+            </div>
+          </Link>
+        )}
+
         {/* Back button when drilled into a single category */}
         {focused !== null && (
           <button
@@ -1309,29 +1321,31 @@ export default function PrayerListPage() {
           const ownCard = (req: PrayerRequest) => {
             const amened = !!req.myAmenedToday;
             return (
-              <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
-                  <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
-                  <div className="flex-1 px-4 pt-3 pb-3">
-                    <div className="flex items-center gap-3">
-                      {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt={user.name ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{facesInitials(user.name ?? null)}</div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}</p>
-                        <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>{req.body}</p>
-                      </div>
-                      {amened ? (
-                        <span aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })} className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
-                      ) : (
-                        <span aria-hidden className="flex-shrink-0 inline-flex items-center justify-center rounded-full" style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1 }}>🙏🏽</span>
-                      )}
-                    </div>
+              <div key={req.id} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+                <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
+                <Link href={`/prayer-requests/${req.id}`} className="flex-1 min-w-0 px-4 pt-3 pb-3 flex items-center gap-3 transition-opacity active:opacity-80">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{facesInitials(user.name ?? null)}</div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}</p>
+                    <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>{req.body}</p>
                   </div>
-                </div>
-              </Link>
+                  {amened ? (
+                    <span aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })} className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
+                  ) : (
+                    <span aria-hidden className="flex-shrink-0 inline-flex items-center justify-center rounded-full" style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1 }}>🙏🏽</span>
+                  )}
+                </Link>
+                {/* Edit — owner: "there also needs to be an edit button on
+                    any of my requests." Deep-links into the detail page
+                    already in edit mode (?edit=1). */}
+                <Link href={`/prayer-requests/${req.id}?edit=1`} className="flex-shrink-0 self-center mr-3 rounded-full transition-opacity hover:opacity-90" aria-label={t("common.edit", { defaultValue: "Edit" })} style={{ padding: "8px 10px", background: "rgba(200,212,192,0.08)", border: "1px solid rgba(200,212,192,0.25)", color: "#C8D4C0", fontSize: 13 }}>
+                  ✎
+                </Link>
+              </div>
             );
           };
           return (
@@ -1352,16 +1366,12 @@ export default function PrayerListPage() {
                   </div>
                 </section>
               )}
-              <section>
-                {mine.length > 0 && sectionHead(t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" }))}
-                {mine.length > 0 && <div className="flex flex-col gap-2">{mine.map(ownCard)}</div>}
-                {/* New prayer request — same button + destination as the home screen. */}
-                <Link href="/pray-request/new" className={`block ${mine.length > 0 ? "mt-3" : "mt-6"}`}>
-                  <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
-                    {t("dashboard.new_prayer_request", { defaultValue: "Add prayer" })}
-                  </div>
-                </Link>
-              </section>
+              {mine.length > 0 && (
+                <section>
+                  {sectionHead(t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" }))}
+                  <div className="flex flex-col gap-2">{mine.map(ownCard)}</div>
+                </section>
+              )}
             </>
           );
         })()}
@@ -1419,6 +1429,18 @@ export default function PrayerListPage() {
             <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
               {t("intentions.empty", { defaultValue: "Add the people and things you want to keep in prayer. They stay private until you choose to share." })}
             </p>
+          )}
+
+          {/* Edit — owner: "below my private prayers in my list have an
+              edit button that goes to the edit page." /intentions is the
+              full CRUD surface for the private list (rename, edit body,
+              delete). */}
+          {myIntentions.length > 0 && (
+            <Link href="/intentions" className="block mt-2">
+              <div className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "10px 16px", background: "rgba(200,212,192,0.08)", border: "1px solid rgba(200,212,192,0.25)", color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}>
+                ✎ {t("common.edit", { defaultValue: "Edit" })}
+              </div>
+            </Link>
           )}
 
           {/* Past prayers — released / ended / answered ones, collapsed behind a

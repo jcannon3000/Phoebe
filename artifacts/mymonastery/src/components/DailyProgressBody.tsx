@@ -1013,7 +1013,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const prayerListActiveCard = intentionsTotalCount > 0;
   const prayerListDoneCard = prayerListActiveCard && intentionsPrayedCount >= intentionsTotalCount;
   const prayerListCard = {
-    key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard, href: "/intentions?pray=1",
+    // Owner: "the card on the home screen only does the personal list in
+    // the bad ui" / "both should show up in the slideshows" — routes into
+    // the SAME unified prayer-mode slideshow (community + personal, one
+    // deck, one UI) instead of the separate PrayThrough screen intentions.tsx
+    // used to open.
+    key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard, href: "/prayer-mode?reset=1",
     title: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }),
     blurb: t("rhythm.blurb_prayer_list_count", {
       done: intentionsPrayedCount, total: intentionsTotalCount,

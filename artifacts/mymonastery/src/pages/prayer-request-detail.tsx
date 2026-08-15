@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -176,6 +176,14 @@ export default function PrayerRequestDetailPage() {
     return new URLSearchParams(search).get("amen") === "1";
   }, [search]);
 
+  // Deep-link straight into the inline edit state (?edit=1) — the
+  // prayer-list card's own "Edit" button uses this so tapping it opens
+  // the request already in edit mode, instead of landing on the read
+  // view and requiring a second tap.
+  const wantEdit = useMemo(() => {
+    return new URLSearchParams(search).get("edit") === "1";
+  }, [search]);
+
   // A stable leaf photo for this slide's backdrop (picked once per mount).
   const leafPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
@@ -320,6 +328,13 @@ export default function PrayerRequestDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
+  const autoEditOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoEditOpenedRef.current || !wantEdit || !data?.viewerIsOwner) return;
+    autoEditOpenedRef.current = true;
+    setEditDraft(data.body);
+    setEditing(true);
+  }, [wantEdit, data]);
 
   // Paint Safari/WebView background to the slide bg + play the opening
   // swell + medium haptic on arrival. We do NOT lock body scroll here
