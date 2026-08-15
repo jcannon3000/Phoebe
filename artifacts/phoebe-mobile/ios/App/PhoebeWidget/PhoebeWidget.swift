@@ -310,7 +310,7 @@ struct PhoebeWidgetView: View {
             // owner: bigger wordmark, label moved to the right, and less
             // gap above the grid so it sits higher in the card.
             HStack {
-                Text("Phoebe").font(sgBold(15)).foregroundColor(phoebeWarm.opacity(0.9))
+                Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
                 Spacer()
                 Text("PAST 7 DAYS")
                     .font(sgBold(9))
@@ -332,14 +332,23 @@ struct PhoebeWidgetView: View {
             // Day-initial header row (S/M/T/W/T/F/S) above the dot rows —
             // mirrors the home card's own header row, which this widget was
             // missing entirely.
-            HStack(spacing: 0) {
+            // spacing: 6 (not 0) between the label column and the day grid —
+            // owner: nudge the day columns right a touch without moving the
+            // emoji/label column itself. Same gap on both this header row
+            // and the dot rows below so S/M/T/... stays lined up above its
+            // column's dots.
+            HStack(spacing: 6) {
                 Text("").frame(width: 18)
                 LazyVGrid(columns: dayCols, spacing: 0) {
                     ForEach(0..<7, id: \.self) { day in
+                        // The last column (today) trailing-aligns instead of
+                        // centering, so it lands flush with the right edge
+                        // of "PAST 7 DAYS" above it rather than sitting one
+                        // half-column short of it (owner).
                         Text(day < stats.weeklyDayInitials.count ? stats.weeklyDayInitials[day] : "")
                             .font(sgBold(9))
                             .foregroundColor(phoebeWarm.opacity(0.4))
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, alignment: day == 6 ? .trailing : .center)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -347,7 +356,7 @@ struct PhoebeWidgetView: View {
             .frame(maxWidth: .infinity)
             VStack(spacing: 9) {
                 ForEach(0..<rowCount, id: \.self) { row in
-                    HStack(spacing: 0) {
+                    HStack(spacing: 6) {
                         Text(row < stats.weeklyEmoji.count ? stats.weeklyEmoji[row] : "")
                             .font(.system(size: 11))
                             .frame(width: 18, alignment: .center)
@@ -361,7 +370,7 @@ struct PhoebeWidgetView: View {
                                         Circle().stroke(kept ? Color.clear : phoebeWarm.opacity(0.35), lineWidth: 1)
                                     )
                                     .frame(width: 14, height: 14)
-                                    .frame(maxWidth: .infinity)
+                                    .frame(maxWidth: .infinity, alignment: day == 6 ? .trailing : .center)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -375,7 +384,11 @@ struct PhoebeWidgetView: View {
         // it fills the whole card (owner: "full bleed"), not float inside a
         // wide margin.
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        // Less top padding than bottom — pinned to .topLeading below, so
+        // shrinking just the top inset nudges Phoebe/PAST 7 DAYS up a
+        // little (owner) without disturbing the card's bottom breathing room.
+        .padding(.top, 7)
+        .padding(.bottom, 12)
         // .leading alone vertically CENTERS in the extra height (Alignment.leading
         // = .leading + .center) — that's what was holding the grid down in the
         // middle of the card instead of near the top. .topLeading pins it up.
