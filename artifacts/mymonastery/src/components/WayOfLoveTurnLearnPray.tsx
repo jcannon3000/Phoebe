@@ -195,7 +195,16 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
         style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.35)", paddingBottom: 20 }}
       >
         {(() => {
-          const COLS = "20px repeat(7, 1fr)";
+          // 28px (not 20px) row-label column — widening it shifts the whole
+          // 7-day grid right as a block: the leftmost day column moves the
+          // most, each column further right moves a little less, and the
+          // rightmost (today) barely moves at all, since its column's right
+          // edge is always pinned to the card's own right edge regardless of
+          // how wide the label column is. The 7 columns stay equal 1fr
+          // fractions of whatever width remains, so spacing between them
+          // stays even the whole time (owner: move the grid off the emoji
+          // column without breaking equal spacing).
+          const COLS = "28px repeat(7, 1fr)";
           return (
             <div style={{ display: "grid", rowGap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>

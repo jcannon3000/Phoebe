@@ -127,6 +127,15 @@ export default function TurnLearnPrayPage() {
   // itself here since it also needs a practice-week network fetch this
   // summary doesn't; these three lines just mirror its one-line expressions.
   const creationStyle = rhythm.contemplationStyle === "cobreathe";
+  // Which slots the viewer actually has turned on — a row with nothing kept
+  // in it isn't a live status, so it's dropped rather than shown empty.
+  const contemplativeActive = rhythm.morningContemplationActive || rhythm.eveningContemplationActive
+    || rhythm.silenceGoalCardActive || rhythm.cobreatheActive;
+  const slotActive: Record<"morning" | "contemplative" | "evening", boolean> = {
+    morning: rhythm.morningActive,
+    contemplative: contemplativeActive,
+    evening: rhythm.eveningActive,
+  };
   const slotStatus: Record<"morning" | "contemplative" | "evening", { title: string; emoji: string; done: boolean; href: string; onClick?: () => void }> = {
     morning: {
       title: sideOfficeTitle("Morning", rhythm.prayerKind, t),
@@ -205,9 +214,11 @@ export default function TurnLearnPrayPage() {
             <ChevronLeft size={14} /> {t("common.back", { defaultValue: "Back" })}
           </button>
 
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: FAINT, fontFamily: FONT }}>
-            Way of Love
-          </p>
+          {!practiceMode && (
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: FAINT, fontFamily: FONT }}>
+              Way of Love
+            </p>
+          )}
           <h1 className="text-2xl font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>
             Weekly Progress
           </h1>
@@ -227,11 +238,11 @@ export default function TurnLearnPrayPage() {
           </div>
           <p className="text-[14px] mb-2 leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
             {practiceMode
-              ? "The same three daily rows above, read by time of day instead of the Way of Love's framing: whatever anchors your morning, whatever contemplative practice you keep, and whatever closes your evening."
+              ? "Each row in the grid above is a practice; each column is a day. Here's what each row stands for, and where you are on it today."
               : "The first three of the Episcopal Church's seven Way of Love practices — the daily spine underneath the weekly ones (Worship, Bless, Go, Rest)."}
           </p>
           <div className="flex flex-col gap-3">
-          {practiceMode ? MCE_EXPLANATIONS.map((e) => {
+          {practiceMode ? MCE_EXPLANATIONS.filter((e) => slotActive[e.slot]).map((e) => {
             const s = slotStatus[e.slot];
             return (
               <div
@@ -243,10 +254,10 @@ export default function TurnLearnPrayPage() {
                 <div className="flex-1 px-5 py-5">
                   <div className="flex items-center gap-2.5">
                     <span
-                      className="flex-shrink-0 flex items-center justify-center rounded-full text-[13px] font-semibold"
-                      style={{ width: 26, height: 26, background: "rgba(110,180,130,0.18)", color: WARM, fontFamily: FONT }}
+                      className="flex-shrink-0 flex items-center justify-center rounded-full text-[15px]"
+                      style={{ width: 26, height: 26, background: "rgba(110,180,130,0.18)" }}
                     >
-                      {e.letter}
+                      {s.emoji}
                     </span>
                     <p className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>{e.title}</p>
                   </div>

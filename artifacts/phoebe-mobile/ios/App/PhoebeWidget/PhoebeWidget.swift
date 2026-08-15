@@ -306,18 +306,10 @@ struct PhoebeWidgetView: View {
         let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
         let rowCount = stats.weeklyLabels.count
         return VStack(alignment: .leading, spacing: 6) {
-            // App identity top-left, "PAST 7 DAYS" top-right, on one row —
-            // owner: bigger wordmark, label moved to the right, and less
-            // gap above the grid so it sits higher in the card.
-            HStack {
-                Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
-                Spacer()
-                Text("PAST 7 DAYS")
-                    .font(sgBold(10.5))
-                    .tracking(1.4)
-                    .foregroundColor(phoebeWarm.opacity(0.55))
-            }
-            .frame(maxWidth: .infinity)
+            // App identity top-left — "PAST 7 DAYS" removed (owner): the
+            // S/M/T/W/T/F/S header row right below already says what this
+            // grid is, so the label was redundant.
+            Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
             // frame(maxWidth: .infinity) at EVERY level here — a VStack/HStack
             // in SwiftUI does NOT propagate "fill available width" to its
             // children automatically; each nesting level has to ask for it
@@ -337,18 +329,19 @@ struct PhoebeWidgetView: View {
             // emoji/label column itself. Same gap on both this header row
             // and the dot rows below so S/M/T/... stays lined up above its
             // column's dots.
+            // Uniform .center alignment on every column (no more trailing-
+            // aligned last column) — that was only there to line today's
+            // dot up under the now-removed "PAST 7 DAYS" label; with the
+            // label gone, centering all 7 keeps them evenly spaced (owner:
+            // "re-space the middle columns so they are equally spaced").
             HStack(spacing: 12) {
                 Text("").frame(width: 18)
                 LazyVGrid(columns: dayCols, spacing: 0) {
                     ForEach(0..<7, id: \.self) { day in
-                        // The last column (today) trailing-aligns instead of
-                        // centering, so it lands flush with the right edge
-                        // of "PAST 7 DAYS" above it rather than sitting one
-                        // half-column short of it (owner).
                         Text(day < stats.weeklyDayInitials.count ? stats.weeklyDayInitials[day] : "")
                             .font(sgBold(9))
                             .foregroundColor(phoebeWarm.opacity(0.4))
-                            .frame(maxWidth: .infinity, alignment: day == 6 ? .trailing : .center)
+                            .frame(maxWidth: .infinity)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -370,7 +363,7 @@ struct PhoebeWidgetView: View {
                                         Circle().stroke(kept ? Color.clear : phoebeWarm.opacity(0.35), lineWidth: 1)
                                     )
                                     .frame(width: 14, height: 14)
-                                    .frame(maxWidth: .infinity, alignment: day == 6 ? .trailing : .center)
+                                    .frame(maxWidth: .infinity)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -385,7 +378,7 @@ struct PhoebeWidgetView: View {
         // wide margin.
         .padding(.horizontal, 14)
         // Less top padding than bottom — pinned to .topLeading below, so
-        // shrinking just the top inset nudges Phoebe/PAST 7 DAYS up a
+        // shrinking just the top inset nudges the header up a
         // little (owner) without disturbing the card's bottom breathing room.
         .padding(.top, 7)
         .padding(.bottom, 12)
