@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { notificationsSupportedHere } from "@/lib/notifSupport";
 import { getEnabledWeekly, setEnabledWeekly, WEEKLY_ENABLED_EVENT, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
@@ -1026,7 +1027,13 @@ function OfficesOnlyExtras() {
 const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
 // The "Turn · Learn · Pray" status band under the daily rhythm on home —
 // read by WayOfLoveTurnLearnPray.tsx itself via the same key/helpers.
+// Defaults HIDDEN — owner: the customizer's "weekly cards" step presents
+// this as opt-in, not opt-out. Unset or "1" reads as hidden; only an
+// explicit "0" (turned on) shows the card.
 export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
+function readTlpHiddenDefaultOn(): boolean {
+  try { return localStorage.getItem(HIDE_TLP_KEY) !== "0"; } catch { return true; }
+}
 // Row-labeling mode for that same weekly grid: Morning/Contemplative/
 // Evening Practice (default), or the Way of Love's Turn/Learn/Pray framing
 // of the SAME three rows — same dots, same history, different lens on what
@@ -1041,8 +1048,14 @@ function readTlpModeDefaultOn(): boolean {
 // The "Done" section on home (kept cards, below Next) — preset ON; read by
 // dashboard.tsx via the same key/helpers as the toggles above.
 export const HIDE_DONE_KEY = "phoebe:hide-home-done";
+// The VTS Weekly card (Dean's Commentary / Community Meal / Chapel, 5
+// columns) — read by VtsWeeklyProgress.tsx itself via the same key/
+// helpers. Defaults SHOWN for subscribers, unlike the main Weekly
+// Progress toggle above.
+export const HIDE_VTS_WEEKLY_KEY = "phoebe:hide-vts-weekly";
 
 function HomeDisplaySettings() {
+  const entitlements = useEntitlements();
   const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
   const shown = !hidden;
   const toggle = () => {
@@ -1052,12 +1065,23 @@ function HomeDisplaySettings() {
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
 
-  const [tlpHidden, setTlpHidden] = useState<boolean>(() => readLsBool(HIDE_TLP_KEY));
+  const [tlpHidden, setTlpHidden] = useState<boolean>(readTlpHiddenDefaultOn);
   const tlpShown = !tlpHidden;
   const toggleTlp = () => {
     const nextHidden = tlpShown;
     setTlpHidden(nextHidden);
     writeLsBool(HIDE_TLP_KEY, nextHidden);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
+
+  // VTS Weekly — preset ON for subscribers (readLsBool defaults false/
+  // "not hidden" when the key has never been written).
+  const [vtsWeeklyHidden, setVtsWeeklyHidden] = useState<boolean>(() => readLsBool(HIDE_VTS_WEEKLY_KEY));
+  const vtsWeeklyShown = !vtsWeeklyHidden;
+  const toggleVtsWeekly = () => {
+    const nextHidden = vtsWeeklyShown;
+    setVtsWeeklyHidden(nextHidden);
+    writeLsBool(HIDE_VTS_WEEKLY_KEY, nextHidden);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
   };
 
@@ -1154,6 +1178,33 @@ function HomeDisplaySettings() {
               >
                 <div
                   className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${practiceMode ? "left-[21px]" : "left-[3px]"}`}
+                  style={{ background: "#F0EDE6" }}
+                />
+              </div>
+            </button>
+          </>
+        )}
+
+        {entitlements.vts && (
+          <>
+            <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+            <button
+              onClick={toggleVtsWeekly}
+              className="w-full flex items-center justify-between"
+            >
+              <div className="text-left">
+                <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+                  VTS Weekly
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                  Dean's Commentary, Community Meal, and Chapel — a second weekly card under the first.
+                </p>
+              </div>
+              <div
+                className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${vtsWeeklyShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+              >
+                <div
+                  className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${vtsWeeklyShown ? "left-[21px]" : "left-[3px]"}`}
                   style={{ background: "#F0EDE6" }}
                 />
               </div>

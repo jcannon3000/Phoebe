@@ -11,6 +11,7 @@
  * server route — same data WayOfLoveTurnLearnPray reads, same query key,
  * so mounting both on one page costs one fetch, not two.
  */
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -21,8 +22,29 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 const WEEKDAY_INITIALS = ["M", "T", "W", "T", "F"];
 
+// Settings → Home display AND the customizer's "weekly cards" step both
+// expose an on/off toggle for this card, stored under the same key
+// settings.tsx writes (HIDE_VTS_WEEKLY_KEY there). Defaults SHOWN for
+// subscribers — owner: "the VTS default on for subscribers" (unlike the
+// main Weekly Progress card, which defaults off). Unset or "0" reads as
+// shown; only an explicit "1" (turned off) hides the card.
+const HIDE_KEY = "phoebe:hide-vts-weekly";
+function readHidden(): boolean {
+  try { return localStorage.getItem(HIDE_KEY) === "1"; } catch { return false; }
+}
+function useHiddenPref(): boolean {
+  const [hidden, setHidden] = useState(readHidden);
+  useEffect(() => {
+    const onChange = () => setHidden(readHidden());
+    window.addEventListener("phoebe:prefs-changed", onChange);
+    return () => window.removeEventListener("phoebe:prefs-changed", onChange);
+  }, []);
+  return hidden;
+}
+
 export function VtsWeeklyProgress() {
   const rhythm = useRhythmState();
+  const hidden = useHiddenPref();
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { data: week } = useQuery<{ days: PracticeWeekDay[] }>({
     queryKey: ["/api/me/practice-week", tz],
@@ -30,7 +52,7 @@ export function VtsWeeklyProgress() {
     staleTime: 60_000,
   });
 
-  if (!rhythm.ready) return null;
+  if (!rhythm.ready || hidden) return null;
 
   const todayYmd = new Date().toLocaleDateString("en-CA");
   // Weekday-only slice of the rolling 7-day window, oldest first.
@@ -44,7 +66,7 @@ export function VtsWeeklyProgress() {
   const cols = Array.from({ length: 5 }, (_, i) => weekdayDays[i] ?? null);
 
   const rows: Array<{ emoji: string; label: string; todayDone: boolean; historyFor: (d: PracticeWeekDay) => boolean }> = [
-    { emoji: "🦩", label: "Dean's Commentary", todayDone: hasReadVtsToday(), historyFor: (d) => d.vts },
+    { emoji: "🗞️", label: "Dean's Commentary", todayDone: hasReadVtsToday(), historyFor: (d) => d.vts },
     { emoji: "🍽️", label: "Community Meal", todayDone: rhythm.communityMealDone, historyFor: (d) => d.communityMeal },
     { emoji: "🙏🏽", label: "Chapel", todayDone: rhythm.chapelDone, historyFor: (d) => d.chapel },
   ];

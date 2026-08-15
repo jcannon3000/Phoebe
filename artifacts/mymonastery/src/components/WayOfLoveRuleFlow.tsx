@@ -102,7 +102,7 @@ type Step =
   | "psalms-cycle"
   | "evening-way" | "evening-bcp" | "evening-custom" | "evening-config"
   | "contemplative" | "contemplation-goal"
-  | "learn" | "extras" | "custom" | "notifications" | "weekly" | "done"
+  | "learn" | "extras" | "custom" | "notifications" | "weekly" | "weekly-cards" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
 // later (you receive a rule, you don't compose one from a blank trellis). Each
@@ -412,6 +412,33 @@ export default function WayOfLoveRuleFlow({
   const { user } = useAuth();
   const entitlements = useEntitlements();
   const [, setLocation] = useLocation();
+  // Weekly home cards — same keys/semantics WayOfLoveTurnLearnPray.tsx,
+  // VtsWeeklyProgress.tsx, and settings.tsx's HomeDisplaySettings read/
+  // write. Weekly Progress defaults OFF (opt-in); VTS Weekly defaults ON
+  // for subscribers (owner: "the main weekly default off, but the VTS
+  // default on for subscribers").
+  const [weeklyProgressOn, setWeeklyProgressOn] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:hide-turn-learn-pray") === "0"; } catch { return false; }
+  });
+  const [vtsWeeklyOn, setVtsWeeklyOn] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:hide-vts-weekly") !== "1"; } catch { return true; }
+  });
+  const toggleWeeklyProgress = () => {
+    const next = !weeklyProgressOn;
+    setWeeklyProgressOn(next);
+    try {
+      localStorage.setItem("phoebe:hide-turn-learn-pray", next ? "0" : "1");
+      window.dispatchEvent(new Event("phoebe:prefs-changed"));
+    } catch { /* web no-op */ }
+  };
+  const toggleVtsWeekly = () => {
+    const next = !vtsWeeklyOn;
+    setVtsWeeklyOn(next);
+    try {
+      localStorage.setItem("phoebe:hide-vts-weekly", next ? "0" : "1");
+      window.dispatchEvent(new Event("phoebe:prefs-changed"));
+    } catch { /* web no-op */ }
+  };
   // A brand-new author — nobody has chosen a side level yet — is offered the
   // preset picker ("automatic mode"): four whole rules to adopt and tune, so
   // they don't have to know how to "drive stick" to begin. Anyone with an
@@ -1284,6 +1311,10 @@ export default function WayOfLoveRuleFlow({
     // Globally OFF for now (owner) — skip the step while WEEKLY_PRACTICES_ENABLED
     // is false so the customizer never offers a practice that won't appear.
     ...(WEEKLY_PRACTICES_ENABLED ? (["weekly"] as Step[]) : []),
+    // Weekly-progress home CARDS (the dot-grid status bands) — separate
+    // from the "weekly" step above, which is about weekly PRACTICES
+    // (Commune/Go/Bless/Rest). This just asks whether to show the cards.
+    "weekly-cards",
     // Notification style closes every flow — after the routine itself is
     // built, decide how insistently the app follows up on it.
     "notifications",
@@ -2237,6 +2268,78 @@ export default function WayOfLoveRuleFlow({
           </button>
           <button onClick={() => setStep("custom")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
             <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+          </button>
+        </div>
+      </>,
+    );
+  }
+
+  // ── Weekly home cards — the dot-grid status bands under the daily
+  // routine, not to be confused with the "weekly" PRACTICES step above
+  // (Commune/Go/Bless/Rest). Weekly Progress defaults off (opt-in); VTS
+  // Weekly (subscribers only) defaults on. ──
+  if (step === "weekly-cards") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.weekly_cards_eyebrow", { defaultValue: "On your home" }), t("wol_rule.weekly_cards_title", { defaultValue: "Weekly cards" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 20px" }}>
+          {t("wol_rule.weekly_cards_body", { defaultValue: "A quiet dot grid of the past week, right under your daily routine. Turn on whichever you'd like to see." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button
+            type="button"
+            onClick={toggleWeeklyProgress}
+            style={{
+              width: "100%", textAlign: "left", cursor: "pointer",
+              background: weeklyProgressOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${weeklyProgressOn ? CARD_B_ACTIVE : CARD_B}`,
+              borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+              transition: "background 0.2s, border-color 0.2s",
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
+                {t("wol_rule.weekly_cards_main_label", { defaultValue: "Weekly Progress" })}
+              </p>
+              <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
+                {t("wol_rule.weekly_cards_main_sub", { defaultValue: "The status card under your daily routine." })}
+              </p>
+            </div>
+            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: weeklyProgressOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+              <span style={{ position: "absolute", top: 3, left: weeklyProgressOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
+            </span>
+          </button>
+
+          {entitlements.vts && (
+            <button
+              type="button"
+              onClick={toggleVtsWeekly}
+              style={{
+                width: "100%", textAlign: "left", cursor: "pointer",
+                background: vtsWeeklyOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+                border: `1px solid ${vtsWeeklyOn ? CARD_B_ACTIVE : CARD_B}`,
+                borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                transition: "background 0.2s, border-color 0.2s",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
+                  {t("wol_rule.weekly_cards_vts_label", { defaultValue: "VTS Weekly" })}
+                </p>
+                <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
+                  {t("wol_rule.weekly_cards_vts_sub", { defaultValue: "Dean's Commentary, Community Meal, and Chapel." })}
+                </p>
+              </div>
+              <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: vtsWeeklyOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+                <span style={{ position: "absolute", top: 3, left: vtsWeeklyOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
+              </span>
+            </button>
+          )}
+        </div>
+        <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            {t("ruleOfLife.continue", { defaultValue: "Continue" })}
           </button>
         </div>
       </>,
