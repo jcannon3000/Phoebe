@@ -392,8 +392,12 @@ export default function PrayerFeedDetailPage() {
 
         {/* Pray-with-this-feed box — carries the "Pray the full list"
             CTA, which walks every intercession in the feed as one
-            slideshow. */}
-        {intercessions.length > 0 && (
+            slideshow. Skipped entirely for a practice-unlocking feed
+            (VTS today — see FEED_PRACTICE above): those feeds exist for
+            the daily-reflection practice they unlock, not for a
+            community intercession list — owner: "VTS should not have a
+            prayer list feed, they are only for practices." */}
+        {!practice && intercessions.length > 0 && (
           <div
             className="mb-6 rounded-2xl overflow-hidden flex"
             style={{
@@ -428,8 +432,9 @@ export default function PrayerFeedDetailPage() {
           </div>
         )}
 
-        {/* Upcoming events the manager attached to this feed. */}
-        {events.length > 0 && (
+        {/* Upcoming events the manager attached to this feed — same
+            practice-feed skip as the intercessions box above. */}
+        {!practice && events.length > 0 && (
           <div className="mb-6">
             <p
               className="text-[10px] font-semibold uppercase tracking-widest mb-2"
@@ -461,67 +466,75 @@ export default function PrayerFeedDetailPage() {
 
         {/* The feed's intercessions — one flat, ongoing list, newest
             first. Each card links to its /moments/:id detail page,
-            where the who-prayed roster lives. */}
-        <p
-          className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-          style={{ color: "rgba(200,212,192,0.45)" }}
-        >
-          {t("prayer_feed_detail.prayers")}
-        </p>
-        {intercessions.length === 0 ? (
-          <p className="text-sm italic" style={{ color: "rgba(143,175,150,0.6)" }}>
-            {isCreator
-              ? t("prayer_feed_detail.empty_creator")
-              : t("prayer_feed_detail.empty_subscriber")}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {intercessions.map((it) => {
-              const isAction = it.intercessionSource === "action";
-              return (
-                <div
-                  key={it.id}
-                  className="rounded-2xl px-4 py-3"
-                  style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.3)" }}
-                >
-                  <div className="flex items-start gap-3">
-                    <Link href={`/moments/${it.id}`} className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
-                        {it.intention || it.name}
-                      </p>
-                      {it.intercessionFullText && (
-                        <p
-                          className="text-[12px] mt-1 leading-snug"
-                          style={{
-                            color: "rgba(143,175,150,0.8)",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {it.intercessionFullText}
-                        </p>
-                      )}
-                    </Link>
-                    {/* CTA pill — opens the link without navigating to
-                        the moment page. Uses ExternalLinkPill so the
-                        first-tap glow + click persistence matches the
-                        slideshow and the intercession detail page. */}
-                    {it.learnMoreUrl && (
-                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                        <ExternalLinkPill
-                          url={it.learnMoreUrl}
-                          label={isAction ? t("prayer_feed_detail.take_action") : t("prayer_feed_detail.learn_more")}
-                          size="small"
-                        />
+            where the who-prayed roster lives. Skipped entirely for a
+            practice-unlocking feed (see the two guards above) — VTS
+            isn't an intercession feed, so it never had a real "Prayers"
+            list to show; the empty-state message here read as broken
+            rather than absent. */}
+        {!practice && (
+          <>
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+              style={{ color: "rgba(200,212,192,0.45)" }}
+            >
+              {t("prayer_feed_detail.prayers")}
+            </p>
+            {intercessions.length === 0 ? (
+              <p className="text-sm italic" style={{ color: "rgba(143,175,150,0.6)" }}>
+                {isCreator
+                  ? t("prayer_feed_detail.empty_creator")
+                  : t("prayer_feed_detail.empty_subscriber")}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {intercessions.map((it) => {
+                  const isAction = it.intercessionSource === "action";
+                  return (
+                    <div
+                      key={it.id}
+                      className="rounded-2xl px-4 py-3"
+                      style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.3)" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Link href={`/moments/${it.id}`} className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
+                            {it.intention || it.name}
+                          </p>
+                          {it.intercessionFullText && (
+                            <p
+                              className="text-[12px] mt-1 leading-snug"
+                              style={{
+                                color: "rgba(143,175,150,0.8)",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {it.intercessionFullText}
+                            </p>
+                          )}
+                        </Link>
+                        {/* CTA pill — opens the link without navigating to
+                            the moment page. Uses ExternalLinkPill so the
+                            first-tap glow + click persistence matches the
+                            slideshow and the intercession detail page. */}
+                        {it.learnMoreUrl && (
+                          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                            <ExternalLinkPill
+                              url={it.learnMoreUrl}
+                              label={isAction ? t("prayer_feed_detail.take_action") : t("prayer_feed_detail.learn_more")}
+                              size="small"
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
