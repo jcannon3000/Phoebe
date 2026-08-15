@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable, contentReportsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -9,6 +9,7 @@ import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLi
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
 import { rateLimit } from "../lib/rate-limit";
+import { scanForCrisisLanguage, stripLinks } from "../lib/contentSafety";
 
 // Per-user rate-limit key — throttles by account, not IP, so users
 // behind a shared NAT aren't penalized for each other. Returns null
@@ -887,6 +888,18 @@ router.post("/prayer-requests", rateLimit({
     return;
   }
 
+  // Content safety, server-side (defense in depth — the compose UI already
+  // strips links and shows a standing crisis-resources line, but a
+  // hand-crafted POST could skip both). Links come out of the stored text
+  // entirely — a public, unmoderated garden isn't a place for outbound
+  // URLs. A crisis-language hit does NOT block the post (someone in
+  // crisis should be met with resources, not told their words aren't
+  // allowed) — it auto-flags the row into the same moderation queue a
+  // user report lands in, and the response tells the client to show
+  // crisis resources immediately rather than waiting for anyone to notice.
+  const { text: safeBody, hadLinks } = stripLinks(parsed.data.body);
+  const crisisFlagged = scanForCrisisLanguage(safeBody);
+
   const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
 
   // Life events live until just after the event itself, so the "how did it go?"
@@ -938,7 +951,7 @@ router.post("/prayer-requests", rateLimit({
   const [created] = await db.insert(prayerRequestsTable)
     .values({
       ownerId: sessionUserId,
-      body: parsed.data.body,
+      body: safeBody,
       isAnonymous: parsed.data.isAnonymous,
       createdByName: owner?.name ?? null,
       kind: parsed.data.kind,
@@ -1050,7 +1063,20 @@ router.post("/prayer-requests", rateLimit({
     }
   })();
 
-  res.status(201).json(created);
+  // Auto-flag into the same moderation queue a user report lands in —
+  // best-effort, fired async so it doesn't hold up the response. Uses the
+  // author's own id as reporterUserId (the schema requires a real user);
+  // the reason string is how an admin tells this apart from a real report.
+  if (crisisFlagged) {
+    db.insert(contentReportsTable).values({
+      reporterUserId: sessionUserId,
+      kind: "prayer_request",
+      targetId: created.id,
+      reason: "AUTO: crisis-language pattern matched on creation",
+    }).catch((err) => logger.warn({ err, requestId: created.id }, "[prayer-requests] auto-flag insert failed"));
+  }
+
+  res.status(201).json({ ...created, crisisFlagged, linksRemoved: hadLinks });
 });
 
 // ── Tag CRUD ──────────────────────────────────────────────────────
@@ -1421,11 +1447,24 @@ router.patch("/prayer-requests/:id", async (req, res): Promise<void> => {
   if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
   if (request.closedAt) { res.status(400).json({ error: "Closed requests can't be edited" }); return; }
 
+  // Same content-safety pass as creation — an edit is just as capable of
+  // introducing a link or crisis language as the original post.
+  const { text: safeBody, hadLinks } = stripLinks(parsed.data.body.trim());
+  const crisisFlagged = scanForCrisisLanguage(safeBody);
+  if (crisisFlagged) {
+    db.insert(contentReportsTable).values({
+      reporterUserId: sessionUserId,
+      kind: "prayer_request",
+      targetId: id,
+      reason: "AUTO: crisis-language pattern matched on edit",
+    }).catch((err) => logger.warn({ err, requestId: id }, "[prayer-requests] auto-flag insert failed (edit)"));
+  }
+
   const [updated] = await db.update(prayerRequestsTable)
-    .set({ body: parsed.data.body.trim() })
+    .set({ body: safeBody })
     .where(eq(prayerRequestsTable.id, id))
     .returning();
-  res.json(updated);
+  res.json({ ...updated, crisisFlagged, linksRemoved: hadLinks });
 });
 
 // PATCH /api/prayer-requests/:id/answer — mark as answered (owner only)

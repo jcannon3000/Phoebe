@@ -141,6 +141,10 @@ export default function PrayerRequestNew() {
   // `closing` holds the destination to navigate to once the slide-down finishes.
   const [closing, setClosing] = useState<string | null>(null);
   const close = (dest: string) => setClosing(dest);
+  // Set instead of navigating away immediately when the server flags the
+  // just-shared request (crisis language and/or a stripped link) — see the
+  // overlay below.
+  const [postCreateNotice, setPostCreateNotice] = useState<{ crisisFlagged: boolean; linksRemoved: boolean } | null>(null);
   // This flow is community-only now (the "ask one person" path lives on the home
   // — tap a face). So no tagged users / directOnly here.
   const taggedUserIds: number[] = [];
@@ -179,10 +183,14 @@ export default function PrayerRequestNew() {
         taggedUserIds,
         directOnly: taggedUserIds.length > 0,
       }),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       triggerSubmitFeedback();
       qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      close("/prayer-list");
+      if (res?.crisisFlagged || res?.linksRemoved) {
+        setPostCreateNotice({ crisisFlagged: !!res?.crisisFlagged, linksRemoved: !!res?.linksRemoved });
+      } else {
+        close("/prayer-list");
+      }
     },
     onError: (err: any) => {
       setError(err?.message || t("prayer_request.couldnt_share"));
@@ -262,6 +270,7 @@ export default function PrayerRequestNew() {
   }
 
   return (
+    <>
     <motion.div
       // Rises from the bottom on open; slides back DOWN on close/finish (like a
       // podcast player closing — but it doesn't stay docked). When the slide-down
@@ -366,6 +375,18 @@ export default function PrayerRequestNew() {
             style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
+          {/* Standing crisis-resources line — always here, not conditional
+              on any scan catching anything. This is the layer that still
+              works when the automated crisis-language check misses
+              something (see contentSafety.ts on the server). Shown for the
+              public/garden path only; the private list isn't read by
+              anyone else. */}
+          {dest === "share" && (
+            <p className="text-[12px] text-center" style={{ color: SAGE_DIM, fontFamily: SPACE, marginTop: -6 }}>
+              {t("prayer_request.crisis_line", { defaultValue: "In crisis? Call or text 988, any time." })}
+            </p>
+          )}
+
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
               Life events derive their lifetime from the event date instead.
               A private list item isn't shared, so it has no carry window. */}
@@ -412,6 +433,57 @@ export default function PrayerRequestNew() {
         </div>
       </div>
     </motion.div>
+
+    {/* Shown instead of navigating away immediately when the server flagged
+        the just-created/edited request — crisis language (resources, not a
+        block: the post already went through) and/or a stripped link. Owner
+        direction: an automated scan can't catch everything, so this is a
+        second layer, not the only one — the standing 988 line near the
+        textarea above is the layer that doesn't depend on the scan firing
+        at all. "Continue" finishes the close/navigate that onSuccess
+        deferred. */}
+    {postCreateNotice && (
+      <div
+        className="fixed inset-0 z-[70] flex items-end justify-center"
+        style={{ background: "rgba(6,18,11,0.72)", backdropFilter: "blur(3px)" }}
+      >
+        <div
+          className="w-full"
+          style={{ maxWidth: 460, margin: "0 10px", background: "rgba(9,26,16,0.85)", backdropFilter: "blur(14.4px)", WebkitBackdropFilter: "blur(14.4px)", border: `1px solid ${GLASS_BORDER}`, borderRadius: "20px 20px 0 0", padding: "24px 22px calc(env(safe-area-inset-bottom, 0px) + 20px)" }}
+        >
+          {postCreateNotice.crisisFlagged && (
+            <div className="mb-5">
+              <p className="text-[17px] font-semibold mb-2" style={{ color: CREAM, fontFamily: SPACE }}>
+                {t("prayer_request.crisis_notice_title", { defaultValue: "Your prayer request was shared." })}
+              </p>
+              <p className="text-[14px] leading-relaxed mb-3" style={{ color: SAGE, fontFamily: SPACE }}>
+                {t("prayer_request.crisis_notice_body", { defaultValue: "What you wrote sounds like it might be a hard moment. If you're in crisis, please reach out — you don't have to carry it alone." })}
+              </p>
+              <div className="rounded-2xl px-4 py-3" style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(143,175,150,0.3)" }}>
+                <p className="text-[14px] font-semibold" style={{ color: CREAM, fontFamily: SPACE }}>988 Suicide & Crisis Lifeline</p>
+                <p className="text-[13px]" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
+                  {t("prayer_request.crisis_notice_howto", { defaultValue: "Call or text 988, anytime — free and confidential." })}
+                </p>
+              </div>
+            </div>
+          )}
+          {postCreateNotice.linksRemoved && (
+            <p className="text-[13.5px] mb-5" style={{ color: SAGE_DIM, fontFamily: SPACE, fontStyle: "italic" }}>
+              {t("prayer_request.link_removed_notice", { defaultValue: "One thing — links aren't shareable in prayer requests, so we removed it before posting." })}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => { setPostCreateNotice(null); close("/prayer-list"); }}
+            className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.9)", color: CREAM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: SPACE }}
+          >
+            {t("common.continue", { defaultValue: "Continue" })}
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

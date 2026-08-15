@@ -2,23 +2,21 @@ import { useAuth } from "./useAuth";
 
 // Whether the prayer-request feature is available to this account.
 //
-// Product decision (2026-07-23): prayer requests / community intercessions are
-// turned OFF for EVERYONE — no exceptions (previously scoped to pilot groups +
-// super admins). Nobody sees a prayer-request surface: no Prayer list, no
-// /prayer-mode, no request creation, no community intercessions in the office.
-// In its place the office offers a contemplative pause (see the office deck),
-// and prayer-* routes redirect home (see PrayerGate in App.tsx).
+// RE-ENABLED (2026-08-15), scoped — not a blanket public re-enable. Mirrors
+// PrayerGate's own route-level condition in App.tsx (pilot group OR super
+// admin) so nav visibility and actual route access agree again; before
+// 2026-07-23's "off for everyone" change, this was the feature's normal
+// gate. Widen this (e.g. to every real account) only as a deliberate,
+// separate decision — going straight to fully public skips the
+// moderation-queue/reporting groundwork this re-enable shipped alongside
+// (see lib/contentSafety.ts server-side, and the ReportsAdminPage queue).
 //
-// NOTE: this is a product/UX gate, not a security boundary — the server routes
-// and data model are untouched; we only stop surfacing the feature. Flip this
-// back to a per-user condition to re-enable. A full code + data removal is a
-// later, separate step.
-//
-// `useAuth` is called to keep the hook's shape stable (and so re-enabling is a
-// one-line change), even though the result is currently unconditional.
+// This is a product/UX gate, not a security boundary — PrayerGate in
+// App.tsx is the actual server-adjacent enforcement (a hand-crafted
+// request to a /prayer-* route still hits it).
 export function usePrayerRequestsEnabled(): boolean {
-  useAuth();
-  return false;
+  const { user } = useAuth();
+  return !!user?.inPilotGroup || !!user?.isSuperAdmin;
 }
 
 // Whether the PRIVATE prayer list (prayer_intentions) is surfaced anywhere —
