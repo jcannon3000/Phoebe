@@ -23,12 +23,14 @@ export function usePrayerRequestsEnabled(): boolean {
 // the home screen section, the menu entry, and the tail slides woven into
 // the BCP office / Simple Guided Prayer / Psalms.
 //
-// Product decision (2026-07-29): turned OFF for everyone, same day it was
-// restored — the owner wants both the old community prayer-request feature
-// AND this private list off. The underlying data/route/API (/intentions,
-// /api/prayer-intentions) stays intact; only the surfaces are hidden. Flip
-// this back to re-enable.
+// RE-ENABLED (2026-08-15), same scoped pilot-group/super-admin condition as
+// usePrayerRequestsEnabled above, for consistency — even though this list
+// is private (owner-only, never shared) and so doesn't carry the same
+// moderation/liability profile; widening it independently of the shared
+// feature is a reasonable later call if wanted. The route itself
+// (/intentions) is gated more broadly, by AccountRequiredGate (any real
+// account) in App.tsx — this hook only controls whether it's surfaced.
 export function usePrayerListEnabled(): boolean {
-  useAuth();
-  return false;
+  const { user } = useAuth();
+  return !!user?.inPilotGroup || !!user?.isSuperAdmin;
 }
