@@ -10,6 +10,7 @@ import {
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
+import { getChapelSlotToday } from "@/lib/chapelLog";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
@@ -123,6 +124,10 @@ export type RhythmState = {
   complineActive: boolean;
   cobreatheActive: boolean;
   prayerListActive: boolean;
+  /** VTS-feed-gated practices — only true for a viewer subscribed to the VTS
+   *  feed, and only on the weekdays VTS actually publishes. */
+  communityMealActive: boolean;
+  chapelActive: boolean;
   examenDone: boolean;
   listeningDone: boolean;
   readingDone: boolean;
@@ -131,6 +136,8 @@ export type RhythmState = {
   complineDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
+  communityMealDone: boolean;
+  chapelDone: boolean;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
   customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; reading?: ReadingConfig; done: boolean; skipped: boolean }>;
@@ -311,6 +318,9 @@ export function useRhythmState(): RhythmState {
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
     prayerList: hasPracticeDoneToday("prayer-list"),
+    communityMeal: hasPracticeDoneToday("community-meal"),
+    chapel: hasPracticeDoneToday("chapel"),
+    chapelSlot: getChapelSlotToday(),
   }));
   useEffect(() => {
     const recheck = () => setPracticeLocal({
@@ -320,6 +330,9 @@ export function useRhythmState(): RhythmState {
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
       prayerList: hasPracticeDoneToday("prayer-list"),
+      communityMeal: hasPracticeDoneToday("community-meal"),
+      chapel: hasPracticeDoneToday("chapel"),
+      chapelSlot: getChapelSlotToday(),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -533,7 +546,14 @@ export function useRhythmState(): RhythmState {
   // invisible for every current user, treat it as active unless explicitly
   // hidden — the customizer can still turn it off from here.
   const prayerListActive = !(new Set(hl?.hidden ?? []).has("prayer-list"));
-  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || complineActive || prayerListActive;
+  // Community Meal + Chapel — two VTS-feed-gated practices (owner: "only
+  // show up if you are subscribed to the VTS Feed"), not customizer-driven
+  // like the others above. Weekday-only, same rule as the Dean's Commentary
+  // reflection itself (isVtsPublishingDay) — VTS doesn't publish on
+  // weekends, so there's no meal/chapel card to check off then either.
+  const communityMealActive = entitlements.vts && isVtsPublishingDay();
+  const chapelActive = entitlements.vts && isVtsPublishingDay();
+  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || complineActive || prayerListActive || communityMealActive || chapelActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -678,7 +698,11 @@ export function useRhythmState(): RhythmState {
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
     || (ml === "custom" && prayerRead.customMorning)
     || (ml === "examen" && examenKept)
-    || (ml === "reflect-sit" && morningSatKept);
+    || (ml === "reflect-sit" && morningSatKept)
+    // Chapel (VTS-gated): logging Morning Prayer, or Holy Eucharist on a
+    // morning-Eucharist day, satisfies Morning regardless of the side's
+    // chosen level — chapel attendance IS the morning practice that day.
+    || practiceLocal.chapelSlot === "morning";
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
     || (el === "fdd" && prayerRead.fddEvening) || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
@@ -689,7 +713,10 @@ export function useRhythmState(): RhythmState {
     // (see officeLocalDone's sides list): as a standalone add-on card,
     // praying Compline is its own act and must not tick Evening Prayer.
     || (el === "compline" && (officeLocal.compline || !!todayOffice?.compline))
-    || (el === "reflect-sit" && eveningSatKept);
+    || (el === "reflect-sit" && eveningSatKept)
+    // Chapel (VTS-gated): Evening Prayer, or Holy Eucharist on Thursday,
+    // satisfies Evening regardless of the side's chosen level.
+    || practiceLocal.chapelSlot === "evening";
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
   // (a Cobreathe breath logs a contemplation sit, so it's already counted
@@ -733,6 +760,8 @@ export function useRhythmState(): RhythmState {
   // case where the two should credit each other.
   const complineDone = complineActive && (officeLocal.compline || !!todayOffice?.compline);
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
+  const communityMealDone = communityMealActive && (practiceLocal.communityMeal || serverDone("community-meal"));
+  const chapelDone = chapelActive && (practiceLocal.chapel || serverDone("chapel"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
@@ -910,6 +939,8 @@ export function useRhythmState(): RhythmState {
     ...(complineActive ? [complineDone] : []),
     ...(prayerListActive ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
+    ...(communityMealActive ? [communityMealDone] : []),
+    ...(chapelActive ? [chapelDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
@@ -964,6 +995,8 @@ export function useRhythmState(): RhythmState {
     complineActive,
     cobreatheActive,
     prayerListActive,
+    communityMealActive,
+    chapelActive,
     examenDone,
     listeningDone,
     readingDone,
@@ -972,6 +1005,8 @@ export function useRhythmState(): RhythmState {
     complineDone,
     cobreatheDone,
     prayerListDone,
+    communityMealDone,
+    chapelDone,
     customAnchors,
     totalAnchors,
     doneCount,

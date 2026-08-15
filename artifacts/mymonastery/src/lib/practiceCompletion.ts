@@ -15,7 +15,7 @@ import { markRecentCompletion } from "@/lib/recentCompletion";
 // "Today" is the user's LOCAL day (en-CA → ISO 2024-05-26), matching every
 // other rhythm surface.
 
-export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list";
+export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "community-meal" | "chapel";
 
 function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");

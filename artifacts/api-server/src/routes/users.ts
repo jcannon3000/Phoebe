@@ -661,7 +661,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     // never updated, so the whole endpoint has been throwing a 500 on
     // every call since. In-app contemplation sits (prayer_sessions) are
     // now the sole source of contemplative minutes.
-    const [officeRows, contRows, reflRows, cacRows, pcRows, breathRows] = await Promise.all([
+    const [officeRows, contRows, reflRows, cacRows, pcRows, breathRows, vtsRows] = await Promise.all([
       // Office, by side — same surfaces + completed gate as office-history-week.
       db.execute<{ day: string; side: string }>(sql`
         SELECT DISTINCT
@@ -704,13 +704,21 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list', 'community-meal', 'chapel') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
       db.execute<{ day: string }>(sql`
         SELECT DISTINCT day FROM breath_sessions
         WHERE user_id = ${sessionUserId} AND day >= ${oldestYmd}
+      `),
+      // VTS reflection reads — kept separate from the collapsed `reflection`
+      // set above (which is deliberately fdd/ssje/cac only) so the VTS
+      // weekly-progress card can report specifically on the Dean's
+      // Commentary, not "any reflection."
+      db.execute<{ ymd: string }>(sql`
+        SELECT DISTINCT ymd FROM reflection_reads
+        WHERE user_id = ${sessionUserId} AND source = 'vts' AND ymd >= ${oldestYmd}
       `),
     ]);
 
@@ -751,6 +759,8 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const podcasts = new Set<string>();
     const walk = new Set<string>();
     const prayerList = new Set<string>();
+    const communityMeal = new Set<string>();
+    const chapel = new Set<string>();
     for (const r of pcRows.rows) {
       if (r.section === "examen") examen.add(r.local_date);
       if (r.section === "listening") listening.add(r.local_date);
@@ -758,9 +768,13 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "podcasts") podcasts.add(r.local_date);
       if (r.section === "walk") walk.add(r.local_date);
       if (r.section === "prayer-list") prayerList.add(r.local_date);
+      if (r.section === "community-meal") communityMeal.add(r.local_date);
+      if (r.section === "chapel") chapel.add(r.local_date);
     }
     const cobreathe = new Set<string>();
     for (const r of breathRows.rows) cobreathe.add(r.day);
+    const vts = new Set<string>();
+    for (const r of vtsRows.rows) vts.add(r.ymd);
     const days = ymds.map((ymd) => ({
       ymd,
       morning: morning.has(ymd),
@@ -775,6 +789,9 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       walk: walk.has(ymd),
       cobreathe: cobreathe.has(ymd),
       prayerList: prayerList.has(ymd),
+      communityMeal: communityMeal.has(ymd),
+      chapel: chapel.has(ymd),
+      vts: vts.has(ymd),
     }));
     res.json({ days });
   } catch (err) {

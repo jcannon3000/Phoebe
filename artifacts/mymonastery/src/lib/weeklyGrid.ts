@@ -16,6 +16,10 @@ export type PracticeWeekDay = {
   ymd: string; morning: boolean; evening: boolean; compline: boolean;
   contemplation: boolean; reflection: boolean; examen: boolean; cobreathe: boolean;
   listening: boolean; reading: boolean; podcasts: boolean; walk: boolean; prayerList: boolean;
+  // VTS-feed-gated practices — not folded into `reflection` (which is
+  // deliberately fdd/ssje/cac only) so the VTS weekly-progress card can
+  // report on the Dean's Commentary specifically.
+  communityMeal: boolean; chapel: boolean; vts: boolean;
 };
 
 // Which office levels actually carry a real lectionary lesson — Praying the
@@ -40,6 +44,7 @@ function computeWindowDays(week: { days: PracticeWeekDay[] } | undefined): Pract
     ymd: "", morning: false, evening: false, compline: false, contemplation: false,
     reflection: false, examen: false, cobreathe: false,
     listening: false, reading: false, podcasts: false, walk: false, prayerList: false,
+    communityMeal: false, chapel: false, vts: false,
   };
   return Array.from({ length: 7 }, (_, i) => {
     const daysAgo = 6 - i;
