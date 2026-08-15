@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useGuestMode } from "@/hooks/useGuestMode";
-import { usePrayerRequestsEnabled, usePrayerListEnabled } from "@/hooks/usePrayerRequests";
+import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
@@ -572,7 +572,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // A real signed-up account (not a guest / anonymous device session) — gates
   // the private prayer-list slide below. Mirrors menu.tsx's signedUp check.
   const signedUp = !!viewerUser && !viewerUser.isAnonymous;
-  const prayerListEnabled = usePrayerListEnabled();
   const { isPilot } = usePilotMode();
   // PUBLIC no-login version — HARD REQUIREMENT: the office must NEVER enter
   // the community intercession slideshow in guest mode. Guests get the same
@@ -695,7 +694,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const { data: intentionsData } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
-    enabled: signedUp && prayerListEnabled,
+    enabled: signedUp,
     staleTime: 60_000,
   });
   const activeIntentions = useMemo(
@@ -740,7 +739,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   useEffect(() => {
     setSlides((prev) => {
       const ppIdx = prev.findIndex((s) => s.type === "prayer_prompts");
-      if (!signedUp || !prayerListEnabled) {
+      if (!signedUp) {
         if (ppIdx < 0) return prev;
         setSlideIdx((cur) => (cur > ppIdx ? cur - 1 : cur));
         return prev.filter((s) => s.type !== "prayer_prompts");
@@ -753,7 +752,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       setSlideIdx((cur) => (cur >= anchorIdx ? cur + 1 : cur));
       return [...prev.slice(0, anchorIdx), buildPrayerPromptsSlide(), ...prev.slice(anchorIdx)];
     });
-  }, [signedUp, prayerListEnabled]);
+  }, [signedUp]);
   // The salutation ("The Lord be with you") is an MP/EP exchange — Compline
   // has no such dialogue, so it gets the rubric labels but no extra slide.
   const canSalute = resolvedMode === "morning" || resolvedMode === "evening";

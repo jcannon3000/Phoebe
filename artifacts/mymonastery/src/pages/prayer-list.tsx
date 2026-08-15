@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +13,10 @@ import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
+
+function todayLocalISO(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -1065,14 +1069,14 @@ export default function PrayerListPage() {
   const [showPast, setShowPast] = useState(false);
 
   // The viewer's OWN private list (prayer_intentions) — owner: "the prayer
-  // list page should have both community and individual prayers." "My
-  // list" only ever rendered mySharedRequests (requests explicitly shared
-  // to community); a private-only intention never showed up here even
-  // though the home routine card (DailyProgressBody) counts it. Pulled in
-  // the same way /intentions does so both surfaces agree.
-  const { data: myIntentionsData } = useQuery<{ intentions: Array<{ id: number; kind: string; personName: string; body: string; answered: boolean }> }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions") as Promise<{ intentions: Array<{ id: number; kind: string; personName: string; body: string; answered: boolean }> }>,
+  // list page should have both community and individual prayers, on the
+  // same page, no toggle, personal second." Fetched with ?ymd= (like
+  // /intentions and useRhythmState) so each card can show the same ✓/🙏🏽
+  // pill the community cards use instead of a differently-styled button.
+  const todayYmd = useMemo(todayLocalISO, []);
+  const { data: myIntentionsData } = useQuery<{ intentions: Array<{ id: number; kind: string; personName: string; body: string; answered: boolean; prayedToday: boolean }> }>({
+    queryKey: ["/api/prayer-intentions", todayYmd],
+    queryFn: () => apiRequest("GET", `/api/prayer-intentions?ymd=${todayYmd}`) as Promise<{ intentions: Array<{ id: number; kind: string; personName: string; body: string; answered: boolean; prayedToday: boolean }> }>,
     enabled: !!user,
   });
   const myIntentions = (myIntentionsData?.intentions ?? []).filter((i) => !i.answered);
@@ -1086,12 +1090,7 @@ export default function PrayerListPage() {
   // When null, all four sections are visible, each clamped to ~3.5 cards
   // with a scroll + fade so the list reads as "peek, don't bury."
   const [focused, setFocused] = useState<SectionKey | null>(null);
-  // Two views, toggled at the top: "mine" = your PRIVATE prayer list
-  // (prayer_intentions, only you see it); "community" = the shared list (others'
-  // prayers + your shared requests + intercessions). Default to your own list.
-  const [tab, setTab] = useState<"mine" | "community">("mine");
-  // Pilot is personal-only — hide the Community tab; `tab` then stays "mine"
-  // (the toggle is the only way to reach "community").
+  // Pilot is personal-only — no Community section at all.
   const { isPilot } = usePilotMode();
 
   // Owner: "have the prayer list page have the community list first, unless
@@ -1099,21 +1098,11 @@ export default function PrayerListPage() {
   // raw queries (not the derived arrays further down, which are declared
   // after this component's early-loading return and so can't feed a hook)
   // so it's available before any hooks below it run.
-  const hasCommunityContent =
+  const hasCommunityContent = !isPilot && (
     prayerRequests.some((r) => !r.isAnswered && !r.needsRenewal && !r.isOwnRequest) ||
     feedsToday.length > 0 ||
-    (momentsData?.moments ?? []).some((m) => m.templateType === "intercession" && m.prayerFeedId == null);
-  // Land on Community first when there's anything there — but only once,
-  // automatically, and never fight a tap the viewer already made (or pilot,
-  // which has no Community tab to land on).
-  const tabAutoSetRef = useRef(false);
-  useEffect(() => {
-    if (isPilot || tabAutoSetRef.current) return;
-    if (hasCommunityContent) {
-      tabAutoSetRef.current = true;
-      setTab("community");
-    }
-  }, [isPilot, hasCommunityContent]);
+    (momentsData?.moments ?? []).some((m) => m.templateType === "intercession" && m.prayerFeedId == null)
+  );
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -1192,16 +1181,6 @@ export default function PrayerListPage() {
   const sortedActiveRequests = [...activeRequests].sort(
     (a, b) => Number(b.isOwnRequest) - Number(a.isOwnRequest),
   );
-  // The viewer's OWN active requests (the public/shared prayers they created) —
-  // surfaced on "My list" too so every prayer they've added shows there,
-  // whether it's private (an intention) or shared with the community.
-  const mySharedRequests = sortedActiveRequests.filter((r) => r.isOwnRequest);
-
-  // Defensive: never actually render the Community view when there's
-  // nothing there or the toggle to reach it is hidden (pilot) — guards
-  // against a stale "community" selection from before content disappeared.
-  const effectiveTab: "mine" | "community" = (!isPilot && hasCommunityContent) ? tab : "mine";
-
   return (
     <Layout bgPhoto={bgPhoto}>
       <div className="max-w-2xl mx-auto w-full pb-24">
@@ -1227,147 +1206,18 @@ export default function PrayerListPage() {
             {t("prayer_list.title")} 🙏🏽
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            {effectiveTab === "mine"
-              ? t("prayer_list.subtitle_mine", { defaultValue: "The people and things you're holding in prayer — private to you." })
-              : t("prayer_list.subtitle")}
+            {t("prayer_list.subtitle_combined", { defaultValue: "Community prayers, and the people and things you're holding privately." })}
           </p>
         </div>
 
-        {/* Toggle — your private list vs the shared community list. Hidden in
-            pilot (personal-only, no Community tab at all) AND whenever there's
-            no community content to show — a single remaining option isn't a
-            toggle. Community leads when both are shown (owner). */}
-        {!isPilot && hasCommunityContent && (
-        <div className="flex gap-2 mb-5">
-          {([
-            ["community", t("prayer_list.tab_community", { defaultValue: "Community" })],
-            ["mine", t("prayer_list.tab_mine", { defaultValue: "My list" })],
-          ] as const).map(([val, label]) => {
-            const on = tab === val;
-            const onBg = val === "mine" ? "rgba(96,140,180,0.32)" : "rgba(46,107,64,0.42)";
-            const onBorder = val === "mine" ? "rgba(96,140,180,0.5)" : "rgba(168,197,160,0.5)";
-            return (
-              <button
-                key={val}
-                type="button"
-                onClick={() => { setTab(val); setFocused(null); }}
-                className="flex-1 rounded-full text-[14px] font-semibold py-2.5 transition-opacity active:scale-[0.98]"
-                style={{ fontFamily: "'Space Grotesk', sans-serif", color: on ? "#F0EDE6" : "#8FAF96", background: on ? onBg : "rgba(9,26,16,0.297)", border: `1px solid ${on ? onBorder : "rgba(200,212,192,0.16)"}` }}
-              >
-                {label}
-              </button>
-            );
-          })}
+        {/* ── Community ─────────────────────────────────────────────────
+            No toggle (owner): community leads when there's anything there,
+            hidden entirely when there isn't — never an empty tab to land on. */}
+        {hasCommunityContent && (<>
+        <div className="flex items-center gap-3 mb-2">
+          <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("prayer_list.section_community", { defaultValue: "Community" })}</h2>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
         </div>
-        )}
-
-        {/* ── My list (private intentions) ─────────────────────────────── */}
-        {effectiveTab === "mine" && (
-          <>
-            <Link href="/pray-request/new?dest=list" className="block mb-3">
-              <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
-                ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
-              </div>
-            </Link>
-            {(myIntentions.length > 0 || mySharedRequests.length > 0) ? (
-              <div className="flex flex-col gap-2">
-                {/* Private intentions (prayer_intentions) — owner: "the prayer
-                    list page should have both community and individual
-                    prayers." These never rendered here before even though the
-                    home routine card already counts them; tap opens the full
-                    /intentions page (edit, pray-through), the pill marks it
-                    prayed today without leaving the page. */}
-                {myIntentions.map((it) => (
-                  <div key={`intention-${it.id}`} className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                    <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
-                    <Link href="/intentions" className="flex-1 min-w-0 px-4 pt-3 pb-3 flex items-center gap-3">
-                      <span aria-hidden className="text-base flex-shrink-0">🕊️</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.private_label", { defaultValue: "Private" })}</p>
-                        <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{it.kind === "person" ? (it.personName || it.body) : it.body}</p>
-                      </div>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => markIntentionPrayedMut.mutate(it.id)}
-                      disabled={markIntentionPrayedMut.isPending}
-                      className="flex-shrink-0 mr-3 rounded-full transition-opacity hover:opacity-90"
-                      style={{ padding: "8px 16px", background: "rgba(96,140,180,0.22)", border: "1px solid rgba(96,140,180,0.45)", color: "#F0EDE6", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", cursor: markIntentionPrayedMut.isPending ? "wait" : "pointer" }}
-                    >
-                      {t("intentions.pray", { defaultValue: "Pray" })} →
-                    </button>
-                  </div>
-                ))}
-                {/* Your OWN shared/public prayers also live here, tagged
-                    "Shared" — tap through to the community request detail.
-                    Hidden in pilot: they link to a blocked /prayer-requests/:id
-                    and carry a community label (only a converted account has any). */}
-                {!isPilot && mySharedRequests.map((req) => (
-                  <Link key={`req-${req.id}`} href={`/prayer-requests/${req.id}`} className="block">
-                    <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                      <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
-                      <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
-                        <span aria-hidden className="text-base flex-shrink-0">🙏</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.shared_label", { defaultValue: "Shared with community" })}</p>
-                          <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{req.body}</p>
-                        </div>
-                        <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 20, flexShrink: 0 }}>›</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("intentions.empty", { defaultValue: "Add the people and things you want to keep in prayer. They stay private until you choose to share." })}
-              </p>
-            )}
-
-            {/* Past prayers — released / ended / answered ones, collapsed behind a
-                button; tap Renew on the right to bring one back. Shown regardless
-                of whether the active list is empty. */}
-            {pastMine.length > 0 && (
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowPast((s) => !s)}
-                  className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                  style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
-                >
-                  🕯️ {t("intentions.past_prayers", { defaultValue: "Past prayers" })} ({pastMine.length}) {showPast ? "▴" : "▾"}
-                </button>
-                {showPast && (
-                  <div className="flex flex-col gap-2 mt-2">
-                    {pastMine.map((p) => (
-                      <div key={`past-${p.id}`} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.22)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.35)" }}>
-                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(143,175,150,0.4)" }} />
-                        <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.45)" }}>{t("intentions.past_label", { defaultValue: "Past prayer" })}</p>
-                            <p className="text-sm leading-snug line-clamp-2" style={{ color: "rgba(240,237,230,0.8)", wordBreak: "break-word" }}>{p.body}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => renewReleasedMutation.mutate(p.id)}
-                            disabled={renewReleasedMutation.isPending}
-                            className="flex-shrink-0 rounded-full transition-opacity hover:opacity-90"
-                            style={{ padding: "8px 16px", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#F0EDE6", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", cursor: renewReleasedMutation.isPending ? "wait" : "pointer" }}
-                          >
-                            {t("intentions.renew", { defaultValue: "Renew" })}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── Community (the shared list) ──────────────────────────────── */}
-        {effectiveTab === "community" && (<>
         {/* "Pray through all" — explicit slideshow entry for users
             who want the contemplative walk through the whole list.
             The dashboard no longer surfaces this as a daily ritual
@@ -1516,6 +1366,101 @@ export default function PrayerListPage() {
           );
         })()}
         </>)}
+
+        {/* ── My List (private intentions) ──────────────────────────────
+            Second (owner) — a separate section, not a tab. Styled like the
+            community cards above (✓ once prayed today / 🙏🏽 to pray) instead
+            of the old differently-styled "Pray →" text pill. */}
+        <section className={hasCommunityContent ? "mt-6" : ""}>
+          <div className="flex items-center gap-3 mb-2 mt-6">
+            <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("prayer_list.section_my_list", { defaultValue: "My List" })}</h2>
+            <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+          </div>
+          <Link href="/pray-request/new?dest=list" className="block mb-3">
+            <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
+              ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
+            </div>
+          </Link>
+          {myIntentions.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {myIntentions.map((it) => {
+                const prayed = !!it.prayedToday;
+                return (
+                  <Link key={`intention-${it.id}`} href="/intentions" className="block">
+                    <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                      <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+                      <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                        <span aria-hidden className="text-base flex-shrink-0">🕊️</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.private_label", { defaultValue: "Private" })}</p>
+                          <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{it.kind === "person" ? (it.personName || it.body) : it.body}</p>
+                        </div>
+                        {prayed ? (
+                          <span aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })} className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); markIntentionPrayedMut.mutate(it.id); }}
+                            disabled={markIntentionPrayedMut.isPending}
+                            aria-hidden
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
+                            style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1, cursor: markIntentionPrayedMut.isPending ? "wait" : "pointer" }}
+                          >
+                            🙏🏽
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("intentions.empty", { defaultValue: "Add the people and things you want to keep in prayer. They stay private until you choose to share." })}
+            </p>
+          )}
+
+          {/* Past prayers — released / ended / answered ones, collapsed behind a
+              button; tap Renew on the right to bring one back. Shown regardless
+              of whether the active list is empty. */}
+          {pastMine.length > 0 && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowPast((s) => !s)}
+                className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ padding: "10px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
+              >
+                🕯️ {t("intentions.past_prayers", { defaultValue: "Past prayers" })} ({pastMine.length}) {showPast ? "▴" : "▾"}
+              </button>
+              {showPast && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {pastMine.map((p) => (
+                    <div key={`past-${p.id}`} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(22,46,32, 0.22)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.35)" }}>
+                      <div className="w-1 flex-shrink-0" style={{ background: "rgba(143,175,150,0.4)" }} />
+                      <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.45)" }}>{t("intentions.past_label", { defaultValue: "Past prayer" })}</p>
+                          <p className="text-sm leading-snug line-clamp-2" style={{ color: "rgba(240,237,230,0.8)", wordBreak: "break-word" }}>{p.body}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => renewReleasedMutation.mutate(p.id)}
+                          disabled={renewReleasedMutation.isPending}
+                          className="flex-shrink-0 rounded-full transition-opacity hover:opacity-90"
+                          style={{ padding: "8px 16px", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#F0EDE6", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", cursor: renewReleasedMutation.isPending ? "wait" : "pointer" }}
+                        >
+                          {t("intentions.renew", { defaultValue: "Renew" })}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
       </div>
 

@@ -598,8 +598,49 @@ export function useRhythmState(): RhythmState {
     enabled: !guest,
   });
   const activeIntentions = (intentionsData?.intentions ?? []).filter((it) => !it.answered);
-  const intentionsTotalCount = activeIntentions.length;
-  const intentionsPrayedCount = activeIntentions.filter((it) => it.prayedToday).length;
+
+  // Communal prayers — owner: "make sure the practice card is accounting
+  // for the communal prayers," so the routine card's "X of X" reflects the
+  // WHOLE unified /prayer-list page (community + personal), not just the
+  // private list. Reuses the exact query keys prayer-list.tsx / dashboard.tsx
+  // already fetch elsewhere on the page, so React Query dedupes — this adds
+  // no new network round-trip beyond /api/prayer-feeds/today.
+  const { data: communityMomentsData } = useQuery<{ moments: Array<{ templateType: string | null; prayerFeedId: number | null; myPrayedToday?: boolean }> }>({
+    queryKey: ["/api/moments"],
+    queryFn: () => apiRequest("GET", "/api/moments"),
+    staleTime: 30_000,
+    enabled: !guest,
+  });
+  const { data: communityRequestsData } = useQuery<Array<{ isAnswered: boolean; needsRenewal: boolean; isOwnRequest: boolean; myAmenedToday?: boolean }>>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    staleTime: 30_000,
+    enabled: !guest,
+  });
+  const { data: communityFeedTodayData } = useQuery<{ entries: Array<{ feedSlug: string; prayedToday: boolean }> }>({
+    queryKey: ["/api/prayer-feeds/today"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/today"),
+    staleTime: 30_000,
+    enabled: !guest,
+  });
+  const othersActiveRequests = (communityRequestsData ?? []).filter(
+    (r) => !r.isAnswered && !r.needsRenewal && !r.isOwnRequest,
+  );
+  // VTS is practices-only — excluded from the prayer list everywhere else
+  // (prayer-list.tsx, prayer-feed-detail.tsx, home, communities-browse); the
+  // count must match or the card would show items the page never displays.
+  const communityFeedEntries = (communityFeedTodayData?.entries ?? []).filter((e) => e.feedSlug !== "vts");
+  const communityIntercessions = (communityMomentsData?.moments ?? []).filter(
+    (m) => m.templateType === "intercession" && m.prayerFeedId == null,
+  );
+  const communityTotalCount = othersActiveRequests.length + communityFeedEntries.length + communityIntercessions.length;
+  const communityPrayedCount =
+    othersActiveRequests.filter((r) => r.myAmenedToday).length +
+    communityFeedEntries.filter((e) => e.prayedToday).length +
+    communityIntercessions.filter((m) => m.myPrayedToday).length;
+
+  const intentionsTotalCount = activeIntentions.length + communityTotalCount;
+  const intentionsPrayedCount = activeIntentions.filter((it) => it.prayedToday).length + communityPrayedCount;
 
   // Local midnight of `day` (which is recomputed from the wall clock on every
   // render), NOT a value frozen at mount. If the app stays alive across midnight
