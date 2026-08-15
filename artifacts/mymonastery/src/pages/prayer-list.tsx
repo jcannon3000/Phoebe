@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1064,6 +1064,23 @@ export default function PrayerListPage() {
   const pastMine = pastMineData ?? [];
   const [showPast, setShowPast] = useState(false);
 
+  // The viewer's OWN private list (prayer_intentions) — owner: "the prayer
+  // list page should have both community and individual prayers." "My
+  // list" only ever rendered mySharedRequests (requests explicitly shared
+  // to community); a private-only intention never showed up here even
+  // though the home routine card (DailyProgressBody) counts it. Pulled in
+  // the same way /intentions does so both surfaces agree.
+  const { data: myIntentionsData } = useQuery<{ intentions: Array<{ id: number; kind: string; personName: string; body: string; answered: boolean }> }>({
+    queryKey: ["/api/prayer-intentions"],
+    queryFn: () => apiRequest("GET", "/api/prayer-intentions") as Promise<{ intentions: Array<{ id: number; kind: string; personName: string; body: string; answered: boolean }> }>,
+    enabled: !!user,
+  });
+  const myIntentions = (myIntentionsData?.intentions ?? []).filter((i) => !i.answered);
+  const markIntentionPrayedMut = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/prayer-intentions/${id}/pray`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] }),
+  });
+
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   // When non-null, the page collapses to a single category + a back button.
   // When null, all four sections are visible, each clamped to ~3.5 cards
@@ -1076,6 +1093,27 @@ export default function PrayerListPage() {
   // Pilot is personal-only — hide the Community tab; `tab` then stays "mine"
   // (the toggle is the only way to reach "community").
   const { isPilot } = usePilotMode();
+
+  // Owner: "have the prayer list page have the community list first, unless
+  // they have not community prayers then hide it." Computed straight off the
+  // raw queries (not the derived arrays further down, which are declared
+  // after this component's early-loading return and so can't feed a hook)
+  // so it's available before any hooks below it run.
+  const hasCommunityContent =
+    prayerRequests.some((r) => !r.isAnswered && !r.needsRenewal && !r.isOwnRequest) ||
+    feedsToday.length > 0 ||
+    (momentsData?.moments ?? []).some((m) => m.templateType === "intercession" && m.prayerFeedId == null);
+  // Land on Community first when there's anything there — but only once,
+  // automatically, and never fight a tap the viewer already made (or pilot,
+  // which has no Community tab to land on).
+  const tabAutoSetRef = useRef(false);
+  useEffect(() => {
+    if (isPilot || tabAutoSetRef.current) return;
+    if (hasCommunityContent) {
+      tabAutoSetRef.current = true;
+      setTab("community");
+    }
+  }, [isPilot, hasCommunityContent]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -1159,6 +1197,11 @@ export default function PrayerListPage() {
   // whether it's private (an intention) or shared with the community.
   const mySharedRequests = sortedActiveRequests.filter((r) => r.isOwnRequest);
 
+  // Defensive: never actually render the Community view when there's
+  // nothing there or the toggle to reach it is hidden (pilot) — guards
+  // against a stale "community" selection from before content disappeared.
+  const effectiveTab: "mine" | "community" = (!isPilot && hasCommunityContent) ? tab : "mine";
+
   return (
     <Layout bgPhoto={bgPhoto}>
       <div className="max-w-2xl mx-auto w-full pb-24">
@@ -1184,19 +1227,21 @@ export default function PrayerListPage() {
             {t("prayer_list.title")} 🙏🏽
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            {tab === "mine"
+            {effectiveTab === "mine"
               ? t("prayer_list.subtitle_mine", { defaultValue: "The people and things you're holding in prayer — private to you." })
               : t("prayer_list.subtitle")}
           </p>
         </div>
 
         {/* Toggle — your private list vs the shared community list. Hidden in
-            pilot (personal-only), which keeps the view on "My list". */}
-        {!isPilot && (
+            pilot (personal-only, no Community tab at all) AND whenever there's
+            no community content to show — a single remaining option isn't a
+            toggle. Community leads when both are shown (owner). */}
+        {!isPilot && hasCommunityContent && (
         <div className="flex gap-2 mb-5">
           {([
-            ["mine", t("prayer_list.tab_mine", { defaultValue: "My list" })],
             ["community", t("prayer_list.tab_community", { defaultValue: "Community" })],
+            ["mine", t("prayer_list.tab_mine", { defaultValue: "My list" })],
           ] as const).map(([val, label]) => {
             const on = tab === val;
             const onBg = val === "mine" ? "rgba(96,140,180,0.32)" : "rgba(46,107,64,0.42)";
@@ -1217,37 +1262,62 @@ export default function PrayerListPage() {
         )}
 
         {/* ── My list (private intentions) ─────────────────────────────── */}
-        {tab === "mine" && (
+        {effectiveTab === "mine" && (
           <>
             <Link href="/pray-request/new?dest=list" className="block mb-3">
               <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
                 ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
               </div>
             </Link>
-            {mySharedRequests.length > 0 ? (
-              <>
-                <div className="flex flex-col gap-2">
-                  {/* Your OWN shared/public prayers also live here, tagged
-                      "Shared" — tap through to the community request detail.
-                      Hidden in pilot: they link to a blocked /prayer-requests/:id
-                      and carry a community label (only a converted account has any). */}
-                  {!isPilot && mySharedRequests.map((req) => (
-                    <Link key={`req-${req.id}`} href={`/prayer-requests/${req.id}`} className="block">
-                      <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
-                        <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
-                          <span aria-hidden className="text-base flex-shrink-0">🙏</span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.shared_label", { defaultValue: "Shared with community" })}</p>
-                            <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{req.body}</p>
-                          </div>
-                          <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 20, flexShrink: 0 }}>›</span>
-                        </div>
+            {(myIntentions.length > 0 || mySharedRequests.length > 0) ? (
+              <div className="flex flex-col gap-2">
+                {/* Private intentions (prayer_intentions) — owner: "the prayer
+                    list page should have both community and individual
+                    prayers." These never rendered here before even though the
+                    home routine card already counts them; tap opens the full
+                    /intentions page (edit, pray-through), the pill marks it
+                    prayed today without leaving the page. */}
+                {myIntentions.map((it) => (
+                  <div key={`intention-${it.id}`} className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                    <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
+                    <Link href="/intentions" className="flex-1 min-w-0 px-4 pt-3 pb-3 flex items-center gap-3">
+                      <span aria-hidden className="text-base flex-shrink-0">🕊️</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.private_label", { defaultValue: "Private" })}</p>
+                        <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{it.kind === "person" ? (it.personName || it.body) : it.body}</p>
                       </div>
                     </Link>
-                  ))}
-                </div>
-              </>
+                    <button
+                      type="button"
+                      onClick={() => markIntentionPrayedMut.mutate(it.id)}
+                      disabled={markIntentionPrayedMut.isPending}
+                      className="flex-shrink-0 mr-3 rounded-full transition-opacity hover:opacity-90"
+                      style={{ padding: "8px 16px", background: "rgba(96,140,180,0.22)", border: "1px solid rgba(96,140,180,0.45)", color: "#F0EDE6", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", cursor: markIntentionPrayedMut.isPending ? "wait" : "pointer" }}
+                    >
+                      {t("intentions.pray", { defaultValue: "Pray" })} →
+                    </button>
+                  </div>
+                ))}
+                {/* Your OWN shared/public prayers also live here, tagged
+                    "Shared" — tap through to the community request detail.
+                    Hidden in pilot: they link to a blocked /prayer-requests/:id
+                    and carry a community label (only a converted account has any). */}
+                {!isPilot && mySharedRequests.map((req) => (
+                  <Link key={`req-${req.id}`} href={`/prayer-requests/${req.id}`} className="block">
+                    <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+                      <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.8)" }} />
+                      <div className="flex-1 px-4 pt-3 pb-3 flex items-center gap-3">
+                        <span aria-hidden className="text-base flex-shrink-0">🙏</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{t("intentions.shared_label", { defaultValue: "Shared with community" })}</p>
+                          <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6", wordBreak: "break-word" }}>{req.body}</p>
+                        </div>
+                        <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 20, flexShrink: 0 }}>›</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             ) : (
               <p className="text-[14px] text-center mt-6 px-6 leading-relaxed" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {t("intentions.empty", { defaultValue: "Add the people and things you want to keep in prayer. They stay private until you choose to share." })}
@@ -1297,7 +1367,7 @@ export default function PrayerListPage() {
         )}
 
         {/* ── Community (the shared list) ──────────────────────────────── */}
-        {tab === "community" && (<>
+        {effectiveTab === "community" && (<>
         {/* "Pray through all" — explicit slideshow entry for users
             who want the contemplative walk through the whole list.
             The dashboard no longer surfaces this as a daily ritual

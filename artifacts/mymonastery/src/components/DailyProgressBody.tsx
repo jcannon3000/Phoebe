@@ -1242,6 +1242,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // Prayer List rides at whichever slot the viewer picked (see
     // lib/prayerListSlot.ts) on /intentions, or "anytime" if they never set
     // one — the card still shows either way, only its POSITION changes.
+    // (The separate bottom-of-home PrayerListSection block was removed
+    // (owner) — this Next/Done routine card is the only home-screen
+    // surface left; full access lives at the header pill → /prayer-list.)
     ...(prayerListActiveCard ? [{ ...prayerListCard, slot: (getPrayerListSlot() ?? "anytime") as CustomSlot }] : []),
     // complineActive already folds in the after-7pm gate (useRhythmState.ts)
     // — fixed to "evening" since there's no earlier time it could ever show.

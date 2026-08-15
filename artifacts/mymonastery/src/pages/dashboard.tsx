@@ -23,7 +23,6 @@ import { WayOfLoveTurnLearnPray } from "@/components/WayOfLoveTurnLearnPray";
 import { VtsWeeklyProgress } from "@/components/VtsWeeklyProgress";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
-import { usePrayerListEnabled } from "@/hooks/usePrayerRequests";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, getSideCustomName, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
@@ -122,7 +121,7 @@ export type Moment = {
 };
 
 // The layout-reflow transition every home section below the Next/Done list
-// shares (WayOfLoveTurnLearnPray, ContemplationHomeCard, PrayerListSection,
+// shares (WayOfLoveTurnLearnPray, ContemplationHomeCard,
 // WeeklyRhythm, HomeLearnSection). Matches the duration/ease
 // DailyProgressBody's own row-level `layout` cards already use — completing
 // a card there and these sections below sliding up should read as ONE
@@ -2470,116 +2469,6 @@ function PrayerListHomeCard() {
       pillBorder="rgba(96,140,180,0.45)"
       accentBar="rgba(96,140,180,0.85)"
     />
-  );
-}
-
-type DashIntention = { id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean };
-
-// ── Prayer List section — its own section on the home screen, never part of
-// the Next/Done routine (the intentions themselves are already woven into
-// the offices as slides — this is just the private-list surface). Empty →
-// a single "Start prayer list" invite; non-empty → one card per intention
-// with a "Pray" CTA pill (opens the private pray-through for the whole
-// list). No inline edit/delete here — that stays on /intentions, which the
-// section links out to at the bottom.
-function PrayerListSection() {
-  const [, setLocation] = useLocation();
-  const prayerListEnabled = usePrayerListEnabled();
-  const { data } = useQuery<{ intentions: DashIntention[] }>({
-    queryKey: ["/api/prayer-intentions"],
-    queryFn: () => apiRequest("GET", "/api/prayer-intentions") as Promise<{ intentions: DashIntention[] }>,
-    enabled: prayerListEnabled,
-  });
-  if (!prayerListEnabled) return null;
-  const intentions = (data?.intentions ?? []).filter((i) => !i.answered);
-  const hasIntentions = intentions.length > 0;
-  const headline = (it: DashIntention) => (it.kind === "person" ? (it.personName || "Someone") : (it.body || ""));
-  const subline = (it: DashIntention) => (it.kind === "person" ? it.body : "");
-
-  return (
-    <div className="mt-5">
-      {/* Matches DailyProgressBody's "Next" header exactly (owner: "The
-          Prayer List Section needs a header like Next on the home
-          screen") instead of the plain small-caps label this used to be. */}
-      <div className="flex items-center gap-3 mb-2">
-        <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          Prayer List
-        </h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
-      {!hasIntentions ? (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setLocation("/intentions")}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation("/intentions"); }}
-          className="relative flex rounded-xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
-          style={{ background: "rgba(96,140,180,0.10)", border: "1px solid rgba(96,140,180,0.3)" }}
-        >
-          <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
-          <div className="flex-1 px-4 py-3 flex items-center justify-between gap-2">
-            <p className="text-sm" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Keep who and what you're praying for
-            </p>
-            <span className="text-[13px] font-semibold flex-shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Start →
-            </span>
-          </div>
-        </div>
-      ) : (
-      <div className="flex flex-col gap-2">
-        {intentions.map((it) => (
-          <div
-            key={it.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => setLocation("/intentions?pray=1")}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation("/intentions?pray=1"); }}
-            className="relative flex rounded-xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(22,46,32,0.33)", backdropFilter: "blur(11px)", WebkitBackdropFilter: "blur(11px)", border: "1px solid rgba(200,212,192,0.25)" }}
-          >
-            <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,140,180,0.8)" }} />
-            <div className="flex-1 px-4 py-3 flex items-center justify-between gap-3 min-w-0">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
-                  {headline(it)}
-                </p>
-                {subline(it) && (
-                  <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", wordBreak: "break-word" }}>
-                    {subline(it)}
-                  </p>
-                )}
-              </div>
-              <span
-                className="rounded-full text-center shrink-0"
-                style={{ background: "rgba(96,140,180,0.28)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(96,140,180,0.45)", whiteSpace: "nowrap" }}
-              >
-                Pray <span aria-hidden>→</span>
-              </span>
-            </div>
-          </div>
-        ))}
-        <div className="flex gap-2 mt-1">
-          <button
-            type="button"
-            onClick={() => setLocation("/intentions")}
-            className="flex-1 rounded-full text-[13px] font-semibold py-2 text-center transition-opacity active:scale-[0.98]"
-            style={{ background: "rgba(96,140,180,0.18)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", border: "1px solid rgba(96,140,180,0.35)" }}
-          >
-            + Add
-          </button>
-          <button
-            type="button"
-            onClick={() => setLocation("/intentions")}
-            className="flex-1 rounded-full text-[13px] font-semibold py-2 text-center transition-opacity active:scale-[0.98]"
-            style={{ background: "transparent", color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", border: "1px solid rgba(143,175,150,0.3)" }}
-          >
-            ✎ Edit
-          </button>
-        </div>
-      </div>
-      )}
-    </div>
   );
 }
 
@@ -7306,7 +7195,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
                         <ContemplationHomeCard side={prayAgainSide} />
                       </motion.div>
-                      <motion.div layout transition={HOME_REFLOW_TRANSITION}><PrayerListSection /></motion.div>
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
                           Rest. (It self-hides when no weekly practice is on.)
@@ -7374,7 +7262,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
                       <ContemplationHomeCard side={prayAgainSide} />
                     </motion.div>
-                    <motion.div layout transition={HOME_REFLOW_TRANSITION}><PrayerListSection /></motion.div>
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
                     {/* layout composes with WeeklyRhythm's own per-card cascade
@@ -7419,7 +7306,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     HOME_REFLOW_TRANSITION's definition for the shared timing. */}
                 <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.6} /></motion.div>
                 {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
-                <motion.div layout transition={HOME_REFLOW_TRANSITION}><PrayerListSection /></motion.div>
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
