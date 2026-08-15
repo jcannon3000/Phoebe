@@ -10,6 +10,7 @@ import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { scanForCrisisLanguage } from "@/lib/crisisScan";
 
 // ── Visual language ─────────────────────────────────────────────────
 // A calm DARK-BLUE surface (the app's reflection blue, #6FAF85, family) —
@@ -401,13 +402,15 @@ export default function PrayerRequestNew() {
             style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
-          {/* Standing crisis-resources line — always here, not conditional
-              on any scan catching anything. This is the layer that still
-              works when the automated crisis-language check misses
-              something (see contentSafety.ts on the server). Shown for the
-              public/garden path only; the private list isn't read by
-              anyone else. */}
-          {dest === "share" && (
+          {/* Crisis-resources line — owner: "I don't want the 988 call line
+              below the field always, just that if a scan detects concerning
+              language it comes up with a warning." Live client-side mirror
+              of the server's scanForCrisisLanguage (contentSafety.ts) — a
+              hint only, not enforcement; the server scan is still the
+              authoritative layer (auto-flag, the post-create notice) for
+              whatever this live check misses. Shown for the public/garden
+              path only; the private list isn't read by anyone else. */}
+          {dest === "share" && scanForCrisisLanguage(body) && (
             <p className="text-[12px] text-center" style={{ color: SAGE_DIM, fontFamily: SPACE, marginTop: -6 }}>
               {t("prayer_request.crisis_line", { defaultValue: "In crisis? Call or text 988, any time." })}
             </p>

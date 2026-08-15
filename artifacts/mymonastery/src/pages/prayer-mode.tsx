@@ -16,6 +16,7 @@ import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
+import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import {
   CAC_TODAY_URL,
   FDD_TODAY_URL,
@@ -3317,7 +3318,18 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit" | "blessing">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "prompts" | "closing" | "news" | "habit" | "blessing">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
+  // Real signed-up account (not guest/anonymous) — the "7 category" prayer
+  // prompts slide (PrayerPromptsSlide) saves into /api/prayer-intentions,
+  // which needs a real account. Mirrors bcp-daily-office.tsx's `signedUp`.
+  const promptsEligible = !!user && !user.isAnonymous;
+  // Land on the prompts slide after the last prayer, then its own
+  // Continue/Skip moves on to the normal closing summary. Owner: "we need
+  // back after the last prayer request in slideshows the 7 category of
+  // prayer prompts slide" — it's a self-contained extra beat, not tied to
+  // any particular queue type, so this applies to every "reached the end
+  // of the deck, headed to the normal closing" path.
+  const goToClosing = () => setPhase(promptsEligible ? "prompts" : "closing");
   // A real prayer close ends on the blessing send-off (the universal final
   // beat). Only "just viewing my rhythm" (?progressOnly=1) skips it and goes
   // straight home.
@@ -3534,7 +3546,7 @@ export default function PrayerModePage() {
   // the warmer var(--oh-closing, #11291C), every other phase is var(--oh-bg, #0C1F12) — so the top of the
   // screen never reads as a different color than the slide under it.
   useEffect(() => {
-    const phaseBg = phase === "closing" || phase === "blessing" ? "var(--oh-closing, #11291C)" : "var(--oh-bg, #0C1F12)";
+    const phaseBg = phase === "closing" || phase === "blessing" || phase === "prompts" ? "var(--oh-closing, #11291C)" : "var(--oh-bg, #0C1F12)";
     document.body.style.backgroundColor = phaseBg;
     document.documentElement.style.backgroundColor = phaseBg;
     // The meta needs a literal hex (var() is ignored there); backdrop bg is close
@@ -3618,7 +3630,7 @@ export default function PrayerModePage() {
         } else if (queueMode === "feed") {
           exitToFinish();
         } else {
-          setPhase("closing");
+          goToClosing();
         }
       }
       setSlideVisible(true);
@@ -3628,8 +3640,8 @@ export default function PrayerModePage() {
   // Navigate back one slide without recording an amen. Mirrors the
   // fade transition used by skipToNext / advance.
   const goBack = () => {
-    if (phase === "closing") {
-      // Let the user step back from the closing slide to their last prayer.
+    if (phase === "closing" || phase === "prompts") {
+      // Let the user step back from the closing (or prompts) slide to their last prayer.
       setSlideVisible(false);
       setTimeout(() => {
         setPhase("prayer");
@@ -3845,7 +3857,7 @@ export default function PrayerModePage() {
           // Feed walks skip the friends/community closing recap.
           exitToFinish();
         } else {
-          setPhase("closing");
+          goToClosing();
         }
       }
       setSlideVisible(true);
@@ -4222,6 +4234,14 @@ export default function PrayerModePage() {
               onStartCobreathe={() => { primeAudio(); setCobreatheOpen(true); }}
             />
           </div>
+        )}
+
+        {/* "Before you go" prayer prompts — owner: "we need back after the
+            last prayer request in slideshows the 7 category of prayer
+            prompts slide." Sits between the last prayer and the closing
+            summary; Continue/Skip both move on to the normal close. */}
+        {phase === "prompts" && (
+          <PrayerPromptsSlide onContinue={() => setPhase("closing")} />
         )}
 
         {/* Closing summary. For offices-only viewers we keep this

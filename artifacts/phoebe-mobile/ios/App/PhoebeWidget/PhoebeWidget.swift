@@ -301,15 +301,37 @@ struct PhoebeWidgetView: View {
     // homeMedium below for this family (homeMedium is kept for reference/
     // potential reuse but no longer wired to any family).
     private var homeWeeklyGrid: some View {
-        // 18pt row-label column + 7 equal day columns, mirroring the home
-        // card's own `20px repeat(7, 1fr)` CSS grid.
+        return VStack(alignment: .leading, spacing: 8) {
+            // App identity top-left, ABOVE the card (owner) — "PAST 7 DAYS"
+            // removed separately: the S/M/T/W/T/F/S header row right below
+            // already says what this grid is, so that label was redundant.
+            Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
+            weeklyGridCard
+        }
+        // Tighter than the old hero's 16pt — this content should feel like
+        // it fills the whole card (owner: "full bleed"), not float inside a
+        // wide margin.
+        .padding(.horizontal, 14)
+        // Less top padding than bottom — pinned to .topLeading below, so
+        // shrinking just the top inset nudges the header up a
+        // little (owner) without disturbing the card's bottom breathing room.
+        .padding(.top, 7)
+        .padding(.bottom, 12)
+        // .leading alone vertically CENTERS in the extra height (Alignment.leading
+        // = .leading + .center) — that's what was holding the grid down in the
+        // middle of the card instead of near the top. .topLeading pins it up.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    // The card behind the grid itself — border + frost, matching the home
+    // screen's weekly cards (e.g. "This Week at VTS": a translucent dark
+    // fill, a soft light-sage 1px border, blurred glass over whatever sits
+    // behind it). Owner: "a card with a border and frost like it is on the
+    // home screen behind the grid, but the Phoebe name would be above it."
+    private var weeklyGridCard: some View {
         let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
         let rowCount = stats.weeklyLabels.count
-        return VStack(alignment: .leading, spacing: 6) {
-            // App identity top-left — "PAST 7 DAYS" removed (owner): the
-            // S/M/T/W/T/F/S header row right below already says what this
-            // grid is, so the label was redundant.
-            Text("Phoebe").font(sgBold(17)).foregroundColor(.white)
+        return VStack(alignment: .leading, spacing: 9) {
             // frame(maxWidth: .infinity) at EVERY level here — a VStack/HStack
             // in SwiftUI does NOT propagate "fill available width" to its
             // children automatically; each nesting level has to ask for it
@@ -373,19 +395,28 @@ struct PhoebeWidgetView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        // Tighter than the old hero's 16pt — this content should feel like
-        // it fills the whole card (owner: "full bleed"), not float inside a
-        // wide margin.
-        .padding(.horizontal, 14)
-        // Less top padding than bottom — pinned to .topLeading below, so
-        // shrinking just the top inset nudges the header up a
-        // little (owner) without disturbing the card's bottom breathing room.
-        .padding(.top, 7)
-        .padding(.bottom, 12)
-        // .leading alone vertically CENTERS in the extra height (Alignment.leading
-        // = .leading + .center) — that's what was holding the grid down in the
-        // middle of the card instead of near the top. .topLeading pins it up.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        // Exact match to the card WayOfLoveTurnLearnPray.tsx / VtsWeeklyProgress.tsx
+        // render behind this SAME grid on the home screen: a soft green-tint
+        // fill (rgba(46,107,64,0.07)), a 1px light-sage border
+        // (rgba(200,212,192,0.35)), rounded-3xl corners. Layered with
+        // .ultraThinMaterial for the widget's own frosted-glass feel (owner:
+        // "border and frost") — the web card has no blur of its own since it
+        // never sits over photo content the way this widget does.
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(red: 46/255, green: 107/255, blue: 64/255).opacity(0.07))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color(red: 200/255, green: 212/255, blue: 192/255).opacity(0.35), lineWidth: 1)
+        )
     }
 
     // Same "what's next" story as the medium widget used to show, just
