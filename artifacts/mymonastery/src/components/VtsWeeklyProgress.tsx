@@ -46,7 +46,7 @@ export function VtsWeeklyProgress() {
   const rows: Array<{ emoji: string; label: string; todayDone: boolean; historyFor: (d: PracticeWeekDay) => boolean }> = [
     { emoji: "🦩", label: "Dean's Commentary", todayDone: hasReadVtsToday(), historyFor: (d) => d.vts },
     { emoji: "🍽️", label: "Community Meal", todayDone: rhythm.communityMealDone, historyFor: (d) => d.communityMeal },
-    { emoji: "🙏", label: "Chapel", todayDone: rhythm.chapelDone, historyFor: (d) => d.chapel },
+    { emoji: "🙏🏽", label: "Chapel", todayDone: rhythm.chapelDone, historyFor: (d) => d.chapel },
   ];
 
   const KEPT_RGB = "110,180,130";

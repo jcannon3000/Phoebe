@@ -994,7 +994,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
   const chapelCard = {
-    key: "chapel", emoji: "🙏", rgb: "96,141,209", done: chapelDone, href: "",
+    key: "chapel", emoji: "🙏🏽", rgb: "96,141,209", done: chapelDone, href: "",
     onClick: () => setLogAnchorId("chapel"),
     onUnlog: () => unlogChapel(),
     title: t("rhythm.card_chapel", { defaultValue: "Chapel" }),
@@ -1817,7 +1817,7 @@ function ChapelLogSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
-          <span style={{ fontSize: 26 }}>🙏</span>
+          <span style={{ fontSize: 26 }}>🙏🏽</span>
           <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{t("rhythm.card_chapel", { defaultValue: "Chapel" })}</p>
         </div>
         <p className="text-[12.5px] mb-3" style={{ color: SAGE, fontFamily: FONT }}>
