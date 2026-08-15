@@ -6,6 +6,8 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { usePilotMode } from "@/hooks/usePilotMode";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
+import { unmuteUser, type MutedPerson } from "@/lib/mutes";
 import { notificationsSupportedHere } from "@/lib/notifSupport";
 import { getEnabledWeekly, setEnabledWeekly, WEEKLY_ENABLED_EVENT, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -1054,6 +1056,69 @@ export const HIDE_DONE_KEY = "phoebe:hide-home-done";
 // Progress toggle above.
 export const HIDE_VTS_WEEKLY_KEY = "phoebe:hide-vts-weekly";
 
+// ── Muted people ─────────────────────────────────────────────────────────
+// The read side (filtering a muter's garden + push fan-out) lives in
+// garden.ts/prayer.ts and never went anywhere; this is purely the
+// management surface — see the actual mute action on prayer-request-
+// detail.tsx (muting someone happens from their prayer request, same as
+// before). Empty state is expected/normal, not an error.
+function MutedPeopleSettings() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery<{ muted: MutedPerson[] }>({
+    queryKey: ["/api/mutes/mine"],
+    queryFn: () => apiRequest("GET", "/api/mutes/mine"),
+  });
+  const muted = data?.muted ?? [];
+  const unmuteMut = useMutation({
+    mutationFn: (userId: number) => unmuteUser(userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/mutes/mine"] }),
+  });
+
+  return (
+    <>
+      <SectionHeader label="Muted people" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        Their prayer requests stop appearing to you — muting is quiet, they're never told.
+      </p>
+      <SettingsCard>
+        {isLoading ? (
+          <p className="text-sm" style={{ color: "#8FAF96" }}>Loading…</p>
+        ) : muted.length === 0 ? (
+          <p className="text-sm" style={{ color: "#8FAF96" }}>You haven't muted anyone.</p>
+        ) : (
+          muted.map((m, i) => (
+            <div
+              key={m.userId}
+              className="w-full flex items-center gap-3 py-2.5"
+              style={{ borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)" }}
+            >
+              {m.avatarUrl ? (
+                <img src={m.avatarUrl} alt={m.name ?? ""} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-semibold flex-shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                  {(m.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                </div>
+              )}
+              <p className="text-sm flex-1 min-w-0 truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {m.name ?? "Someone"}
+              </p>
+              <button
+                type="button"
+                onClick={() => unmuteMut.mutate(m.userId)}
+                disabled={unmuteMut.isPending}
+                className="text-[12px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0 disabled:opacity-40"
+                style={{ color: "#8FAF96", border: "1px solid rgba(143,175,150,0.3)", background: "none", cursor: "pointer" }}
+              >
+                Unmute
+              </button>
+            </div>
+          ))
+        )}
+      </SettingsCard>
+    </>
+  );
+}
+
 function HomeDisplaySettings() {
   const entitlements = useEntitlements();
   const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
@@ -1485,6 +1550,7 @@ export default function SettingsPage() {
   // Export, Delete — there's no account to manage: just the rhythm,
   // reminders, and legal.
   const { isGuest } = useGuestMode();
+  const prayerRequestsEnabled = usePrayerRequestsEnabled();
   const { t } = useTranslation();
   const logout = useLogout();
   const queryClient = useQueryClient();
@@ -1551,6 +1617,18 @@ export default function SettingsPage() {
         <div className="mb-8">
           <DefaultPrayerLevelSettings />
         </div>
+
+        {/* ── Muted people — only relevant once prayer requests are visible
+              at all. Owner: "we need the mute features in settings back" —
+              the read side (filtering a muter's garden/push fan-out) had
+              stayed in place the whole time; only the write side (actually
+              muting someone) had been removed, along with the settings row
+              to manage it. ── */}
+        {prayerRequestsEnabled && (
+          <div className="mb-8">
+            <MutedPeopleSettings />
+          </div>
+        )}
 
         {/* ── Home display — header daily-progress dots on/off ── */}
         <div className="mb-8">

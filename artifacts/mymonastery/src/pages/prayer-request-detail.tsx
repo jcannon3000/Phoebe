@@ -11,6 +11,7 @@ import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { sharePrayerRequest } from "@/lib/sharePrayerRequest";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { muteUser } from "@/lib/mutes";
 
 // Deep-link landing for "X is asking for your prayers" (and the
 // other prayer-request pushes — first amen, third amen, word of
@@ -182,6 +183,20 @@ export default function PrayerRequestDetailPage() {
     queryKey: [`/api/prayer-requests/by-id/${id}`],
     queryFn: () => apiRequest("GET", `/api/prayer-requests/by-id/${id}`) as Promise<PrayerRequestDetail>,
     enabled: Number.isFinite(id),
+  });
+
+  // Muting from the request itself — the only place a mute can actually be
+  // created (Settings' Muted People only manages/removes existing ones; see
+  // MutedPeopleSettings there). Owner: "we need the mute features in
+  // settings back" — this is the other half of that, restored alongside it.
+  const [justMuted, setJustMuted] = useState(false);
+  const muteMut = useMutation({
+    mutationFn: (ownerId: number) => muteUser(ownerId),
+    onSuccess: () => {
+      setJustMuted(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mutes/mine"] });
+    },
   });
 
   // Clear the push notification for this request as soon as the
@@ -475,6 +490,25 @@ export default function PrayerRequestDetailPage() {
                 >
                   {data.ownerName}
                 </p>
+              )}
+              {/* Quiet — no confirmation dialog, no "are you sure", and the
+                  muted person is never told. Just stops their requests from
+                  reaching this viewer going forward (Settings → Muted
+                  people manages/undoes it). */}
+              {justMuted ? (
+                <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {t("prayer_request_detail.muted", { defaultValue: "Muted" })}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => muteMut.mutate(data.ownerId)}
+                  disabled={muteMut.isPending}
+                  className="text-[11px] disabled:opacity-40"
+                  style={{ color: "rgba(143,175,150,0.5)", fontFamily: "'Space Grotesk', sans-serif", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  {t("prayer_request_detail.mute", { defaultValue: "Mute" })}
+                </button>
               )}
             </div>
 
