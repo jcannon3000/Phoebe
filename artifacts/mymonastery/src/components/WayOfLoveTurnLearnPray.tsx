@@ -120,7 +120,7 @@ function useJustCompletedPulse(rows: { label: string; kept: boolean[] }[], today
   return pulsing;
 }
 
-export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: number } = {}) {
+export function WayOfLoveTurnLearnPray({ cascadeDelay = 0, splashCleared = true }: { cascadeDelay?: number; splashCleared?: boolean } = {}) {
   const rhythm = useRhythmState();
   const turned = useTurnedToday();
   const hidden = useHiddenPref();
@@ -173,7 +173,18 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
     // animates from its own first mount, which only happens once
     // `rhythm.ready` is true (the early return above), so it never fades in
     // before there's real data to show.
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: cascadeDelay }}>
+    //
+    // `splashCleared` (owner: "the past 7 day card doesn't cascade in from a
+    // cold open") — on a native cold launch this card mounts and finishes
+    // its whole cascade WHILE still hidden behind OpeningSplash (splash
+    // holds ~1.2s then fades over ~0.7s; the cascade was done well before
+    // that), so it just appeared already-settled once the splash cleared.
+    // Held at the pre-animation state until the dashboard's splash-cleared
+    // gate flips true — same pattern already used for the "Your prayer
+    // requests" cascade — so the fade-up actually plays where the user can
+    // see it. Defaults true (animates immediately) for the standalone
+    // /turn-learn-pray page, which has no splash to wait on.
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: cascadeDelay }}>
     <Link href="/turn-learn-pray" className="block mt-7 transition-opacity hover:opacity-95 active:scale-[0.99]">
       {/* "Past 7 Days" as a centered, small-caps label with a thin rule on
           either side — matching the onboarding mock's own dot-grid section

@@ -7190,7 +7190,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           instantly. HOME_REFLOW_TRANSITION matches the duration/
                           ease DailyProgressBody's own row-level `layout` cards
                           already use, so the whole page reads as one motion. */}
-                      <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} /></motion.div>
+                      <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
                       {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
                       <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
                         <ContemplationHomeCard side={prayAgainSide} />
@@ -7257,7 +7257,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
                     {/* layout on each section below — see HOME_REFLOW_TRANSITION's
                         definition for why. */}
-                    <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} /></motion.div>
+                    <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
                     {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
                     <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
                       <ContemplationHomeCard side={prayAgainSide} />
@@ -7304,7 +7304,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     flow the instant that finished instead of gliding into
                     their new position alongside it. See
                     HOME_REFLOW_TRANSITION's definition for the shared timing. */}
-                <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.6} /></motion.div>
+                <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.6} splashCleared={ownReqSplashCleared} /></motion.div>
                 {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
