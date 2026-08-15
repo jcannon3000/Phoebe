@@ -27,7 +27,14 @@ export function usePilotMode(): { isPilot: boolean; isLoading: boolean } {
   // shared prayer requests stay). Pilot is for everyone else — the public who
   // aren't connected to anyone yet, and logged-out guests (user null → false).
   // (Fellows removed 2026-07-23 — the fellow-connection full-app trigger is gone.)
+  //
+  // Also excludes inPilotGroup/isSuperAdmin (a DIFFERENT "pilot" — the
+  // pilot-TESTING designation, not this stripped-down pilot EXPERIENCE) —
+  // these are exactly the accounts usePrayerRequestsEnabled/
+  // usePrayerListEnabled re-enable communal prayer content for, so this
+  // per-device preview override shouldn't turn around and force them back
+  // into the personal-only experience that hides it.
   const isCommunityMember = user?.isCommunityMember ?? false;
-  const isPilot = !rawIsBeta && !isCommunityMember;
+  const isPilot = !rawIsBeta && !isCommunityMember && !user?.inPilotGroup && !user?.isSuperAdmin;
   return { isPilot, isLoading };
 }
