@@ -298,16 +298,19 @@ struct PhoebeWidgetView: View {
         // card's own `20px repeat(7, 1fr)` CSS grid.
         let dayCols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
         let rowCount = stats.weeklyLabels.count
-        return VStack(alignment: .leading, spacing: 10) {
-            // App identity in the top-left — a widget with no chrome of its
-            // own otherwise doesn't read as Phoebe's at a glance on a packed
-            // home screen. Wordmark only, no leaf icon (owner).
-            Text("Phoebe").font(sgBold(13)).foregroundColor(phoebeWarm.opacity(0.9))
-            Text("PAST 7 DAYS")
-                .font(sgBold(9))
-                .tracking(1.4)
-                .foregroundColor(phoebeWarm.opacity(0.55))
-                .frame(maxWidth: .infinity, alignment: .center)
+        return VStack(alignment: .leading, spacing: 6) {
+            // App identity top-left, "PAST 7 DAYS" top-right, on one row —
+            // owner: bigger wordmark, label moved to the right, and less
+            // gap above the grid so it sits higher in the card.
+            HStack {
+                Text("Phoebe").font(sgBold(15)).foregroundColor(phoebeWarm.opacity(0.9))
+                Spacer()
+                Text("PAST 7 DAYS")
+                    .font(sgBold(9))
+                    .tracking(1.4)
+                    .foregroundColor(phoebeWarm.opacity(0.55))
+            }
+            .frame(maxWidth: .infinity)
             // frame(maxWidth: .infinity) at EVERY level here — a VStack/HStack
             // in SwiftUI does NOT propagate "fill available width" to its
             // children automatically; each nesting level has to ask for it
@@ -367,7 +370,10 @@ struct PhoebeWidgetView: View {
         // wide margin.
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        // .leading alone vertically CENTERS in the extra height (Alignment.leading
+        // = .leading + .center) — that's what was holding the grid down in the
+        // middle of the card instead of near the top. .topLeading pins it up.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // Same "what's next" story as the medium widget used to show, just
