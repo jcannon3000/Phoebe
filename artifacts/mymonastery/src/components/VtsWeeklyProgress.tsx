@@ -59,7 +59,7 @@ export function VtsWeeklyProgress() {
           className="text-center text-[11px] font-semibold uppercase tracking-widest flex-shrink-0"
           style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
         >
-          This Week
+          This Week at VTS
         </p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>

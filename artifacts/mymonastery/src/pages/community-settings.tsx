@@ -236,7 +236,14 @@ export default function CommunitySettingsPage() {
       setDeleteError(msg);
     },
   });
-  const canDelete = !!group && deleteConfirmText.trim() === group.name.trim();
+  // A straight typed apostrophe (') never matches a stored curly one (’) —
+  // most group names came through some editor/paste that auto-curls quotes,
+  // but nobody's keyboard types a curly one directly, so a strict === here
+  // made deletion impossible for any group with an apostrophe in its name.
+  // Normalize both sides to straight quotes before comparing.
+  const normalizeForCompare = (s: string) =>
+    s.trim().replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+  const canDelete = !!group && normalizeForCompare(deleteConfirmText) === normalizeForCompare(group.name);
 
   if (!group) return null;
 
