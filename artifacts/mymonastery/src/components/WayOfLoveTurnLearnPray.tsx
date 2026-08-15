@@ -86,6 +86,36 @@ function useTurnedToday(): boolean {
   return turned;
 }
 
+// Detects "this row went from not-kept to kept since the last time this
+// card was on screen" — e.g. finishing Evening Prayer elsewhere and landing
+// back on home — and returns the set of row labels to pulse today's dot
+// for. Persisted per-day in localStorage (not component state) so the
+// comparison survives the card unmounting between visits, which is the
+// whole point: a state ref alone would never see the transition, since the
+// component mounts fresh already-done. Fires once per transition — the
+// next render's write of "now done" becomes the new baseline, so navigating
+// home again afterward doesn't re-pulse it.
+function useJustCompletedPulse(rows: { label: string; kept: boolean[] }[], todayYmd: string): Set<string> {
+  const [pulsing, setPulsing] = useState<Set<string>>(new Set());
+  const signature = rows.map((r) => `${r.label}:${r.kept[r.kept.length - 1] ? 1 : 0}`).join(",");
+  useEffect(() => {
+    const key = `phoebe:tlp-last-done:${todayYmd}`;
+    let prev: Record<string, boolean> = {};
+    try { prev = JSON.parse(localStorage.getItem(key) || "{}"); } catch { /* ignore */ }
+    const next: Record<string, boolean> = {};
+    const justDone = new Set<string>();
+    for (const r of rows) {
+      const done = r.kept[r.kept.length - 1] ?? false;
+      next[r.label] = done;
+      if (done && prev[r.label] === false) justDone.add(r.label);
+    }
+    if (justDone.size > 0) setPulsing(justDone);
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* private mode / quota */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, todayYmd]);
+  return pulsing;
+}
+
 export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: number } = {}) {
   const rhythm = useRhythmState();
   const turned = useTurnedToday();
@@ -105,23 +135,27 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
     staleTime: 60_000,
   });
 
-  // Same "don't paint until the done-state queries have settled" guard every
-  // other rhythm surface uses — otherwise Learn/Pray would flash "Not yet"
-  // on a slow first load.
-  if (!rhythm.ready || hidden) return null;
-
   // Extracted to lib/weeklyGrid.ts so the iOS widget can render EXACTLY this
   // same grid instead of a separately-maintained approximation — this file
   // already hit drift bugs twice this session from logic living in two
   // places (missing PracticeWeekDay fields, then a Contemplative-mode gap).
   const { rows, dayInitials, ymds } = computeWeeklyGrid({ rhythm, week, practiceMode, turned });
+  const todayYmd = new Date().toLocaleDateString("en-CA");
+  // Called every render (not after the early return below) so its hook
+  // order stays stable regardless of rhythm.ready/hidden.
+  const pulseLabels = useJustCompletedPulse(rows, todayYmd);
+
+  // Same "don't paint until the done-state queries have settled" guard every
+  // other rhythm surface uses — otherwise Learn/Pray would flash "Not yet"
+  // on a slow first load.
+  if (!rhythm.ready || hidden) return null;
+
   // One shared green across all rows — matching the header's Daily Progress
   // pill dots (rgba(110,180,130,...) in layout.tsx), per owner: back to a
   // single shared accent rather than a per-row gradient (tried both a
   // shared-ramp and a dots-only ramp pushed to its light end; owner wants
   // this card's dots reading as the SAME color as the header pill instead).
   const KEPT_RGB = "110,180,130";
-  const todayYmd = new Date().toLocaleDateString("en-CA");
 
   return (
     // Fade-up entrance matching the app's standard cascade (dashboard's
@@ -185,20 +219,29 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0 }: { cascadeDelay?: nu
                   >
                     {r.emoji}
                   </span>
-                  {r.kept.map((kept, i) => (
-                    <span key={ymds[i] || i} className="flex justify-center">
-                      <span
-                        title={`${r.label} · ${ymds[i]}`}
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 999,
-                          background: kept ? `rgba(${KEPT_RGB},0.85)` : "transparent",
-                          border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
-                        }}
-                      />
-                    </span>
-                  ))}
+                  {r.kept.map((kept, i) => {
+                    // Only today's dot for a row that JUST flipped to kept
+                    // since the last visit pulses — an opacity pulse, not
+                    // an outer glow (owner), so it settles back to the same
+                    // solid dot rather than leaving a permanent halo.
+                    const pulsing = i === r.kept.length - 1 && pulseLabels.has(r.label);
+                    return (
+                      <span key={ymds[i] || i} className="flex justify-center">
+                        <motion.span
+                          title={`${r.label} · ${ymds[i]}`}
+                          animate={pulsing ? { opacity: [1, 0.35, 1] } : undefined}
+                          transition={pulsing ? { duration: 1, repeat: 3, ease: "easeInOut" } : undefined}
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 999,
+                            background: kept ? `rgba(${KEPT_RGB},0.85)` : "transparent",
+                            border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
+                          }}
+                        />
+                      </span>
+                    );
+                  })}
                 </div>
               ))}
             </div>
