@@ -1444,12 +1444,6 @@ export default function WayOfLoveRuleFlow({
       <>
         {backRow(goPrev)}
         {stepHeader(t("wol_rule.silence_eyebrow", { defaultValue: "Return" }), t("wol_rule.silence_title", { defaultValue: "Silence" }))}
-        <p style={{ color: CREAM, fontSize: 17, fontFamily: "Georgia, serif", fontStyle: "italic", lineHeight: 1.55, margin: "16px 0 0" }}>
-          {t("wol_rule.silence_body", { defaultValue: "“All of humanity's problems stem from man's inability to sit quietly in a room alone.”" })}
-        </p>
-        <p style={{ color: SAGE_DIM, fontSize: 13, fontFamily: FONT, margin: "8px 0 0" }}>
-          {t("wol_rule.silence_quote_attr", { defaultValue: "— Blaise Pascal" })}
-        </p>
         {/* Just the fixed daily-minutes goal — the "grow toward 30" ladder option
             was removed (owner); everyone sets a fixed amount. */}
         <div style={{ position: "relative", marginTop: 24 }}>
