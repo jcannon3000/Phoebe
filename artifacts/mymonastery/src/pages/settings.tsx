@@ -8,6 +8,7 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { unmuteUser, type MutedPerson } from "@/lib/mutes";
+import { pushRoutineConfig } from "@/lib/routineSync";
 import { notificationsSupportedHere } from "@/lib/notifSupport";
 import { getEnabledWeekly, setEnabledWeekly, WEEKLY_ENABLED_EVENT, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -1121,6 +1122,7 @@ function MutedPeopleSettings() {
 
 function HomeDisplaySettings() {
   const entitlements = useEntitlements();
+  const { user } = useAuth();
   const [hidden, setHidden] = useState<boolean>(() => readLsBool(HIDE_DP_PILL_KEY));
   const shown = !hidden;
   const toggle = () => {
@@ -1137,6 +1139,12 @@ function HomeDisplaySettings() {
     setTlpHidden(nextHidden);
     writeLsBool(HIDE_TLP_KEY, nextHidden);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+    // A ROUTINE_SYNCED key — writing localStorage alone leaves the local
+    // sync clock un-bumped, so the next reconcile can revert this toggle
+    // back to whatever the server still has (owner: "showing up on my
+    // phone but not on web"). pushRoutineConfig stamps the clock AND
+    // pushes the new value up.
+    if (user) pushRoutineConfig();
   };
 
   // VTS Weekly — preset ON for subscribers (readLsBool defaults false/
@@ -1148,6 +1156,7 @@ function HomeDisplaySettings() {
     setVtsWeeklyHidden(nextHidden);
     writeLsBool(HIDE_VTS_WEEKLY_KEY, nextHidden);
     try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+    if (user) pushRoutineConfig();
   };
 
   // true = "Morning / Contemplative / Evening Practice" row labels;

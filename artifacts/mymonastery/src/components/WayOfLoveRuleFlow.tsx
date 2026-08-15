@@ -430,6 +430,10 @@ export default function WayOfLoveRuleFlow({
       localStorage.setItem("phoebe:hide-turn-learn-pray", next ? "0" : "1");
       window.dispatchEvent(new Event("phoebe:prefs-changed"));
     } catch { /* web no-op */ }
+    // ROUTINE_SYNCED key — bump the clock + push now, or the next
+    // cross-device reconcile can silently revert this toggle (owner:
+    // "showing up on my phone but not on web").
+    if (user) pushRoutineConfig();
   };
   const toggleVtsWeekly = () => {
     const next = !vtsWeeklyOn;
@@ -438,6 +442,7 @@ export default function WayOfLoveRuleFlow({
       localStorage.setItem("phoebe:hide-vts-weekly", next ? "0" : "1");
       window.dispatchEvent(new Event("phoebe:prefs-changed"));
     } catch { /* web no-op */ }
+    if (user) pushRoutineConfig();
   };
   // A brand-new author — nobody has chosen a side level yet — is offered the
   // preset picker ("automatic mode"): four whole rules to adopt and tune, so
