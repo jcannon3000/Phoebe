@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable, contentReportsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable, contentReportsTable, prayerRequestGroupsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
-import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
+import { getGardenUserIds, getFellowUserIds, getGroupMemberUserIds, getUserGroupIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
@@ -441,10 +441,46 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
         ),
   ];
   if (mutedIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, mutedIds));
-  const requests = await db.select().from(prayerRequestsTable)
+  const requestsUnfiltered = await db.select().from(prayerRequestsTable)
     .where(and(...baseFilters))
     .orderBy(desc(prayerRequestsTable.createdAt))
     .limit(200);
+
+  // A request scoped to specific communities ("select which communities to
+  // share it with") is visible only to someone who actually shares one of
+  // those communities — the broad owner-in-my-garden rule above is too
+  // wide for it (that rule unions EVERY group the owner belongs to, which
+  // is exactly the "goes to all communities" behavior this scoping
+  // replaces). A request with NO scoping row is legacy/unscoped and keeps
+  // the existing broad rule unchanged. Post-filtered here (rather than
+  // folded into baseFilters) to avoid a raw-SQL subquery — the candidate
+  // set is already .limit(200)-bounded, so this is cheap.
+  let requests = requestsUnfiltered;
+  if (requestsUnfiltered.length > 0) {
+    const scopeRows = await db
+      .select({ requestId: prayerRequestGroupsTable.requestId, groupId: prayerRequestGroupsTable.groupId })
+      .from(prayerRequestGroupsTable)
+      .where(inArray(prayerRequestGroupsTable.requestId, requestsUnfiltered.map(r => r.id)));
+    if (scopeRows.length > 0) {
+      const scopedGroupsByRequest = new Map<number, Set<number>>();
+      for (const row of scopeRows) {
+        const set = scopedGroupsByRequest.get(row.requestId) ?? new Set<number>();
+        set.add(row.groupId);
+        scopedGroupsByRequest.set(row.requestId, set);
+      }
+      const viewerGroupIds = await getUserGroupIds(sessionUserId);
+      const viewerGroupSet = new Set(viewerGroupIds);
+      requests = requestsUnfiltered.filter((r) => {
+        // Owner always sees their own request; an explicit tag/adopt grant
+        // shouldn't be silently defeated by community scoping either.
+        if (r.ownerId === sessionUserId || explicitVisibleIds.includes(r.id)) return true;
+        const scope = scopedGroupsByRequest.get(r.id);
+        if (!scope) return true; // legacy/unscoped — existing rule applies
+        for (const gid of scope) if (viewerGroupSet.has(gid)) return true;
+        return false;
+      });
+    }
+  }
 
   // Viewer's timezone — used to scope "today" for their own amen counts so
   // the number in the UI matches the user's local day, not UTC.
@@ -859,6 +895,14 @@ router.post("/prayer-requests", rateLimit({
     // Requires at least one tag to be meaningful; ignored (forced false) if
     // no one is tagged so an empty "direct" request can't silently vanish.
     directOnly: z.boolean().optional().default(false),
+    // Which of the owner's own communities to share this with — owner:
+    // "have it have you select which communities to share it with".
+    // Validated against the caller's actual memberships below (a
+    // hand-crafted id for a group they're not in is silently dropped, not
+    // rejected). Empty/missing = legacy whole-garden behavior (every
+    // group the owner belongs to), for backward compatibility with older
+    // app builds that don't send this yet.
+    groupIds: z.array(z.number().int().positive()).optional().default([]),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -900,7 +944,26 @@ router.post("/prayer-requests", rateLimit({
   const { text: safeBody, hadLinks } = stripLinks(parsed.data.body);
   const crisisFlagged = scanForCrisisLanguage(safeBody);
 
-  const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+  const [owner] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+
+  // Validate requested groupIds against the caller's ACTUAL memberships —
+  // a hand-crafted id for a group they're not in is silently dropped, not
+  // rejected (matches the tag-validation pattern below). Membership can
+  // be by userId OR by matching (unclaimed) email invite, same lookup
+  // garden.ts uses.
+  let validGroupIds: number[] = [];
+  if (parsed.data.groupIds.length > 0) {
+    const wantedGroupIds = Array.from(new Set(parsed.data.groupIds));
+    const viewerEmail = (owner?.email ?? "").toLowerCase();
+    const myMemberships = await db
+      .select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(and(
+        inArray(groupMembersTable.groupId, wantedGroupIds),
+        sql`(${groupMembersTable.userId} = ${sessionUserId} OR LOWER(${groupMembersTable.email}) = ${viewerEmail})`,
+      ));
+    validGroupIds = Array.from(new Set(myMemberships.map(m => m.groupId)));
+  }
 
   // Life events live until just after the event itself, so the "how did it go?"
   // nudge can fire the evening of (the +2-day grace keeps the row active through
@@ -997,6 +1060,20 @@ router.post("/prayer-requests", rateLimit({
     }
   }
 
+  // Record which communities this request was scoped to — the actual
+  // visibility/push targeting reads this table (see GET /prayer-requests
+  // and the fan-out below), not a column on the request row itself.
+  if (validGroupIds.length > 0) {
+    try {
+      await db
+        .insert(prayerRequestGroupsTable)
+        .values(validGroupIds.map(gid => ({ requestId: created.id, groupId: gid })))
+        .onConflictDoNothing();
+    } catch (err) {
+      console.warn("[prayer] group scoping insert failed (non-fatal):", err);
+    }
+  }
+
   // Fan out a "{owner} is asking for your prayers" push to every
   // member of the requester's garden. Re-enabled per user direction
   // — the request appearing in the slideshow / prayer list isn't
@@ -1011,7 +1088,12 @@ router.post("/prayer-requests", rateLimit({
   // can't see in-app, which reads as a bug rather than a mute.
   (async () => {
     try {
-      const gardenIds = await getGardenUserIds(sessionUserId);
+      // Scoped share ("select which communities") → only those groups'
+      // members, not the whole garden. Legacy/no-selection share falls
+      // back to the old whole-garden fan-out for backward compatibility.
+      const gardenIds = validGroupIds.length > 0
+        ? await getGroupMemberUserIds(validGroupIds, sessionUserId)
+        : await getGardenUserIds(sessionUserId);
       // For a directed ("to a fellow") request, push ONLY to the tagged
       // recipients. Fanning out to the garden would leak the owner's
       // name and the existence of a private request to people who hit a

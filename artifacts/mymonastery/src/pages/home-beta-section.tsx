@@ -331,7 +331,14 @@ export default function HomeBetaSectionPage() {
 
   // ── Live inline previews ───────────────────────────────────────────────
   const schedules = (svcQ.data?.schedules ?? []).slice(0, 3);
-  const feeds = (feedsQ.data?.feeds ?? []).slice(0, 3);
+  // VTS isn't an intercession feed (it only unlocks the Dean's Commentary
+  // reading, via FEED_PRACTICE in prayer-feed-detail.tsx) — since public
+  // discovery is currently scoped to VTS-only, it's the ONLY thing this
+  // "Go" card's feed list would otherwise show, which reads as a broken
+  // intercession card since VTS has no actual intercessions. Owner: "the
+  // VTS profile should not have a prayer feed with an intercession in my
+  // community intercessions."
+  const feeds = (feedsQ.data?.feeds ?? []).filter((f) => f.slug !== "vts").slice(0, 3);
 
   // ── Consistency — quiet "weeks kept" + a small recent-history strip ─────
   const weekStartDate = sundayStart(new Date());

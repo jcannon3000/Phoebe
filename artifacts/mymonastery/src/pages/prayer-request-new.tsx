@@ -124,6 +124,29 @@ export default function PrayerRequestNew() {
   const { isPilot } = usePilotMode();
   // Pilot is personal-only: always keep it on the private list, never share.
   useEffect(() => { if (isPilot) setDest("list"); }, [isPilot]);
+
+  // Which of the requester's own communities to share this with — owner:
+  // "have it have you select which communities to share it with", instead
+  // of the old behavior (every group the requester belongs to, always).
+  const myGroupsQuery = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user && dest === "share",
+  });
+  const myGroups = myGroupsQuery.data?.groups ?? [];
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+  // Default to "all my communities" the first time the list loads, so
+  // picking nothing isn't the accidental default — the requester can still
+  // deselect down to a subset.
+  const seededGroupDefault = useRef(false);
+  useEffect(() => {
+    if (seededGroupDefault.current || myGroups.length === 0) return;
+    seededGroupDefault.current = true;
+    setSelectedGroupIds(myGroups.map((g) => g.id));
+  }, [myGroups]);
+  const toggleGroup = (id: number) => {
+    setSelectedGroupIds((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  };
   // One calm landscape behind the page, picked once and faded gently up under a
   // dark wash (matching the office/Co-Breathe slides).
   const bgPhoto = useMemo(
@@ -182,6 +205,9 @@ export default function PrayerRequestNew() {
         // "to a fellow" — directOnly makes the request private to them + you.
         taggedUserIds,
         directOnly: taggedUserIds.length > 0,
+        // Which communities to share with — empty/missing falls back to
+        // the legacy whole-garden behavior server-side.
+        groupIds: selectedGroupIds,
       }),
     onSuccess: (res: any) => {
       triggerSubmitFeedback();
@@ -385,6 +411,40 @@ export default function PrayerRequestNew() {
             <p className="text-[12px] text-center" style={{ color: SAGE_DIM, fontFamily: SPACE, marginTop: -6 }}>
               {t("prayer_request.crisis_line", { defaultValue: "In crisis? Call or text 988, any time." })}
             </p>
+          )}
+
+          {/* Which communities to share with — owner: "have it have you
+              select which communities to share it with", instead of the
+              old always-every-group-you're-in behavior. Defaults to
+              everything selected (see the seed effect above) so picking
+              nothing isn't the accidental starting state; the requester
+              narrows down from there. Hidden entirely for someone with no
+              communities — sharing then just falls back to the legacy
+              (empty-audience) behavior, same as before this feature. */}
+          {dest === "share" && myGroups.length > 0 && (
+            <div className="w-full">
+              <p className="text-[12px] mb-2" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
+                {t("prayer_request.share_with_communities", { defaultValue: "Share with which communities?" })}
+              </p>
+              <div className="flex flex-col gap-2">
+                {myGroups.map((g) => {
+                  const isSel = selectedGroupIds.includes(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => toggleGroup(g.id)}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-colors"
+                      style={{ background: isSel ? "rgba(46,107,64,0.28)" : GLASS, border: `1px solid ${isSel ? "rgba(143,175,150,0.55)" : GLASS_BORDER}` }}
+                    >
+                      <span className="text-[16px] flex-shrink-0" aria-hidden>{g.emoji || "🏘️"}</span>
+                      <span className="text-[14px] flex-1 truncate" style={{ color: CREAM, fontFamily: SPACE }}>{g.name}</span>
+                      {isSel && <span style={{ color: "#C8D4C0" }} aria-hidden>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).

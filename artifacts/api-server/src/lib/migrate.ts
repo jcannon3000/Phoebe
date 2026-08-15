@@ -4044,6 +4044,25 @@ export async function migrate() {
       days: NOVENA_DISCERNMENT.days,
     });
 
+    // ── Prayer-request group scoping ─────────────────────────────────────
+    // Which specific communities a shared prayer request was sent to.
+    // Owner: "have it have you select which communities to share it with"
+    // — before this table, sharing fanned out to EVERY group the
+    // requester belonged to. A request with no rows here is a legacy/
+    // ungrouped request and keeps the old whole-garden visibility as a
+    // fallback (see prayer.ts).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_request_groups (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (request_id, group_id)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_groups_request ON prayer_request_groups (request_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_groups_group ON prayer_request_groups (group_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

@@ -36,6 +36,54 @@ export async function getFellowUserIds(_userId: number): Promise<number[]> {
 const GARDEN_TTL_MS = 30_000;
 const gardenCache = new Map<number, { ids: number[]; expires: number }>();
 
+// Members of a SPECIFIC set of groups — not the viewer's whole garden.
+// Backs the "select which communities to share it with" scoping: a
+// prayer request targeted at particular groups fans out (visibility +
+// push) only to those groups' members, not every group the requester
+// belongs to. Excludes hidden_admin rows (same peer-visibility rule as
+// getGardenUserIds) and the requester themselves. Deliberately skips the
+// cross-group "veto" rule from getGardenUserIds — that rule protects a
+// VIEWER from ever seeing someone who's a hidden_admin anywhere in the
+// viewer's own groups, which doesn't translate cleanly to "who should
+// this specific post reach"; the per-group hidden_admin exclusion alone
+// is the right bar here.
+export async function getGroupMemberUserIds(groupIds: number[], excludeUserId: number): Promise<number[]> {
+  if (groupIds.length === 0) return [];
+  const rows = await db
+    .select({
+      rowUserId: groupMembersTable.userId,
+      emailUserId: usersTable.id,
+    })
+    .from(groupMembersTable)
+    .leftJoin(
+      usersTable,
+      sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+    )
+    .where(and(
+      inArray(groupMembersTable.groupId, groupIds),
+      sql`(${groupMembersTable.role} IS NULL OR ${groupMembersTable.role} <> 'hidden_admin')`,
+    ));
+  const ids = new Set<number>();
+  for (const row of rows) {
+    const id = row.rowUserId ?? row.emailUserId;
+    if (typeof id === "number" && id !== excludeUserId) ids.add(id);
+  }
+  return Array.from(ids);
+}
+
+// The groups a user actually belongs to (by userId OR matching invite
+// email) — used to check a viewer against a specific request's
+// prayer_request_groups scoping in prayer.ts's GET /prayer-requests.
+export async function getUserGroupIds(userId: number): Promise<number[]> {
+  const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  const viewerEmail = (user?.email ?? "").toLowerCase();
+  const rows = await db
+    .select({ groupId: groupMembersTable.groupId })
+    .from(groupMembersTable)
+    .where(sql`${groupMembersTable.userId} = ${userId} OR LOWER(${groupMembersTable.email}) = ${viewerEmail}`);
+  return Array.from(new Set(rows.map(r => r.groupId)));
+}
+
 export async function getGardenUserIds(userId: number): Promise<number[]> {
   const now = Date.now();
   const hit = gardenCache.get(userId);
