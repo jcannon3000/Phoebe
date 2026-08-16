@@ -4079,6 +4079,11 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_groups_request ON prayer_request_groups (request_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_groups_group ON prayer_request_groups (group_id)`);
+    // Owner: "an admin should be able to mute a prayer request from the
+    // group" — per-(request, group) moderation, distinct from the
+    // per-viewer user_mutes table.
+    await run(client, `ALTER TABLE prayer_request_groups ADD COLUMN IF NOT EXISTS muted_at TIMESTAMPTZ`);
+    await run(client, `ALTER TABLE prayer_request_groups ADD COLUMN IF NOT EXISTS muted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

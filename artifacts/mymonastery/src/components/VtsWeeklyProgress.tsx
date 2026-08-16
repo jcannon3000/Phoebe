@@ -17,6 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { hasReadVtsToday } from "@/lib/cacReadState";
 import type { PracticeWeekDay } from "@/lib/weeklyGrid";
+import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
@@ -37,7 +38,17 @@ function useHiddenPref(): boolean {
   useEffect(() => {
     const onChange = () => setHidden(readHidden());
     window.addEventListener("phoebe:prefs-changed", onChange);
-    return () => window.removeEventListener("phoebe:prefs-changed", onChange);
+    // The cross-device sync (routineSync.ts) writes this key into
+    // localStorage on app boot / login, AFTER this component has often
+    // already mounted and read the stale pre-sync value into its
+    // useState initializer — without this listener the card stayed
+    // hidden on web until a second reload (owner: "still not showing on
+    // web but showing on my phone").
+    window.addEventListener(ROUTINE_SYNCED_EVENT, onChange);
+    return () => {
+      window.removeEventListener("phoebe:prefs-changed", onChange);
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, onChange);
+    };
   }, []);
   return hidden;
 }

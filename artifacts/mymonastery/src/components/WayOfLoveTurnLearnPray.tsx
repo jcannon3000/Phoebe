@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { apiRequest } from "@/lib/queryClient";
 import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
+import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
@@ -44,7 +45,16 @@ function useHiddenPref(): boolean {
   useEffect(() => {
     const onChange = () => setHidden(readHidden());
     window.addEventListener("phoebe:prefs-changed", onChange);
-    return () => window.removeEventListener("phoebe:prefs-changed", onChange);
+    // routineSync.ts writes this key (a ROUTINE_KEYS entry) into
+    // localStorage on app boot / login, often AFTER this component has
+    // already mounted and read the stale pre-sync value — without this
+    // listener the card stayed hidden on web until a second reload
+    // (owner: "still not showing on web but showing on my phone").
+    window.addEventListener(ROUTINE_SYNCED_EVENT, onChange);
+    return () => {
+      window.removeEventListener("phoebe:prefs-changed", onChange);
+      window.removeEventListener(ROUTINE_SYNCED_EVENT, onChange);
+    };
   }, []);
   return hidden;
 }
