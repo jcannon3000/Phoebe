@@ -865,7 +865,7 @@ function SlideContent({
         </p>
       ) : null}
 
-      {slide.kind === "intercession" && (
+      {slide.kind === "intercession" && !slide.isPersonal && (
         <>
           {/* Up-to-7 prayed-this-week avatar stack. Same visual
               vocabulary as the dashboard's Daily Prayer card — small

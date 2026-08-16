@@ -1210,20 +1210,13 @@ export default function PrayerListPage() {
           </p>
         </div>
 
-        {/* ── Community ─────────────────────────────────────────────────
-            No toggle (owner): community leads when there's anything there,
-            hidden entirely when there isn't — never an empty tab to land on. */}
-        {hasCommunityContent && (<>
-        <div className="flex items-center gap-3 mb-2">
-          <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("prayer_list.section_community", { defaultValue: "Community" })}</h2>
-          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-        </div>
-        {/* "Pray through all" — explicit slideshow entry for users
-            who want the contemplative walk through the whole list.
-            The dashboard no longer surfaces this as a daily ritual
-            (per user direction the daily anchor is offices, not the
-            slideshow), but the option lives here for anyone who
-            wants it. */}
+        {/* "Pray through the whole list" + "Add prayer" — the page's ONE
+            slideshow entry point and ONE add entry point (owner: "there
+            should not be add twice" / "the add to my list is still there
+            and redundant"). Always reachable regardless of whether there's
+            any community content — the unified slideshow includes the
+            private list too, and the compose screen itself offers "Keep on
+            my list" vs "Share with community". */}
         {focused === null && (
           <Link
             href="/prayer-mode?reset=1"
@@ -1243,11 +1236,6 @@ export default function PrayerListPage() {
             🕯️ {t("prayer_list.pray_through_all")}
           </Link>
         )}
-
-        {/* Add prayer — owner: moved here (under "Pray through the whole
-            list") from the bottom of "Your prayer requests", where it
-            duplicated "+ Add to my list" further down the page. One add
-            entry point per section. */}
         {focused === null && (
           <Link href="/pray-request/new" className="block mb-4">
             <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
@@ -1256,6 +1244,12 @@ export default function PrayerListPage() {
           </Link>
         )}
 
+        {/* ── Community ─────────────────────────────────────────────────
+            No toggle (owner): community leads when there's anything there,
+            hidden entirely when there isn't — never an empty tab to land on.
+            Header removed (owner: "take out the community intercession
+            header") — "Community Prayers" right below already says it. */}
+        {hasCommunityContent && (<>
         {/* Back button when drilled into a single category */}
         {focused !== null && (
           <button
@@ -1386,11 +1380,9 @@ export default function PrayerListPage() {
             <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("prayer_list.section_my_list", { defaultValue: "My List" })}</h2>
             <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
           </div>
-          <Link href="/pray-request/new?dest=list" className="block mb-3">
-            <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
-              ＋ {t("intentions.add", { defaultValue: "Add to my list" })}
-            </div>
-          </Link>
+          {/* Owner: "the add to my list is still there and redundant" —
+              the page's one "Add prayer" button (above) already opens the
+              same composer with a "Keep on my list" option. */}
           {myIntentions.length > 0 ? (
             <div className="flex flex-col gap-2">
               {myIntentions.map((it) => {
