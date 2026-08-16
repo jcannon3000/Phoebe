@@ -276,7 +276,7 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0, splashCleared = true 
                             background: kept
                               ? `rgba(${KEPT_RGB},0.85)`
                               : partial
-                                ? `linear-gradient(90deg, rgba(${KEPT_RGB},0.85) 50%, transparent 50%)`
+                                ? `rgba(${KEPT_RGB},0.425)`
                                 : "transparent",
                             border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
                           }}

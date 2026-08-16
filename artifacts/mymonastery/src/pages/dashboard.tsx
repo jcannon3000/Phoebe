@@ -7145,9 +7145,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
                 const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
-                // Everything kept → offer to sit again, matching whichever
-                // side's slot the clock is actually in right now.
-                const prayAgainSide: "morning" | "evening" = new Date().getHours() < 17 ? "morning" : "evening";
                 // When you've prayed everyone else's request today, the prayer-list
                 // slot BELOW renders the FULL upcoming schedule — so this block must
                 // NOT also present events (neither the "Next up" teaser nor a
@@ -7155,27 +7152,14 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // twice. We only tease events here while there are still others to
                 // pray for (the schedule then sits above the prayer carousel).
                 const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
-                // The "day is kept" header shows whether or not there are events —
-                // it's the blessing on a finished rhythm, not an events label.
-                const keptHeader = (
-                  <div className="mb-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      🌿 {t("dashboard.day_kept_eyebrow", { defaultValue: "The day is kept" })}
-                    </p>
-                    <p className="text-[15px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {(noEvents || !hasUnprayedOthers)
-                        ? t("dashboard.day_kept_rest_line", { defaultValue: "Rest in it — or sit a while longer." })
-                        : t("dashboard.day_kept_events_line", { defaultValue: "Here's what's coming up." })}
-                    </p>
-                  </div>
-                );
-                // Nothing coming up → the finished-day view is just the blessing
-                // + the day's kept cards (below).
+                // Nothing coming up → the finished-day view is just the day's
+                // kept cards (below). Owner: "take out the day is kept" — the
+                // 🌿 eyebrow + rest-line blessing that used to lead this view
+                // is gone; Done cards speak for themselves.
                 if (noEvents) {
                   return (
                     <div>
                       <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={ownReqSplashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0 }}>{keptHeader}</motion.div>
                       {/* Kept cards drop off the home once done — the daily
                           rhythm's spine (Next/Done) is now only shown on
                           /daily-progress. Once everything's kept, the only
@@ -7192,9 +7176,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           already use, so the whole page reads as one motion. */}
                       <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
                       {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
-                      <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
-                        <ContemplationHomeCard side={prayAgainSide} />
-                      </motion.div>
+                      {/* Extra Contemplation card removed (owner) — the Done
+                          list above (DailyProgressBody) already shows it. */}
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
                           in a finished day is exactly when you'd log Bless or
                           Rest. (It self-hides when no weekly practice is on.)
@@ -7250,7 +7233,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 return (
                   <div>
                     <CascadeHapticTrigger cascadeFrom={1} count={1} splashCleared={ownReqSplashCleared} />
-                    <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     {/* Kept cards drop off the home once done — see the
                         no-events branch note above. */}
@@ -7259,9 +7241,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         definition for why. */}
                     <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
                     {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
-                    <motion.div layout transition={HOME_REFLOW_TRANSITION} className="mt-3">
-                      <ContemplationHomeCard side={prayAgainSide} />
-                    </motion.div>
+                    {/* Extra Contemplation card removed (owner) — the Done
+                        list above (DailyProgressBody) already shows it. */}
                     {/* Weekly rhythm stays on the kept view, above Learn (see
                         the no-events branch note). */}
                     {/* layout composes with WeeklyRhythm's own per-card cascade

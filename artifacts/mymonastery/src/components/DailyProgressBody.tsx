@@ -690,7 +690,7 @@ export function PracticeCard({
             </p>
             {useCycle
               ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
-              : <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p>}
+              : blurb ? <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p> : null}
           </div>
           {pill}
         </div>
@@ -1208,8 +1208,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // can still pick longer explicitly in the timer's own length dropdown.
       href: `/contemplation?begin=1&sit=${Math.min(contemplationGoalMin, SESSION_SIT_CAP)}`,
       title: t("rhythm.card_silence", { defaultValue: "Contemplation" }),
+      // Owner: "take out... second line of sit again stuff" — once kept,
+      // the card just shows the title + "✓ Sit again →" CTA, no subtitle.
       blurb: contemplationMin >= contemplationGoalMin
-        ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
+        ? ""
         : t("rhythm.silence_of_goal", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` }),
       progress: { current: contemplationMin, goal: contemplationGoalMin },
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
