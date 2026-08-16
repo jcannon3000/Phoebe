@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable, contentReportsTable, prayerRequestGroupsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, adoptedPrayersTable, contentReportsTable, prayerRequestGroupsTable, groupsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -269,6 +269,34 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       isNull(prayerRequestTagsTable.removedAt),
     ));
 
+  // Communities this request was shared to, plus whether THIS viewer is an
+  // admin there and whether it's currently muted in that group — drives
+  // the "Mute in [Group]" admin action on the detail page. Owner: "an
+  // admin should be able to mute a prayer request from the group."
+  const scopedGroupRows = await db
+    .select({
+      groupId: prayerRequestGroupsTable.groupId,
+      groupName: groupsTable.name,
+      groupSlug: groupsTable.slug,
+      mutedAt: prayerRequestGroupsTable.mutedAt,
+      viewerRole: groupMembersTable.role,
+    })
+    .from(prayerRequestGroupsTable)
+    .innerJoin(groupsTable, eq(groupsTable.id, prayerRequestGroupsTable.groupId))
+    .leftJoin(groupMembersTable, and(
+      eq(groupMembersTable.groupId, prayerRequestGroupsTable.groupId),
+      eq(groupMembersTable.userId, sessionUserId),
+      isNotNull(groupMembersTable.joinedAt),
+    ))
+    .where(eq(prayerRequestGroupsTable.requestId, id));
+  const groups = scopedGroupRows.map((g) => ({
+    id: g.groupId,
+    name: g.groupName,
+    slug: g.groupSlug,
+    isAdmin: g.viewerRole === "admin" || g.viewerRole === "hidden_admin",
+    muted: g.mutedAt != null,
+  }));
+
   res.json({
     id: r.id,
     body: r.body,
@@ -331,6 +359,7 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     amenCountTotal,
     myWord,
     myAmenedToday,
+    groups,
   });
 });
 
@@ -458,15 +487,20 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   let requests = requestsUnfiltered;
   if (requestsUnfiltered.length > 0) {
     const scopeRows = await db
-      .select({ requestId: prayerRequestGroupsTable.requestId, groupId: prayerRequestGroupsTable.groupId })
+      .select({ requestId: prayerRequestGroupsTable.requestId, groupId: prayerRequestGroupsTable.groupId, mutedAt: prayerRequestGroupsTable.mutedAt })
       .from(prayerRequestGroupsTable)
       .where(inArray(prayerRequestGroupsTable.requestId, requestsUnfiltered.map(r => r.id)));
     if (scopeRows.length > 0) {
-      const scopedGroupsByRequest = new Map<number, Set<number>>();
+      // groupId -> muted, per request — a group admin's mute (owner: "an
+      // admin should be able to mute a prayer request from the group")
+      // only silences it for viewers whose ONLY shared-group path to this
+      // request runs through that muted group; a viewer who shares a
+      // DIFFERENT (unmuted) group with the requester still sees it.
+      const scopedGroupsByRequest = new Map<number, Map<number, boolean>>();
       for (const row of scopeRows) {
-        const set = scopedGroupsByRequest.get(row.requestId) ?? new Set<number>();
-        set.add(row.groupId);
-        scopedGroupsByRequest.set(row.requestId, set);
+        const map = scopedGroupsByRequest.get(row.requestId) ?? new Map<number, boolean>();
+        map.set(row.groupId, row.mutedAt != null);
+        scopedGroupsByRequest.set(row.requestId, map);
       }
       const viewerGroupIds = await getUserGroupIds(sessionUserId);
       const viewerGroupSet = new Set(viewerGroupIds);
@@ -476,7 +510,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
         if (r.ownerId === sessionUserId || explicitVisibleIds.includes(r.id)) return true;
         const scope = scopedGroupsByRequest.get(r.id);
         if (!scope) return true; // legacy/unscoped — existing rule applies
-        for (const gid of scope) if (viewerGroupSet.has(gid)) return true;
+        for (const [gid, muted] of scope) if (viewerGroupSet.has(gid) && !muted) return true;
         return false;
       });
     }
@@ -1630,6 +1664,69 @@ router.patch("/prayer-requests/:id/renew", async (req, res): Promise<void> => {
     .where(eq(prayerRequestsTable.id, id))
     .returning();
   res.json(updated);
+});
+
+// PATCH/DELETE /api/prayer-requests/:id/mute-in-group — owner: "an admin
+// should be able to mute a prayer request from the group." Per-(request,
+// group) moderation: a group admin can silence one request from THEIR
+// group's view without touching any other group it was also shared to,
+// and without muting the requester as a person (that's the separate,
+// per-viewer user_mutes feature). Requires an existing
+// prayer_request_groups row for (id, groupId) — the request must
+// actually be scoped to that group — and requires the caller be an
+// admin/hidden_admin member of it.
+async function requireGroupAdminForRequest(
+  requestId: number,
+  groupId: number,
+  userId: number,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const [scoped] = await db.select({ id: prayerRequestGroupsTable.id })
+    .from(prayerRequestGroupsTable)
+    .where(and(eq(prayerRequestGroupsTable.requestId, requestId), eq(prayerRequestGroupsTable.groupId, groupId)));
+  if (!scoped) return { ok: false, status: 404, error: "Not shared with this group" };
+  const [membership] = await db.select({ role: groupMembersTable.role })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, groupId),
+      eq(groupMembersTable.userId, userId),
+      isNotNull(groupMembersTable.joinedAt),
+    ));
+  if (!membership || (membership.role !== "admin" && membership.role !== "hidden_admin")) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
+  return { ok: true };
+}
+
+router.patch("/prayer-requests/:id/mute-in-group", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  const groupId = parseInt(req.body?.groupId, 10);
+  if (isNaN(id) || isNaN(groupId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const gate = await requireGroupAdminForRequest(id, groupId, sessionUserId);
+  if (!gate.ok) { res.status(gate.status).json({ error: gate.error }); return; }
+
+  await db.update(prayerRequestGroupsTable)
+    .set({ mutedAt: new Date(), mutedByUserId: sessionUserId })
+    .where(and(eq(prayerRequestGroupsTable.requestId, id), eq(prayerRequestGroupsTable.groupId, groupId)));
+  res.json({ ok: true, muted: true });
+});
+
+router.delete("/prayer-requests/:id/mute-in-group", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  const groupId = parseInt(String(req.body?.groupId ?? req.query.groupId), 10);
+  if (isNaN(id) || isNaN(groupId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const gate = await requireGroupAdminForRequest(id, groupId, sessionUserId);
+  if (!gate.ok) { res.status(gate.status).json({ error: gate.error }); return; }
+
+  await db.update(prayerRequestGroupsTable)
+    .set({ mutedAt: null, mutedByUserId: null })
+    .where(and(eq(prayerRequestGroupsTable.requestId, id), eq(prayerRequestGroupsTable.groupId, groupId)));
+  res.json({ ok: true, muted: false });
 });
 
 // GET /api/prayer-requests/last-mine — the user's most recently created

@@ -78,6 +78,11 @@ type PrayerRequestDetail = {
   amenCountTotal: number;
   myWord: string | null;
   myAmenedToday: boolean;
+  // Communities this request was shared to, with the viewer's admin
+  // status and current mute state in each — drives the "Mute in
+  // [Group]" admin action. Owner: "an admin should be able to mute a
+  // prayer request from the group."
+  groups: Array<{ id: number; name: string; slug: string; isAdmin: boolean; muted: boolean }>;
 };
 
 function initials(name: string): string {
@@ -204,6 +209,21 @@ export default function PrayerRequestDetailPage() {
       setJustMuted(true);
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mutes/mine"] });
+    },
+  });
+
+  // Group-admin mute — owner: "an admin should be able to mute a prayer
+  // request from the group." Distinct from muteMut above: this silences
+  // ONE request from ONE community's view (moderation), not the whole
+  // requester from the caller's own view (personal).
+  const groupMuteMut = useMutation({
+    mutationFn: ({ groupId, mute }: { groupId: number; mute: boolean }) =>
+      mute
+        ? apiRequest("PATCH", `/api/prayer-requests/${id}/mute-in-group`, { groupId })
+        : apiRequest("DELETE", `/api/prayer-requests/${id}/mute-in-group`, { groupId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
 
@@ -525,6 +545,24 @@ export default function PrayerRequestDetailPage() {
                   {t("prayer_request_detail.mute", { defaultValue: "Mute" })}
                 </button>
               )}
+              {/* Group-admin action — owner: "an admin should be able to
+                  mute a prayer request from the group." One button per
+                  community the viewer admins that this was shared to;
+                  silences it from THAT group's view only. */}
+              {data.groups.filter((g) => g.isAdmin).map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => groupMuteMut.mutate({ groupId: g.id, mute: !g.muted })}
+                  disabled={groupMuteMut.isPending}
+                  className="text-[11px] disabled:opacity-40"
+                  style={{ color: "rgba(143,175,150,0.5)", fontFamily: "'Space Grotesk', sans-serif", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  {g.muted
+                    ? t("prayer_request_detail.unmute_in_group", { name: g.name, defaultValue: `Unmute in ${g.name}` })
+                    : t("prayer_request_detail.mute_in_group", { name: g.name, defaultValue: `Mute in ${g.name}` })}
+                </button>
+              ))}
             </div>
 
             {/* Eyebrow + kind pill on a single row, same shape as
