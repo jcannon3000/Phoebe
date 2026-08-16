@@ -31,7 +31,13 @@ export function readTurnedOn(ymd: string): boolean {
   try { return localStorage.getItem(`phoebe:turn-opened:${ymd}`) === "1"; } catch { return false; }
 }
 
-export type WeeklyGridRow = { emoji: string; label: string; kept: boolean[] };
+// `partial` marks a dot as "started but not yet met the day's quota" —
+// owner: "if someone is partly done with their contemplation quota, have
+// the weekly dot half shaded in." Only ever true for TODAY's column (past
+// days are recorded as a plain done/not-done boolean server-side, with no
+// minutes-vs-goal history to reconstruct a partial state from) and only on
+// the Contemplative row, the one row backed by an actual minutes quota.
+export type WeeklyGridRow = { emoji: string; label: string; kept: boolean[]; partial: boolean[] };
 export type WeeklyGridData = { rows: WeeklyGridRow[]; dayInitials: string[]; ymds: string[] };
 
 /** Oldest first, today last — matches the server's own chronological order
@@ -97,10 +103,18 @@ export function computeWeeklyGrid(params: {
   const eveningPractice = rhythm.eveningDone;
   const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
     || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
+  // Today only — some minutes logged, but short of the daily goal. Owner:
+  // "if someone is partly done with their contemplation quota, have the
+  // weekly dot half shaded in." Never true once contemplativePractice
+  // itself is true (that's the full dot, not the half one).
+  const contemplativePartialToday = !contemplativePractice
+    && rhythm.contemplationGoalMin > 0
+    && rhythm.contemplationMin > 0
+    && rhythm.contemplationMin < rhythm.contemplationGoalMin;
 
-  const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
+  const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean }> = practiceMode ? [
     { emoji: "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
-    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn },
+    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday },
     { emoji: "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
@@ -108,10 +122,12 @@ export function computeWeeklyGrid(params: {
     { emoji: "🙏🏽", label: "Pray", done: prayed, historyFor: prayedOn },
   ];
 
+  const lastIndex = windowDays.length - 1;
   const rows: WeeklyGridRow[] = raw.map((r) => ({
     emoji: r.emoji,
     label: r.label,
     kept: windowDays.map((d) => (d.ymd === todayYmd ? r.done : r.historyFor(d))),
+    partial: windowDays.map((d, i) => i === lastIndex && d.ymd === todayYmd && !!r.partialToday),
   }));
 
   return { rows, dayInitials, ymds: windowDays.map((d) => d.ymd) };

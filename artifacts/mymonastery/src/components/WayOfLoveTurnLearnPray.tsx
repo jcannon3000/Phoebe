@@ -259,17 +259,25 @@ export function WayOfLoveTurnLearnPray({ cascadeDelay = 0, splashCleared = true 
                     // an outer glow (owner), so it settles back to the same
                     // solid dot rather than leaving a permanent halo.
                     const pulsing = i === r.kept.length - 1 && pulseLabels.has(r.label);
+                    // Owner: "if someone is partly done with their
+                    // contemplation quota, have the weekly dot half shaded
+                    // in" — some minutes logged today, short of the goal.
+                    const partial = !kept && (r.partial?.[i] ?? false);
                     return (
                       <span key={ymds[i] || i} className="flex justify-center">
                         <motion.span
-                          title={`${r.label} · ${ymds[i]}`}
+                          title={`${r.label} · ${ymds[i]}${partial ? " (partial)" : ""}`}
                           animate={pulsing ? { opacity: [1, 0.35, 1] } : undefined}
                           transition={pulsing ? { duration: 1, repeat: 3, ease: "easeInOut" } : undefined}
                           style={{
                             width: 14,
                             height: 14,
                             borderRadius: 999,
-                            background: kept ? `rgba(${KEPT_RGB},0.85)` : "transparent",
+                            background: kept
+                              ? `rgba(${KEPT_RGB},0.85)`
+                              : partial
+                                ? `linear-gradient(90deg, rgba(${KEPT_RGB},0.85) 50%, transparent 50%)`
+                                : "transparent",
                             border: kept ? "none" : "1px solid rgba(143,175,150,0.28)",
                           }}
                         />
