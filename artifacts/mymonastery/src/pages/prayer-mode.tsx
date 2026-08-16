@@ -2566,11 +2566,12 @@ export default function PrayerModePage() {
   // focused queue (queue=new/feed/parish-weekly/feed-digest) is deliberately
   // narrow and shouldn't gain unrelated slides.
   const signedUp = !!user && !user.isAnonymous;
-  const { data: myIntentionsData } = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
+  const myIntentionsQuery = useQuery<{ intentions: Array<{ id: number; kind: "text" | "person"; personName: string; body: string; answered: boolean }> }>({
     queryKey: ["/api/prayer-intentions"],
     queryFn: () => apiRequest("GET", "/api/prayer-intentions"),
     enabled: signedUp && !queueMode,
   });
+  const myIntentionsData = myIntentionsQuery.data;
 
   // (The legacy /api/prayer-feeds/today query lived here. Prayer feeds
   // are now a flat, ongoing list of intercessions — sharedMomentsTable
@@ -3213,6 +3214,16 @@ export default function PrayerModePage() {
       momentsQuery.isSuccess &&
       prayerRequestsQuery.isSuccess &&
       circleIntentionsQuery.isSuccess &&
+      // Personal-list slides (owner: "it needs to do a slideshow of both
+      // community and personal") — this query is only enabled when
+      // signed up; when it's disabled it never becomes isSuccess, so guard
+      // with the same enabled condition or dataReady would hang forever
+      // for a guest/queued walk. When it IS enabled, dataReady must wait
+      // for it — otherwise the deck can freeze (frozenSlides) before this
+      // slower, page-specific fetch resolves, permanently excluding the
+      // personal list from that session (this is the exact regression
+      // reported: "back to only doing community prayers").
+      (!(signedUp && !queueMode) || myIntentionsQuery.isSuccess) &&
       (queueMode !== "parish-weekly" || parishWeeklyQuery.isSuccess)
     );
   })();

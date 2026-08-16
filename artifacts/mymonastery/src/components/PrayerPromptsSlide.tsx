@@ -56,7 +56,7 @@ export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
   // ── Input screen ─────────────────────────────────────────────────────────
   if (picked) {
     return (
-      <div className="w-full flex flex-col items-stretch gap-4" style={{ maxWidth: 460, margin: "0 auto" }}>
+      <div className="w-full flex flex-col items-stretch gap-4" style={{ maxWidth: 460, margin: "32px auto 0" }}>
         <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-center" style={{ color: `rgba(${RGB},0.95)`, fontFamily: FONT }}>
           {t(`prayer_prompts.${picked.key}`, { defaultValue: picked.label })}
         </p>
@@ -110,7 +110,10 @@ export function PrayerPromptsSlide({ onContinue }: { onContinue: () => void }) {
 
   // ── Pill grid (full-width) ───────────────────────────────────────────────
   return (
-    <div className="w-full flex flex-col items-stretch text-center gap-4" style={{ maxWidth: 460, margin: "0 auto" }}>
+    // marginTop nudges the whole block down a touch (owner) — the content
+    // is tall enough that the wrapping slide's vertical centering alone
+    // left it sitting right under the settings/close icons.
+    <div className="w-full flex flex-col items-stretch text-center gap-4" style={{ maxWidth: 460, margin: "32px auto 0" }}>
       <p className="text-[20px] leading-[1.5] italic px-2" style={{ color: "#E8E4D8", fontFamily: SERIF }}>
         {t("prayer_prompts.title", { defaultValue: "Before you go — is there anything to lift up?" })}
       </p>
