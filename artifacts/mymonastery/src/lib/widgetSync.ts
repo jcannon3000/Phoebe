@@ -48,6 +48,11 @@ type WidgetState = {
   weeklyLabels: string[];
   weeklyEmoji: string[];
   weeklyGrid: boolean[][];
+  // "Started but not yet met the day's quota" — the home card's half-shaded
+  // dot (currently only ever true for Contemplation, today's column). Kept
+  // as its own parallel grid rather than folded into weeklyGrid so the
+  // widget can tell "kept" from "partial" apart, same as the web card does.
+  weeklyPartial: boolean[][];
   weeklyDayInitials: string[];
   updatedAt: string;
 };
@@ -312,6 +317,7 @@ export function useWidgetSync(): void {
       weeklyLabels: weekly.rows.map((row) => row.label),
       weeklyEmoji: weekly.rows.map((row) => row.emoji),
       weeklyGrid: weekly.rows.map((row) => row.kept),
+      weeklyPartial: weekly.rows.map((row) => row.partial),
       weeklyDayInitials: weekly.dayInitials,
       updatedAt: new Date().toISOString(),
     });

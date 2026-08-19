@@ -1330,6 +1330,10 @@ declare global {
         // its row labels instead of a letter, matching the home card.
         weeklyEmoji?: string[] | null;
         weeklyGrid?: boolean[][] | null;
+        // "Started but not yet met the day's quota" — the home card's
+        // half-shaded dot (currently only ever true for Contemplation,
+        // today's column). Parallel to weeklyGrid, same [row][day] shape.
+        weeklyPartial?: boolean[][] | null;
         // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S),
         // oldest day first / today last — same order as weeklyGrid's columns.
         weeklyDayInitials?: string[] | null;
@@ -1449,6 +1453,7 @@ function exposePublicApi() {
           weeklyLabels: state.weeklyLabels ?? null,
           weeklyEmoji: state.weeklyEmoji ?? null,
           weeklyGrid: state.weeklyGrid ?? null,
+          weeklyPartial: state.weeklyPartial ?? null,
           weeklyDayInitials: state.weeklyDayInitials ?? null,
         });
         window.localStorage.setItem("phoebe:persist:widget", payload);

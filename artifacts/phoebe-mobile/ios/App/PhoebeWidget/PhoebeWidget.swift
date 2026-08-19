@@ -54,6 +54,12 @@ struct PhoebeStats {
     // associated emojis from the practice cards").
     var weeklyEmoji: [String]
     var weeklyGrid: [[Bool]]
+    // "Started but not yet met the day's quota" — half-shaded dot, parallel
+    // to weeklyGrid ([row][day], same shape). Only ever true for
+    // Contemplation's TODAY column, mirroring the home card. Defaults to
+    // an all-false grid (never fabricated) for a payload that predates
+    // this field.
+    var weeklyPartial: [[Bool]]
     // Day-of-week initials for the grid's header row (S/M/T/W/T/F/S), same
     // column order as weeklyGrid — mirrors the home card's own header row
     // (WayOfLoveTurnLearnPray.tsx's dayInitials), which the widget was
@@ -74,6 +80,11 @@ struct PhoebeStats {
             [true, true, false, true, true, true, true],
             [true, false, true, true, true, false, true],
             [true, true, true, true, true, true, false],
+        ],
+        weeklyPartial: [
+            [false, false, false, false, false, false, false],
+            [false, false, false, false, false, false, true],
+            [false, false, false, false, false, false, false],
         ],
         weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
     )
@@ -102,6 +113,7 @@ struct PhoebeStats {
             weeklyLabels: ["Turn", "Learn", "Pray"],
             weeklyEmoji: ["🔄", "📖", "🙏🏽"],
             weeklyGrid: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)],
+            weeklyPartial: [[Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7), [Bool](repeating: false, count: 7)],
             weeklyDayInitials: ["S", "M", "T", "W", "T", "F", "S"]
         )
     }
@@ -150,6 +162,12 @@ struct PhoebeStats {
         let weeklyGrid: [[Bool]] = (obj["weeklyGrid"] as? [[Bool]])
             ?? (obj["weeklyGrid"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
             ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
+        // Older app builds won't send this field at all — an all-false grid
+        // (never fabricated) so those payloads still render, just with no
+        // half-shaded dots.
+        let weeklyPartial: [[Bool]] = (obj["weeklyPartial"] as? [[Bool]])
+            ?? (obj["weeklyPartial"] as? [[NSNumber]])?.map { $0.map { $0.boolValue } }
+            ?? weeklyLabels.map { _ in [Bool](repeating: false, count: 7) }
         let weeklyDayInitials = (obj["weeklyDayInitials"] as? [String]) ?? ["S", "M", "T", "W", "T", "F", "S"]
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
@@ -159,7 +177,7 @@ struct PhoebeStats {
                            eveningDone: eveningDone, reflectAvailable: reflectAvailable,
                            contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin,
                            weeklyLabels: weeklyLabels, weeklyEmoji: weeklyEmoji, weeklyGrid: weeklyGrid,
-                           weeklyDayInitials: weeklyDayInitials)
+                           weeklyPartial: weeklyPartial, weeklyDayInitials: weeklyDayInitials)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -357,8 +375,19 @@ struct PhoebeWidgetView: View {
                             ForEach(0..<7, id: \.self) { day in
                                 let kept = row < stats.weeklyGrid.count && day < stats.weeklyGrid[row].count
                                     && stats.weeklyGrid[row][day]
+                                // Half-shaded when started but not yet met the
+                                // day's quota (currently only Contemplation,
+                                // today's column) — mirrors the home card's
+                                // own half-opacity dot (0.425, exactly half
+                                // the kept dot's 0.85).
+                                let partial = !kept && row < stats.weeklyPartial.count
+                                    && day < stats.weeklyPartial[row].count && stats.weeklyPartial[row][day]
                                 Circle()
-                                    .fill(kept ? Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.9) : Color.clear)
+                                    .fill(
+                                        kept ? Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.9)
+                                        : partial ? Color(red: 0.431, green: 0.706, blue: 0.510).opacity(0.45)
+                                        : Color.clear
+                                    )
                                     .overlay(
                                         Circle().stroke(kept ? Color.clear : phoebeWarm.opacity(0.35), lineWidth: 1)
                                     )
