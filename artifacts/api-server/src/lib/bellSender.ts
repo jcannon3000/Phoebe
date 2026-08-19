@@ -39,6 +39,8 @@ import { loadFeedDigest } from "./feedDigest";
 import { sendWeeklyDigestEmail } from "./email";
 import { withSchedulerLog } from "./schedulerHeartbeat";
 import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
+import { getOfficeDay } from "./liturgicalCalendar";
+import { getLectionaryReadings } from "./lectionary";
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
@@ -540,6 +542,31 @@ function isAtExactMinute(parishTz: string, targetHHMM: string): boolean {
   return hour * 60 + minute === target;
 }
 
+// Owner: "if the notification... is for them to pray the morning office or
+// to do the devotions, have it in the second line of the notification
+// include the psalms and the readings for the day." A compact one-line
+// citation — "Psalm 34 · Genesis 1, Matthew 6" — built from the SAME 1979
+// BCP lectionary the office assembler itself uses (getOfficeDay +
+// getLectionaryReadings), not a separate/simplified lookup. `today` is the
+// recipient's own local YYYY-MM-DD (already resolved by the caller via
+// todayInZone(tz)) — constructed at noon UTC so the date itself can't drift
+// across a UTC day boundary regardless of the server's own timezone.
+function officeReadingsLine(today: string, side: "morning" | "evening"): string | null {
+  try {
+    const day = getOfficeDay(new Date(`${today}T12:00:00Z`));
+    const readings = getLectionaryReadings(day, side);
+    const psalms = readings.psalms.filter(Boolean);
+    const lessons = [readings.lesson1, readings.lesson2, readings.lesson3].filter(Boolean);
+    if (psalms.length === 0 && lessons.length === 0) return null;
+    const psalmLabel = psalms.length > 0 ? `Psalm${psalms.length > 1 ? "s" : ""} ${psalms.join(", ")}` : null;
+    const lessonLabel = lessons.length > 0 ? lessons.join(", ") : null;
+    return [psalmLabel, lessonLabel].filter(Boolean).join(" · ") || null;
+  } catch {
+    // Best-effort — a lectionary lookup failure should never block the push.
+    return null;
+  }
+}
+
 // (Removed: an OFFICE_REMINDERS_ENABLED env-var kill switch that
 // gated the office-reminder fan-out until the App Store rollout
 // completed. The new app is live on the App Store and every user
@@ -649,6 +676,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
               await sendParishOfficeReminderPush(r.userId, {
                 side: "morning",
                 parishTitle: r.parishTitle,
+                readingsLine: officeReadingsLine(today, "morning"),
               });
               await db
                 .update(usersTable)
@@ -702,6 +730,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
               await sendParishOfficeReminderPush(r.userId, {
                 side: "evening",
                 parishTitle: r.parishTitle,
+                readingsLine: officeReadingsLine(today, "evening"),
               });
               logger.info({ userId: r.userId, pref: r.eveningPref }, "[office-reminder] evening push sent");
               await db
@@ -804,7 +833,7 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
           continue;
         }
         try {
-          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle });
+          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle, readingsLine: officeReadingsLine(today, "evening") });
           logger.info({ userId: r.userId }, "[office-reminder] evening FOLLOW-UP push sent");
           await db.update(usersTable).set({ parishOfficeEveningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
         } catch (err) {
@@ -886,7 +915,7 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
           continue;
         }
         try {
-          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle });
+          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle, readingsLine: officeReadingsLine(today, "morning") });
           logger.info({ userId: r.userId }, "[office-reminder] morning FOLLOW-UP push sent");
           await db.update(usersTable).set({ parishOfficeMorningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
         } catch (err) {

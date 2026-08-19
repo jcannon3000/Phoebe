@@ -1022,9 +1022,15 @@ export function sendParishOfficeReminderPush(
     side: "morning" | "evening";
     parishTitle?: string | null;
     level?: string | null;
+    // Owner: "have it in the second line of the notification include the
+    // psalms and the readings for the day." A compact citation string
+    // (bellSender.ts's officeReadingsLine) appended as its own line in the
+    // body when present; omitted entirely (undefined/null) leaves the body
+    // exactly as before — best-effort, never blocks the push itself.
+    readingsLine?: string | null;
   }
 ) {
-  const { side, parishTitle, level } = opts;
+  const { side, parishTitle, level, readingsLine } = opts;
   const cap = side === "morning" ? "Morning" : "Evening";
   const practiceCopy: Record<string, { title: string; body: string }> = {
     office: {
@@ -1055,12 +1061,13 @@ export function sendParishOfficeReminderPush(
   const practice = level ? practiceCopy[level] : undefined;
   const title = practice?.title
     ?? (side === "morning" ? "Begin your day in prayer" : "Close your day in prayer");
-  const body = parishTitle
+  const firstLine = parishTitle
     ? `Pray with ${parishTitle}.`
     : practice?.body
       ?? (side === "morning"
         ? "A few quiet minutes to start the day."
         : "A few quiet minutes before the day ends.");
+  const body = readingsLine ? `${firstLine}\n${readingsLine}` : firstLine;
   return sendPushToUser(userId, {
     title,
     body,
