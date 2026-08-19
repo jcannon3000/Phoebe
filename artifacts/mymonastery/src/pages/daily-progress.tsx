@@ -79,7 +79,7 @@ export default function DailyProgressPage() {
           🖨️ {t("daily_progress.print_weekly", { defaultValue: "Print a weekly version (PDF)" })} →
         </Link>
 
-        <DailyProgressBody />
+        <DailyProgressBody mountTag="daily-progress-page" />
       </div>
       </div>
     </Layout>

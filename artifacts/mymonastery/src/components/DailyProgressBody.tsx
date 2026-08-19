@@ -22,6 +22,7 @@ import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToda
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
+import { logCelebrationEvent } from "@/lib/celebrationDebugLog";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { playRoutineCompleteSwell } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -734,7 +735,7 @@ const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Re
   walk: { title: (t) => t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶" },
 };
 
-export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void }) {
+export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount, mountTag = "unlabeled" }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void; /** Diagnostic only — see lib/celebrationDebugLog.ts. Identifies which of dashboard.tsx's mutually-exclusive render branches mounted this instance. */ mountTag?: string }) {
   const { t } = useTranslation();
   // ── The just-completed moment ────────────────────────────────────────────
   // Coming back from a practice, the card is already Done in state — so
@@ -743,6 +744,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // for a ✓, hold a beat, then let it drop into Done while the list closes up.
   // Read once at mount and consumed immediately, so the moment plays exactly
   // once per completion and never replays on a later visit.
+  // Diagnostic-only instance id — see lib/celebrationDebugLog.ts. Lets the
+  // log distinguish two DailyProgressBody mounts (e.g. a remount when
+  // allHabitsDone flips) firing close together, even under the same tag.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2, 8));
   const [celebrateKey] = useState<string | null>(() => {
     // readRecentCompletion's own default (60s) is sized for an in-app
     // office close, not a reflection — CAC/FDD/SSJE mark themselves read
@@ -756,6 +761,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // visit could accidentally replay it.
     const recent = readRecentCompletion(20 * 60_000);
     if (recent) clearRecentCompletion();
+    // Owner: "make sure there is only one time animation for each
+    // completion, again sometimes it will do it twice." Log every mount's
+    // consume attempt so a repeat can be diagnosed from the trail instead
+    // of guessed at — see lib/celebrationDebugLog.ts.
+    logCelebrationEvent({
+      instanceId: instanceIdRef.current,
+      mountTag,
+      stampFound: !!recent,
+      stampKey: recent?.key ?? null,
+      stampAgeMs: recent ? Date.now() - recent.at : null,
+      celebrating: !!recent,
+    });
     return recent?.key ?? null;
   });
   // Phase 1: pinned in Next (pill → ✓). Phase 2: released into Done.

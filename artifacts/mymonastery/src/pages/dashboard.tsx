@@ -7164,7 +7164,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           /daily-progress. Once everything's kept, the only
                           things left here are Turn·Learn·Pray and a "sit
                           again" invitation (below). */}
-                      <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                      <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} mountTag="done-no-events" />
                       {/* layout on every section below DailyProgressBody: when a
                           card above completes and the Next/Done list shrinks,
                           Framer Motion detects each of these siblings landed at
@@ -7234,7 +7234,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* Events live UNDER the prayer requests now (below), not here. */}
                     {/* Kept cards drop off the home once done — see the
                         no-events branch note above. */}
-                    <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} />
+                    <DailyProgressBody showStreak={false} showDone={doneShownPref} maxUpcoming={7} leadCard={null} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} onRemainingCount={handleRemainingCount} mountTag="done-events" />
                     {/* layout on each section below — see HOME_REFLOW_TRANSITION's
                         definition for why. */}
                     <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
@@ -7274,6 +7274,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   leadCard={null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                   onRemainingCount={handleRemainingCount}
+                  mountTag="active"
                 />
                 {/* layout on every section below the Next list: completing a
                     card up in DailyProgressBody shrinks it (its own rows
