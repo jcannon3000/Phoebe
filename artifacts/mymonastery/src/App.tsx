@@ -346,6 +346,7 @@ const NovenaDetailPage = lazy(() => import("./pages/novena-detail"));
 const NovenaLibraryPage = lazy(() => import("./pages/novena-library"));
 const AddWidgetPage = lazy(() => import("./pages/add-widget"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
+const ContemplationLogPage = lazy(() => import("./pages/contemplation-log"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
 const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
 const PrayBreathPage = lazy(() => import("./pages/pray-breath"));
@@ -677,7 +678,7 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
   "/", "/pilot/home", "/pilot/build",
   "/prayer-list", "/pray-request/new", "/intentions",
   "/menu", "/menu/practices", "/menu/reflections", "/menu/bcp",
-  "/contemplation", "/cobreathe", "/offices", "/vts-reading",
+  "/contemplation", "/contemplation-log", "/cobreathe", "/offices", "/vts-reading",
   "/prayer-chooser", "/settings", "/signin", "/login", "/onboarding",
   "/pray",
   "/creation-devotion", "/creation-prayers",
@@ -724,7 +725,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Practices that need no account to pray — the Examen and the Simple Guided
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
-  "/psalms", "/contemplation", "/examen", "/guided-prayer", "/reflect/fdd", "/customize",
+  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/reflect/fdd", "/customize",
   // The Morning/Evening Prayer + Compline picker — reached from the new
   // "Daily Offices" row in Practices (a guest-visible menu), so the target
   // must be guest-allowed too or the tap just bounces back to the dashboard.
@@ -965,6 +966,7 @@ function Router() {
       <Route path="/novena-library" component={NovenaLibraryPage} />
       <Route path="/add-widget" component={AddWidgetPage} />
       <Route path="/contemplation" component={ContemplationPage} />
+      <Route path="/contemplation-log" component={ContemplationLogPage} />
       <Route path="/psalms" component={PsalmsPage} />
       <Route path="/cobreathe/about" component={CobreatheAboutPage} />
       <Route path="/cobreathe" component={CobreathePage} />

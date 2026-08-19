@@ -817,17 +817,26 @@ export default function ContemplationPage() {
           >
             {t("contemplation.view_stats", { defaultValue: "View stats" })} <span aria-hidden>→</span>
           </button>
-          <span aria-hidden style={{ color: "rgba(143,175,150,0.4)" }}>·</span>
-          {/* Manual log — open the full page's History tab with the log form
-              already expanded, so a sit prayed elsewhere can be recorded
-              without first hunting for the History section. */}
+        </div>
+      )}
+      {/* Manual log — owner: "have it be a pill... goes not to the
+          contemplation details page, but goes to its own simple UI page."
+          A real pill (not the quiet text link the other two use), its own
+          row so it doesn't crowd against View stats. */}
+      {beginMode && (
+        <div className="flex items-center justify-center mt-3">
           <button
             type="button"
-            onClick={() => { setTab("history"); setLogOpen(true); setLocation("/contemplation?tab=history"); }}
-            className="text-center transition-opacity active:opacity-70"
-            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            onClick={() => {
+              const s = (() => {
+                try { return new URLSearchParams(window.location.search).get("side"); } catch { return null; }
+              })();
+              setLocation(s === "morning" || s === "evening" ? `/contemplation-log?side=${s}` : "/contemplation-log");
+            }}
+            className="rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "10px 20px" }}
           >
-            {t("contemplation.log_prayer_time", { defaultValue: "Log prayer time" })}
+            {t("contemplation.log_prayer_time", { defaultValue: "Log Prayer Time" })}
           </button>
         </div>
       )}
