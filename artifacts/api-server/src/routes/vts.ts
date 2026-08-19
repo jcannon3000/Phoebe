@@ -206,7 +206,15 @@ let textCached: TextCacheEntry | null = null;
 
 async function resolveTodayText(): Promise<TextCacheEntry> {
   const { url, title } = await resolveToday();
-  if (textCached && textCached.url === url && Date.now() - textCached.fetchedAt < CACHE_TTL_MS) {
+  // Unlike resolveToday()'s 30-minute feed-poll TTL (needed to notice a new
+  // post going live), the scraped ARTICLE BODY for a given url never
+  // changes once published — so once any user loads it, it's cached (in
+  // this process, for every user) until resolveToday() resolves a
+  // DIFFERENT url, i.e. a new day's commentary. No time-based expiry here:
+  // re-scraping vts.edu every 30 minutes for the same url was wasted work
+  // (and wasted risk — a transient fetch failure would flip a perfectly
+  // good cached reader to the empty-paragraphs fallback for no reason).
+  if (textCached && textCached.url === url) {
     return textCached;
   }
   const controller = new AbortController();
