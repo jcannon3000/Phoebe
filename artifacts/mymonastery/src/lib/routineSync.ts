@@ -37,7 +37,7 @@ const ROUTINE_KEYS: string[] = [
   "phoebe:office:default-entry", "phoebe:office:include-gratitude-slide",
   "phoebe:office:contemplation-minutes",
   "phoebe:office:show-cac-close", "phoebe:office:show-fdd-close", "phoebe:office:show-ssje-close",
-  "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:contemplation-style",
+  "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:contemplation-log-method",
   // Creation Prayer breath-count preset (customizer "How many breaths?" +
   // the /cobreathe Length dropdown share this key).
   "phoebe:cobreathe-length",

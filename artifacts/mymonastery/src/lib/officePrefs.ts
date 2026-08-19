@@ -369,6 +369,25 @@ export function setPsalmCycle(v: PsalmCycle): void {
   } catch { /* non-fatal */ }
 }
 
+// How the silent Contemplation card is kept: "timer" opens the countdown
+// timer (/contemplation); "manual" just marks the sit done on tap, no timer
+// — owner: "log method... either timer or manual log. or mark as done."
+// Per device, default "timer" (the existing behavior). Only affects the
+// SILENT sit — Creation Prayer (the Co-Breathe breath) is a different
+// practice with its own guided flow and isn't offered a manual-log choice.
+export type ContemplationLogMethod = "timer" | "manual";
+export function getContemplationLogMethod(): ContemplationLogMethod {
+  try {
+    return localStorage.getItem("phoebe:contemplation-log-method") === "manual" ? "manual" : "timer";
+  } catch { return "timer"; }
+}
+export function setContemplationLogMethod(v: ContemplationLogMethod): void {
+  try {
+    localStorage.setItem("phoebe:contemplation-log-method", v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
 // Way to pray per side (read / listen / watch). Falls back to the shared
 // default-office-entry when this side has no override.
 export function getSideEntry(side: OfficeSide): DefaultOfficeEntry {

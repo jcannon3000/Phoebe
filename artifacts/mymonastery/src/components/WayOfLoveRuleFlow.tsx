@@ -55,6 +55,9 @@ import {
   setSideContemplation,
   getSideCustomName,
   setSideCustomName,
+  getContemplationLogMethod,
+  setContemplationLogMethod,
+  type ContemplationLogMethod,
   type PsalmCycle,
   type ReflectionSource,
   type OfficeSide,
@@ -816,6 +819,11 @@ export default function WayOfLoveRuleFlow({
   const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => { touchedRef.current = true; setPrayBySide((prev) => ({ ...prev, [side]: p })); };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
+  // Owner: "we want a second row that says log method two options. We want
+  // it to be either timer or manual log. or mark as done." Device-local,
+  // read fresh each mount (matches contemplationStyle's own pattern above).
+  const [logMethod, setLogMethodState] = useState<ContemplationLogMethod>(() => getContemplationLogMethod());
+  const chooseLogMethod = (m: ContemplationLogMethod) => { touchedRef.current = true; setLogMethodState(m); setContemplationLogMethod(m); };
 
   // Toggle a reflection in/out. "None" clears the list (no reflection card, one
   // fewer Daily-progress dot); picking a real source clears None.
@@ -1490,6 +1498,24 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
           {t("wol_rule.silence_goal_note", { defaultValue: "A gentle daily goal — reach it at your own pace. Choose 0 to keep silence in your rhythm without a set goal. It's never measured against you." })}
         </p>
+
+        <p style={{ color: SAGE_DIM, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, fontFamily: FONT, margin: "24px 0 10px" }}>
+          {t("wol_rule.log_method_label", { defaultValue: "Log method" })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(
+            logMethod === "timer",
+            `⏱️ ${t("wol_rule.log_method_timer", { defaultValue: "Timer" })}`,
+            t("wol_rule.log_method_timer_sub", { defaultValue: "Sit with a countdown, tap Begin to start it." }),
+            () => chooseLogMethod("timer"),
+          )}
+          {choiceRow(
+            logMethod === "manual",
+            `✅ ${t("wol_rule.log_method_manual", { defaultValue: "Manual log" })}`,
+            t("wol_rule.log_method_manual_sub", { defaultValue: "No timer — tap the card to mark it done." }),
+            () => chooseLogMethod("manual"),
+          )}
+        </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );

@@ -13,7 +13,7 @@ import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } fr
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
-import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, getContemplationLogMethod, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -166,6 +166,7 @@ export type RhythmState = {
    *  covers whichever sides are contemplative). Drives per-side card naming +
    *  routing in DailyProgressBody. */
   contemplationStyle: "silent" | "cobreathe";
+  contemplationLogMethod: "timer" | "manual";
   /** "Grow my silence" ladder state when enabled (else null) — the current rung
    *  drives contemplationGoalMin; daysToNext/nextLevel feed the card. */
   silenceLadder: { level: number; levelDays: number; daysToNext: number; nextLevel: number; atMax: boolean } | null;
@@ -890,6 +891,9 @@ export function useRhythmState(): RhythmState {
   const contemplationStyle: "silent" | "cobreathe" = (() => {
     try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
   })();
+  // "timer" (default) opens the countdown timer; "manual" just marks the sit
+  // done on tap — owner: "log method... either timer or manual log."
+  const contemplationLogMethod = getContemplationLogMethod();
   const perSideContemplationSet = getSideContemplationExplicit("morning") !== null || getSideContemplationExplicit("evening") !== null;
   // A guest who has NOT explicitly chosen per-side contemplation keeps the ONE
   // silence goal card (their default 5-min sit renders as the aggregate solo
@@ -1073,6 +1077,7 @@ export function useRhythmState(): RhythmState {
     contemplationMin,
     contemplationGoalMin,
     contemplationStyle,
+    contemplationLogMethod,
     silenceLadder: ladderEnabled && ladderData?.enabled && typeof ladderData.level === "number"
       ? { level: ladderData.level, levelDays: ladderData.levelDays ?? 0, daysToNext: ladderData.daysToNext ?? 0, nextLevel: ladderData.nextLevel ?? ladderData.level, atMax: !!ladderData.atMax }
       : null,
