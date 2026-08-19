@@ -55,6 +55,17 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             vc.delegate = self
             vc.dismissButtonStyle = .done
             vc.preferredControlTintColor = UIColor(red: 0.18, green: 0.42, blue: 0.25, alpha: 1.0)
+            // Owner: "we want all forward pages to open in light mode." This
+            // reader-mode path (used for FDD and other newsletter links) has
+            // no explicit appearance override otherwise, so it just follows
+            // the device's system dark/light setting — on a dark-mode device,
+            // Forward Movement's own pages rendered dark. Force light for
+            // their domain specifically; every other reader-mode source keeps
+            // following the system setting as before.
+            let host = url.host?.lowercased() ?? ""
+            if host == "forwardmovement.org" || host.hasSuffix(".forwardmovement.org") {
+                vc.overrideUserInterfaceStyle = .light
+            }
             self?.bridge?.viewController?.present(vc, animated: true)
             call.resolve()
         }

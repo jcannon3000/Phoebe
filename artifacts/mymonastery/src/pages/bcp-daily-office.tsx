@@ -35,6 +35,7 @@ import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLev
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { markOfficeBookComplete } from "@/lib/officeManualLog";
 import { PointedLine } from "@/components/PointedLine";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -5081,6 +5082,19 @@ export default function BcpDailyOfficePage() {
               </select>
             </div>
             <div style={{ height: 1, background: "rgba(var(--ot-mist, 200,212,192),0.14)", marginTop: 14, marginBottom: 20 }} />
+
+            {/* Owner: "have their manual log pill button under the different
+                dropdowns" — a one-tap "I already prayed it" for whoever's
+                praying straight from their own book, without walking through
+                the in-app deck or guide at all. Mirrors markOfficeBookComplete's
+                existing use (BookOfficeLogSheet), just surfaced directly here. */}
+            <button
+              onClick={() => { markOfficeBookComplete(todPick); setLocation("/dashboard"); }}
+              className="w-full rounded-2xl py-3 text-center transition-opacity hover:opacity-90 active:scale-[0.99] mb-3"
+              style={{ background: "rgba(var(--ot-deep, 9,26,16), 0.297)", ...FROST_BLUR, color: "var(--oh-fern, #A8C5A0)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 14, fontWeight: 600, border: "1px solid rgba(var(--ot-mint, 200,225,210),0.22)", cursor: "pointer" }}
+            >
+              ✓ Mark as already prayed
+            </button>
 
             <button
               onClick={beginOffice}

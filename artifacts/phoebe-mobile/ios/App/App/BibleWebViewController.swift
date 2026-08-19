@@ -161,6 +161,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         return config
     }
 
+    // Owner: "we want all forward pages to open in light mode" — any URL on
+    // Forward Movement's site (forwardmovement.org, prayer.forwardmovement.org,
+    // etc.), regardless of which feature opened it. Host-based rather than a
+    // per-call-site flag so a NEW forwardmovement.org link (e.g. a future
+    // reading page) gets this automatically without another wiring change.
+    static func forcesLightMode(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        return host == "forwardmovement.org" || host.hasSuffix(".forwardmovement.org")
+    }
+
     static func makeWebView() -> WKWebView {
         let wv = WKWebView(frame: .zero, configuration: makeConfiguration())
         wv.translatesAutoresizingMaskIntoConstraints = false
@@ -229,6 +239,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // one. Either way we own it, so we drive the nav delegate + load.
         webView = preloadedWebView ?? BibleWebViewController.makeWebView()
         webView.navigationDelegate = self
+        // Owner: "we want all forward pages to open in light mode." The VC
+        // itself forces .dark above (so prefers-color-scheme reads dark for
+        // most sites, matching the app), but forwardmovement.org's own pages
+        // are designed for light backgrounds — setting overrideUserInterfaceStyle
+        // on the webView itself (not the VC) stops the .dark cascade at just
+        // this view, without touching the surrounding dark chrome/toolbar.
+        if BibleWebViewController.forcesLightMode(url) {
+            webView.overrideUserInterfaceStyle = .light
+        }
         view.addSubview(webView)
 
         progressView.translatesAutoresizingMaskIntoConstraints = false
