@@ -627,6 +627,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
+  // Skip Ahead sheet — same section list the physical-book guide builds
+  // (buildBookSections), but tapping a row jumps the DIGITAL slideshow to
+  // that slide instead of just showing a page number. Owner: "another bar
+  // under that that says skip ahead... it would go to that slide."
+  const [skipAheadOpen, setSkipAheadOpen] = useState(false);
   // The held-breath veil's photo fades in once it has actually decoded. Without
   // this the veil paints its flat background first and the photo POPS in a frame
   // or two later — the flash on opening the office (worst on Water, whose photos
@@ -2051,6 +2056,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             ? () => setViewerLocation(`/podcast/${officeSide}-office`)
             : undefined
         }
+        onSkipAhead={slides.length > 0 ? () => setSkipAheadOpen(true) : undefined}
+      />
+      <SkipAheadSheet
+        open={skipAheadOpen}
+        onClose={() => setSkipAheadOpen(false)}
+        slides={slides}
+        onJump={(key) => {
+          const idx = slides.findIndex((s) => s.id === key);
+          if (idx >= 0) setSlideIdx(idx);
+          setSkipAheadOpen(false);
+        }}
       />
 
       <main
@@ -4106,6 +4122,80 @@ function buildBookSections(slides: Slide[]): BookSection[] {
     deduped.push(sec);
   }
   return deduped;
+}
+
+// SkipAheadSheet — "another bar under [Listen to Office] that says skip
+// ahead... pull up the list of the different parts of the offices like
+// it's the physical BCP list. But when you click on it, it would go to
+// that slide in the office." Reuses buildBookSections (the exact section
+// list the physical-book guide shows) rather than a second parallel
+// implementation, but each row jumps the live slideshow to that slide
+// (via the section's slide id) instead of just naming a page number.
+function SkipAheadSheet({
+  open, onClose, slides, onJump,
+}: { open: boolean; onClose: () => void; slides: Slide[]; onJump: (key: string) => void }) {
+  const sections = useMemo(() => buildBookSections(slides), [slides]);
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="skip-ahead"
+          className="fixed inset-0"
+          style={{ zIndex: 80, background: "rgba(4,12,7,0.6)" }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+        >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{ y: "-100%" }} animate={{ y: 0 }} exit={{ y: "-100%" }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-b-3xl px-5 pb-6"
+            style={{
+              background: "#0c1f13",
+              borderBottom: "1px solid rgba(46,107,64,0.4)",
+              paddingTop: "max(1.25rem, var(--safe-top))",
+              maxWidth: 560, margin: "0 auto",
+              maxHeight: "85dvh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
+              <p style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>Skip Ahead</p>
+              <button type="button" onClick={onClose} aria-label="Close"
+                style={{ width: 28, height: 28, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(46,107,64,0.25)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {sections.map((sec) => (
+                <button
+                  key={sec.key}
+                  type="button"
+                  onClick={() => onJump(sec.key)}
+                  className="w-full text-left flex items-center gap-3 rounded-2xl px-3.5 py-3"
+                  style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(143,175,150,0.3)", cursor: "pointer" }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="block" style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600 }}>{sec.label}</span>
+                    {sec.detail && (
+                      <span className="block" style={{ color: MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 2 }}>{sec.detail}</span>
+                    )}
+                  </div>
+                  {sec.page && (
+                    <span style={{ flexShrink: 0, background: "rgba(166,124,82,0.18)", border: "1px solid rgba(166,124,82,0.45)", color: "#E8D5BC", borderRadius: 999, padding: "4px 11px", fontSize: 12, fontWeight: 700, fontFamily: SPACE_GROTESK, whiteSpace: "nowrap" }}>
+                      {sec.page}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 // Return the guide string. {name} tokens in the string are replaced from

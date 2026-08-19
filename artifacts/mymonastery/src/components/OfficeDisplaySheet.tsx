@@ -110,7 +110,14 @@ export function OfficeDisplaySheet({
   // liturgies (the only two the podcast covers) — omitted entirely
   // (undefined) elsewhere, so the pill just doesn't render.
   onListenToOffice,
-}: { open: boolean; onClose: () => void; showPrayingMode?: boolean; onListenToOffice?: () => void }) {
+  // Owner: "another bar under that that says skip ahead... pull up the
+  // list of the different parts of the offices like it's the physical BCP
+  // list... click on it, it would go to that slide." Opens
+  // bcp-daily-office.tsx's own SkipAheadSheet (it owns the slide list, this
+  // component doesn't) — again undefined elsewhere so the pill only shows
+  // on the deck that has sections to jump between.
+  onSkipAhead,
+}: { open: boolean; onClose: () => void; showPrayingMode?: boolean; onListenToOffice?: () => void; onSkipAhead?: () => void }) {
   const [scale, setScale] = useState(() => getOfficeFontScale());
   const [backdrop, setBackdrop] = useState<OfficeBackdrop>(() => getOfficeBackdrop());
   const [font, setFontState] = useState<OfficeFont>(() => getOfficeFont());
@@ -267,6 +274,24 @@ export function OfficeDisplaySheet({
                   <span className="block" style={{ color: MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 2 }}>Switch to the audio office, read aloud</span>
                 </button>
               </>
+            )}
+
+            {/* Skip ahead — jump straight to any section of the liturgy. */}
+            {onSkipAhead && (
+              <div style={{ marginTop: onListenToOffice ? 8 : 0 }}>
+                {!onListenToOffice && (
+                  <p style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, margin: "20px 0 8px" }}>Navigate</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { onClose(); onSkipAhead(); }}
+                  className="w-full text-left rounded-2xl px-3.5 py-3"
+                  style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(143,175,150,0.3)", cursor: "pointer" }}
+                >
+                  <span className="block" style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600 }}>⏭ Skip Ahead</span>
+                  <span className="block" style={{ color: MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 2 }}>Jump straight to any part of the office</span>
+                </button>
+              </div>
             )}
           </motion.div>
         </motion.div>
