@@ -12,7 +12,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { amenWithLocation } from "@/lib/prayLocation";
 import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback, primeAudio } from "@/lib/amenFeedback";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
@@ -716,15 +717,32 @@ function SlideContent({
             <CobreatheGlobe size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
             Creation Prayer
           </button>
+          {/* Owner: "add another bar or panel that says read scripture
+              reflection and have it open for day by day" — opens the same
+              way FDD's home card does (external reader, marked read once
+              the browser actually closes, not at tap time). This is the
+              pause slide actually reached from the office's seamless
+              intercessions handoff — see bcp-daily-office.tsx's OWN
+              contemplative_pause slide for the sibling copy of this same
+              option on the surface reached WITHOUT that handoff. */}
+          <button
+            type="button"
+            onClick={() => openExternalThenMarkRead(FDD_TODAY_URL, () => { markFddRead(); swellHaptic(); }, { reader: true })}
+            className="w-full rounded-full mt-2.5 transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(var(--ot-green, 46,107,64),0.12)", border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
+          >
+            📖 Read Scripture Reflection
+          </button>
         </div>
 
-        {/* "or continue with office" — a quiet text button at the foot; advances
-            past the pause (into the rest of the office) without contemplating. */}
+        {/* "or continue with office" — owner: "have or continue with office
+            be in a pill" (was a bare text button). Advances past the pause
+            (into the rest of the office) without contemplating. */}
         <button
           type="button"
           onClick={onAdvance}
-          className="transition-opacity active:opacity-70"
-          style={{ background: "none", border: "none", color: "rgba(var(--ot-sage, 143,175,150),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "8px 12px" }}
+          className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ background: "rgba(var(--ot-deep, 9,26,16),0.4)", border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", color: "rgba(var(--ot-sage, 143,175,150),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "12px 22px" }}
         >
           or continue with office <span aria-hidden>→</span>
         </button>
