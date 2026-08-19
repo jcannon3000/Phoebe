@@ -12,7 +12,8 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -2379,6 +2380,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                 >
                   🌍 Creation Prayer — breathe together
+                </button>
+                {/* Owner: "add another bar or panel that says read scripture
+                    reflection and have it open for day by day" — a fourth
+                    option alongside silence/Creation Prayer, opening Forward
+                    Day by Day the same way its home card does (external
+                    reader, marked read once the browser actually closes —
+                    see DailyProgressBody's reflections.map for why mark()
+                    can't fire at tap time). */}
+                <button
+                  type="button"
+                  onClick={() => openExternalThenMarkRead(FDD_TODAY_URL, () => { markFddRead(); swellHaptic(); }, { reader: true })}
+                  style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", background: "transparent", color: "var(--oh-ink, #F0EDE6)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                >
+                  📖 Read Scripture Reflection — Forward Day by Day
                 </button>
               </div>
             </div>
