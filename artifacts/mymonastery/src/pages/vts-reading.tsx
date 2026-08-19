@@ -31,6 +31,7 @@ const BG = "var(--oh-bg2, #091A10)";
 const WARM_TEXT = "var(--oh-ink, #F0EDE6)";
 const FAINT_GREEN = "rgba(var(--ot-sage, 143,175,150),0.55)";
 const BORDER = "rgba(var(--ot-mist, 200,212,192),0.15)";
+const BUTTON_BG = "var(--oh-cta, #2D5E3F)";
 const SPACE_GROTESK = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 
 type VtsText = { title: string; url: string; paragraphs: string[] };
@@ -61,12 +62,16 @@ export default function VtsReadingPage() {
   const paragraphs = data?.paragraphs ?? [];
   const total = paragraphs.length;
 
+  const atStart = index === 0;
+  const atEnd = index >= total - 1;
   const next = () => {
     if (index === 0) markReadOnce();
-    if (index < total - 1) setIndex((i) => i + 1);
+    if (!atEnd) setIndex((i) => i + 1);
     else close();
   };
-  const prev = () => { if (index > 0) setIndex((i) => i - 1); else close(); };
+  // Matches the office nav pill's Back button — disabled at the first
+  // slide rather than closing (the X already owns "leave the reader").
+  const prev = () => { if (!atStart) setIndex((i) => i - 1); };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, overflow: "hidden", fontFamily: SPACE_GROTESK }}>
@@ -148,17 +153,83 @@ export default function VtsReadingPage() {
         )}
       </div>
 
-      {/* Bottom position readout — same seat the office's own per-slide
-          progress lives in, just plain text (no explicit progress bar in
-          the office either — swipe/tap navigation carries the same load
-          there, this matches rather than adding UI the office doesn't have). */}
-      {total > 1 && (
-        <div
-          className="max-w-2xl mx-auto w-full flex items-center justify-center"
-          style={{ position: "fixed", left: 0, right: 0, bottom: "max(18px, env(safe-area-inset-bottom))", pointerEvents: "none" }}
+      {/* Bottom nav pill — Back · position · Next/Done. Same floating pill
+          the office uses (bcp-daily-office.tsx), not a plain text readout —
+          owner: "there isn't a nav bar at the bottom." */}
+      {total > 0 && (
+        <nav
+          aria-label="Reading navigation"
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: "calc(env(safe-area-inset-bottom) + 16px)",
+            transform: "translateX(-50%)",
+            zIndex: 50,
+            background: "rgba(var(--ot-deep, 9,26,16), 0.297)",
+            backdropFilter: "blur(11.34px)",
+            WebkitBackdropFilter: "blur(11.34px)",
+            border: `1px solid ${BORDER}`,
+            borderRadius: 999,
+            padding: "8px 12px",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.35)",
+            maxWidth: "calc(100vw - 32px)",
+          }}
         >
-          <p style={{ color: FAINT_GREEN, fontSize: 12, fontFamily: SPACE_GROTESK }}>{index + 1} / {total}</p>
-        </div>
+          <div className="flex items-center gap-4" style={{ minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={prev}
+              disabled={atStart}
+              className="rounded-full transition-opacity disabled:opacity-20"
+              style={{
+                color: WARM_TEXT,
+                background: "transparent",
+                border: `1px solid ${BORDER}`,
+                padding: "6px 14px",
+                fontSize: 12,
+                fontFamily: SPACE_GROTESK,
+                fontWeight: 600,
+                cursor: atStart ? "default" : "pointer",
+              }}
+            >
+              Back
+            </button>
+            {total > 1 && (
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  flex: "0 0 auto",
+                }}
+              >
+                {index + 1} of {total}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={next}
+              className="rounded-full transition-opacity"
+              style={{
+                background: BUTTON_BG,
+                color: WARM_TEXT,
+                border: "none",
+                padding: "6px 16px",
+                fontSize: 12,
+                fontFamily: SPACE_GROTESK,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {atEnd ? "Done" : "Next"}
+            </button>
+          </div>
+        </nav>
       )}
     </div>
   );
