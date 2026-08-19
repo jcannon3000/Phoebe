@@ -670,11 +670,15 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
-// Header pill — links straight to the Prayer List page (/intentions).
-// Used to show a per-anchor dot row (renamed from the old "Daily
-// Progress" pill); owner: "no more dots," just the label now.
+// Header pill that links to /daily-progress and shows dots — one per daily
+// anchor (Morning · Reflect · Silence · Evening, plus every optional/custom
+// practice the reader added) — filled as each is kept. Owner: "make the top
+// pill be Daily Progress with dots again" (reverting an earlier "no more
+// dots, just the label" simplification). Self-contained so the rhythm
+// queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -688,13 +692,117 @@ function DailyProgressPill() {
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener("phoebe:prefs-changed", sync); window.removeEventListener("storage", sync); };
   }, []);
+  // The core anchors the user keeps (morning/reflection/contemplation/evening —
+  // each dropped when its pref is off), plus a dot for each optional practice
+  // they added (examen, the prayer-list card) and each user-defined
+  // custom practice. Keyed so the "just completed" pulse below tracks the right
+  // dot even as the set changes.
+  // Custom-practice dots sit in their time-of-day SLOT (not lumped at the end) —
+  // a morning custom rides next to Morning, etc. — and a "not today" custom drops
+  // out entirely, matching the cards + the reduced count.
+  const cDots = (slot: string) =>
+    customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
+  const dotDefs = [
+    // A novena in "replace" mode takes over this slot's dot entirely — mirrors
+    // DailyProgressBody's rawCards replace-mode entries (same gates).
+    ...(novenaReplacesMorning && novenaActive ? [{ key: "novena-morning", done: novenaDone }] : []),
+    ...(morningActive && !novenaReplacesMorning ? [{ key: "morning", done: morningDone }] : []),
+    // Reflection is the DEFAULT second dot (right after Morning) — ahead of any
+    // custom morning practice — unless the user reorders their rhythm.
+    ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
+    ...cDots("morning"),
+    // Contemplation is PER SIDE (a Morning + an Evening sit) — one dot each,
+    // matching the two home cards, not a single aggregate "silence" dot (that
+    // under-counted: 2 dots for 3 cards). Morning sits here; evening near Evening.
+    ...(morningContemplationActive ? [{ key: "contemplation-morning", done: morningContemplationDone }] : []),
+    // The silence GOAL card exactly as the home renders it — the solo card, OR
+    // the goal-progress card riding alongside per-side Creation Prayer cards
+    // (whose own dots are the per-side entries above).
+    ...(silenceGoalCardActive ? [{ key: "silence", done: silenceGoalCardDone }] : []),
+    // NOTE: Prayer List is NOT a rhythm card — DailyProgressBody deliberately
+    // gives it its own dedicated home-screen section instead of a Next/Done
+    // row (see its rawCards comment), so it must not get a dot here either —
+    // that was over-counting the pill by one whenever prayerListActive.
+    // The active novena rides "anytime" alongside custom anytime anchors —
+    // matches DailyProgressBody's rawCards entry (same novenaActive/Done).
+    ...(novenaActive && !novenaReplacesMorning && !novenaReplacesEvening ? [{ key: "novena", done: novenaDone }] : []),
+    ...cDots("anytime"),
+    ...cDots("midday"),
+    ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
+    // Standalone Co-Breathe only — when per-side Creation Prayer cards replace
+    // the standalone card, its dot would have no card (theirs are above).
+    ...(cobreatheStandaloneActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
+    ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
+    ...(readingActive ? [{ key: "reading", done: readingDone }] : []),
+    ...(podcastsActive ? [{ key: "podcasts", done: podcastsDone }] : []),
+    ...(walkActive ? [{ key: "walk", done: walkDone }] : []),
+    ...cDots("afternoon"),
+    ...(eveningActive && !novenaReplacesEvening ? [{ key: "evening", done: eveningDone }] : []),
+    ...(novenaReplacesEvening && novenaActive ? [{ key: "novena-evening", done: novenaDone }] : []),
+    ...(eveningContemplationActive ? [{ key: "contemplation-evening", done: eveningContemplationDone }] : []),
+    // Compline closes the day — its own dot, after Evening Prayer. Its own
+    // done-flag too: praying Evening Prayer must not fill this dot (they're
+    // two distinct offices; see useRhythmState's complineDone).
+    ...(complineActive ? [{ key: "compline", done: complineDone }] : []),
+    ...cDots("evening"),
+  ];
+
+  // Per-dot "just completed" pulse: when an activity flips done, its dot glows
+  // for ~2 minutes — then settles. We stamp the completion time per local day in
+  // localStorage (so it survives the Layout remount on navigation) the moment a
+  // dot flips, then pulse only while now − stamp < PULSE_MS. There is NO
+  // persistent "all done" glow — each stop glows just after its own practice.
+  const PULSE_MS = 2 * 60 * 1000;
+  const today = new Date().toLocaleDateString("en-CA");
+  const stampsRef = useRef<{ day: string; at: Record<string, number> } | null>(null);
+  if (stampsRef.current === null) {
+    let init: { day: string; at: Record<string, number> } = { day: today, at: {} };
+    try {
+      const raw = JSON.parse(localStorage.getItem("phoebe:dp-pulse") || "null");
+      if (raw && raw.day === today && raw.at && typeof raw.at === "object") init = { day: today, at: raw.at };
+    } catch { /* ignore */ }
+    stampsRef.current = init;
+  }
+  const prevDoneRef = useRef<Record<string, boolean> | null>(null);
+  const [, bumpPulse] = useState(0);
+  const doneSig = dotDefs.map((d) => `${d.key}${d.done ? "1" : "0"}`).join("|");
+  useEffect(() => {
+    const st = stampsRef.current!;
+    if (st.day !== today) { st.day = today; st.at = {}; }
+    const prev = prevDoneRef.current;
+    const cur: Record<string, boolean> = {};
+    let changed = false;
+    for (const d of dotDefs) {
+      cur[d.key] = d.done;
+      if (prev && d.done && prev[d.key] === false) { st.at[d.key] = Date.now(); changed = true; }
+    }
+    prevDoneRef.current = cur;
+    if (changed) {
+      try { localStorage.setItem("phoebe:dp-pulse", JSON.stringify(st)); } catch { /* ignore */ }
+      bumpPulse((n) => n + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doneSig, today]);
+
+  const nowMs = Date.now();
+  const recentlyDone = (key: string) => {
+    const at = stampsRef.current?.at[key];
+    return at != null && nowMs - at < PULSE_MS;
+  };
+  // While anything is pulsing, tick periodically so the pulse expires on its own.
+  const anyPulsing = dotDefs.some((d) => recentlyDone(d.key));
+  useEffect(() => {
+    if (!anyPulsing) return;
+    const id = setInterval(() => bumpPulse((n) => n + 1), 15_000);
+    return () => clearInterval(id);
+  }, [anyPulsing]);
 
   // Turned off in Settings → Home display.
   if (pillHidden) return null;
 
   return (
     <Link
-      href="/prayer-list"
+      href="/daily-progress"
       className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
       style={{
         fontFamily: "'Space Grotesk', sans-serif",
@@ -703,9 +811,45 @@ function DailyProgressPill() {
         color: "#C8D4C0",
         border: "1px solid rgba(200,212,192,0.18)",
       }}
-      aria-label={t("header.prayer_list", { defaultValue: "Prayer List" })}
+      aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
-      <span className="whitespace-nowrap">{t("header.prayer_list", { defaultValue: "Prayer List" })}</span>
+      <span className="whitespace-nowrap">{t("header.daily_progress", { defaultValue: "Daily Progress" })}</span>
+      {(() => {
+        // Past 8 anchors a single row gets cramped — shrink the dots and wrap
+        // them into two balanced rows so the pill stays tidy.
+        const many = dotDefs.length > 8;
+        const sz = many ? 5 : 6;
+        const renderDot = (d: { key: string; done: boolean }, i: number) => {
+          // Dots no longer glow/pulse — kept anchors are simply filled (settled);
+          // everything still to do — INCLUDING the next one — stays dark/faint.
+          // Position, not a tally, and no animation drawing the eye.
+          const tone = d.done
+            ? { background: "rgba(110,180,130,0.5)", border: "none" as const }
+            : { background: "transparent", border: "1px solid rgba(143,175,150,0.28)" };
+          return (
+            <span
+              key={d.key}
+              style={{
+                width: sz,
+                height: sz,
+                borderRadius: 999,
+                display: "inline-block",
+                ...tone,
+              }}
+            />
+          );
+        };
+        if (!many) {
+          return <span className="inline-flex items-center gap-[3px]" aria-hidden>{dotDefs.map(renderDot)}</span>;
+        }
+        const mid = Math.ceil(dotDefs.length / 2);
+        return (
+          <span className="inline-flex flex-col" style={{ gap: 3 }} aria-hidden>
+            <span className="inline-flex items-center gap-[3px]">{dotDefs.slice(0, mid).map((d, i) => renderDot(d, i))}</span>
+            <span className="inline-flex items-center gap-[3px]">{dotDefs.slice(mid).map((d, i) => renderDot(d, mid + i))}</span>
+          </span>
+        );
+      })()}
     </Link>
   );
 }

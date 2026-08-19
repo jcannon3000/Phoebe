@@ -9,7 +9,7 @@ import {
   hasPrayedFddToday, FDD_PRAYED_EVENT,
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
-import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
+import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
@@ -319,6 +319,7 @@ export function useRhythmState(): RhythmState {
     reading: hasPracticeDoneToday("reading"),
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
+    walkSkipped: hasPracticeSkippedToday("walk"),
     prayerList: hasPracticeDoneToday("prayer-list"),
   }));
   useEffect(() => {
@@ -328,6 +329,7 @@ export function useRhythmState(): RhythmState {
       reading: hasPracticeDoneToday("reading"),
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
+      walkSkipped: hasPracticeSkippedToday("walk"),
       prayerList: hasPracticeDoneToday("prayer-list"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
@@ -504,7 +506,11 @@ export function useRhythmState(): RhythmState {
   const readingActive = homeCardActive(hl, "reading");
   const podcastsActive = homeCardActive(hl, "podcasts");
   // Contemplative Walk — a slotted contemplative practice, logged like reading.
-  const walkActive = homeCardActive(hl, "walk");
+  // "Not today" (practiceLocal.walkSkipped) drops it out for the rest of the
+  // day, same as a skipped custom anchor — every consumer of walkActive
+  // treats it as "should this show today", so folding the skip in here
+  // (rather than threading a separate flag through each) keeps them in sync.
+  const walkActive = homeCardActive(hl, "walk") && !practiceLocal.walkSkipped;
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present

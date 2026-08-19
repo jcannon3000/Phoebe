@@ -58,6 +58,9 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
   const wasAlreadyDone = hasPracticeDoneToday(section);
   try {
     localStorage.setItem(storageKey(section), localDate);
+    // Mutually exclusive with a "Not today" skip — done wins if the user
+    // changes their mind and logs it after all.
+    localStorage.removeItem(SKIP_PREFIX + section);
     window.dispatchEvent(new Event(PRACTICE_DONE_EVENT));
   } catch {
     /* private mode / quota — non-fatal */
@@ -132,4 +135,35 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
 export function togglePracticeDoneToday(section: OptionalPractice): void {
   if (hasPracticeDoneToday(section)) unmarkPracticeDoneToday(section);
   else markPracticeDoneToday(section);
+}
+
+// "Not today" — the user logged that they're skipping this practice today,
+// same concept as lib/customAnchors.ts's SKIP_PREFIX. A skipped practice
+// drops out of the Next list entirely for the day (not just "not done"),
+// same as a skipped custom anchor — it was previously calling
+// unmarkPracticeDoneToday, which just cleared a flag that was already unset
+// (the card was never marked done), so the button had no visible effect.
+// Local-only, like the done stamp's instant flag; no server sync — a
+// skipped day isn't meaningful history to carry across devices.
+const SKIP_PREFIX = "phoebe:practice-skip:";
+
+export function hasPracticeSkippedToday(section: OptionalPractice): boolean {
+  try {
+    return localStorage.getItem(SKIP_PREFIX + section) === todayLocalISO();
+  } catch {
+    return false;
+  }
+}
+
+/** Mutually exclusive with markPracticeDoneToday — skipping also clears
+ *  any done stamp for today (matching customAnchors' "done wins" rule,
+ *  applied here in reverse since a fresh skip should win over a stale done). */
+export function setPracticeNotToday(section: OptionalPractice): void {
+  try {
+    localStorage.setItem(SKIP_PREFIX + section, todayLocalISO());
+    localStorage.removeItem(storageKey(section));
+    window.dispatchEvent(new Event(PRACTICE_DONE_EVENT));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
 }

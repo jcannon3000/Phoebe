@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCust
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
-import { markPracticeDoneToday, unmarkPracticeDoneToday, type OptionalPractice } from "@/lib/practiceCompletion";
+import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
@@ -1725,7 +1725,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           onClose={() => setLogAnchorId(null)}
           t={t}
           onLog={() => markPracticeDoneToday(logAnchorId as OptionalPractice)}
-          onSkip={() => unmarkPracticeDoneToday(logAnchorId as OptionalPractice)}
+          onSkip={() => setPracticeNotToday(logAnchorId as OptionalPractice)}
         />
       ) : logAnchorId && (() => {
         const a = customAnchors.find((x) => x.id === logAnchorId);
