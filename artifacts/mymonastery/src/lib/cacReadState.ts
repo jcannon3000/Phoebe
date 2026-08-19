@@ -267,6 +267,47 @@ const fddTrackerFor = (side: "morning" | "evening") => (side === "evening" ? fdd
 export function hasPrayedFddToday(side: "morning" | "evening" = "morning"): boolean { return fddTrackerFor(side).hasReadToday(); }
 export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
 
+// Daily Scripture Readings (Forward Movement's daily-readings page) USED AS
+// a side's prayer — same shape as FDD above, anchor-only (no separate
+// reflection-newsletter concept — this practice is never offered as one of
+// the CAC/FDD/SSJE/VTS reflection choices, it only exists as a side anchor).
+export const READINGS_PRAYED_EVENT = "phoebe:readings-prayed";
+function syncReadingsSession(side: "morning" | "evening"): void {
+  // Only when Daily Scripture Readings IS this side's prayer — see sideIsSetTo above.
+  if (!sideIsSetTo(side, "readings")) return;
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60,
+    slidesCompleted: 99,
+    completed: true,
+    startedAt: now.toISOString(),
+    endedAt: now.toISOString(),
+  }).catch(() => { /* best effort — the local flag already credited it today */ });
+}
+const readingsTrackerMorning = makeDailyReadTracker("phoebe:readings:morning:last-read-day", READINGS_PRAYED_EVENT, () => syncReadingsSession("morning"), "morning");
+const readingsTrackerEvening = makeDailyReadTracker("phoebe:readings:evening:last-read-day", READINGS_PRAYED_EVENT, () => syncReadingsSession("evening"), "evening");
+const readingsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? readingsTrackerEvening : readingsTrackerMorning);
+export function hasPrayedReadingsToday(side: "morning" | "evening" = "morning"): boolean { return readingsTrackerFor(side).hasReadToday(); }
+export function markReadingsPrayed(side: "morning" | "evening" = "morning"): void { readingsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "readings"); }
+
+// Forward Movement's daily-readings page — a real page per calendar date
+// (https://prayer.forwardmovement.org/daily-readings/YYYY-MM-DD), unlike
+// FDD's single stable URL, so this is a function of "today" rather than a
+// constant. Local calendar day, matching todayLocalISO's own convention.
+export function getReadingsTodayUrl(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return `https://prayer.forwardmovement.org/daily-readings/${ymd}`;
+}
+
+/** Open today's Daily Scripture Readings and credit this side's anchor once
+ *  the reader actually closes it (matching recordFddOpened's shape). */
+export function recordReadingsOpened(opts?: { side?: "morning" | "evening" }): void {
+  if (opts?.side) markReadingsPrayed(opts.side);
+}
+
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with
 // a 9 AM ET publish-day cache in front; we always link via that route

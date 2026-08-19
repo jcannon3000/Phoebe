@@ -95,7 +95,7 @@ function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayCh
   // destroy an intentional guided-prayer/examen pairing (the new default, per
   // owner 2026-07-26) — or a "Create your own" practice — the instant this
   // page pre-selected the wrong pill and someone tapped it to "confirm" it.
-  if (m === "fdd" || e === "fdd" || m === "psalms" || e === "psalms" || m === "guided-prayer" || e === "guided-prayer" || m === "examen" || e === "examen" || m === "custom" || e === "custom") return null;
+  if (m === "fdd" || e === "fdd" || m === "readings" || e === "readings" || m === "psalms" || e === "psalms" || m === "guided-prayer" || e === "guided-prayer" || m === "examen" || e === "examen" || m === "custom" || e === "custom") return null;
   if (defaultPrayerLevel === "office" || m === "office" || e === "office") return "offices";
   if (defaultPrayerLevel === "devotion" || m === "devotion" || e === "devotion") return "devotion";
   // A stale server-side "intercessions" default reads as the office now —

@@ -39,6 +39,7 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
+  getReadingsTodayUrl, READINGS_PRAYED_EVENT, hasPrayedReadingsToday, recordReadingsOpened,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
   VTS_READ_EVENT, hasReadVtsToday, isVtsPublishingDay,
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
@@ -3206,6 +3207,84 @@ function FddHomeCard() {
   );
 }
 
+// Daily Scripture Readings home card. Mirrors FddHomeCard's written-only
+// half (no audio mode — the spec is "no in-app content, just an external
+// link + mark-read"): opens today's Forward Movement daily-readings page
+// (a real per-date URL, unlike FDD's stable one — see getReadingsTodayUrl),
+// tracks "read today" in localStorage, flips the pill to "Read again" once
+// tapped. Owner: "a new option under book of common prayer for a prayer
+// practice that is 'Daily Scripture Readings'... configured to morning [for
+// morning] and evening for evening."
+function ReadingsHomeCard() {
+  const [hasRead, setHasRead] = useState(() => hasPrayedReadingsToday(readingsPraySideForCheck()));
+  // Same ?readings=<side> handoff FddHomeCard uses for ?fdd=<side> — set by
+  // begin-prayer.tsx when Daily Scripture Readings IS a side's chosen prayer.
+  const [praySide] = useState<"morning" | "evening" | undefined>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("readings");
+      if (v !== "morning" && v !== "evening") return undefined;
+      return getSideLevel(v) === "readings" ? v : undefined;
+    } catch { return undefined; }
+  });
+  useEffect(() => {
+    const refresh = () => setHasRead(hasPrayedReadingsToday(praySide ?? "morning"));
+    window.addEventListener(READINGS_PRAYED_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(READINGS_PRAYED_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [praySide]);
+  const onClick = () => {
+    openExternalThenMarkRead(getReadingsTodayUrl(), () => recordReadingsOpened({ side: praySide }), { reader: true });
+  };
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: "rgba(96,141,209,0.13)", border: `1px solid rgba(96,141,209,0.40)` }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(96,141,209,0.85)` }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        <p
+          className="font-semibold min-w-0 truncate"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+        >
+          Daily Scripture Readings 📖
+        </p>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: "rgba(96,141,209,0.28)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "6px 14px",
+            border: "1px solid rgba(96,141,209,0.50)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+// The initial hasRead check has no praySide yet on first render (state init
+// runs before the effect below resolves ?readings=) — check morning first,
+// since that's the common case; the effect corrects it a beat later if the
+// URL actually said evening.
+function readingsPraySideForCheck(): "morning" | "evening" {
+  try {
+    const v = new URLSearchParams(window.location.search).get("readings");
+    return v === "evening" ? "evening" : "morning";
+  } catch { return "morning"; }
+}
+
 // Praying the Psalms home card — replaces the office card for a side set to
 // "psalms". Shows today's appointed psalms (per the chosen cycle) and opens the
 // /psalms reader. Warm parchment tone, distinct from the blue FDD card.
@@ -3672,6 +3751,11 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // early return can never make a hook conditional.
   if (getSideLevel(isMorning ? "morning" : "evening") === "fdd") {
     return <FddHomeCard />;
+  }
+  // Per-user: Daily Scripture Readings IS this side's prayer → same swap-in
+  // as FDD above, just the simpler (no audio mode) readings card.
+  if (getSideLevel(isMorning ? "morning" : "evening") === "readings") {
+    return <ReadingsHomeCard />;
   }
   // Per-user: Praying the Psalms IS this side's prayer → the Psalms card replaces
   // the office card for this user. Same after-all-hooks placement as FDD.

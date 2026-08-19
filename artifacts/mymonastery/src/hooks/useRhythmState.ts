@@ -7,6 +7,7 @@ import {
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
   hasPrayedFddToday, FDD_PRAYED_EVENT,
+  hasPrayedReadingsToday, READINGS_PRAYED_EVENT,
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
@@ -241,6 +242,7 @@ export function useRhythmState(): RhythmState {
   const [prayerRead, setPrayerRead] = useState(() => ({
     fdd: hasReadFddToday(),
     fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
+    readingsMorning: hasPrayedReadingsToday("morning"), readingsEvening: hasPrayedReadingsToday("evening"),
     psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
     guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
     customMorning: hasPrayedCustomToday("morning"), customEvening: hasPrayedCustomToday("evening"),
@@ -251,6 +253,7 @@ export function useRhythmState(): RhythmState {
       setPrayerRead({
         fdd: hasReadFddToday(),
         fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
+        readingsMorning: hasPrayedReadingsToday("morning"), readingsEvening: hasPrayedReadingsToday("evening"),
         psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
         guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
         customMorning: hasPrayedCustomToday("morning"), customEvening: hasPrayedCustomToday("evening"),
@@ -271,6 +274,7 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
     window.addEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
     window.addEventListener(FDD_PRAYED_EVENT, recheck);
+    window.addEventListener(READINGS_PRAYED_EVENT, recheck);
     window.addEventListener("visibilitychange", recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
@@ -299,6 +303,7 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(FDD_PRAYED_EVENT, recheck);
+      window.removeEventListener(READINGS_PRAYED_EVENT, recheck);
       window.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
@@ -760,14 +765,16 @@ export function useRhythmState(): RhythmState {
   const prayerListSlot = getPrayerListSlot();
   const prayerListSlotDone = intentionsTotalCount > 0 && intentionsPrayedCount >= intentionsTotalCount;
   const morningDone = !!todayOffice?.morning || officeLocal.morning
-    || (ml === "fdd" && prayerRead.fddMorning) || (ml === "psalms" && prayerRead.psalmsMorning)
+    || (ml === "fdd" && prayerRead.fddMorning) || (ml === "readings" && prayerRead.readingsMorning)
+    || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
     || (ml === "custom" && prayerRead.customMorning)
     || (ml === "examen" && examenKept)
     || (ml === "reflect-sit" && morningSatKept)
     || (prayerListSlot === "morning" && prayerListSlotDone);
   const eveningDone = !!todayOffice?.evening || officeLocal.evening
-    || (el === "fdd" && prayerRead.fddEvening) || (el === "psalms" && prayerRead.psalmsEvening)
+    || (el === "fdd" && prayerRead.fddEvening) || (el === "readings" && prayerRead.readingsEvening)
+    || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
     || (el === "custom" && prayerRead.customEvening)
     || (el === "examen" && examenKept)

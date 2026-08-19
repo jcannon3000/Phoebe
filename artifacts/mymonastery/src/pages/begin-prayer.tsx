@@ -125,6 +125,12 @@ export default function BeginPrayerPage() {
       setLocation(`/dashboard?fdd=${side}`, { replace: true });
       return;
     }
+    // Daily Scripture Readings IS this side's prayer → same handoff as FDD
+    // above, just the simpler (no audio) reading card.
+    if (defaultPrayerLevel === "readings") {
+      setLocation(`/dashboard?readings=${side}`, { replace: true });
+      return;
+    }
     // A practice the user named themselves IS this side's prayer → there's no
     // dedicated page for it (the home card is a plain tap-to-mark-done), so
     // land on the home the same way "fdd" above does.

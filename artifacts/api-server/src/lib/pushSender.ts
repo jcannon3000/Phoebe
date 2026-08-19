@@ -1053,6 +1053,10 @@ export function sendParishOfficeReminderPush(
       title: "Forward Day by Day",
       body: "Today's reflection is ready.",
     },
+    readings: {
+      title: "Daily Scripture Readings",
+      body: "Today's reading is ready.",
+    },
     examen: {
       title: "The Examen",
       body: "Review the day with God.",

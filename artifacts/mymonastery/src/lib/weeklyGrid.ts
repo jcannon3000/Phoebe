@@ -24,7 +24,7 @@ export type PracticeWeekDay = {
 // Which office levels actually carry a real lectionary lesson — Praying the
 // Psalms doesn't, and neither do Contemplation, the Examen, Simple Guided
 // Prayer (PACT), or a custom practice.
-export const SCRIPTURE_LEVELS = new Set(["office", "devotion", "fdd"]);
+export const SCRIPTURE_LEVELS = new Set(["office", "devotion", "fdd", "readings"]);
 
 export function readTurnedOn(ymd: string): boolean {
   try { return localStorage.getItem(`phoebe:turn-opened:${ymd}`) === "1"; } catch { return false; }
