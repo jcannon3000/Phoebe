@@ -3760,7 +3760,7 @@ export default function PrayerModePage() {
     else goBack();                            // swipe right = back
   };
 
-  const advance = () => {
+  const advance = async () => {
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
     triggerAmenFeedback();
@@ -3771,12 +3771,24 @@ export default function PrayerModePage() {
     // matches; idempotent if already dismissed or the user is on web.
     clearOfficeReminderNotifications();
     // Record the "Amen" side effect as the viewer leaves the slide.
-    // Fire-and-forget — we don't want a slow network call to gate the fade.
     // - request slide → POST /amen (the existing behaviour)
     // - intercession slide → POST /moment/:momentToken/:userToken/post
     //   with isCheckin=true, so a community intercession amen counts
     //   on the intercession detail page and in the streak even if the
     //   viewer bails out of the slideshow before the closing slide.
+    // requestAmenPromise is awaited below, right before the exit/advance
+    // transition — NOT fire-and-forget all the way through. Owner: "when i
+    // clicked the prayer list card... hit amen at first, so when i came to
+    // the home it wasnt reflected, but then it later did." A single-card
+    // ?focus=id open is exactly one slide, so tapping Amen there advances
+    // straight to the closing/exit transition ~220ms later; on anything but
+    // a fast connection the POST hadn't landed yet, so the home screen's own
+    // refetch on mount raced ahead of it and rendered pre-amen data — which
+    // then "self-healed" once the POST's own invalidate finally fired. The
+    // optimistic setQueryData below still makes the transition feel instant;
+    // this just stops a slower network from letting a fresher server read
+    // clobber it before Home ever sees the amen.
+    let requestAmenPromise: Promise<unknown> | null = null;
     const current = displaySlides[index];
     if (current && current.kind === "request" && typeof current.requestId === "number") {
       const rid = current.requestId;
@@ -3802,7 +3814,7 @@ export default function PrayerModePage() {
             )
           : old,
       );
-      amenWithLocation(rid)
+      requestAmenPromise = amenWithLocation(rid)
         .then(() => {
           // Two invalidations:
           //   • /api/prayer-requests — the prayer-list feed; flips
@@ -3884,6 +3896,11 @@ export default function PrayerModePage() {
         });
       }
     }
+    // Wait for the request amen (if any) to land before advancing — see the
+    // note above requestAmenPromise's declaration. Best-effort: the .catch
+    // above already reconciled the cache on failure, so there's nothing
+    // further to do here either way.
+    if (requestAmenPromise) { try { await requestAmenPromise; } catch { /* already handled */ } }
     setSlideVisible(false);
     setTimeout(() => {
       if (index < displaySlides.length - 1) {
