@@ -16,7 +16,7 @@
  * changed, fetch failure), this falls back to a single "Read on VTS's
  * site" card rather than showing a broken reader.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
@@ -24,6 +24,8 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { markVtsRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
+import { SPLASH_PHOTO } from "@/lib/earthPhotos";
+import splashForestPath from "@/assets/splash/forest-path.jpg";
 
 // Same tokens bcp-daily-office.tsx uses (var()-backed so Office display
 // settings — Paper mode, font choice — apply here too, not just there).
@@ -45,6 +47,15 @@ export default function VtsReadingPage() {
     queryFn: () => apiRequest("GET", "/api/vts/today-text"),
     staleTime: 10 * 60_000,
   });
+
+  // The office's own held-breath loading veil (bcp-daily-office.tsx) — a
+  // fixed leaf photo under a dark wash, with a quiet spinner. Same fixed
+  // SPLASH_PHOTO the office defaults to (no per-user backdrop choice here,
+  // this reader has no display settings of its own), picked once so it
+  // can't shuffle mid-load. Owner: "the loading screen should be like how
+  // the office loads."
+  const veilPhoto = useMemo(() => SPLASH_PHOTO || splashForestPath, []);
+  const [veilPhotoReady, setVeilPhotoReady] = useState(false);
 
   const close = () => setLocation("/");
 
@@ -72,6 +83,26 @@ export default function VtsReadingPage() {
   // Matches the office nav pill's Back button — disabled at the first
   // slide rather than closing (the X already owns "leave the reader").
   const prev = () => { if (!atStart) setIndex((i) => i - 1); };
+
+  // Same veil bcp-daily-office.tsx shows on re-entry (no versicle — that's
+  // this reader's own opening beat, not a liturgical threshold): a fixed
+  // leaf photo under a dark wash, plus a quiet spinner.
+  if (isLoading) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <img
+          src={veilPhoto}
+          alt=""
+          aria-hidden
+          decoding="async"
+          onLoad={() => setVeilPhotoReady(true)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
+        />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
+        <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, overflow: "hidden", fontFamily: SPACE_GROTESK }}>
@@ -120,8 +151,17 @@ export default function VtsReadingPage() {
       <div
         className="max-w-2xl mx-auto w-full"
         style={{
-          position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center",
-          padding: "max(96px, calc(env(safe-area-inset-top) + 76px)) 28px max(96px, calc(env(safe-area-inset-bottom) + 60px))",
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          // Top-aligned and scrollable, matching the office's own content
+          // slides (bcp-daily-office.tsx's <main>) — only the office's TITLE
+          // cards vertically center; a body-text slide starts near the top
+          // and scrolls if it runs long. Owner: "the vertical alignment of
+          // the text on the slides is not matching the offices."
+          justifyContent: "flex-start",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+          padding: "max(110px, calc(env(safe-area-inset-top) + 80px)) 28px max(96px, calc(env(safe-area-inset-bottom) + 60px))",
         }}
         onClick={(e) => {
           // Tap the left third to go back, the rest to advance — no swipe
@@ -130,9 +170,7 @@ export default function VtsReadingPage() {
           if (x < e.currentTarget.clientWidth / 3) prev(); else next();
         }}
       >
-        {isLoading ? (
-          <p style={{ color: FAINT_GREEN, fontSize: 15, fontFamily: SPACE_GROTESK }}>Loading…</p>
-        ) : total === 0 ? (
+        {total === 0 ? (
           <div style={{ textAlign: "left" }}>
             <p style={{ color: FAINT_GREEN, fontSize: 19, lineHeight: 1.75, fontFamily: SPACE_GROTESK, marginBottom: 24 }}>
               Couldn't load today's commentary here — read it on VTS's own site instead.
