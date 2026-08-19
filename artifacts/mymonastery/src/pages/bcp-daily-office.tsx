@@ -2042,7 +2042,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
 
         </div>
       </header>
-      <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} showPrayingMode={isFullOffice} />
+      <OfficeDisplaySheet
+        open={displayOpen}
+        onClose={() => setDisplayOpen(false)}
+        showPrayingMode={isFullOffice}
+        onListenToOffice={
+          resolvedMode === "morning" || resolvedMode === "evening"
+            ? () => setViewerLocation(`/podcast/${officeSide}-office`)
+            : undefined
+        }
+      />
 
       <main
         ref={mainRef}

@@ -103,7 +103,14 @@ export function OfficeDisplaySheet({
   // carry the Officiant/People rubrics + salutation, so the psalms deck and
   // the intercessions slideshow leave it off.
   showPrayingMode = false,
-}: { open: boolean; onClose: () => void; showPrayingMode?: boolean }) {
+  // Owner: "a similar type of one pill that says listen to office... open
+  // the podcast player" — a mid-office shortcut to switch to the audio
+  // office, in the same ⚙ sheet as the other display choices. Only passed
+  // by bcp-daily-office.tsx, and only for the full Morning/Evening Prayer
+  // liturgies (the only two the podcast covers) — omitted entirely
+  // (undefined) elsewhere, so the pill just doesn't render.
+  onListenToOffice,
+}: { open: boolean; onClose: () => void; showPrayingMode?: boolean; onListenToOffice?: () => void }) {
   const [scale, setScale] = useState(() => getOfficeFontScale());
   const [backdrop, setBackdrop] = useState<OfficeBackdrop>(() => getOfficeBackdrop());
   const [font, setFontState] = useState<OfficeFont>(() => getOfficeFont());
@@ -242,6 +249,23 @@ export function OfficeDisplaySheet({
                     );
                   })}
                 </div>
+              </>
+            )}
+
+            {/* Listen — a shortcut into the audio office, mid-liturgy. Same
+                pill styling as the Praying row's choices above. */}
+            {onListenToOffice && (
+              <>
+                <p style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, margin: "20px 0 8px" }}>Listen</p>
+                <button
+                  type="button"
+                  onClick={() => { onClose(); onListenToOffice(); }}
+                  className="w-full text-left rounded-2xl px-3.5 py-3"
+                  style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(143,175,150,0.3)", cursor: "pointer" }}
+                >
+                  <span className="block" style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600 }}>🎧 Listen to Office</span>
+                  <span className="block" style={{ color: MUTED_GREEN, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 2 }}>Switch to the audio office, read aloud</span>
+                </button>
               </>
             )}
           </motion.div>
