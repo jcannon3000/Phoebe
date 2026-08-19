@@ -60,6 +60,7 @@ const ROUTINE_KEYS: string[] = [
   // — were plain per-device localStorage, so toggling one on phone never
   // showed up on web. Owner: "showing up on my phone but not on web."
   "phoebe:hide-vts-weekly", "phoebe:hide-turn-learn-pray",
+  "phoebe:hide-vts-community-meal", "phoebe:hide-vts-chapel",
   // Course progress (lib/courseProgress.ts) — which lessons are completed + the
   // last one opened, per course. Device-local like the office method was, so it
   // was lost on logout→login; now it rides the rule_config too. One key per

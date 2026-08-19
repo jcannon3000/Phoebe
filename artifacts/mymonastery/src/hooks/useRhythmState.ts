@@ -560,8 +560,17 @@ export function useRhythmState(): RhythmState {
   // like the others above. Weekday-only, same rule as the Dean's Commentary
   // reflection itself (isVtsPublishingDay) — VTS doesn't publish on
   // weekends, so there's no meal/chapel card to check off then either.
-  const communityMealActive = entitlements.vts && isVtsPublishingDay();
-  const chapelActive = entitlements.vts && isVtsPublishingDay();
+  // Owner: "make sure that someone can turn off the extra VTS practices of
+  // meals and communal worship" — the customizer's "VTS Practices" step
+  // writes these; default shown (unset/"0"), only an explicit "1" hides.
+  const communityMealHidden = (() => {
+    try { return localStorage.getItem("phoebe:hide-vts-community-meal") === "1"; } catch { return false; }
+  })();
+  const chapelHidden = (() => {
+    try { return localStorage.getItem("phoebe:hide-vts-chapel") === "1"; } catch { return false; }
+  })();
+  const communityMealActive = entitlements.vts && isVtsPublishingDay() && !communityMealHidden;
+  const chapelActive = entitlements.vts && isVtsPublishingDay() && !chapelHidden;
   const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || complineActive || prayerListActive || communityMealActive || chapelActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the

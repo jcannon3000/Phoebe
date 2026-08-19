@@ -1017,8 +1017,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // the bad ui" / "both should show up in the slideshows" — routes into
     // the SAME unified prayer-mode slideshow (community + personal, one
     // deck, one UI) instead of the separate PrayThrough screen intentions.tsx
-    // used to open.
-    key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard, href: "/prayer-mode?reset=1",
+    // used to open. Once done, though (owner: "when you click on it have
+    // it go to the prayer list page not the slideshow") there's nothing
+    // left to pray through — land on the list itself instead.
+    key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard,
+    href: prayerListDoneCard ? "/prayer-list" : "/prayer-mode?reset=1",
     title: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }),
     blurb: t("rhythm.blurb_prayer_list_count", {
       done: intentionsPrayedCount, total: intentionsTotalCount,

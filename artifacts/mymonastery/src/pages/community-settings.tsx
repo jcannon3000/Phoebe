@@ -37,6 +37,9 @@ type Group = {
   // directory alongside name.
   city?: string | null;
   state?: string | null;
+  // Owner: "a setting in groups to turn on and off prayer list." Hard-off
+  // (and un-editable) whenever isPublic is true — see the server route.
+  prayerRequestsEnabled?: boolean;
 };
 
 type Intention = {
@@ -68,6 +71,9 @@ export default function CommunitySettingsPage() {
   const [isPublic, setIsPublic] = useState(false);
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  // ── Prayer list (owner: "a setting in groups to turn on and off prayer
+  // list") ───────────────────────────────────────────────────────────────
+  const [prayerRequestsEnabled, setPrayerRequestsEnabled] = useState(true);
   const GOAL_PRESETS = [10, 15, 20, 30];
   const [saved, setSaved] = useState(false);
 
@@ -156,6 +162,7 @@ export default function CommunitySettingsPage() {
       setIsPublic(!!group.isPublic);
       setCity(group.city ?? "");
       setState(group.state ?? "");
+      setPrayerRequestsEnabled(group.prayerRequestsEnabled ?? true);
     }
   }, [group]);
 
@@ -179,6 +186,9 @@ export default function CommunitySettingsPage() {
       isPublic,
       city: city || "",
       state: state || "",
+      // Forced off server-side whenever isPublic is true, regardless of
+      // what we send — the checkbox below is also disabled in that case.
+      prayerRequestsEnabled,
     }),
     onSuccess: () => {
       setSaved(true);
@@ -653,6 +663,42 @@ export default function CommunitySettingsPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* ── Prayer list (owner: "a setting in groups to turn on and off
+            prayer list") ───────────────────────────────────────────────
+            Hard-disabled when this community is public — owner: "no
+            publicly listed group can have shared prayer requests." The
+            checkbox is greyed out and unclickable rather than hidden, so
+            an admin who tries understands WHY (turn off public listing
+            first) instead of the option just silently disappearing. */}
+        <div
+          className="rounded-xl px-4 py-3.5 mb-4"
+          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          <label
+            className="flex items-start gap-3 select-none"
+            style={{ cursor: isPublic ? "not-allowed" : "pointer", opacity: isPublic ? 0.5 : 1 }}
+          >
+            <input
+              type="checkbox"
+              checked={prayerRequestsEnabled && !isPublic}
+              disabled={isPublic}
+              onChange={e => setPrayerRequestsEnabled(e.target.checked)}
+              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+              style={{ accentColor: "#2D5E3F" }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                {t("community_settings.prayer_requests", { defaultValue: "Shared prayer requests" })}
+              </p>
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                {isPublic
+                  ? t("community_settings.prayer_requests_public_locked", { defaultValue: "Not available for a community listed in the public directory. Turn off \"List in the community directory\" above to enable this." })
+                  : t("community_settings.prayer_requests_desc", { defaultValue: "Members can share a prayer request with this community and see each other's requests." })}
+              </p>
+            </div>
+          </label>
         </div>
 
         {/* ── Pilot group (app super admins only) ───────────────────────────

@@ -996,7 +996,24 @@ router.post("/prayer-requests", rateLimit({
         inArray(groupMembersTable.groupId, wantedGroupIds),
         sql`(${groupMembersTable.userId} = ${sessionUserId} OR LOWER(${groupMembersTable.email}) = ${viewerEmail})`,
       ));
-    validGroupIds = Array.from(new Set(myMemberships.map(m => m.groupId)));
+    const memberGroupIds = Array.from(new Set(myMemberships.map(m => m.groupId)));
+    // Server-side enforcement (not just a hidden client checkbox): a group
+    // with prayer requests turned off, OR any public/listed group (owner:
+    // "no publicly listed group can have shared prayer requests" — public
+    // groups can never carry this even if prayer_requests_enabled is
+    // stale-true from before the group went public), is silently dropped
+    // from the scoping list, same as a group the caller isn't in.
+    if (memberGroupIds.length > 0) {
+      const eligibleGroups = await db
+        .select({ id: groupsTable.id })
+        .from(groupsTable)
+        .where(and(
+          inArray(groupsTable.id, memberGroupIds),
+          eq(groupsTable.prayerRequestsEnabled, true),
+          eq(groupsTable.isPublic, false),
+        ));
+      validGroupIds = eligibleGroups.map(g => g.id);
+    }
   }
 
   // Life events live until just after the event itself, so the "how did it go?"

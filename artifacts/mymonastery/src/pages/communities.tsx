@@ -13,6 +13,10 @@ type Group = {
   emoji: string | null; memberCount: number; myRole: string; createdAt: string;
 };
 
+type Feed = {
+  feed: { id: number; slug: string; title: string; coverEmoji: string | null };
+};
+
 export default function CommunitiesPage() {
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
@@ -21,6 +25,17 @@ export default function CommunitiesPage() {
   const { data: groupsData } = useQuery<{ groups: Group[] }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+  });
+
+  // Owner: "if someone subscribes to VTS it shows in their communities
+  // page, maybe under feeds." A prayer feed (VTS, or any future one) isn't
+  // a group membership, so it never showed up on this page at all before —
+  // this is a new section, not a VTS-specific carve-out (any subscribed
+  // feed lists here the same way).
+  const { data: feedsData } = useQuery<{ subscriptions: Feed[] }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
     enabled: !!user,
   });
 
@@ -33,6 +48,7 @@ export default function CommunitiesPage() {
   if (isLoading || !user) return null;
 
   const groups = groupsData?.groups ?? [];
+  const feeds = feedsData?.subscriptions ?? [];
 
   return (
     <Layout>
@@ -74,7 +90,7 @@ export default function CommunitiesPage() {
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
-        {groups.length === 0 ? (
+        {groups.length === 0 && feeds.length === 0 ? (
           <div
             className="rounded-2xl px-6 py-10 text-center"
             style={{
@@ -131,6 +147,29 @@ export default function CommunitiesPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+
+        {/* Feeds — subscribed prayer feeds (VTS, and any future one). Not a
+            group membership, so it gets its own section rather than being
+            folded into the list above. */}
+        {feeds.length > 0 && (
+          <div className="mt-6">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+              {t("communities.feeds_heading", { defaultValue: "Feeds" })}
+            </p>
+            <div className="space-y-2">
+              {feeds.map(({ feed }) => (
+                <Link key={feed.slug} href={`/prayer-feeds/${feed.slug}`} className="block">
+                  <div className="flex items-center justify-between px-4 py-3.5 rounded-xl transition-colors"
+                    style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                    <span className="text-2xl shrink-0 mr-3">{feed.coverEmoji ?? "🕊️"}</span>
+                    <p className="text-sm font-semibold flex-1 min-w-0" style={{ color: "#F0EDE6" }}>{feed.title}</p>
+                    <span className="text-sm shrink-0 ml-3" style={{ color: "rgba(200,212,192,0.3)" }}>→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>

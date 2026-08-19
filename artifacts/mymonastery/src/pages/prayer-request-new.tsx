@@ -129,12 +129,19 @@ export default function PrayerRequestNew() {
   // Which of the requester's own communities to share this with — owner:
   // "have it have you select which communities to share it with", instead
   // of the old behavior (every group the requester belongs to, always).
-  const myGroupsQuery = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null }> }>({
+  const myGroupsQuery = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null; isPublic?: boolean; prayerRequestsEnabled?: boolean }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user && dest === "share",
   });
-  const myGroups = myGroupsQuery.data?.groups ?? [];
+  // Owner: "no publicly listed group can have shared prayer requests" /
+  // "a setting in groups to turn on and off prayer list" — a group that's
+  // public, or that has this explicitly turned off, isn't a valid share
+  // target; the server enforces this too (see prayer.ts's validGroupIds),
+  // this just keeps the picker from ever offering an ineligible group.
+  const myGroups = (myGroupsQuery.data?.groups ?? []).filter(
+    (g) => !g.isPublic && g.prayerRequestsEnabled !== false,
+  );
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   // Default to "all my communities" the first time the list loads, so
   // picking nothing isn't the accidental default — the requester can still

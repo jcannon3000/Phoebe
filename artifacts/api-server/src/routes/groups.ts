@@ -1310,6 +1310,8 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     // alongside name (no geocoding — plain city/state strings).
     city: z.string().max(100).optional().or(z.literal("")),
     state: z.string().max(100).optional().or(z.literal("")),
+    // Owner: "a setting in groups to turn on and off prayer list."
+    prayerRequestsEnabled: z.boolean().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -1322,6 +1324,18 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   if (parsed.data.isPublic !== undefined) updates.isPublic = parsed.data.isPublic;
   if (parsed.data.city !== undefined) updates.city = parsed.data.city.trim() || null;
   if (parsed.data.state !== undefined) updates.state = parsed.data.state.trim() || null;
+  // Owner: "no publicly listed group can have shared prayer requests" — a
+  // public group can never carry this flag true, regardless of what the
+  // client sent. Effective-after-update isPublic (same pattern the circle
+  // toggle below uses) so flipping isPublic:true in the SAME request also
+  // forces this off, not just a request that only touches this field.
+  const nextIsPublic = parsed.data.isPublic ?? result.group.isPublic;
+  if (parsed.data.prayerRequestsEnabled !== undefined) {
+    updates.prayerRequestsEnabled = nextIsPublic ? false : parsed.data.prayerRequestsEnabled;
+  }
+  if (parsed.data.isPublic === true && result.group.prayerRequestsEnabled) {
+    updates.prayerRequestsEnabled = false;
+  }
 
   // Circle toggle logic. Compose the effective-after-update values so we
   // can enforce "intention required when circle is on" regardless of which

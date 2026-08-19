@@ -2400,6 +2400,9 @@ export async function migrate() {
     // goal + the CAC daily meditation; null = a standard office community.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS focus TEXT`);
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER`);
+    // Owner: "a setting in groups to turn on and off prayer list" — see
+    // schema comment in groups.ts for the public-group hard-gate.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_requests_enabled BOOLEAN NOT NULL DEFAULT true`);
 
     // ── Beta Messages (beta-only) ────────────────────────────────────────
     // Unlimited 1:1 messaging between beta users (Letters-style UI, no

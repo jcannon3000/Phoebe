@@ -916,22 +916,11 @@ function SlideContent({
               ))}
             </div>
           )}
-          <p
-            className="text-[12px] italic"
-            style={{ color: "rgba(var(--ot-sage, 143,175,150),0.55)", marginTop: "-6px" }}
-          >
-            {slide.weekPrayCount && slide.weekPrayCount > 0
-              ? slide.feedTag
-                // Feed intercessions change daily, so the count is scoped to
-                // people who prayed TODAY's intercession (not the whole feed).
-                ? slide.weekPrayCount === 1
-                  ? "1 person has prayed this today."
-                  : `${slide.weekPrayCount} people have prayed this today.`
-                : slide.weekPrayCount === 1
-                  ? "1 person has prayed this this week."
-                  : `${slide.weekPrayCount} people have prayed this this week.`
-              : "Your community is holding this."}
-          </p>
+          {/* The "N people have prayed this" / "Your community is holding
+              this" count line was removed here (owner: "let's not do one
+              person has prayed this prayer on the community slides") — the
+              avatar stack above is the only social signal left on this
+              slide. */}
         </>
       )}
 

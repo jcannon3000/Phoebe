@@ -22,6 +22,7 @@ import { LocaleSync } from "@/components/LocaleSync";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
+import { AndroidPwaInstallPrompt } from "@/components/AndroidPwaInstallPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
@@ -1268,6 +1269,7 @@ function App() {
             {/* Desktop install banner — inside the router so it can react to
                 navigation (e.g. stay hidden during the customize flow). */}
             <DesktopAppPrompt />
+            <AndroidPwaInstallPrompt />
             {/* Global podcast player — mounted above the route Switch so
                 audio keeps playing as you navigate. Renders its own
                 persistent <audio> + mini-player bar. */}

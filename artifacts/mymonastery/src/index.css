@@ -317,6 +317,14 @@ textarea:focus {
   }
   html.android-web body {
     zoom: 0.9;
+    /* `zoom` shrinks body's RENDERED/layout height to 90% of whatever its
+       natural (un-zoomed) height computes to — so a body sized to exactly
+       100vh renders at only 90vh, leaving a gap at the bottom where html's
+       own background (green, #091A10) shows through (owner: "the
+       background is always going all the way down and a green bar at the
+       bottom"). Give body 100/0.9 of the height it needs BEFORE the zoom
+       shrinks it, so the zoomed result still exactly fills the viewport. */
+    min-height: calc(100vh / 0.9);
   }
 
   body {
