@@ -13,6 +13,7 @@ import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");
@@ -1082,7 +1083,18 @@ export default function PrayerListPage() {
   const myIntentions = (myIntentionsData?.intentions ?? []).filter((i) => !i.answered);
   const markIntentionPrayedMut = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/prayer-intentions/${id}/pray`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-intentions"] });
+      // The slideshow's advance() stamps this same legacy flag per personal
+      // slide (prayer-mode.tsx) — the weekly grid + widget's "My Prayer
+      // List" row reads it, not the live myAmenedToday/prayedToday counts
+      // this page itself uses. Without it, praying everything from THIS
+      // list page (rather than the slideshow) left that history dot
+      // unfilled even though every amen was genuinely recorded — owner:
+      // "when you enter the prayer list from the routine card, it counts
+      // all the amens."
+      markPracticeDoneToday("prayer-list");
+    },
   });
 
   const [detail, setDetail] = useState<DetailTarget | null>(null);
