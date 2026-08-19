@@ -2301,6 +2301,18 @@ export default function PrayerModePage() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("closingOnly") === "1";
   })();
+  // skipListCredit=1 → land on the closing celebration WITHOUT logging the
+  // prayer-list streak. The physical-book office guide's "I prayed this
+  // office" attestation (bcp-daily-office.tsx's markPrayedFromBook) routes
+  // here for the same closing recap a digital completion gets, but unlike
+  // the digital slide deck — which splices the reader's own intercessions in
+  // as part of the office itself before ever reaching this screen — a
+  // physical-book pray-er hasn't necessarily walked their list at all. Owner:
+  // "make sure... physical/audio completions don't count the prayer list."
+  const skipListCredit = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("skipListCredit") === "1";
+  })();
   // afterOffice=1 → the user just finished the read-aloud office ("pray
   // along") from the home-screen Begin-prayer flow and is now praying the
   // community intercessions. Run the full prayer walk, then continue into
@@ -3510,6 +3522,11 @@ export default function PrayerModePage() {
       window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }));
     } catch { /* ignore */ }
 
+    // skipListCredit — see its declaration above. The physical-book "I
+    // prayed this office" attestation still gets the arrival swell/haptic
+    // above, just not the prayer-list streak credit it hasn't earned.
+    if (skipListCredit) return;
+
     let cancelled = false;
     (async () => {
       try {
@@ -3532,7 +3549,7 @@ export default function PrayerModePage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [phase]);
+  }, [phase, skipListCredit]);
 
   // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
   // so the top status-bar area and the bottom home-indicator area both

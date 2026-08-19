@@ -211,13 +211,26 @@ export default function BeginPrayerPage() {
     const officeModeForLink = isMorning ? "morning" : "evening";
     const reset = prayedToday ? "&reset=1" : "";
     const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${reset}`;
-    // When this side's way-to-pray is "listen", begin-prayer drops straight
-    // into the synced "pray along" office and flags the full daily flow
-    // (flow=daily) so it continues into the community intercessions + closing
-    // afterward. Otherwise the text office (which runs the same full flow via
-    // its intercessions portal).
-    const officeHref = getSideEntry(side) === "listen"
-      ? `/podcast/${officeModeForLink}-office?flow=daily`
+    // Route straight into the reader's saved "way to pray" for this side —
+    // this used to only special-case "listen", so a Physical-BCP or Watch
+    // default still landed on the digital text office (this is the routing
+    // brain shared by the dashboard CTA and the iOS "Begin prayer" shortcut,
+    // so that bug hit both). "listen" drops into the synced "pray along"
+    // office and flags the full daily flow (flow=daily) so it continues into
+    // the community intercessions + closing afterward. "watch" (Morning only,
+    // weekday — the Cathedral has no evening/weekend broadcast) opens the
+    // live stream directly, same as the in-office picker's redirect. "book"
+    // opens the text office with &book=1, which jumps straight to the
+    // physical-book page-number guide instead of the slide deck (mirrors
+    // OfficeMethodCard/beginOffice's handling elsewhere in the office flow).
+    // Anything else (including "watch" outside its Morning-weekday window)
+    // falls through to the text office.
+    const entry = getSideEntry(side);
+    const isWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
+    const officeHref =
+      entry === "listen" ? `/podcast/${officeModeForLink}-office?flow=daily`
+      : entry === "watch" && isMorning && isWeekday ? "/ncmp/watch"
+      : entry === "book" ? `/bcp/daily-office?mode=${officeModeForLink}${reset}&book=1`
       : `/bcp/daily-office?mode=${officeModeForLink}${reset}`;
     const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
 

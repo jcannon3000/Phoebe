@@ -1414,8 +1414,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
     // Same warm-cache handoff as amen()/handleEnd — closingOnly=1 can't
     // render until these queries resolve, so warm them first.
+    // skipListCredit=1 — unlike the digital slide deck (which splices the
+    // reader's own intercessions in as part of the office before ever
+    // reaching this screen), the book guide's "I prayed this office" tap is
+    // just an attestation; the reader hasn't necessarily walked their
+    // prayer list, so this shouldn't credit that streak. Owner: "make sure
+    // physical/audio completions don't count the prayer list."
     void prefetchIntercessions().finally(() => {
-      setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+      setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}&skipListCredit=1`);
     });
   }
 
