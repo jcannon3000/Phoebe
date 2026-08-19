@@ -412,16 +412,10 @@ export default function WayOfLoveRuleFlow({
   const { user } = useAuth();
   const entitlements = useEntitlements();
   const [, setLocation] = useLocation();
-  // Weekly home cards — same keys/semantics WayOfLoveTurnLearnPray.tsx,
-  // VtsWeeklyProgress.tsx, and settings.tsx's HomeDisplaySettings read/
-  // write. Weekly Progress defaults OFF (opt-in); VTS Weekly defaults ON
-  // for subscribers (owner: "the main weekly default off, but the VTS
-  // default on for subscribers").
+  // Weekly home cards — same keys/semantics WayOfLoveTurnLearnPray.tsx and
+  // settings.tsx's HomeDisplaySettings read/write. Defaults OFF (opt-in).
   const [weeklyProgressOn, setWeeklyProgressOn] = useState<boolean>(() => {
     try { return localStorage.getItem("phoebe:hide-turn-learn-pray") === "0"; } catch { return false; }
-  });
-  const [vtsWeeklyOn, setVtsWeeklyOn] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:hide-vts-weekly") !== "1"; } catch { return true; }
   });
   const toggleWeeklyProgress = () => {
     const next = !weeklyProgressOn;
@@ -433,41 +427,6 @@ export default function WayOfLoveRuleFlow({
     // ROUTINE_SYNCED key — bump the clock + push now, or the next
     // cross-device reconcile can silently revert this toggle (owner:
     // "showing up on my phone but not on web").
-    if (user) pushRoutineConfig();
-  };
-  const toggleVtsWeekly = () => {
-    const next = !vtsWeeklyOn;
-    setVtsWeeklyOn(next);
-    try {
-      localStorage.setItem("phoebe:hide-vts-weekly", next ? "0" : "1");
-      window.dispatchEvent(new Event("phoebe:prefs-changed"));
-    } catch { /* web no-op */ }
-    if (user) pushRoutineConfig();
-  };
-  // ── VTS Practices step (owner: "turn off the extra VTS practices of
-  // meals and communal worship... put the newsletter on there too") ──────
-  const [communityMealOn, setCommunityMealOn] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:hide-vts-community-meal") !== "1"; } catch { return true; }
-  });
-  const [chapelOn, setChapelOn] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:hide-vts-chapel") !== "1"; } catch { return true; }
-  });
-  const toggleCommunityMeal = () => {
-    const next = !communityMealOn;
-    setCommunityMealOn(next);
-    try {
-      localStorage.setItem("phoebe:hide-vts-community-meal", next ? "0" : "1");
-      window.dispatchEvent(new Event("phoebe:prefs-changed"));
-    } catch { /* web no-op */ }
-    if (user) pushRoutineConfig();
-  };
-  const toggleChapel = () => {
-    const next = !chapelOn;
-    setChapelOn(next);
-    try {
-      localStorage.setItem("phoebe:hide-vts-chapel", next ? "0" : "1");
-      window.dispatchEvent(new Event("phoebe:prefs-changed"));
-    } catch { /* web no-op */ }
     if (user) pushRoutineConfig();
   };
   // A brand-new author — nobody has chosen a side level yet — is offered the
@@ -2309,10 +2268,9 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Weekly home cards — the dot-grid status bands under the daily
+  // ── Weekly home cards — the dot-grid status band under the daily
   // routine, not to be confused with the "weekly" PRACTICES step above
-  // (Commune/Go/Bless/Rest). Weekly Progress defaults off (opt-in); VTS
-  // Weekly (subscribers only) defaults on. ──
+  // (Commune/Go/Bless/Rest). Defaults off (opt-in). ──
   if (step === "weekly-cards") {
     return shell(
       <>
@@ -2345,32 +2303,6 @@ export default function WayOfLoveRuleFlow({
               <span style={{ position: "absolute", top: 3, left: weeklyProgressOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
             </span>
           </button>
-
-          {entitlements.vts && (
-            <button
-              type="button"
-              onClick={toggleVtsWeekly}
-              style={{
-                width: "100%", textAlign: "left", cursor: "pointer",
-                background: vtsWeeklyOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-                border: `1px solid ${vtsWeeklyOn ? CARD_B_ACTIVE : CARD_B}`,
-                borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                transition: "background 0.2s, border-color 0.2s",
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
-                  {t("wol_rule.weekly_cards_vts_label", { defaultValue: "VTS Weekly" })}
-                </p>
-                <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                  {t("wol_rule.weekly_cards_vts_sub", { defaultValue: "Dean's Commentary, Community Meal, and Chapel." })}
-                </p>
-              </div>
-              <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: vtsWeeklyOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-                <span style={{ position: "absolute", top: 3, left: vtsWeeklyOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
-              </span>
-            </button>
-          )}
         </div>
         <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
           <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
@@ -2384,10 +2316,10 @@ export default function WayOfLoveRuleFlow({
   // ── VTS Practices — owner: "make sure that someone can turn off the
   // extra VTS practices of meals and communal worship, have that as a
   // slide in their customizer. Actually put the newsletter on there too."
-  // VTS subscribers only (gated in orderedSteps). Community Meal / Chapel
-  // toggle the two VTS-only routine cards; the newsletter toggle reuses
-  // the SAME `newsletters` state the "learn" step's reflection picker
-  // uses — turning it off here is identical to unchecking it there. ──
+  // VTS subscribers only (gated in orderedSteps). Community Meal and Chapel
+  // were removed from Phoebe entirely, leaving just the newsletter toggle,
+  // which reuses the SAME `newsletters` state the "learn" step's reflection
+  // picker uses — turning it off here is identical to unchecking it there. ──
   if (step === "vts-practices") {
     const vtsNewsletterOn = newsletters.includes("vts");
     return shell(
@@ -2395,57 +2327,9 @@ export default function WayOfLoveRuleFlow({
         {backRow(goPrev)}
         {stepHeader(t("wol_rule.vts_practices_eyebrow", { defaultValue: "VTS" }), t("wol_rule.vts_practices_title", { defaultValue: "VTS practices" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 20px" }}>
-          {t("wol_rule.vts_practices_body", { defaultValue: "Turn off whichever of these you'd rather not keep as part of your daily rhythm." })}
+          {t("wol_rule.vts_practices_body_v2", { defaultValue: "Turn the Dean's Commentary reflection off if you'd rather not keep it as part of your daily rhythm." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button
-            type="button"
-            onClick={toggleCommunityMeal}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              background: communityMealOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${communityMealOn ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              transition: "background 0.2s, border-color 0.2s",
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
-                {t("wol_rule.vts_community_meal_label", { defaultValue: "Community Meal" })}
-              </p>
-              <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                {t("wol_rule.vts_community_meal_sub", { defaultValue: "A daily routine card on VTS publishing days." })}
-              </p>
-            </div>
-            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: communityMealOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-              <span style={{ position: "absolute", top: 3, left: communityMealOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleChapel}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              background: chapelOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${chapelOn ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              transition: "background 0.2s, border-color 0.2s",
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
-                {t("wol_rule.vts_chapel_label", { defaultValue: "Chapel" })}
-              </p>
-              <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                {t("wol_rule.vts_chapel_sub", { defaultValue: "Communal worship, as a daily routine card on VTS publishing days." })}
-              </p>
-            </div>
-            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: chapelOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-              <span style={{ position: "absolute", top: 3, left: chapelOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
-            </span>
-          </button>
-
           <button
             type="button"
             onClick={() => toggleNewsletter("vts")}

@@ -22,11 +22,7 @@ const router: IRouter = Router();
 // "gratitude" and "examen" are the optional daily practices a user can add
 // from the Customize flow — completing one earns an extra Daily-progress
 // checkmark (see lib/practiceCompletion.ts on the client + useRhythmState).
-// "community-meal" and "chapel" are VTS-feed-gated practices — only shown
-// (client-side, useRhythmState) to viewers subscribed to the VTS feed, on
-// weekdays. Same store, no server-side entitlement check — the client
-// already fails closed on whether to render/log them.
-const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list", "community-meal", "chapel"]);
+const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list"]);
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function uid(req: Request): number | null {

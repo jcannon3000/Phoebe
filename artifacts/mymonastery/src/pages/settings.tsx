@@ -1051,11 +1051,6 @@ function readTlpModeDefaultOn(): boolean {
 // The "Done" section on home (kept cards, below Next) — preset ON; read by
 // dashboard.tsx via the same key/helpers as the toggles above.
 export const HIDE_DONE_KEY = "phoebe:hide-home-done";
-// The VTS Weekly card (Dean's Commentary / Community Meal / Chapel, 5
-// columns) — read by VtsWeeklyProgress.tsx itself via the same key/
-// helpers. Defaults SHOWN for subscribers, unlike the main Weekly
-// Progress toggle above.
-export const HIDE_VTS_WEEKLY_KEY = "phoebe:hide-vts-weekly";
 
 // ── Muted people ─────────────────────────────────────────────────────────
 // The read side (filtering a muter's garden + push fan-out) lives in
@@ -1144,18 +1139,6 @@ function HomeDisplaySettings() {
     // back to whatever the server still has (owner: "showing up on my
     // phone but not on web"). pushRoutineConfig stamps the clock AND
     // pushes the new value up.
-    if (user) pushRoutineConfig();
-  };
-
-  // VTS Weekly — preset ON for subscribers (readLsBool defaults false/
-  // "not hidden" when the key has never been written).
-  const [vtsWeeklyHidden, setVtsWeeklyHidden] = useState<boolean>(() => readLsBool(HIDE_VTS_WEEKLY_KEY));
-  const vtsWeeklyShown = !vtsWeeklyHidden;
-  const toggleVtsWeekly = () => {
-    const nextHidden = vtsWeeklyShown;
-    setVtsWeeklyHidden(nextHidden);
-    writeLsBool(HIDE_VTS_WEEKLY_KEY, nextHidden);
-    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
     if (user) pushRoutineConfig();
   };
 
@@ -1252,33 +1235,6 @@ function HomeDisplaySettings() {
               >
                 <div
                   className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${practiceMode ? "left-[21px]" : "left-[3px]"}`}
-                  style={{ background: "#F0EDE6" }}
-                />
-              </div>
-            </button>
-          </>
-        )}
-
-        {entitlements.vts && (
-          <>
-            <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
-            <button
-              onClick={toggleVtsWeekly}
-              className="w-full flex items-center justify-between"
-            >
-              <div className="text-left">
-                <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-                  VTS Weekly
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                  Dean's Commentary, Community Meal, and Chapel — a second weekly card under the first.
-                </p>
-              </div>
-              <div
-                className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${vtsWeeklyShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
-              >
-                <div
-                  className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${vtsWeeklyShown ? "left-[21px]" : "left-[3px]"}`}
                   style={{ background: "#F0EDE6" }}
                 />
               </div>

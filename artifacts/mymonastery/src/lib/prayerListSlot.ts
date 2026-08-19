@@ -5,9 +5,8 @@ import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 // prayed their community prayers but have not prayed their morning or
 // evening, fill in the dot in the weekly based on where they prayed the
 // prayer list." This is independent of whether "Prayer List" is that
-// side's CHOSEN office practice — same mechanism as Chapel's slot
-// (lib/chapelLog.ts): it satisfies morningDone/eveningDone regardless of
-// what that side is actually set to. null = doesn't satisfy either side;
+// side's CHOSEN office practice — it satisfies morningDone/eveningDone
+// regardless of what that side is actually set to. null = doesn't satisfy either side;
 // the card still shows in Next/Done either way (that part never depends
 // on this preference).
 export type PrayerListSlot = "morning" | "evening" | null;

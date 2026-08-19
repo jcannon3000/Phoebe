@@ -20,7 +20,6 @@ import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL,
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, type OptionalPractice } from "@/lib/practiceCompletion";
-import { logChapel, unlogChapel, type ChapelService } from "@/lib/chapelLog";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { swellHaptic } from "@/lib/swellHaptic";
@@ -731,12 +730,8 @@ export function PracticeCard({
 // logAnchorId (not a real custom anchor) — see the "walk" comment further
 // down for why. One entry per sentinel; title is a function since it needs
 // the caller's `t`.
-// "chapel" is NOT here — it needs a 3-option service picker (ChapelLogSheet
-// below), not a plain Done/Not-today sheet, since which service satisfies
-// the Morning or Evening card too (see lib/chapelLog.ts).
 const SENTINEL_PRACTICES: Partial<Record<string, { title: (t: (k: string, o?: Record<string, unknown>) => string) => string; emoji: string }>> = {
   walk: { title: (t) => t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), emoji: "🚶" },
-  "community-meal": { title: (t) => t("rhythm.card_community_meal", { defaultValue: "Community Meal" }), emoji: "🍽️" },
 };
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming, onRemainingCount }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number; onRemainingCount?: (count: number) => void }) {
@@ -774,7 +769,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, communityMealActive, chapelActive, communityMealDone, chapelDone, intentionsTotalCount, intentionsPrayedCount } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, intentionsTotalCount, intentionsPrayedCount } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -979,27 +974,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     onUnlog: () => unmarkPracticeDoneToday("walk"),
     title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }),
     blurb: walkDone ? kept : t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }),
-    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-  };
-  // Community Meal + Chapel — VTS-feed-gated practices (owner: "only show
-  // up if you are subscribed to the VTS Feed"), weekdays only. Same Log
-  // popup pattern as Contemplative Walk above (Done / Not today via a
-  // sentinel logAnchorId) rather than a real page, since there's nothing to
-  // navigate to — just "did this happen today?".
-  const communityMealCard = {
-    key: "community-meal", emoji: "🍽️", rgb: "150,120,90", done: communityMealDone, href: "",
-    onClick: () => setLogAnchorId("community-meal"),
-    onUnlog: () => unmarkPracticeDoneToday("community-meal"),
-    title: t("rhythm.card_community_meal", { defaultValue: "Community Meal" }),
-    blurb: communityMealDone ? kept : t("rhythm.blurb_community_meal", { defaultValue: "Did you eat a communal meal today?" }),
-    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-  };
-  const chapelCard = {
-    key: "chapel", emoji: "🙏🏽", rgb: "96,141,209", done: chapelDone, href: "",
-    onClick: () => setLogAnchorId("chapel"),
-    onUnlog: () => unlogChapel(),
-    title: t("rhythm.card_chapel", { defaultValue: "Chapel" }),
-    blurb: chapelDone ? kept : t("rhythm.blurb_chapel", { defaultValue: "Did you attend a communal prayer or worship service today?" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
   // Prayer List — owner: "if someone has at least one prayer in their
@@ -1244,11 +1218,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
-    // Fixed slots (not customizer-picked, since these two aren't part of the
-    // "Add to your day" step) — Chapel with the morning rhythm, Community
-    // Meal with the afternoon/evening one.
-    ...(chapelActive ? [{ ...chapelCard, slot: "morning" as CustomSlot }] : []),
-    ...(communityMealActive ? [{ ...communityMealCard, slot: "afternoon" as CustomSlot }] : []),
     // Prayer List rides at whichever slot the viewer picked (see
     // lib/prayerListSlot.ts) on /intentions, or "anytime" if they never set
     // one — the card still shows either way, only its POSITION changes.
@@ -1745,19 +1714,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
       {/* Log popup for a custom practice — a reading logs an amount
           (chapter/page/time); a plain practice is just Done / Not today.
-          "walk"/"community-meal"/"chapel" are sentinel ids, not real custom
-          anchors: each reuses this exact same sheet (owner: it should work
-          like a custom practice) via onLog/onSkip overrides rather than
-          markCustomDoneToday/setCustomNotToday, since they're built-in
-          OptionalPractices, not user-created anchors. */}
-      {logAnchorId === "chapel" ? (
-        <ChapelLogSheet
-          onClose={() => setLogAnchorId(null)}
-          t={t}
-          onLog={(service) => logChapel(service)}
-          onSkip={() => unlogChapel()}
-        />
-      ) : logAnchorId && SENTINEL_PRACTICES[logAnchorId] ? (
+          "walk" is a sentinel id, not a real custom anchor: it reuses this
+          exact same sheet (owner: it should work like a custom practice)
+          via onLog/onSkip overrides rather than markCustomDoneToday/
+          setCustomNotToday, since it's a built-in OptionalPractice, not a
+          user-created anchor. */}
+      {logAnchorId && SENTINEL_PRACTICES[logAnchorId] ? (
         <LogSheet
           anchor={{ id: logAnchorId, title: SENTINEL_PRACTICES[logAnchorId].title(t), emoji: SENTINEL_PRACTICES[logAnchorId].emoji }}
           onClose={() => setLogAnchorId(null)}
@@ -1828,67 +1790,6 @@ function UnlogSheet({
           style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
         >
           {t("common.cancel", { defaultValue: "Cancel" })}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ChapelLogSheet — Chapel's own popup (not the plain Done/Not-today
-// LogSheet): which service satisfies the Morning or Evening card too
-// (owner), so this asks WHICH service rather than just whether one
-// happened. See lib/chapelLog.ts for the day-of-week rule.
-function ChapelLogSheet({
-  onClose, onLog, onSkip, t,
-}: {
-  onClose: () => void; onLog: (service: ChapelService) => void; onSkip: () => void;
-  t: (k: string, o?: Record<string, unknown>) => string;
-}) {
-  const services: Array<{ id: ChapelService; label: string }> = [
-    { id: "morning-prayer", label: t("rhythm.chapel_morning_prayer", { defaultValue: "Morning Prayer" }) },
-    { id: "holy-eucharist", label: t("rhythm.chapel_holy_eucharist", { defaultValue: "Holy Eucharist" }) },
-    { id: "evening-prayer", label: t("rhythm.chapel_evening_prayer", { defaultValue: "Evening Prayer" }) },
-  ];
-  return (
-    <div
-      className="fixed inset-0 z-[120] flex items-end justify-center"
-      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full"
-        style={{ maxWidth: 460, margin: "0 10px", background: "rgba(6,18,11,0.62)", backdropFilter: "blur(14.4px)", WebkitBackdropFilter: "blur(14.4px)", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 mb-4">
-          <span style={{ fontSize: 26 }}>🙏🏽</span>
-          <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{t("rhythm.card_chapel", { defaultValue: "Chapel" })}</p>
-        </div>
-        <p className="text-[12.5px] mb-3" style={{ color: SAGE, fontFamily: FONT }}>
-          {t("rhythm.chapel_which_service", { defaultValue: "Which service did you attend today?" })}
-        </p>
-
-        <div className="flex flex-col gap-2 mb-2">
-          {services.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => { onLog(s.id); onClose(); }}
-              className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
-              style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => { onSkip(); onClose(); }}
-          className="w-full rounded-2xl py-3 mt-2 text-[14px] font-semibold active:scale-[0.99]"
-          style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
-        >
-          {t("rhythm.log_not_today", { defaultValue: "Not today" })}
         </button>
       </div>
     </div>

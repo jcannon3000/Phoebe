@@ -20,7 +20,6 @@ import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgress
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { WayOfLoveTurnLearnPray } from "@/components/WayOfLoveTurnLearnPray";
-import { VtsWeeklyProgress } from "@/components/VtsWeeklyProgress";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -7175,7 +7174,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           ease DailyProgressBody's own row-level `layout` cards
                           already use, so the whole page reads as one motion. */}
                       <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
-                      {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
                       {/* Extra Contemplation card removed (owner) — the Done
                           list above (DailyProgressBody) already shows it. */}
                       {/* The WEEKLY rhythm stays visible on a kept day — resting
@@ -7240,7 +7238,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     {/* layout on each section below — see HOME_REFLOW_TRANSITION's
                         definition for why. */}
                     <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.2} splashCleared={ownReqSplashCleared} /></motion.div>
-                    {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
                     {/* Extra Contemplation card removed (owner) — the Done
                         list above (DailyProgressBody) already shows it. */}
                     {/* Weekly rhythm stays on the kept view, above Learn (see
@@ -7286,7 +7283,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     their new position alongside it. See
                     HOME_REFLOW_TRANSITION's definition for the shared timing. */}
                 <motion.div layout transition={HOME_REFLOW_TRANSITION}><WayOfLoveTurnLearnPray cascadeDelay={0.6} splashCleared={ownReqSplashCleared} /></motion.div>
-                {entitlements.vts && <motion.div layout transition={HOME_REFLOW_TRANSITION}><VtsWeeklyProgress /></motion.div>}
                 {/* The in-rhythm "Coming up" event teaser was removed — events
                     always sit UNDER the prayer requests (below). */}
                 {/* The Way of Love WEEKLY rhythm (Commune · Go · Bless · Rest) —
