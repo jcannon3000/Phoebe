@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clearDailyCompletionFlags } from "@/lib/completionReset";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
+import { Eye, EyeOff, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
@@ -13,175 +13,6 @@ import { CommunityRuleCard } from "@/components/CommunityRuleCard";
 import { TermsBody } from "./terms";
 import { PrivacyBody } from "./privacy";
 
-// ─── Phone-shaped mockup shell ──────────────────────────────────────────────
-// Ported from features-deck.tsx so the community invite slideshow shows the
-// *same* visual mocks of each practice that the individual signup deck uses.
-// A brand-new visitor lands on `/communities/:slug/join/:token`, sees what
-// Phoebe actually looks like, and then meets the specific community.
-function MockPhone({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-[28px] p-4 mx-auto w-full max-w-[290px]"
-      style={{
-        background: "#091A10",
-        border: "1px solid rgba(200,212,192,0.15)",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// Phone mock of the /prayer-list surface. Matches the live app screen
-// pixel for pixel — left-aligned "Prayer List 🙏🏽" title + subtitle,
-// full-width compose bar with a circular 🙏🏽 button, community
-// intercession card with the "Prayed today 🌿" tag and days counter,
-// then a prayer-request card with a "YOUR REQUEST" eyebrow and days-
-// left pill. No centered content, no anonymous rows — Phoebe has
-// neither.
-function PrayerRequestsMock() {
-  return (
-    <MockPhone>
-      {/* Page header — "Prayer List 🙏🏽" big title + subtitle line */}
-      <h2
-        className="text-[18px] font-bold leading-tight"
-        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}
-      >
-        Prayer List 🙏🏽
-      </h2>
-      <p className="text-[11px] mt-1 mb-3" style={{ color: "#8FAF96" }}>
-        Carrying what your community is carrying.
-      </p>
-
-      {/* Compose bar — full-width input, circular pray button flush right */}
-      <div className="flex items-center gap-2 mb-4">
-        <div
-          className="flex-1 text-[11px] px-3 py-2 rounded-full"
-          style={{
-            background: "#091A10",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "rgba(143,175,150,0.5)",
-          }}
-        >
-          Share a prayer... 🌿
-        </div>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] shrink-0"
-          style={{ background: "rgba(46,107,64,0.28)", border: "1px solid rgba(46,107,64,0.5)" }}
-        >
-          🙏🏽
-        </div>
-      </div>
-
-      {/* Community intercessions section */}
-      <div className="flex items-center gap-2 mt-5 mb-2">
-        <h3 className="text-[12px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          Community intercessions
-        </h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
-      <div
-        className="relative flex rounded-xl overflow-hidden mb-4"
-        style={{
-          background: "rgba(46,107,64,0.15)",
-          border: "1px solid rgba(46,107,64,0.28)",
-        }}
-      >
-        <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
-        <div className="flex-1 px-3 py-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
-                🙏🏽 For those in grief
-              </p>
-              <p className="text-[9px] mt-0.5" style={{ color: "#8FAF96" }}>
-                with Margaret, David
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-[9px] font-bold tabular-nums" style={{ color: "#F0EDE6" }}>
-                2/7 <span style={{ color: "rgba(143,175,150,0.55)" }}>DAYS</span>
-              </p>
-              <p className="text-[8px] mt-0.5" style={{ color: "#A8C5A0" }}>
-                Prayed today 🌿
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Prayer Requests section — "YOUR REQUEST" eyebrow for self, "From X"
-          eyebrow for others. No "Anonymous" — Phoebe doesn't support that. */}
-      <div className="flex items-center gap-2 mb-2">
-        <h3 className="text-[12px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          Prayer Requests
-        </h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
-      <div className="space-y-2">
-        <div
-          className="relative flex rounded-xl overflow-hidden"
-          style={{
-            background: "rgba(46,107,64,0.15)",
-            border: "1px solid rgba(46,107,64,0.28)",
-          }}
-        >
-          <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
-          <div className="flex-1 px-3 py-2.5 flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-[9px] font-semibold uppercase tracking-[0.14em] mb-0.5"
-                style={{ color: "rgba(143,175,150,0.55)" }}
-              >
-                Your request
-              </p>
-              <p className="text-[11px] leading-snug" style={{ color: "#F0EDE6" }}>
-                Guidance this week at work.
-              </p>
-            </div>
-            <span
-              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
-              style={{
-                background: "rgba(46,107,64,0.15)",
-                color: "rgba(143,175,150,0.7)",
-                border: "1px solid rgba(46,107,64,0.2)",
-              }}
-            >
-              3d left
-            </span>
-          </div>
-        </div>
-        <div
-          className="relative flex rounded-xl overflow-hidden"
-          style={{
-            background: "rgba(46,107,64,0.15)",
-            border: "1px solid rgba(46,107,64,0.28)",
-          }}
-        >
-          <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
-          <div className="flex-1 px-3 py-2.5 flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-[9px] font-semibold uppercase tracking-[0.14em] mb-0.5"
-                style={{ color: "rgba(143,175,150,0.55)" }}
-              >
-                From Margaret W.
-              </p>
-              <p className="text-[11px] leading-snug" style={{ color: "#F0EDE6" }}>
-                My mother begins treatment this week.
-              </p>
-            </div>
-            <div className="flex items-center gap-1 shrink-0" style={{ color: "rgba(143,175,150,0.45)" }}>
-              <span className="text-[9px] tabular-nums">4</span>
-              <MessageCircle size={11} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </MockPhone>
-  );
-}
 
 type AuthMode = "signin" | "register";
 
@@ -193,28 +24,6 @@ interface InviteInfo {
   kind: "community" | "member";
   group: { name: string; slug: string; emoji: string | null; description?: string | null };
   invitee?: { email: string; name: string | null; joinedAt: string | null };
-  // Only present on community-wide invites — powers the onboarding slideshow
-  // shown to unauthenticated visitors before the signup form.
-  preview?: {
-    memberCount: number;
-    sampleMembers: Array<{ name: string | null; avatarUrl: string | null }>;
-    practices: Array<{ id: number; name: string; templateType: string | null; intention: string }>;
-  };
-}
-
-// Template-type → emoji/label for the "what you'll do" slide. Keep in step
-// with the dashboard's templateType vocabulary.
-const PRACTICE_ICON: Record<string, { emoji: string; label: string }> = {
-  "intercession": { emoji: "🙏🏽", label: "Intercession" },
-  "fast": { emoji: "🌾", label: "Fasting" },
-  "morning-prayer": { emoji: "🌅", label: "Morning Prayer" },
-  "evening-prayer": { emoji: "🌙", label: "Evening Prayer" },
-  "examen": { emoji: "🕯️", label: "Examen" },
-  "rosary": { emoji: "📿", label: "Rosary" },
-};
-function iconForPractice(templateType: string | null): { emoji: string; label: string } {
-  if (templateType && PRACTICE_ICON[templateType]) return PRACTICE_ICON[templateType];
-  return { emoji: "🌿", label: "Practice" };
 }
 
 export default function CommunityJoinPage() {
@@ -240,14 +49,6 @@ export default function CommunityJoinPage() {
     enabled: !!slug && !!token,
     retry: false,
   });
-
-  // Onboarding slideshow — community-wide invites get a short welcome
-  // carousel before the signup form. Visitors can skip it at any time
-  // (including on first land) to go straight to the form. Per-member
-  // legacy invites bypass the slideshow entirely; they already know
-  // what they're being invited to.
-  const [slideIndex, setSlideIndex] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(true);
 
   // Auth state for unauthenticated visitors
   const [authMode, setAuthMode] = useState<AuthMode>("register");
@@ -434,76 +235,6 @@ export default function CommunityJoinPage() {
     }
   }
 
-  // Build the slideshow payload. We compose slides conditionally so an empty
-  // practice/member list doesn't render a hollow card — a brand-new community
-  // with no members yet shouldn't brag about "join 0 others". Computed here
-  // (before early returns) to respect the Rules of Hooks.
-  //
-  // Ordering logic:
-  //   1–2. Phoebe intro  — what the product *is*, borrowed from features-deck,
-  //        so a brand-new visitor who's never heard of Phoebe gets oriented
-  //        before the community-specific welcome. Matches the individual
-  //        signup deck's tone.
-  //   3+.  Community-specific — invited to pray with X, who's there, what
-  //        they do, signup CTA.
-  const slides = useMemo(() => {
-    if (!invite) return [];
-    const s: Array<{ key: string; node: React.ReactNode }> = [];
-    const preview = invite.preview;
-
-    // New pre-signup flow: a lean three/four-slide arc — welcome to
-    // this specific community, who's already there, what the shared
-    // practice looks like (PrayerList mock), and the signup CTA. The
-    // older "what is Phoebe + three product mocks + full practice
-    // list" stack moved post-signup so new users meet the group
-    // before learning the product. That longer tour is now tailored
-    // and shown once on their first dashboard visit.
-
-    // Slide — Welcome to the specific community. Always shown.
-    // A community is a FOLLOWED FEED, not a social room: the join flow invites
-    // you to *follow* the community's shared rhythm, prayer feed, and events —
-    // never to "join these people." So we never show member names or avatars,
-    // only an anonymous count of how many are keeping the rhythm.
-    const followerLine = (preview && preview.memberCount > 0)
-      ? `${preview.memberCount} ${preview.memberCount === 1 ? "person is" : "people are"} keeping this rhythm`
-      : null;
-
-    s.push({
-      key: "welcome",
-      node: (
-        <div className="text-center">
-          <div className="text-6xl mb-5">{invite.group.emoji ?? "🏘️"}</div>
-          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            You've been invited to follow
-          </p>
-          <h1 className="text-3xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-            {invite.group.name}
-          </h1>
-
-          {followerLine && (
-            <p className="text-sm font-medium mb-5" style={{ color: "#C8D4C0" }}>
-              {followerLine}
-            </p>
-          )}
-
-          {invite.group.description && (
-            <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
-              {invite.group.description}
-            </p>
-          )}
-        </div>
-      ),
-    });
-
-    // Intentionally the ONLY slide — the user asked to drop the
-    // "Prayer, held in common" mock slide and the "Ready to join"
-    // outro so newcomers go invitation → signup in a single beat.
-    // The full product tour (PrayerRequestsMock, practices deep
-    // dives) now lives post-signup inside the main onboarding flow.
-
-    return s;
-  }, [invite]);
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (authLoading || inviteLoading) {
@@ -615,110 +346,10 @@ export default function CommunityJoinPage() {
     invite.kind === "member" && (invite.invitee?.joinedAt ?? null) !== null;
   const isCommunityWide = invite.kind === "community";
 
-  // Only community-wide invites use the slideshow. Per-member legacy invites
-  // skip straight to the form so the pre-filled email + name show immediately.
-  const slideshowActive = isCommunityWide && showOnboarding && slides.length > 0;
-  const currentSlide = slides[Math.min(slideIndex, slides.length - 1)];
-  const isLastSlide = slideIndex >= slides.length - 1;
-
-  // Full-screen slideshow render — takes over the page until the visitor
-  // taps "Get started" on the last slide (or "Skip").
-  if (slideshowActive) {
-    return (
-      // `100dvh` (dynamic viewport height) instead of `100vh` / min-h-screen
-      // so iOS Safari's expanding/contracting URL bar doesn't push the
-      // Get-started button below the fold. Outer container is exactly the
-      // visible viewport; main scrolls internally if a slide's content is
-      // taller than the available middle; footer stays pinned at the
-      // bottom, padded for the home-indicator safe area.
-      <div
-        className="flex flex-col"
-        style={{
-          background: "#091A10",
-          fontFamily: "'Space Grotesk', sans-serif",
-          height: "100dvh",
-          overflow: "hidden",
-        }}
-      >
-        <header className="px-6 py-6 flex items-center justify-between shrink-0">
-          <span className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
-            Phoebe
-          </span>
-          <button
-            onClick={() => setShowOnboarding(false)}
-            className="text-xs"
-            style={{ color: "rgba(143,175,150,0.65)" }}
-          >
-            Skip
-          </button>
-        </header>
-
-        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-4 overflow-y-auto">
-          <div className="w-full max-w-sm mx-auto">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentSlide.key}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25 }}
-              >
-                {currentSlide.node}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </main>
-
-        {/* Footer — progress dots + primary action. shrink-0 + the
-            bottom-safe padding keep it pinned above the home indicator
-            regardless of how tall the slide content is. */}
-        <footer
-          className="px-6 pt-4 flex flex-col items-center gap-5 shrink-0"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)" }}
-        >
-          <div className="flex items-center gap-1.5">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setSlideIndex(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                className="h-1.5 rounded-full transition-all"
-                style={{
-                  width: i === slideIndex ? 20 : 6,
-                  background: i === slideIndex ? "#8FAF96" : "rgba(143,175,150,0.25)",
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="w-full max-w-sm flex flex-col gap-2">
-            <button
-              onClick={() => {
-                if (isLastSlide) {
-                  setShowOnboarding(false);
-                } else {
-                  setSlideIndex(slideIndex + 1);
-                }
-              }}
-              className="flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-semibold text-sm btn-sage"
-            >
-              {isLastSlide ? "Get started" : "Next"}
-              <ArrowRight size={15} />
-            </button>
-            {slideIndex > 0 && !isLastSlide && (
-              <button
-                onClick={() => setSlideIndex(slideIndex - 1)}
-                className="w-full py-2 text-xs"
-                style={{ color: "rgba(143,175,150,0.65)" }}
-              >
-                Back
-              </button>
-            )}
-          </div>
-        </footer>
-      </div>
-    );
-  }
+  // Owner: "yes cut it, just make them sign up if they want to join a
+  // group" — the pre-signup onboarding slideshow (a single "welcome to
+  // this community" slide, itself already trimmed down from a longer
+  // product-tour deck) is gone. Straight to the sign-up/sign-in form below.
 
   return (
     // `min-h-[100dvh]` respects iOS Safari's dynamic viewport so the
