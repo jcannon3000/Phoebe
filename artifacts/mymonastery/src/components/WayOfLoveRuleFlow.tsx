@@ -105,7 +105,7 @@ type Step =
   | "psalms-cycle"
   | "evening-way" | "evening-bcp" | "evening-custom" | "evening-config"
   | "contemplative" | "contemplation-goal"
-  | "learn" | "extras" | "custom" | "notifications" | "weekly" | "weekly-cards" | "vts-practices" | "done"
+  | "learn" | "extras" | "custom" | "weekly" | "weekly-cards" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
 // later (you receive a rule, you don't compose one from a blank trellis). Each
@@ -1275,7 +1275,6 @@ export default function WayOfLoveRuleFlow({
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
         "custom",
-        "notifications",
       ]
     : pilot
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
@@ -1288,7 +1287,6 @@ export default function WayOfLoveRuleFlow({
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
         "custom",
-        "notifications",
       ]
     : [
     "when",
@@ -1319,18 +1317,20 @@ export default function WayOfLoveRuleFlow({
     // Weekly-progress home CARDS (the dot-grid status bands) — separate
     // from the "weekly" step above, which is about weekly PRACTICES
     // (Commune/Go/Bless/Rest). This just asks whether to show the cards.
+    // Owner: "take the notification slide... out from that slideshow, just
+    // have the nudge option availible in settings" — Gentle/Nudge already
+    // lives in Settings (settings.tsx's notification_style row), so this is
+    // the LAST step of the full flow now; its Continue commits.
     "weekly-cards",
-    // Owner: "make sure that someone can turn off the extra VTS practices
-    // of meals and communal worship, have that as a slide in their
-    // customizer... put the newsletter on there too." VTS subscribers only.
-    ...(entitlements.vts ? (["vts-practices"] as Step[]) : []),
-    // Notification style closes every flow — after the routine itself is
-    // built, decide how insistently the app follows up on it.
-    "notifications",
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
   const goPrev = () => { const i = orderedSteps.indexOf(step); if (i > 0) setStep(orderedSteps[i - 1]); else onBack(); };
+  // Is the CURRENT step the last one in whichever flow variant is active
+  // (guest/pilot/full)? Used by whatever step now closes each variant
+  // (custom for guest/pilot, weekly-cards for full) to commit instead of
+  // just advancing, now that "notifications" no longer closes every flow.
+  const isLastStep = orderedSteps[orderedSteps.length - 1] === step;
 
   // Desktop keyboard nav — ArrowRight advances a step, ArrowLeft goes back.
   // A ref holds the latest closures so the listener binds once yet always sees
@@ -1697,7 +1697,7 @@ export default function WayOfLoveRuleFlow({
     const cap = side === "morning" ? "Morning" : "Evening";
     // Compline sits after Office, and only in the evening — it IS the night
     // office, so offering it as a morning form would be nonsense.
-    const baseForms = (!pilot ? (["psalms", "devotion", "offices", "readings"] as const) : (["devotion", "offices", "readings"] as const));
+    const baseForms = (!pilot ? (["psalms", "readings", "devotion", "offices"] as const) : (["devotion", "readings", "offices"] as const));
     const forms: ReadonlyArray<"psalms" | "devotion" | "offices" | "compline" | "readings"> =
       side === "evening" ? [...baseForms, "compline"] : baseForms;
     return shell(
@@ -2211,10 +2211,8 @@ export default function WayOfLoveRuleFlow({
           </div>
         ) : (
           <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            {/* Notifications (every flow's true final step) always follows —
-                weekly first when that's enabled. Saving happens there now. */}
-            <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-              {t("ruleOfLife.continue", { defaultValue: "Continue" })}
+            <button onClick={isLastStep ? commit : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {isLastStep ? t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}
             </button>
             <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
               <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
@@ -2340,87 +2338,10 @@ export default function WayOfLoveRuleFlow({
           </button>
         </div>
         <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            {t("ruleOfLife.continue", { defaultValue: "Continue" })}
+          <button onClick={isLastStep ? commit : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            {isLastStep ? t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}
           </button>
         </div>
-      </>,
-    );
-  }
-
-  // ── VTS Practices — owner: "make sure that someone can turn off the
-  // extra VTS practices of meals and communal worship, have that as a
-  // slide in their customizer. Actually put the newsletter on there too."
-  // VTS subscribers only (gated in orderedSteps). Community Meal and Chapel
-  // were removed from Phoebe entirely, leaving just the newsletter toggle,
-  // which reuses the SAME `newsletters` state the "learn" step's reflection
-  // picker uses — turning it off here is identical to unchecking it there. ──
-  if (step === "vts-practices") {
-    const vtsNewsletterOn = newsletters.includes("vts");
-    return shell(
-      <>
-        {backRow(goPrev)}
-        {stepHeader(t("wol_rule.vts_practices_eyebrow", { defaultValue: "VTS" }), t("wol_rule.vts_practices_title", { defaultValue: "VTS practices" }))}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 20px" }}>
-          {t("wol_rule.vts_practices_body_v2", { defaultValue: "Turn the Dean's Commentary reflection off if you'd rather not keep it as part of your daily rhythm." })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => toggleNewsletter("vts")}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              background: vtsNewsletterOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${vtsNewsletterOn ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              transition: "background 0.2s, border-color 0.2s",
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
-                {t("wol_rule.vts_newsletter_label", { defaultValue: "Dean's Commentary" })}
-              </p>
-              <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                {t("wol_rule.vts_newsletter_sub", { defaultValue: "The VTS reflection, as your daily reading." })}
-              </p>
-            </div>
-            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: vtsNewsletterOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-              <span style={{ position: "absolute", top: 3, left: vtsNewsletterOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
-            </span>
-          </button>
-        </div>
-        <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            {t("ruleOfLife.continue", { defaultValue: "Continue" })}
-          </button>
-        </div>
-      </>,
-    );
-  }
-
-  // ── Notifications — the closing step of every flow. Gentle (today's one
-  // reminder per side) vs Nudge (also chase with a ~3h-later follow-up when
-  // that side's office/practice still isn't done). Saves the whole rhythm. ──
-  if (step === "notifications") {
-    return shell(
-      <>
-        {backRow(goPrev)}
-        {stepHeader(t("wol_rule.notifications_eyebrow", { defaultValue: "Notifications" }), t("wol_rule.notifications_title", { defaultValue: "How should Phoebe remind you?" }))}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
-          {choiceRow(
-            notificationStyle === "gentle",
-            `🕊️ ${t("wol_rule.notifications_gentle", { defaultValue: "Gentle" })}`,
-            t("wol_rule.notifications_gentle_sub", { defaultValue: "One reminder per side — no chasing." }),
-            () => setNotificationStyle("gentle"),
-          )}
-          {choiceRow(
-            notificationStyle === "nudge",
-            `🔔 ${t("wol_rule.notifications_nudge", { defaultValue: "Nudge" })}`,
-            t("wol_rule.notifications_nudge_sub", { defaultValue: "Also send a follow-up about three hours later if you haven't prayed yet." }),
-            () => setNotificationStyle("nudge"),
-          )}
-        </div>
-        {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
       </>,
     );
   }

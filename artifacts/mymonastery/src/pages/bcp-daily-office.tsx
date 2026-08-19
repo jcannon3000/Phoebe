@@ -1872,6 +1872,31 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             ))}
           </>
         )}
+        {/* Owner: "a pill under these to press if you prayed with the
+            physical BCP" — same one-tap "already prayed it" as the outer
+            landing page's pill (markOfficeBookComplete), surfaced here too
+            since this welcome slide is a separate screen some flows land on
+            directly (cameFromPicker / onComplete skip the outer picker). */}
+        {canChoose && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); markOfficeBookComplete(officeSide); setViewerLocation("/dashboard"); }}
+            style={{
+              width: "100%",
+              background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+              border: "1px solid rgba(var(--ot-mist, 200,212,192),0.22)",
+              borderRadius: 999,
+              color: "rgba(var(--ot-fern, 168,197,160),0.95)",
+              fontFamily: SPACE_GROTESK,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: "13px 24px",
+            }}
+          >
+            ✓ Mark as already prayed
+          </button>
+        )}
         {/* Row 3 — Begin. */}
         <button
           type="button"

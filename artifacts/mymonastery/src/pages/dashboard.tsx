@@ -3215,7 +3215,7 @@ function FddHomeCard() {
 // tapped. Owner: "a new option under book of common prayer for a prayer
 // practice that is 'Daily Scripture Readings'... configured to morning [for
 // morning] and evening for evening."
-function ReadingsHomeCard() {
+function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning" | "evening"; hero?: boolean } = {}) {
   const [hasRead, setHasRead] = useState(() => hasPrayedReadingsToday(readingsPraySideForCheck()));
   // Same ?readings=<side> handoff FddHomeCard uses for ?fdd=<side> — set by
   // begin-prayer.tsx when Daily Scripture Readings IS a side's chosen prayer.
@@ -3227,17 +3227,62 @@ function ReadingsHomeCard() {
     } catch { return undefined; }
   });
   useEffect(() => {
-    const refresh = () => setHasRead(hasPrayedReadingsToday(praySide ?? "morning"));
+    const refresh = () => setHasRead(hasPrayedReadingsToday(praySide ?? side));
     window.addEventListener(READINGS_PRAYED_EVENT, refresh);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.removeEventListener(READINGS_PRAYED_EVENT, refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [praySide]);
+  }, [praySide, side]);
   const onClick = () => {
-    openExternalThenMarkRead(getReadingsTodayUrl(), () => recordReadingsOpened({ side: praySide }), { reader: true });
+    openExternalThenMarkRead(getReadingsTodayUrl(), () => recordReadingsOpened({ side: praySide ?? side }), { reader: true });
   };
+  // The day's appointed psalm + lessons — the same lectionary line the office
+  // hero and Psalms card show, so the card matches what Forward Movement's
+  // daily-readings page actually opens to. Owner: "show the scriptures on
+  // the second line too."
+  const subtitle = useOfficeReadingsLine(side, "office");
+  // One green across every anchor (Psalms/Contemplation/office) — no blue
+  // outlier. Owner: "same formatting as the other cards... green."
+  const rgb = "46,107,64";
+  const title = side === "evening" ? "Evening Scripture Readings" : "Daily Scripture Readings";
+
+  if (hero) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+        className="relative flex rounded-3xl overflow-hidden cursor-pointer transition-opacity hover:opacity-95 active:scale-[0.99]"
+        style={{
+          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          border: "1px solid rgba(200,212,192,0.35)",
+        }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.9)` }} />
+        <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+          <p className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate" style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}>
+            Book of Common Prayer
+          </p>
+          <p className="text-2xl font-semibold leading-tight mt-1.5" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
+          {subtitle && (
+            <p className="text-[13.5px] mt-1 leading-snug truncate" style={{ color: "#B6C2A8", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {subtitle}
+            </p>
+          )}
+          <div
+            className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+            style={{ background: `rgba(${rgb},0.22)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 500, padding: "7px 12px", border: `1px solid rgba(${rgb},0.45)` }}
+          >
+            {hasRead ? <><span aria-hidden style={{ opacity: 0.85 }}>✓</span>&nbsp;Read again</> : "Read"} <span aria-hidden>→</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       role="button"
@@ -3245,30 +3290,39 @@ function ReadingsHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(96,141,209,0.13)", border: `1px solid rgba(96,141,209,0.40)` }}
+      style={{ background: `rgba(${rgb},0.13)`, border: `1px solid rgba(${rgb},0.40)` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(96,141,209,0.85)` }} />
-      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-        <p
-          className="font-semibold min-w-0 truncate"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
-        >
-          Daily Scripture Readings 📖
-        </p>
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+      <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
+        <span className="text-xl flex-shrink-0" aria-hidden>📖</span>
+        <div className="flex-1 min-w-0">
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+          >
+            {title}
+          </p>
+          <p
+            className="truncate"
+            style={{ color: "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
+          >
+            {subtitle ?? "Today's appointed readings"}
+          </p>
+        </div>
         <div
           className="rounded-full text-center shrink-0"
           style={{
-            background: "rgba(96,141,209,0.28)",
+            background: `rgba(${rgb},0.85)`,
             color: "#F0EDE6",
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 13,
             fontWeight: 500,
             padding: "6px 14px",
-            border: "1px solid rgba(96,141,209,0.50)",
+            border: `1px solid rgba(${rgb},0.45)`,
             whiteSpace: "nowrap",
           }}
         >
-          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+          {hasRead ? "✓ Read again" : "Read"} <span aria-hidden>→</span>
         </div>
       </div>
     </div>
@@ -3755,7 +3809,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   // Per-user: Daily Scripture Readings IS this side's prayer → same swap-in
   // as FDD above, just the simpler (no audio mode) readings card.
   if (getSideLevel(isMorning ? "morning" : "evening") === "readings") {
-    return <ReadingsHomeCard />;
+    return <ReadingsHomeCard side={isMorning ? "morning" : "evening"} hero={!compact && !!forceSide} />;
   }
   // Per-user: Praying the Psalms IS this side's prayer → the Psalms card replaces
   // the office card for this user. Same after-all-hooks placement as FDD.

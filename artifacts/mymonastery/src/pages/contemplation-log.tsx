@@ -159,6 +159,22 @@ export default function ContemplationLogPage() {
                 <span style={{ color: SAGE, fontWeight: 500, fontSize: 15 }}> {" "}of {contemplationGoalMin} min goal</span>
               )}
             </p>
+            {contemplationGoalMin > 0 && (
+              <div
+                aria-hidden
+                style={{ marginTop: 12, height: 8, borderRadius: 999, background: "rgba(46,107,64,0.18)", overflow: "hidden" }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${Math.min(100, Math.round((contemplationMin / contemplationGoalMin) * 100))}%`,
+                    borderRadius: 999,
+                    background: "rgba(110,180,130,0.85)",
+                    transition: "width 0.3s ease-out",
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

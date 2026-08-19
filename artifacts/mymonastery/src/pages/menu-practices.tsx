@@ -2,6 +2,8 @@ import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
+import { FDD_TODAY_URL } from "@/lib/cacReadState";
+import { openExternal } from "@/lib/openExternal";
 
 // The core contemplative practices. (Gratitude is still reachable via its own
 // surface; it's just not listed here.)
@@ -21,10 +23,20 @@ export default function MenuPracticesPage() {
       backLabel="Menu"
       backHref="/menu"
       groups={[{
+        header: "Daily Office",
         items: [
           // Daily Offices leads the list — also reachable from the BCP page
           // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
           { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/offices") },
+          // Quick link straight to Forward Movement's Forward Day by Day page —
+          // owner: "put in the practices menu page under daily office 'Daily
+          // Scripture Reading'... that would open to the forward day by day
+          // page." A plain external open, no read-tracking (that's the side-
+          // anchor Daily Scripture Readings card's job, not this quick link's).
+          { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's Forward Day by Day reflection", onClick: () => openExternal(FDD_TODAY_URL, { reader: true }) },
+        ],
+      }, {
+        items: [
           // Contemplation leads the rest of the list.
           { emoji: "🕯️", label: "Contemplation", sub: "Loving God in silence", onClick: () => go("/contemplation") },
           // Novenas hidden for all users per owner request (2026-08-07) — see
