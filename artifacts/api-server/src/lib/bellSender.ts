@@ -523,6 +523,23 @@ function isWithinTickWindow(
   return Math.abs(now - target) <= 15;
 }
 
+// Owner: "if someone picks seven thirty AM, we want it to be sent at seven
+// thirty AM" — the ±15-minute window above meant a 7:30 pick could go out
+// anywhere from 7:15 to 7:45 depending on where the 15-minute scheduler
+// tick happened to land. Used only by the office-reminder senders (morning/
+// evening + their two follow-ups), which now run on their OWN 1-minute
+// interval (see the office-reminder interval in startBellScheduler below) —
+// exact-minute matching only works when the tick cadence is fine enough to
+// actually land on the target minute; the OTHER senders (contemplation-goal,
+// weekly-review) stay on isWithinTickWindow's ±15 tolerance since they're
+// still on the coarser 15-minute tick.
+function isAtExactMinute(parishTz: string, targetHHMM: string): boolean {
+  const [hStr, mStr] = targetHHMM.split(":");
+  const target = parseInt(hStr, 10) * 60 + parseInt(mStr, 10);
+  const { hour, minute } = getCurrentTimeInTz(parishTz);
+  return hour * 60 + minute === target;
+}
+
 // (Removed: an OFFICE_REMINDERS_ENABLED env-var kill switch that
 // gated the office-reminder fan-out until the App Store rollout
 // completed. The new app is live on the App Store and every user
@@ -612,7 +629,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       // turned on, whenever the OTHER side qualified the row.
       if (r.morningPref && r.morningPref !== "none" && r.morningSentDate !== today) {
         const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
-        if (opts.forceNow || isWithinTickWindow(tz, targetTime)) {
+        if (opts.forceNow || isAtExactMinute(tz, targetTime)) {
           const morningSessions = await db
             .select({ endedAt: prayerSessionsTable.endedAt })
             .from(prayerSessionsTable)
@@ -654,7 +671,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       // Evening side
       if (r.eveningPref && r.eveningPref !== "none" && r.eveningSentDate !== today) {
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
-        const eveningInWindow = opts.forceNow || isWithinTickWindow(tz, eveningTarget);
+        const eveningInWindow = opts.forceNow || isAtExactMinute(tz, eveningTarget);
         // Diagnostic: on the tick where the evening window matches, record the
         // state so "why didn't my evening reminder fire?" is answerable from
         // the logs (pref, target time, already-prayed). Only when in-window so
@@ -764,7 +781,7 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
         // ~2h after the (per-user) evening target time.
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
         const followupTarget = addHoursToHHMM(eveningTarget, EVENING_FOLLOWUP_HOURS_AFTER);
-        if (!opts.forceNow && !isWithinTickWindow(tz, followupTarget)) continue;
+        if (!opts.forceNow && !isAtExactMinute(tz, followupTarget)) continue;
 
         // Still not prayed? (approximate UTC start of today in user-tz; covers UTC-14)
         const sinceUtc = new Date(`${today}T00:00:00Z`);
@@ -846,7 +863,7 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
         // ~3h after the (per-user) morning target time.
         const morningTarget = r.morningTime || DEFAULT_MORNING_TIME;
         const followupTarget = addHoursToHHMM(morningTarget, MORNING_FOLLOWUP_HOURS_AFTER);
-        if (!opts.forceNow && !isWithinTickWindow(tz, followupTarget)) continue;
+        if (!opts.forceNow && !isAtExactMinute(tz, followupTarget)) continue;
 
         // Still not prayed? (approximate UTC start of today in user-tz; covers UTC-14)
         const sinceUtc = new Date(`${today}T00:00:00Z`);
@@ -1341,6 +1358,7 @@ export async function runWeeklyDigestSender(opts: { forceNow?: boolean } = {}): 
 }
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
+let officeReminderInterval: ReturnType<typeof setInterval> | null = null;
 
 // Each sender wrapped via withSchedulerLog: insert a "running" row in
 // scheduler_runs at start, update to "completed" or "failed" at end.
@@ -1364,9 +1382,11 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // (runLifeEventFollowUpSender is kept for manual/forceNow use but no longer
   // fires on the cron.)
   // { name: "life-event-followup",   run: runLifeEventFollowUpSender },
-  { name: "parish-office",         run: runParishOfficeReminderSender },
-  { name: "parish-office-followup", run: runParishOfficeEveningFollowUpSender },
-  { name: "parish-office-morning-followup", run: runParishOfficeMorningFollowUpSender },
+  // parish-office / parish-office-followup / parish-office-morning-followup
+  // moved to their OWN 1-minute interval below (officeReminderInterval) —
+  // owner: "if someone picks seven thirty AM, we want it to be sent at seven
+  // thirty AM," which needs a tick fine enough to actually land on the exact
+  // target minute (isAtExactMinute), not this list's 15-minute cadence.
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.
@@ -1378,8 +1398,19 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "retention-cleanup",     run: runRetentionCleanupSender },
 ];
 
-function fireAllSenders(): void {
-  for (const sender of SCHEDULER_SENDERS) {
+// Morning/evening office reminders + their two follow-ups — split onto their
+// own 1-minute tick so isAtExactMinute (see above) actually has a chance to
+// land on the user's chosen minute, instead of the ±15 spread the shared
+// 15-minute SCHEDULER_SENDERS tick allowed. Each sender's own per-day
+// sent-date columns still dedup, so ticking 15x more often can't double-send.
+const OFFICE_REMINDER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
+  { name: "parish-office",         run: runParishOfficeReminderSender },
+  { name: "parish-office-followup", run: runParishOfficeEveningFollowUpSender },
+  { name: "parish-office-morning-followup", run: runParishOfficeMorningFollowUpSender },
+];
+
+function fireSenderList(senders: Array<{ name: string; run: () => Promise<void> }>): void {
+  for (const sender of senders) {
     // withSchedulerLog already swallows exceptions internally so a
     // failure in one sender doesn't break the others. We still
     // attach a tail .catch as belt-and-suspenders for the case
@@ -1392,7 +1423,9 @@ function fireAllSenders(): void {
 
 export function startBellScheduler(): void {
   if (bellInterval) return;
-  logger.info("[bell-scheduler] started — first run in 45s, then every 15 min");
-  setTimeout(fireAllSenders, 45_000);
-  bellInterval = setInterval(fireAllSenders, 15 * 60 * 1000);
+  logger.info("[bell-scheduler] started — first run in 45s, then every 15 min; office reminders every 1 min");
+  setTimeout(() => fireSenderList(SCHEDULER_SENDERS), 45_000);
+  bellInterval = setInterval(() => fireSenderList(SCHEDULER_SENDERS), 15 * 60 * 1000);
+  setTimeout(() => fireSenderList(OFFICE_REMINDER_SENDERS), 15_000);
+  officeReminderInterval = setInterval(() => fireSenderList(OFFICE_REMINDER_SENDERS), 60 * 1000);
 }

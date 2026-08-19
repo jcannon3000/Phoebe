@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { getSideLevel } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 
 // Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
 // side's OFFICE when they're that side's chosen prayer — but they're also
@@ -10,6 +11,20 @@ import { markRecentCompletion } from "@/lib/recentCompletion";
 // the reading is never lost; only the office-crediting session POST is gated.
 function sideIsSetTo(side: "morning" | "evening", level: string): boolean {
   try { return getSideLevel(side) === level; } catch { return false; }
+}
+
+// Owner: "if morning prayer is completed either in the checklist... there
+// should be no more [morning] prayer notifications in my notification
+// center." clearOfficeReminderNotifications() was only ever called from the
+// BCP office deck itself + the manual book-log — so a side whose chosen
+// prayer is Psalms, Simple Guided Prayer, a custom practice, or FDD (Psalms
+// is the new-user MORNING DEFAULT) never cleared the reminder at all, even
+// once fully prayed. Same sideIsSetTo gate the office-crediting POST above
+// already uses, so reading e.g. Psalms as a mere reflection on a side where
+// it ISN'T the chosen anchor doesn't clear a reminder for prayer that
+// hasn't actually happened yet.
+function clearReminderIfAnchor(side: "morning" | "evening", level: string): void {
+  if (sideIsSetTo(side, level)) clearOfficeReminderNotifications();
 }
 
 // Tracks whether the user has tapped a daily-reflection link today,
@@ -170,7 +185,7 @@ const psalmsTrackerMorning = makeDailyReadTracker("phoebe:psalms:morning:last-re
 const psalmsTrackerEvening = makeDailyReadTracker("phoebe:psalms:evening:last-read-day", PSALMS_READ_EVENT, () => syncPsalmsSession("evening"), "evening");
 const psalmsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? psalmsTrackerEvening : psalmsTrackerMorning);
 export function hasPrayedPsalmsToday(side: "morning" | "evening" = "morning"): boolean { return psalmsTrackerFor(side).hasReadToday(); }
-export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); }
+export function markPsalmsPrayed(side: "morning" | "evening" = "morning"): void { psalmsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "psalms"); }
 
 // Simple Guided Prayer (Praise / Confession / Thanksgiving / Supplication) —
 // same shape as Psalms above: a per-side alternative to the BCP office, so
@@ -197,7 +212,7 @@ const guidedPrayerTrackerMorning = makeDailyReadTracker("phoebe:guided-prayer:mo
 const guidedPrayerTrackerEvening = makeDailyReadTracker("phoebe:guided-prayer:evening:last-read-day", GUIDED_PRAYER_READ_EVENT, () => syncGuidedPrayerSession("evening"), "evening");
 const guidedPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? guidedPrayerTrackerEvening : guidedPrayerTrackerMorning);
 export function hasPrayedGuidedPrayerToday(side: "morning" | "evening" = "morning"): boolean { return guidedPrayerTrackerFor(side).hasReadToday(); }
-export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); }
+export function markGuidedPrayerPrayed(side: "morning" | "evening" = "morning"): void { guidedPrayerTrackerFor(side).markRead(); clearReminderIfAnchor(side, "guided-prayer"); }
 
 // A side's own "Create your own" practice (level "custom", named via
 // officePrefs.getSideCustomName) — same shape as Simple Guided Prayer above,
@@ -220,7 +235,7 @@ const customPrayerTrackerMorning = makeDailyReadTracker("phoebe:custom-prayer:mo
 const customPrayerTrackerEvening = makeDailyReadTracker("phoebe:custom-prayer:evening:last-read-day", CUSTOM_PRAYER_READ_EVENT, () => syncCustomPrayerSession("evening"), "evening");
 const customPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? customPrayerTrackerEvening : customPrayerTrackerMorning);
 export function hasPrayedCustomToday(side: "morning" | "evening" = "morning"): boolean { return customPrayerTrackerFor(side).hasReadToday(); }
-export function markCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).markRead(); }
+export function markCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).markRead(); clearReminderIfAnchor(side, "custom"); }
 // Tapping an already-done "Create your own" card should un-mark it (a real
 // toggle), not silently re-stamp the same day — see the home-card wiring in
 // dashboard.tsx / DailyProgressBody.tsx.
@@ -250,7 +265,7 @@ const fddTrackerMorning = makeDailyReadTracker("phoebe:fdd:morning:last-read-day
 const fddTrackerEvening = makeDailyReadTracker("phoebe:fdd:evening:last-read-day", FDD_PRAYED_EVENT, () => syncFddSession("evening"), "evening");
 const fddTrackerFor = (side: "morning" | "evening") => (side === "evening" ? fddTrackerEvening : fddTrackerMorning);
 export function hasPrayedFddToday(side: "morning" | "evening" = "morning"): boolean { return fddTrackerFor(side).hasReadToday(); }
-export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); }
+export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
 
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with

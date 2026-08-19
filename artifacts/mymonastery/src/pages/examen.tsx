@@ -7,6 +7,7 @@ import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
+import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -116,6 +117,10 @@ export default function ExamenPage() {
       const offScheduleViaPractices = !explicitSide && eveningOwnsExamen && beforeEveningWindow;
       if (!offScheduleViaPractices) {
         try { markPracticeDoneToday("examen"); } catch { /* non-fatal */ }
+        // Owner: completing a side's chosen prayer should clear that side's
+        // reminder from the notification center — see cacReadState.ts's
+        // clearReminderIfAnchor for the sibling side-anchor practices.
+        try { clearOfficeReminderNotifications(); } catch { /* non-fatal */ }
       }
     }
   }, [step]);

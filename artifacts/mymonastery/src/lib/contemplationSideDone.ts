@@ -15,6 +15,7 @@
 
 import { getSideContemplationExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 
 export type ContemplationSide = "morning" | "evening";
 // WHICH contemplative practice was kept. A side's card is styled/labelled by
@@ -72,6 +73,10 @@ export function markContemplationSideDone(side: ContemplationSide, kind?: Contem
     localStorage.setItem(`${PREFIX}${side}`, kind ? `${todayLocalISO()}|${kind}` : todayLocalISO());
     window.dispatchEvent(new Event(CONTEMPLATION_SIDE_DONE_EVENT));
     if (!wasAlreadyDone) markRecentCompletion(`contemplation-${side}`);
+    // Owner: completing a side's chosen prayer should clear that side's
+    // reminder from the notification center — see cacReadState.ts's
+    // clearReminderIfAnchor for the sibling side-anchor practices.
+    clearOfficeReminderNotifications();
   } catch {
     /* private mode / quota — non-fatal */
   }
