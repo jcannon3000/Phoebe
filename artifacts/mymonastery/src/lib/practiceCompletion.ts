@@ -15,7 +15,16 @@ import { markRecentCompletion } from "@/lib/recentCompletion";
 // "Today" is the user's LOCAL day (en-CA → ISO 2024-05-26), matching every
 // other rhythm surface.
 
-export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "community-meal" | "chapel";
+export type OptionalPractice = "examen" | "listening" | "reading" | "podcasts" | "walk" | "prayer-list" | "community-meal" | "chapel"
+  // Synthetic, never shown as their own card — chapelLog.ts marks one of
+  // these alongside "chapel" itself so the WEEKLY GRID (server-derived from
+  // practice_completion, not the live-only phoebe:chapel-slot:<date>
+  // localStorage flag) knows which of Morning/Evening a given day's Chapel
+  // attendance satisfied. Without a persisted record, yesterday's Chapel-
+  // satisfied Morning showed done live (the local flag only ever reflects
+  // TODAY) but reverted once the day rolled over — the server had nothing
+  // to fold into that day's morning column. See users.ts's /me/practice-week.
+  | "chapel-morning" | "chapel-evening";
 
 function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");

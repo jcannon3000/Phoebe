@@ -701,10 +701,16 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
         SELECT DISTINCT ymd FROM cac_reads
         WHERE user_id = ${sessionUserId} AND ymd >= ${oldestYmd}
       `),
-      // Optional practices.
+      // Optional practices. 'chapel-morning'/'chapel-evening' are synthetic —
+      // never their own card — written alongside 'chapel' (see
+      // lib/chapelLog.ts) so THIS route can fold a day's Chapel attendance
+      // into that day's morning/evening column below; the live-only
+      // phoebe:chapel-slot:<date> localStorage flag only ever reflects
+      // TODAY, so without a persisted record a past day's Chapel-satisfied
+      // Morning reverted to not-done once the day rolled over.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list', 'community-meal', 'chapel') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list', 'community-meal', 'chapel', 'chapel-morning', 'chapel-evening') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
@@ -770,6 +776,11 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "prayer-list") prayerList.add(r.local_date);
       if (r.section === "community-meal") communityMeal.add(r.local_date);
       if (r.section === "chapel") chapel.add(r.local_date);
+      // Synthetic — fold Chapel's slot choice into the SAME morning/evening
+      // Sets officeRows populates above, so a day satisfied via Chapel
+      // reads exactly like a day satisfied by the office itself.
+      if (r.section === "chapel-morning") morning.add(r.local_date);
+      if (r.section === "chapel-evening") evening.add(r.local_date);
     }
     const cobreathe = new Set<string>();
     for (const r of breathRows.rows) cobreathe.add(r.day);

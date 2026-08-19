@@ -35,18 +35,28 @@ export function logChapel(service: ChapelService): void {
     localStorage.setItem(`${SLOT_KEY_PREFIX}${todayLocalISO()}`, slot);
   } catch { /* private mode / quota — non-fatal */ }
   markPracticeDoneToday("chapel");
+  // Also mark the SYNTHETIC slot section — persisted server-side (unlike
+  // the localStorage-only stamp above, which only ever reflects TODAY) so
+  // the weekly grid's history still shows this day's Morning/Evening dot
+  // filled once the day rolls over. Owner: "the morning dot of the grid
+  // saved, but then today yesterdays morning dot shows not done."
+  markPracticeDoneToday(slot === "morning" ? "chapel-morning" : "chapel-evening");
   // markPracticeDoneToday already dispatches PRACTICE_DONE_EVENT, but the
   // slot stamp above happens right before it via a separate localStorage
   // write — no separate event needed, listeners re-read both on the same tick.
 }
 
 /** Undo today's Chapel log entirely — clears both the Chapel checkmark and
- *  whichever Morning/Evening slot it was satisfying. */
+ *  whichever Morning/Evening slot it was satisfying (both the live local
+ *  flag AND the persisted synthetic section, so an un-log also un-fills
+ *  the day in the weekly grid history, not just today's live dot). */
 export function unlogChapel(): void {
+  const slot = getChapelSlotToday();
   try {
     localStorage.removeItem(`${SLOT_KEY_PREFIX}${todayLocalISO()}`);
   } catch { /* non-fatal */ }
   unmarkPracticeDoneToday("chapel");
+  if (slot) unmarkPracticeDoneToday(slot === "morning" ? "chapel-morning" : "chapel-evening");
 }
 
 /** Which slot (if any) today's Chapel log is currently satisfying. */
