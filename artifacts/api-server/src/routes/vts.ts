@@ -213,7 +213,22 @@ function extractParagraphs(html: string): ExtractResult {
     const inner = block.replace(/^<[^>]+>/, "").replace(/<[^>]+>$/, "");
     const text = stripTags(inner);
     if (!text) continue; // empty spacer divs
-    if (/^date:\s/i.test(text)) { dateLine = text.replace(/^date:\s*/i, ""); continue; } // "Date: August 14, 2026" — captured, not a paragraph
+    // "Date: August 14, 2026" is sometimes its OWN block, sometimes merged
+    // into the SAME block as the article's actual opening sentence (no line
+    // break between them in the source markup) — treating the whole block
+    // as just "the date" whenever it merely STARTS with "Date:" silently ate
+    // paragraph 0 in that second case (caught from a live post: "Looking
+    // Ahead" rendered with the date line as its own paragraph, and the
+    // opening paragraph never appeared at all). Extract only the bounded
+    // date pattern as a PREFIX and keep whatever follows as a real
+    // paragraph — a date-only block still ends up with nothing pushed.
+    const dateMatch = text.match(/^date:\s*([A-Za-z]+\s+\d{1,2},?\s*\d{4})\.?\s*/i);
+    if (dateMatch) {
+      if (!dateLine) dateLine = dateMatch[1]!;
+      const rest = text.slice(dateMatch[0].length).trim();
+      if (rest) paragraphs.push(rest);
+      continue;
+    }
     if (block.includes('class="btn btn-primary"') && /back to all/i.test(text)) continue;
     paragraphs.push(text);
   }

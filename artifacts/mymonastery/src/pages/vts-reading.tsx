@@ -197,8 +197,9 @@ export default function VtsReadingPage() {
           // slides (bcp-daily-office.tsx's <main>) — only the office's TITLE
           // cards vertically center; a body-text slide starts near the top
           // and scrolls if it runs long. Owner: "the vertical alignment of
-          // the text on the slides is not matching the offices."
-          justifyContent: "flex-start",
+          // the text on the slides is not matching the offices." The title
+          // slide itself is one of those TITLE cards, so it centers too.
+          justifyContent: isTitle ? "center" : "flex-start",
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
@@ -226,15 +227,27 @@ export default function VtsReadingPage() {
             </button>
           </div>
         ) : isTitle ? (
-          // Opening slide — "VTS Dean's Commentary" + the article's own date
-          // line, matching the office's own opening title-card language.
-          // Owner: "have it begin on it" — this is the reader's first slide,
-          // not a preamble to skip past.
-          <div style={{ textAlign: "left" }}>
-            <p style={{ color: FAINT_GREEN, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+          // Opening slide — the SAME illuminated, centered section-title
+          // language the office's own "before you begin" threshold slide
+          // uses (bcp-daily-office.tsx: eyebrow, title-glow-breathe h1,
+          // centered), not a left-aligned preamble. The commentary body
+          // itself starts on the slides that follow — owner: "the
+          // cometary should be here [the following pages]," this slide is
+          // title-only. "Have it begin on it" — this is still the reader's
+          // first slide, not one to skip past.
+          <div
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              textAlign: "center", gap: 18, maxWidth: 540, margin: "0 auto",
+            }}
+          >
+            <p style={{ color: FAINT_GREEN, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
               🗞️ VTS Dean's Commentary
             </p>
-            <h1 style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 30px)", lineHeight: 1.25, letterSpacing: "-0.01em", margin: "0 0 12px" }}>
+            <h1
+              className="title-glow-breathe"
+              style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(40px, 8vw, 72px)", lineHeight: 1.05, letterSpacing: "-0.02em", margin: 0 }}
+            >
               {data?.title || "Today's commentary"}
             </h1>
             {data?.date && (
