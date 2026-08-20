@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Settings2 } from "lucide-react";
+import { Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -736,13 +736,15 @@ function SlideContent({
         </div>
 
         {/* "or continue with office" — owner: "have or continue with office
-            be in a pill" (was a bare text button). Advances past the pause
-            (into the rest of the office) without contemplating. */}
+            be in a pill" (was a bare text button), then later: "full length
+            at the bottom and the border and color more defined." Advances
+            past the pause (into the rest of the office) without
+            contemplating. */}
         <button
           type="button"
           onClick={onAdvance}
-          className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.99]"
-          style={{ background: "rgba(var(--ot-deep, 9,26,16),0.4)", border: "1px solid rgba(var(--ot-sage, 143,175,150),0.3)", color: "rgba(var(--ot-sage, 143,175,150),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "12px 22px" }}
+          className="w-full rounded-full mt-2.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ background: "rgba(var(--ot-deep, 9,26,16),0.5)", border: "1px solid rgba(var(--ot-sage, 143,175,150),0.55)", color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: 15 }}
         >
           or continue with office <span aria-hidden>→</span>
         </button>
@@ -4313,7 +4315,7 @@ export default function PrayerModePage() {
       <button
         onClick={handleExit}
         aria-label="Exit prayer mode"
-        className="absolute right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
+        className="absolute right-6 w-12 h-12 flex items-center justify-center rounded-full z-10 text-xl"
         style={{ top: "calc(var(--safe-top) + 12px)", color: "rgba(var(--ot-mist, 200,212,192),0.4)", background: "rgba(var(--ot-mist, 200,212,192),0.06)" }}
       >
         ×
@@ -4322,10 +4324,10 @@ export default function PrayerModePage() {
       <button
         onClick={() => setDisplayOpen(true)}
         aria-label="Display settings"
-        className="absolute w-10 h-10 flex items-center justify-center rounded-full z-10"
-        style={{ top: "calc(var(--safe-top) + 12px)", right: "calc(1.5rem + 48px)", color: "rgba(var(--ot-mist, 200,212,192),0.4)", background: "rgba(var(--ot-mist, 200,212,192),0.06)" }}
+        className="absolute w-12 h-12 flex items-center justify-center rounded-full z-10"
+        style={{ top: "calc(var(--safe-top) + 12px)", right: "calc(1.5rem + 56px)", color: "rgba(var(--ot-mist, 200,212,192),0.4)", background: "rgba(var(--ot-mist, 200,212,192),0.06)" }}
       >
-        <Settings2 size={16} />
+        <Settings size={19} />
       </button>
       <OfficeDisplaySheet open={displayOpen} onClose={() => setDisplayOpen(false)} />
 

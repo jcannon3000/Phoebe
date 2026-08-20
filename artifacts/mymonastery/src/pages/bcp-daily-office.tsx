@@ -3,7 +3,7 @@ import { swellHaptic } from "@/lib/swellHaptic";
 import { playBreathTone } from "@/lib/amenFeedback";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Settings2 } from "lucide-react";
+import { X, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -2087,17 +2087,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               type="button"
               onClick={() => setDisplayOpen(true)}
               aria-label="Display settings"
-              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+              style={{ width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
             >
-              <Settings2 size={15} />
+              <Settings size={18} />
             </button>
             <button
               type="button"
               onClick={onBack}
               aria-label="Close"
-              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+              style={{ width: 38, height: 38, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
             >
-              <X size={16} />
+              <X size={19} />
             </button>
           </div>
 
@@ -4156,10 +4156,23 @@ function buildBookSections(slides: Slide[]): BookSection[] {
           sections.push({ key: s.id, label: "The Antiphon", detail: aText, page: bookPageRef(s.bcpReference), readUrl: null });
           break;
         }
+        // Intercessions — no page number (not a paper-book section), but
+        // it IS a real slide in the digital deck, so Skip Ahead (which
+        // shares this list) needs a row to jump to it. PhysicalBookGuide,
+        // the other consumer of this list, filters this entry back out —
+        // it already shows a dedicated, richer intercessions card (with
+        // the live count + a "Pray now" handoff) rather than a plain row.
+        // Owner: "intercession is not listed... it should be in offices."
+        if ((s.type as string) === "intercessions_portal" || (s.type as string) === "intercessions") {
+          let j = i + 1;
+          while (j < slides.length && ((slides[j].type as string) === "intercessions_portal" || (slides[j].type as string) === "intercessions")) j++;
+          i = j - 1;
+          sections.push({ key: s.id, label: "The Prayers of the People", detail: "Community intercessions", page: null, readUrl: null });
+          break;
+        }
         // office_intro, invitatory versicle, absolution, doxology,
-        // intercessions (the guide has its own card), portals — all
-        // either fold into a neighboring section's pages or have no
-        // place in a paper book.
+        // portals — all either fold into a neighboring section's pages or
+        // have no place in a paper book.
         break;
     }
   }
@@ -4284,7 +4297,12 @@ function PhysicalBookGuide(props: {
   // Keep the screen awake while reading the page-number guide — you pray
   // from the open book with the phone set down, so it must not sleep.
   useKeepAwake(true);
-  const sections = useMemo(() => buildBookSections(slides), [slides]);
+  // Exclude "The Prayers of the People" here — this guide already shows a
+  // dedicated, richer intercessions card below (live count + "Pray now"
+  // handoff); SkipAheadSheet, the digital deck's own sibling consumer of
+  // buildBookSections, wants that row (it has no equivalent card), so the
+  // exclusion happens here rather than in buildBookSections itself.
+  const sections = useMemo(() => buildBookSections(slides).filter((s) => s.label !== "The Prayers of the People"), [slides]);
   const startPage = MODE_START_PAGE[mode];
   const isFullOffice = mode === "morning" || mode === "evening";
   // A calm leaf behind the guide (like the office slideshow), picked once.
@@ -4423,6 +4441,21 @@ function PhysicalBookGuide(props: {
         }}
       >
         <div className="max-w-2xl w-full mx-auto" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Owner: when Physical is your preset and Morning/Evening Prayer
+              opens straight to this page guide, offer a clearly-labeled way
+              back into the app's own slideshow — "← Back" at the top reads
+              as exiting, not "switch view." */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{
+              background: "rgba(var(--ot-green, 46,107,64),0.16)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.35)",
+              color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, padding: "12px 18px", cursor: "pointer", marginBottom: 4,
+            }}
+          >
+            📖 {bcpGuideText("Enter Digital Slideshow")} <span aria-hidden>→</span>
+          </button>
           <div style={{ textAlign: "center", marginBottom: 6 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>
               {bcpGuideText("Physical BCP")}
