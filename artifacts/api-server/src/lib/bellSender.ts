@@ -526,20 +526,45 @@ function isWithinTickWindow(
 }
 
 // Owner: "if someone picks seven thirty AM, we want it to be sent at seven
-// thirty AM" — the ±15-minute window above meant a 7:30 pick could go out
-// anywhere from 7:15 to 7:45 depending on where the 15-minute scheduler
-// tick happened to land. Used only by the office-reminder senders (morning/
-// evening + their two follow-ups), which now run on their OWN 1-minute
-// interval (see the office-reminder interval in startBellScheduler below) —
-// exact-minute matching only works when the tick cadence is fine enough to
-// actually land on the target minute; the OTHER senders (contemplation-goal,
+// thirty AM" — the ±15-minute window above let a 7:30 pick go out anywhere
+// from 7:15 to 7:45. Used only by the office-reminder senders (morning/
+// evening + their two follow-ups), which run on their OWN 1-minute interval
+// (see startBellScheduler below); the OTHER senders (contemplation-goal,
 // weekly-review) stay on isWithinTickWindow's ±15 tolerance since they're
 // still on the coarser 15-minute tick.
-function isAtExactMinute(parishTz: string, targetHHMM: string): boolean {
+//
+// FIRES AT-OR-JUST-AFTER, NOT ON EXACT EQUALITY. An earlier version of this
+// tested `now === target` and dropped a whole day of reminders whenever the
+// target minute was never sampled, which happens constantly:
+//
+//   • setInterval(60s) DRIFTS — Node fires timers at >=60s, never early, and
+//     each tick's own async work adds latency. Ticks landing at 17:59:59.6
+//     and 18:01:00.4 never observe 18:00 at all, for every user at once.
+//   • The senders below call this PER USER inside a serial loop that awaits
+//     DB round-trips and an APNs push each iteration. With a 60-second-wide
+//     match, every user processed after the minute rolls over silently
+//     missed their reminder for the day.
+//
+// So: match the first tick at or within GRACE minutes after the target. The
+// callers' per-day sent-date columns already dedup, so a wider window can
+// never double-send — it only guarantees a drifted or slow tick still
+// catches the user. In the normal case the 1-minute tick lands on the
+// target minute itself, so the reminder still goes out at 7:30 sharp.
+//
+// Callers MUST pass `now` — one instant captured at the top of the tick —
+// so every user in the fan-out is judged against the same clock reading
+// rather than one that advances as the loop grinds through them.
+const REMINDER_GRACE_MINUTES = 10;
+
+function isAtOrJustAfterMinute(parishTz: string, targetHHMM: string, now: Date): boolean {
   const [hStr, mStr] = targetHHMM.split(":");
   const target = parseInt(hStr, 10) * 60 + parseInt(mStr, 10);
-  const { hour, minute } = getCurrentTimeInTz(parishTz);
-  return hour * 60 + minute === target;
+  const { hour, minute } = getCurrentTimeInTz(parishTz, now);
+  const delta = hour * 60 + minute - target;
+  // Negative = target hasn't arrived yet in this zone (or the local day has
+  // already wrapped past midnight, in which case the sent-date is keyed to a
+  // new day anyway) — either way, don't fire.
+  return delta >= 0 && delta < REMINDER_GRACE_MINUTES;
 }
 
 // Owner: "if the notification... is for them to pray the morning office or
@@ -584,6 +609,8 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
   // attached we use parish title + timezone in the push; otherwise
   // we fall back to "your community" + the user's own timezone.
   void opts; // kept for callers that still pass { forceNow }; behaviour is identical now that the gate is gone.
+  // One clock reading for the whole fan-out — see isAtOrJustAfterMinute.
+  const tickNow = new Date();
   try {
     const rows = await db
       .select({
@@ -656,7 +683,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       // turned on, whenever the OTHER side qualified the row.
       if (r.morningPref && r.morningPref !== "none" && r.morningSentDate !== today) {
         const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
-        if (opts.forceNow || isAtExactMinute(tz, targetTime)) {
+        if (opts.forceNow || isAtOrJustAfterMinute(tz, targetTime, tickNow)) {
           const morningSessions = await db
             .select({ endedAt: prayerSessionsTable.endedAt })
             .from(prayerSessionsTable)
@@ -699,7 +726,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       // Evening side
       if (r.eveningPref && r.eveningPref !== "none" && r.eveningSentDate !== today) {
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
-        const eveningInWindow = opts.forceNow || isAtExactMinute(tz, eveningTarget);
+        const eveningInWindow = opts.forceNow || isAtOrJustAfterMinute(tz, eveningTarget, tickNow);
         // Diagnostic: on the tick where the evening window matches, record the
         // state so "why didn't my evening reminder fire?" is answerable from
         // the logs (pref, target time, already-prayed). Only when in-window so
@@ -776,6 +803,8 @@ function addHoursToHHMM(hhmm: string, hours: number): string {
 }
 
 export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // One clock reading for the whole fan-out — see isAtOrJustAfterMinute.
+  const tickNow = new Date();
   try {
     const rows = await db
       .select({
@@ -810,7 +839,7 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
         // ~2h after the (per-user) evening target time.
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
         const followupTarget = addHoursToHHMM(eveningTarget, EVENING_FOLLOWUP_HOURS_AFTER);
-        if (!opts.forceNow && !isAtExactMinute(tz, followupTarget)) continue;
+        if (!opts.forceNow && !isAtOrJustAfterMinute(tz, followupTarget, tickNow)) continue;
 
         // Still not prayed? (approximate UTC start of today in user-tz; covers UTC-14)
         const sinceUtc = new Date(`${today}T00:00:00Z`);
@@ -858,6 +887,8 @@ const MORNING_FOLLOWUP_HOURS_AFTER = 3;
 const MORNING_FOLLOWUP_CUTOFF_HOUR = 12; // noon local — a morning nudge past midday stops making sense
 
 export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // One clock reading for the whole fan-out — see isAtOrJustAfterMinute.
+  const tickNow = new Date();
   try {
     const rows = await db
       .select({
@@ -892,7 +923,7 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
         // ~3h after the (per-user) morning target time.
         const morningTarget = r.morningTime || DEFAULT_MORNING_TIME;
         const followupTarget = addHoursToHHMM(morningTarget, MORNING_FOLLOWUP_HOURS_AFTER);
-        if (!opts.forceNow && !isAtExactMinute(tz, followupTarget)) continue;
+        if (!opts.forceNow && !isAtOrJustAfterMinute(tz, followupTarget, tickNow)) continue;
 
         // Still not prayed? (approximate UTC start of today in user-tz; covers UTC-14)
         const sinceUtc = new Date(`${today}T00:00:00Z`);
@@ -1414,8 +1445,8 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // parish-office / parish-office-followup / parish-office-morning-followup
   // moved to their OWN 1-minute interval below (officeReminderInterval) —
   // owner: "if someone picks seven thirty AM, we want it to be sent at seven
-  // thirty AM," which needs a tick fine enough to actually land on the exact
-  // target minute (isAtExactMinute), not this list's 15-minute cadence.
+  // thirty AM," which needs a tick fine enough to land on the user's chosen
+  // minute, not this list's 15-minute cadence.
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.
@@ -1428,10 +1459,12 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
 ];
 
 // Morning/evening office reminders + their two follow-ups — split onto their
-// own 1-minute tick so isAtExactMinute (see above) actually has a chance to
-// land on the user's chosen minute, instead of the ±15 spread the shared
-// 15-minute SCHEDULER_SENDERS tick allowed. Each sender's own per-day
-// sent-date columns still dedup, so ticking 15x more often can't double-send.
+// own 1-minute tick so a reminder lands on the user's chosen minute, instead
+// of the ±15 spread the shared 15-minute SCHEDULER_SENDERS tick allowed.
+// Each sender's own per-day sent-date columns dedup, so ticking 15x more
+// often can't double-send. The tick is only a SAMPLING rate, never the
+// correctness guarantee — isAtOrJustAfterMinute's grace window is what
+// ensures a drifted or slow tick still catches every user.
 const OFFICE_REMINDER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "parish-office-followup", run: runParishOfficeEveningFollowUpSender },

@@ -16,20 +16,24 @@
 // The frontend keeps an identical copy at artifacts/mymonastery/src/lib/tz.ts
 // (it can't import from api-server). Keep the two in sync.
 
-/** Current wall-clock hour/minute (0–23, 0–59) in the given IANA zone.
- *  Falls back to the UTC wall-clock if the zone is invalid. */
-export function getCurrentTimeInTz(timezone: string): { hour: number; minute: number } {
+/** Wall-clock hour/minute (0–23, 0–59) in the given IANA zone.
+ *  Falls back to the UTC wall-clock if the zone is invalid.
+ *  `at` pins the evaluation to one instant — schedulers that compare many
+ *  users against the same tick MUST pass it, or the clock advances mid-loop
+ *  and users processed after a minute boundary are judged against a
+ *  different minute than users processed before it. */
+export function getCurrentTimeInTz(timezone: string, at?: Date): { hour: number; minute: number } {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone, hour: "numeric", minute: "numeric", hour12: false,
-    }).formatToParts(new Date());
+    }).formatToParts(at ?? new Date());
     const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
     const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
     // hour12:false renders midnight as "24" in some engines — normalize to 0.
     const h = isNaN(hour) ? 0 : hour === 24 ? 0 : hour;
     return { hour: h, minute: isNaN(minute) ? 0 : minute };
   } catch {
-    const now = new Date();
+    const now = at ?? new Date();
     return { hour: now.getUTCHours(), minute: now.getUTCMinutes() };
   }
 }
