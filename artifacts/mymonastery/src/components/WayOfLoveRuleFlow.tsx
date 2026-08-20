@@ -293,7 +293,13 @@ function anchorFromLevel(level: string | null | undefined, side?: "morning" | "e
   // add-on, not an anchor" rule did) meant reopening the customizer always
   // showed evening's Simple Guided Prayer as unselected.
   if (p === "examen" && side === "evening") return p;
-  return p === "offices" || p === "compline" || p === "devotion" || p === "psalms" || p === "community" || p === "creation" || p === "guidedPrayer" || p === "ownPractice" ? p : "none";
+  // "readings" (Daily Scripture Readings) IS a BCP form anchor, same as
+  // psalms/devotion/offices — dropping it here (as it originally mirrored
+  // fdd's exclusion) meant reopening the customizer showed "With the Book
+  // of Common Prayer" as unselected for anyone whose side is actually set
+  // to it, including the new evening default (owner: "the full customizer
+  // should work from what the user has").
+  return p === "offices" || p === "compline" || p === "devotion" || p === "psalms" || p === "readings" || p === "community" || p === "creation" || p === "guidedPrayer" || p === "ownPractice" ? p : "none";
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).

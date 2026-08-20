@@ -3161,7 +3161,11 @@ export default function PrayerModePage() {
   // requests, so the deck ends on the last one and goes straight to
   // the closing summary, with no trailing nudge or breath. Same shape
   // (queue=feed is likewise a focused deck with no trailing nudge.)
-  if (queueMode !== "new" && queueMode !== "feed") {
+  // ?focus=<id> / ?focusMoment=<token> — jumping straight to ONE prayer
+  // list item from its detail page or a home-card row — is the same
+  // "focused, not the full daily walk" shape: owner asked that entry not
+  // carry the contemplation/Creation-care pause slide either.
+  if (queueMode !== "new" && queueMode !== "feed" && focusId === null && focusMomentToken === null) {
     // The "Add a prayer" closing nudge slide (kind: "ask-request") is REMOVED
     // per request — the office slideshow no longer ends on an empty add-a-prayer
     // button. The viewer's OWN active prayers render INLINE in the request block

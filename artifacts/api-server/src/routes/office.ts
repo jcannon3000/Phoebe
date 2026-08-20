@@ -6,6 +6,8 @@
  */
 
 import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { db, bcpTextsTable } from "@workspace/db";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
@@ -485,6 +487,27 @@ router.get("/office/readings", (req, res) => {
     console.error("office readings lookup failed:", err);
     // Never 500 — the card just omits the line.
     return res.json({ psalms: [], lessons: [] });
+  }
+});
+
+// GET /office/collect — public. Today's Collect of the Day (BCP p. 98's "one
+// or more Collects, the Collect of the Day being first"), the SAME collect
+// the office's own closing slide shows (assembleMorningPrayer.ts) — a single
+// bcp_texts lookup by liturgicalDay.collectKey, not a full slide assembly, so
+// it's cheap enough for a tail slide (Simple Guided Prayer's closing) to fetch
+// on every open. Pass the viewer's LOCAL date.
+router.get("/office/collect", async (req, res) => {
+  try {
+    const date = parseOfficeDate(req.query.date);
+    const day = getOfficeDay(date);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    const [row] = await db.select().from(bcpTextsTable).where(eq(bcpTextsTable.textKey, day.collectKey)).limit(1);
+    if (!row) return res.json({ title: day.sundayLabel ?? null, text: null, bcpReference: null });
+    return res.json({ title: day.sundayLabel ?? row.title, text: row.content, bcpReference: row.bcpReference ?? "BCP p. 211" });
+  } catch (err) {
+    console.error("office collect lookup failed:", err);
+    // Never 500 — the caller just omits the slide.
+    return res.json({ title: null, text: null, bcpReference: null });
   }
 });
 

@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import {
   markGuidedPrayerPrayed,
@@ -188,18 +190,36 @@ export default function GuidedPrayerPage() {
   // and the Examen shouldn't pick up an unrelated tail practice.
   const prayerListEnabled = usePrayerListEnabled();
   const activeIntentions = useActivePrayerIntentions();
-  const showPrayerList = prayerListEnabled && getSideLevel(side) !== "examen" && activeIntentions.length > 0;
+  const isExamen = getSideLevel(side) === "examen";
+  const showPrayerList = prayerListEnabled && !isExamen && activeIntentions.length > 0;
+
+  // The Collect of the Day — the same closing collect the BCP office ends
+  // on (BCP p. 98's "one or more Collects, the Collect of the Day being
+  // first"), tacked on after the prayer list. Owner: "include the collect
+  // of the day in simple guided after [the intercessions]." Same Examen
+  // exclusion as the prayer list — Examen isn't a BCP office, so it
+  // shouldn't pick up this office-shaped closing either.
+  const today = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
+  const { data: collect } = useQuery<{ title: string | null; text: string | null; bcpReference: string | null }>({
+    queryKey: ["/api/office/collect", today],
+    queryFn: () => apiRequest("GET", `/api/office/collect?date=${today}`),
+    enabled: !isExamen,
+    staleTime: 30 * 60_000,
+  });
+  const showCollect = !isExamen && !!collect?.text;
 
   const isIntro = step === 0;
   const isClosing = step === MOVEMENTS.length + 1;
   const whatsNextStep = MOVEMENTS.length + 2;
   const prayerListStep = whatsNext ? whatsNextStep + 1 : whatsNextStep;
+  const collectStep = showPrayerList ? prayerListStep + 1 : prayerListStep;
   const isWhatsNext = whatsNext != null && step === whatsNextStep;
   const isPrayerList = showPrayerList && step === prayerListStep;
-  const movement = !isIntro && !isClosing && !isWhatsNext && !isPrayerList ? MOVEMENTS[step - 1] : null;
+  const isCollect = showCollect && step === collectStep;
+  const movement = !isIntro && !isClosing && !isWhatsNext && !isPrayerList && !isCollect ? MOVEMENTS[step - 1] : null;
 
   const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
-  const hasTail = whatsNext != null || showPrayerList;
+  const hasTail = whatsNext != null || showPrayerList || showCollect;
   // One primary action per slide, in the office's bottom control band.
   const primary = isIntro
     ? { label: t("guided_prayer.begin"), onClick: () => setStep(1) }
@@ -210,6 +230,10 @@ export default function GuidedPrayerPage() {
       : isWhatsNext
         ? { label: t("guided_prayer.read_it", { defaultValue: "Read it" }), onClick: () => { if (whatsNext) openExternalThenMarkRead(whatsNext.url, whatsNext.markRead, { reader: true }); } }
       : isPrayerList
+        ? (showCollect
+            ? { label: t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
+            : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
+      : isCollect
         ? { label: t("common.done"), onClick: () => setLocation("/dashboard") }
       : { label: isLastMovement ? t("guided_prayer.amen") : t("guided_prayer.continue"), onClick: () => setStep((s) => s + 1) };
 
@@ -389,11 +413,11 @@ export default function GuidedPrayerPage() {
               />
               <button
                 type="button"
-                onClick={() => (showPrayerList ? setStep((s) => (s + 1) as typeof step) : setLocation("/dashboard"))}
+                onClick={() => ((showPrayerList || showCollect) ? setStep((s) => (s + 1) as typeof step) : setLocation("/dashboard"))}
                 className="mt-7 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "var(--oh-cta, #2D5E3F)", color: WARM, cursor: "pointer", fontFamily: FONT }}
               >
-                {showPrayerList ? t("guided_prayer.continue") : t("guided_prayer.back_home", { defaultValue: "Back to home" })}
+                {(showPrayerList || showCollect) ? t("guided_prayer.continue") : t("guided_prayer.back_home", { defaultValue: "Back to home" })}
               </button>
             </motion.div>
           )}
@@ -436,6 +460,33 @@ export default function GuidedPrayerPage() {
               >
                 {t("guided_prayer.add_to_list", { defaultValue: "Add to your list" })}
               </button>
+            </motion.div>
+          )}
+          {isCollect && collect?.text && (
+            <motion.div
+              key="collect"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ maxWidth: 480, textAlign: "center" }}
+            >
+              <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+                {t("guided_prayer.collect_eyebrow", { defaultValue: "The Collect of the Day" })}
+              </p>
+              {collect.title && (
+                <h2 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(20px, 5vw, 28px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 14 }}>
+                  {collect.title}
+                </h2>
+              )}
+              <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(17px, 4.4vw, 21px)", lineHeight: 1.6 }}>
+                {collect.text}
+              </p>
+              {collect.bcpReference && (
+                <p style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT, fontSize: 12, marginTop: 18 }}>
+                  {collect.bcpReference}
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

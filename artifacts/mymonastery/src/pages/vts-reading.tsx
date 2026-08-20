@@ -36,14 +36,24 @@ const BORDER = "rgba(var(--ot-mist, 200,212,192),0.15)";
 const BUTTON_BG = "var(--oh-cta, #2D5E3F)";
 const SPACE_GROTESK = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 
-type VtsText = { title: string; url: string; paragraphs: string[] };
+type VtsText = { title: string; url: string; paragraphs: string[]; date: string | null };
 
 export default function VtsReadingPage() {
   const [, setLocation] = useLocation();
-  const [index, setIndex] = useState(0);
+  // step 0 = the opening title/date slide ("VTS Dean's Commentary" + the
+  // article's own date), 1..total = paragraphs[step - 1]. Owner: "have it
+  // begin on it" — the reader opens ON this slide, not straight into
+  // paragraph text.
+  const [step, setStep] = useState(0);
   const [markedRead, setMarkedRead] = useState(false);
+  // Today's local date in the query key — the server now day-scopes its own
+  // cache too (see routes/vts.ts's todayStamp guard), but keying the CLIENT
+  // cache the same way means a tab left open across midnight also refetches
+  // instead of serving yesterday's cached commentary. Owner: "the first
+  // time I opened it, it showed me yesterday's."
+  const today = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
   const { data, isLoading } = useQuery<VtsText>({
-    queryKey: ["/api/vts/today-text"],
+    queryKey: ["/api/vts/today-text", today],
     queryFn: () => apiRequest("GET", "/api/vts/today-text"),
     staleTime: 10 * 60_000,
   });
@@ -59,11 +69,10 @@ export default function VtsReadingPage() {
 
   const close = () => setLocation("/");
 
-  // Reading counts as read once you've actually stepped through it — same
-  // "opened it" bar every other reflection source uses, not "landed on the
-  // page." Fires once, the first time the index advances past the first
-  // slide (or immediately for a one-paragraph piece, since there's nowhere
-  // else to advance to).
+  // Reading counts as read once you've actually stepped PAST the opening
+  // title slide into a real paragraph — same "opened it" bar every other
+  // reflection source uses, not "landed on the page." Fires once, the first
+  // time step advances off the title slide.
   const markReadOnce = () => {
     if (markedRead) return;
     setMarkedRead(true);
@@ -72,17 +81,19 @@ export default function VtsReadingPage() {
 
   const paragraphs = data?.paragraphs ?? [];
   const total = paragraphs.length;
+  const isTitle = step === 0;
+  const paraIndex = step - 1;
 
-  const atStart = index === 0;
-  const atEnd = index >= total - 1;
+  const atStart = step === 0;
+  const atEnd = step >= total;
   const next = () => {
-    if (index === 0) markReadOnce();
-    if (!atEnd) setIndex((i) => i + 1);
+    if (step === 0) markReadOnce();
+    if (!atEnd) setStep((s) => s + 1);
     else close();
   };
   // Matches the office nav pill's Back button — disabled at the first
   // slide rather than closing (the X already owns "leave the reader").
-  const prev = () => { if (!atStart) setIndex((i) => i - 1); };
+  const prev = () => { if (!atStart) setStep((s) => s - 1); };
 
   // Same veil bcp-daily-office.tsx shows on re-entry (no versicle — that's
   // this reader's own opening beat, not a liturgical threshold): a fixed
@@ -184,9 +195,27 @@ export default function VtsReadingPage() {
               Open on vts.edu
             </button>
           </div>
+        ) : isTitle ? (
+          // Opening slide — "VTS Dean's Commentary" + the article's own date
+          // line, matching the office's own opening title-card language.
+          // Owner: "have it begin on it" — this is the reader's first slide,
+          // not a preamble to skip past.
+          <div style={{ textAlign: "left" }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
+              🗞️ VTS Dean's Commentary
+            </p>
+            <h1 style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 30px)", lineHeight: 1.25, letterSpacing: "-0.01em", margin: "0 0 12px" }}>
+              {data?.title || "Today's commentary"}
+            </h1>
+            {data?.date && (
+              <p style={{ color: FAINT_GREEN, fontSize: 14, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                {data.date}
+              </p>
+            )}
+          </div>
         ) : (
           <p style={{ color: WARM_TEXT, fontSize: 19, lineHeight: 1.75, fontFamily: SPACE_GROTESK, whiteSpace: "pre-line", margin: 0, textAlign: "left" }}>
-            {paragraphs[index]}
+            {paragraphs[paraIndex]}
           </p>
         )}
       </div>
@@ -232,7 +261,7 @@ export default function VtsReadingPage() {
             >
               Back
             </button>
-            {total > 1 && (
+            {!isTitle && total > 1 && (
               <p
                 style={{
                   color: FAINT_GREEN,
@@ -244,7 +273,7 @@ export default function VtsReadingPage() {
                   flex: "0 0 auto",
                 }}
               >
-                {index + 1} of {total}
+                {paraIndex + 1} of {total}
               </p>
             )}
             <button
@@ -264,7 +293,7 @@ export default function VtsReadingPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              {atEnd ? "Done" : "Next"}
+              {isTitle ? "Begin" : atEnd ? "Done" : "Next"}
             </button>
           </div>
         </nav>

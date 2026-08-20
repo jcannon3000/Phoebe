@@ -34,7 +34,19 @@ const FEED_USER_AGENT =
 // never hits vts.edu directly.
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-let cached: { url: string; title: string; fetchedAt: number } | null = null;
+let cached: { url: string; title: string; fetchedAt: number; day: string } | null = null;
+
+// Same local-date string every "today"-scoped query key in this codebase
+// uses (toLocaleDateString("en-CA") on the client; here just a plain day
+// stamp is enough since this only gates the server's own cache). A cache
+// entry from YESTERDAY must never survive past midnight regardless of the
+// 30-minute TTL — without this, the first request after midnight (until
+// the TTL happened to also expire) could still serve yesterday's feed
+// item, showing yesterday's commentary date on the reader.
+function todayStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
 
 function decodeEntities(s: string): string {
   return s
@@ -78,7 +90,7 @@ function parseFirstMatchingItem(xml: string): { url: string; title: string } | n
 }
 
 async function resolveToday(): Promise<{ url: string; title: string }> {
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS && cached.day === todayStamp()) {
     return { url: cached.url, title: cached.title };
   }
   const controller = new AbortController();
@@ -102,7 +114,7 @@ async function resolveToday(): Promise<{ url: string; title: string }> {
       logger.warn({ bytes: xml.length }, "[vts] could not find a Dean's Commentary item");
       return { url: FALLBACK_URL, title: "" };
     }
-    cached = { ...parsed, fetchedAt: Date.now() };
+    cached = { ...parsed, fetchedAt: Date.now(), day: todayStamp() };
     return parsed;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[vts] feed fetch failed");
@@ -170,9 +182,15 @@ function stripTags(html: string): string {
   );
 }
 
-function extractParagraphs(html: string): string[] {
+// The result of extractParagraphs — the body paragraphs, plus the article's
+// own "Date: August 14, 2026" line (previously discarded entirely; the
+// reader's new opening slide shows it so the viewer can see for themselves
+// this IS today's commentary, not a stale cached one).
+type ExtractResult = { paragraphs: string[]; dateLine: string | null };
+
+function extractParagraphs(html: string): ExtractResult {
   const mainMatch = html.match(/<main\b[^>]*class="[^"]*site-main[^"]*"[^>]*>([\s\S]*?)<\/main>/i);
-  if (!mainMatch) return [];
+  if (!mainMatch) return { paragraphs: [], dateLine: null };
   const main = mainMatch[1];
   // <p> blocks are safe to match non-greedy (a <p> never nests another <p>).
   // <div> blocks are NOT — a naive `<div\b[^>]*>[\s\S]*?<\/div>` matches the
@@ -190,18 +208,19 @@ function extractParagraphs(html: string): string[] {
   const divBlocks = main.match(/<div\b[^>]*>(?:(?!<\/?div\b)[\s\S])*<\/div>/gi) ?? [];
   const blocks = [...pBlocks, ...divBlocks];
   const paragraphs: string[] = [];
+  let dateLine: string | null = null;
   for (const block of blocks) {
     const inner = block.replace(/^<[^>]+>/, "").replace(/<[^>]+>$/, "");
     const text = stripTags(inner);
     if (!text) continue; // empty spacer divs
-    if (/^date:\s/i.test(text)) continue; // the "Date: August 14, 2026" line
+    if (/^date:\s/i.test(text)) { dateLine = text.replace(/^date:\s*/i, ""); continue; } // "Date: August 14, 2026" — captured, not a paragraph
     if (block.includes('class="btn btn-primary"') && /back to all/i.test(text)) continue;
     paragraphs.push(text);
   }
-  return paragraphs;
+  return { paragraphs, dateLine };
 }
 
-type TextCacheEntry = { title: string; url: string; paragraphs: string[]; fetchedAt: number };
+type TextCacheEntry = { title: string; url: string; paragraphs: string[]; date: string | null; fetchedAt: number };
 let textCached: TextCacheEntry | null = null;
 
 async function resolveTodayText(): Promise<TextCacheEntry> {
@@ -226,30 +245,32 @@ async function resolveTodayText(): Promise<TextCacheEntry> {
     });
     if (!res.ok) {
       logger.warn({ status: res.status, url }, "[vts] article fetch non-ok");
-      return { title, url, paragraphs: [], fetchedAt: Date.now() };
+      return { title, url, paragraphs: [], date: null, fetchedAt: Date.now() };
     }
     const html = await res.text();
-    const paragraphs = extractParagraphs(html);
-    const entry: TextCacheEntry = { title, url, paragraphs, fetchedAt: Date.now() };
+    const { paragraphs, dateLine } = extractParagraphs(html);
+    const entry: TextCacheEntry = { title, url, paragraphs, date: dateLine, fetchedAt: Date.now() };
     textCached = entry;
     return entry;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err), url }, "[vts] article fetch failed");
-    return { title, url, paragraphs: [], fetchedAt: Date.now() };
+    return { title, url, paragraphs: [], date: null, fetchedAt: Date.now() };
   } finally {
     clearTimeout(timeout);
   }
 }
 
-// GET /api/vts/today-text → { title, url, paragraphs } — the full commentary
-// body, one entry per paragraph, for the in-app slideshow. `paragraphs: []`
-// means extraction failed (site markup changed, fetch error, etc.) — the
-// client falls back to linking out to `url` rather than showing a broken
-// reader.
+// GET /api/vts/today-text → { title, url, paragraphs, date } — the full
+// commentary body, one entry per paragraph, for the in-app slideshow.
+// `paragraphs: []` means extraction failed (site markup changed, fetch
+// error, etc.) — the client falls back to linking out to `url` rather than
+// showing a broken reader. `date` is the article's own "Date: …" line
+// (e.g. "August 14, 2026"), shown on the reader's opening slide so the
+// viewer can see for themselves this is today's, not a stale piece.
 router.get("/vts/today-text", async (_req: Request, res: Response): Promise<void> => {
   const entry = await resolveTodayText();
   res.setHeader("Cache-Control", "public, max-age=300");
-  res.json({ title: entry.title, url: entry.url, paragraphs: entry.paragraphs });
+  res.json({ title: entry.title, url: entry.url, paragraphs: entry.paragraphs, date: entry.date });
 });
 
 export default router;
