@@ -221,6 +221,15 @@ interface SendResult {
   attempted: number;
   succeeded: number;
   invalidated: number;
+  // Per-transport breakdown. A bare `succeeded > 0` conflates a phone that
+  // got the push with a desktop browser that did, which sent a real
+  // "reminders are broken" report chasing iOS Focus modes for an hour: the
+  // owner's desktop web-push subscription answered while their iPhone's
+  // APNs token was dead, and the diagnostic cheerfully said "Sent — check
+  // your lock screen." Any surface reporting delivery to a human MUST say
+  // WHICH device answered.
+  deviceSucceeded: number; // native APNs/FCM tokens
+  webSucceeded: number;    // browser web-push subscriptions
 }
 
 /**
@@ -239,7 +248,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     .from(usersTable)
     .where(eq(usersTable.id, userId));
   if (pref?.pushEnabled === false) {
-    return { attempted: 0, succeeded: 0, invalidated: 0 };
+    return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0 };
   }
 
   // Centralized emoji strip + title cap — every push goes through this
@@ -313,14 +322,17 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       },
       "[push] no active device tokens or web subs — skipping send"
     );
-    return { attempted: 0, succeeded: 0, invalidated: 0 };
+    return { attempted: 0, succeeded: 0, invalidated: 0, deviceSucceeded: 0, webSucceeded: 0 };
   }
   logger.info(
     { userId, tokenCount: tokens.length, webSubCount: webSubs.length, kind: payload.threadId ?? "generic" },
     "[push] sending"
   );
 
-  const result: SendResult = { attempted: totalTargets, succeeded: 0, invalidated: 0 };
+  const result: SendResult = {
+    attempted: totalTargets, succeeded: 0, invalidated: 0,
+    deviceSucceeded: 0, webSucceeded: 0,
+  };
   const invalidTokenIds: number[] = [];
   const invalidWebSubIds: number[] = [];
 
@@ -344,7 +356,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       await new Promise(r => setTimeout(r, 800));
       outcome = await send(t.token, payload);
     }
-    if (outcome === "ok") result.succeeded += 1;
+    if (outcome === "ok") { result.succeeded += 1; result.deviceSucceeded += 1; }
     else if (outcome === "invalid") invalidTokenIds.push(t.id);
   }
 
@@ -357,7 +369,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       await new Promise(r => setTimeout(r, 800));
       outcome = await sendOneWebPush(sub, payload);
     }
-    if (outcome === "ok") result.succeeded += 1;
+    if (outcome === "ok") { result.succeeded += 1; result.webSucceeded += 1; }
     else if (outcome === "invalid") invalidWebSubIds.push(sub.id);
   }
 

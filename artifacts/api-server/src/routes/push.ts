@@ -154,6 +154,8 @@ router.post("/push/test", async (req, res): Promise<void> => {
       const agoSeconds = rows.rows?.[0]?.ago_seconds;
       if (typeof agoSeconds === "number") schedulerLastRunAgoMin = Math.round(agoSeconds / 60);
     } catch { /* table may not exist yet — leave null */ }
+    // `result` carries deviceSucceeded / webSucceeded separately — the caller
+    // must be able to tell "your phone got it" from "some browser got it".
     res.json({ tokenCount: liveTokens.length, ...result, schedulerLastRunAgoMin });
   } catch (err) {
     console.error("[push] test send failed:", err);

@@ -236,7 +236,11 @@ function NotificationsSettings() {
     try {
       try { window.dispatchEvent(new Event("phoebe:request-push-permission")); } catch { /* web no-op */ }
       await new Promise((r) => setTimeout(r, 1200)); // let registration land
-      const res = (await apiRequest("POST", "/api/push/test")) as { tokenCount: number; attempted: number; succeeded: number; schedulerLastRunAgoMin: number | null } | null;
+      const res = (await apiRequest("POST", "/api/push/test")) as {
+        tokenCount: number; attempted: number; succeeded: number;
+        deviceSucceeded?: number; webSucceeded?: number;
+        schedulerLastRunAgoMin: number | null;
+      } | null;
       // Scheduled reminders (morning/evening prayer) come from a 15-min cron.
       // If it hasn't ticked recently, those won't fire even when push works.
       const sched = res?.schedulerLastRunAgoMin;
@@ -245,9 +249,18 @@ function NotificationsSettings() {
         : sched <= 20
           ? ` Reminder scheduler: running (last tick ${sched} min ago) ✓`
           : ` Reminder scheduler: last ran ${sched} min ago — may be stalled.`;
+      // Report WHICH device answered. "Sent — check your lock screen" used to
+      // fire on any success at all, so a desktop browser's web-push
+      // subscription could report cheerful success while this phone's APNs
+      // token was dead — the exact false-negative that sent a real
+      // "reminders are broken" report chasing iOS Focus modes.
+      const deviceOk = (res?.deviceSucceeded ?? res?.succeeded ?? 0) > 0;
+      const webOnly = !deviceOk && (res?.webSucceeded ?? 0) > 0;
       if (!res || res.tokenCount === 0) {
         setTestMsg(t("settings.notif_test_no_device", { defaultValue: "No device is registered yet. Allow notifications for Phoebe in your phone's Settings, reopen the app, then try again." }));
-      } else if (res.succeeded > 0) {
+      } else if (webOnly) {
+        setTestMsg(t("settings.notif_test_web_only", { defaultValue: "Delivered to a browser you're signed in to — but NOT to this device. This device's notification registration has expired; reinstall or update the app, then allow notifications when asked." }) + schedNote);
+      } else if (deviceOk) {
         setTestMsg(t("settings.notif_test_sent", { defaultValue: "Sent — check your lock screen. Your reminders will arrive the same way." }) + schedNote);
       } else {
         setTestMsg(t("settings.notif_test_failed", { defaultValue: "Your device is registered, but delivery failed. The notification server may still need its push keys configured." }));
