@@ -19,6 +19,11 @@ export type PracticeWeekDay = {
   // Not folded into `reflection` (which is deliberately fdd/ssje/cac only)
   // so Dean's Commentary can be reported on specifically.
   vts: boolean;
+  // "Started but short of the goal" — the weekly grid's half-shaded
+  // Contemplative dot, computed server-side against the CURRENT goal for
+  // past days too (not just today). Owner: "it was half shaded, but now
+  // that it's in the past its full colored, it needs to be half colored."
+  contemplationPartial: boolean;
 };
 
 // Which office levels actually carry a real lectionary lesson — Praying the
@@ -49,7 +54,7 @@ function computeWindowDays(week: { days: PracticeWeekDay[] } | undefined): Pract
     ymd: "", morning: false, evening: false, compline: false, contemplation: false,
     reflection: false, examen: false, cobreathe: false,
     listening: false, reading: false, podcasts: false, walk: false, prayerList: false,
-    vts: false,
+    vts: false, contemplationPartial: false,
   };
   return Array.from({ length: 7 }, (_, i) => {
     const daysAgo = 6 - i;
@@ -102,18 +107,26 @@ export function computeWeeklyGrid(params: {
   const eveningPractice = rhythm.eveningDone;
   const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
     || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
-  // Today only — some minutes logged, but short of the daily goal. Owner:
-  // "if someone is partly done with their contemplation quota, have the
-  // weekly dot half shaded in." Never true once contemplativePractice
-  // itself is true (that's the full dot, not the half one).
+  // Today — some minutes logged, but short of the daily goal, read from the
+  // LIVE rhythm state (more current than the practice-week snapshot, which
+  // can lag a just-finished sit by a few seconds). Never true once
+  // contemplativePractice itself is true (that's the full dot, not the
+  // half one). Owner: "if someone is partly done with their contemplation
+  // quota, have the weekly dot half shaded in."
   const contemplativePartialToday = !contemplativePractice
     && rhythm.contemplationGoalMin > 0
     && rhythm.contemplationMin > 0
     && rhythm.contemplationMin < rhythm.contemplationGoalMin;
+  // Past days — the server already judges contemplationPartial against the
+  // CURRENT goal (see /me/practice-week), so a day that was short of the
+  // goal keeps reading as half-shaded once it rolls out of "today" instead
+  // of silently flipping to fully kept. Owner: "it was half shaded, but now
+  // that it's in the past its full colored, it needs to be half colored."
+  const contemplativePartialFor = (d: PracticeWeekDay) => d.contemplationPartial;
 
-  const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean }> = practiceMode ? [
+  const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
     { emoji: "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
-    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday },
+    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor },
     { emoji: "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
@@ -126,7 +139,9 @@ export function computeWeeklyGrid(params: {
     emoji: r.emoji,
     label: r.label,
     kept: windowDays.map((d) => (d.ymd === todayYmd ? r.done : r.historyFor(d))),
-    partial: windowDays.map((d, i) => i === lastIndex && d.ymd === todayYmd && !!r.partialToday),
+    partial: windowDays.map((d, i) =>
+      d.ymd === todayYmd ? (i === lastIndex && !!r.partialToday) : !!r.partialFor?.(d),
+    ),
   }));
 
   return { rows, dayInitials, ymds: windowDays.map((d) => d.ymd) };

@@ -738,17 +738,18 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     for (const r of contRows.rows) {
       contemplationMinByDay.set(r.day, (contemplationMinByDay.get(r.day) ?? 0) + (Number(r.secs) || 0) / 60);
     }
+    // Every day (today AND past) is judged against the CURRENT goal, not just
+    // "any sit that day" for past days — owner: a day short of the goal
+    // should stay half-shaded once it rolls into the past, not flip to fully
+    // kept. (This drops the old "don't retroactively unkeep a day if you
+    // later raise your goal" protection — a real tradeoff, but the owner
+    // explicitly wants an under-goal day to keep reading as incomplete.)
     const contemplation = new Set<string>();
+    const contemplationPartial = new Set<string>();
     for (const [day, mins] of contemplationMinByDay) {
-      // TODAY reflects the CURRENT goal (so the dot tracks today's progress).
-      // PAST days are never re-judged against a goal you raised later — a day
-      // you already sat stands as kept, even if it wouldn't meet today's higher
-      // goal. (We don't store the goal that was in effect on each past day, so
-      // "any sit that day" is the stable, non-retroactive rule.)
-      const met = day === todayYmd
-        ? (contemplationGoalMin > 0 ? mins >= contemplationGoalMin : mins > 0)
-        : mins > 0;
+      const met = contemplationGoalMin > 0 ? mins >= contemplationGoalMin : mins > 0;
       if (met) contemplation.add(day);
+      else if (mins > 0) contemplationPartial.add(day);
     }
     const reflection = new Set<string>();
     for (const r of reflRows.rows) reflection.add(r.ymd);
@@ -777,6 +778,9 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       evening: evening.has(ymd),
       compline: compline.has(ymd),
       contemplation: contemplation.has(ymd),
+      // "Started but short of the goal" — the weekly grid's half-shaded dot,
+      // now honored for past days too, not just today.
+      contemplationPartial: contemplationPartial.has(ymd),
       reflection: reflection.has(ymd),
       listening: listening.has(ymd),
       examen: examen.has(ymd),

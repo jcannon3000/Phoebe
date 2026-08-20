@@ -3155,17 +3155,18 @@ export default function PrayerModePage() {
     f.email.toLowerCase() !== viewerEmail
   );
 
-  // The ask-request nudge + the closing pause are the daily
-  // slideshow's gentle ending. queue=new is a focused "respond to the
-  // N waiting requests" deck — the home card counts exactly those
-  // requests, so the deck ends on the last one and goes straight to
-  // the closing summary, with no trailing nudge or breath. Same shape
-  // (queue=feed is likewise a focused deck with no trailing nudge.)
-  // ?focus=<id> / ?focusMoment=<token> — jumping straight to ONE prayer
-  // list item from its detail page or a home-card row — is the same
-  // "focused, not the full daily walk" shape: owner asked that entry not
-  // carry the contemplation/Creation-care pause slide either.
-  if (queueMode !== "new" && queueMode !== "feed" && focusId === null && focusMomentToken === null) {
+  // The closing pause (contemplation / Creation Prayer / Read Scripture
+  // Reflection, "or continue with office") only belongs to the office's own
+  // seamless intercessions handoff (?seamless=1, tacked on by bcp-daily-
+  // office.tsx) — its "continue with office" pill only makes sense there.
+  // Owner corrected an earlier, narrower attempt at this (which only
+  // excluded ?focus=/?focusMoment= entries): the pause slide was still
+  // showing up on the plain STANDALONE prayer-list walk (the routine's own
+  // "Prayer List" card, /prayer-mode?reset=1 — no focus, no queue param).
+  // Requiring seamlessFlow directly, rather than trying to exclude every
+  // non-seamless entry shape one at a time, is the actual invariant: this
+  // slide is an office/devotion-handoff feature, not a standalone-walk one.
+  if (seamlessFlow) {
     // The "Add a prayer" closing nudge slide (kind: "ask-request") is REMOVED
     // per request — the office slideshow no longer ends on an empty add-a-prayer
     // button. The viewer's OWN active prayers render INLINE in the request block
