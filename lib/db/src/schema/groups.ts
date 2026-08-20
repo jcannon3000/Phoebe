@@ -13,17 +13,6 @@ export const groupsTable = pgTable("groups", {
   // Admin-rotatable. Nullable so legacy rows keep compiling; the startup
   // migration backfills every existing group with a fresh token.
   inviteToken: text("invite_token").unique(),
-  // ── Prayer Circles (beta) ─────────────────────────────────────────────
-  // A prayer circle is a group with an added dimension of shared prayer.
-  // The circle holds one-or-more intentions (see `circleIntentionsTable`
-  // below) that surface as cards on the detail page and through the daily
-  // bell. The legacy `intention` / `circleDescription` columns still exist
-  // so the creation form has somewhere to stash the *first* intention at
-  // group-create time; the backfill migration moves them into their own
-  // row, and from that point on `circle_intentions` is the source of truth.
-  isPrayerCircle: boolean("is_prayer_circle").notNull().default(false),
-  intention: text("intention"),
-  circleDescription: text("circle_description"),
   // Public discoverability. When true, the group surfaces in the
   // /communities/browse picker. Joining is still admin-approved via
   // group_join_requests — public means "discoverable", not "open".
@@ -73,26 +62,16 @@ export const groupsTable = pgTable("groups", {
   // the bell scanner to dedup — without it a Sun 18:00–23:00 window
   // would re-push every 15-minute tick.
   sundayReflectionNotifiedAt: timestamp("sunday_reflection_notified_at", { withTimezone: true }),
-  // ── Contemplation community (beta) ────────────────────────────────────
-  // A community template that prioritizes shared silent contemplation over
-  // the daily offices. When focus = "contemplation" the detail Home swaps
-  // the service/office cards for a shared daily contemplation goal + the CAC
-  // daily meditation the community reflects on together (group_reflections
-  // pinned to "cac" at create). Null = a standard, office-shaped community.
-  focus: text("focus"), // null | "contemplation"
-  // The shared daily contemplation target (minutes) every member holds; the
-  // community Home shows collective progress toward it. Null unless
-  // focus = "contemplation".
-  contemplationGoalMinutes: integer("contemplation_goal_minutes"),
   // Owner: "make sure that there is a setting in groups to turn on and off
-  // prayer list." Admin-toggleable; default true. Also HARD-gated off for
-  // any public (browseable) group regardless of this flag — owner: "no
-  // publicly listed group can have shared prayer requests" — enforced at
-  // the PATCH /groups/:slug route (can't be turned on while isPublic) and
-  // again at prayer-request creation (a public group is never a valid
-  // scoping target even if this flag is stale-true from before the group
-  // went public).
-  prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(true),
+  // prayer list." Admin-toggleable; default false — a new community doesn't
+  // inherently carry a shared prayer list, an admin opts in from settings.
+  // Also HARD-gated off for any public (browseable) group regardless of
+  // this flag — owner: "no publicly listed group can have shared prayer
+  // requests" — enforced at the PATCH /groups/:slug route (can't be turned
+  // on while isPublic) and again at prayer-request creation (a public
+  // group is never a valid scoping target even if this flag is stale-true
+  // from before the group went public).
+  prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(false),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────
@@ -119,65 +98,6 @@ export const groupJoinRequestsTable = pgTable("group_join_requests", {
   decision: text("decision"), // null (pending) | "accepted" | "rejected"
   decidedByUserId: integer("decided_by_user_id")
     .references(() => usersTable.id, { onDelete: "set null" }),
-});
-
-// ── Prayer Circle: daily focus ─────────────────────────────────────────────
-// Each prayer circle can name — per day — the people, causes, or situations
-// it is holding in prayer. Members see today's focus on the circle page and
-// through the daily bell. At end of day the row stays (history is preserved)
-// but the circle page shows only today's entries by default.
-//
-// `focusDate` is a YYYY-MM-DD string in the *adder's* timezone at the moment
-// they posted it — matches how bell_notifications stores `bell_date`. Good
-// enough for beta; viewers in wildly different timezones may briefly see
-// "yesterday's" focus. We stay with this convention rather than introducing
-// a new timezone-per-circle concept.
-//
-// `focusType` discriminates the card rendering:
-//   - "person"    → subjectUserId points at a Phoebe user (avatar + name)
-//   - "situation" → subjectText names a situation or event
-//   - "cause"     → subjectText names a cause or social justice issue
-//   - "custom"    → free text (person outside Phoebe, anything else)
-// Exactly one of subjectUserId / subjectText is populated; the API enforces.
-export const circleDailyFocusTable = pgTable("circle_daily_focus", {
-  id: serial("id").primaryKey(),
-  groupId: integer("group_id").notNull()
-    .references(() => groupsTable.id, { onDelete: "cascade" }),
-  focusDate: text("focus_date").notNull(), // YYYY-MM-DD, adder's timezone
-  focusType: text("focus_type").notNull(), // person | situation | cause | custom
-  subjectUserId: integer("subject_user_id")
-    .references(() => usersTable.id, { onDelete: "set null" }),
-  subjectText: text("subject_text"),
-  addedByUserId: integer("added_by_user_id").notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-// ── Prayer Circle: intentions ──────────────────────────────────────────────
-// A circle can hold many intentions at once — each rendered as its own card
-// on the community page and surfaced through every member's daily bell. The
-// creation flow is intentionally intercession-shaped: a short `title` (the
-// prayer itself) plus an optional `description` for context (scripture, a
-// situation, a person's story).
-//
-// `archivedAt` lets admins "complete" an intention without losing its
-// history — archived intentions disappear from the active card list but
-// stay in the DB for future reflection / review.
-//
-// `sortOrder` reserves room for manual reordering; for beta we just sort
-// by creation time and leave this default.
-export const circleIntentionsTable = pgTable("circle_intentions", {
-  id: serial("id").primaryKey(),
-  groupId: integer("group_id").notNull()
-    .references(() => groupsTable.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  createdByUserId: integer("created_by_user_id").notNull()
-    .references(() => usersTable.id, { onDelete: "cascade" }),
-  sortOrder: integer("sort_order").notNull().default(0),
-  archivedAt: timestamp("archived_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const groupMembersTable = pgTable("group_members", {

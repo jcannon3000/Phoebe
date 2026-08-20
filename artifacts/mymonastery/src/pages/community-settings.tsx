@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Users, Plus, X, Trash2, UserPlus } from "lucide-react";
+import { ExternalLink, Users, X, Trash2, UserPlus } from "lucide-react";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -15,17 +15,6 @@ const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","�
 type Group = {
   id: number; name: string; description: string | null; slug: string;
   emoji: string | null; calendarUrl: string | null;
-  // ── Prayer Circle (beta) — admins can flip an ordinary community into a
-  // prayer circle from this page. Turning it on requires an `intention`;
-  // turning it off clears intention + circleDescription server-side.
-  isPrayerCircle?: boolean;
-  intention?: string | null;
-  circleDescription?: string | null;
-  // ── Contemplation community (beta) — admins can flip a community into a
-  // contemplation template (shared minute goal + CAC feed) or back. focus
-  // is null on standard communities, "contemplation" on the template.
-  focus?: string | null;
-  contemplationGoalMinutes?: number | null;
   // ── Pilot group (public no-login version) — designated by APP SUPER ADMINS
   // only; members of a pilot group are the only users who keep the full app
   // once the guest flag flips.
@@ -42,14 +31,6 @@ type Group = {
   prayerRequestsEnabled?: boolean;
 };
 
-type Intention = {
-  id: number;
-  title: string;
-  description: string | null;
-  createdByUserId: number;
-  createdAt: string;
-};
-
 export default function CommunitySettingsPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -62,11 +43,6 @@ export default function CommunitySettingsPage() {
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("🏘️");
   const [calendarUrl, setCalendarUrl] = useState("");
-  // ── Prayer Circle (beta) admin controls ─────────────────────────────
-  const [isPrayerCircle, setIsPrayerCircle] = useState(false);
-  // ── Contemplation community (beta) admin controls ────────────────────
-  const [isContemplation, setIsContemplation] = useState(false);
-  const [contemplationGoalMinutes, setContemplationGoalMinutes] = useState(20);
   // ── Public directory listing ──────────────────────────────────────────
   const [isPublic, setIsPublic] = useState(false);
   const [city, setCity] = useState("");
@@ -74,28 +50,13 @@ export default function CommunitySettingsPage() {
   // ── Prayer list (owner: "a setting in groups to turn on and off prayer
   // list") ───────────────────────────────────────────────────────────────
   const [prayerRequestsEnabled, setPrayerRequestsEnabled] = useState(true);
-  const GOAL_PRESETS = [10, 15, 20, 30];
   const [saved, setSaved] = useState(false);
-
-  // Add-intention dialog state. Shape mirrors the intercession flow —
-  // a short title (the prayer itself) plus an optional description for
-  // context (scripture, a situation, a person's story).
-  const [addOpen, setAddOpen] = useState(false);
-  const [newIntentionTitle, setNewIntentionTitle] = useState("");
-  const [newIntentionDescription, setNewIntentionDescription] = useState("");
-
-  const INTENTION_EXAMPLES = [
-    t("community_settings.intention_example_sick"),
-    t("community_settings.intention_example_violence"),
-    t("community_settings.intention_example_neighbors"),
-    t("community_settings.intention_example_left_church"),
-  ];
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
-  const { data: groupData } = useQuery<{ group: Group; myRole: string; intentions?: Intention[] }>({
+  const { data: groupData } = useQuery<{ group: Group; myRole: string }>({
     queryKey: ["/api/groups", slug],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!user && !!slug,
@@ -131,8 +92,6 @@ export default function CommunitySettingsPage() {
     ? pendingCounts?.byGroup[groupData.group.id] ?? 0
     : 0;
 
-  const intentions: Intention[] = groupData?.intentions ?? [];
-
   const group = groupData?.group;
   // Intentionally not gated on useCommunityAdminToggle: the toggle is a UX
   // choice to preview the member experience on the dashboard / nav, not an
@@ -156,9 +115,6 @@ export default function CommunitySettingsPage() {
       setDescription(group.description ?? "");
       setEmoji(group.emoji ?? "🏘️");
       setCalendarUrl(group.calendarUrl ?? "");
-      setIsPrayerCircle(!!group.isPrayerCircle);
-      setIsContemplation(group.focus === "contemplation");
-      if (group.contemplationGoalMinutes) setContemplationGoalMinutes(group.contemplationGoalMinutes);
       setIsPublic(!!group.isPublic);
       setCity(group.city ?? "");
       setState(group.state ?? "");
@@ -172,17 +128,6 @@ export default function CommunitySettingsPage() {
       description: description || undefined,
       emoji,
       calendarUrl: calendarUrl || "",
-      isPrayerCircle,
-      // Intentions now live in their own table; this PATCH only updates the
-      // group metadata. The server seeds a first intention from this payload
-      // only when transitioning to a circle with no active intentions yet —
-      // our normal save skips the `intention` field entirely so we don't
-      // create duplicates on every settings save.
-      // Contemplation template: send "contemplation" to enable, null to
-      // revert. The server pins the CAC reflection source on enable and
-      // clears the goal on disable.
-      focus: isContemplation ? "contemplation" : null,
-      contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : null,
       isPublic,
       city: city || "",
       state: state || "",
@@ -200,28 +145,6 @@ export default function CommunitySettingsPage() {
 
   // Add an intention. The flow is intercession-shaped: title + optional
   // description, reused on both the community page and the daily bell.
-  const addIntentionMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/intentions`, {
-      title: newIntentionTitle.trim(),
-      description: newIntentionDescription.trim() || undefined,
-    }),
-    onSuccess: () => {
-      setNewIntentionTitle("");
-      setNewIntentionDescription("");
-      setAddOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
-    },
-  });
-
-  // Archive (soft-delete) an intention — stays in the DB for later reflection
-  // but disappears from the active card list immediately.
-  const archiveIntentionMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/groups/${slug}/intentions/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
-    },
-  });
-
   // Permanent group deletion. Two-step UX (open the panel → type the
   // name → confirm) to make it nearly impossible to nuke a real
   // community by accident. Server cascades on group_members,
@@ -417,190 +340,6 @@ export default function CommunitySettingsPage() {
             /communities/:slug/sunday-reflection and stays open the whole
             week — members edit until the next Sunday rolls over. */}
 
-        {/* ── Prayer Circle (beta) ──────────────────────────────────────────
-            Admins can turn any community into a prayer circle here, or toggle
-            an existing circle back to a normal community. When on, the
-            intention is required and both intention + description can be
-            edited; when off, the server nulls both on save so the detail page
-            reverts to its ordinary form. */}
-        <div
-          className="rounded-xl px-4 py-3.5 mb-4"
-          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
-        >
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isPrayerCircle}
-              onChange={e => {
-                setIsPrayerCircle(e.target.checked);
-                if (e.target.checked) setIsContemplation(false);
-              }}
-              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
-              style={{ accentColor: "#2D5E3F" }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                {t("community_settings.prayer_circle")}
-              </p>
-              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                {t("community_settings.prayer_circle_desc")}
-              </p>
-            </div>
-          </label>
-        </div>
-
-        {isPrayerCircle && (
-          <>
-            {/* Intentions — rendered as a stacked list of cards. Each card is
-                one intention; admins can archive any, the author can archive
-                their own. The "Add intention" button opens an intercession-
-                style dialog. */}
-            <div className="mb-4">
-              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {t("community_settings.intentions_label")}
-              </label>
-
-              {intentions.length === 0 && (
-                <div
-                  className="rounded-xl px-4 py-6 mb-2 text-center"
-                  style={{
-                    background: "rgba(46,107,64,0.05)",
-                    border: "1px dashed rgba(46,107,64,0.25)",
-                    color: "rgba(200,212,192,0.7)",
-                  }}
-                >
-                  <p className="text-xs italic" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                    {t("community_settings.intentions_empty")}
-                  </p>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2 mb-2">
-                {intentions.map(intn => (
-                  <div
-                    key={intn.id}
-                    className="rounded-xl px-4 py-3 flex items-start gap-3"
-                    style={{
-                      background: "rgba(46,107,64,0.10)",
-                      border: "1px solid rgba(46,107,64,0.25)",
-                    }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-sm leading-snug"
-                        style={{
-                          color: "#F0EDE6",
-                          fontFamily: "Georgia, 'Times New Roman', serif",
-                          fontStyle: "italic",
-                        }}
-                      >
-                        {intn.title}
-                      </p>
-                      {intn.description && (
-                        <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "#8FAF96" }}>
-                          {intn.description}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(t("community_settings.archive_intention_confirm"))) {
-                          archiveIntentionMutation.mutate(intn.id);
-                        }
-                      }}
-                      className="text-[10px] flex-shrink-0 rounded-md px-1.5 py-1 transition-opacity hover:opacity-100"
-                      style={{ color: "rgba(200,212,192,0.5)", opacity: 0.7 }}
-                      title={t("community_settings.archive_intention_title")}
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setAddOpen(true)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-opacity hover:opacity-90"
-                style={{
-                  background: "rgba(46,107,64,0.08)",
-                  border: "1px dashed rgba(46,107,64,0.35)",
-                  color: "#A8C5A0",
-                }}
-              >
-                <Plus size={14} />
-                <span>{t("community_settings.add_intention")}</span>
-              </button>
-            </div>
-
-            <p className="text-[11px] italic mb-6" style={{ color: "rgba(143,175,150,0.65)" }}>
-              {t("community_settings.prayer_circle_beta_note")}
-            </p>
-          </>
-        )}
-
-        {/* ── Contemplation community (beta) ─────────────────────────────────
-            A template that swaps the daily offices for a shared contemplation
-            goal + the CAC meditation the community reflects on together.
-            Enabling it pins the CAC reflection source server-side; disabling
-            reverts to a standard community and clears the goal. Mutually
-            exclusive with prayer circle in the UI. */}
-        <div
-          className="rounded-xl px-4 py-3.5 mb-4"
-          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
-        >
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isContemplation}
-              onChange={e => {
-                setIsContemplation(e.target.checked);
-                if (e.target.checked) setIsPrayerCircle(false);
-              }}
-              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
-              style={{ accentColor: "#2D5E3F" }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                {t("community_settings.contemplation")}
-              </p>
-              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                {t("community_settings.contemplation_desc")}
-              </p>
-            </div>
-          </label>
-
-          {isContemplation && (
-            <div className="mt-3.5 pl-7">
-              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {t("community_settings.shared_daily_goal")}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {GOAL_PRESETS.map(min => (
-                  <button
-                    key={min}
-                    type="button"
-                    onClick={() => setContemplationGoalMinutes(min)}
-                    className="px-3.5 py-1.5 rounded-full text-sm transition-all"
-                    style={{
-                      background: contemplationGoalMinutes === min ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                      border: `1px solid ${contemplationGoalMinutes === min ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.15)"}`,
-                      color: contemplationGoalMinutes === min ? "#F0EDE6" : "#8FAF96",
-                      fontFamily: FONT,
-                    }}
-                  >
-                    {t("community_settings.minutes", { count: min })}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] italic mt-2.5" style={{ color: "rgba(143,175,150,0.65)" }}>
-                {t("community_settings.contemplation_beta_note")}
-              </p>
-            </div>
-          )}
-        </div>
-
         {/* ── Public directory listing ─────────────────────────────────────
             When on, this community shows up on /communities/browse for any
             signed-in user to find by name and request to join — the
@@ -733,136 +472,9 @@ export default function CommunitySettingsPage() {
           </div>
         )}
 
-        {/* ── Add intention dialog ─────────────────────────────────────────
-            Intercession-shaped: title (the prayer itself) plus an optional
-            description for scripture, situation, or person's story. Example
-            chips populate the title field to suggest patterns without
-            constraining form. */}
-        {addOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-            style={{ background: "rgba(10,20,15,0.65)", backdropFilter: "blur(6px)" }}
-            onClick={() => setAddOpen(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl p-5"
-              style={{
-                background: "#1A2A1F",
-                border: "1px solid rgba(46,107,64,0.35)",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                  {t("community_settings.add_intention_title")}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setAddOpen(false)}
-                  className="rounded-full p-1 transition-opacity hover:opacity-80"
-                  style={{ color: "rgba(200,212,192,0.5)" }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="mb-3">
-                <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                  {t("community_settings.prayer_label")}
-                </label>
-                <input
-                  type="text"
-                  value={newIntentionTitle}
-                  onChange={e => setNewIntentionTitle(e.target.value)}
-                  placeholder={t("community_settings.prayer_placeholder")}
-                  maxLength={500}
-                  autoFocus
-                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                  style={{
-                    background: "rgba(46,107,64,0.12)",
-                    border: "1px solid rgba(46,107,64,0.3)",
-                    color: "#F0EDE6",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontStyle: "italic",
-                  }}
-                />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {INTENTION_EXAMPLES.map(ex => (
-                    <button
-                      key={ex}
-                      type="button"
-                      onClick={() => setNewIntentionTitle(ex)}
-                      className="text-[11px] italic px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
-                      style={{
-                        background: "rgba(46,107,64,0.12)",
-                        border: "1px solid rgba(46,107,64,0.25)",
-                        color: "rgba(200,212,192,0.8)",
-                        fontFamily: "Georgia, 'Times New Roman', serif",
-                      }}
-                    >
-                      {ex}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                  {t("community_settings.context_label")} <span style={{ opacity: 0.5 }}>{t("community_settings.optional")}</span>
-                </label>
-                <textarea
-                  value={newIntentionDescription}
-                  onChange={e => setNewIntentionDescription(e.target.value)}
-                  placeholder={t("community_settings.context_placeholder")}
-                  maxLength={2000}
-                  rows={3}
-                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
-                  style={{
-                    background: "rgba(46,107,64,0.12)",
-                    border: "1px solid rgba(46,107,64,0.3)",
-                    color: "#F0EDE6",
-                  }}
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAddOpen(false)}
-                  className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-                  style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)", color: "#8FAF96" }}
-                >
-                  {t("community_settings.cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addIntentionMutation.mutate()}
-                  disabled={!newIntentionTitle.trim() || addIntentionMutation.isPending}
-                  className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  {addIntentionMutation.isPending ? t("community_settings.adding") : t("community_settings.add")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         <button
           onClick={() => saveMutation.mutate()}
-          disabled={
-            !name.trim() ||
-            // A circle with zero intentions is a contradiction — block save
-            // until at least one intention exists (either already saved on
-            // the group, or added this session). Turning a non-circle INTO a
-            // circle with no intentions yet is still blocked by the server's
-            // own "prayer circles require an intention" guard via the legacy
-            // `intention` column check; for beta we keep this client guard
-            // advisory-only.
-            (isPrayerCircle && intentions.length === 0 && !group?.intention) ||
-            saveMutation.isPending
-          }
+          disabled={!name.trim() || saveMutation.isPending}
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
           style={{ background: saved ? "rgba(46,107,64,0.5)" : "#2D5E3F", color: "#F0EDE6" }}
         >

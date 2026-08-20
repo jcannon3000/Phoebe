@@ -2,9 +2,6 @@ import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import {
   db,
   prayerRequestsTable,
-  groupsTable,
-  groupMembersTable,
-  circleIntentionsTable,
   prayerFeedSubscriptionsTable,
   prayerFeedRecurringEntriesTable,
   prayerFeedsTable,
@@ -137,12 +134,8 @@ export async function buildIntercessionSlides(
   // → 3 on the office hot path. Behaviour is otherwise identical.
 
   // Wave 1 — the reads that depend only on userId.
-  const [gardenIds, myGroupRows, feedSubs, parishRow] = await Promise.all([
+  const [gardenIds, feedSubs, parishRow] = await Promise.all([
     getGardenUserIds(userId),
-    db
-      .select({ groupId: groupMembersTable.groupId })
-      .from(groupMembersTable)
-      .where(eq(groupMembersTable.userId, userId)),
     db
       .select({ feedId: prayerFeedSubscriptionsTable.feedId })
       .from(prayerFeedSubscriptionsTable)
@@ -163,14 +156,13 @@ export async function buildIntercessionSlides(
       .limit(1),
   ]);
   const visibleOwnerIds = gardenIds.filter((id) => id !== userId);
-  const myGroupIds = myGroupRows.map((r) => r.groupId);
   const subscribedFeedIds = feedSubs.map((s) => s.feedId);
   // Parish standing intercessions (readParishStandingIntercessions). The two
   // solidarity counts (this-week + today) ride in wave 3.
   const parish = parishRow[0] ?? null;
 
   // Wave 2 — reads that depend on wave-1 ids (garden, groups, feed subs, parish).
-  const [requestRows, circleRows, feedMomentRows, parishEntries] = await Promise.all([
+  const [requestRows, feedMomentRows, parishEntries] = await Promise.all([
     (async () =>
       visibleOwnerIds.length > 0
         ? await db
@@ -201,24 +193,6 @@ export async function buildIntercessionSlides(
               ),
             )
             .limit(20)
-        : [])(),
-    (async () =>
-      myGroupIds.length > 0
-        ? await db
-            .select({
-              id: circleIntentionsTable.id,
-              title: circleIntentionsTable.title,
-              groupName: groupsTable.name,
-            })
-            .from(circleIntentionsTable)
-            .leftJoin(groupsTable, eq(groupsTable.id, circleIntentionsTable.groupId))
-            .where(
-              and(
-                inArray(circleIntentionsTable.groupId, myGroupIds),
-                isNull(circleIntentionsTable.archivedAt),
-              ),
-            )
-            .limit(15)
         : [])(),
     (async () =>
       subscribedFeedIds.length > 0
@@ -303,24 +277,6 @@ export async function buildIntercessionSlides(
         authorName: who,
         authorAvatarUrl: avatarUrl,
       },
-    });
-  }
-
-  // 2. Circle intentions — a group's named, ongoing prayer focus.
-  for (const c of circleRows) {
-    slides.push({
-      id: `dev-circle-${c.id}-${dayKey}`,
-      type: "intercessions",
-      emoji: "🤝🏽",
-      eyebrow: "A CIRCLE INTENTION",
-      title: c.groupName ?? "Our circle",
-      content: c.title,
-      isCallAndResponse: false,
-      callAndResponseLines: null,
-      bcpReference: null,
-      isScrollable: false,
-      scrollHint: null,
-      metadata: { source: "circle-intention", circleIntentionId: c.id },
     });
   }
 

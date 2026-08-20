@@ -474,7 +474,14 @@ export default function PrayerRequestNew() {
               }}
             >
               <option value={-1}>{t("prayer_request.duration_one_time", { defaultValue: "One time" })}</option>
-              <option value={0}>{t("prayer_request.duration_ongoing", { defaultValue: "Ongoing" })}</option>
+              {/* Owner: "the dropdown should be one time or up to seven days...
+                  no ongoing if it's shared with community." Fixed 2-8 day
+                  range, no open-ended "Ongoing" and no 9-day Novena preset —
+                  a shared prayer carries for a bounded week-plus, not
+                  indefinitely. */}
+              {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <option key={n} value={n}>{t("prayer_request.duration_n_days", { count: n, defaultValue: `${n} days` })}</option>
+              ))}
             </select>
             </div>
           )}

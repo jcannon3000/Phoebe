@@ -298,18 +298,13 @@ export async function migrate() {
         emoji TEXT,
         calendar_url TEXT,
         invite_token TEXT UNIQUE,
-        is_prayer_circle BOOLEAN NOT NULL DEFAULT false,
-        intention TEXT,
-        circle_description TEXT,
         is_public BOOLEAN NOT NULL DEFAULT true,
         created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         last_prayer_invite_at TIMESTAMPTZ,
         prayer_invite_prompt TEXT,
         sunday_reflections_enabled BOOLEAN NOT NULL DEFAULT false,
-        sunday_reflection_notified_at TIMESTAMPTZ,
-        focus TEXT,
-        contemplation_goal_minutes INTEGER
+        sunday_reflection_notified_at TIMESTAMPTZ
       )
     `);
 
@@ -1294,68 +1289,20 @@ export async function migrate() {
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS prayer_attentions_prayer_viewer ON prayer_attentions (daily_prayer_id, viewer_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS prayer_attentions_viewer ON prayer_attentions (viewer_id)`);
 
-    // ── Prayer Circles (beta) ──────────────────────────────────────────────
-    // A prayer circle is a group with a shared intention. These columns are
-    // nullable/defaulted so existing groups keep working unchanged, and the
-    // new `circle_daily_focus` table stores what each circle is praying for
-    // on a given day. Idempotent — safe to run on every boot.
-    //
-    // CRITICAL: without these ALTERs, every `SELECT * FROM groups` fails
-    // against older databases and the whole community surface goes blank.
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_prayer_circle BOOLEAN NOT NULL DEFAULT false`);
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS intention TEXT`);
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS circle_description TEXT`);
-
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS circle_daily_focus (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-        focus_date TEXT NOT NULL,
-        focus_type TEXT NOT NULL,
-        subject_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        subject_text TEXT,
-        added_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        notes TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_circle_daily_focus_group_date ON circle_daily_focus (group_id, focus_date)`);
-
-    // ── Prayer Circles: multi-intention cards ─────────────────────────────
-    // A circle can hold many intentions at once, each as its own card.
-    // Replaces the old single groups.intention/circle_description column
-    // pair; the legacy columns stay put as a "first intention" stash
-    // used only during group creation.
-    //
-    // Idempotent creation + a one-time backfill that seeds one row per
-    // circle whose legacy intention was set and hasn't already been
-    // ported over (the NOT EXISTS guard is what makes the backfill
-    // safe to rerun on every boot).
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS circle_intentions (
-        id SERIAL PRIMARY KEY,
-        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-        title TEXT NOT NULL,
-        description TEXT,
-        created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        archived_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_circle_intentions_group ON circle_intentions (group_id) WHERE archived_at IS NULL`);
-    await run(client, `
-      INSERT INTO circle_intentions (group_id, title, description, created_by_user_id, sort_order, created_at)
-      SELECT g.id, g.intention, g.circle_description, g.created_by_user_id, 0, g.created_at
-      FROM groups g
-      WHERE g.is_prayer_circle = TRUE
-        AND g.intention IS NOT NULL
-        AND length(trim(g.intention)) > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM circle_intentions ci
-          WHERE ci.group_id = g.id
-        )
-    `);
+    // ── Prayer Circles / Contemplation communities — RETIRED (owner) ───────
+    // Owner: "Take the prayer circle and contemplative community options
+    // out of communities" + "fully retire the feature" (force every
+    // existing one back to a plain community, drop the saved data).
+    // Drops the two dedicated tables and the five groups columns that
+    // only existed to support them. Idempotent — safe to run on every
+    // boot; a no-op once already applied.
+    await run(client, `DROP TABLE IF EXISTS circle_intentions`);
+    await run(client, `DROP TABLE IF EXISTS circle_daily_focus`);
+    await run(client, `ALTER TABLE groups DROP COLUMN IF EXISTS is_prayer_circle`);
+    await run(client, `ALTER TABLE groups DROP COLUMN IF EXISTS intention`);
+    await run(client, `ALTER TABLE groups DROP COLUMN IF EXISTS circle_description`);
+    await run(client, `ALTER TABLE groups DROP COLUMN IF EXISTS focus`);
+    await run(client, `ALTER TABLE groups DROP COLUMN IF EXISTS contemplation_goal_minutes`);
 
     // ── device_tokens — APNs/FCM push tokens for native mobile clients ─────
     // One row per (user_id, platform, token). Re-registration is an upsert
@@ -2395,14 +2342,14 @@ export async function migrate() {
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflections_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflection_notified_at TIMESTAMPTZ`);
 
-    // ── Contemplation community template (beta) ──────────────────────────
-    // focus="contemplation" swaps the community Home to a shared contemplation
-    // goal + the CAC daily meditation; null = a standard office community.
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS focus TEXT`);
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER`);
-    // Owner: "a setting in groups to turn on and off prayer list" — see
-    // schema comment in groups.ts for the public-group hard-gate.
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_requests_enabled BOOLEAN NOT NULL DEFAULT true`);
+    // Owner: "a setting in groups to turn on and off prayer list" — default
+    // false, a new community doesn't inherently carry a shared prayer list;
+    // see schema comment in groups.ts for the public-group hard-gate.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_requests_enabled BOOLEAN NOT NULL DEFAULT false`);
+    // The ADD COLUMN above is a no-op on prod (column already exists with
+    // the old `DEFAULT true`) — this actually flips the default for rows
+    // inserted from now on, without touching existing groups' values.
+    await run(client, `ALTER TABLE groups ALTER COLUMN prayer_requests_enabled SET DEFAULT false`);
 
     // ── Beta Messages (beta-only) ────────────────────────────────────────
     // Unlimited 1:1 messaging between beta users (Letters-style UI, no
