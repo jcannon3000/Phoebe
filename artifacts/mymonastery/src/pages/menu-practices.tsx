@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { useGuestMode } from "@/hooks/useGuestMode";
-import { FDD_TODAY_URL } from "@/lib/cacReadState";
+import { getReadingsTodayUrl } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 
 // The core contemplative practices. (Gratitude is still reachable via its own
@@ -28,12 +28,13 @@ export default function MenuPracticesPage() {
           // Daily Offices leads the list — also reachable from the BCP page
           // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
           { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/offices") },
-          // Quick link straight to Forward Movement's Forward Day by Day page —
-          // owner: "put in the practices menu page under daily office 'Daily
-          // Scripture Reading'... that would open to the forward day by day
-          // page." A plain external open, no read-tracking (that's the side-
-          // anchor Daily Scripture Readings card's job, not this quick link's).
-          { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's Forward Day by Day reflection", onClick: () => openExternal(FDD_TODAY_URL, { reader: true }) },
+          // Quick link straight to Forward Movement's daily-readings page (the
+          // day's appointed psalm + lessons) — NOT Forward Day by Day (owner
+          // correction: this was wired to FDD_TODAY_URL at first, but Daily
+          // Scripture Reading means the daily-readings page). A plain external
+          // open, no read-tracking (that's the side-anchor Daily Scripture
+          // Readings card's job, not this quick link's).
+          { emoji: "📰", label: "Daily Scripture Reading", sub: "Today's appointed psalm & lessons", onClick: () => openExternal(getReadingsTodayUrl(), { reader: true }) },
         ],
       }, {
         items: [

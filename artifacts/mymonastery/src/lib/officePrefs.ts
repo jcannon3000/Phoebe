@@ -293,12 +293,13 @@ export function getSideLevel(side: OfficeSide): OfficeLevel | null {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
     if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
   } catch { /* private mode */ }
-  // New-user default rule (owner, 2026-08-12): Morning = Psalms, Evening =
-  // the Examen. Reflection defaults to CAC + a 5-minute Silence goal +
-  // Co-Breathe, all handled in useRhythmState. Only applies until the user
-  // explicitly picks a level for that side (stored above).
-  if (side === "morning") return "psalms";
-  if (side === "evening") return "examen";
+  // New-user default rule (owner, 2026-08-20): Morning = Simple Guided
+  // Prayer, Evening = Daily Scripture Readings. Reflection defaults to CAC +
+  // a 5-minute Silence goal + Co-Breathe, all handled in useRhythmState.
+  // Only applies until the user explicitly picks a level for that side
+  // (stored above).
+  if (side === "morning") return "guided-prayer";
+  if (side === "evening") return "readings";
   return null;
 }
 

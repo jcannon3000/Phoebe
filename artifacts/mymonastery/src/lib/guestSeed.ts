@@ -2,16 +2,16 @@
 // of life into the same device-local officePrefs the customizer uses, ONCE, so
 // a brand-new person lands on a home that's already going:
 //
-//   Morning Simple Guided Prayer (PACT) · Evening the Examen ·
+//   Morning Simple Guided Prayer (PACT) · Evening Daily Scripture Readings ·
 //   Forward Day by Day · a 5-minute silence daily goal (its own single goal
 //   card with a progress bar — NOT the per-side contemplation cards).
 //
-// Matches the same morning-PACT/evening-Examen new-user default the light
-// /customize picker and getSideLevel()'s own fallback both already use
-// (owner, 2026-07-26) — this seed used to write "psalms"/"psalms" instead,
-// which pre-dated that decision and silently overrode it for every guest
-// (setSideLevel writes an EXPLICIT level, so getSideLevel's fallback never
-// even got consulted for a seeded device).
+// Matches the same morning-guided-prayer/evening-readings new-user default
+// getSideLevel()'s own fallback uses (owner, 2026-08-20) — this seed
+// previously wrote "psalms"/"examen", which pre-dated that decision and
+// silently overrode it for every guest (setSideLevel writes an EXPLICIT
+// level, so getSideLevel's fallback never even got consulted for a seeded
+// device).
 //
 // Adjustable afterward in Daily progress → Customize, exactly like any rule.
 // (The after-noon "morning belongs to tomorrow" rule lives in
@@ -59,8 +59,8 @@ export function seedGuestRule(): void {
     }
     // Respect an existing rule (e.g. a device that used the app signed-in).
     if (getExplicitSideLevel("morning") || getExplicitSideLevel("evening")) return;
-    setSideLevel("morning", "psalms");
-    setSideLevel("evening", "examen");
+    setSideLevel("morning", "guided-prayer");
+    setSideLevel("evening", "readings");
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
     setSideReflection("evening", "fdd");
