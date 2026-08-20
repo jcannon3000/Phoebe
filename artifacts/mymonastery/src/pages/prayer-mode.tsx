@@ -3462,6 +3462,18 @@ export default function PrayerModePage() {
   // detail page + streak immediately; this set keeps `handleDone` from
   // double-counting the same moment at the end of the slideshow.
   const loggedIntercessionsRef = useRef<Set<string>>(new Set());
+  // True while advance()/skipToNext()/goBack() is mid-transition — most
+  // importantly, while advance() is awaiting an amen POST before it moves
+  // the deck. Without this, a fast double-tap on Amen, or a swipe/arrow-key
+  // ("Not today") fired while that await is still pending, could race
+  // advance()'s own stale-closed-over `index`: the impatient tap moves the
+  // deck first, then the delayed advance() call fires its OWN setIndex a
+  // moment later using the OLD index, snapping the deck backward, replaying
+  // an already-seen slide's opening swell, and overwriting the persisted
+  // "how far did I get" progress with a smaller count. Checked (and set) at
+  // the very start of all three functions; cleared once each one's own
+  // transition finishes.
+  const advancingRef = useRef(false);
   // Streak celebration state — set when the server tells us this is the
   // user's first prayer-list completion today. Null outside that window
   // so the closing slide falls back to the normal "you have carried…" copy.
@@ -3683,6 +3695,11 @@ export default function PrayerModePage() {
   // don't feel like I have it in me to hold this one") without
   // skipping the rest of the slideshow.
   const skipToNext = () => {
+    // Don't let "Not today" / swipe / arrow-key jump the deck while advance()
+    // is mid-transition (most importantly, while it's awaiting an amen POST)
+    // — see advancingRef's own comment for the stale-index race this avoids.
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     setSlideVisible(false);
     setTimeout(() => {
       if (index < displaySlides.length - 1) {
@@ -3714,27 +3731,34 @@ export default function PrayerModePage() {
         }
       }
       setSlideVisible(true);
+      advancingRef.current = false;
     }, 220);
   };
 
   // Navigate back one slide without recording an amen. Mirrors the
   // fade transition used by skipToNext / advance.
   const goBack = () => {
+    // Same in-flight guard as skipToNext — see advancingRef's comment.
+    if (advancingRef.current) return;
     if (phase === "closing" || phase === "prompts") {
       // Let the user step back from the closing (or prompts) slide to their last prayer.
+      advancingRef.current = true;
       setSlideVisible(false);
       setTimeout(() => {
         setPhase("prayer");
         setSlideVisible(true);
+        advancingRef.current = false;
       }, 220);
       return;
     }
     // Back from the FIRST slide leaves the office entirely → home screen.
     if (index <= 0) { handleExit(); return; }
+    advancingRef.current = true;
     setSlideVisible(false);
     setTimeout(() => {
       setIndex(index - 1);
       setSlideVisible(true);
+      advancingRef.current = false;
     }, 220);
   };
 
@@ -3783,6 +3807,12 @@ export default function PrayerModePage() {
   };
 
   const advance = async () => {
+    // Bail on a double-tap (or a skip/back fired while a PREVIOUS advance()
+    // is still awaiting its amen POST) — see advancingRef's own comment.
+    // Checked first, before even the haptic/chime, so a fast double-tap
+    // doesn't also double-fire feedback for a tap that's about to no-op.
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
     triggerAmenFeedback();
@@ -3981,6 +4011,7 @@ export default function PrayerModePage() {
         }
       }
       setSlideVisible(true);
+      advancingRef.current = false;
     }, 220);
   };
 

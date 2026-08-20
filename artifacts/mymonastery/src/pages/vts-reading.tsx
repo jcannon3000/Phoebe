@@ -92,7 +92,11 @@ export default function VtsReadingPage() {
   const isTitle = step === 0;
   const paraIndex = step - 1;
 
-  const atStart = step === 0;
+  // Same condition as isTitle, by definition (there's only one slide before
+  // the first paragraph) — named separately for what each call site is
+  // actually asking, but derived rather than duplicated so they can't
+  // silently diverge.
+  const atStart = isTitle;
   const atEnd = step >= total;
   const next = () => {
     if (step === 0) markReadOnce();

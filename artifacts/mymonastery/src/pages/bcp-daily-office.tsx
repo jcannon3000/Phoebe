@@ -1580,7 +1580,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // we never block the slide advance on the network call, and we
   // never block the user from advancing if the call fails.
   const isIntercessionSlide = currentSlide.type === "intercessions";
-  function fireAmenSideEffect(slide: Slide) {
+  // Returns the amen POST's promise (already reconciled on failure via its
+  // own .catch, so it never rejects) so amen() can await it before
+  // advancing — undefined when the slide has no amen endpoint to call.
+  function fireAmenSideEffect(slide: Slide): Promise<unknown> | undefined {
     const meta = slide.metadata as
       | {
           source?: unknown;
@@ -1604,7 +1607,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${rid}` } })
         );
       } catch { /* non-fatal */ }
-      apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
+      return apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
         .then(() => {
           // Two invalidations:
           //   • /api/prayer-requests — the prayer-list feed; updates the
@@ -1617,14 +1620,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${rid}`] });
         })
         .catch(() => { /* best-effort */ });
-      return;
     }
     if (source === "feed" && typeof meta?.momentToken === "string") {
       // A feed intercession is a shared_moment — log the Amen as a
       // check-in, the same path prayer-mode uses. (Feeds dropped the
       // day-scheduled /entries/:date/pray endpoint in the reimagining.)
       const token = meta.momentToken;
-      apiRequest("POST", `/api/moment/${token}/amen`)
+      return apiRequest("POST", `/api/moment/${token}/amen`)
         .then(() => {
           // /subscribed drives the dashboard + prayer-list feed cards;
           // /moments drives the slideshow deck's prayed-today sort.
@@ -1632,14 +1634,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
         })
         .catch(() => { /* best-effort */ });
-      return;
     }
     // prayer-for + circle-intention: no amen endpoint exists for
     // these surfaces yet. The Amen button still advances; we just
     // don't log a metric until those endpoints land.
+    return undefined;
   }
-  function amen() {
-    if (currentSlide) fireAmenSideEffect(currentSlide);
+  async function amen() {
+    // Await the amen POST before advancing — without this, tapping Amen on
+    // the LAST intercession slide could hand off to /prayer-mode?closingOnly=1
+    // (which shows the "day is complete" recap) before the POST had actually
+    // landed, and a fast follow-on refetch could show the request/moment as
+    // not-yet-prayed. Mirrors prayer-mode.tsx's own advance() fix for the
+    // exact same race. The promise never rejects (fireAmenSideEffect's own
+    // .catch reconciles failures), so no try/catch needed here.
+    const amenPromise = currentSlide ? fireAmenSideEffect(currentSlide) : undefined;
     // Clear every office-reminder push from the lock screen the moment
     // the user prays — "bell" plus the parish-office-{morning,evening}
     // thread-ids the reminder cron actually sends under. Earlier this
@@ -1647,6 +1656,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the lock screen for the rest of the day even after the user had
     // prayed the office — exactly the bug just reported.
     clearOfficeReminderNotifications();
+    if (amenPromise) await amenPromise;
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just
       // another advance, so it shouldn't be the one silent path.
