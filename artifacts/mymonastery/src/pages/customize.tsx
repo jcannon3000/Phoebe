@@ -35,7 +35,7 @@ const SOFT_GREEN = "rgba(200,212,192,0.75)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const BG = "#0C1F12";
 
-type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "contemplation";
+type DailyPrayer = "guided-prayer" | "psalms" | "devotion" | "office" | "readings" | "contemplation";
 
 // "Add a practice" — the same contemplative add-ons the full customizer's
 // "Add an additional practice" step offers (Audio Divina / The Examen /
@@ -64,6 +64,7 @@ function currentDailyPrayer(): DailyPrayer {
   if (lvl === "guided-prayer") return "guided-prayer";
   if (lvl === "psalms") return "psalms";
   if (lvl === "office") return "office";
+  if (lvl === "readings") return "readings";
   // "Devotions" is no longer a selectable option here — an existing user
   // whose level is still "devotion" (or anything else unmatched) shows
   // "Offices" pre-selected, the closest remaining option. A "custom" level
@@ -297,6 +298,7 @@ export default function CustomizePage() {
                 { value: "guided-prayer", label: "Simple Guided Prayer" },
                 { value: "psalms", label: "Psalms" },
                 { value: "office", label: "Offices" },
+                { value: "readings", label: "Daily Scripture Readings" },
                 { value: "contemplation", label: "Contemplative Prayer" },
               ], (v) => applyDailyPrayer(v as DailyPrayer))}
 

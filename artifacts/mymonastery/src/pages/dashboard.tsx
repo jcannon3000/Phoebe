@@ -3216,7 +3216,6 @@ function FddHomeCard() {
 // practice that is 'Daily Scripture Readings'... configured to morning [for
 // morning] and evening for evening."
 function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning" | "evening"; hero?: boolean } = {}) {
-  const [hasRead, setHasRead] = useState(() => hasPrayedReadingsToday(readingsPraySideForCheck()));
   // Same ?readings=<side> handoff FddHomeCard uses for ?fdd=<side> — set by
   // begin-prayer.tsx when Daily Scripture Readings IS a side's chosen prayer.
   const [praySide] = useState<"morning" | "evening" | undefined>(() => {
@@ -3226,6 +3225,14 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
       return getSideLevel(v) === "readings" ? v : undefined;
     } catch { return undefined; }
   });
+  // The actual rendered side (praySide, when the URL handoff applies,
+  // otherwise this card's own `side` prop) — matching PsalmsHomeCard's
+  // `useState(() => hasPrayedPsalmsToday(side))`. This used to default to
+  // "morning" regardless of `side` (readingsPraySideForCheck() only reads
+  // the URL param), so a plain dashboard load with evening set to Daily
+  // Scripture Readings could show the wrong "Read"/"Read again" state on
+  // first paint until an event or visibility change corrected it.
+  const [hasRead, setHasRead] = useState(() => hasPrayedReadingsToday(praySide ?? side));
   useEffect(() => {
     const refresh = () => setHasRead(hasPrayedReadingsToday(praySide ?? side));
     window.addEventListener(READINGS_PRAYED_EVENT, refresh);
@@ -3328,17 +3335,6 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
     </div>
   );
 }
-// The initial hasRead check has no praySide yet on first render (state init
-// runs before the effect below resolves ?readings=) — check morning first,
-// since that's the common case; the effect corrects it a beat later if the
-// URL actually said evening.
-function readingsPraySideForCheck(): "morning" | "evening" {
-  try {
-    const v = new URLSearchParams(window.location.search).get("readings");
-    return v === "evening" ? "evening" : "morning";
-  } catch { return "morning"; }
-}
-
 // Praying the Psalms home card — replaces the office card for a side set to
 // "psalms". Shows today's appointed psalms (per the chosen cycle) and opens the
 // /psalms reader. Warm parchment tone, distinct from the blue FDD card.
