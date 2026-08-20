@@ -928,7 +928,7 @@ export const en = {
     extra_examen_sub: "St. Ignatius' end-of-day review of the day with God.",
     goal_none: "No goal",
     goal_minutes: "{{mins}} minutes",
-    reminder_label: "Remind me to pray each morning",
+    reminder_label: "Remind me to pray each {{side}}",
     reminder_note: "We'll send a gentle notification. Change the time or turn it off anytime in Settings.",
     finish: "Save my daily rhythm",
     done_title: "This is the shape of your days",
