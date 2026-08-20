@@ -3811,6 +3811,7 @@ export default function PrayerModePage() {
     // this just stops a slower network from letting a fresher server read
     // clobber it before Home ever sees the amen.
     let requestAmenPromise: Promise<unknown> | null = null;
+    let intercessionAmenPromise: Promise<unknown> | null = null;
     const current = displaySlides[index];
     if (current && current.kind === "request" && typeof current.requestId === "number") {
       const rid = current.requestId;
@@ -3880,10 +3881,9 @@ export default function PrayerModePage() {
         // both for back-compat with older server builds and so the
         // existing posts/check-ins shape stays the system of record
         // while the new endpoint rolls out.
-        const promise = current.myUserToken
+        intercessionAmenPromise = (current.myUserToken
           ? apiRequest("POST", `/api/moment/${mt}/${current.myUserToken}/post`, { isCheckin: true })
-          : apiRequest("POST", `/api/moment/${mt}/amen`, {});
-        promise
+          : apiRequest("POST", `/api/moment/${mt}/amen`, {}))
           .then(() => {
             // Keep the detail page + dashboard fresh so the new amen shows
             // up the moment the viewer lands there. The feed-subscribed
@@ -3894,7 +3894,15 @@ export default function PrayerModePage() {
             queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
           })
           .catch(() => {
-            /* swallow — best-effort, handleDone will retry if still pending */
+            // The POST never landed — un-mark it so handleDone's own
+            // "log anything not yet logged" backstop (filtered on this
+            // same ref) actually gets a chance to retry it. Marking it
+            // logged UNCONDITIONALLY right when the tap fires (above) is
+            // what silently defeated that backstop before: by the time
+            // handleDone ran, every walked intercession was already in
+            // the ref regardless of whether its POST ever succeeded, so
+            // a failed/slow amen was lost with no retry.
+            loggedIntercessionsRef.current.delete(mt);
           });
       }
     }
@@ -3918,11 +3926,16 @@ export default function PrayerModePage() {
         });
       }
     }
-    // Wait for the request amen (if any) to land before advancing — see the
-    // note above requestAmenPromise's declaration. Best-effort: the .catch
-    // above already reconciled the cache on failure, so there's nothing
-    // further to do here either way.
+    // Wait for the request/intercession amen (if any) to land before
+    // advancing — see the note above requestAmenPromise's declaration. Same
+    // reasoning applies to a community intercession's amen: without this,
+    // the LAST slide's tap could still be in flight when the walk finishes
+    // and the user lands back on a dashboard whose refetch races ahead of
+    // it, showing the day as not-yet-completed even though every prayer was
+    // amen'd. Best-effort: each promise's own .catch already reconciled the
+    // cache/ref on failure, so there's nothing further to do here either way.
     if (requestAmenPromise) { try { await requestAmenPromise; } catch { /* already handled */ } }
+    if (intercessionAmenPromise) { try { await intercessionAmenPromise; } catch { /* already handled */ } }
     setSlideVisible(false);
     setTimeout(() => {
       if (index < displaySlides.length - 1) {
