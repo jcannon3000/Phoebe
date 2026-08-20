@@ -6,6 +6,7 @@ import {
   tryExchangePersistentToken,
 } from "@/lib/persistentAuth";
 import { clearIdbCache } from "@/lib/idbCache";
+import { clearOfficeOfflineCache } from "@/lib/officeOfflineCache";
 import { clearCustomAnchorStorage } from "@/lib/customAnchors";
 import { resetDeviceRuleForLogout } from "@/lib/guestSeed";
 import { clearSpotifyToken } from "@/lib/spotify";
@@ -214,6 +215,9 @@ export function useLogout() {
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
     try { await clearIdbCache(); } catch { /* ignore */ }
+    // Same reasoning for the 30-day offline office cache — it carries this
+    // account's own community intercessions baked into each cached day.
+    try { await clearOfficeOfflineCache(); } catch { /* ignore */ }
     window.location.href = "/";
   };
 }

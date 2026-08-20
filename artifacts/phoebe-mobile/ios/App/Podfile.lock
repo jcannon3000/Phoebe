@@ -16,6 +16,8 @@ PODS:
     - Capacitor
   - CapacitorLocalNotifications (8.2.0):
     - Capacitor
+  - CapacitorNetwork (8.0.1):
+    - Capacitor
   - CapacitorPreferences (8.0.1):
     - Capacitor
   - CapacitorPushNotifications (8.1.1):
@@ -39,6 +41,7 @@ DEPENDENCIES:
   - "CapacitorHaptics (from `../../../../node_modules/.pnpm/@capacitor+haptics@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/haptics`)"
   - "CapacitorKeyboard (from `../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.5_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard`)"
   - "CapacitorLocalNotifications (from `../../../../node_modules/.pnpm/@capacitor+local-notifications@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/local-notifications`)"
+  - "CapacitorNetwork (from `../../../../node_modules/.pnpm/@capacitor+network@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/network`)"
   - "CapacitorPreferences (from `../../../../node_modules/.pnpm/@capacitor+preferences@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/preferences`)"
   - "CapacitorPushNotifications (from `../../../../node_modules/.pnpm/@capacitor+push-notifications@8.1.1_@capacitor+core@8.4.0/node_modules/@capacitor/push-notifications`)"
   - "CapacitorShare (from `../../../../node_modules/.pnpm/@capacitor+share@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/share`)"
@@ -65,6 +68,8 @@ EXTERNAL SOURCES:
     :path: "../../../../node_modules/.pnpm/@capacitor+keyboard@8.0.5_@capacitor+core@8.4.0/node_modules/@capacitor/keyboard"
   CapacitorLocalNotifications:
     :path: "../../../../node_modules/.pnpm/@capacitor+local-notifications@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/local-notifications"
+  CapacitorNetwork:
+    :path: "../../../../node_modules/.pnpm/@capacitor+network@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/network"
   CapacitorPreferences:
     :path: "../../../../node_modules/.pnpm/@capacitor+preferences@8.0.1_@capacitor+core@8.4.0/node_modules/@capacitor/preferences"
   CapacitorPushNotifications:
@@ -88,6 +93,7 @@ SPEC CHECKSUMS:
   CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
   CapacitorKeyboard: b6b0744890cdb1d9a96e2cafcc9253fdcc55de3b
   CapacitorLocalNotifications: 2615aa008f608b95d3921a778ee1988abf1e6148
+  CapacitorNetwork: 8812ce60d11fb63d8f2e4ba51a49b2e59892ebe2
   CapacitorPreferences: cca2021f386efb75947c850334447d9ff22b14f1
   CapacitorPushNotifications: ec08d589c226a2c0db7c032ec1bf5b044ec85f8e
   CapacitorShare: 0c58305114538568059bfc07111f22dcb9cb2a82
@@ -95,6 +101,6 @@ SPEC CHECKSUMS:
   CapacitorStatusBar: 01d5763b4ed720de5ce2edbc938de6a98f4c8f32
   CapgoCapacitorNativeBiometric: c9a116d9516b3f52dd335aea6a0c5073be36fe5a
 
-PODFILE CHECKSUM: 7927f2276de9344cc54c619c60c62591826f66e6
+PODFILE CHECKSUM: 0a8d8ff47fa2c1ddf7d3dd40616f15bb292fc02b
 
 COCOAPODS: 1.16.2

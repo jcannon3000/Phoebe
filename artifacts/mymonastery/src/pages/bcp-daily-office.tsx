@@ -32,6 +32,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import { getOfficeCacheEntry, putOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
@@ -1026,10 +1027,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         const locale = "en";
         const sep = endpoint.includes("?") ? "&" : "?";
         // Per-side confession override (Morning/Evening split) — only full
-        // offices have a confession; pass it when this side set one.
-        const confParam = (resolvedMode === "morning" || resolvedMode === "evening")
-          ? (() => { const c = getSideConfession(officeSide); return c === null ? "" : `&confession=${c ? "1" : "0"}`; })()
+        // offices have a confession; pass it when this side set one. Also
+        // baked into the offline cache key (below) so a live fetch and a
+        // background-prefetched entry agree on what they're both asking for.
+        const confessionKey: "" | "0" | "1" = (resolvedMode === "morning" || resolvedMode === "evening")
+          ? (() => { const c = getSideConfession(officeSide); return c === null ? "" : (c ? "1" : "0"); })()
           : "";
+        const confParam = confessionKey ? `&confession=${confessionKey}` : "";
         // Creation Prayer: if the user prays it only ONCE a day (not both
         // morning AND evening set to "creation"), ask the server for the
         // four-week combined Psalter so a once-a-day pray-er still covers every
@@ -1039,11 +1043,27 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             && !(getSideLevel("morning") === "creation" && getSideLevel("evening") === "creation")
             ? "&single=1"
             : "";
-        const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        // Offline support: bcp-daily-office.tsx's own reads/writes into
+        // lib/officeOfflineCache.ts, the store lib/officePrefetch.ts warms
+        // for the next 30 days in the background (Wi-Fi only). A live fetch
+        // always wins when it succeeds (and refreshes the cache entry for
+        // next time); the cache is only consulted when the network fails —
+        // this is offline SUPPORT, not a performance cache-first path.
+        const cacheKey = { mode: resolvedMode, date: localDate, confession: confessionKey };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let data: any;
+        try {
+          const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}${creationSingleParam}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          data = await res.json();
+          void putOfficeCacheEntry(cacheKey, data);
+        } catch (fetchErr) {
+          const cached = await getOfficeCacheEntry(cacheKey);
+          if (!cached) throw fetchErr;
+          data = cached;
+        }
         if (cancelled) return;
-        let fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data.slides ?? []);
+        let fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data?.slides ?? []);
         // Pilot + GUEST have no community intercessions — the server may still
         // inject an "intercessions_portal" slide (guest office endpoints are
         // public; an account with pre-existing community data can hit this

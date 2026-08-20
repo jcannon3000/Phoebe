@@ -32,6 +32,7 @@ import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { PageFadeOverlay } from "@/components/PageFadeOverlay";
 import { WidgetSync } from "@/lib/widgetSync";
+import { OfficeOfflinePrefetch } from "@/lib/officePrefetch";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
@@ -1244,6 +1245,7 @@ function App() {
           <LocaleSync />
           <AppOpenTracker />
           <WidgetSync />
+          <OfficeOfflinePrefetch />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <ForegroundPushToast />

@@ -30,6 +30,7 @@ import { Preferences } from "@capacitor/preferences";
 import { Contacts } from "@capacitor-community/contacts";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { KeepAwake } from "@capacitor-community/keep-awake";
+import { Network } from "@capacitor/network";
 import { NativeBiometric, BiometryType } from "@capgo/capacitor-native-biometric";
 
 // ─── API base URL ──────────────────────────────────────────────────────────
@@ -1373,6 +1374,12 @@ declare global {
       // already added one. false (not a rejected promise) on web/Android,
       // where the widget doesn't exist.
       hasActiveWidget?: () => Promise<boolean>;
+      // True only when the device reports an active Wi-Fi connection —
+      // used by lib/officePrefetch.ts to gate its 30-day office-download
+      // walk so it never costs cellular data. false (never a rejected
+      // promise) on any error/uncertain read; the caller treats "can't
+      // tell" as "don't risk it."
+      isOnWifi?: () => Promise<boolean>;
     };
   }
 }
@@ -1468,6 +1475,14 @@ function exposePublicApi() {
         cap?.Plugins?.PhoebeWidget?.update?.({ data: payload })?.catch(() => {});
       } catch {
         /* ignore — widget updates are best-effort */
+      }
+    },
+    async isOnWifi() {
+      try {
+        const status = await Network.getStatus();
+        return status.connectionType === "wifi";
+      } catch {
+        return false;
       }
     },
     async hasActiveWidget() {
