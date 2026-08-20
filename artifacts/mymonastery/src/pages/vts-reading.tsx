@@ -18,13 +18,14 @@
  */
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { markVtsRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
-import { SPLASH_PHOTO } from "@/lib/earthPhotos";
+import { SPLASH_PHOTO, LEAF_PHOTOS } from "@/lib/earthPhotos";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 
 // Same tokens bcp-daily-office.tsx uses (var()-backed so Office display
@@ -66,6 +67,13 @@ export default function VtsReadingPage() {
   // the office loads."
   const veilPhoto = useMemo(() => SPLASH_PHOTO || splashForestPath, []);
   const [veilPhotoReady, setVeilPhotoReady] = useState(false);
+
+  // The reading itself sits on a leaf backdrop too, matching Simple Guided
+  // Prayer / Contemplation / the office's own reader pages, instead of the
+  // plain animated wash — owner: "the dean commentary should have leaf
+  // backgrounds." Picked once per mount, same held-still (not drifting)
+  // treatment those pages use.
+  const backdropPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const close = () => setLocation("/");
 
@@ -117,7 +125,25 @@ export default function VtsReadingPage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, overflow: "hidden", fontFamily: SPACE_GROTESK }}>
-      <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      {/* Backdrop — a still leaf photo under the shared dark wash (matches
+          guided-prayer.tsx / contemplation.tsx), falling back to the plain
+          animated wash if no bundled photo is available. */}
+      {backdropPhoto ? (
+        <>
+          <motion.img
+            src={backdropPhoto}
+            alt=""
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.22 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+          />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+        </>
+      ) : (
+        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      )}
 
       {/* Top bar — Back / title pill / X. Mirrors the office's own header
           exactly (bcp-daily-office.tsx), not a separately-invented one. */}
