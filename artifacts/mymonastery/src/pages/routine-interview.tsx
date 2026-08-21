@@ -147,8 +147,22 @@ export default function RoutineInterviewPage() {
     }
   };
 
-  const submitFollowups = async (nextCorrections?: string[]) => {
+  /**
+   * Build (or REBUILD) the spec.
+   *
+   * `resumeAt` is where the read-back should land afterwards. A first build
+   * starts at the beginning; a rebuild triggered by a correction returns to the
+   * section that was being corrected, rather than sending them back through
+   * morning and silence to reach the evening they just fixed.
+   *
+   * The spec is rebuilt whole each time, so the earlier sections MAY have
+   * changed — but re-confirming two things they already approved, every time
+   * they correct the third, is the worse trade. Anything that did change is
+   * still shown on the final review before anything is saved.
+   */
+  const submitFollowups = async (nextCorrections?: string[], resumeAt = 0) => {
     setError(null);
+    const cameFromConfirm = phase === "confirm";
     setPhase("thinking-build");
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/build", {
@@ -161,15 +175,16 @@ export default function RoutineInterviewPage() {
       setSummary(res.summary ?? "");
       setSettings(res.settings ?? []);
       setNotes(res.notes ?? []);
-      // Straight to the read-back round — the review comes after they've
-      // confirmed each part of the day.
-      setConfirmIndex(0);
+      setConfirmIndex(resumeAt);
       setShowFix(false);
       setFixText("");
       setPhase("confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
-      setPhase("followups");
+      // Return them where they were. A failed rebuild during the read-back used
+      // to dump them back on the follow-up questions, losing the round entirely
+      // for what is usually a transient model error.
+      setPhase(cameFromConfirm ? "confirm" : "followups");
     }
   };
 
@@ -408,7 +423,8 @@ export default function RoutineInterviewPage() {
       // and an entry, and a half-corrected spec is worse than a fresh one.
       const next = [...corrections, `${section.title}: ${t}`];
       setCorrections(next);
-      void submitFollowups(next);
+      // Come back to THIS section so they can see their correction landed.
+      void submitFollowups(next, confirmIndex);
     };
 
     return (
