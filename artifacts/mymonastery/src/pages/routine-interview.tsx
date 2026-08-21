@@ -105,7 +105,11 @@ const SILENCE_TOTALS = [15, 20, 30, 45, 60, 90];
  */
 const MEDIUM_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "venite", label: "Venite Digital" },
-  { value: "read", label: "On screen" },
+  // Owner: "it should be Digital Slideshow if it's the slideshow." "On screen"
+  // described the device, not the thing — and it read as the opposite of the
+  // physical book rather than as one of several formats, two of which are also
+  // on a screen.
+  { value: "read", label: "Digital Slideshow" },
   { value: "book", label: "My physical prayer book" },
   { value: "listen", label: "Read aloud to me" },
 ];
@@ -813,14 +817,16 @@ export default function RoutineInterviewPage() {
           {/* How they take it. A dropdown, not a question — see MEDIUM_OPTIONS. */}
           {isSide && rows.length > 0 && mediumApplies && (
             <div>
-              <p style={{ ...eyebrow, marginBottom: 8 }}>How you take it</p>
+              {/* Owner: "it shouldn't say how do you take it... it should ask what
+                  format." */}
+              <p style={{ ...eyebrow, marginBottom: 8 }}>What format</p>
               <select
                 value={mediumValue}
                 onChange={(e) => {
                   const v = e.target.value;
                   patchSpec((d) => { d.ruleConfig[`phoebe:office:entry:${section.key}`] = v; });
                 }}
-                aria-label="How you take it"
+                aria-label="What format"
                 style={{
                   ...card, width: "100%", boxSizing: "border-box", color: WARM,
                   fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark",

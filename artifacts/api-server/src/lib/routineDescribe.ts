@@ -41,7 +41,9 @@ const NEWSLETTER_LABEL: Record<string, string> = {
   vts: "VTS Dean's Commentary",
 };
 const ENTRY_LABEL: Record<string, string> = {
-  read: "on screen",
+  // "Digital Slideshow", not "on screen" (owner) — two of the other formats
+  // are also on a screen, so it named the device rather than the thing.
+  read: "the digital slideshow",
   book: "from your physical prayer book",
   listen: "read aloud",
   watch: "as a livestream",
