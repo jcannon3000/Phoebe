@@ -37,6 +37,7 @@ import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markOfficeBookComplete } from "@/lib/officeManualLog";
+import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -999,7 +1000,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // How they want to pray it — the second row of the welcome chooser. Depends
   // on the way above: Community Intercessions is on-screen only. "watch" is a
   // morning-weekday-only option (the National Cathedral broadcast).
-  type PrayMethod = "screen" | "listen" | "book" | "watch";
+  type PrayMethod = "screen" | "listen" | "book" | "watch" | "venite";
   const [prayMethod, setPrayMethod] = useState<PrayMethod>(() => {
     // Pre-select the reader's saved way for this side so the intro chooser opens
     // on their default (Physical BCP / Listen / Watch / On screen), not always
@@ -1009,6 +1010,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       if (e === "book") return "book";
       if (e === "listen") return "listen";
       if (e === "watch") return "watch";
+      if (e === "venite") return "venite";
     }
     return "screen";
   });
@@ -1753,6 +1755,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       setViewerLocation("/ncmp/watch");
     }
   };
+  // Pray this office on venite.app instead. Opens today's office there (the
+  // reader's LOCAL date — see lib/venite.ts) and credits the side exactly as
+  // the physical-book attestation does, so the anchor flips, the reminder push
+  // clears, and Daily progress counts it. Like the Cathedral "Watch" path we
+  // credit on tap rather than on return: once the reader leaves for an outside
+  // site we can't observe whether they finished, and the alternative — leaving
+  // the office showing undone after they prayed it — is the worse miss.
+  const goToVenite = () => {
+    openExternal(veniteOfficeUrl(officeSide));
+    markOfficeBookComplete(officeSide);
+  };
   const launchWay = (way: WayToPray, method: PrayMethod) => {
     // Psalms: the reader already chose their way + format here, so skip the
     // psalms "before you begin" intro (begin=1) — book → the page-number guide.
@@ -1760,6 +1773,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
     if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
     if (method === "watch") { goToWatch(); return; }
+    if (method === "venite") { goToVenite(); return; }
     const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
     if (onThisSurface) {
       if (method === "book") { setBookOpen(true); return; }
@@ -1797,13 +1811,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Watch), so the "How" row collapses to a single On-screen option for both.
     const screenOnly = isIntercessions || isPsalms;
     const showWatch = officeSide === "morning" && isWeekday;
+    // Venite covers Morning and Evening Prayer proper — not the short devotion,
+    // and not Compline (no working deep link).
+    const showVenite = canPrayOnVenite(officeSide) && (resolvedMode === "morning" || resolvedMode === "evening");
     // A shared, full-width styled <select> with the chevron, matching the pill
     // look. A plain render helper (NOT a component) so it inlines and the native
     // select never remounts mid-selection. Stops propagation so a tap can't
     // bubble to the slide tap-nav.
     const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "psalms" ? "Today's Psalms" : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
     const methodValue = screenOnly ? "screen" : prayMethod;
-    const methodLabel = methodValue === "screen" ? "On screen" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : "Physical BCP";
+    const methodLabel = methodValue === "screen" ? "On screen" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : methodValue === "venite" ? "Venite Digital" : "Physical BCP";
 
     // A screen-wide settings pill: CATEGORY on the left, the chosen value +
     // chevron on the right (the singing-bowl / Insight-Timer pattern). The
@@ -1910,6 +1927,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 <>
                   <option value="book">Physical BCP</option>
                   <option value="screen">On screen</option>
+                  {/* Owner: "make it the third option in the dropdowns after
+                      digital slideshow, call it Venite Digital." Hands the
+                      office off to venite.app in the browser. Morning/Evening
+                      only — Compline has no working Venite deep link. */}
+                  {showVenite && <option value="venite">Venite Digital</option>}
                   <option value="listen">Listen</option>
                   {showWatch && <option value="watch">Watch</option>}
                 </>
@@ -4630,6 +4652,7 @@ function PhysicalBookGuide(props: {
 // green palette so it reads as part of the same picker.
 const OFFICE_METHOD_META: Record<DefaultOfficeEntry, { emoji: string; label: string; sub: (side: OfficeSide) => string }> = {
   read: { emoji: "📖", label: "Digital Slideshow", sub: () => "The full text, at your own pace" },
+  venite: { emoji: "🕊️", label: "Venite Digital", sub: () => "Today's office on venite.app, in your browser" },
   book: { emoji: "📕", label: "Physical BCP", sub: () => "Today's page numbers for your physical Prayer Book" },
   listen: { emoji: "🎧", label: "Listen", sub: (s) => `${s === "morning" ? "Morning" : "Evening"} Prayer read aloud · Forward Movement` },
   watch: { emoji: "📺", label: "Watch", sub: () => "National Cathedral · live 7 AM ET weekdays" },
@@ -4649,6 +4672,8 @@ function OfficeMethodCard(props: {
   const methods: DefaultOfficeEntry[] = [
     "book",
     "read",
+    // Third, right after the digital slideshow (owner).
+    ...(canPrayOnVenite(side) ? (["venite"] as const) : []),
     "listen",
     ...(side === "morning" && weekday ? (["watch"] as const) : []),
   ];
@@ -4891,6 +4916,16 @@ export default function BcpDailyOfficePage() {
           setLocation(`/podcast/${mode}-office`);
           return;
         }
+        // Venite as the saved default — hand off to venite.app and credit the
+        // side, exactly as picking it from the chooser does. Without this the
+        // pref would silently fall through to the slideshow, so setting Venite
+        // as your default would appear not to take.
+        if (pref === "venite" && canPrayOnVenite(mode)) {
+          openExternal(veniteOfficeUrl(mode));
+          markOfficeBookComplete(mode);
+          setLocation("/daily-progress");
+          return;
+        }
         // The Cathedral only broadcasts Mon–Fri, so a "watch" default on a
         // weekend falls through to the text office (nothing to watch live).
         const isWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
@@ -5009,6 +5044,14 @@ export default function BcpDailyOfficePage() {
   const launchOffice = (side: OfficeSide, method: DefaultOfficeEntry) => {
     if (method === "listen") { setLocation(`/podcast/${side}-office`); return; }
     if (method === "watch" && side === "morning") { setLocation("/ncmp/watch"); return; }
+    // Venite — open today's office on venite.app and credit the side, same as
+    // the in-office chooser's handoff.
+    if (method === "venite" && canPrayOnVenite(side)) {
+      openExternal(veniteOfficeUrl(side));
+      markOfficeBookComplete(side);
+      setLocation("/daily-progress");
+      return;
+    }
     setShowBook(method === "book");
     setStartSlide(1); // skip the office's welcome — the picker already was it
     setShowMode(side === "morning" ? "morning" : "evening");
@@ -5084,12 +5127,16 @@ export default function BcpDailyOfficePage() {
     : [
         "book",
         "read",
+        // Third, right after the digital slideshow (owner). Full office only —
+        // this branch already excludes psalms above.
+        ...(canPrayOnVenite(todPick) ? (["venite"] as const) : []),
         "listen",
         ...(todPick === "morning" && weekday ? (["watch"] as const) : []),
       ];
   // Match the first-slide labels ("On screen", not "Digital Slideshow").
   const HOW_LABEL: Record<DefaultOfficeEntry, string> = {
     read: "On screen",
+    venite: "Venite Digital",
     listen: "Listen",
     watch: "Watch",
     book: "Physical BCP",

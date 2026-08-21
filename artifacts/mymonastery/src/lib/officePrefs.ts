@@ -63,8 +63,10 @@ const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "vts", "no
 export type OfficeAudioSource = "forward-movement" | "church-of-england" | "gregory";
 const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england", "gregory"];
 
-export type DefaultOfficeEntry = "read" | "listen" | "watch" | "book";
-const DEFAULT_OFFICE_ENTRIES: DefaultOfficeEntry[] = ["read", "listen", "watch", "book"];
+// "venite" opens the office on venite.app in the browser rather than in any
+// Phoebe surface — Morning/Evening Prayer only (see lib/venite.ts).
+export type DefaultOfficeEntry = "read" | "listen" | "watch" | "book" | "venite";
+const DEFAULT_OFFICE_ENTRIES: DefaultOfficeEntry[] = ["read", "listen", "watch", "book", "venite"];
 
 // ── Events ─────────────────────────────────────────────────────────
 export const OFFICE_PREFS_EVENT = "phoebe:office-prefs";

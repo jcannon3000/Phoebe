@@ -1846,6 +1846,11 @@ export default function WayOfLoveRuleFlow({
                   <>
                     <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
                     <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
+                    {/* Owner: "the third option in the dropdowns after digital
+                        slideshow... Venite Digital." Hands the office off to
+                        venite.app in the browser. Not pilot-reachable (leaves
+                        the app), same as Listen/Watch below. */}
+                    {!pilot && <option value="venite">🕊️ {t("wol_rule.method_venite", { defaultValue: "Venite Digital" })}</option>}
                     {/* Listen/Watch route the office CTA to /podcast/* and
                         /ncmp/watch, which aren't pilot-reachable — text office only. */}
                     {!pilot && <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>}
@@ -2337,6 +2342,7 @@ export default function WayOfLoveRuleFlow({
     m === "listen" ? `🎧 ${t("wol_rule.method_listen", { defaultValue: "Listen" })}`
     : m === "book" ? `📕 ${t("wol_rule.method_book", { defaultValue: "Physical BCP" })}`
     : m === "watch" ? "📺 Watch"
+    : m === "venite" ? `🕊️ ${t("wol_rule.method_venite", { defaultValue: "Venite Digital" })}`
     : `📖 ${t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}`;
   // Labels the office ANCHOR only (community / BCP form). Contemplation, FDD and
   // the Examen are add-ons now — never anchors — so they don't appear here; a
