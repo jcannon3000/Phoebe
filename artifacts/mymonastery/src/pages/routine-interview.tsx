@@ -220,7 +220,7 @@ export default function RoutineInterviewPage() {
           </div>
 
           <div style={{ ...card, padding: 14 }}>
-            <p style={{ ...eyebrow, fontSize: 10, marginBottom: 8 }}>It helps to say</p>
+            <p style={{ ...eyebrow, fontSize: 10, marginBottom: 8 }}>It helps to say — skip any that aren't part of your day</p>
             {PROMPTS.map((p) => (
               <p key={p} style={{ color: "rgba(200,212,192,0.85)", fontFamily: FONT, fontSize: 13.5, margin: "0 0 6px", lineHeight: 1.5 }}>
                 · {p}
@@ -266,8 +266,11 @@ export default function RoutineInterviewPage() {
           <div>
             <p style={eyebrow}>Two questions 🌿</p>
             <h1 style={h1}>Just to be sure</h1>
+            {/* The gap is ours, not theirs — "weren't clear from what you
+                wrote" puts it on them, and "no, I don't do that" has to feel
+                like a complete answer rather than a shortfall. */}
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              A couple of things weren't clear from what you wrote.
+              A couple of things we didn't catch. "I don't" is a perfectly good answer.
             </p>
           </div>
 
