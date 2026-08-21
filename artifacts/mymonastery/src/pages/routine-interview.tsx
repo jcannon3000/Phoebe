@@ -16,7 +16,7 @@
  * The model's spec is validated server-side (sanitizeSpec) before it ever gets
  * here and again on apply, so nothing on this page has to trust it.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -35,6 +35,8 @@ const CTA = "#2D5E3F";
 type Phase = "describe" | "thinking-followups" | "followups" | "thinking-build" | "review";
 
 type Spec = Record<string, unknown>;
+// Same shape the manual customizer's review rows use.
+type SpecRow = { emoji: string; label: string; sub: string };
 
 
 export default function RoutineInterviewPage() {
@@ -49,15 +51,25 @@ export default function RoutineInterviewPage() {
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
+  // Owner: "have the follow up questions on two separate slides." One
+  // question at a time reads as a conversation; both at once reads as a form.
+  const [qIndex, setQIndex] = useState(0);
   const [spec, setSpec] = useState<Spec | null>(null);
   const [summary, setSummary] = useState("");
   // Derived server-side FROM the sanitized spec — the authoritative account of
   // what saving will actually set. `summary` is the model's own prose, which is
   // nice framing but is not evidence of what it programmed.
-  const [settings, setSettings] = useState<string[]>([]);
+  const [settings, setSettings] = useState<SpecRow[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+
+  // Owner: "the page needs to scroll up when I'm on the second." Advancing a
+  // slide keeps the window's scroll position, so a long first answer left the
+  // next question rendered above the fold — it looked like nothing happened.
+  useEffect(() => {
+    try { window.scrollTo({ top: 0, behavior: "auto" }); } catch { /* ignore */ }
+  }, [phase, qIndex]);
 
   const errorText = (code: string): string => {
     switch (code) {
@@ -87,6 +99,7 @@ export default function RoutineInterviewPage() {
       if (qs.length === 0) throw new Error("ai_bad_json");
       setQuestions(qs);
       setAnswers(qs.map(() => ""));
+      setQIndex(0);
       setPhase("followups");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
@@ -101,7 +114,7 @@ export default function RoutineInterviewPage() {
       const res = (await apiRequest("POST", "/api/routine-interview/build", {
         description,
         followups: questions.map((q, i) => ({ q, a: answers[i] ?? "" })),
-      })) as { spec?: Spec; summary?: string; settings?: string[]; notes?: string[] } | null;
+      })) as { spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[] } | null;
       if (!res?.spec) throw new Error("ai_bad_spec");
       setSpec(res.spec);
       setSummary(res.summary ?? "");
@@ -249,45 +262,51 @@ export default function RoutineInterviewPage() {
     );
   }
 
-  // ── 2. Follow-ups ──────────────────────────────────────────────────────────
+  // ── 2. Follow-ups — ONE question per slide ────────────────────────────────
   if (phase === "followups") {
+    const q = questions[qIndex] ?? "";
+    const isLast = qIndex >= questions.length - 1;
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
           <div>
-            <p style={eyebrow}>Two questions 🌿</p>
+            <p style={eyebrow}>
+              {questions.length > 1 ? `Question ${qIndex + 1} of ${questions.length}` : "One question"} 🌿
+            </p>
             <h1 style={h1}>Just to be sure</h1>
-            {/* The gap is ours, not theirs — "weren't clear from what you
-                wrote" puts it on them, and "no, I don't do that" has to feel
-                like a complete answer rather than a shortfall. */}
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              A couple of things we didn't catch. "I don't" is a perfectly good answer.
+              "I don't" is a perfectly good answer.
             </p>
           </div>
 
-          {questions.map((q, i) => (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <p style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, lineHeight: 1.5, margin: 0 }}>{q}</p>
-              <textarea
-                value={answers[i] ?? ""}
-                onChange={(e) => setAnswers((prev) => prev.map((a, j) => (j === i ? e.target.value : a)))}
-                rows={3}
-                maxLength={1000}
-                placeholder="Your answer…"
-                style={{
-                  ...card, width: "100%", boxSizing: "border-box", color: WARM,
-                  fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
-                }}
-              />
-            </div>
-          ))}
+          <p style={{ color: WARM, fontFamily: FONT, fontSize: 16.5, lineHeight: 1.5, margin: 0 }}>{q}</p>
+          <textarea
+            key={qIndex}
+            value={answers[qIndex] ?? ""}
+            onChange={(e) => setAnswers((prev) => prev.map((a, j) => (j === qIndex ? e.target.value : a)))}
+            rows={4}
+            maxLength={1000}
+            placeholder="Your answer…"
+            style={{
+              ...card, width: "100%", boxSizing: "border-box", color: WARM,
+              fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
+            }}
+          />
 
           {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
 
-          <button type="button" onClick={submitFollowups} style={primaryBtn}>
-            Build my rhythm
+          <button
+            type="button"
+            onClick={() => { if (isLast) { submitFollowups(); } else { setError(null); setQIndex((i) => i + 1); } }}
+            style={primaryBtn}
+          >
+            {isLast ? "Build my rhythm" : "Continue"}
           </button>
-          <button type="button" onClick={() => { setError(null); setPhase("describe"); }} style={quietBtn}>
+          <button
+            type="button"
+            onClick={() => { setError(null); if (qIndex > 0) setQIndex((i) => i - 1); else setPhase("describe"); }}
+            style={quietBtn}
+          >
             Back
           </button>
         </div>
@@ -312,24 +331,30 @@ export default function RoutineInterviewPage() {
           </div>
         )}
 
-        {/* The actual settings, derived from the spec — not the model's
-            description of them. This is what "presents the routine for them"
-            has to mean: approving prose the model wrote about its own output
-            gives no way to catch it describing one routine and programming
-            another. */}
+        {/* The routine itself, rendered as the manual customizer's review rows
+            (owner: "I want the routine to be shown like it would at the end of
+            the manual flow") — same emoji / label / sub shape, so the two flows
+            end on the same screen. Derived server-side FROM the sanitized spec,
+            never from the model's prose: approving a description the model
+            wrote about its own output gives no way to catch it describing one
+            routine and programming another. */}
         {settings.length > 0 && (
-          <div style={card}>
-            <p style={{ ...eyebrow, fontSize: 10, marginBottom: 10 }}>What this sets</p>
-            {settings.map((line, i) => (
-              <p
-                key={i}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {settings.map((r, i) => (
+              <div
+                key={`${r.label}-${i}`}
                 style={{
-                  color: WARM, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.55,
-                  margin: i === 0 ? 0 : "7px 0 0",
+                  background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                  border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+                  borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
                 }}
               >
-                {line}
-              </p>
+                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+                </span>
+              </div>
             ))}
           </div>
         )}

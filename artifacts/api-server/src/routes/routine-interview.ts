@@ -87,10 +87,14 @@ How they take the office, ruleConfig "phoebe:office:entry:<side>":
   read (on screen) | book (their physical BCP) | listen (read-aloud audio)
   | watch (a livestream, morning only) | venite (opens venite.app in a browser)
 
-A daily reflection they read, ruleConfig "phoebe:office:reflection:<side>"
-and "phoebe:office:reflection-source":
+Newsletters (daily reflections). MULTIPLE ARE SUPPORTED — owner: "you can
+definitely do two newsletters." Someone who reads both Forward Day by Day and
+the Dean's Commentary gets BOTH; never make them choose.
   cac (Center for Action and Contemplation) | fdd (Forward Day by Day)
-  | ssje (Society of St John the Evangelist) | vts (VTS Dean's Commentary) | none
+  | ssje (Society of St John the Evangelist) | vts (VTS Dean's Commentary)
+Turn one on by putting its key in homeLayout.order (that list is what the home
+actually reads). "phoebe:office:reflection:<side>" is a single legacy value —
+set it to the primary one if you like, but the LAYOUT is what decides.
 
 Silent prayer:
   "phoebe:office:contemplation:<side>" = "1" or "0" — a silent sit attached to
@@ -105,12 +109,14 @@ one of morning | midday | afternoon | evening | anytime:
   | phoebe:slot:walk (Contemplative Walk) | phoebe:slot:reading
   | phoebe:slot:examen
 
-Reminders (officePrefs):
-  morning / evening = "office" | "devotion" | "none"  — "none" means NO reminder
-      push for that side. Use "none" whenever they didn't say they want a nudge.
-  morningTime / eveningTime = "HH:MM" 24-hour, or null when that side has no
-      reminder. Use the time THEY said. Only fall back to "07:00" / "18:00" if
-      they asked for a reminder without naming a time.
+Reminders (officePrefs) — ON BY DEFAULT:
+  morning / evening = "office" | "devotion" | "none". A side that has a practice
+      gets a reminder unless they said they DON'T want one — owner:
+      "notifications should be inherent." Only use "none" for a side with no
+      practice, or when they explicitly declined a nudge.
+  morningTime / eveningTime = "HH:MM" 24-hour. Use the time THEY named. If they
+      named a practice but no time, default to "07:00" morning / "18:00"
+      evening rather than turning the reminder off.
   defaultPrayerLevel = "office" | "devotion" | "intercessions" | "ask"
 
 homeLayout.order — the cards on their home, in order. Use only these keys, and
@@ -154,6 +160,43 @@ Do not chase anything outside these four. Reminder times are worth capturing
 when they mention them, but they are a detail of 1 and 2, never the subject.
 `.trim();
 
+// Owner: "make sure we are looking through an Episcopal lens. I said morning
+// prayer in my response, yet it didn't recognize that as the BCP practice, but
+// just in general. If I say I pray in the evening that's one thing, but Evening
+// Prayer is a specific practice in the Episcopal practice."
+//
+// That was a real miss: the model asked a follow-up about the morning even
+// though "morning prayer" had already been answered — it read the words
+// generically instead of as the name of an office. These are proper nouns in
+// this tradition, and treating them as such is most of what "translating to
+// Phoebe" means.
+const EPISCOPAL_LENS = `
+READ THEM AS AN EPISCOPALIAN WOULD.
+
+These are NAMES OF SPECIFIC LITURGIES, not descriptions of a time of day. When
+someone uses one, they have already told you their practice — record it and do
+NOT ask again:
+
+  "Morning Prayer" / "the morning office" / "MP"     → level "office", morning
+  "Evening Prayer" / "the evening office" / "EP"     → level "office", evening
+  "Compline"                                          → level "compline"
+  "the Daily Office" / "the Office"                   → level "office"
+  "the Examen"                                        → level "examen"
+  "Forward Day by Day" / "FDD"                        → fdd
+  "the psalter" / "the appointed psalms"              → level "psalms"
+  "centering prayer" / "silence" / "contemplative prayer" → a silent sit
+  "the lectionary readings" / "the daily readings"    → level "readings"
+
+Contrast, and this is the distinction that matters:
+  "I pray in the evening"        → vague. WHAT they pray is still unknown; ask.
+  "I pray Evening Prayer"        → specific. That IS the office. Don't ask.
+  "I read something at night"    → vague; ask.
+  "I say Compline"               → specific. Done.
+
+Assume the Book of Common Prayer 1979 and an Episcopal frame throughout. If a
+phrase is a recognized name in that tradition, treat it as the answer.
+`.trim();
+
 const TRANSCRIBE_NOT_PRESCRIBE = `
 You are helping someone record the daily prayer practice they ALREADY KEEP into
 an app called Phoebe. You are a scribe, not a spiritual director.
@@ -179,6 +222,8 @@ Rules, in order of importance:
    practice, never encourage, and never mention what they could add.
 
 ${FOUR_THINGS}
+
+${EPISCOPAL_LENS}
 `.trim();
 
 type OpenAiResult = { ok: true; data: any } | { ok: false; status: number; error: string };
@@ -359,16 +404,22 @@ function scrubRuleConfig(rc: Record<string, string>): string[] {
 // written to the account. The model's prose stays, but as framing, not as the
 // record.
 const LEVEL_LABEL: Record<string, string> = {
-  office: "the full Daily Office",
-  devotion: "a short devotion",
-  psalms: "the appointed psalms",
-  readings: "the day's scripture readings",
-  "guided-prayer": "Simple Guided Prayer",
-  examen: "the Examen",
+  office: "Prayer",              // → "Morning Prayer" / "Evening Prayer"
+  devotion: "Devotion",
+  psalms: "Psalms",
+  readings: "Scripture Reading",
+  "guided-prayer": "Guided Prayer",
+  examen: "Examen",
   fdd: "Forward Day by Day",
-  "reflect-sit": "silent contemplative prayer",
+  "reflect-sit": "Contemplation",
   compline: "Compline",
-  custom: "your own practice",
+  custom: "Practice",
+};
+const NEWSLETTER_LABEL: Record<string, string> = {
+  cac: "CAC Daily Meditation",
+  fdd: "Forward Day by Day",
+  ssje: "SSJE Daily Word",
+  vts: "VTS Dean's Commentary",
 };
 const ENTRY_LABEL: Record<string, string> = {
   read: "on screen",
@@ -399,55 +450,71 @@ function prettyTime(hhmm: string): string {
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
-/** Plain-language lines describing what this spec will actually set. */
+/** Rows describing what this spec will actually set — same emoji/label/sub
+ *  shape the manual customizer's review step uses (owner: "I want the routine
+ *  to be shown like it would at the end of the manual flow"), so the two
+ *  endings of the two flows read as the same screen. */
+export type SpecRow = { emoji: string; label: string; sub: string };
+
 function describeSpec(spec: {
   officePrefs: { morning: string; evening: string; morningTime: string | null; eveningTime: string | null; contemplationGoalMinutes: number };
+  homeLayout: { order: string[]; hidden: string[] };
   ruleConfig: Record<string, string>;
-}): string[] {
+}): SpecRow[] {
   const rc = spec.ruleConfig;
-  const lines: string[] = [];
+  const rows: SpecRow[] = [];
 
   for (const side of ["morning", "evening"] as const) {
     const cap = side === "morning" ? "Morning" : "Evening";
     const level = rc[`phoebe:office:level:${side}`];
-    if (!level || level === "ask") {
-      lines.push(`${cap}: nothing set — this side is off.`);
-      continue;
-    }
-    const bits = [LEVEL_LABEL[level] ?? level];
+    if (!level || level === "ask") continue; // a side with nothing set gets no row
+
+    // The manual flow's row label is the practice's own name, and its sub is
+    // the medium + reminder time — mirror that rather than inventing a format.
     const entry = rc[`phoebe:office:entry:${side}`];
-    if (entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")) {
-      bits.push(ENTRY_LABEL[entry]);
-    }
-    lines.push(`${cap}: ${bits.join(", ")}.`);
+    const pref = side === "morning" ? spec.officePrefs.morning : spec.officePrefs.evening;
+    const time = side === "morning" ? spec.officePrefs.morningTime : spec.officePrefs.eveningTime;
+    const subBits: string[] = [];
+    if (entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")) subBits.push(ENTRY_LABEL[entry]);
+    subBits.push(pref !== "none" && time ? prettyTime(time) : "No reminder");
+    rows.push({
+      emoji: side === "morning" ? "🌅" : "🌙",
+      label: LEVEL_LABEL[level] ? `${cap} ${LEVEL_LABEL[level]}` : `${cap} Prayer`,
+      sub: subBits.join(" · "),
+    });
 
     if (rc[`phoebe:office:contemplation:${side}`] === "1") {
       const mins = rc[`phoebe:office:minutes:${side}`];
-      lines.push(`${cap}: a silent sit${mins ? ` of ${mins} minutes` : ""}.`);
+      rows.push({
+        emoji: "🕯️",
+        label: `${cap} Contemplation`,
+        sub: mins ? `${mins} min` : "A silent sit",
+      });
     }
-    const reflection = rc[`phoebe:office:reflection:${side}`];
-    if (reflection && REFLECTION_LABEL[reflection]) {
-      lines.push(`${cap}: reading ${REFLECTION_LABEL[reflection]}.`);
-    }
-
-    const pref = side === "morning" ? spec.officePrefs.morning : spec.officePrefs.evening;
-    const time = side === "morning" ? spec.officePrefs.morningTime : spec.officePrefs.eveningTime;
-    lines.push(
-      pref !== "none" && time
-        ? `${cap} reminder: ${prettyTime(time)}.`
-        : `${cap} reminder: none.`,
-    );
   }
 
-  if (spec.officePrefs.contemplationGoalMinutes > 0) {
-    lines.push(`Silence: ${spec.officePrefs.contemplationGoalMinutes} minutes a day in total.`);
+  if (spec.officePrefs.contemplationGoalMinutes > 0
+      && rc["phoebe:office:contemplation:morning"] !== "1"
+      && rc["phoebe:office:contemplation:evening"] !== "1") {
+    rows.push({ emoji: "🕯️", label: "Silence", sub: `${spec.officePrefs.contemplationGoalMinutes} min a day` });
   }
+
+  // Newsletters — one row EACH. Owner: "you can definitely do two newsletters."
+  // The home reads the chosen set from the layout's visible reflection cards
+  // (useRhythmState's chosenReflections), not from a single reflection key, so
+  // that's what's reported here.
+  const hidden = new Set(spec.homeLayout.hidden);
+  for (const key of spec.homeLayout.order) {
+    if (!NEWSLETTER_LABEL[key] || hidden.has(key)) continue;
+    rows.push({ emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day" });
+  }
+
   for (const [k, v] of Object.entries(rc)) {
     if (!k.startsWith("phoebe:slot:")) continue;
     const name = PRACTICE_LABEL[k.slice("phoebe:slot:".length)];
-    if (name && SLOT_LABEL[v]) lines.push(`Also: ${name}, ${SLOT_LABEL[v]}.`);
+    if (name && SLOT_LABEL[v]) rows.push({ emoji: "✨", label: name, sub: SLOT_LABEL[v] });
   }
-  return lines;
+  return rows;
 }
 
 /** Home-layout keys the model asked for that aren't real cards. */
@@ -494,7 +561,11 @@ You are asking because you don't know, not because something is missing. So:
   · "Would you like to add a time of silent prayer?"        ✗ suggests
   · "Is there a daily reading you follow, if any?"          ✓ asks
   · "Have you considered Forward Day by Day?"               ✗ recommends
-  · "You mentioned evening prayer — how do you read it?"    ✓ asks
+
+Ask in plain words, and never in app jargon. Owner: "I don't know what 'how you
+take it' means." If you need to know the FORM, name the actual choices:
+  · "Do you pray it from your prayer book, on a screen, or listen to it?"  ✓
+  · "How do you take it?"                                                  ✗
 
 Write every question so that "no, I don't do that" is an easy and complete
 answer that costs them nothing. Never imply a fuller practice would be better,
