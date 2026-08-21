@@ -1525,8 +1525,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     || currentSlide.type === "canticle_title"
     || currentSlide.type === "lesson_title";
 
+  // Hoisted so next() and the welcome slide's own Begin button read the SAME
+  // values — they were computed inside the render block, which is why the
+  // pager couldn't see them and silently ignored the chosen way.
+  const canChooseWay = !officesOnlyViewer && !cameFromPicker && !onComplete;
+  // Community Intercessions and Psalms are on-screen only, so their "How" row
+  // collapses to a single option and the method picker is moot.
+  const wayIsScreenOnly = wayToPray === "intercessions" || wayToPray === "psalms";
+
   function next() {
     if (atEnd) return;
+    // The welcome slide has TWO ways forward — its own "Begin" button and the
+    // deck's bottom "Next" pager — and only Begin used to honour the chosen
+    // way to pray. Owner: "even though I had venite set, it went to the digital
+    // slideshow when I hit next." Next now does exactly what Begin does, so the
+    // How row on that slide means the same thing whichever control you reach
+    // for. launchWay falls through to next() for on-screen anyway, so this is
+    // only a redirect for the ways that leave the deck (Venite, Listen, Watch,
+    // the physical book).
+    if (currentSlide.type === "office_intro" && canChooseWay) {
+      launchWay(wayToPray, wayIsScreenOnly ? "screen" : prayMethod);
+      return;
+    }
     // Tapping "Next" on the intercessions portal should mean "take me
     // into the slideshow now" — not "skip past it". Without this
     // branch the slideIdx change cancels the 4s auto-fire timeout
@@ -1803,13 +1823,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // The way + method dropdowns are hidden for offices-only / public / from-the-
   // picker viewers, who just get Begin.
   const renderWayChooser = () => {
-    const canChoose = !officesOnlyViewer && !cameFromPicker && !onComplete;
+    const canChoose = canChooseWay;
     const sideWord = eveningSide ? "Evening" : "Morning";
-    const isIntercessions = wayToPray === "intercessions";
-    const isPsalms = wayToPray === "psalms";
     // Intercessions AND Psalms are on-screen only (no Listen / Physical book /
     // Watch), so the "How" row collapses to a single On-screen option for both.
-    const screenOnly = isIntercessions || isPsalms;
+    const screenOnly = wayIsScreenOnly;
     const showWatch = officeSide === "morning" && isWeekday;
     // Venite covers Morning and Evening Prayer proper — not the short devotion,
     // and not Compline (no working deep link).
