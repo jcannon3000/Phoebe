@@ -2402,7 +2402,13 @@ export async function migrate() {
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER`);
     // Owner: "a setting in groups to turn on and off prayer list" — see
     // schema comment in groups.ts for the public-group hard-gate.
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_requests_enabled BOOLEAN NOT NULL DEFAULT true`);
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_requests_enabled BOOLEAN NOT NULL DEFAULT false`);
+    // Owner: "don't have list in community directly turned on inherently."
+    // The ADD COLUMN above is a no-op wherever the column already exists (it
+    // was originally created DEFAULT true), so flip the default explicitly.
+    // This only affects rows inserted from here on — every existing group
+    // keeps the value it already has, which is why there's no UPDATE.
+    await run(client, `ALTER TABLE groups ALTER COLUMN prayer_requests_enabled SET DEFAULT false`);
 
     // ── Beta Messages (beta-only) ────────────────────────────────────────
     // Unlimited 1:1 messaging between beta users (Letters-style UI, no

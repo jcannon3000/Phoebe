@@ -424,31 +424,24 @@ router.post("/groups", perUserRateLimit("groups_create", {
       res.status(403).json({ error: "Only builders can create groups" }); return;
     }
 
-    // Prayer Circle fields are optional; when `isPrayerCircle` is true we
-    // require a non-empty `intention`. We don't branch into a separate
-    // schema — keeps the create flow one endpoint, one shape.
+    // Owner: take the Prayer Circle / Contemplation Community options out of
+    // creation. A new community is just a community — no group-type choice to
+    // make up front. An optional first `intention` is still accepted (and is
+    // now what the community's main page leads with, for every group), it just
+    // no longer flips the group into a special mode.
     const schema = z.object({
       name: z.string().min(1).max(100),
       description: z.string().max(500).optional(),
       emoji: z.string().max(10).optional(),
-      isPrayerCircle: z.boolean().optional(),
       intention: z.string().max(500).optional(),
       circleDescription: z.string().max(2000).optional(),
-      // Group flavor. "contemplation" = shared contemplation goal + CAC Home.
-      // null = a standard, office-shaped community.
-      focus: z.enum(["contemplation"]).optional(),
-      contemplationGoalMinutes: z.number().int().min(1).max(180).optional(),
-    }).refine(
-      (d) => !d.isPrayerCircle || (d.intention && d.intention.trim().length > 0),
-      { message: "Prayer circles require an intention", path: ["intention"] },
-    );
+    });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
 
     const slug = await uniqueSlug(parsed.data.name);
 
-    const isCircle = parsed.data.isPrayerCircle === true;
-    const isContemplation = parsed.data.focus === "contemplation";
+    const hasIntention = !!parsed.data.intention && parsed.data.intention.trim().length > 0;
 
     // Atomic create: group row, admin member, and (for circles) the
     // initial intention all commit together. Without the transaction,
@@ -467,11 +460,8 @@ router.post("/groups", perUserRateLimit("groups_create", {
         // "Invite link not available" until an admin taps Rotate, because
         // the legacy flow only set per-member invite tokens.
         inviteToken: generateToken(),
-        isPrayerCircle: isCircle,
-        intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
-        circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
-        focus: isContemplation ? "contemplation" : null,
-        contemplationGoalMinutes: isContemplation ? (parsed.data.contemplationGoalMinutes ?? 20) : null,
+        intention: hasIntention ? parsed.data.intention!.trim() : null,
+        circleDescription: parsed.data.circleDescription?.trim() || null,
         createdByUserId: user.id,
       }).returning();
 
@@ -491,23 +481,13 @@ router.post("/groups", perUserRateLimit("groups_create", {
       // Subsequent additions flow through POST /groups/:slug/intentions.
       // The legacy groups.intention column is also written for migration
       // safety / older read paths.
-      if (isCircle && parsed.data.intention && parsed.data.intention.trim().length > 0) {
+      if (hasIntention) {
         await tx.insert(circleIntentionsTable).values({
           groupId: insertedGroup.id,
-          title: parsed.data.intention.trim(),
+          title: parsed.data.intention!.trim(),
           description: parsed.data.circleDescription?.trim() || null,
           createdByUserId: user.id,
           sortOrder: 0,
-        });
-      }
-
-      // Contemplation communities pin their daily reflection feed to CAC, so
-      // the discussion lands on the day's meditation from the very first day.
-      if (isContemplation) {
-        await tx.insert(groupReflectionSourcesTable).values({
-          groupId: insertedGroup.id,
-          source: "cac",
-          setByUserId: user.id,
         });
       }
 
@@ -614,9 +594,16 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     result.group.inviteToken = newToken;
   }
 
-  // Active (non-archived) intentions for circles. Sorted by sortOrder then
-  // creation time so admins can eventually drag-to-reorder without losing
-  // stable positioning for ties. Non-circles always return an empty array.
+  // Active (non-archived) intentions. Sorted by sortOrder then creation time
+  // so admins can eventually drag-to-reorder without losing stable positioning
+  // for ties.
+  //
+  // Owner: "I wanted them to be the focus of the group... on the main page of
+  // the group." Intentions used to be gated on `isPrayerCircle` — a group had
+  // to opt in via a checkbox before it could hold any. That opt-in is gone:
+  // what a community is praying for is now a plain capability every group has,
+  // so this loads for all of them. `isPrayerCircle` stays on the row (nothing
+  // is dropped) but no longer gates anything.
   let intentions: Array<{
     id: number;
     title: string;
@@ -624,7 +611,7 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     createdByUserId: number;
     createdAt: Date;
   }> = [];
-  if (result.group.isPrayerCircle) {
+  {
     try {
       const rows = await db.select().from(circleIntentionsTable)
         .where(and(
@@ -1293,16 +1280,14 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
       },
       { message: "Calendar URL must use http, https, or webcal" },
     ).optional().or(z.literal("")),
-    // Prayer-circle edits. `isPrayerCircle` is toggleable after creation,
-    // but turning it on without an intention is rejected; turning it off
-    // clears `intention` and `circleDescription` server-side so the detail
-    // page no longer renders them.
-    isPrayerCircle: z.boolean().optional(),
+    // Legacy single-intention fields. The Prayer Circle / Contemplation
+    // group-type toggles are gone (owner) — there is no mode to switch a
+    // group into any more, so `isPrayerCircle`, `focus` and
+    // `contemplationGoalMinutes` are no longer accepted here. Intentions
+    // themselves live in circle_intentions and are managed through the
+    // dedicated /groups/:slug/intentions routes.
     intention: z.string().max(500).optional().or(z.literal("")),
     circleDescription: z.string().max(2000).optional().or(z.literal("")),
-    // Contemplation template: null clears it back to a standard community.
-    focus: z.enum(["contemplation"]).nullable().optional(),
-    contemplationGoalMinutes: z.number().int().min(1).max(180).nullable().optional(),
     // Listed on /communities/browse for anyone to find and request to join.
     // Any group admin can flip this (not super-admin-only, unlike isPilotGroup).
     isPublic: z.boolean().optional(),
@@ -1337,96 +1322,26 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     updates.prayerRequestsEnabled = false;
   }
 
-  // Circle toggle logic. Compose the effective-after-update values so we
-  // can enforce "intention required when circle is on" regardless of which
-  // fields the client sent in this request. Either the legacy groups.intention
-  // column or at least one active circle_intentions row satisfies the check —
-  // the multi-intention redesign moved the source of truth into that table,
-  // so a circle with intentions there but a null legacy column is valid.
-  const nextIsCircle = parsed.data.isPrayerCircle ?? result.group.isPrayerCircle;
+  // Legacy single-intention passthrough. There is no circle mode to validate
+  // against any more, so an intention is simply saved when sent — never
+  // required, never cleared by a mode flip.
   const nextIntention = parsed.data.intention !== undefined
     ? (parsed.data.intention.trim() || null)
     : result.group.intention;
-  let hasActiveIntentionRow = false;
-  if (nextIsCircle) {
-    try {
-      const existing = await db.select({ id: circleIntentionsTable.id })
-        .from(circleIntentionsTable)
-        .where(and(
-          eq(circleIntentionsTable.groupId, result.group.id),
-          isNull(circleIntentionsTable.archivedAt),
-        ))
-        .limit(1);
-      hasActiveIntentionRow = existing.length > 0;
-    } catch {
-      hasActiveIntentionRow = false;
-    }
-  }
-  if (nextIsCircle && !hasActiveIntentionRow && (!nextIntention || nextIntention.length === 0)) {
-    res.status(400).json({ error: "Prayer circles require an intention" });
-    return;
-  }
-  if (parsed.data.isPrayerCircle !== undefined) updates.isPrayerCircle = parsed.data.isPrayerCircle;
   if (parsed.data.intention !== undefined) updates.intention = nextIntention;
   if (parsed.data.circleDescription !== undefined) {
     updates.circleDescription = parsed.data.circleDescription.trim() || null;
-  }
-  // Turning the circle off clears the circle-only fields so the detail
-  // page immediately reverts to a normal group view.
-  if (parsed.data.isPrayerCircle === false) {
-    updates.intention = null;
-    updates.circleDescription = null;
-  }
-
-  // Contemplation template toggle. focus = "contemplation" turns the
-  // community into a shared-contemplation template (CAC feed + shared
-  // minute goal) and guarantees a goal default; focus = null reverts to a
-  // standard, office-shaped community and clears the goal.
-  if (parsed.data.focus !== undefined) {
-    updates.focus = parsed.data.focus;
-    if (parsed.data.focus === "contemplation") {
-      updates.contemplationGoalMinutes =
-        parsed.data.contemplationGoalMinutes
-        ?? result.group.contemplationGoalMinutes
-        ?? 20;
-    } else {
-      updates.contemplationGoalMinutes = null;
-    }
-  } else if (parsed.data.contemplationGoalMinutes !== undefined) {
-    // Goal-only edit (focus unchanged).
-    updates.contemplationGoalMinutes = parsed.data.contemplationGoalMinutes;
   }
 
   if (Object.keys(updates).length > 0) {
     await db.update(groupsTable).set(updates).where(eq(groupsTable.id, result.group.id));
   }
 
-  // Enabling the contemplation template pins the community's shared
-  // reflection feed to the CAC daily meditation when one isn't set yet —
-  // mirrors what the create flow does so the home tab has a source to render.
-  if (parsed.data.focus === "contemplation") {
-    try {
-      const existingSource = await db.select({ id: groupReflectionSourcesTable.id })
-        .from(groupReflectionSourcesTable)
-        .where(eq(groupReflectionSourcesTable.groupId, result.group.id))
-        .limit(1);
-      if (existingSource.length === 0) {
-        await db.insert(groupReflectionSourcesTable).values({
-          groupId: result.group.id,
-          source: "cac",
-          setByUserId: user.id,
-        });
-      }
-    } catch (err) {
-      console.error("PATCH contemplation CAC source seed error:", err);
-    }
-  }
-
-  // If this PATCH turns the circle on (or was already on) and an `intention`
-  // was supplied, mirror it into `circle_intentions` when there isn't an
-  // active one yet. Keeps the legacy form usable for circle-first-creation
-  // without producing duplicate cards on every subsequent settings save.
-  if (nextIsCircle && parsed.data.intention !== undefined && nextIntention) {
+  // Mirror a supplied legacy `intention` into circle_intentions when there
+  // isn't an active one yet, so the community's main page has a card to lead
+  // with. Guarded on "no active rows" so repeat settings saves don't
+  // accumulate duplicates.
+  if (parsed.data.intention !== undefined && nextIntention) {
     try {
       const existing = await db.select({ id: circleIntentionsTable.id })
         .from(circleIntentionsTable)
@@ -2723,7 +2638,7 @@ router.get("/groups/me/circle-intentions", async (req, res): Promise<void> => {
       .from(groupMembersTable)
       .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
       .where(and(
-        eq(groupsTable.isPrayerCircle, true),
+        // Every group's intentions ride the slideshow now, not just circles'.
         eq(groupMembersTable.userId, user.id),
         sql`(${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
@@ -2810,7 +2725,8 @@ router.get("/groups/:slug/intentions", async (req, res): Promise<void> => {
 
     const result = await requireMember(req.params.slug, user.id);
     if (!result) { res.status(404).json({ error: "Group not found" }); return; }
-    if (!result.group.isPrayerCircle) { res.json({ intentions: [] }); return; }
+    // No circle gate — intentions are a plain capability of every group now
+    // (owner: intentions are the focus of the group's main page).
 
     const rows = await db.select().from(circleIntentionsTable)
       .where(and(
@@ -2841,9 +2757,8 @@ router.post("/groups/:slug/intentions", async (req, res): Promise<void> => {
 
   const result = await requireMember(req.params.slug, user.id);
   if (!result) { res.status(404).json({ error: "Group not found" }); return; }
-  if (!result.group.isPrayerCircle) {
-    res.status(400).json({ error: "This group is not a prayer circle" }); return;
-  }
+  // No circle gate — any group's admin can add an intention (owner: the
+  // opt-in checkbox is gone; intentions are what a community is praying for).
 
   const schema = z.object({
     title: z.string().min(1).max(500),

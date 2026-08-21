@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
-import { CommunityRuleCard } from "@/components/CommunityRuleCard";
 import { CommunitySeasonCard, CommunityPulseLine } from "@/components/CommunitySeasonCard";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -19,16 +18,6 @@ import { MomentCard, type Moment } from "@/pages/dashboard";
 
 const FONT = "'Space Grotesk', sans-serif";
 
-// "Get Involved" opportunity categories — worship roles, service ministries,
-// community groups, or anything else an admin publishes. Order here is the
-// display/grouping order on the member board.
-const OPP_CATEGORY_META: Record<string, { label: string; emoji: string }> = {
-  worship: { label: "Worship & liturgy", emoji: "🕊️" },
-  serve: { label: "Serve", emoji: "🤝" },
-  community: { label: "Community", emoji: "👥" },
-  other: { label: "Other ways", emoji: "✨" },
-};
-const OPP_CATEGORY_ORDER = ["worship", "serve", "community", "other"] as const;
 
 type Group = {
   id: number; name: string; description: string | null; slug: string; emoji: string | null; createdAt: string;
@@ -56,9 +45,6 @@ type Member = {
 type PrayerRequest = {
   id: number; body: string; ownerName: string | null; ownerAvatarUrl: string | null; wordCount: number;
   isOwnRequest: boolean; isAnonymous: boolean; createdAt: string;
-};
-type Practice = {
-  id: number; name: string; templateType: string | null; intention: string; momentToken: string;
 };
 type Gathering = {
   id: number; name: string; description: string | null; template: string | null;
@@ -851,25 +837,6 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
   );
 }
 
-// Expandable "N interested" roster under an opportunity, admin-only. Loads
-// lazily — only mounted while `viewingInterests` is this opportunity's id.
-function OpportunityInterestList({ slug, opportunityId }: { slug: string; opportunityId: number }) {
-  const { data } = useQuery<{ interests: Array<{ name: string | null; email: string | null; note: string | null; at: string }> }>({
-    queryKey: ["/api/groups", slug, "admin", "opportunities", opportunityId, "interests"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/admin/opportunities/${opportunityId}/interests`),
-  });
-  const rows = data?.interests ?? [];
-  return (
-    <div className="mt-2 flex flex-col gap-1">
-      {rows.map((r, i) => (
-        <p key={i} className="text-xs" style={{ color: "rgba(200,212,192,0.85)" }}>
-          {r.name || "Someone"}{r.email ? ` · ${r.email}` : ""}{r.note ? ` — "${r.note}"` : ""}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 export default function CommunityDetailPage() {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
@@ -883,13 +850,15 @@ export default function CommunityDetailPage() {
   const search = useSearch();
   const initialTab = (() => {
     const tabParam = new URLSearchParams(search).get("tab");
-    // General groups land on a simple "hub" of tiles (Members · Events ·
-    // Practices) rather than a home-screen clone. Only the surviving sections
-    // are deep-linkable; any other ?tab= value falls back to the hub.
-    return (["hub", "practices", "gatherings", "members", "feed", "involved"] as const)
+    // General groups land on a simple "hub" of tiles (Members · Services)
+    // rather than a home-screen clone. Only the surviving sections are
+    // deep-linkable; any other ?tab= value falls back to the hub — which now
+    // includes the retired "practices" and "involved" tabs (owner), so old
+    // links to those land on the hub instead of a blank page.
+    return (["hub", "gatherings", "members", "feed"] as const)
       .find((k) => k === tabParam) ?? "hub";
   })();
-  const [activeTab, setActiveTab] = useState<"hub" | "prayer" | "practices" | "gatherings" | "members" | "feed" | "involved">(initialTab);
+  const [activeTab, setActiveTab] = useState<"hub" | "prayer" | "gatherings" | "members" | "feed">(initialTab);
 
   // Strip the legacy `?welcome=1` query param if it's still in the URL
   // (older links). The dedicated post-signup community welcome overlay
@@ -928,11 +897,6 @@ export default function CommunityDetailPage() {
     enabled: !!user && !!slug,
   });
 
-  const { data: practicesData } = useQuery<{ practices: Practice[] }>({
-    queryKey: ["/api/groups", slug, "practices"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/practices`),
-    enabled: !!user && !!slug && activeTab === "practices",
-  });
 
   // ── Prayer Feed (beta) — the "standing intercessions" entry point ──────
   // A group's prayer feed is what holds its non-rotating intercessions
@@ -959,60 +923,6 @@ export default function CommunityDetailPage() {
     },
   });
 
-  // ── "Get Involved" opportunities — rebuilt from the deleted Phoebe Parish
-  // system, scoped to this group. Open to every joined member (follower or
-  // above); the admin composer/roster only render for admins.
-  const { data: oppsData } = useQuery<{
-    isAdmin: boolean;
-    opportunities: Array<{
-      id: number; title: string; description: string | null; category: string;
-      scheduleNote: string | null; contact: string | null;
-      interestCount: number; viewerInterested: boolean;
-    }>;
-  }>({
-    queryKey: ["/api/groups", slug, "opportunities"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/opportunities`),
-    enabled: !!user && !!slug && activeTab === "involved",
-  });
-  const toggleInterestMutation = useMutation({
-    mutationFn: ({ id, on }: { id: number; on: boolean }) =>
-      apiRequest(on ? "POST" : "DELETE", `/api/groups/${slug}/opportunities/${id}/interest`, on ? {} : undefined),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "opportunities"] }),
-  });
-  const [showOppForm, setShowOppForm] = useState(false);
-  const [editOppId, setEditOppId] = useState<number | null>(null);
-  const [oppTitle, setOppTitle] = useState("");
-  const [oppCategory, setOppCategory] = useState("worship");
-  const [oppScheduleNote, setOppScheduleNote] = useState("");
-  const [oppDescription, setOppDescription] = useState("");
-  const [oppContact, setOppContact] = useState("");
-  const [viewingInterests, setViewingInterests] = useState<number | null>(null);
-  const resetOppForm = () => {
-    setOppTitle(""); setOppCategory("worship"); setOppScheduleNote("");
-    setOppDescription(""); setOppContact(""); setEditOppId(null); setShowOppForm(false);
-  };
-  const saveOppMutation = useMutation({
-    mutationFn: () => {
-      const body = {
-        title: oppTitle.trim(),
-        category: oppCategory,
-        scheduleNote: oppScheduleNote.trim() || undefined,
-        description: oppDescription.trim() || undefined,
-        contact: oppContact.trim() || undefined,
-      };
-      return editOppId
-        ? apiRequest("PUT", `/api/groups/${slug}/admin/opportunities/${editOppId}`, body)
-        : apiRequest("POST", `/api/groups/${slug}/admin/opportunities`, body);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "opportunities"] });
-      resetOppForm();
-    },
-  });
-  const archiveOppMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/groups/${slug}/admin/opportunities/${id}/archive`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "opportunities"] }),
-  });
 
   // ── Admin "new arrival" popup ──────────────────────────────────────────
   // Fetches any new-member / new-prayer-request events this admin hasn't
@@ -1213,10 +1123,77 @@ export default function CommunityDetailPage() {
 
         {/* Group chat removed from communities per request. */}
 
-        {/* Our RULE OF LIFE — the daily rhythm this community keeps together,
-            adoptable in one tap (praying WITH each other). Self-gating: shows
-            nothing until the leaders set a rule (admins get the doorway). */}
-        <CommunityRuleCard slug={slug} />
+        {/* ── What we're praying for ────────────────────────────────────
+            Owner: "I wanted them to be the focus of the group... on the main
+            page of the group." This is the FIRST thing under the header now —
+            it used to sit below the rule-of-life card and the beta pulse/season
+            cards, and only rendered for groups that had ticked the Prayer
+            Circle box. Both of those are gone: the opt-in no longer exists, so
+            any group with intentions leads with them.
+
+            Sizing is a deliberate middle: bigger than the old compact stack
+            (which was explicitly shrunk so intentions would NOT read as
+            headlines) but still capped, because a community with six
+            intentions shouldn't push its own members and services off screen.
+            The serif italic voice is kept — these are prayers, not UI labels.
+
+            Admins with an empty list get a doorway into settings; members see
+            nothing rather than an empty shell. */}
+        {(groupData.intentions?.length ?? 0) > 0 ? (
+          <div className="mb-5">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
+              style={{ color: "rgba(200,212,192,0.55)" }}
+            >
+              {t("community_detail.group_intentions")}
+            </p>
+            <div className="flex flex-col gap-2">
+              {groupData.intentions!.map((intn) => (
+                <div
+                  key={intn.id}
+                  className="rounded-2xl px-4 py-3.5"
+                  style={{
+                    background: "rgba(46,107,64,0.14)",
+                    border: "1px solid rgba(46,107,64,0.34)",
+                  }}
+                >
+                  <p
+                    className="italic leading-snug"
+                    style={{
+                      color: "#F0EDE6",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontSize: "clamp(17px, 4.6vw, 20px)",
+                    }}
+                  >
+                    {intn.title}
+                  </p>
+                  {intn.description && (
+                    <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: "rgba(200,212,192,0.8)" }}>
+                      {intn.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : isAdmin ? (
+          <button
+            onClick={() => setLocation(`/communities/${slug}/settings`)}
+            className="w-full mb-5 rounded-2xl px-4 py-3.5 text-left"
+            style={{
+              background: "rgba(46,107,64,0.08)",
+              border: "1px dashed rgba(46,107,64,0.34)",
+              cursor: "pointer",
+            }}
+          >
+            <p className="text-sm" style={{ color: "#F0EDE6" }}>
+              {t("community_detail.add_first_intention", { defaultValue: "Add what this community is praying for" })}
+            </p>
+            <p className="text-xs mt-1" style={{ color: "rgba(200,212,192,0.7)" }}>
+              {t("community_detail.add_first_intention_sub", { defaultValue: "It leads this page and joins everyone's prayers." })}
+            </p>
+          </button>
+        ) : null}
 
         {/* BETA — the leader's aggregate weekly pulse (never names, floored
             under 4 members) and the community SEASON (the rule kept together
@@ -1235,55 +1212,6 @@ export default function CommunityDetailPage() {
         {/* Beta-only — Sunday-service reflection entry. Mirrors the
             daily card pattern. Also hidden for admins (see above). */}
 
-        {/* ── Prayer Circle intentions ──────────────────────────────────
-            For circle groups, surface every active intention as its own card
-            above the regular community content. Each card leads with the
-            prayer itself (serif voice for sacred phrases) and optionally
-            includes scripture / situation / person context below. A single
-            closing note marks the whole stack as circle-beta. Legacy circles
-            whose intentions still live on groups.intention are rendered as
-            one synthetic card (id=0 from the server fallback). */}
-        {group.isPrayerCircle && (groupData.intentions?.length ?? 0) > 0 && (
-          <div className="mb-5">
-            <p
-              className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
-              style={{ color: "rgba(200,212,192,0.55)" }}
-            >
-              {t("community_detail.group_intentions")}
-            </p>
-            {/* Compact intention cards — smaller than the earlier
-                "We pray" serif block. Keeps the italic voice for the
-                prayer text but shrinks padding + font so multiple
-                intentions read as a stack, not as headline slabs. */}
-            <div className="flex flex-col gap-1.5">
-              {groupData.intentions!.map((intn) => (
-                <div
-                  key={intn.id}
-                  className="rounded-xl px-3 py-2"
-                  style={{
-                    background: "rgba(46,107,64,0.08)",
-                    border: "1px solid rgba(46,107,64,0.22)",
-                  }}
-                >
-                  <p
-                    className="text-sm italic leading-snug"
-                    style={{
-                      color: "#F0EDE6",
-                      fontFamily: "Georgia, 'Times New Roman', serif",
-                    }}
-                  >
-                    {intn.title}
-                  </p>
-                  {intn.description && (
-                    <p className="text-xs leading-relaxed mt-1" style={{ color: "rgba(200,212,192,0.75)" }}>
-                      {intn.description}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* "New arrival" popup — appears over the page for community admins
             when someone has joined or posted a prayer request since the last
@@ -1583,8 +1511,6 @@ export default function CommunityDetailPage() {
                 // get the management controls inside it (see the section below).
                 { emoji: "👥", label: t("community_detail.tab_members"), go: () => setActiveTab("members") },
                 { emoji: "⛪", label: t("community_detail.tab_services", { defaultValue: "Services" }), go: () => setActiveTab("gatherings") },
-                { emoji: "🕯️", label: t("community_detail.tab_practices", { defaultValue: "Practices" }), go: () => setActiveTab("practices") },
-                { emoji: "🤝", label: t("community_detail.tab_involved", { defaultValue: "Get Involved" }), go: () => setActiveTab("involved") },
               ]).map((tile, i) => (
                 <button
                   key={i}
@@ -1636,39 +1562,6 @@ export default function CommunityDetailPage() {
           >
             ← {group.name}
           </button>
-        )}
-
-
-        {/* ─── Practices ─── */}
-        {activeTab === "practices" && (
-          <div>
-            {isAdmin && (
-              <Link href="/moment/new" className="block mb-4">
-                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                  <Plus size={16} /> {t("community_detail.create_practice")}
-                </div>
-              </Link>
-            )}
-            {(practicesData?.practices ?? []).length === 0 ? (
-              <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                {t("community_detail.no_practices")}{isAdmin ? ` ${t("community_detail.create_one_above")}` : ""}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {practicesData!.practices.map(p => (
-                  <Link key={p.id} href={`/moments/${p.id}`} className="block">
-                    <div className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                      <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
-                      <div className="flex-1 px-4 py-3">
-                        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{p.name}</p>
-                        <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{p.intention}</p>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
         )}
 
         {/* ─── Gatherings ─── */}
@@ -1740,191 +1633,6 @@ export default function CommunityDetailPage() {
             )}
           </div>
         )}
-
-        {/* ─── Get Involved — an admin publishes opportunities (worship
-            roles, service ministries, community groups, anything); every
-            joined member sees the board and can tap "I'm interested",
-            which notifies the admins. Rebuilt from the deleted Phoebe
-            Parish system, scoped to this group. ─── */}
-        {activeTab === "involved" && (() => {
-          const opps = oppsData?.opportunities ?? [];
-          return (
-            <div>
-              {isAdmin && (
-                <div className="mb-5">
-                  <div className="flex flex-col gap-2 mb-2">
-                    {opps.map(o => (
-                      <div key={o.id} className="rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{o.title}</p>
-                            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                              {OPP_CATEGORY_META[o.category]?.label ?? o.category}{o.scheduleNote ? ` · ${o.scheduleNote}` : ""}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditOppId(o.id); setOppTitle(o.title); setOppCategory(o.category);
-                                setOppScheduleNote(o.scheduleNote ?? ""); setOppDescription(o.description ?? "");
-                                setOppContact(o.contact ?? ""); setShowOppForm(true);
-                              }}
-                              className="text-xs font-semibold"
-                              style={{ color: "#8FAF96" }}
-                            >
-                              {t("community_detail.opp_edit", { defaultValue: "Edit" })}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { if (window.confirm(t("community_detail.opp_remove_confirm", { defaultValue: "Remove this opportunity?" }))) archiveOppMutation.mutate(o.id); }}
-                              className="text-xs font-semibold"
-                              style={{ color: "rgba(196,122,101,0.9)" }}
-                            >
-                              {t("community_detail.opp_remove", { defaultValue: "Remove" })}
-                            </button>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setViewingInterests(viewingInterests === o.id ? null : o.id)}
-                          className="text-xs mt-2"
-                          style={{ color: "#8FAF96" }}
-                        >
-                          {t("community_detail.opp_interested_count", { count: o.interestCount, defaultValue: `${o.interestCount} interested` })}{o.interestCount > 0 ? (viewingInterests === o.id ? " ▲" : " ▼") : ""}
-                        </button>
-                        {viewingInterests === o.id && o.interestCount > 0 && (
-                          <OpportunityInterestList slug={slug!} opportunityId={o.id} />
-                        )}
-                      </div>
-                    ))}
-                    {opps.length === 0 && (
-                      <p className="text-sm text-center py-4" style={{ color: "rgba(143,175,150,0.5)" }}>
-                        {t("community_detail.opp_none_admin", { defaultValue: "No opportunities yet — add one so this community can get involved." })}
-                      </p>
-                    )}
-                  </div>
-
-                  {showOppForm ? (
-                    <div className="rounded-xl px-4 py-4" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.3)" }}>
-                      <input
-                        type="text" value={oppTitle} onChange={e => setOppTitle(e.target.value)}
-                        placeholder={t("community_detail.opp_title_placeholder", { defaultValue: "Title (e.g. Lector, Food pantry)" })}
-                        className="w-full px-3.5 py-2.5 rounded-lg text-sm mb-2 focus:outline-none"
-                        style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                      <select
-                        value={oppCategory} onChange={e => setOppCategory(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-lg text-sm mb-2 focus:outline-none"
-                        style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6", colorScheme: "dark" }}
-                      >
-                        {OPP_CATEGORY_ORDER.map(c => (
-                          <option key={c} value={c}>{OPP_CATEGORY_META[c].emoji} {OPP_CATEGORY_META[c].label}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text" value={oppScheduleNote} onChange={e => setOppScheduleNote(e.target.value)}
-                        placeholder={t("community_detail.opp_schedule_placeholder", { defaultValue: "When (optional) — e.g. Sundays" })}
-                        className="w-full px-3.5 py-2.5 rounded-lg text-sm mb-2 focus:outline-none"
-                        style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                      <textarea
-                        value={oppDescription} onChange={e => setOppDescription(e.target.value)}
-                        placeholder={t("community_detail.opp_description_placeholder", { defaultValue: "Description (optional)" })}
-                        rows={3}
-                        className="w-full px-3.5 py-2.5 rounded-lg text-sm mb-2 resize-none focus:outline-none"
-                        style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                      <input
-                        type="text" value={oppContact} onChange={e => setOppContact(e.target.value)}
-                        placeholder={t("community_detail.opp_contact_placeholder", { defaultValue: "Contact (optional) — e.g. Talk to Fr. James" })}
-                        className="w-full px-3.5 py-2.5 rounded-lg text-sm mb-3 focus:outline-none"
-                        style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveOppMutation.mutate()}
-                          disabled={!oppTitle.trim() || saveOppMutation.isPending}
-                          className="flex-1 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40"
-                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                        >
-                          {editOppId ? t("community_detail.opp_save", { defaultValue: "Save" }) : t("community_detail.opp_add", { defaultValue: "Add" })}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={resetOppForm}
-                          className="px-4 py-2.5 rounded-lg text-sm font-semibold"
-                          style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
-                        >
-                          {t("community_detail.opp_cancel", { defaultValue: "Cancel" })}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowOppForm(true)}
-                      className="w-full py-2.5 rounded-lg text-sm font-semibold"
-                      style={{ background: "rgba(46,107,64,0.1)", color: "#8FAF96", border: "1px dashed rgba(46,107,64,0.35)" }}
-                    >
-                      + {t("community_detail.opp_add_one", { defaultValue: "Add an opportunity" })}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Member-facing board, grouped by category. */}
-              {opps.length === 0 ? (
-                !isAdmin && (
-                  <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    {t("community_detail.opp_none_member", { defaultValue: "No ways to get involved have been posted yet." })}
-                  </p>
-                )
-              ) : (
-                OPP_CATEGORY_ORDER.map(cat => {
-                  const items = opps.filter(o => o.category === cat);
-                  if (items.length === 0) return null;
-                  const meta = OPP_CATEGORY_META[cat];
-                  return (
-                    <div key={cat} className="mb-4">
-                      <p className="text-xs font-semibold mb-2" style={{ color: "#F0EDE6" }}>
-                        {meta.emoji} {meta.label}
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        {items.map(o => (
-                          <div key={o.id} className="rounded-xl px-4 py-3.5" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                            <div className="flex items-baseline justify-between gap-2">
-                              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{o.title}</p>
-                              {o.scheduleNote && <span className="text-[11px] whitespace-nowrap" style={{ color: "#8FAF96" }}>{o.scheduleNote}</span>}
-                            </div>
-                            {o.description && <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "rgba(200,212,192,0.85)" }}>{o.description}</p>}
-                            {o.contact && <p className="text-xs mt-1.5" style={{ color: "#8FAF96" }}>{o.contact}</p>}
-                            <button
-                              type="button"
-                              onClick={() => toggleInterestMutation.mutate({ id: o.id, on: !o.viewerInterested })}
-                              disabled={toggleInterestMutation.isPending}
-                              className="text-xs font-semibold rounded-full px-4 py-1.5 mt-2.5"
-                              style={{
-                                background: o.viewerInterested ? "rgba(46,107,64,0.85)" : "transparent",
-                                color: o.viewerInterested ? "#F0EDE6" : "#8FAF96",
-                                border: `1px solid ${o.viewerInterested ? "rgba(126,210,140,0.5)" : "rgba(143,175,150,0.35)"}`,
-                              }}
-                            >
-                              {o.viewerInterested
-                                ? `✓ ${t("community_detail.opp_interested_yes", { defaultValue: "You're interested" })}`
-                                : t("community_detail.opp_interested_no", { defaultValue: "I'm interested" })}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          );
-        })()}
 
         {/* ─── Members: a read-only Member roster for everyone, plus the
             admin-only management view (invite/promote/demote/remove) for

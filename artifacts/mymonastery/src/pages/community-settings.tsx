@@ -15,17 +15,8 @@ const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","�
 type Group = {
   id: number; name: string; description: string | null; slug: string;
   emoji: string | null; calendarUrl: string | null;
-  // ── Prayer Circle (beta) — admins can flip an ordinary community into a
-  // prayer circle from this page. Turning it on requires an `intention`;
-  // turning it off clears intention + circleDescription server-side.
-  isPrayerCircle?: boolean;
   intention?: string | null;
   circleDescription?: string | null;
-  // ── Contemplation community (beta) — admins can flip a community into a
-  // contemplation template (shared minute goal + CAC feed) or back. focus
-  // is null on standard communities, "contemplation" on the template.
-  focus?: string | null;
-  contemplationGoalMinutes?: number | null;
   // ── Pilot group (public no-login version) — designated by APP SUPER ADMINS
   // only; members of a pilot group are the only users who keep the full app
   // once the guest flag flips.
@@ -62,11 +53,6 @@ export default function CommunitySettingsPage() {
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("🏘️");
   const [calendarUrl, setCalendarUrl] = useState("");
-  // ── Prayer Circle (beta) admin controls ─────────────────────────────
-  const [isPrayerCircle, setIsPrayerCircle] = useState(false);
-  // ── Contemplation community (beta) admin controls ────────────────────
-  const [isContemplation, setIsContemplation] = useState(false);
-  const [contemplationGoalMinutes, setContemplationGoalMinutes] = useState(20);
   // ── Public directory listing ──────────────────────────────────────────
   const [isPublic, setIsPublic] = useState(false);
   const [city, setCity] = useState("");
@@ -74,7 +60,6 @@ export default function CommunitySettingsPage() {
   // ── Prayer list (owner: "a setting in groups to turn on and off prayer
   // list") ───────────────────────────────────────────────────────────────
   const [prayerRequestsEnabled, setPrayerRequestsEnabled] = useState(true);
-  const GOAL_PRESETS = [10, 15, 20, 30];
   const [saved, setSaved] = useState(false);
 
   // Add-intention dialog state. Shape mirrors the intercession flow —
@@ -156,9 +141,6 @@ export default function CommunitySettingsPage() {
       setDescription(group.description ?? "");
       setEmoji(group.emoji ?? "🏘️");
       setCalendarUrl(group.calendarUrl ?? "");
-      setIsPrayerCircle(!!group.isPrayerCircle);
-      setIsContemplation(group.focus === "contemplation");
-      if (group.contemplationGoalMinutes) setContemplationGoalMinutes(group.contemplationGoalMinutes);
       setIsPublic(!!group.isPublic);
       setCity(group.city ?? "");
       setState(group.state ?? "");
@@ -172,17 +154,11 @@ export default function CommunitySettingsPage() {
       description: description || undefined,
       emoji,
       calendarUrl: calendarUrl || "",
-      isPrayerCircle,
-      // Intentions now live in their own table; this PATCH only updates the
-      // group metadata. The server seeds a first intention from this payload
-      // only when transitioning to a circle with no active intentions yet —
-      // our normal save skips the `intention` field entirely so we don't
-      // create duplicates on every settings save.
-      // Contemplation template: send "contemplation" to enable, null to
-      // revert. The server pins the CAC reflection source on enable and
-      // clears the goal on disable.
-      focus: isContemplation ? "contemplation" : null,
-      contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : null,
+      // Intentions live in their own table and are managed by the dedicated
+      // add/archive mutations — this PATCH only updates group metadata, and
+      // deliberately omits `intention` so a routine settings save can't
+      // duplicate a card. The group-type fields (isPrayerCircle / focus /
+      // contemplationGoalMinutes) are gone: there is no mode to switch.
       isPublic,
       city: city || "",
       state: state || "",
@@ -417,40 +393,11 @@ export default function CommunitySettingsPage() {
             /communities/:slug/sunday-reflection and stays open the whole
             week — members edit until the next Sunday rolls over. */}
 
-        {/* ── Prayer Circle (beta) ──────────────────────────────────────────
-            Admins can turn any community into a prayer circle here, or toggle
-            an existing circle back to a normal community. When on, the
-            intention is required and both intention + description can be
-            edited; when off, the server nulls both on save so the detail page
-            reverts to its ordinary form. */}
-        <div
-          className="rounded-xl px-4 py-3.5 mb-4"
-          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
-        >
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isPrayerCircle}
-              onChange={e => {
-                setIsPrayerCircle(e.target.checked);
-                if (e.target.checked) setIsContemplation(false);
-              }}
-              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
-              style={{ accentColor: "#2D5E3F" }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                {t("community_settings.prayer_circle")}
-              </p>
-              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                {t("community_settings.prayer_circle_desc")}
-              </p>
-            </div>
-          </label>
-        </div>
-
-        {isPrayerCircle && (
-          <>
+        {/* ── What we're praying for ────────────────────────────────────────
+            Owner: the Prayer Circle opt-in is gone. Intentions aren't a mode a
+            community switches into any more — every community has them, and
+            they lead its main page, so this manager is always shown rather
+            than hidden behind a checkbox. */}
             {/* Intentions — rendered as a stacked list of cards. Each card is
                 one intention; admins can archive any, the author can archive
                 their own. The "Add intention" button opens an intercession-
@@ -533,73 +480,6 @@ export default function CommunitySettingsPage() {
                 <span>{t("community_settings.add_intention")}</span>
               </button>
             </div>
-
-            <p className="text-[11px] italic mb-6" style={{ color: "rgba(143,175,150,0.65)" }}>
-              {t("community_settings.prayer_circle_beta_note")}
-            </p>
-          </>
-        )}
-
-        {/* ── Contemplation community (beta) ─────────────────────────────────
-            A template that swaps the daily offices for a shared contemplation
-            goal + the CAC meditation the community reflects on together.
-            Enabling it pins the CAC reflection source server-side; disabling
-            reverts to a standard community and clears the goal. Mutually
-            exclusive with prayer circle in the UI. */}
-        <div
-          className="rounded-xl px-4 py-3.5 mb-4"
-          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
-        >
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isContemplation}
-              onChange={e => {
-                setIsContemplation(e.target.checked);
-                if (e.target.checked) setIsPrayerCircle(false);
-              }}
-              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
-              style={{ accentColor: "#2D5E3F" }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                {t("community_settings.contemplation")}
-              </p>
-              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                {t("community_settings.contemplation_desc")}
-              </p>
-            </div>
-          </label>
-
-          {isContemplation && (
-            <div className="mt-3.5 pl-7">
-              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {t("community_settings.shared_daily_goal")}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {GOAL_PRESETS.map(min => (
-                  <button
-                    key={min}
-                    type="button"
-                    onClick={() => setContemplationGoalMinutes(min)}
-                    className="px-3.5 py-1.5 rounded-full text-sm transition-all"
-                    style={{
-                      background: contemplationGoalMinutes === min ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                      border: `1px solid ${contemplationGoalMinutes === min ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.15)"}`,
-                      color: contemplationGoalMinutes === min ? "#F0EDE6" : "#8FAF96",
-                      fontFamily: FONT,
-                    }}
-                  >
-                    {t("community_settings.minutes", { count: min })}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] italic mt-2.5" style={{ color: "rgba(143,175,150,0.65)" }}>
-                {t("community_settings.contemplation_beta_note")}
-              </p>
-            </div>
-          )}
-        </div>
 
         {/* ── Public directory listing ─────────────────────────────────────
             When on, this community shows up on /communities/browse for any
@@ -853,14 +733,6 @@ export default function CommunitySettingsPage() {
           onClick={() => saveMutation.mutate()}
           disabled={
             !name.trim() ||
-            // A circle with zero intentions is a contradiction — block save
-            // until at least one intention exists (either already saved on
-            // the group, or added this session). Turning a non-circle INTO a
-            // circle with no intentions yet is still blocked by the server's
-            // own "prayer circles require an intention" guard via the legacy
-            // `intention` column check; for beta we keep this client guard
-            // advisory-only.
-            (isPrayerCircle && intentions.length === 0 && !group?.intention) ||
             saveMutation.isPending
           }
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"

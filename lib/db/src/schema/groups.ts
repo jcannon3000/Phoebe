@@ -85,14 +85,18 @@ export const groupsTable = pgTable("groups", {
   // focus = "contemplation".
   contemplationGoalMinutes: integer("contemplation_goal_minutes"),
   // Owner: "make sure that there is a setting in groups to turn on and off
-  // prayer list." Admin-toggleable; default true. Also HARD-gated off for
+  // prayer list" + "don't have list in community directly turned on
+  // inherently." Admin-toggleable; default FALSE — a new community doesn't
+  // carry a shared prayer list until an admin opts in from settings. Existing
+  // groups keep whatever they already have; only new rows get the new
+  // default. Also HARD-gated off for
   // any public (browseable) group regardless of this flag — owner: "no
   // publicly listed group can have shared prayer requests" — enforced at
   // the PATCH /groups/:slug route (can't be turned on while isPublic) and
   // again at prayer-request creation (a public group is never a valid
   // scoping target even if this flag is stale-true from before the group
   // went public).
-  prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(true),
+  prayerRequestsEnabled: boolean("prayer_requests_enabled").notNull().default(false),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────
