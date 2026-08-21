@@ -440,7 +440,7 @@ export default function WayOfLoveRuleFlow({
   const [entryChoiceMade, setEntryChoiceMade] = useState(false);
   // Defaults to "ask" (owner) — the interview is the intended path for a super
   // admin opening this; manual is the opt-out.
-  const [entryChoice, setEntryChoice] = useState<"ask" | "manual">("ask");
+  const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "revert">("ask");
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
   // owns the same phoebe:hide-turn-learn-pray key.)
@@ -837,6 +837,31 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
+
+  /**
+   * Save the routine they arrived with, once per visit to the customizer.
+   *
+   * Owner: "we have a backlog that saves routines. Every time they get the
+   * customizer." Taken on OPEN, before anything is edited, so what's stored is
+   * the rhythm they actually lived with rather than a half-finished edit.
+   *
+   * Server-side capture with no body (see routes/routine-snapshots.ts): it
+   * reads the routine off the account, so the snapshot can't drift from what
+   * was really in force. Deduped there too, so opening and backing out doesn't
+   * fill the backlog with identical entries.
+   *
+   * Deliberately fire-and-forget: a backlog is a safety net, and a failure to
+   * write one must never stop someone editing their rule of life. Skipped for
+   * guests (no account to read) and for prescribe mode (the admin is designing
+   * for someone else — snapshotting their own routine there would be noise).
+   */
+  useEffect(() => {
+    if (guest || prescribe || pilot) return;
+    apiRequest("POST", "/api/me/routine-snapshots", { source: "customizer" })
+      .catch(() => { /* non-fatal by design */ });
+    // Once per mount — the point is the state on arrival, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null; notificationStyle?: "gentle" | "nudge" }>({
     queryKey: ["/api/me/office-prefs"],
@@ -1546,9 +1571,21 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.entry_manual_sub", { defaultValue: "Go through the slides and choose each practice." }),
             () => setEntryChoice("manual"),
           )}
+          {/* Owner: "a third option where it says revert to past routine, and
+              we have a backlog that saves routines." Changing a rule of life
+              shouldn't be a one-way door — someone who tried a fuller rhythm
+              and found it didn't fit needs the old one back, not a from-scratch
+              rebuild from memory of what they used to pray. */}
+          {choiceRow(
+            entryChoice === "revert",
+            `↩️ ${t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" })}`,
+            t("wol_rule.entry_revert_sub", { defaultValue: "Restore a rhythm you kept before." }),
+            () => setEntryChoice("revert"),
+          )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
           if (entryChoice === "ask") { setLocation("/routine-interview"); return; }
+          if (entryChoice === "revert") { setLocation("/routine-history"); return; }
           setEntryChoiceMade(true);
         })}
       </>,

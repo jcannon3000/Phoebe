@@ -1773,6 +1773,24 @@ export async function migrate() {
     // so existing rows behave as before; the contemplation summary
     // toggle is the only surface that flips this today.
     await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE`);
+
+    // Routine backlog — the past routines a person can revert to. Snapshots
+    // are taken BEFORE a routine changes (opening the customizer, accepting an
+    // AI-built one, restoring an older one), so each row is a rhythm they
+    // actually lived with. `spec` is a whole PrescribedRoutineSpec, the shape
+    // prescribed routines and the interview already use, so restoring is just
+    // applyRoutineSpecToUser with an older spec.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS routine_snapshots (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        spec JSONB NOT NULL,
+        source TEXT NOT NULL DEFAULT 'customizer',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    // The only read pattern: this user's snapshots, newest first.
+    await run(client, `CREATE INDEX IF NOT EXISTS routine_snapshots_user_created_idx ON routine_snapshots (user_id, created_at)`);
     // source: a display tag for WHERE a contemplation sit came from, distinct
     // from `surface` (which stays "contemplation" so the goal/stats/streak
     // rollups keep counting it). Today only "cobreathe" is set — so the

@@ -47,6 +47,7 @@ export * from "./device_tokens";
 export * from "./web_push_subscriptions";
 export * from "./content_reports";
 export * from "./prayer_sessions";
+export * from "./routine_snapshots";
 export * from "./breath_sessions";
 export * from "./listening_entries";
 export * from "./lectio_log_entries";

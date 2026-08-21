@@ -142,3 +142,64 @@ export async function applyRoutineSpecToUser(userId: number, spec: PrescribedRou
   };
   await db.update(usersTable).set(update).where(eq(usersTable.id, userId));
 }
+
+/**
+ * Read a user's CURRENT routine back out as a spec — the exact inverse of
+ * applyRoutineSpecToUser above.
+ *
+ * Kept next to it on purpose: the two have to agree field-for-field, and the
+ * day someone adds a column to one and not the other, snapshots silently start
+ * losing part of the rhythm they claim to preserve. If you edit the update
+ * above, edit this.
+ *
+ * Returns null for a user with no usable routine (no layout) rather than
+ * storing an empty snapshot that would wipe a rhythm if it were ever restored.
+ */
+export async function captureRoutineSpec(userId: number): Promise<PrescribedRoutineSpec | null> {
+  const [u] = await db
+    .select({
+      morning: usersTable.parishOfficeMorningPref,
+      evening: usersTable.parishOfficeEveningPref,
+      morningTime: usersTable.parishOfficeMorningTime,
+      eveningTime: usersTable.parishOfficeEveningTime,
+      defaultPrayerLevel: usersTable.defaultPrayerLevel,
+      contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
+      contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
+      homeLayout: usersTable.homeLayout,
+      ruleConfig: usersTable.ruleConfig,
+      silenceLadder: usersTable.silenceLadder,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (!u) return null;
+
+  const hl = (u.homeLayout as { order?: unknown; hidden?: unknown; v?: unknown } | null) ?? null;
+  const order = Array.isArray(hl?.order) ? (hl!.order as unknown[]).filter((k): k is string => typeof k === "string") : [];
+  // No layout means nothing worth restoring — a spec with an empty order fails
+  // sanitizeSpec anyway, so refuse here rather than store a row that can only
+  // disappoint later.
+  if (order.length === 0) return null;
+
+  const raw = {
+    v: 1,
+    officePrefs: {
+      defaultPrayerLevel: u.defaultPrayerLevel ?? "ask",
+      contemplationGoalMinutes: u.contemplationGoalMinutes ?? 0,
+      contemplationReminderEnabled: u.contemplationReminderEnabled === true,
+      morning: u.morning ?? "none",
+      evening: u.evening ?? "none",
+      morningTime: u.morningTime ?? null,
+      eveningTime: u.eveningTime ?? null,
+    },
+    silenceLadderEnabled: (u.silenceLadder as { enabled?: unknown } | null)?.enabled === true,
+    homeLayout: {
+      order,
+      hidden: Array.isArray(hl?.hidden) ? (hl!.hidden as unknown[]).filter((k): k is string => typeof k === "string") : [],
+      ...(typeof hl?.v === "number" ? { v: hl!.v as number } : {}),
+    },
+    ruleConfig: ((u.ruleConfig as { values?: Record<string, string> } | null)?.values) ?? {},
+  };
+  // Run it through the same gate everything else does, so a snapshot can never
+  // be a shape that fails to restore.
+  return sanitizeSpec(raw);
+}
