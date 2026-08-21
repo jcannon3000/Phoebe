@@ -34,6 +34,7 @@
  */
 import { Router, type IRouter } from "express";
 import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -181,12 +182,24 @@ async function askOpenAi(system: string, user: string, maxTokens: number): Promi
   // budget is never billed.
   const budget = maxTokens + 2000;
 
-  const post = async (legacy: boolean): Promise<Response> =>
-    fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify(requestBody(system, user, budget, legacy)),
-    });
+  // Node's fetch has NO default timeout, so a hung upstream would hold this
+  // handler (and the caller's request) open indefinitely. A reasoning model at
+  // low effort is still slower than a plain chat model, hence 60s rather than
+  // the tighter budget the transcription paths use.
+  const post = async (legacy: boolean): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    try {
+      return await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify(requestBody(system, user, budget, legacy)),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   let res: Response;
   try {
@@ -287,6 +300,110 @@ function scrubRuleConfig(rc: Record<string, string>): string[] {
   return notes.slice(0, 4);
 }
 
+// ── Describing the spec we ACTUALLY built ────────────────────────────────────
+// The review screen used to show only the model's prose `summary` — its own
+// account of what it did. Nothing tied that prose to the spec, so a model that
+// wrote "Forward Day by Day in the evening" while programming the Examen would
+// have the person approve a routine they hadn't been shown, with no way to
+// catch it. For a feature whose whole promise is "we matched what you already
+// do", the thing presented for approval has to be derived from the spec.
+//
+// So these lines are generated from the SANITIZED spec — after the allowlist
+// and the value scrub — which makes them a description of what will really be
+// written to the account. The model's prose stays, but as framing, not as the
+// record.
+const LEVEL_LABEL: Record<string, string> = {
+  office: "the full Daily Office",
+  devotion: "a short devotion",
+  psalms: "the appointed psalms",
+  readings: "the day's scripture readings",
+  "guided-prayer": "Simple Guided Prayer",
+  examen: "the Examen",
+  fdd: "Forward Day by Day",
+  "reflect-sit": "silent contemplative prayer",
+  compline: "Compline",
+  custom: "your own practice",
+};
+const ENTRY_LABEL: Record<string, string> = {
+  read: "on screen",
+  book: "from your physical prayer book",
+  listen: "read aloud",
+  watch: "as a livestream",
+  venite: "on venite.app",
+};
+const REFLECTION_LABEL: Record<string, string> = {
+  cac: "the CAC daily meditation",
+  fdd: "Forward Day by Day",
+  ssje: "the SSJE daily word",
+  vts: "the VTS Dean's Commentary",
+};
+const SLOT_LABEL: Record<string, string> = {
+  morning: "in the morning", midday: "at midday", afternoon: "in the afternoon",
+  evening: "in the evening", anytime: "any time of day",
+};
+const PRACTICE_LABEL: Record<string, string> = {
+  cobreathe: "Creation Prayer", listening: "Audio Divina",
+  walk: "a Contemplative Walk", reading: "Reading", examen: "the Examen",
+};
+
+function prettyTime(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
+  const suffix = h < 12 ? "AM" : "PM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+/** Plain-language lines describing what this spec will actually set. */
+function describeSpec(spec: {
+  officePrefs: { morning: string; evening: string; morningTime: string | null; eveningTime: string | null; contemplationGoalMinutes: number };
+  ruleConfig: Record<string, string>;
+}): string[] {
+  const rc = spec.ruleConfig;
+  const lines: string[] = [];
+
+  for (const side of ["morning", "evening"] as const) {
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const level = rc[`phoebe:office:level:${side}`];
+    if (!level || level === "ask") {
+      lines.push(`${cap}: nothing set — this side is off.`);
+      continue;
+    }
+    const bits = [LEVEL_LABEL[level] ?? level];
+    const entry = rc[`phoebe:office:entry:${side}`];
+    if (entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")) {
+      bits.push(ENTRY_LABEL[entry]);
+    }
+    lines.push(`${cap}: ${bits.join(", ")}.`);
+
+    if (rc[`phoebe:office:contemplation:${side}`] === "1") {
+      const mins = rc[`phoebe:office:minutes:${side}`];
+      lines.push(`${cap}: a silent sit${mins ? ` of ${mins} minutes` : ""}.`);
+    }
+    const reflection = rc[`phoebe:office:reflection:${side}`];
+    if (reflection && REFLECTION_LABEL[reflection]) {
+      lines.push(`${cap}: reading ${REFLECTION_LABEL[reflection]}.`);
+    }
+
+    const pref = side === "morning" ? spec.officePrefs.morning : spec.officePrefs.evening;
+    const time = side === "morning" ? spec.officePrefs.morningTime : spec.officePrefs.eveningTime;
+    lines.push(
+      pref !== "none" && time
+        ? `${cap} reminder: ${prettyTime(time)}.`
+        : `${cap} reminder: none.`,
+    );
+  }
+
+  if (spec.officePrefs.contemplationGoalMinutes > 0) {
+    lines.push(`Silence: ${spec.officePrefs.contemplationGoalMinutes} minutes a day in total.`);
+  }
+  for (const [k, v] of Object.entries(rc)) {
+    if (!k.startsWith("phoebe:slot:")) continue;
+    const name = PRACTICE_LABEL[k.slice("phoebe:slot:".length)];
+    if (name && SLOT_LABEL[v]) lines.push(`Also: ${name}, ${SLOT_LABEL[v]}.`);
+  }
+  return lines;
+}
+
 /** Home-layout keys the model asked for that aren't real cards. */
 function droppedCardNote(raw: unknown, keptOrder: string[]): string | null {
   const order = (raw as any)?.homeLayout?.order;
@@ -300,7 +417,10 @@ function droppedCardNote(raw: unknown, keptOrder: string[]): string | null {
 // ── POST /api/routine-interview/followups ────────────────────────────────────
 // Owner: "ask the LLM for two follow-up questions." Exactly two — the point is
 // one short clarifying round, not an interrogation.
-router.post("/routine-interview/followups", async (req, res): Promise<void> => {
+router.post("/routine-interview/followups", perUserRateLimit("routine_interview_followups", {
+  max: 15, windowMs: 60 * 60 * 1000,
+  message: "You've started the interview a lot in the last hour — give it a moment.",
+}), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
@@ -340,7 +460,10 @@ Exactly two questions. Each one sentence, plainly worded, no jargon.`;
 // Owner: "based on the initial responses and the follow-up clarifications, then
 // have it built in ... and then it presents the routine for them." Returns the
 // spec plus a human summary; nothing is written to the account until /apply.
-router.post("/routine-interview/build", async (req, res): Promise<void> => {
+router.post("/routine-interview/build", perUserRateLimit("routine_interview_build", {
+  max: 15, windowMs: 60 * 60 * 1000,
+  message: "You've built a routine a lot in the last hour — give it a moment.",
+}), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
@@ -414,6 +537,9 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   res.json({
     spec,
     summary: cleanText(out.data?.summary, 800),
+    // Derived from the sanitized spec, not from the model — this is what the
+    // review screen asks them to approve. See describeSpec.
+    settings: describeSpec(spec),
     notes,
   });
 });

@@ -56,6 +56,10 @@ export default function RoutineInterviewPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [spec, setSpec] = useState<Spec | null>(null);
   const [summary, setSummary] = useState("");
+  // Derived server-side FROM the sanitized spec — the authoritative account of
+  // what saving will actually set. `summary` is the model's own prose, which is
+  // nice framing but is not evidence of what it programmed.
+  const [settings, setSettings] = useState<string[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -102,10 +106,11 @@ export default function RoutineInterviewPage() {
       const res = (await apiRequest("POST", "/api/routine-interview/build", {
         description,
         followups: questions.map((q, i) => ({ q, a: answers[i] ?? "" })),
-      })) as { spec?: Spec; summary?: string; notes?: string[] } | null;
+      })) as { spec?: Spec; summary?: string; settings?: string[]; notes?: string[] } | null;
       if (!res?.spec) throw new Error("ai_bad_spec");
       setSpec(res.spec);
       setSummary(res.summary ?? "");
+      setSettings(res.settings ?? []);
       setNotes(res.notes ?? []);
       setPhase("review");
     } catch (e: any) {
@@ -304,6 +309,28 @@ export default function RoutineInterviewPage() {
             <p style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 16.5, lineHeight: 1.6, margin: 0 }}>
               {summary}
             </p>
+          </div>
+        )}
+
+        {/* The actual settings, derived from the spec — not the model's
+            description of them. This is what "presents the routine for them"
+            has to mean: approving prose the model wrote about its own output
+            gives no way to catch it describing one routine and programming
+            another. */}
+        {settings.length > 0 && (
+          <div style={card}>
+            <p style={{ ...eyebrow, fontSize: 10, marginBottom: 10 }}>What this sets</p>
+            {settings.map((line, i) => (
+              <p
+                key={i}
+                style={{
+                  color: WARM, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.55,
+                  margin: i === 0 ? 0 : "7px 0 0",
+                }}
+              >
+                {line}
+              </p>
+            ))}
           </div>
         )}
 
