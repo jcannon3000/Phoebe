@@ -870,6 +870,70 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const chimedSectionRef = useRef<number>(-1);
   const queryClient = useQueryClient();
   const [, setViewerLocation] = useLocation();
+
+  /**
+   * Venite hand-off state.
+   *
+   * DECLARED HERE, WITH THE OTHER HOOKS, AND NOT NEXT TO goToVenite BELOW.
+   * This component returns early while the office is loading, on an error, and
+   * for the physical-book view. Hooks placed after those returns don't run on
+   * the first render and do on the second, which is "Rendered more hooks than
+   * during the previous render" — it crashed every office open to the error
+   * boundary the moment loading finished, not just the Venite path. Anything
+   * added here must stay above line ~1390.
+   */
+  const VENITE_MIN_MS = 60_000;
+  const veniteVisitsKey = `phoebe:venite-visits:${officeSide}:${new Date().toLocaleDateString("en-CA")}`;
+  const veniteLeftAtRef = useRef<number | null>(null);
+  const [veniteShort, setVeniteShort] = useState(false);
+  const [veniteForm, setVeniteForm] = useState<"office" | "devotion">("office");
+
+  const readVeniteVisits = (): number => {
+    try { return parseInt(localStorage.getItem(veniteVisitsKey) ?? "0", 10) || 0; } catch { return 0; }
+  };
+
+  const goToVenite = (form: "office" | "devotion") => {
+    setVeniteForm(form);
+    setVeniteShort(false);
+    veniteLeftAtRef.current = Date.now();
+    openExternal(veniteOfficeUrl(officeSide, new Date(), form));
+  };
+
+  // Coming back from Venite. Native fires phoebe:browserfinished when the
+  // in-app browser closes; on the web there's no such event, so a tab regaining
+  // visibility stands in for it. Whichever arrives first wins — they're
+  // idempotent because the ref is cleared on the first one handled.
+  useEffect(() => {
+    const onBack = () => {
+      const leftAt = veniteLeftAtRef.current;
+      if (leftAt == null) return;
+      veniteLeftAtRef.current = null;
+
+      const visits = readVeniteVisits() + 1;
+      try { localStorage.setItem(veniteVisitsKey, String(visits)); } catch { /* non-fatal */ }
+      const longEnough = Date.now() - leftAt >= VENITE_MIN_MS;
+
+      if (longEnough || visits >= 2) {
+        // Credited the same way the physical-book attestation is, so the
+        // anchor flips, the reminder push clears, and Daily progress counts it.
+        markOfficeBookComplete(officeSide);
+        try { localStorage.removeItem(veniteVisitsKey); } catch { /* non-fatal */ }
+        setViewerLocation("/daily-progress");
+        return;
+      }
+      // Back too soon on the first trip — don't count it, and say so.
+      setVeniteShort(true);
+    };
+    window.addEventListener("phoebe:browserfinished", onBack);
+    const onVisible = () => { if (document.visibilityState === "visible") onBack(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("phoebe:browserfinished", onBack);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [officeSide, veniteVisitsKey]);
+
   // Once-per-mount guard so a user who navigates BACK to the
   // intercessions portal doesn't get instantly bounced into prayer
   // mode again — once we've handed off, we treat the portal as a
@@ -1822,57 +1886,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * loaded. The chooser can send someone to the devotion from the office
    * surface, and reading it off `resolvedMode` would hand them the full office.
    */
-  const VENITE_MIN_MS = 60_000;
-  const veniteVisitsKey = `phoebe:venite-visits:${officeSide}:${new Date().toLocaleDateString("en-CA")}`;
-  const veniteLeftAtRef = useRef<number | null>(null);
-  const [veniteShort, setVeniteShort] = useState(false);
-  const [veniteForm, setVeniteForm] = useState<"office" | "devotion">("office");
-
-  const readVeniteVisits = (): number => {
-    try { return parseInt(localStorage.getItem(veniteVisitsKey) ?? "0", 10) || 0; } catch { return 0; }
-  };
-
-  const goToVenite = (form: "office" | "devotion") => {
-    setVeniteForm(form);
-    setVeniteShort(false);
-    veniteLeftAtRef.current = Date.now();
-    openExternal(veniteOfficeUrl(officeSide, new Date(), form));
-  };
-
-  // Coming back from Venite. Native fires phoebe:browserfinished when the
-  // in-app browser closes; on the web there's no such event, so a tab regaining
-  // visibility stands in for it. Whichever arrives first wins — they're
-  // idempotent because the ref is cleared on the first one handled.
-  useEffect(() => {
-    const onBack = () => {
-      const leftAt = veniteLeftAtRef.current;
-      if (leftAt == null) return;
-      veniteLeftAtRef.current = null;
-
-      const visits = readVeniteVisits() + 1;
-      try { localStorage.setItem(veniteVisitsKey, String(visits)); } catch { /* non-fatal */ }
-      const longEnough = Date.now() - leftAt >= VENITE_MIN_MS;
-
-      if (longEnough || visits >= 2) {
-        // Credited the same way the physical-book attestation is, so the
-        // anchor flips, the reminder push clears, and Daily progress counts it.
-        markOfficeBookComplete(officeSide);
-        try { localStorage.removeItem(veniteVisitsKey); } catch { /* non-fatal */ }
-        setViewerLocation("/daily-progress");
-        return;
-      }
-      // Back too soon on the first trip — don't count it, and say so.
-      setVeniteShort(true);
-    };
-    window.addEventListener("phoebe:browserfinished", onBack);
-    const onVisible = () => { if (document.visibilityState === "visible") onBack(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.removeEventListener("phoebe:browserfinished", onBack);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [officeSide, veniteVisitsKey]);
   const launchWay = (way: WayToPray, method: PrayMethod) => {
     // Psalms: the reader already chose their way + format here, so skip the
     // psalms "before you begin" intro (begin=1) — book → the page-number guide.
