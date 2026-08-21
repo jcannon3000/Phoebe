@@ -1291,16 +1291,30 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   });
   const yesterdayOrderRank = new Map((yesterdayOrderData?.order ?? []).map((key, i) => [key, i]));
   const cardGroup = (slot: CustomSlot): 0 | 1 | 2 => slot === "morning" ? 0 : slot === "evening" ? 2 : 1;
+  // Yesterday's real order applies WITHIN every slot group, not only the
+  // anytime/midday/afternoon middle one.
+  //
+  // Owner: "I'll do contemplation first and then Dean's Commentary, and they
+  // show up 2nd and 4th the next day." Both of those cards are slotted
+  // "morning" — per-side Contemplation, and every reflection card — so the
+  // old `ga === 1` condition skipped them: the two practices most likely to
+  // be done back-to-back were exactly the two that could never reorder.
+  //
+  // Slot grouping stays the OUTER sort on purpose. Letting rank win outright
+  // would sink any card the feed can't timestamp — including the morning and
+  // evening offices, which it doesn't report at all — below every practice
+  // that was done, which is a worse list than the one being fixed. Grouping
+  // first keeps morning above evening always, and orders each group by what
+  // actually happened; a card with no record stays at its slotted place,
+  // after the ones that do.
   const sortedCards = rawCards
     .map((c, idx) => ({ c, idx }))
     .sort((a, b) => {
       const ga = cardGroup(a.c.slot), gb = cardGroup(b.c.slot);
       if (ga !== gb) return ga - gb;
-      if (ga === 1) {
-        const ra = yesterdayOrderRank.has(a.c.key) ? yesterdayOrderRank.get(a.c.key)! : Infinity;
-        const rb = yesterdayOrderRank.has(b.c.key) ? yesterdayOrderRank.get(b.c.key)! : Infinity;
-        if (ra !== rb) return ra - rb;
-      }
+      const ra = yesterdayOrderRank.has(a.c.key) ? yesterdayOrderRank.get(a.c.key)! : Infinity;
+      const rb = yesterdayOrderRank.has(b.c.key) ? yesterdayOrderRank.get(b.c.key)! : Infinity;
+      if (ra !== rb) return ra - rb;
       return a.idx - b.idx; // stable tiebreak — original base order
     })
     .map((x) => x.c);

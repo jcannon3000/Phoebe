@@ -823,12 +823,35 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
     yDate.setUTCDate(yDate.getUTCDate() - 1);
     const yesterdayYmd = yDate.toISOString().slice(0, 10);
 
-    const [contRows, breathRows, pcRows] = await Promise.all([
+    const [contRows, sideContRows, reflectRows, breathRows, pcRows] = await Promise.all([
       // The "Contemplation" (silence) anytime card — earliest sit yesterday.
+      // Only the SIDELESS sits: a per-side sit belongs to its own card below,
+      // and counting it here too would rank both cards off the same moment.
       db.execute<{ at: string }>(sql`
         SELECT MIN(ended_at) AS at FROM prayer_sessions
         WHERE user_id = ${sessionUserId} AND surface = 'contemplation'
+          AND contemplation_side IS NULL
           AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+      `),
+      // Per-side Contemplative Prayer — the morning/evening Contemplation
+      // cards complete independently, so each ranks off its own earliest sit.
+      db.execute<{ side: string; at: string }>(sql`
+        SELECT contemplation_side AS side, MIN(ended_at) AS at FROM prayer_sessions
+        WHERE user_id = ${sessionUserId} AND surface = 'contemplation'
+          AND contemplation_side IN ('morning', 'evening')
+          AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+        GROUP BY contemplation_side
+      `),
+      // Daily reflections (Dean's Commentary, Forward Day by Day, SSJE …).
+      // Owner: "I'll do contemplation first and then Dean's Commentary, and
+      // they show up 2nd and 4th the next day." Reflections were absent from
+      // this feed entirely, so their cards could never be ranked. One row per
+      // (user, source, day) inserted on the FIRST read, so created_at is
+      // exactly when they opened it.
+      db.execute<{ source: string; at: string }>(sql`
+        SELECT source, MIN(created_at) AS at FROM reflection_reads
+        WHERE user_id = ${sessionUserId} AND ymd = ${yesterdayYmd}
+        GROUP BY source
       `),
       // Co-Breathe — one row per local day already.
       db.execute<{ at: string }>(sql`
@@ -845,9 +868,18 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       `),
     ]);
 
+    // Keys MUST match DailyProgressBody's card `key`s exactly — that map lookup
+    // is the whole mechanism, and a key that doesn't match simply ranks
+    // Infinity and sorts last, silently.
     const entries: Array<{ key: string; at: string }> = [];
     if (contRows.rows[0]?.at) entries.push({ key: "silence", at: contRows.rows[0].at });
     if (breathRows.rows[0]?.at) entries.push({ key: "cobreathe", at: breathRows.rows[0].at });
+    for (const r of sideContRows.rows) {
+      if (r.at && r.side) entries.push({ key: `contemplation-${r.side}`, at: r.at });
+    }
+    for (const r of reflectRows.rows) {
+      if (r.at && r.source) entries.push({ key: `reflect-${r.source}`, at: r.at });
+    }
     for (const r of pcRows.rows) {
       if (r.at) entries.push({ key: r.section, at: r.at });
     }
