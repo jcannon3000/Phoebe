@@ -259,6 +259,57 @@ export default function RoutineInterviewPage() {
     borderRadius: 999, width: 26, height: 26, fontSize: 15,
     background: "rgba(110,180,130,0.18)",
   };
+  // ── Top progress ───────────────────────────────────────────────────────────
+  // Owner: "a top progress bar UI with the questionnaire where there [are]
+  // three sections as bars that fill in as they proceed." Three segments —
+  // telling us, answering, checking — each filling across its own steps, so
+  // the strip shows both which part of the interview you're in and how far
+  // through that part you are. A single bar couldn't say the first thing, and
+  // the round it's easiest to feel lost in is the third.
+  const sectionFill = ((): [number, number, number] => {
+    const qN = Math.max(1, questions.length);
+    // Third section's steps: one per read-back slide, plus extras, plus review.
+    const lastN = CONFIRM_SECTIONS.length + 2;
+    switch (phase) {
+      case "describe":            return [0, 0, 0];
+      case "thinking-followups":  return [1, 0, 0];
+      case "followups":           return [1, qIndex / qN, 0];
+      case "thinking-build":      return [1, 1, 0];
+      case "confirm":             return [1, 1, confirmIndex / lastN];
+      case "extras":              return [1, 1, CONFIRM_SECTIONS.length / lastN];
+      case "review":              return [1, 1, (CONFIRM_SECTIONS.length + 1) / lastN];
+      default:                    return [0, 0, 0];
+    }
+  })();
+  // Styled after the CAC reflection slideshow's header bars (owner: "like how
+  // the CAC newsletter slideshow does it, but just three bars") — same h-1,
+  // fully-rounded, equal-width, 6px-gapped strip. One difference on purpose:
+  // CAC's segments are binary because each is a single slide, whereas each of
+  // these three covers several steps, so they fill proportionally. Otherwise a
+  // bar would sit empty through the whole read-back round and jump at the end.
+  const progressBars = (
+    <div style={{ display: "flex", gap: 6, marginBottom: 6 }} aria-hidden>
+      {sectionFill.map((fill, i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1, height: 4, borderRadius: 999, overflow: "hidden",
+            background: "rgba(255,255,255,0.14)",
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.max(0, Math.min(1, fill)) * 100}%`, height: "100%",
+              // Fern, not SAGE: sage against the track was two light tones on a
+              // dark ground and the filled portion barely read.
+              borderRadius: 999, background: "#A8C5A0", transition: "width 0.3s ease",
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
   const eyebrow: React.CSSProperties = {
     fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
     color: SAGE, fontFamily: FONT, margin: 0, fontWeight: 600,
@@ -302,6 +353,7 @@ export default function RoutineInterviewPage() {
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
+          {progressBars}
           <div>
             <p style={eyebrow}>Your rhythm 🌿</p>
             <h1 style={h1}>What does your daily routine look like?</h1>
@@ -355,6 +407,7 @@ export default function RoutineInterviewPage() {
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
+          {progressBars}
           <div>
             <p style={eyebrow}>
               {questions.length > 1 ? `Question ${qIndex + 1} of ${questions.length}` : "One question"} 🌿
@@ -430,6 +483,7 @@ export default function RoutineInterviewPage() {
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
+          {progressBars}
           <div>
             <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${CONFIRM_SECTIONS.length}`} 🌿</p>
             <h1 style={h1}>{section.title}</h1>
@@ -491,6 +545,19 @@ export default function RoutineInterviewPage() {
           >
             {showFix ? "Never mind" : "Not quite"}
           </button>
+          {!showFix && (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                if (confirmIndex > 0) setConfirmIndex((i2) => i2 - 1);
+                else { setQIndex(Math.max(0, questions.length - 1)); setPhase("followups"); }
+              }}
+              style={{ ...quietBtn, border: "none", color: "rgba(143,175,150,0.7)" }}
+            >
+              Back
+            </button>
+          )}
         </div>
       </Layout>
     );
@@ -502,6 +569,21 @@ export default function RoutineInterviewPage() {
   // slideshow." Deterministic — these are the person's own picks, so they're
   // written straight onto the spec rather than sent back through the model.
   if (phase === "extras") {
+    // The manual slide HIDES an option that's already a side's primary prayer,
+    // and replicating it means replicating that too — otherwise someone whose
+    // evening anchor IS Compline gets offered Compline again here and ends up
+    // with two Compline cards for one office. Same for the Examen, and for
+    // Creation Prayer when it's already a side's contemplation style.
+    const rc = ((spec as any)?.ruleConfig ?? {}) as Record<string, string>;
+    const levels = [rc["phoebe:office:level:morning"], rc["phoebe:office:level:evening"]];
+    const alreadyPrimary: Record<string, boolean> = {
+      compline: levels.includes("compline"),
+      examen: levels.includes("examen"),
+      cobreathe: rc["phoebe:contemplation-style"] === "cobreathe"
+        && (rc["phoebe:office:contemplation:morning"] === "1" || rc["phoebe:office:contemplation:evening"] === "1"),
+    };
+    const offered = EXTRAS.filter((e) => !alreadyPrimary[e.key]);
+
     const toggle = (k: string) =>
       setExtras((prev) => {
         const next = new Set(prev);
@@ -521,7 +603,7 @@ export default function RoutineInterviewPage() {
         // they described stays, and the read-back round is where something
         // wrong gets corrected.
         const added: SpecRow[] = [];
-        for (const e of EXTRAS) {
+        for (const e of offered) {
           if (!extras.has(e.key)) continue;
           if (!order.includes(e.key)) order.push(e.key);
           // Adding to `order` isn't enough on its own: a key sitting in
@@ -549,6 +631,7 @@ export default function RoutineInterviewPage() {
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
+          {progressBars}
           <div>
             <p style={eyebrow}>One more thing 🌿</p>
             <h1 style={h1}>Anything else you keep?</h1>
@@ -558,7 +641,7 @@ export default function RoutineInterviewPage() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {EXTRAS.map((e) => {
+            {offered.map((e) => {
               const on = extras.has(e.key);
               return (
                 <button
@@ -598,6 +681,7 @@ export default function RoutineInterviewPage() {
   return (
     <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
       <div style={wrap}>
+          {progressBars}
         <div>
           <p style={eyebrow}>Here it is 🌿</p>
           <h1 style={h1}>Your rhythm in Phoebe</h1>

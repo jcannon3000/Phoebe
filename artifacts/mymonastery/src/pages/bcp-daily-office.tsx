@@ -4916,16 +4916,15 @@ export default function BcpDailyOfficePage() {
           setLocation(`/podcast/${mode}-office`);
           return;
         }
-        // Venite as the saved default — hand off to venite.app and credit the
-        // side, exactly as picking it from the chooser does. Without this the
-        // pref would silently fall through to the slideshow, so setting Venite
-        // as your default would appear not to take.
-        if (pref === "venite" && canPrayOnVenite(mode)) {
-          openExternal(veniteOfficeUrl(mode));
-          markOfficeBookComplete(mode);
-          setLocation("/daily-progress");
-          return;
-        }
+        // Venite deliberately does NOT auto-launch here. Owner: "make sure
+        // it goes to the office intro slide before it goes to that venite
+        // page." It used to hand straight off to venite.app, which meant
+        // tapping your office threw you out of the app with no threshold — no
+        // chance to see what today is, switch the way you're praying, or just
+        // arrive. Falling through to setShowMode(mode) lands on the "before you
+        // begin" slide with "Venite Digital" already selected as the How (the
+        // prayMethod initializer reads the same pref), so Begin is the tap that
+        // leaves. One extra tap, and the office keeps its front door.
         // The Cathedral only broadcasts Mon–Fri, so a "watch" default on a
         // weekend falls through to the text office (nothing to watch live).
         const isWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();

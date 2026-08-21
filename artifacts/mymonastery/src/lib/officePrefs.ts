@@ -267,7 +267,15 @@ export function getDefaultOfficeEntry(): DefaultOfficeEntry {
     const raw = localStorage.getItem(KEY_DEFAULT_OFFICE_ENTRY);
     if (raw && (DEFAULT_OFFICE_ENTRIES as string[]).includes(raw)) return raw as DefaultOfficeEntry;
   } catch { /* private mode */ }
-  return "read";
+  // Owner: "have the default digital option for everyone be venite for the
+  // offices." Only a FALLBACK — an explicit saved choice above still wins.
+  //
+  // Safe as a global default because every surface that offers a way to pray
+  // clamps to what it actually supports: Venite is only listed for the full
+  // Morning/Evening office (canPrayOnVenite), and psalms / devotions / Compline
+  // fall back to reading on screen rather than showing an option that would
+  // open a blank Venite page.
+  return "venite";
 }
 export function setDefaultOfficeEntry(v: DefaultOfficeEntry): void {
   try {
