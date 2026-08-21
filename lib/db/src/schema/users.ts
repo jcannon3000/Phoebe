@@ -203,6 +203,9 @@ export const usersTable = pgTable("users", {
   // last nudged, user TZ) dedups the once-a-week push across 15-min ticks.
   weeklyReviewReminder: boolean("weekly_review_reminder").notNull().default(true),
   weeklyReviewNudgeSentDate: text("weekly_review_nudge_sent_date"),
+  // Dedup stamp for the weekly routine-audit nudge (YYYY-MM-DD in the user's
+  // own tz), so a Sunday's push fires once however often the scheduler ticks.
+  routineAuditNudgeSentDate: text("routine_audit_nudge_sent_date"),
   // YYYY-MM-DD (parish TZ) of the last Saturday-evening "your parish
   // prayed with you this week" recap we fired for this user. NULL =
   // never sent. Idempotent on the local Saturday so a parishioner

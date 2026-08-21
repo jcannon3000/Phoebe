@@ -29,6 +29,7 @@ import {
   sendContemplationGoalReminderPush,
   sendVtsCommentaryPush,
   sendWeeklyReviewPush,
+  sendRoutineAuditPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
   sendNewFeedIntercessionPush,
@@ -36,6 +37,7 @@ import {
 } from "./pushSender";
 import { getGardenUserIds } from "./garden";
 import { runRetentionCleanupSender } from "./retention";
+import { buildRoutineAudit } from "./routineAudit";
 import { logger } from "./logger";
 import { loadFeedDigest } from "./feedDigest";
 import { sendWeeklyDigestEmail } from "./email";
@@ -1286,6 +1288,63 @@ export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): 
   }
 }
 
+// ─── Weekly routine audit — Sunday-evening "does your rule still fit?" ───────
+//
+// Owner: "the app once a week would analyze that data compared to what they
+// have programmed, and make suggestions how to adjust it."
+//
+// SUPER ADMINS ONLY (owner: "this should be only for super admins"), matching
+// the gate on both /me/routine-audit endpoints. The join to beta_users is what
+// enforces it here, so the sender can't outlive the page's own restriction.
+//
+// The audit RUNS before the push is sent, and no push goes out when it finds
+// nothing. A notification that opens a page saying "your rule matches your
+// week" spends someone's attention to tell them nothing — and for a suggestion
+// feature, being silent when there's nothing to suggest is most of what makes
+// it tolerable weekly. It costs one query per admin per Sunday; at super-admin
+// scale that's nothing, and it's the only way to know whether to send.
+const ROUTINE_AUDIT_TIME = "19:00";
+
+export async function runRoutineAuditSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        sentDate: usersTable.routineAuditNudgeSentDate,
+      })
+      .from(usersTable)
+      .innerJoin(betaUsersTable, sql`LOWER(${usersTable.email}) = LOWER(${betaUsersTable.email})`)
+      .where(eq(betaUsersTable.isAdmin, true));
+
+    for (const r of rows) {
+      const tz = r.userTimezone || "America/New_York";
+      if (!opts.forceNow) {
+        if (dowInTz(tz) !== 0) continue;                      // Sundays only
+        if (!isWithinTickWindow(tz, ROUTINE_AUDIT_TIME)) continue;
+      }
+      const today = todayInZone(tz);
+      if (r.sentDate === today) continue;
+
+      try {
+        const findings = await buildRoutineAudit(r.userId);
+        // Stamp either way: a quiet week is a decided outcome, not a retry.
+        // Without this the next tick would re-run the audit for everyone whose
+        // rule already fits, every 15 minutes until Sunday ends.
+        await db.update(usersTable)
+          .set({ routineAuditNudgeSentDate: today })
+          .where(eq(usersTable.id, r.userId));
+        if (findings.length === 0) continue;
+        await sendRoutineAuditPush(r.userId, { count: findings.length });
+      } catch (err) {
+        logger.warn({ err, userId: r.userId }, "[routine-audit] push failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[routine-audit] sender failed");
+  }
+}
+
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 // ─── Day-before gathering reminder ─────────────────────────────────────────
@@ -1624,6 +1683,9 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.
   // { name: "weekly-review",         run: runWeeklyReviewSender },
+  // Weekly routine audit — Sunday ~19:00, super admins only, and silent when
+  // the audit finds nothing.
+  { name: "routine-audit",         run: runRoutineAuditSender },
   { name: "gathering-reminder",    run: runGatheringReminderSender },
   { name: "feed-event-reminder",   run: runFeedEventReminderSender },
   { name: "feed-intercession-push", run: runFeedIntercessionPushSender },

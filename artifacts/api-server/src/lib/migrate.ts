@@ -2038,6 +2038,7 @@ export async function migrate() {
     // Weekly Way of Love review — Sunday-evening reminder (opt-out) + per-week dedup stamp.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_reminder BOOLEAN NOT NULL DEFAULT true`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_nudge_sent_date TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS routine_audit_nudge_sent_date TEXT`);
     // YYYY-MM-DD (parish TZ) of the last Saturday-evening parish-recap
     // push we fired for this user. NULL = never sent. Added separately
     // because the column was introduced in 62639d5 without a migrate.ts

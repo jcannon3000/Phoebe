@@ -84,6 +84,25 @@ const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; 
 ];
 const SILENCE_LENGTHS = [5, 10, 15, 20, 30];
 
+/**
+ * How they take the office — asked here as a dropdown rather than spent on one
+ * of the two clarifying questions.
+ *
+ * Owner: "those at least two clarification questions should not be about
+ * medium, because we could actually ask medium on the third stage through a
+ * dropdown. Have Venite digital [be] the default for all of them."
+ *
+ * Venite leads because it's Phoebe's default reader (getDefaultOfficeEntry).
+ * "watch" isn't offered: it's the National Cathedral's weekday morning
+ * broadcast, too conditional to sit in a plain list.
+ */
+const MEDIUM_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "venite", label: "Venite Digital" },
+  { value: "read", label: "On screen" },
+  { value: "book", label: "My physical prayer book" },
+  { value: "listen", label: "Read aloud to me" },
+];
+
 const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "compline", emoji: "🌙", label: "Compline", sub: "The night office — available from 7pm." },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
@@ -583,6 +602,13 @@ export default function RoutineInterviewPage() {
     const reminderOn = isSide && (prefs as any)[section.key] !== "none" && !!(prefs as any)[section.key];
     const reminderTime = (isSide && ((prefs as any)[`${section.key}Time`] as string | null))
       || (section.key === "morning" ? "07:00" : "18:00");
+    // Only the office and the short devotion have a medium to choose. Psalms,
+    // the Examen and Compline are one surface each, so a "how" row there would
+    // be a control with nothing behind it.
+    const sideLevel = ((specNow.ruleConfig ?? {}) as Record<string, string>)[`phoebe:office:level:${section.key}`];
+    const mediumApplies = isSide && (sideLevel === "office" || sideLevel === "devotion");
+    const mediumValue = ((specNow.ruleConfig ?? {}) as Record<string, string>)[`phoebe:office:entry:${section.key}`]
+      || "venite";
 
     /** Patch the pending spec in place. Nothing is written to the account until
      *  the final review, so these edits are free to be direct. */
@@ -692,10 +718,42 @@ export default function RoutineInterviewPage() {
                       <span style={routineBadge} aria-hidden>{r.emoji}</span>
                       <p style={{ color: WARM, fontFamily: FONT, fontSize: 18, fontWeight: 600, margin: 0 }}>{r.label}</p>
                     </div>
-                    <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "8px 0 0" }}>{r.sub}</p>
+                    {/* The dropdown below owns the medium once it's shown, so
+                        the card reads from the live spec rather than from the
+                        sub the server rendered — otherwise changing it there
+                        would leave the card still claiming the old one. */}
+                    <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "8px 0 0" }}>
+                      {mediumApplies && i2 === 0
+                        ? (MEDIUM_OPTIONS.find((o) => o.value === mediumValue)?.label ?? r.sub)
+                        : r.sub}
+                    </p>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* How they take it. A dropdown, not a question — see MEDIUM_OPTIONS. */}
+          {isSide && rows.length > 0 && mediumApplies && (
+            <div>
+              <p style={{ ...eyebrow, marginBottom: 8 }}>How you take it</p>
+              <select
+                value={mediumValue}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  patchSpec((d) => { d.ruleConfig[`phoebe:office:entry:${section.key}`] = v; });
+                }}
+                aria-label="How you take it"
+                style={{
+                  ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                  fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark",
+                  padding: "13px 14px", appearance: "none", WebkitAppearance: "none",
+                }}
+              >
+                {MEDIUM_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           )}
 

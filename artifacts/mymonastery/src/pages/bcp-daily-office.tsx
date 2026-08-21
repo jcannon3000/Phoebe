@@ -1004,12 +1004,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [prayMethod, setPrayMethod] = useState<PrayMethod>(() => {
     // Pre-select the reader's saved way for this side so the intro chooser opens
     // on their default (Physical BCP / Listen / Watch / On screen), not always
-    // "On screen". Only full Morning/Evening Prayer carry a per-side method.
+    // "On screen". The full office and the short devotion both carry a per-side
+    // method; the devotion just has fewer of them to offer.
     if (resolvedMode === "morning" || resolvedMode === "evening") {
       const e = getSideEntry(officeSide);
       if (e === "book") return "book";
       if (e === "listen") return "listen";
       if (e === "watch") return "watch";
+      if (e === "venite") return "venite";
+    }
+    if (resolvedMode === "morning-devotion" || resolvedMode === "early-evening-devotion") {
+      const e = getSideEntry(officeSide);
+      // Listen and Watch are the full office only — a devotion has no podcast
+      // episode and no broadcast, so those fall back to reading on screen.
+      if (e === "book") return "book";
       if (e === "venite") return "venite";
     }
     return "screen";
@@ -1791,8 +1799,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // credit on tap rather than on return: once the reader leaves for an outside
   // site we can't observe whether they finished, and the alternative — leaving
   // the office showing undone after they prayed it — is the worse miss.
-  const goToVenite = () => {
-    openExternal(veniteOfficeUrl(officeSide));
+  // The devotion is a different Venite VERSION, not a different office (see
+  // lib/venite.ts) — so the CHOSEN way decides, not the mode that happens to be
+  // loaded. The chooser can send someone to the devotion from the office
+  // surface, and reading it off `resolvedMode` would hand them the full office.
+  const goToVenite = (form: "office" | "devotion") => {
+    openExternal(veniteOfficeUrl(officeSide, new Date(), form));
     markOfficeBookComplete(officeSide);
   };
   const launchWay = (way: WayToPray, method: PrayMethod) => {
@@ -1802,7 +1814,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
     if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
     if (method === "watch") { goToWatch(); return; }
-    if (method === "venite") { goToVenite(); return; }
+    if (method === "venite") { goToVenite(way === "devotion" ? "devotion" : "office"); return; }
     const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
     if (onThisSurface) {
       if (method === "book") { setBookOpen(true); return; }
@@ -1838,9 +1850,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Watch), so the "How" row collapses to a single On-screen option for both.
     const screenOnly = wayIsScreenOnly;
     const showWatch = officeSide === "morning" && isWeekday;
-    // Venite covers Morning and Evening Prayer proper — not the short devotion,
-    // and not Compline (no working deep link).
-    const showVenite = canPrayOnVenite(officeSide) && (resolvedMode === "morning" || resolvedMode === "evening");
+    // Venite covers Morning and Evening Prayer AND the short Daily Devotion —
+    // owner: "make sure that we are integrating Venite for the devotions too."
+    // Still not Compline: no deep link that renders (see lib/venite.ts).
+    const showVenite = canPrayOnVenite(officeSide)
+      && (resolvedMode === "morning" || resolvedMode === "evening"
+        || resolvedMode === "morning-devotion" || resolvedMode === "early-evening-devotion");
     // A shared, full-width styled <select> with the chevron, matching the pill
     // look. A plain render helper (NOT a component) so it inlines and the native
     // select never remounts mid-selection. Stops propagation so a tap can't

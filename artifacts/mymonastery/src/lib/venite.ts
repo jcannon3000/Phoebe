@@ -19,6 +19,12 @@
 //   • MORNING AND EVENING ONLY. `compline` renders a blank page on Venite with
 //     this path shape (checked directly), so Compline never offers this
 //     option — see canPrayOnVenite.
+//   • THE DAILY DEVOTIONS ARE A {version}, NOT AN {office}. Owner: "make sure
+//     that we are integrating Venite for the devotions too." The natural guess
+//     — an office slug like `family-morning-prayer` — renders a blank page;
+//     Venite's own picker lists "Daily Devotions" alongside Rite II and EOW,
+//     and `Daily-Devotions` + `morning-prayer` serves the short BCP devotion.
+//     Both sides were checked against the live site.
 
 const VENITE_OPTIONS = { readingB: "second_reading", ublc: "true" } as const;
 
@@ -33,8 +39,15 @@ export function canPrayOnVenite(side: "morning" | "evening"): boolean {
  * Deep link to today's office on venite.app for the reader's local date.
  * `now` is injectable so the date logic is testable without faking a clock.
  */
-export function veniteOfficeUrl(side: "morning" | "evening", now: Date = new Date()): string {
+export function veniteOfficeUrl(
+  side: "morning" | "evening",
+  now: Date = new Date(),
+  // "devotion" swaps the version, keeping the same office slug — see the note
+  // above. Defaulted so every existing caller keeps praying the full office.
+  form: "office" | "devotion" = "office",
+): string {
   const office: VeniteOffice = side === "morning" ? "morning-prayer" : "evening-prayer";
+  const version = form === "devotion" ? "Daily-Devotions" : "Rite-II";
   // Local date parts — getFullYear/getMonth/getDate are already the device's
   // wall clock, which is what we want (see the UTC note above).
   const y = now.getFullYear();
@@ -45,5 +58,5 @@ export function veniteOfficeUrl(side: "morning" | "evening", now: Date = new Dat
   const opts = encodeURIComponent(JSON.stringify(VENITE_OPTIONS))
     .replace(/%3A/g, ":")
     .replace(/%2C/g, ",");
-  return `https://www.venite.app/pray/en/Rite-II/bcp1979/${y}/${m}/${d}/${office}/false/${opts}`;
+  return `https://www.venite.app/pray/en/${version}/bcp1979/${y}/${m}/${d}/${office}/false/${opts}`;
 }

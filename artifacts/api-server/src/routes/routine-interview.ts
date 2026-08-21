@@ -85,7 +85,12 @@ practice, set by ruleConfig "phoebe:office:level:<side>":
 
 How they take the office, ruleConfig "phoebe:office:entry:<side>":
   read (on screen) | book (their physical BCP) | listen (read-aloud audio)
-  | watch (a livestream, morning only) | venite (opens venite.app in a browser)
+  | watch (a livestream, morning only) | venite (opens venite.app in a browser;
+  works for the full office AND the short devotion)
+DEFAULT THIS TO "venite" for every side that has an office or a devotion, unless
+they clearly described taking it another way ("from my prayer book", "I listen
+to it on my commute"). Venite is Phoebe's default reader. Never ASK which one —
+they pick it from a dropdown on a later screen.
 
 Newsletters (daily reflections). MULTIPLE ARE SUPPORTED — owner: "you can
 definitely do two newsletters." Someone who reads both Forward Day by Day and
@@ -738,6 +743,29 @@ function hideUnchosen(spec: {
  * Phoebe's model, true regardless of phrasing, and cheaper to guarantee than to
  * ask for.
  */
+/**
+ * Venite is the default reader, so a side that named no medium gets one.
+ *
+ * Owner: "have Venite digital [be] the default for all of them. If they use
+ * any, that would apply." The follow-up round no longer spends a question on
+ * the medium, which means the model will often have nothing to go on — and an
+ * unset entry would otherwise fall through to the on-screen slideshow, quietly
+ * contradicting the app-wide default (getDefaultOfficeEntry).
+ *
+ * Only fills a BLANK. Anything they actually described — their prayer book, the
+ * podcast, the Cathedral stream — is left exactly as it was heard.
+ */
+function defaultEntryToVenite(spec: { ruleConfig: Record<string, string> }): void {
+  const rc = spec.ruleConfig;
+  for (const side of ["morning", "evening"] as const) {
+    const level = rc[`phoebe:office:level:${side}`];
+    // Venite serves the full office and the short devotion, and nothing else —
+    // psalms, the Examen and Compline have no deep link that renders.
+    if (level !== "office" && level !== "devotion") continue;
+    if (!rc[`phoebe:office:entry:${side}`]) rc[`phoebe:office:entry:${side}`] = "venite";
+  }
+}
+
 function normalizeContemplation(spec: {
   officePrefs: { contemplationGoalMinutes: number };
   ruleConfig: Record<string, string>;
@@ -808,10 +836,16 @@ You are asking because you don't know, not because something is missing. So:
   · "Is there a daily reading you follow, if any?"          ✓ asks
   · "Have you considered Forward Day by Day?"               ✗ recommends
 
-Ask in plain words, and never in app jargon. Owner: "I don't know what 'how you
-take it' means." If you need to know the FORM, name the actual choices:
-  · "Do you pray it from your prayer book, on a screen, or listen to it?"  ✓
-  · "How do you take it?"                                                  ✗
+DO NOT ASK HOW THEY TAKE IT. Book, screen, listen, Venite — that is a dropdown
+on a later screen, where it costs one tap instead of one of your two questions.
+Owner: "those at least two clarification questions should not be about medium,
+because we could actually ask medium on the third stage through a dropdown."
+Spend your questions on what only they can tell you: WHAT they pray, WHEN, and
+whether there's silence in the day.
+
+Ask in plain words, never in app jargon (owner: "I don't know what 'how you take
+it' means"). When a question does have a small fixed set of answers, name them
+rather than gesturing at them.
 
 Write every question so that "no, I don't do that" is an easy and complete
 answer that costs them nothing. Never imply a fuller practice would be better,
@@ -954,6 +988,7 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   // shape) — mutates `spec.ruleConfig`, so it must run before the response.
   const scrubNotes = scrubRuleConfig(spec.ruleConfig);
   normalizeContemplation(spec);
+  defaultEntryToVenite(spec);
   hideUnchosen(spec);
 
   const modelNotes = Array.isArray(out.data?.notes)
@@ -989,6 +1024,7 @@ router.post("/routine-interview/apply", async (req, res): Promise<void> => {
   // including the extras step's additions, which change what should be hidden.
   scrubRuleConfig(spec.ruleConfig);
   normalizeContemplation(spec);
+  defaultEntryToVenite(spec);
   hideUnchosen(spec);
 
   try {
