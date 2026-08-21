@@ -591,6 +591,40 @@ export default function WayOfLoveRuleFlow({
     morning: true,
     evening: true,
   }));
+  // Owner: "I had my notification set for 7:30am but it sent at 7" → "maybe it
+  // never saved the setting."
+  //
+  // It very likely didn't. The reminder time was PUT only by commit(), the
+  // flow's final "Save my daily rhythm" — so choosing 7:30 here and leaving by
+  // the X (or anywhere before the last step) kept 7:30 in local state, where
+  // this slide happily kept displaying it, while the server column stayed
+  // null. The sender's fallback for a null time is DEFAULT_MORNING_TIME —
+  // 07:00 — which is precisely a 7:00 push for someone who set 7:30, with the
+  // UI still showing 7:30 as proof they'd set it.
+  //
+  // So persist on CHANGE, like the reflection and minutes controls already do.
+  // commit() still writes the whole payload; this just means the reminder no
+  // longer depends on reaching the end of the flow. Debounced because a
+  // <input type="time"> fires onChange per component (hour, then minute).
+  const reminderSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (reminderSaveTimer.current) clearTimeout(reminderSaveTimer.current); }, []);
+  const saveReminderNow = (
+    nextOn: Record<OfficeSide, boolean>,
+    nextTime: Record<OfficeSide, string>,
+  ) => {
+    // Guests have no office-prefs row to write to; their rhythm is local-only
+    // until they have an account.
+    if (!user || guest) return;
+    if (reminderSaveTimer.current) clearTimeout(reminderSaveTimer.current);
+    reminderSaveTimer.current = setTimeout(() => {
+      apiRequest("PUT", "/api/me/office-prefs", {
+        morning: sides.morning && nextOn.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
+        evening: sides.evening && nextOn.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
+        morningTime: nextOn.morning ? (/^\d{2}:\d{2}$/.test(nextTime.morning) ? nextTime.morning : DEFAULT_REMINDER_TIME) : null,
+        eveningTime: nextOn.evening ? (/^\d{2}:\d{2}$/.test(nextTime.evening) ? nextTime.evening : "18:00") : null,
+      }).catch(() => { /* best-effort; commit() writes it again at the end */ });
+    }, 600);
+  };
   // For a contemplation side: sit in silence, or Cobreathe (breathe to one
   // shared global pace). Stored locally; the home/daily-progress Contemplation
   // card's "Begin" opens Cobreathe directly when this is set.
@@ -1925,7 +1959,14 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
             type="button"
-            onClick={() => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [side]: !r[side] })); }}
+            onClick={() => {
+              touchedRef.current = true;
+              setReminderOnBySide((r) => {
+                const next = { ...r, [side]: !r[side] };
+                saveReminderNow(next, timeBySide);
+                return next;
+              });
+            }}
             style={{
               width: "100%", textAlign: "left", cursor: "pointer",
               background: reminderOnBySide[side] ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
@@ -1953,7 +1994,17 @@ export default function WayOfLoveRuleFlow({
               <input
                 type="time"
                 value={timeBySide[side]}
-                onChange={(e) => { touchedRef.current = true; setTimeBySide((tv) => ({ ...tv, [side]: e.target.value })); }}
+                onChange={(e) => {
+                  touchedRef.current = true;
+                  const v = e.target.value;
+                  setTimeBySide((tv) => {
+                    const next = { ...tv, [side]: v };
+                    // Only persist a complete HH:MM — a half-typed time would
+                    // otherwise write the DEFAULT_REMINDER_TIME fallback.
+                    if (/^\d{2}:\d{2}$/.test(v)) saveReminderNow(reminderOnBySide, next);
+                    return next;
+                  });
+                }}
                 aria-label={t("wol_rule.reminder_time", { defaultValue: "Reminder time" })}
                 style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
               />
