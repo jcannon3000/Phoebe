@@ -6,12 +6,15 @@
  * that into Phoebe for them." So every word here is about RECORDING a practice,
  * never recommending one — /find-your-rhythm is the surface that suggests.
  *
- * Five phases, matching the flow the owner described:
+ * The flow, as the owner described it:
  *   describe  → they write their practice in their own words
  *   thinking  → processing screen while the model reads it
- *   followups → the two questions it asked back
+ *   followups → its two questions, ONE PER SLIDE
  *   thinking  → processing screen while it builds
- *   review    → the routine, in plain language, to accept or discard
+ *   confirm   → a read-back slide each for morning, silence, evening; saying
+ *               "not quite" on any of them rebuilds with the correction
+ *   extras    → the customizer's "additional practice" step, replicated
+ *   review    → the finished routine, in the manual flow's own row format
  *
  * The model's spec is validated server-side (sanitizeSpec) before it ever gets
  * here and again on apply, so nothing on this page has to trust it.
@@ -32,11 +35,36 @@ const CARD = "rgba(9,26,16,0.42)";
 const CARD_B = "rgba(46,107,64,0.35)";
 const CTA = "#2D5E3F";
 
-type Phase = "describe" | "thinking-followups" | "followups" | "thinking-build" | "review";
+// Owner: "what if we did a third round, where after the first two, we show what
+// we are hearing for morning, contemplation, and evening ... and then asks them
+// for each if that represents what they do. Each one has a slide." Then an
+// extras slide in the customizer's own format before the final review.
+type Phase =
+  | "describe" | "thinking-followups" | "followups" | "thinking-build"
+  | "confirm" | "extras" | "review";
+
+// The read-back sections, in the order the day runs.
+const CONFIRM_SECTIONS: Array<{ key: SpecSection; title: string; ask: string }> = [
+  { key: "morning", title: "Your morning", ask: "Is that your morning?" },
+  { key: "contemplation", title: "Silence", ask: "Is that right?" },
+  { key: "evening", title: "Your evening", ask: "Is that your evening?" },
+];
+
+// The manual customizer's "Add an additional practice" step, replicated. Each
+// maps to a home-layout card key; the slot ones also take a time of day, which
+// we leave at the customizer's own defaults rather than asking again.
+const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
+  { key: "compline", emoji: "🌙", label: "Compline", sub: "The night office — available from 7pm." },
+  { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
+  { key: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God.", slot: "evening" },
+  { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
+  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "afternoon" },
+];
 
 type Spec = Record<string, unknown>;
 // Same shape the manual customizer's review rows use.
-type SpecRow = { emoji: string; label: string; sub: string };
+type SpecSection = "morning" | "contemplation" | "evening" | "newsletters" | "practices";
+type SpecRow = { emoji: string; label: string; sub: string; section: SpecSection };
 
 
 export default function RoutineInterviewPage() {
@@ -54,6 +82,14 @@ export default function RoutineInterviewPage() {
   // Owner: "have the follow up questions on two separate slides." One
   // question at a time reads as a conversation; both at once reads as a form.
   const [qIndex, setQIndex] = useState(0);
+  // Read-back round: which section we're confirming, and the corrections they
+  // gave. A correction is the person looking at our reading and rejecting it,
+  // so it outranks the original description on the rebuild.
+  const [confirmIndex, setConfirmIndex] = useState(0);
+  const [corrections, setCorrections] = useState<string[]>([]);
+  const [fixText, setFixText] = useState("");
+  const [showFix, setShowFix] = useState(false);
+  const [extras, setExtras] = useState<Set<string>>(new Set());
   const [spec, setSpec] = useState<Spec | null>(null);
   const [summary, setSummary] = useState("");
   // Derived server-side FROM the sanitized spec — the authoritative account of
@@ -69,7 +105,7 @@ export default function RoutineInterviewPage() {
   // next question rendered above the fold — it looked like nothing happened.
   useEffect(() => {
     try { window.scrollTo({ top: 0, behavior: "auto" }); } catch { /* ignore */ }
-  }, [phase, qIndex]);
+  }, [phase, qIndex, confirmIndex]);
 
   const errorText = (code: string): string => {
     switch (code) {
@@ -107,20 +143,26 @@ export default function RoutineInterviewPage() {
     }
   };
 
-  const submitFollowups = async () => {
+  const submitFollowups = async (nextCorrections?: string[]) => {
     setError(null);
     setPhase("thinking-build");
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/build", {
         description,
         followups: questions.map((q, i) => ({ q, a: answers[i] ?? "" })),
+        corrections: nextCorrections ?? corrections,
       })) as { spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[] } | null;
       if (!res?.spec) throw new Error("ai_bad_spec");
       setSpec(res.spec);
       setSummary(res.summary ?? "");
       setSettings(res.settings ?? []);
       setNotes(res.notes ?? []);
-      setPhase("review");
+      // Straight to the read-back round — the review comes after they've
+      // confirmed each part of the day.
+      setConfirmIndex(0);
+      setShowFix(false);
+      setFixText("");
+      setPhase("confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
       setPhase("followups");
@@ -172,6 +214,14 @@ export default function RoutineInterviewPage() {
     background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)",
     borderRadius: 14, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: FONT,
     cursor: "pointer", width: "100%",
+  };
+  // The manual customizer's review-row shape — one definition shared by the
+  // read-back slides, the extras list and the final review, so all three read
+  // as the same object.
+  const rowCard: React.CSSProperties = {
+    background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+    border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+    borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
   };
   const eyebrow: React.CSSProperties = {
     fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
@@ -314,6 +364,183 @@ export default function RoutineInterviewPage() {
     );
   }
 
+  // ── 3. Read-back — one slide per part of the day ──────────────────────────
+  // Owner: show what we heard for morning / contemplation / evening as cards,
+  // and ask for each whether it represents what they do. Rows come from the
+  // SANITIZED spec, so this is a read-back of the routine itself, not of the
+  // model's prose about it.
+  if (phase === "confirm") {
+    const section = CONFIRM_SECTIONS[confirmIndex]!;
+    const rows = settings.filter((r) => r.section === section.key);
+    const isLast = confirmIndex >= CONFIRM_SECTIONS.length - 1;
+
+    const advance = () => {
+      setError(null); setShowFix(false); setFixText("");
+      if (isLast) { setPhase("extras"); return; }
+      setConfirmIndex((i2) => i2 + 1);
+    };
+    const saveFix = () => {
+      const t = fixText.trim();
+      if (!t) { advance(); return; }
+      // Rebuild with the correction folded in rather than patching the spec
+      // here — the model owns turning "actually I use the book" into a level
+      // and an entry, and a half-corrected spec is worse than a fresh one.
+      const next = [...corrections, `${section.title}: ${t}`];
+      setCorrections(next);
+      void submitFollowups(next);
+    };
+
+    return (
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+        <div style={wrap}>
+          <div>
+            <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${CONFIRM_SECTIONS.length}`} 🌿</p>
+            <h1 style={h1}>{section.title}</h1>
+            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
+              Here's what we heard.
+            </p>
+          </div>
+
+          {rows.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {rows.map((r, i2) => (
+                <div key={`${r.label}-${i2}`} style={rowCard}>
+                  <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                    <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ ...card, textAlign: "center" }}>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14.5, margin: 0, lineHeight: 1.55 }}>
+                Nothing here — we didn't hear anything for this part of your day.
+              </p>
+            </div>
+          )}
+
+          {showFix && (
+            <textarea
+              value={fixText}
+              onChange={(e) => setFixText(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="What's different?"
+              style={{
+                ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
+              }}
+            />
+          )}
+
+          {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
+
+          {showFix ? (
+            <button type="button" onClick={saveFix} style={primaryBtn}>Use this instead</button>
+          ) : (
+            <button type="button" onClick={advance} style={primaryBtn}>
+              {section.ask.replace(/\?$/, "")} — yes
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => (showFix ? setShowFix(false) : setShowFix(true))}
+            style={quietBtn}
+          >
+            {showFix ? "Never mind" : "Not quite"}
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  // ── 4. Extras — the customizer's "additional practice" step ───────────────
+  // Owner: "a third slide that gives them the options in the customizer format
+  // for extra contemplative practices, replicating the slide from the manual
+  // slideshow." Deterministic — these are the person's own picks, so they're
+  // written straight onto the spec rather than sent back through the model.
+  if (phase === "extras") {
+    const toggle = (k: string) =>
+      setExtras((prev) => {
+        const next = new Set(prev);
+        if (next.has(k)) next.delete(k); else next.add(k);
+        return next;
+      });
+
+    const finish = () => {
+      if (spec) {
+        const next = { ...(spec as any) };
+        const hl = { ...(next.homeLayout ?? { order: [], hidden: [] }) };
+        const order: string[] = [...(hl.order ?? [])];
+        const hidden: string[] = [...(hl.hidden ?? [])];
+        const rc: Record<string, string> = { ...(next.ruleConfig ?? {}) };
+        // This step only ADDS. Leaving one un-picked means "I didn't say I do
+        // this", not "remove it" — a card the model already placed from what
+        // they described stays, and the read-back round is where something
+        // wrong gets corrected.
+        for (const e of EXTRAS) {
+          if (!extras.has(e.key)) continue;
+          if (!order.includes(e.key)) order.push(e.key);
+          if (e.slot) rc[`phoebe:slot:${e.key}`] = e.slot;
+        }
+        next.homeLayout = { ...hl, order, hidden };
+        next.ruleConfig = rc;
+        setSpec(next);
+      }
+      setError(null);
+      setPhase("review");
+    };
+
+    return (
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+        <div style={wrap}>
+          <div>
+            <p style={eyebrow}>One more thing 🌿</p>
+            <h1 style={h1}>Anything else you keep?</h1>
+            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
+              Only if you already do it. Skip whatever you don't.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {EXTRAS.map((e) => {
+              const on = extras.has(e.key);
+              return (
+                <button
+                  key={e.key}
+                  type="button"
+                  onClick={() => toggle(e.key)}
+                  style={{
+                    ...rowCard,
+                    cursor: "pointer", textAlign: "left", width: "100%",
+                    background: on ? "rgba(46,107,64,0.24)" : CARD,
+                    borderColor: on ? "rgba(46,107,64,0.65)" : CARD_B,
+                  }}
+                >
+                  <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{e.emoji}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{e.label}</span>
+                    <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{e.sub}</span>
+                  </span>
+                  <span style={{ color: on ? "#A8C5A0" : "rgba(143,175,150,0.35)", fontSize: 16, flexShrink: 0 }} aria-hidden>
+                    {on ? "✓" : "+"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button type="button" onClick={finish} style={primaryBtn}>Continue</button>
+          <button type="button" onClick={() => { setError(null); setConfirmIndex(CONFIRM_SECTIONS.length - 1); setPhase("confirm"); }} style={quietBtn}>
+            Back
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
   // ── 3. Review ──────────────────────────────────────────────────────────────
   return (
     <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
@@ -341,14 +568,7 @@ export default function RoutineInterviewPage() {
         {settings.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {settings.map((r, i) => (
-              <div
-                key={`${r.label}-${i}`}
-                style={{
-                  background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
-                  border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
-                  borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
-                }}
-              >
+              <div key={`${r.label}-${i}`} style={rowCard}>
                 <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
@@ -380,7 +600,7 @@ export default function RoutineInterviewPage() {
         <button type="button" onClick={applySpec} disabled={applying} style={{ ...primaryBtn, opacity: applying ? 0.6 : 1 }}>
           {applying ? "Saving…" : "Save this as my rhythm"}
         </button>
-        <button type="button" onClick={() => { setError(null); setPhase("followups"); }} style={quietBtn}>
+        <button type="button" onClick={() => { setError(null); setPhase("extras"); }} style={quietBtn}>
           Not quite — go back
         </button>
       </div>

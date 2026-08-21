@@ -197,6 +197,61 @@ Assume the Book of Common Prayer 1979 and an Episcopal frame throughout. If a
 phrase is a recognized name in that tradition, treat it as the answer.
 `.trim();
 
+// Owner: ask "from a voice of Mr Rogers towards Gen Z in NYC who is anxious and
+// busy and sensitive to institutionalism and declaratives about spirituality."
+//
+// Those pull against each other on purpose, and the tension is the instruction:
+// Rogers is unhurried, but a busy anxious reader experiences length as a
+// demand. So the warmth has to arrive through ACCEPTANCE rather than through
+// word count — short, and completely un-disappointable.
+const VOICE = `
+VOICE — this governs every word the person reads.
+
+Write like Fred Rogers speaking to someone in their twenties in New York who is
+anxious, short on time, wary of institutions, and allergic to being told what
+their spiritual life means.
+
+Assume they have been an Episcopalian for about a year. They know the Book of
+Common Prayer and will say "Morning Prayer" or "Compline" and mean it — never
+explain those back to them. But they have NOT met every option: Simple Guided
+Prayer, the Examen, Audio Divina, a Contemplative Walk, the Dean's Commentary
+may all be unfamiliar names. So ask about the THING rather than the label —
+"do you spend any time in silence?" rather than "do you practice Contemplative
+Prayer?" — and never imply they should already recognize something.
+
+From Rogers, take: unhurried attention, plain short words, and the settled
+assumption that the person is fine exactly as they are. He never hurried anyone
+and never graded an answer.
+
+From the reader, take: brevity. They are tired and busy. Warmth that costs them
+reading time is not warmth. One sentence. No throat-clearing, no "I'd love to
+hear...", no stacked qualifiers.
+
+NEVER:
+  · Declare what prayer, God, or silence IS or DOES. No "prayer is a gift",
+    no "God meets us in the quiet", no "there's no wrong way to pray".
+  · Invoke the church, the tradition, a priest, or what one is "supposed" to
+    do. They are not answering to an institution here.
+  · Praise, encourage, or evaluate the practice they described — not even
+    kindly. "That's a beautiful rhythm" grades them; a question doesn't.
+  · Perform warmth with exclamation marks or emoji.
+
+ALWAYS:
+  · Ask one plain thing, in words they'd use themselves.
+  · Leave "not really" or "I don't" sitting comfortably in the question, so it
+    costs nothing to say.
+
+  ✗ "Prayer can take many beautiful forms! Would you say silence is part of
+     your daily walk with God?"
+  ✓ "Is there any part of the day you spend in silence?"
+
+  ✗ "The Church invites us to close the day with Compline — do you observe it?"
+  ✓ "Do you pray anything before bed?"
+
+  ✗ "That sounds like a rich morning practice. How do you take it?"
+  ✓ "Do you read Morning Prayer from your prayer book, on a screen, or listen?"
+`.trim();
+
 const TRANSCRIBE_NOT_PRESCRIBE = `
 You are helping someone record the daily prayer practice they ALREADY KEEP into
 an app called Phoebe. You are a scribe, not a spiritual director.
@@ -224,6 +279,8 @@ Rules, in order of importance:
 ${FOUR_THINGS}
 
 ${EPISCOPAL_LENS}
+
+${VOICE}
 `.trim();
 
 type OpenAiResult = { ok: true; data: any } | { ok: false; status: number; error: string };
@@ -454,7 +511,11 @@ function prettyTime(hhmm: string): string {
  *  shape the manual customizer's review step uses (owner: "I want the routine
  *  to be shown like it would at the end of the manual flow"), so the two
  *  endings of the two flows read as the same screen. */
-export type SpecRow = { emoji: string; label: string; sub: string };
+// `section` groups rows for the read-back round, where each section gets its
+// own confirmation slide (owner: "we show what we are hearing for morning,
+// contemplation, and evening ... each one has a slide").
+export type SpecSection = "morning" | "contemplation" | "evening" | "newsletters" | "practices";
+export type SpecRow = { emoji: string; label: string; sub: string; section: SpecSection };
 
 function describeSpec(spec: {
   officePrefs: { morning: string; evening: string; morningTime: string | null; eveningTime: string | null; contemplationGoalMinutes: number };
@@ -481,6 +542,7 @@ function describeSpec(spec: {
       emoji: side === "morning" ? "🌅" : "🌙",
       label: LEVEL_LABEL[level] ? `${cap} ${LEVEL_LABEL[level]}` : `${cap} Prayer`,
       sub: subBits.join(" · "),
+      section: side,
     });
 
     if (rc[`phoebe:office:contemplation:${side}`] === "1") {
@@ -489,6 +551,7 @@ function describeSpec(spec: {
         emoji: "🕯️",
         label: `${cap} Contemplation`,
         sub: mins ? `${mins} min` : "A silent sit",
+        section: "contemplation",
       });
     }
   }
@@ -496,7 +559,7 @@ function describeSpec(spec: {
   if (spec.officePrefs.contemplationGoalMinutes > 0
       && rc["phoebe:office:contemplation:morning"] !== "1"
       && rc["phoebe:office:contemplation:evening"] !== "1") {
-    rows.push({ emoji: "🕯️", label: "Silence", sub: `${spec.officePrefs.contemplationGoalMinutes} min a day` });
+    rows.push({ emoji: "🕯️", label: "Silence", sub: `${spec.officePrefs.contemplationGoalMinutes} min a day`, section: "contemplation" });
   }
 
   // Newsletters — one row EACH. Owner: "you can definitely do two newsletters."
@@ -506,13 +569,13 @@ function describeSpec(spec: {
   const hidden = new Set(spec.homeLayout.hidden);
   for (const key of spec.homeLayout.order) {
     if (!NEWSLETTER_LABEL[key] || hidden.has(key)) continue;
-    rows.push({ emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day" });
+    rows.push({ emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day", section: "newsletters" });
   }
 
   for (const [k, v] of Object.entries(rc)) {
     if (!k.startsWith("phoebe:slot:")) continue;
     const name = PRACTICE_LABEL[k.slice("phoebe:slot:".length)];
-    if (name && SLOT_LABEL[v]) rows.push({ emoji: "✨", label: name, sub: SLOT_LABEL[v] });
+    if (name && SLOT_LABEL[v]) rows.push({ emoji: "✨", label: name, sub: SLOT_LABEL[v], section: "practices" });
   }
   return rows;
 }
@@ -642,10 +705,20 @@ homeLayout.order must be non-empty. Put a side's anchor practice in ruleConfig
 under phoebe:office:level:<side>, and set that side to "ask" if they don't pray
 then. "notes" may be an empty array when nothing needed judgement.`;
 
+  // Corrections from the read-back round: we showed them what we'd heard for a
+  // side and they said it was wrong. These carry more weight than the original
+  // description — they are the person looking at our reading and rejecting it.
+  const corrections: string[] = Array.isArray(req.body?.corrections)
+    ? req.body.corrections.slice(0, 6).map((c: unknown) => cleanText(c, 500)).filter((c: string) => c.length > 0)
+    : [];
+
   const userMsg = [
     `THEIR DESCRIPTION:\n${description}`,
     followups.length > 0
       ? `\n\nCLARIFICATIONS:\n${followups.map((f) => `Q: ${f.q}\nA: ${f.a || "(no answer)"}`).join("\n\n")}`
+      : "",
+    corrections.length > 0
+      ? `\n\nWE READ THEIR PRACTICE BACK AND THEY CORRECTED US. These override anything above:\n${corrections.map((c) => `· ${c}`).join("\n")}`
       : "",
   ].join("");
 
