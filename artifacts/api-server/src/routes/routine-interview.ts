@@ -120,6 +120,36 @@ include every practice you turned on:
 homeLayout.hidden — same keys, for cards to hide.
 `.trim();
 
+// Owner: "make sure it focuses on defining their morning, evening and
+// contemplation practice, and what newsletters they read." Everything Phoebe
+// can hold reduces to these four, so they're the interview's whole job —
+// stated once here and referenced by both calls, so the follow-up questions
+// and the build step are chasing the same four gaps rather than wandering.
+const FOUR_THINGS = `
+WHAT YOU ARE DEFINING — these four, and nothing else:
+
+  1. MORNING PRACTICE — what they pray in the morning, and how they take it
+     (on screen, from their physical prayer book, read aloud, and so on).
+  2. EVENING PRACTICE — the same for the evening. May be a different practice
+     and a different form from the morning.
+  3. CONTEMPLATION — silent prayer. Whether they sit at all, for how long, and
+     whether it belongs to a side of the day or stands on its own.
+  4. NEWSLETTERS — the daily reflections they read: the CAC daily meditation,
+     Forward Day by Day, SSJE, the VTS Dean's Commentary. Which ones, if any,
+     and whether a given one is their PRACTICE for a side or a reading
+     alongside it.
+
+VIRGINIA THEOLOGICAL SEMINARY: if they say they are at, attend, teach at,
+study at, or graduated from Virginia Theological Seminary — or write "VTS" —
+turn the Dean's Commentary ON for them: set a reflection to "vts" and include
+"vts" in homeLayout.order. It is their own seminary's daily word, so it is
+wanted unless they explicitly say they don't read it. This is the one place you
+may add something they didn't ask for by name; say so in your notes.
+
+Do not chase anything outside these four. Reminder times are worth capturing
+when they mention them, but they are a detail of 1 and 2, never the subject.
+`.trim();
+
 const TRANSCRIBE_NOT_PRESCRIBE = `
 You are helping someone record the daily prayer practice they ALREADY KEEP into
 an app called Phoebe. You are a scribe, not a spiritual director.
@@ -133,6 +163,8 @@ Rules, in order of importance:
 3. If they gave no reminder time, do not invent a reminder — leave that side's
    reminder "none".
 4. Silence about a practice means it is OFF, not that you should guess.
+
+${FOUR_THINGS}
 `.trim();
 
 type OpenAiResult = { ok: true; data: any } | { ok: false; status: number; error: string };
@@ -433,13 +465,17 @@ ${PHOEBE_VOCAB}
 
 Right now you are ONLY asking follow-up questions — do not produce a routine yet.
 
-Read their description and find the two things you are most UNSURE about that
-would change what you program. Good questions resolve a real ambiguity: which
-side a practice belongs to, whether something is daily or occasional, whether
-they want a reminder and at what time, how long they sit, or which form of the
-office they mean. Do not ask about anything they already answered clearly, and
-do not ask them to choose between Phoebe's internal option names — ask about
-their practice in their own terms.
+Work through the four in order — morning, evening, contemplation, newsletters —
+and find which are still UNCLEAR or UNANSWERED. Ask about the two biggest gaps.
+An area they never mentioned at all is a bigger gap than one they described
+loosely, and a completely missing area is usually worth asking about before a
+fine detail of one they covered well: someone who described their morning in
+detail and never mentioned silence or reading should be asked about those, not
+about the exact minute of their morning reminder.
+
+Never ask about something they already answered clearly. Never ask them to pick
+between Phoebe's internal option names — ask about their practice in their own
+words, the way a person would.
 
 Respond with ONLY JSON: {"questions": ["...", "..."]}
 Exactly two questions. Each one sentence, plainly worded, no jargon.`;

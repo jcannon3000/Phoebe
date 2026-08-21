@@ -36,10 +36,16 @@ type Phase = "describe" | "thinking-followups" | "followups" | "thinking-build" 
 
 type Spec = Record<string, unknown>;
 
+// Owner: "make sure it focuses on defining their morning, evening and
+// contemplation practice, and what newsletters they read." These mirror the
+// four the server prompt is built around, so what we ask for here is exactly
+// what the model is trying to fill in — and the follow-up questions land on
+// whichever of the four they skipped.
 const PROMPTS = [
-  "What times of day do you pray, and what do you do at each?",
-  "Which form do you use — the Book of Common Prayer, a devotional, silence, something else?",
-  "Do you read anything daily, or sit in silence? For how long?",
+  "Morning — what do you pray, and how? (On screen, from your prayer book, read aloud…)",
+  "Evening — the same: what, and how?",
+  "Silence — do you sit in silent prayer? For how long, and when?",
+  "Reading — any daily newsletters? Forward Day by Day, the CAC meditation, SSJE, the VTS Dean's Commentary…",
 ];
 
 export default function RoutineInterviewPage() {
@@ -227,7 +233,7 @@ export default function RoutineInterviewPage() {
             onChange={(e) => setDescription(e.target.value)}
             rows={8}
             maxLength={4000}
-            placeholder="Most mornings I read Morning Prayer from my prayer book around 7, and I sit in silence for about ten minutes after. In the evening I usually just read Forward Day by Day before bed…"
+            placeholder="Most mornings I read Morning Prayer from my prayer book around 7, and I sit in silence for about ten minutes after. In the evening I usually just read Forward Day by Day before bed. I'm at VTS…"
             style={{
               ...card, width: "100%", boxSizing: "border-box", color: WARM,
               fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
