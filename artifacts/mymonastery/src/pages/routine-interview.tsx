@@ -45,8 +45,12 @@ const CTA = "#2D5E3F";
 // for each if that represents what they do. Each one has a slide." Then an
 // extras slide in the customizer's own format before the final review.
 type Phase =
+  // "mode" only appears for someone who ALREADY has a routine — see the slide
+  // itself for why a first-timer never sees it.
+  | "mode"
   | "describe" | "thinking-followups" | "followups" | "thinking-build"
   | "confirm" | "extras" | "review";
+type InterviewMode = "scratch" | "adjust";
 
 // The read-back sections, in the order the day runs.
 const CONFIRM_SECTIONS: Array<{ key: SpecSection; title: string; ask: string }> = [
@@ -157,6 +161,23 @@ export default function RoutineInterviewPage() {
   );
 
   const [phase, setPhase] = useState<Phase>("describe");
+  /**
+   * Rebuilding from nothing, or changing what's already there.
+   *
+   * Owner: "if someone only has a routine and they click 'ask me about my
+   * practice', let's have two more options — start from scratch, or adjust my
+   * routine."
+   *
+   * Worth the extra slide because the two are genuinely different tasks. Asked
+   * "what does your daily routine look like?", someone who only wants their
+   * evening reminder moved has to retype their entire rule of life, and any
+   * practice they forget to mention gets deleted. Adjusting asks one question
+   * and carries the rest forward.
+   */
+  const [mode, setMode] = useState<InterviewMode>("adjust");
+  // What they're standing on. Empty = no routine yet, so there is nothing to
+  // adjust and the mode slide is skipped entirely.
+  const [currentSettings, setCurrentSettings] = useState<SpecRow[]>([]);
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -195,8 +216,31 @@ export default function RoutineInterviewPage() {
   // beside the spec rather than inside it — custom anchors sync through their
   // own channel, not through ruleConfig — so they're written locally on apply.
   const [customPractices, setCustomPractices] = useState<CustomPractice[]>([]);
+  // Typed on the extras step — "is there any other practice you do that isn't
+  // named here?" See the field itself for why it lives on that step.
+  const [ownPractice, setOwnPractice] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+
+  // Ask what they're standing on. Until this resolves we stay on "describe",
+  // so a first-timer — and anyone whose fetch fails — gets the from-scratch
+  // flow immediately rather than a spinner or an empty chooser. Only a person
+  // who actually HAS a routine is moved onto the mode slide.
+  useEffect(() => {
+    let cancelled = false;
+    apiRequest("GET", "/api/routine-interview/current")
+      .then((r: any) => {
+        if (cancelled) return;
+        const rows: SpecRow[] = Array.isArray(r?.settings) ? r.settings : [];
+        if (rows.length === 0) return;
+        setCurrentSettings(rows);
+        // Don't yank someone who has already started typing.
+        setPhase((cur) => (cur === "describe" && description.length === 0 ? "mode" : cur));
+      })
+      .catch(() => { /* no routine context — from-scratch is the safe default */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Owner: "the page needs to scroll up when I'm on the second." Advancing a
   // slide keeps the window's scroll position, so a long first answer left the
@@ -216,6 +260,12 @@ export default function RoutineInterviewPage() {
     const lm = sp.ruleConfig?.["phoebe:contemplation-log-method"];
     if (lm === "manual" || lm === "timer") setContLog(lm);
   }, [spec]);
+
+  // "adjust" is the default, but it only MEANS anything when there's a routine
+  // to adjust. Sending it regardless would make the server read a routine it's
+  // about to ignore, and — if that read ever succeeded for someone mid-setup —
+  // frame a first-time description as a change to something.
+  const effectiveMode: InterviewMode = currentSettings.length > 0 ? mode : "scratch";
 
   const errorText = (code: string): string => {
     switch (code) {
@@ -239,7 +289,7 @@ export default function RoutineInterviewPage() {
     setPhase("thinking-followups");
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/followups", {
-        description,
+        description, mode: effectiveMode,
       })) as { questions?: Array<Question | string> } | null;
       const qs: Question[] = (res?.questions ?? [])
         // Tolerate the bare-string shape as well as {q, choices} — the server
@@ -276,7 +326,7 @@ export default function RoutineInterviewPage() {
     setPhase("thinking-build");
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/build", {
-        description,
+        description, mode: effectiveMode,
         followups: questions.map((item, i) => ({ q: item.q, a: answers[i] ?? "" })),
         corrections: nextCorrections ?? corrections,
       })) as {
@@ -472,21 +522,108 @@ export default function RoutineInterviewPage() {
   }
 
   // ── 1. Describe ────────────────────────────────────────────────────────────
-  if (phase === "describe") {
+  // ── 0. Adjust, or start over? Only for someone who already has a routine. ──
+  if (phase === "mode") {
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
           {progressBars}
           <div>
             <p style={eyebrow}>Your rhythm 🌿</p>
-            <h1 style={h1}>What does your daily routine look like?</h1>
+            <h1 style={h1}>You already have a routine</h1>
+            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
+              Change one part of it, or describe your whole practice again from
+              the beginning.
+            </p>
+          </div>
+
+          {/* Show what they have. The choice is meaningless without it — "adjust
+              my routine" only means something once you can see the routine. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {currentSettings.map((r, i) => (
+              <div key={`${r.label}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 17, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", color: WARM, fontFamily: FONT, fontSize: 14.5, fontWeight: 600 }}>{r.label}</span>
+                  <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 12.5, marginTop: 1 }}>{r.sub}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {([
+              { v: "adjust" as const, emoji: "✏️", label: "Adjust my routine", sub: "Change one thing. Everything else stays as it is." },
+              { v: "scratch" as const, emoji: "🌱", label: "Start from scratch", sub: "Describe your whole practice again." },
+            ]).map((o) => {
+              const on = mode === o.v;
+              return (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setMode(o.v)}
+                  style={{
+                    ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
+                    padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+                    border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                    background: on ? "rgba(45,94,63,0.55)" : CARD,
+                  }}
+                  aria-pressed={on}
+                >
+                  <span aria-hidden style={{ fontSize: 20 }}>{o.emoji}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 600 }}>{o.label}</span>
+                    <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{o.sub}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button type="button" onClick={() => { setError(null); setPhase("describe"); }} style={primaryBtn}>
+            Continue
+          </button>
+          {currentSettings.length > 0 ? (
+            <button type="button" onClick={() => { setError(null); setPhase("mode"); }} style={quietBtn}>
+              Back
+            </button>
+          ) : (
+            <button type="button" onClick={() => setLocation("/rule-of-life")} style={quietBtn}>
+              I'd rather set it up myself
+            </button>
+          )}
+        </div>
+      </Layout>
+    );
+  }
+
+  if (phase === "describe") {
+    // Only an ADJUST when there's actually something to adjust — a failed or
+    // empty current-routine fetch must not leave them answering "what would
+    // you like to change?" about a routine that doesn't exist.
+    const adjusting = effectiveMode === "adjust";
+    return (
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+        <div style={wrap}>
+          {progressBars}
+          <div>
+            <p style={eyebrow}>Your rhythm 🌿</p>
+            {/* Owner: "just create a flow where it says, what would you like to
+                adjust, and it puts an open field." Same box, different
+                question — asking someone who wants one thing moved to describe
+                their whole practice again is how a small change turns into a
+                retyped rule of life with a practice accidentally dropped. */}
+            <h1 style={h1}>
+              {adjusting ? "What would you like to adjust?" : "What does your daily routine look like?"}
+            </h1>
             {/* Owner: the four things to cover belong in the LLM's prompt, not
                 on screen as a checklist — "that's what we want to look for in
                 the response." So this asks openly and the server prompt does
                 the structuring. */}
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              Describe any daily practices you engage in, and any newsletters you
-              may read.
+              {adjusting
+                ? "Just the part you want changed. Everything else stays exactly as it is."
+                : "Describe any daily practices you engage in, and any newsletters you may read."}
             </p>
           </div>
 
@@ -1242,6 +1379,20 @@ export default function RoutineInterviewPage() {
         // failure the derived-settings change was made to close.
         if (added.length > 0) setSettings((prev) => [...prev, ...added]);
       }
+      // A practice of their own, typed above. Owner: "after they've seen their
+      // thing — is there any other practice you do that is not named here, and
+      // it's a custom practice?" Rides beside the spec like the ones the model
+      // proposed, and is written as a custom anchor on apply.
+      const typed = ownPractice.trim();
+      if (typed) {
+        const already = customPractices.some((c) => c.title.trim().toLowerCase() === typed.toLowerCase());
+        if (!already) {
+          setCustomPractices((prev) => [...prev, { title: typed.slice(0, 40), emoji: "🌿", slot: "anytime" }]);
+          setSettings((prev) => [...prev, {
+            emoji: "🌿", label: typed.slice(0, 40), sub: "Any time of day", section: "practices",
+          }]);
+        }
+      }
       setError(null);
       setPhase("review");
     };
@@ -1309,6 +1460,30 @@ export default function RoutineInterviewPage() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Owner asked where this belongs; this step is the answer. It's
+              already the "anything else you keep?" moment, it comes AFTER the
+              read-back so they've seen what we heard, and BEFORE the review so
+              whatever they add still gets approved with everything else. A
+              fourth stage would be a second screen asking the same question. */}
+          <div>
+            <p style={{ ...eyebrow, marginBottom: 8 }}>Something not listed?</p>
+            <input
+              value={ownPractice}
+              onChange={(e) => setOwnPractice(e.target.value.slice(0, 40))}
+              maxLength={40}
+              placeholder="e.g. The Rosary"
+              aria-label="A practice of your own"
+              style={{
+                ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                fontFamily: FONT, fontSize: 15, outline: "none", padding: "13px 14px",
+              }}
+            />
+            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, margin: "8px 0 0" }}>
+              Any practice you keep that Phoebe doesn't have a name for. It'll
+              become a card of your own.
+            </p>
           </div>
 
           <button type="button" onClick={finish} style={primaryBtn}>Continue</button>

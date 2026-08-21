@@ -33,7 +33,7 @@
  * A hallucinated practice name doesn't corrupt a routine; it gets dropped.
  */
 import { Router, type IRouter } from "express";
-import { sanitizeSpec, applyRoutineSpecToUser, HOME_MODULE_KEYS } from "../lib/routineSpec";
+import { sanitizeSpec, applyRoutineSpecToUser, captureRoutineSpec, HOME_MODULE_KEYS } from "../lib/routineSpec";
 import { perUserRateLimit } from "../lib/rate-limit";
 import { describeSpec, SLOT_LABEL, type SpecSection } from "../lib/routineDescribe";
 import { saveRoutineSnapshot } from "./routine-snapshots";
@@ -681,6 +681,61 @@ function parseCustomPractices(raw: unknown): CustomPractice[] {
   return out;
 }
 
+
+/**
+ * The routine they're standing on, for the ADJUST flow.
+ *
+ * Owner: "if someone already has a routine and they click 'ask me about my
+ * practice', have two more options — start from scratch, or adjust my routine
+ * ... just create a flow where it says what would you like to adjust."
+ *
+ * Adjusting is a different task from transcribing, and the model cannot do it
+ * blind: told only "move evening prayer to nine" with no idea what else is in
+ * force, it invents a plausible whole routine and quietly drops the practices
+ * they never mentioned. So the current routine goes into the prompt, with an
+ * explicit instruction to carry forward everything untouched.
+ */
+async function currentRoutineContext(userId: number): Promise<string> {
+  // Swallow its own failures. This is CONTEXT, not the request: if the read
+  // fails, the right outcome is a build that treats the description as a fresh
+  // routine, not a 502 that loses everything they typed.
+  let spec: Awaited<ReturnType<typeof captureRoutineSpec>> = null;
+  try {
+    spec = await captureRoutineSpec(userId);
+  } catch (err) {
+    console.error("[routine-interview] current-routine context failed:", err);
+    return "";
+  }
+  if (!spec) return "";
+  const rows = describeSpec(spec);
+  if (rows.length === 0) return "";
+  return [
+    "THEIR CURRENT ROUTINE — this is what is in force right now:",
+    ...rows.map((r) => `\u00b7 [${r.section}] ${r.label} \u2014 ${r.sub}`),
+    "",
+    "They are ADJUSTING this, not replacing it. Produce the WHOLE routine with",
+    "their change applied. Everything they did not ask to change must come back",
+    "exactly as it is above \u2014 a practice missing from your output is a practice",
+    "deleted from their rule of life, and they did not ask for that.",
+  ].join("\n");
+}
+
+// The routine currently in force, described the same way the review describes a
+// new one \u2014 so the adjust flow can show them what they're changing.
+router.get("/routine-interview/current", async (req, res): Promise<void> => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const spec = await captureRoutineSpec(userId);
+    res.json({ settings: spec ? describeSpec(spec) : [] });
+  } catch (err) {
+    console.error("[routine-interview] current failed:", err);
+    // An empty list just means "no routine to adjust" \u2014 the client falls back
+    // to the from-scratch flow rather than showing an error.
+    res.json({ settings: [] });
+  }
+});
+
 // ── POST /api/routine-interview/followups ────────────────────────────────────
 // Owner: "let's have it be at least two questions, but have it be as ... many
 // questions as needed to clarify." So: a floor of two, a ceiling of five, and
@@ -767,7 +822,30 @@ AT LEAST TWO questions, at most five. Ask a third or more ONLY when something
 real is still unclear — if two cover it, ask two. Each question one sentence,
 plainly worded, no jargon.`;
 
-  const out = await askOpenAi(system, `THEIR DESCRIPTION:\n${description}`, 500);
+  // In the ADJUST flow the questions have to be about the CHANGE, not a fresh
+  // inventory of their whole day — asking "do you pray in the morning?" of
+  // someone who just asked to move their evening reminder is an interrogation
+  // about things we already know.
+  const adjusting = req.body?.mode === "adjust";
+  const context = adjusting ? await currentRoutineContext(userId) : "";
+  const askSystem = context
+    ? `${system}
+
+THIS IS AN ADJUSTMENT, NOT A NEW ROUTINE.
+
+${context}
+
+Ask ONLY about what their change leaves unclear. Never ask about a part of the
+routine above that their request doesn't touch — you already have it. If the
+change is completely clear on its own, ask about its edges (when, how long, how
+often), never about the rest of their day.`
+    : system;
+
+  const out = await askOpenAi(
+    askSystem,
+    adjusting ? `WHAT THEY WANT TO ADJUST:\n${description}` : `THEIR DESCRIPTION:\n${description}`,
+    500,
+  );
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
 
   const raw = Array.isArray(out.data?.questions) ? out.data.questions : [];
@@ -849,8 +927,12 @@ then. "notes" may be an empty array when nothing needed judgement.`;
     ? req.body.corrections.slice(0, 6).map((c: unknown) => cleanText(c, 500)).filter((c: string) => c.length > 0)
     : [];
 
+  const buildAdjusting = req.body?.mode === "adjust";
+  const buildContext = buildAdjusting ? await currentRoutineContext(userId) : "";
+
   const userMsg = [
-    `THEIR DESCRIPTION:\n${description}`,
+    buildContext ? `${buildContext}\n\n` : "",
+    buildAdjusting ? `WHAT THEY WANT TO ADJUST:\n${description}` : `THEIR DESCRIPTION:\n${description}`,
     followups.length > 0
       ? `\n\nCLARIFICATIONS:\n${followups.map((f) => `Q: ${f.q}\nA: ${f.a || "(no answer)"}`).join("\n\n")}`
       : "",
