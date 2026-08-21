@@ -427,6 +427,17 @@ export default function WayOfLoveRuleFlow({
   const { user } = useAuth();
   const entitlements = useEntitlements();
   const [, setLocation] = useLocation();
+  // Owner: "For super admins, let's build a version where the first slide is an
+  // option to do manual or have it ask questions." Same signal the rest of the
+  // app calls super-admin (beta_users.is_admin, via /api/beta/status) — reused
+  // rather than adding a second /admin/am-super query for the same bit.
+  //
+  // Rendered as a PRELUDE (like the why-intro below) rather than a step in
+  // orderedSteps: rawIsAdmin arrives from a query and is false while it loads,
+  // so a step list computed from it would flicker, and an initial `step`
+  // computed from it would skip the slide entirely for the admin it's for.
+  const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
+  const [entryChoiceMade, setEntryChoiceMade] = useState(false);
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
   // owns the same phoebe:hide-turn-learn-pray key.)
@@ -1493,6 +1504,44 @@ export default function WayOfLoveRuleFlow({
 
   // ── The "technology of holding" prelude — shown once before the first author
   // reaches the preset picker (all hooks above have already run). ────────────
+  // ── Manual, or let it ask? (super admins) ─────────────────────────────────
+  // Owner: "the first slide is an option to do manual or have it ask
+  // questions." Sits ahead of everything — the why-intro and the preset picker
+  // both belong to the manual path, and showing either before this choice
+  // would be asking them to start the thing they might not have picked.
+  //
+  // Guests and the pilot flow never see it: both are deliberately stripped
+  // shells, and the interview needs an account to write to.
+  if (isSuperAdmin && !guest && !pilot && !prescribe && !entryChoiceMade) {
+    return shell(
+      <>
+        {stepHeader(
+          t("wol_rule.entry_eyebrow", { defaultValue: "Your daily rhythm of prayer" }),
+          t("wol_rule.entry_title", { defaultValue: "How would you like to build it?" }),
+        )}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.entry_body", {
+            defaultValue: "Shape it yourself, or describe the practice you already keep and let Phoebe set it up to match.",
+          })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(
+            false,
+            `✍️ ${t("wol_rule.entry_manual", { defaultValue: "I'll set it up myself" })}`,
+            t("wol_rule.entry_manual_sub", { defaultValue: "Go through the slides and choose each practice." }),
+            () => setEntryChoiceMade(true),
+          )}
+          {choiceRow(
+            false,
+            `💬 ${t("wol_rule.entry_ask", { defaultValue: "Ask me about my practice" })}`,
+            t("wol_rule.entry_ask_sub", { defaultValue: "Describe how you already pray, in your own words, and Phoebe programs it for you." }),
+            () => setLocation("/routine-interview"),
+          )}
+        </div>
+      </>,
+    );
+  }
+
   if (showWhy) {
     return (
       <RhythmWhyIntro
