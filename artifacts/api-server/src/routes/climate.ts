@@ -218,6 +218,7 @@ router.get("/climate/parishes", requireClimate, async (req, res): Promise<void> 
         emoji: groupsTable.emoji,
       })
       .from(groupsTable)
+      .where(eq(groupsTable.isPrayerCircle, false))
       .orderBy(asc(groupsTable.name));
     res.json({ parishes: rows });
   } catch {
@@ -236,10 +237,10 @@ router.patch("/climate/me/parish", requireClimate, async (req, res): Promise<voi
 
     if (parishId !== null) {
       const [group] = await db
-        .select({ id: groupsTable.id })
+        .select({ id: groupsTable.id, isPrayerCircle: groupsTable.isPrayerCircle })
         .from(groupsTable)
         .where(eq(groupsTable.id, parishId));
-      if (!group) {
+      if (!group || group.isPrayerCircle) {
         res.status(400).json({ error: "Invalid parish" }); return;
       }
     }

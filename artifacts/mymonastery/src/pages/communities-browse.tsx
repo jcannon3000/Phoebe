@@ -26,6 +26,7 @@ interface PublicGroup {
   description: string | null;
   slug: string;
   emoji: string | null;
+  isPrayerCircle: boolean;
   city: string | null;
   state: string | null;
   memberCount: number;
