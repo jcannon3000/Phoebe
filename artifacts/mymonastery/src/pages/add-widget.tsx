@@ -15,7 +15,11 @@ const STEPS = [
   { title: "Touch and hold your Home Screen", body: "Press and hold any empty spot until the icons start to jiggle." },
   { title: "Tap the + in the top corner", body: "A widget gallery opens, showing every app with a widget available." },
   { title: "Search for Phoebe", body: "Type “Phoebe” and tap the app's widget to preview it." },
-  { title: "Choose a size, then Add Widget", body: "The medium size shows what's next and its subtitle at a glance; the small size fits more on a crowded screen." },
+  // Owner: "let's not offer the small square widget, just the wide dots one."
+  // This step told people to choose between two sizes; only the wide one is in
+  // the gallery now, so the instruction would have sent them looking for a
+  // size that isn't there.
+  { title: "Tap Add Widget", body: "The wide widget shows your past 7 days — the same rhythm dots as your home screen." },
   { title: "Tap Done", body: "Your widget stays current on its own — no need to open the app first." },
 ];
 

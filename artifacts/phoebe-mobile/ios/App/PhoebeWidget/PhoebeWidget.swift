@@ -307,6 +307,11 @@ struct PhoebeWidgetView: View {
         case .systemMedium:
             homeWeeklyGrid
         default:
+            // .systemSmall is no longer OFFERED (see supportedFamilies), but
+            // removing a family from the gallery doesn't remove widgets people
+            // already placed — iOS keeps asking us to render those. So homeSmall
+            // stays as the fallback rather than being deleted, or an existing
+            // small widget would go blank.
             homeSmall
         }
     }
@@ -570,11 +575,17 @@ struct PhoebeWidget: Widget {
                 view.padding().background(phoebeGreen)
             }
         }
-        .configurationDisplayName("What's next")
-        .description("Your next prayer, reflection, or office — and today's rhythm.")
+        .configurationDisplayName("Daily rhythm")
+        .description("Your past 7 days at a glance.")
+        // Owner: "let's not offer the small square widget, just the wide dots
+        // one." .systemSmall is gone from the gallery — the wide
+        // (.systemMedium) family renders homeWeeklyGrid, which is the dot grid
+        // the home card shows. The lock-screen accessory families stay: they're
+        // a different surface, not the small square, and this is the only
+        // widget offering them for "what's next".
         .supportedFamilies([
             .accessoryInline, .accessoryCircular, .accessoryRectangular,
-            .systemSmall, .systemMedium,
+            .systemMedium,
         ])
     }
 }
