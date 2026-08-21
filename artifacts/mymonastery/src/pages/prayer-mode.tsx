@@ -50,7 +50,7 @@ import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { CompanionFaces, companionNamesLine } from "@/components/CompanionFaces";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { getPracticeSlot, SLOT_RANK, type CustomSlot } from "@/lib/customAnchors";
+import { getPracticeSlot, SLOT_RANK, EVENING_OPEN_HOUR, type CustomSlot } from "@/lib/customAnchors";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
 // strip above the WebView matches the slide background. The app sets it once
@@ -2025,7 +2025,7 @@ function PrayerCompletedSlide({
     add(rhythm.readingActive, rhythm.readingDone, getPracticeSlot("reading"), { emoji: "📚", title: t("rhythm.card_reading", { defaultValue: "Reading" }), blurb: t("rhythm.blurb_reading", { defaultValue: "Log what you read" }), href: "/reading-log" });
     add(rhythm.walkActive, rhythm.walkDone, getPracticeSlot("walk"), { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk as prayer" }), href: "/walk-log" });
     add(rhythm.podcastsActive, rhythm.podcastsDone, "afternoon", { emoji: "🎙️", title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }), blurb: t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }), href: "/podcast-log" });
-    add(rhythm.eveningActive && hour >= 17, rhythm.eveningDone, "evening", { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" });
+    add(rhythm.eveningActive && hour >= EVENING_OPEN_HOUR, rhythm.eveningDone, "evening", { emoji: "🌙", title: t("rhythm.card_evening", { defaultValue: "Evening Prayer" }), blurb: t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }), href: "/begin-prayer?side=evening" });
     add(rhythm.examenActive, rhythm.examenDone, "evening", { emoji: "🌗", title: t("rhythm.card_examen", { defaultValue: "The Examen" }), blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }), href: "/examen" });
     if (cands.length === 0) return null;
     return [...cands].sort((a, b) => SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];

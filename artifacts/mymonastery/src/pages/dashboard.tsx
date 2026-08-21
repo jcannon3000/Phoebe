@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, getSideEntry, getFddMode, getPsalmCycle, getSideCustomName, OFFICE_PREFS_EVENT, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { EVENING_OPEN_HOUR } from "@/lib/customAnchors";
 import { BookOfficeLogSheet } from "@/components/BookOfficeLogSheet";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT } from "@/lib/contemplationSideDone";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
@@ -2266,7 +2267,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
   // the evening office's gate (SLOT_OPEN_HOUR.evening in lib/customAnchors.ts)
   // so Creation Prayer/Contemplation isn't offered as "available" before then.
   const hour = new Date().getHours();
-  const later = side === "evening" && !met && hour < 17;
+  const later = side === "evening" && !met && hour < EVENING_OPEN_HOUR;
 
   // Sub-line: the "later" gate wins (evening, not yet 5 PM); then this side's
   // own kept state; then style-specific blurb; goal progress only applies to
@@ -6491,10 +6492,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       : null;
   const reflectAvailable = reflectKey != null && homeOrder.includes(reflectKey) && !homeHidden.has(reflectKey);
   const heroNowHour = new Date().getHours();
-  // Evening Prayer only takes over as the hero from 5pm on — before then the
-  // afternoon hero stays on the morning office / today's reflection. (Earlier
-  // this was 3pm, which surfaced Evening Prayer too early in the day.)
-  const heroAfternoon = heroNowHour >= 17;
+  // Evening Prayer takes over as the hero from EVENING_OPEN_HOUR on — before
+  // then the afternoon hero stays on the morning office / today's reflection.
+  // (This was 3pm once, which surfaced Evening Prayer too early; it's the
+  // shared evening gate now, moved to 4pm by the owner, so the hero and the
+  // card can't open at different times.)
+  const heroAfternoon = heroNowHour >= EVENING_OPEN_HOUR;
   type HomeHero =
     | { kind: "office"; side: "morning" | "evening" }
     | { kind: "reflect"; key: HomeModule }

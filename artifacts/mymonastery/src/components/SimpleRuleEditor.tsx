@@ -234,7 +234,16 @@ export default function SimpleRuleEditor({
 
   function chooseOffice(side: OfficeSide, level: OfficeLevel) {
     setSideLevel(side, level);
-    // Match the seed: a chosen office reads by default.
+    // Owner: "on the light customizer, if they chose offices, have the medium
+    // be venite." Applied here as well as /customize — both are the light
+    // surface, and leaving one of them on "read" would mean the same choice
+    // behaved differently depending on which one you came through.
+    //
+    // Gated to the FULL office specifically: Venite serves morning-prayer and
+    // evening-prayer only (Compline renders blank there — checked), so
+    // Compline, psalms, a devotion and the rest keep reading on screen.
+    if (level === "office") { setSideEntry(side, "venite"); return; }
+    // Match the seed: any other chosen practice reads by default.
     if (level !== "ask") setSideEntry(side, "read");
   }
 
@@ -247,8 +256,11 @@ export default function SimpleRuleEditor({
   function resetToSimple() {
     setSideLevel("morning", "office");
     setSideLevel("evening", "office");
-    setSideEntry("morning", "read");
-    setSideEntry("evening", "read");
+    // Goes through chooseOffice's rule rather than restating it — this reset
+    // sets both sides to the full office, so hard-coding "read" here would
+    // produce an office+read pairing the editor itself can no longer create.
+    setSideEntry("morning", "venite");
+    setSideEntry("evening", "venite");
     setReflectionSource("fdd");
     setSideReflection("morning", "fdd");
     setSideReflection("evening", "fdd");

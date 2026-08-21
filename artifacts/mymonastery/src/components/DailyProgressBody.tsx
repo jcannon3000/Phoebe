@@ -18,7 +18,7 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, type ReflectionSource } from "@/lib/officePrefs";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { markContemplationSideDone } from "@/lib/contemplationSideDone";
@@ -1120,7 +1120,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         : hour >= 20 ? officeTitle("Evening") : eveningBlurb,
       blurbCycle: (eveningDone || hour >= 20 || !cycleFor("evening")) ? undefined : [eveningBlurb, ...officeCycle],
       cta: getSideLevel("evening") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }),
-      later: hour < 17,
+      later: hour < EVENING_OPEN_HOUR,
     }] : []),
     // Reflection cards lead the morning (default second, right after Morning).
     // One card per reflection newsletter the user follows — each its own card +
@@ -1351,7 +1351,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // the dashboard "what's next" gate), so the afternoon never shows a morning
     // hero. Evening takes the hero from 5 PM.
     (morningActive && !morningDone && hour < 12) ? "morning"
-    : (eveningActive && hour >= 17 && !eveningDone) ? "evening"
+    : (eveningActive && hour >= EVENING_OPEN_HOUR && !eveningDone) ? "evening"
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
   const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
@@ -1373,7 +1373,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           // office heroSide (past noon an undone morning steps aside; it never
           // sits as a giant hero at night). Evening takes the hero from 5 PM.
           (c.key === "contemplation-morning" && hour < 12) ||
-          (c.key === "contemplation-evening" && hour >= 17)
+          (c.key === "contemplation-evening" && hour >= EVENING_OPEN_HOUR)
         ))
     : undefined;
   // Whether SOME card leads the Next list as a hero (office or contemplation).
@@ -1539,7 +1539,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // before 5pm, or Contemplation already >50% of its goal before 3pm.
   const lead = upcomingDisplay[0] as (undefined | (typeof cards)[number] & { later?: boolean });
   const leadPulse = !!lead && !lead.done && !lead.later && (
-    lead.key === "evening" ? hour >= 17
+    lead.key === "evening" ? hour >= EVENING_OPEN_HOUR
     // Don't nag a contemplation card early if today's sit already covered
     // >50% of the goal before 3pm (matches the old single-silence behaviour).
     : (lead.key === "contemplation-morning" || lead.key === "contemplation-evening") ? !(contemplationGoalMin > 0 && contemplationMin > contemplationGoalMin * 0.5 && hour < 15)

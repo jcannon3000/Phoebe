@@ -167,8 +167,15 @@ export default function CustomizePage() {
       // praying PACT twice. Every other choice stays the same on both sides.
       setSideLevel("morning", choice);
       setSideLevel("evening", choice === "guided-prayer" ? "examen" : choice);
-      setSideEntry("morning", "read");
-      setSideEntry("evening", "read");
+      // Owner: "on the light customizer, if they chose offices, have the medium
+      // be venite." Only the FULL office — Venite has no working deep link for
+      // anything else (Compline renders blank there, and psalms/devotion/
+      // readings aren't offices it serves), so every other pick still reads on
+      // screen. Both sides map to morning-prayer / evening-prayer, which are
+      // exactly the two Venite handles.
+      const entry = choice === "office" ? "venite" : "read";
+      setSideEntry("morning", entry);
+      setSideEntry("evening", entry);
       if (choice === "psalms") setPsalmCycle("office");
       window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
     }

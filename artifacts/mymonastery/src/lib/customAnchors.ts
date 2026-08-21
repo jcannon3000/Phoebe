@@ -35,8 +35,14 @@ export const SLOT_RANK: Record<CustomSlot, number> = {
 // The local hour (0–23) each slot's window OPENS. A slotted practice can't be
 // completed before its window. Morning opens at the start of the day; "anytime"
 // is never gated (always available, just ordered after morning).
+//
+// Owner: "let evening be available at 4pm" (was 5). Exported on its own because
+// the evening gate had been copied as a bare `17` into half a dozen places —
+// the evening card's "Later" state, the hero pick, the contemplation side
+// gate — and a literal in each of them is how they drift apart.
+export const EVENING_OPEN_HOUR = 16;
 export const SLOT_OPEN_HOUR: Record<CustomSlot, number> = {
-  morning: 0, anytime: 0, midday: 10, afternoon: 14, evening: 17,
+  morning: 0, anytime: 0, midday: 10, afternoon: 14, evening: EVENING_OPEN_HOUR,
 };
 
 // Is the slot's window open right now? Morning + anytime are always open.
@@ -45,9 +51,15 @@ export function isSlotOpen(slot: CustomSlot, now: Date = new Date()): boolean {
 }
 
 // The local hour (0–23) after which a daytime slot has clearly PASSED for today
-// — morning is behind you by noon, midday by 2 PM, afternoon by 5 PM (each rolls
-// forward when the next block begins). "evening" is the last slot (never rolls
-// to tomorrow), and "anytime" is flexible all day, so both are null (never past).
+// — morning is behind you by noon, midday by 2 PM, afternoon by 5 PM. "evening"
+// is the last slot (never rolls to tomorrow), and "anytime" is flexible all day,
+// so both are null (never past).
+//
+// These used to line up exactly with the next block's open hour. They no longer
+// do: evening now opens at 4 PM (EVENING_OPEN_HOUR) while afternoon stays open
+// until 5, so there's a deliberate hour of overlap. Left that way on purpose —
+// closing afternoon an hour earlier would push an undone afternoon practice to
+// "Tomorrow" sooner, which is a real loss to fix a symmetry nobody sees.
 export const SLOT_CLOSE_HOUR: Record<CustomSlot, number | null> = {
   morning: 12, anytime: null, midday: 14, afternoon: 17, evening: null,
 };

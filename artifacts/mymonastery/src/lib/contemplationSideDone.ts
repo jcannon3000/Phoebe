@@ -16,6 +16,7 @@
 import { getSideContemplationExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
+import { EVENING_OPEN_HOUR } from "@/lib/customAnchors";
 
 export type ContemplationSide = "morning" | "evening";
 // WHICH contemplative practice was kept. A side's card is styled/labelled by
@@ -85,7 +86,9 @@ export function markContemplationSideDone(side: ContemplationSide, kind?: Contem
 // The local hour the EVENING side's window opens — the same 5 PM boundary
 // `SLOT_OPEN_HOUR.evening` uses for custom practices and the evening office's
 // gate, and the hour the Home card stops rendering evening as a quiet "later".
-const EVENING_OPENS_HOUR = 17;
+// Re-exported from customAnchors so the per-side contemplation gate and the
+// slot windows can't disagree about when evening starts (owner moved it to 4pm).
+const EVENING_OPENS_HOUR = EVENING_OPEN_HOUR;
 
 // Which side an un-attributed sit should try FIRST, by the clock. Sitting in
 // the evening credits the evening; sitting before 5 PM credits the morning.
