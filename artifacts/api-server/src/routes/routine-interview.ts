@@ -41,17 +41,24 @@ function getUserId(req: any): number | null {
   return req.user ? (req.user as { id: number }).id : null;
 }
 
-// Owner picked mini for cost. Its own knob, separate from the transcription
-// aligner's OFFICE_ALIGN_MODEL, so either can move without the other.
+// gpt-5.6-luna — OpenAI's current cheap tier ($0.20/$1.20 per 1M as of
+// 2026-08). At this feature's measured ~3.3K input / ~800 output per complete
+// interview that's ~$0.0016 a head, about 66¢ per thousand more than the
+// 2024-era gpt-4o-mini, for a current-generation model. Chosen over mini on
+// that basis: the extra is rounding error at any realistic user count, and
+// this task is mostly careful instruction-following over a long fixed option
+// list, which is exactly where the newer model earns it.
 //
-// The tradeoff to watch: this task maps free text onto a FIXED vocabulary, and
-// a smaller model is likelier to reach for a plausible-sounding value that
-// isn't on the list. sanitizeSpec drops those silently, which would turn a
-// weaker model into "the routine is quietly missing a practice you described"
-// rather than a visible error — the worst outcome for a feature whose promise
-// is "we'll match what you already do". droppedValueNotes() below exists to
-// make exactly that visible on the review screen.
-const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-4o-mini";
+// Its own knob, separate from the transcription aligner's OFFICE_ALIGN_MODEL,
+// so either can move without the other.
+//
+// The tradeoff to watch either way: this maps free text onto a FIXED
+// vocabulary, and a smaller model is likelier to reach for a plausible-sounding
+// value that isn't on the list. scrubRuleConfig() below rejects those and
+// surfaces them on the review screen — without it they'd be applied or dropped
+// silently, which is the worst outcome for a feature promising to mirror the
+// practice you already keep.
+const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-5.6-luna";
 
 // ── Phoebe's vocabulary ──────────────────────────────────────────────────────
 // Kept as ONE string used by both calls so the two can't describe different
@@ -129,27 +136,69 @@ Rules, in order of importance:
 
 type OpenAiResult = { ok: true; data: any } | { ok: false; status: number; error: string };
 
+// Two request shapes, because the default model is a REASONING model and those
+// take different parameters on /chat/completions than the older chat models:
+//   · `max_tokens` is replaced by `max_completion_tokens`, and it has to cover
+//     the reasoning tokens too — they're generated before the visible answer
+//     and count against the same budget, so a tight cap returns an empty or
+//     truncated response rather than an error you'd notice.
+//   · `temperature` is not accepted (only the default).
+//   · `reasoning_effort` selects how hard it thinks. "low" is right here: the
+//     task is mapping a description onto a fixed list, not solving anything,
+//     and higher effort would spend billed reasoning tokens for no gain.
+//
+// Older chat models (gpt-4o-mini and friends, still reachable by setting
+// ROUTINE_INTERVIEW_MODEL) reject the reasoning shape and want the legacy one.
+// Rather than hard-code a guess about which the configured model wants — this
+// can't be exercised locally, there's no OPENAI_API_KEY in dev — we send the
+// modern shape and fall back ONCE on a 400 mentioning a parameter. Costs one
+// wasted request the first time someone points this at a legacy model, and
+// nothing at all otherwise.
+function requestBody(system: string, user: string, budget: number, legacy: boolean) {
+  const messages = [
+    { role: "system", content: system },
+    { role: "user", content: user },
+  ];
+  return legacy
+    ? { model: MODEL, temperature: 0.2, max_tokens: budget, response_format: { type: "json_object" }, messages }
+    : {
+        model: MODEL,
+        max_completion_tokens: budget,
+        reasoning_effort: "low",
+        response_format: { type: "json_object" },
+        messages,
+      };
+}
+
 async function askOpenAi(system: string, user: string, maxTokens: number): Promise<OpenAiResult> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
     return { ok: false, status: 503, error: "ai_unconfigured" };
   }
-  let res: Response;
-  try {
-    res = await fetch("https://api.openai.com/v1/chat/completions", {
+
+  // Reasoning tokens share this budget with the answer, so give it real room —
+  // being cut off mid-JSON is the failure this guards against, and unused
+  // budget is never billed.
+  const budget = maxTokens + 2000;
+
+  const post = async (legacy: boolean): Promise<Response> =>
+    fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.2,
-        max_tokens: maxTokens,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
+      body: JSON.stringify(requestBody(system, user, budget, legacy)),
     });
+
+  let res: Response;
+  try {
+    res = await post(false);
+    if (res.status === 400) {
+      const probe = await res.clone().text().catch(() => "");
+      // A 400 naming a parameter means this model wants the other shape.
+      if (/max_completion_tokens|reasoning_effort|unsupported_parameter|unknown_parameter/i.test(probe)) {
+        console.warn("[routine-interview] retrying with legacy chat params:", probe.slice(0, 200));
+        res = await post(true);
+      }
+    }
   } catch (err) {
     console.warn("[routine-interview] OpenAI network error:", err);
     return { ok: false, status: 502, error: "ai_unreachable" };
