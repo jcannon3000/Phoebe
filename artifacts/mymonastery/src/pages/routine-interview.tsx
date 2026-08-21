@@ -87,6 +87,9 @@ const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; 
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
 ];
 const SILENCE_LENGTHS = [5, 10, 15, 20, 30];
+// Totals run longer than a single sit — three tens and a twenty is a real
+// shape, and capping the choices at 30 would quietly under-record it.
+const SILENCE_TOTALS = [15, 20, 30, 45, 60, 90];
 
 /**
  * How they take the office — asked here as a dropdown rather than spent on one
@@ -171,6 +174,12 @@ export default function RoutineInterviewPage() {
   const [contStep, setContStep] = useState<0 | 1 | 2>(0);
   const [contMinutes, setContMinutes] = useState(10);
   const [contLog, setContLog] = useState<"timer" | "manual">("timer");
+  // How often they sit. Owner, after a real run: "I said I did fifteen minutes
+  // of silence today, but it didn't ask me [whether] that was the only time...
+  // if they do more than once, we wanna know the total time throughout the
+  // day." Asked here as a control rather than left to the follow-up round,
+  // which is what missed it — the model has to notice a gap, this can't.
+  const [contOften, setContOften] = useState<"once" | "more">("once");
   const [spec, setSpec] = useState<Spec | null>(null);
   const [summary, setSummary] = useState("");
   // Derived server-side FROM the sanitized spec — the authoritative account of
@@ -191,6 +200,18 @@ export default function RoutineInterviewPage() {
   useEffect(() => {
     try { window.scrollTo({ top: 0, behavior: "auto" }); } catch { /* ignore */ }
   }, [phase, qIndex, confirmIndex, contStep]);
+
+  // Seed the sit controls from what was actually built, so the panel opens
+  // showing their minutes and log method rather than the component defaults.
+  // Runs when the read-back arrives (spec changes), never on every keystroke.
+  useEffect(() => {
+    const sp = spec as any;
+    if (!sp) return;
+    const mins = sp.officePrefs?.contemplationGoalMinutes;
+    if (typeof mins === "number" && mins > 0) setContMinutes(mins);
+    const lm = sp.ruleConfig?.["phoebe:contemplation-log-method"];
+    if (lm === "manual" || lm === "timer") setContLog(lm);
+  }, [spec]);
 
   const errorText = (code: string): string => {
     switch (code) {
@@ -621,10 +642,24 @@ export default function RoutineInterviewPage() {
       morning?: string; evening?: string; morningTime?: string | null; eveningTime?: string | null;
       contemplationGoalMinutes?: number;
     };
-    // The Silence slide asks instead of reading back when we heard nothing
-    // contemplative — a walk or a breath already counts, and is filed under
-    // this section server-side, so an empty list here really does mean nothing.
-    const asking = section.key === "contemplation" && rows.length === 0;
+    /**
+     * This slide is about THE SIT.
+     *
+     * Owner: "we want it to focus just on the sit — asking how much time, how
+     * often, things like that." So a walk / breath / sacred listening reads
+     * back under "practices" now, not here.
+     *
+     * Which means an empty `rows` no longer proves they keep nothing
+     * contemplative: they might have described a walk, which lives in the
+     * rule-config. Ask only when BOTH are absent, or someone who told us about
+     * their walk gets asked whether they'd like a contemplative practice.
+     */
+    const rcNow = (specNow.ruleConfig ?? {}) as Record<string, string>;
+    const hasContemplativePractice = ["walk", "cobreathe", "listening"]
+      .some((k) => !!rcNow[`phoebe:slot:${k}`]);
+    const asking = section.key === "contemplation" && rows.length === 0 && !hasContemplativePractice;
+    // A sit we DID hear — the slide becomes an editable panel for it.
+    const hasSit = section.key === "contemplation" && rows.length > 0;
     const isSide = section.key === "morning" || section.key === "evening";
     const reminderOn = isSide && (prefs as any)[section.key] !== "none" && !!(prefs as any)[section.key];
     const reminderTime = (isSide && ((prefs as any)[`${section.key}Time`] as string | null))
@@ -648,6 +683,15 @@ export default function RoutineInterviewPage() {
         fn(draft);
         return draft;
       });
+    };
+
+    /** Keep the REVIEW in step with the sit controls. `settings` is what the
+     *  final screen renders, so a sit edited here that still read "15 min ·
+     *  with a timer" at the end would be asking them to approve the number
+     *  they'd just changed. Only the contemplation section holds sit rows now. */
+    const syncSitRows = (mins: number, log: "timer" | "manual", often: "once" | "more") => {
+      const sub = `${mins} min a day${often === "more" ? ", across a few sits" : ""} · ${log === "manual" ? "tap to log" : "with a timer"}`;
+      setSettings((prev) => prev.map((r) => (r.section === "contemplation" ? { ...r, sub } : r)));
     };
 
     const advance = () => {
@@ -750,9 +794,15 @@ export default function RoutineInterviewPage() {
                         sub the server rendered — otherwise changing it there
                         would leave the card still claiming the old one. */}
                     <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "8px 0 0" }}>
-                      {mediumApplies && i2 === 0
-                        ? (MEDIUM_OPTIONS.find((o) => o.value === mediumValue)?.label ?? r.sub)
-                        : r.sub}
+                      {hasSit
+                        // The controls below own the minutes and the log
+                        // method now, so the card must not also state them —
+                        // it would be asserting the old values underneath the
+                        // switches that change them.
+                        ? "Silent prayer"
+                        : mediumApplies && i2 === 0
+                          ? (MEDIUM_OPTIONS.find((o) => o.value === mediumValue)?.label ?? r.sub)
+                          : r.sub}
                     </p>
                   </div>
                 </div>
@@ -845,6 +895,117 @@ export default function RoutineInterviewPage() {
                   }}
                 />
               )}
+            </div>
+          )}
+
+          {/* The sit, as controls rather than a claim. Owner, after a real run:
+              it never asked whether fifteen minutes was the only sit, and never
+              asked whether they'd use the in-app timer or log it by hand.
+              Both are asked here, on the third stage, where a control can't
+              forget to fire the way a prompt instruction can. */}
+          {hasSit && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div>
+                <p style={{ ...eyebrow, marginBottom: 8 }}>How often you sit</p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {([
+                    { v: "once" as const, label: "Once a day" },
+                    { v: "more" as const, label: "More than once" },
+                  ]).map((o) => {
+                    const on = contOften === o.v;
+                    return (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => { setContOften(o.v); syncSitRows(contMinutes, contLog, o.v); }}
+                        style={{
+                          flex: 1, cursor: "pointer", padding: "14px 10px", borderRadius: 14,
+                          border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                          background: on ? "rgba(45,94,63,0.55)" : CARD,
+                          color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 14.5,
+                          fontWeight: on ? 700 : 600,
+                        }}
+                        aria-pressed={on}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                {/* Phoebe's goal field is a DAILY TOTAL either way, so both
+                    answers write the same number — asking "once or more?" is
+                    what makes that number right. Someone who sits three times
+                    reads "How long?" as one sit and under-reports the day. */}
+                <p style={{ ...eyebrow, marginBottom: 8 }}>
+                  {contOften === "more" ? "Total time across the day" : "How long you sit"}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {(contOften === "more" ? SILENCE_TOTALS : SILENCE_LENGTHS).map((m) => {
+                    const on = contMinutes === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          setContMinutes(m);
+                          patchSpec((d) => { d.officePrefs.contemplationGoalMinutes = m; });
+                          syncSitRows(m, contLog, contOften);
+                        }}
+                        style={{
+                          flex: "1 1 28%", cursor: "pointer", padding: "14px 10px", borderRadius: 14,
+                          border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                          background: on ? "rgba(45,94,63,0.55)" : CARD,
+                          color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5,
+                          fontWeight: on ? 700 : 600,
+                        }}
+                        aria-pressed={on}
+                      >
+                        {m} min
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p style={{ ...eyebrow, marginBottom: 8 }}>How you keep it</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {([
+                    { v: "timer" as const, emoji: "⏱️", label: "The meditation timer", sub: "Sit with a countdown in the app — tap Begin to start it." },
+                    { v: "manual" as const, emoji: "✅", label: "Log it myself", sub: "No timer — tap the card to mark the sit done." },
+                  ]).map((o) => {
+                    const on = contLog === o.v;
+                    return (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => {
+                          setContLog(o.v);
+                          patchSpec((d) => { d.ruleConfig["phoebe:contemplation-log-method"] = o.v; });
+                          syncSitRows(contMinutes, o.v, contOften);
+                        }}
+                        style={{
+                          ...card, width: "100%", boxSizing: "border-box", textAlign: "left",
+                          cursor: "pointer", padding: "14px 16px", display: "flex",
+                          alignItems: "center", gap: 12,
+                          border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                          background: on ? "rgba(45,94,63,0.55)" : CARD,
+                        }}
+                        aria-pressed={on}
+                      >
+                        <span aria-hidden style={{ fontSize: 20 }}>{o.emoji}</span>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 600 }}>{o.label}</span>
+                          <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{o.sub}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

@@ -78,7 +78,11 @@ practice, set by ruleConfig "phoebe:office:level:<side>":
   guided-prayer — Simple Guided Prayer: a ~3 minute guided form (morning-shaped)
   examen        — the Examen: reviewing the day with God (evening-shaped)
   fdd           — Forward Day by Day, the Forward Movement daily meditation
-  reflect-sit   — Contemplative Prayer: a silent sit
+  reflect-sit   — Contemplative Prayer: a silent sit. CENTERING PRAYER IS THIS.
+                  So are Christian meditation, "sitting in silence", the Jesus
+                  Prayer kept silently, and any wordless sit they name. If a
+                  side's prayer IS that sit, this is that side's level — don't
+                  reach for "office" and bolt silence on beside it.
   compline      — Compline, the night office
   custom        — a practice of their own naming
   ask           — no anchor on this side (the side is effectively off)
@@ -548,7 +552,6 @@ const PRACTICE_LABEL: Record<string, string> = {
 // Slot practices that ARE a contemplative practice, as opposed to something
 // else they keep during the day. Reading and the Examen stay under "practices":
 // one is study, the other belongs to the evening.
-const CONTEMPLATIVE_SLOTS = new Set(["walk", "cobreathe", "listening"]);
 // Practices whose time-of-day slot the app ignores — see the note where this
 // is used. Keep in step with getPracticeSlot() in lib/customAnchors.ts.
 const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);
@@ -637,15 +640,22 @@ function describeSpec(spec: {
     const key = k.slice("phoebe:slot:".length);
     const name = PRACTICE_LABEL[key];
     if (!name || !SLOT_LABEL[v]) continue;
-    // A walk, a breath or sacred listening IS their contemplative practice, so
-    // it reads back under Silence rather than as a footnote under "also".
+    // Owner: "if there's a contemplative walk or something in it as well, don't
+    // have that on the third section's 'is this right' page — because we want
+    // it to focus just on the sit: asking how much time, how often, things like
+    // that."
     //
-    // Owner: "if they don't talk about a silent meditation in their routine,
-    // but they do say I go on a walk, then that would go as their contemplative
-    // practice slot — and it'd be programmed to count in their weekly
-    // progress." Filing it under "practices" made the Silence slide look empty
-    // and prompted us to ask for a contemplative practice they'd just named.
-    const section: SpecSection = CONTEMPLATIVE_SLOTS.has(key) ? "contemplation" : "practices";
+    // So a walk / breath / sacred listening reads back under "practices", NOT
+    // on the sit slide. That slide is now an editable panel for the sit itself
+    // (length, how often, how it's logged), and a walk sitting on top of it
+    // made those controls look like they belonged to the walk.
+    //
+    // This does NOT undo the earlier ask that a described walk counts as their
+    // contemplative practice: it still lands in a slot, still shows on the
+    // home, still counts toward the week, and the extras step still suppresses
+    // it as "already in your rhythm" — that check reads the rule-config, not
+    // this section. Only where it's DISPLAYED changed.
+    const section: SpecSection = "practices";
     // ALWAYS "any time of day" for these four, whatever the spec stored.
     // getPracticeSlot() (lib/customAnchors.ts) hard-returns "anytime" for
     // cobreathe / listening / examen / walk — their time-of-day picker was
