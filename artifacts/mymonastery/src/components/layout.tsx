@@ -889,6 +889,63 @@ function OpeningSplash() {
     const id = setTimeout(() => setPhase((cur) => (cur === "in" ? "out" : cur)), 1200);
     return () => clearTimeout(id);
   }, [user, phase, native]);
+  /**
+   * Failsafe dismissal — the reason the splash gets stuck.
+   *
+   * The auto-dismiss above only arms once `user` is present, because the
+   * once-per-launch flag must not be burned before the splash renders. But
+   * that makes /api/auth/me a GATE: if it hangs (cold start on a bad
+   * connection, a request that never settles), nothing ever schedules the
+   * fade and the splash sits there over an app that is otherwise fine.
+   *
+   * Same class as the blank-screen rule this codebase already keeps — a fetch
+   * that gates the UI needs a timeout. Six seconds is far past a healthy
+   * launch (the normal hold is 1.2s) and far short of the "is this app
+   * broken?" threshold.
+   */
+  useEffect(() => {
+    if (phase !== "in" || !native) return;
+    const id = setTimeout(() => {
+      // Stamp on the way out, exactly as the normal path does. Without it the
+      // once-per-launch flag is never written, and a remount later this
+      // session would read "not shown yet" and put the splash back up — the
+      // stuck screen returning after we'd just escaped it.
+      startedRef.current = true;
+      try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
+      setPhase((cur) => (cur === "in" ? "out" : cur));
+    }, 6000);
+    return () => clearTimeout(id);
+  }, [phase, native]);
+
+  /**
+   * The manual way out. Owner: "have an Enter button at the bottom ... in case
+   * that would close this splash screen, because sometimes it just gets stuck
+   * and doesn't close."
+   *
+   * Held back until the splash has outstayed a healthy launch. A button that
+   * appeared instantly would flash for a few hundred milliseconds on EVERY
+   * normal open — the fade starts at 1.2s — which is a worse first moment than
+   * the one it's insuring against. At 1.6s the fade has already begun on any
+   * healthy launch (phase is no longer "in"), so this only ever appears when
+   * something is actually wrong.
+   */
+  const [showEnter, setShowEnter] = useState(false);
+  useEffect(() => {
+    if (phase !== "in" || !native) { setShowEnter(false); return; }
+    const id = setTimeout(() => setShowEnter(true), 1600);
+    return () => clearTimeout(id);
+  }, [phase, native]);
+
+  // Dismiss by hand, down the SAME path as the automatic one: stamp the
+  // once-per-launch flag (so a remount this session doesn't show it again) and
+  // fade out, which fires splash-done and lets the home start its cascade.
+  // Jumping straight to "gone" would skip that and leave the home un-cascaded.
+  const enterNow = () => {
+    startedRef.current = true;
+    try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
+    setPhase((cur) => (cur === "in" ? "out" : cur));
+  };
+
   // Unmount is driven by the fade-out's onAnimationComplete (below) so it lands
   // exactly when opacity hits 0 — not a racing timeout that could snap the
   // splash back to visible for a frame (the "flash" on close). This timeout is
@@ -958,6 +1015,43 @@ function OpeningSplash() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         style={{ width: 96, height: 96, borderRadius: 22, boxShadow: "0 8px 32px rgba(0,0,0,0.35)" }}
       />
+      {showEnter && (
+        <motion.button
+          type="button"
+          onClick={enterNow}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+            // Clear of the home indicator on a notched phone, and of the
+            // screen edge on one without.
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)",
+            // The splash root is pointerEvents:none so it never swallows taps
+            // meant for the home underneath. This button is the one thing on it
+            // that must be tappable — without re-enabling it here, the escape
+            // hatch would render and do nothing.
+            pointerEvents: "auto",
+            minWidth: 180,
+            padding: "15px 34px",
+            borderRadius: 999,
+            background: "rgba(9,26,16,0.55)",
+            backdropFilter: "blur(11.34px)",
+            WebkitBackdropFilter: "blur(11.34px)",
+            border: "1px solid rgba(168,197,160,0.45)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', system-ui, sans-serif",
+            fontSize: 16,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            cursor: "pointer",
+          }}
+        >
+          Enter
+        </motion.button>
+      )}
     </motion.div>
   );
 }
