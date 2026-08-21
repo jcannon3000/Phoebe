@@ -24,6 +24,32 @@ import { clearRoutineSyncClock } from "@/lib/routineSync";
 
 const SEED_KEY = "phoebe:guest-seeded-ymd"; // local YMD of the first-open seed
 
+// ── Stale-seed migration ─────────────────────────────────────────────────────
+// Owner: "I thought the signed out default was simple in the morning and
+// scripture reading in the evening" — reported against a signed-out browser
+// showing Morning Psalms / Evening Psalms.
+//
+// It was, for NEW devices. But seedGuestRule() returns early whenever SEED_KEY
+// is present, so a device seeded by an older bundle keeps that bundle's default
+// forever — and this seed has changed three times (psalms/psalms →
+// guided-prayer/examen → psalms/… → today's guided-prayer/readings). Anyone
+// who opened Phoebe signed-out before the change is still praying the old
+// default, and nothing would ever move them.
+//
+// So: version the seed and migrate, but ONLY a device whose levels still match
+// a known historical seed exactly. That's the safe signal that the person never
+// touched it — anything else means they customized, and their rule is theirs.
+const SEED_VERSION_KEY = "phoebe:guest-seed-version";
+const SEED_VERSION = "2";
+// Every (morning, evening) pair this seed has written historically. A device
+// sitting on one of these has an untouched seed. Add to this list, never
+// remove: the whole point is recognizing rules we ourselves wrote.
+const STALE_SEEDS: Array<[string, string]> = [
+  ["psalms", "psalms"],        // 484e3f5e
+  ["guided-prayer", "examen"], // 1640800e
+  ["psalms", "examen"],        // 54fdabbe
+];
+
 function todayYmd(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -39,9 +65,35 @@ export function guestSeededYmd(): string | null {
 export function clearGuestSeed(): void {
   try {
     localStorage.removeItem(SEED_KEY);
+    // Drop the version stamp too, or a reset device would re-seed the current
+    // default and then still look "already migrated" to a future migration.
+    localStorage.removeItem(SEED_VERSION_KEY);
     localStorage.removeItem(GUEST_GOAL_KEY);
     localStorage.removeItem(GUEST_STEP_GOAL_KEY);
   } catch { /* private mode */ }
+}
+
+/** Move a device still sitting on an OLD untouched seed onto today's default.
+ *  No-op once stamped, and no-op the moment the levels don't match a seed we
+ *  wrote — a customized rule is never overwritten. */
+function migrateStaleSeed(): void {
+  try {
+    if (localStorage.getItem(SEED_VERSION_KEY) === SEED_VERSION) return;
+    const morning = getExplicitSideLevel("morning");
+    const evening = getExplicitSideLevel("evening");
+    const untouched = STALE_SEEDS.some(([m, e]) => m === morning && e === evening);
+    if (untouched) {
+      setSideLevel("morning", "guided-prayer");
+      setSideLevel("evening", "readings");
+      try { window.dispatchEvent(new Event(OFFICE_PREFS_EVENT)); } catch { /* ignore */ }
+      // Same reasoning as the seed below: a precoded default must never migrate
+      // up to an account on sign-in, so zero the clock the setters just bumped.
+      clearRoutineSyncClock();
+    }
+    // Stamp either way — a customized device shouldn't be re-checked on every
+    // boot for the rest of its life.
+    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+  } catch { /* private mode — nothing to migrate */ }
 }
 
 /** Seed the precoded guest rule once (no-op if the device already has ANY
@@ -55,6 +107,7 @@ export function seedGuestRule(): void {
       // Backfill for devices seeded by an earlier bundle that didn't write the
       // goal key yet — without it the home shows no Silence card at all.
       if (localStorage.getItem(GUEST_GOAL_KEY) == null) localStorage.setItem(GUEST_GOAL_KEY, "5");
+      migrateStaleSeed();
       return; // already seeded
     }
     // Respect an existing rule (e.g. a device that used the app signed-in).
@@ -69,6 +122,9 @@ export function seedGuestRule(): void {
     // (server contemplationGoalMinutes needs an account).
     localStorage.setItem(GUEST_GOAL_KEY, "5");
     localStorage.setItem(SEED_KEY, todayYmd());
+    // Freshly seeded devices are already current — stamp so migrateStaleSeed
+    // never has anything to do for them.
+    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
     // The precoded seed is NOT a user-authored routine, so it must never migrate
     // up to an account on sign-in. The setters above bumped the routine sync
     // clock (via OFFICE_PREFS_EVENT → pushRoutineConfig); zero it back out — and

@@ -1,10 +1,12 @@
 // First-open welcome for the PUBLIC no-login home — a quiet "begin here" note
 // that sits under the date at the top of the day, telling the newcomer the
 // simple daily rhythm is laid out below and the app will walk them through it.
-// No CTA button — the rhythm cards beneath ARE the walk-through. Dismissible
+// The FIRST card has no CTA — the rhythm cards beneath ARE the walk-through;
+// the second (returning) card carries a pill into the customizer. Dismissible
 // once, device-local, guests only (the caller gates on the guest shape).
 
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -13,6 +15,7 @@ const SEEN_KEY = "phoebe:guest-welcome-dismissed";
 const FROST = { backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 export function GuestWelcomeCard() {
+  const [, setLocation] = useLocation();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try { return localStorage.getItem(SEEN_KEY) === "1"; } catch { return false; }
   });
@@ -63,10 +66,22 @@ export function GuestWelcomeCard() {
           customizer first gives them a settings errand before they've prayed
           anything. Once they've begun, shaping the rhythm is the natural
           next move. */}
+      {/* Owner: "on the second welcome card, have a cta pill that would take
+          them to the customizer." This was prose telling them to go hunt for a
+          menu item — an instruction to navigate rather than a way to. Now it is
+          the tap itself. */}
       {hasPrayed && (
-        <p className="text-[13.5px] mt-1.5" style={{ color: "rgba(200,212,192,0.78)", fontFamily: FONT, lineHeight: 1.55 }}>
-          To customize your routine, go to "Shape your routine" in the menu.
-        </p>
+        <button
+          type="button"
+          onClick={() => setLocation("/rule-of-life")}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2"
+          style={{
+            background: "rgba(46,107,64,0.55)", border: "1px solid rgba(46,107,64,0.6)",
+            color: "#F0EDE6", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          Shape your routine →
+        </button>
       )}
     </div>
   );
