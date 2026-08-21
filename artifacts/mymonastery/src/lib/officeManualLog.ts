@@ -27,6 +27,47 @@ function flagKey(side: "morning" | "evening"): string {
   return `phoebe:office-completed:${side}:${todayKey()}`;
 }
 
+// ── Undoing a day's office ──────────────────────────────────────────────────
+// Owner: "make sure I can click the check mark on the offices to undo them."
+// Every other rhythm card already toggles (see practiceCompletion's skip
+// stamp); the offices were a one-way stamp, so a mis-tap — or a session you
+// bailed out of that still counted — stuck until midnight.
+//
+// Two parts, because "done" for an office is an OR across many signals: the
+// local flag, the server's office history, and per-level read stamps (FDD,
+// psalms, the Examen…). Clearing the local flag alone would leave the server
+// history to light it straight back up on the next refetch.
+//
+//   1. Remove the local completed flags for this side's modes.
+//   2. Leave a tombstone that masks the NON-local signals for the rest of the
+//      day.
+//
+// The tombstone deliberately does NOT mask the local flag. That's what makes
+// this recoverable without teaching every writer of that flag about undo: pray
+// the office again, any surface writes the flag, and the card completes again
+// on the spot.
+const UNDO_PREFIX = "phoebe:office-undone:";
+const SIDE_MODES: Record<OfficeUndoSide, string[]> = {
+  morning: ["morning", "morning-devotion"],
+  evening: ["evening", "early-evening-devotion"],
+  compline: ["compline"],
+};
+export type OfficeUndoSide = "morning" | "evening" | "compline";
+
+export function isOfficeUndoneToday(side: OfficeUndoSide): boolean {
+  try { return localStorage.getItem(UNDO_PREFIX + side) === todayKey(); } catch { return false; }
+}
+
+export function undoOfficeToday(side: OfficeUndoSide): void {
+  try {
+    for (const mode of SIDE_MODES[side]) {
+      localStorage.removeItem(`phoebe:office-completed:${mode}:${todayKey()}`);
+    }
+    localStorage.setItem(UNDO_PREFIX + side, todayKey());
+    window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
+  } catch { /* private mode / quota — non-fatal */ }
+}
+
 /** True if this office has already been logged/prayed today (local flag). */
 export function isOfficeLoggedToday(side: "morning" | "evening"): boolean {
   try { return localStorage.getItem(flagKey(side)) !== null; } catch { return false; }
@@ -41,6 +82,8 @@ export function markOfficeBookComplete(side: "morning" | "evening"): void {
   const wasAlreadyLogged = isOfficeLoggedToday(side);
   try {
     localStorage.setItem(flagKey(side), "1");
+    // A deliberate re-log outranks an earlier undo today.
+    localStorage.removeItem(UNDO_PREFIX + side);
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
     // The side anchor card is keyed by the side itself on the home.
     if (!wasAlreadyLogged) markRecentCompletion(side);

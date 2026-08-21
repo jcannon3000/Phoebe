@@ -20,6 +20,7 @@ import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL,
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
+import { undoOfficeToday } from "@/lib/officeManualLog";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { markContemplationSideDone } from "@/lib/contemplationSideDone";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
@@ -1034,6 +1035,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // picker needed since it's always "evening" — the gate itself is the slot.
   const complineCard = {
     key: "compline", emoji: "🌙", rgb: "90,100,140", done: complineDone, href: "/bcp/daily-office?mode=compline",
+    onUnlog: () => undoOfficeToday("compline"),
     title: t("rhythm.card_compline", { defaultValue: "Compline" }),
     blurb: complineDone ? kept : t("rhythm.blurb_compline", { defaultValue: "The night office" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: hour < 19,
@@ -1089,6 +1091,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // Tapping again once done UN-marks it — a real toggle, not a one-way
       // stamp (see unmarkCustomPrayed's comment for why this matters).
       ...(getSideLevel("morning") === "custom" ? { onClick: () => (morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) } : {}),
+      // Owner: "make sure I can click the check mark on the offices to undo
+      // them." A custom level already toggles through onClick above; every
+      // other level was a one-way stamp until midnight.
+      ...(getSideLevel("morning") === "custom" ? {} : { onUnlog: () => undoOfficeToday("morning") }),
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
@@ -1112,6 +1118,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "46,107,64", done: eveningDone,
       href: getSideLevel("evening") === "custom" ? "" : "/begin-prayer?side=evening",
       ...(getSideLevel("evening") === "custom" ? { onClick: () => (eveningDone ? unmarkCustomPrayed("evening") : markCustomPrayed("evening")) } : {}),
+      ...(getSideLevel("evening") === "custom" ? {} : { onUnlog: () => undoOfficeToday("evening") }),
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).

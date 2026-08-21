@@ -13,7 +13,7 @@ import {
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
-import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
+import { OFFICE_DONE_EVENT, isOfficeUndoneToday } from "@/lib/officeManualLog";
 import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, getContemplationLogMethod, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
@@ -394,12 +394,28 @@ export function useRhythmState(): RhythmState {
     // satisfies, hence its presence in BOTH lists).
     compline: officeLocalDone(["compline"]),
   }));
+  // "I didn't actually pray this" — set by tapping the ✓ on a done office card
+  // (lib/officeManualLog). Masks the SERVER-derived done signals for the rest
+  // of the day; the local flag deliberately still wins, so praying again
+  // re-completes the card without any writer needing to know about undo.
+  const [officeUndone, setOfficeUndone] = useState(() => ({
+    morning: isOfficeUndoneToday("morning"),
+    evening: isOfficeUndoneToday("evening"),
+    compline: isOfficeUndoneToday("compline"),
+  }));
   useEffect(() => {
-    const recheck = () => setOfficeLocal({
-      morning: officeLocalDone(["morning", "morning-devotion"]),
-      evening: officeLocalDone(["evening", "early-evening-devotion"]),
-      compline: officeLocalDone(["compline"]),
-    });
+    const recheck = () => {
+      setOfficeLocal({
+        morning: officeLocalDone(["morning", "morning-devotion"]),
+        evening: officeLocalDone(["evening", "early-evening-devotion"]),
+        compline: officeLocalDone(["compline"]),
+      });
+      setOfficeUndone({
+        morning: isOfficeUndoneToday("morning"),
+        evening: isOfficeUndoneToday("evening"),
+        compline: isOfficeUndoneToday("compline"),
+      });
+    };
     window.addEventListener(OFFICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
@@ -764,15 +780,15 @@ export function useRhythmState(): RhythmState {
   // prayed the prayer list."
   const prayerListSlot = getPrayerListSlot();
   const prayerListSlotDone = intentionsTotalCount > 0 && intentionsPrayedCount >= intentionsTotalCount;
-  const morningDone = !!todayOffice?.morning || officeLocal.morning
+  const morningDone = officeLocal.morning || (!officeUndone.morning && (!!todayOffice?.morning
     || (ml === "fdd" && prayerRead.fddMorning) || (ml === "readings" && prayerRead.readingsMorning)
     || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
     || (ml === "custom" && prayerRead.customMorning)
     || (ml === "examen" && examenKept)
     || (ml === "reflect-sit" && morningSatKept)
-    || (prayerListSlot === "morning" && prayerListSlotDone);
-  const eveningDone = !!todayOffice?.evening || officeLocal.evening
+    || (prayerListSlot === "morning" && prayerListSlotDone)));
+  const eveningDone = officeLocal.evening || (!officeUndone.evening && (!!todayOffice?.evening
     || (el === "fdd" && prayerRead.fddEvening) || (el === "readings" && prayerRead.readingsEvening)
     || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
@@ -784,7 +800,7 @@ export function useRhythmState(): RhythmState {
     // praying Compline is its own act and must not tick Evening Prayer.
     || (el === "compline" && (officeLocal.compline || !!todayOffice?.compline))
     || (el === "reflect-sit" && eveningSatKept)
-    || (prayerListSlot === "evening" && prayerListSlotDone);
+    || (prayerListSlot === "evening" && prayerListSlotDone)));
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
   // (a Cobreathe breath logs a contemplation sit, so it's already counted
@@ -826,7 +842,7 @@ export function useRhythmState(): RhythmState {
   // EVENING ANCHOR (el === "compline") it isn't a separate card at all — it
   // satisfies eveningDone below and complineActive is false — so there's no
   // case where the two should credit each other.
-  const complineDone = complineActive && (officeLocal.compline || !!todayOffice?.compline);
+  const complineDone = complineActive && (officeLocal.compline || (!officeUndone.compline && !!todayOffice?.compline));
   const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);

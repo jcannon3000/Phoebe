@@ -1792,21 +1792,87 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       setViewerLocation("/ncmp/watch");
     }
   };
-  // Pray this office on venite.app instead. Opens today's office there (the
-  // reader's LOCAL date — see lib/venite.ts) and credits the side exactly as
-  // the physical-book attestation does, so the anchor flips, the reminder push
-  // clears, and Daily progress counts it. Like the Cathedral "Watch" path we
-  // credit on tap rather than on return: once the reader leaves for an outside
-  // site we can't observe whether they finished, and the alternative — leaving
-  // the office showing undone after they prayed it — is the worse miss.
-  // The devotion is a different Venite VERSION, not a different office (see
-  // lib/venite.ts) — so the CHOSEN way decides, not the mode that happens to be
-  // loaded. The chooser can send someone to the devotion from the office
-  // surface, and reading it off `resolvedMode` would hand them the full office.
-  const goToVenite = (form: "office" | "devotion") => {
-    openExternal(veniteOfficeUrl(officeSide, new Date(), form));
-    markOfficeBookComplete(officeSide);
+  /**
+   * Pray this office on venite.app.
+   *
+   * Credited on RETURN, not on tap. Owner: "when you go to the opening slide of
+   * the office with the options and then go [to Venite], it just comes back to
+   * the opening office slide. It should go back to the home screen with the
+   * office completed. But make sure they spend at least a minute on that page.
+   * If they spend less than a minute, have it say continue — or if they go back
+   * for a second time, then complete."
+   *
+   * Two bugs in one: the handoff credited the office the instant you tapped
+   * (so a mis-tap counted a whole office), and it never navigated (so coming
+   * back from the browser dropped you on the chooser you'd already answered,
+   * with no sign anything had happened).
+   *
+   * Now: leaving starts a clock. Coming back either completes the office and
+   * goes home, or — if you were gone under a minute on your first trip — leaves
+   * the office uncounted and offers Continue. A second return completes it
+   * regardless, because someone who has gone out to Venite twice has told us
+   * what they were doing more clearly than any timer can.
+   *
+   * The visit count is persisted per side per day: iOS can evict the app while
+   * an external browser is in front, and losing the count on that would silently
+   * reset someone's progress back to "first trip".
+   *
+   * The devotion is a different Venite VERSION, not a different office (see
+   * lib/venite.ts) — so the CHOSEN way decides, not the mode that happens to be
+   * loaded. The chooser can send someone to the devotion from the office
+   * surface, and reading it off `resolvedMode` would hand them the full office.
+   */
+  const VENITE_MIN_MS = 60_000;
+  const veniteVisitsKey = `phoebe:venite-visits:${officeSide}:${new Date().toLocaleDateString("en-CA")}`;
+  const veniteLeftAtRef = useRef<number | null>(null);
+  const [veniteShort, setVeniteShort] = useState(false);
+  const [veniteForm, setVeniteForm] = useState<"office" | "devotion">("office");
+
+  const readVeniteVisits = (): number => {
+    try { return parseInt(localStorage.getItem(veniteVisitsKey) ?? "0", 10) || 0; } catch { return 0; }
   };
+
+  const goToVenite = (form: "office" | "devotion") => {
+    setVeniteForm(form);
+    setVeniteShort(false);
+    veniteLeftAtRef.current = Date.now();
+    openExternal(veniteOfficeUrl(officeSide, new Date(), form));
+  };
+
+  // Coming back from Venite. Native fires phoebe:browserfinished when the
+  // in-app browser closes; on the web there's no such event, so a tab regaining
+  // visibility stands in for it. Whichever arrives first wins — they're
+  // idempotent because the ref is cleared on the first one handled.
+  useEffect(() => {
+    const onBack = () => {
+      const leftAt = veniteLeftAtRef.current;
+      if (leftAt == null) return;
+      veniteLeftAtRef.current = null;
+
+      const visits = readVeniteVisits() + 1;
+      try { localStorage.setItem(veniteVisitsKey, String(visits)); } catch { /* non-fatal */ }
+      const longEnough = Date.now() - leftAt >= VENITE_MIN_MS;
+
+      if (longEnough || visits >= 2) {
+        // Credited the same way the physical-book attestation is, so the
+        // anchor flips, the reminder push clears, and Daily progress counts it.
+        markOfficeBookComplete(officeSide);
+        try { localStorage.removeItem(veniteVisitsKey); } catch { /* non-fatal */ }
+        setViewerLocation("/daily-progress");
+        return;
+      }
+      // Back too soon on the first trip — don't count it, and say so.
+      setVeniteShort(true);
+    };
+    window.addEventListener("phoebe:browserfinished", onBack);
+    const onVisible = () => { if (document.visibilityState === "visible") onBack(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("phoebe:browserfinished", onBack);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [officeSide, veniteVisitsKey]);
   const launchWay = (way: WayToPray, method: PrayMethod) => {
     // Psalms: the reader already chose their way + format here, so skip the
     // psalms "before you begin" intro (begin=1) — book → the page-number guide.
@@ -2006,10 +2072,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             ✓ Mark as already prayed
           </button>
         )}
-        {/* Row 3 — Begin. */}
+        {/* Back from Venite inside a minute, first trip. The office is NOT
+            counted — saying so plainly is the point, since the alternative is
+            a silent non-completion they'd discover on the home screen. One tap
+            goes back to where they were; returning again completes it. */}
+        {veniteShort && (
+          <p
+            style={{
+              width: "100%", margin: "2px 0 0", textAlign: "center",
+              color: "rgba(var(--ot-sage, 143,175,150),0.95)",
+              fontFamily: SPACE_GROTESK, fontSize: 13.5, lineHeight: 1.5,
+            }}
+          >
+            That was a quick visit — not counted yet.
+          </p>
+        )}
+        {/* Row 3 — Begin, or Continue when they came back too soon. */}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); canChoose ? launchWay(wayToPray, screenOnly ? "screen" : prayMethod) : next(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (veniteShort) { goToVenite(veniteForm); return; }
+            canChoose ? launchWay(wayToPray, screenOnly ? "screen" : prayMethod) : next();
+          }}
           style={{
             width: "100%",
             marginTop: 6,
@@ -2025,7 +2110,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             padding: "14px 24px",
           }}
         >
-          Begin
+          {veniteShort ? "Continue" : "Begin"}
         </button>
       </div>
     );
