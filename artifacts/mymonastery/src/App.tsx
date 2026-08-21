@@ -361,6 +361,7 @@ const ReadingLogPage = lazy(() => import("./pages/reading-log"));
 const PodcastLogPage = lazy(() => import("./pages/podcast-log"));
 const WalkLogPage = lazy(() => import("./pages/walk-log"));
 const FindYourRhythmPage = lazy(() => import("./pages/find-your-rhythm"));
+const RoutineInterviewPage = lazy(() => import("./pages/routine-interview"));
 const SpotifyCallbackPage = lazy(() => import("./pages/spotify-callback"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
@@ -741,7 +742,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // The branching questionnaire that ENDS in a rule — reached from inside the
   // already-allowlisted /rule-of-life flow, so excluding it broke that flow
   // partway through.
-  "/find-your-rhythm",
+  "/find-your-rhythm", "/routine-interview",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
@@ -789,7 +790,7 @@ const GUEST_ALLOWED_PREFIX = [
 // be made durable. iOS is exempt (its anonymous device user is server-backed,
 // and the register in-place upgrade preserves the rule if they later sign up).
 const WEB_CUSTOMIZER_ROUTES = new Set<string>([
-  "/rule-of-life", "/pilot/build", "/find-your-rhythm",
+  "/rule-of-life", "/pilot/build", "/find-your-rhythm", "/routine-interview",
   // The office "Customize" pill (/bcp/daily-office/settings) also shapes the
   // rule — which office form, medium, reflection, minutes — so it's gated too.
   "/bcp/daily-office/settings",
@@ -982,6 +983,7 @@ function Router() {
       <Route path="/podcast-log" component={PodcastLogPage} />
       <Route path="/walk-log" component={WalkLogPage} />
       <Route path="/find-your-rhythm" component={FindYourRhythmPage} />
+      <Route path="/routine-interview" component={RoutineInterviewPage} />
       <Route path="/spotify-callback" component={SpotifyCallbackPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
