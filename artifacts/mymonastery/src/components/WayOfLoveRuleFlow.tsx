@@ -438,6 +438,9 @@ export default function WayOfLoveRuleFlow({
   // computed from it would skip the slide entirely for the admin it's for.
   const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
   const [entryChoiceMade, setEntryChoiceMade] = useState(false);
+  // Defaults to "ask" (owner) — the interview is the intended path for a super
+  // admin opening this; manual is the opt-out.
+  const [entryChoice, setEntryChoice] = useState<"ask" | "manual">("ask");
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
   // owns the same phoebe:hide-turn-learn-pray key.)
@@ -1524,20 +1527,30 @@ export default function WayOfLoveRuleFlow({
             defaultValue: "Shape it yourself, or describe the practice you already keep and let Phoebe set it up to match.",
           })}
         </p>
+        {/* Owner: "have being asked be the default." So it's PRE-SELECTED and
+            listed first, and the slide gained a Continue — without one, a
+            "default" would be decoration, since tapping a row was itself the
+            action and nothing would happen unless you tapped. Now the default
+            is operative: open the slide, press Continue, you're in the
+            interview. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(
-            false,
-            `✍️ ${t("wol_rule.entry_manual", { defaultValue: "I'll set it up myself" })}`,
-            t("wol_rule.entry_manual_sub", { defaultValue: "Go through the slides and choose each practice." }),
-            () => setEntryChoiceMade(true),
-          )}
-          {choiceRow(
-            false,
+            entryChoice === "ask",
             `💬 ${t("wol_rule.entry_ask", { defaultValue: "Ask me about my practice" })}`,
             t("wol_rule.entry_ask_sub", { defaultValue: "Describe how you already pray, in your own words, and Phoebe programs it for you." }),
-            () => setLocation("/routine-interview"),
+            () => setEntryChoice("ask"),
+          )}
+          {choiceRow(
+            entryChoice === "manual",
+            `✍️ ${t("wol_rule.entry_manual", { defaultValue: "I'll set it up myself" })}`,
+            t("wol_rule.entry_manual_sub", { defaultValue: "Go through the slides and choose each practice." }),
+            () => setEntryChoice("manual"),
           )}
         </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
+          if (entryChoice === "ask") { setLocation("/routine-interview"); return; }
+          setEntryChoiceMade(true);
+        })}
       </>,
     );
   }

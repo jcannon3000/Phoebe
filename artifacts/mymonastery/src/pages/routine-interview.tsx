@@ -212,7 +212,7 @@ export default function RoutineInterviewPage() {
                 the structuring. */}
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
               Describe any daily practices you engage in, and any newsletters you
-              may read. Not what you'd like to start — what you actually do now.
+              may read.
             </p>
           </div>
 
