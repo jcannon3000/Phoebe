@@ -1917,15 +1917,39 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.reminder_label", { side: cap.toLowerCase(), defaultValue: `Remind me to pray each ${cap.toLowerCase()}` })}
         </p>
+        {/* Owner: "combine the reminder on or off into one line, and if it is
+            off hide the time." One switch row instead of two mutually
+            exclusive choice rows — on/off is a binary, and rendering it as two
+            selectable cards (with the time wedged between them) made the time
+            field look like it belonged to whichever row sat above it. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(
-            reminderOnBySide[side],
-            `🔔 ${t("wol_rule.reminder_on", { defaultValue: "Remind me" })}`,
-            t("wol_rule.reminder_on_sub", { side: cap.toLowerCase(), defaultValue: `A gentle nudge to pray in the ${cap.toLowerCase()}.` }),
-            () => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [side]: true })); },
-          )}
+          <button
+            type="button"
+            onClick={() => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [side]: !r[side] })); }}
+            style={{
+              width: "100%", textAlign: "left", cursor: "pointer",
+              background: reminderOnBySide[side] ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
+              borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+              transition: "background 0.2s, border-color 0.2s",
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
+                {`🔔 ${t("wol_rule.reminder_on", { defaultValue: "Remind me" })}`}
+              </p>
+              <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
+                {reminderOnBySide[side]
+                  ? t("wol_rule.reminder_on_sub", { side: cap.toLowerCase(), defaultValue: `A gentle nudge to pray in the ${cap.toLowerCase()}.` })
+                  : t("wol_rule.reminder_off_sub", { defaultValue: "No daily nudge — pray when you like." })}
+              </p>
+            </div>
+            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: reminderOnBySide[side] ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+              <span style={{ position: "absolute", top: 3, left: reminderOnBySide[side] ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
+            </span>
+          </button>
           {reminderOnBySide[side] && (
-            <div style={{ position: "relative", margin: "-2px 0 2px" }}>
+            <div style={{ position: "relative" }}>
               <input
                 type="time"
                 value={timeBySide[side]}
@@ -1934,12 +1958,6 @@ export default function WayOfLoveRuleFlow({
                 style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
               />
             </div>
-          )}
-          {choiceRow(
-            !reminderOnBySide[side],
-            `🔕 ${t("wol_rule.reminder_off", { defaultValue: "No reminder" })}`,
-            t("wol_rule.reminder_off_sub", { defaultValue: "No daily nudge — pray when you like." }),
-            () => { touchedRef.current = true; setReminderOnBySide((r) => ({ ...r, [side]: false })); },
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
