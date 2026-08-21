@@ -461,7 +461,15 @@ export function sideOfficeTitle(
   // "Evening Devotion" — the wrong practice name on the evening card of the
   // signed-out default rule. Same drift the bcpOnSide helper was created to
   // stop: a new OfficeLevel has to be added to every switch that maps one.
-  if (lvl === "readings") return t("rhythm.card_readings", { defaultValue: "Daily Scripture Readings" });
+  //
+  // Owner: "if it's the evening practice, call the scripture card Evening
+  // Scripture Reading." Side-prefixed like Morning/Evening Psalms above — as a
+  // SIDE ANCHOR it belongs to that half of the day, which the standing
+  // "Daily Scripture Readings" name (still used by the separate all-day card)
+  // doesn't convey.
+  if (lvl === "readings") {
+    return t(`rhythm.card_${side.toLowerCase()}_readings`, { defaultValue: `${side} Scripture Reading` });
+  }
   if (lvl === "custom") return getSideCustomName(side.toLowerCase() as OfficeSide).trim() || `${side} Practice`;
   return prayerKind === "community"
     ? t("rhythm.card_community", { defaultValue: "Pray together" })

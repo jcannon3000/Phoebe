@@ -36,17 +36,6 @@ type Phase = "describe" | "thinking-followups" | "followups" | "thinking-build" 
 
 type Spec = Record<string, unknown>;
 
-// Owner: "make sure it focuses on defining their morning, evening and
-// contemplation practice, and what newsletters they read." These mirror the
-// four the server prompt is built around, so what we ask for here is exactly
-// what the model is trying to fill in — and the follow-up questions land on
-// whichever of the four they skipped.
-const PROMPTS = [
-  "Morning — what do you pray, and how? (On screen, from your prayer book, read aloud…)",
-  "Evening — the same: what, and how?",
-  "Silence — do you sit in silent prayer? For how long, and when?",
-  "Reading — any daily newsletters? Forward Day by Day, the CAC meditation, SSJE, the VTS Dean's Commentary…",
-];
 
 export default function RoutineInterviewPage() {
   const [, setLocation] = useLocation();
@@ -149,9 +138,13 @@ export default function RoutineInterviewPage() {
     }
   };
 
+  // Chromeless <Layout> drops the horizontal gutter its non-chromeless <main>
+  // applies (px-4 sm:px-6 md:px-8), so this page owns its own — without it the
+  // title and body ran flush to both screen edges on device.
   const wrap: React.CSSProperties = {
     display: "flex", flexDirection: "column", gap: 18,
-    padding: "8px 2px 40px", maxWidth: 560, margin: "0 auto", width: "100%",
+    padding: "8px 20px 40px", maxWidth: 560, margin: "0 auto", width: "100%",
+    boxSizing: "border-box",
   };
   const card: React.CSSProperties = {
     background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
@@ -212,28 +205,26 @@ export default function RoutineInterviewPage() {
         <div style={wrap}>
           <div>
             <p style={eyebrow}>Your rhythm 🌿</p>
-            <h1 style={h1}>Tell us how you already pray</h1>
+            <h1 style={h1}>What does your daily routine look like?</h1>
+            {/* Owner: the four things to cover belong in the LLM's prompt, not
+                on screen as a checklist — "that's what we want to look for in
+                the response." So this asks openly and the server prompt does
+                the structuring. */}
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              Not what you'd like to start — what you actually do now. Describe it
-              in your own words and we'll set Phoebe up to match, as closely as it can.
+              Describe any daily practices you engage in, and any newsletters you
+              may read. Not what you'd like to start — what you actually do now.
             </p>
           </div>
 
-          <div style={{ ...card, padding: 14 }}>
-            <p style={{ ...eyebrow, fontSize: 10, marginBottom: 8 }}>It helps to say — skip any that aren't part of your day</p>
-            {PROMPTS.map((p) => (
-              <p key={p} style={{ color: "rgba(200,212,192,0.85)", fontFamily: FONT, fontSize: 13.5, margin: "0 0 6px", lineHeight: 1.5 }}>
-                · {p}
-              </p>
-            ))}
-          </div>
-
+          {/* No example placeholder (owner). A worked example in the box
+              anchors people to its shape — they describe a day that resembles
+              the sample rather than their own, which is the one thing this
+              whole surface is trying not to do. */}
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={8}
             maxLength={4000}
-            placeholder="Most mornings I read Morning Prayer from my prayer book around 7, and I sit in silence for about ten minutes after. In the evening I usually just read Forward Day by Day before bed. I'm at VTS…"
             style={{
               ...card, width: "100%", boxSizing: "border-box", color: WARM,
               fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
