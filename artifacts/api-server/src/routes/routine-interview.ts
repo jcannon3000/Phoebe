@@ -41,11 +41,17 @@ function getUserId(req: any): number | null {
   return req.user ? (req.user as { id: number }).id : null;
 }
 
-// gpt-4o-mini (the transcription aligner's default) is tuned for extraction
-// from a transcript; this task is closer to reasoning about a person's day and
-// mapping it onto a fixed vocabulary, so it gets its own knob and a stronger
-// default.
-const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-4o";
+// Owner picked mini for cost. Its own knob, separate from the transcription
+// aligner's OFFICE_ALIGN_MODEL, so either can move without the other.
+//
+// The tradeoff to watch: this task maps free text onto a FIXED vocabulary, and
+// a smaller model is likelier to reach for a plausible-sounding value that
+// isn't on the list. sanitizeSpec drops those silently, which would turn a
+// weaker model into "the routine is quietly missing a practice you described"
+// rather than a visible error — the worst outcome for a feature whose promise
+// is "we'll match what you already do". droppedValueNotes() below exists to
+// make exactly that visible on the review screen.
+const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-4o-mini";
 
 // ── Phoebe's vocabulary ──────────────────────────────────────────────────────
 // Kept as ONE string used by both calls so the two can't describe different
@@ -174,6 +180,74 @@ function cleanText(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
+// ── rule-config value validation ─────────────────────────────────────────────
+// sanitizeSpec does NOT check the VALUES inside ruleConfig — it validates keys
+// and lengths (and officePrefs.defaultPrayerLevel), then copies the rest
+// through as string→string. That's fine for its callers, where the spec was
+// authored by a privileged human through the customizer UI, but not for one an
+// LLM wrote: an invented level like "lectio" would sail through and be written
+// to the user's rule_config, where the client's getSideLevel would then meet a
+// value it has no case for.
+//
+// So the values get checked HERE, at the point untrusted model output enters.
+// Bad entries are removed (never guessed at) and reported to the review screen,
+// so a practice we couldn't match shows up as "we couldn't match this" rather
+// than silently vanishing from the routine.
+//
+// Keep in sync with mymonastery/src/lib/officePrefs.ts (OfficeLevel,
+// DefaultOfficeEntry, ReflectionSource) and lib/customAnchors.ts (CustomSlot).
+const RC_LEVELS = new Set([
+  "ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd",
+  "readings", "psalms", "examen", "creation", "guided-prayer", "custom", "compline",
+]);
+const RC_ENTRIES = new Set(["read", "listen", "watch", "book", "venite"]);
+const RC_REFLECTIONS = new Set(["cac", "fdd", "ssje", "vts", "none"]);
+const RC_SLOTS = new Set(["morning", "anytime", "midday", "afternoon", "evening"]);
+const RC_STYLES = new Set(["silent", "cobreathe"]);
+
+function labelFor(key: string): string {
+  const side = key.endsWith(":morning") ? "morning" : key.endsWith(":evening") ? "evening" : null;
+  if (key.includes(":level:") && side) return `a ${side} practice`;
+  if (key.includes(":entry:") && side) return `a way to pray the ${side} office`;
+  if (key.includes(":reflection")) return "a daily reflection";
+  if (key.startsWith("phoebe:slot:")) return `a time of day for ${key.slice("phoebe:slot:".length)}`;
+  if (key === "phoebe:contemplation-style") return "a style of silent prayer";
+  return "a setting";
+}
+
+/** Strip rule-config entries whose value isn't real. Returns the notes to show. */
+function scrubRuleConfig(rc: Record<string, string>): string[] {
+  const notes: string[] = [];
+  const reject = (k: string, v: string) => {
+    delete rc[k];
+    notes.push(`We couldn't match "${v}" as ${labelFor(k)}, so that part was left as it was.`);
+  };
+  for (const [k, v] of Object.entries({ ...rc })) {
+    if (k.includes(":level:")) { if (!RC_LEVELS.has(v)) reject(k, v); continue; }
+    if (k.includes(":entry:")) { if (!RC_ENTRIES.has(v)) reject(k, v); continue; }
+    if (k.includes(":reflection")) { if (!RC_REFLECTIONS.has(v)) reject(k, v); continue; }
+    if (k.startsWith("phoebe:slot:")) { if (!RC_SLOTS.has(v)) reject(k, v); continue; }
+    if (k === "phoebe:contemplation-style") { if (!RC_STYLES.has(v)) reject(k, v); continue; }
+    if (k.includes(":contemplation:")) { if (v !== "1" && v !== "0") delete rc[k]; continue; }
+    if (k.includes(":minutes:")) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0 || n > 180) delete rc[k];
+      continue;
+    }
+  }
+  return notes.slice(0, 4);
+}
+
+/** Home-layout keys the model asked for that aren't real cards. */
+function droppedCardNote(raw: unknown, keptOrder: string[]): string | null {
+  const order = (raw as any)?.homeLayout?.order;
+  if (!Array.isArray(order)) return null;
+  const kept = new Set(keptOrder);
+  const dropped = order.filter((k: unknown) => typeof k === "string" && !kept.has(k));
+  if (dropped.length === 0) return null;
+  return `These aren't cards Phoebe has, so they were left off: ${dropped.slice(0, 4).join(", ")}.`;
+}
+
 // ── POST /api/routine-interview/followups ────────────────────────────────────
 // Owner: "ask the LLM for two follow-up questions." Exactly two — the point is
 // one short clarifying round, not an interrogation.
@@ -276,9 +350,17 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   const spec = sanitizeSpec(out.data?.spec);
   if (!spec) { res.status(502).json({ error: "ai_bad_spec" }); return; }
 
-  const notes = Array.isArray(out.data?.notes)
+  // Value-check the rule-config the model wrote (sanitizeSpec only checked its
+  // shape) — mutates `spec.ruleConfig`, so it must run before the response.
+  const scrubNotes = scrubRuleConfig(spec.ruleConfig);
+
+  const modelNotes = Array.isArray(out.data?.notes)
     ? out.data.notes.map((n: unknown) => cleanText(n, 300)).filter((n: string) => n.length > 0).slice(0, 6)
     : [];
+  // The model's own judgement calls, plus anything we had to reject — both
+  // belong on the review screen for the same reason.
+  const cardNote = droppedCardNote(out.data?.spec, spec.homeLayout.order);
+  const notes = [...modelNotes, ...scrubNotes, ...(cardNote ? [cardNote] : [])].slice(0, 8);
 
   res.json({
     spec,
@@ -297,6 +379,9 @@ router.post("/routine-interview/apply", async (req, res): Promise<void> => {
 
   const spec = sanitizeSpec(req.body?.spec);
   if (!spec) { res.status(400).json({ error: "invalid_spec" }); return; }
+  // Same value-check /build runs. Not redundant: this endpoint takes a spec
+  // from the client, which could post one that never went through /build.
+  scrubRuleConfig(spec.ruleConfig);
 
   try {
     await applyRoutineSpecToUser(userId, spec);
