@@ -13,11 +13,13 @@
  * controls write as you go). We snapshot those keys on entry and restore them
  * on exit so the admin's own rhythm is left exactly as it was.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import WayOfLoveRuleFlow, { type RoutineSpec } from "@/components/WayOfLoveRuleFlow";
+import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
-import { pushRoutineConfig } from "@/lib/routineSync";
+import { pushRoutineConfig, ROUTINE_KEYS } from "@/lib/routineSync";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -25,18 +27,24 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 // The localStorage keys the customizer writes for the routine STRUCTURE — we
 // snapshot + restore exactly these so designing for someone else never touches
-// the admin's own rhythm. (Mirrors ROUTINE_KEYS in lib/routineSync.ts.)
+// the admin's own rhythm.
+//
+// Derived from routineSync's ROUTINE_KEYS rather than mirrored by hand. The
+// hand-copied version drifted twice: `phoebe:contemplation-log-method` (the
+// customizer's log-method row) and `phoebe:hide-turn-learn-pray` (its Weekly
+// Progress toggle) were both added to ROUTINE_KEYS and never here, so touching
+// either control while designing for someone else permanently overwrote the
+// admin's own setting and pushed it to their devices. The prefixes stay because
+// per-side office/slot keys are enumerated dynamically (custom anchors add
+// their own), so they can't all be listed literally.
 const ROUTINE_PREFIXES = ["phoebe:office:", "phoebe:slot:"];
-const ROUTINE_EXACT = [
-  "phoebe:scripture-scope", "phoebe:fdd-mode",
-  "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:routine:updated-at",
-  // Also written by the customizer's controls (breath-count picker) or carried
-  // in ROUTINE_KEYS — missing from this list, designing-for-others permanently
-  // overwrote the designer's own values and pushed them to their devices.
-  "phoebe:cobreathe-length", "phoebe:commitment-start", "phoebe:weekly-practices", "phoebe:rest-window",
-];
+const ROUTINE_EXACT = new Set<string>([
+  ...ROUTINE_KEYS,
+  "phoebe:scripture-scope",
+  "phoebe:routine:updated-at",
+]);
 function isRoutineKey(k: string): boolean {
-  return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.includes(k);
+  return ROUTINE_PREFIXES.some((p) => k.startsWith(p)) || ROUTINE_EXACT.has(k);
 }
 function snapshotRoutine(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -75,6 +83,9 @@ export default function PrescribeRoutinePage() {
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Same full-screen leaf backdrop the normal customizer uses, picked once so
+  // it can't reshuffle between steps.
+  const flowLeaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   // Snapshot the admin's own routine on entry; restore on leave.
   useEffect(() => {
@@ -128,13 +139,25 @@ export default function PrescribeRoutinePage() {
   };
 
   if (phase === "design") {
+    // Owner: "the progress bar is too high... in the customizer." This route
+    // rendered the flow BARE while rule-of-life.tsx (the normal way in) wraps
+    // it in a chromeless <Layout>. The flow's shell only carries its own
+    // paddingTop:24 and relies on Layout for the header/safe-area offset, so
+    // without it the step header — the progress bar is its first element —
+    // rode up under the status bar on a phone. Mounted the same way here, so
+    // designing for someone else looks identical to designing your own; that
+    // also restores the leaf backdrop (owned by Layout's bgPhoto, so it
+    // covers behind the header) and the top-right X, neither of which this
+    // route had.
     return (
-      <WayOfLoveRuleFlow
-        prescribe
-        onPrescribe={handlePrescribe}
-        onBack={() => setLocation(backTarget)}
-        onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}
-      />
+      <Layout bgPhoto={flowLeaf} chromeless onClose={() => setLocation(backTarget)}>
+        <WayOfLoveRuleFlow
+          prescribe
+          onPrescribe={handlePrescribe}
+          onBack={() => setLocation(backTarget)}
+          onDone={() => { /* unused in prescribe mode — commit() routes to onPrescribe */ }}
+        />
+      </Layout>
     );
   }
 

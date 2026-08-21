@@ -16,7 +16,13 @@ export type RoutineConfig = { values: Record<string, string>; updatedAt: number 
 
 // The exact localStorage keys that define the routine STRUCTURE (not daily logs).
 // Keep in sync with the setters in lib/officePrefs.ts + lib/customAnchors.ts.
-const ROUTINE_KEYS: string[] = [
+// Exported so prescribe-routine.tsx can snapshot/restore EXACTLY the set of
+// keys that syncs, instead of keeping its own hand-copied mirror. That mirror
+// drifted twice (phoebe:contemplation-log-method and
+// phoebe:hide-turn-learn-pray were added here but never there), and each drift
+// silently overwrote the designing admin's OWN value and pushed it to their
+// devices. Deriving from one list makes that class of bug impossible.
+export const ROUTINE_KEYS: string[] = [
   // Per-side office method + entry + reflection (officePrefs.ts).
   "phoebe:office:level:morning", "phoebe:office:level:evening",
   "phoebe:office:entry:morning", "phoebe:office:entry:evening",
