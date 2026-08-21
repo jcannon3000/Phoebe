@@ -215,6 +215,12 @@ export interface PushPayload {
   // Skip web-push subscriptions — send to iOS device tokens only. (A silent push
   // is always iOS-only; this also lets an alert be iOS-scoped.)
   iosOnly?: boolean;
+  // Keep emoji in the TITLE. Titles are emoji-stripped by default because most
+  // interpolate user content (community / display names) where a stray emoji is
+  // noise. A few titles are fixed, authored strings whose mark is the point —
+  // the Dean's Commentary flamingo — and those opt out. Never set this on a
+  // title that interpolates anything a user typed.
+  emojiSafeTitle?: boolean;
 }
 
 interface SendResult {
@@ -255,7 +261,11 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
   // function, so sanitizing here means callers can pass moment / community
   // names with emoji (stripped) and over-long titles (truncated to fit
   // iOS's single line) and we still ship a clean lock-screen string.
-  payload = { ...payload, title: truncateTitle(clean(payload.title)), body: clean(payload.body) };
+  payload = {
+    ...payload,
+    title: truncateTitle(payload.emojiSafeTitle ? (payload.title ?? "").trim() : clean(payload.title)),
+    body: clean(payload.body),
+  };
   const [tokens, webSubs] = await Promise.all([
     db.select({
       id: deviceTokensTable.id,
@@ -1044,45 +1054,37 @@ export function sendParishOfficeReminderPush(
 ) {
   const { side, parishTitle, level, readingsLine } = opts;
   const cap = side === "morning" ? "Morning" : "Evening";
-  const practiceCopy: Record<string, { title: string; body: string }> = {
-    office: {
-      title: `${cap} Prayer`,
-      body: side === "morning" ? "The office is ready — begin the day in prayer." : "The office is ready — close the day in prayer.",
-    },
-    devotion: {
-      title: `${cap} Devotion`,
-      body: side === "morning" ? "A short office to begin the day." : "A short office to close the day.",
-    },
-    psalms: {
-      title: "Praying the Psalms",
-      body: side === "morning" ? "This morning's appointed psalms are ready." : "This evening's appointed psalms are ready.",
-    },
-    "reflect-sit": {
-      title: `${cap} Contemplation`,
-      body: "A few minutes of loving God in silence.",
-    },
-    fdd: {
-      title: "Forward Day by Day",
-      body: "Today's reflection is ready.",
-    },
-    readings: {
-      title: "Daily Scripture Readings",
-      body: "Today's reading is ready.",
-    },
-    examen: {
-      title: "The Examen",
-      body: "Review the day with God.",
-    },
+  // Owner: "The notification should be 'start your day in prayer'... and
+  // instead of 'a few quiet minutes to start the day', that first line should
+  // be the practice — the morning office, or the morning devotion, or whatever
+  // practice they have, contemplative prayer. Just put it there."
+  //
+  // So the two halves swapped roles. The TITLE is now the same steady
+  // invitation every day, and the practice — the part that actually varies —
+  // leads the body, where there's room for it next to the readings line.
+  const PRACTICE_NAME: Record<string, string> = {
+    office: `${cap} Prayer`,
+    devotion: `${cap} Devotion`,
+    psalms: "Praying the Psalms",
+    "reflect-sit": "Contemplative Prayer",
+    fdd: "Forward Day by Day",
+    readings: "Daily Scripture Readings",
+    examen: "The Examen",
   };
-  const practice = level ? practiceCopy[level] : undefined;
-  const title = practice?.title
-    ?? (side === "morning" ? "Begin your day in prayer" : "Close your day in prayer");
-  const firstLine = parishTitle
-    ? `Pray with ${parishTitle}.`
-    : practice?.body
-      ?? (side === "morning"
+  const title = side === "morning" ? "Start your day in prayer" : "Close your day in prayer";
+  // The practice, when the synced routine tells us what it is. With no level
+  // (routine never synced) we keep the old neutral line rather than name a
+  // practice we'd be guessing at — the 2026-07-21 audit's rule still holds.
+  const practiceName = level ? PRACTICE_NAME[level] : undefined;
+  const firstLine = practiceName
+    // A parish still gets its communal nod, but after the practice rather than
+    // instead of it — the practice is what the owner asked to lead.
+    ? (parishTitle ? `${practiceName} · with ${parishTitle}` : practiceName)
+    : parishTitle
+      ? `Pray with ${parishTitle}.`
+      : side === "morning"
         ? "A few quiet minutes to start the day."
-        : "A few quiet minutes before the day ends.");
+        : "A few quiet minutes before the day ends.";
   const body = readingsLine ? `${firstLine}\n${readingsLine}` : firstLine;
   return sendPushToUser(userId, {
     title,
@@ -1097,6 +1099,39 @@ export function sendParishOfficeReminderPush(
 // Daily contemplation goal — a gentle ~7pm nudge on days the user hasn't yet
 // reached their minutes goal of silent prayer. Deep-links to the Contemplation
 // page so a tap can begin a sit. Deduped to once per local day by the sender.
+// The VTS Dean's Commentary — a daily nudge for readers who follow it as their
+// reflection. Owner: "a flamingo to the right of the title that says Dean's
+// Commentary, and then the second line ... open to read today's commentary and
+// then the title that you scrape."
+//
+// The flamingo is VTS's own mark (it's the emoji the Dean's Commentary card and
+// the customizer row already use), and it sits AFTER the words, per the owner.
+// Note the title is deliberately NOT run through the emoji strip `clean()`
+// applies to every other push — sendPushToUser strips emoji from titles, so
+// this passes the mark in the BODY's own first line instead would lose the
+// placement the owner asked for; see the emojiSafeTitle flag below.
+//
+// Tapping opens the in-app paragraph reader (vts-reading.tsx), the same
+// destination as the home card, so the read is credited the usual way.
+export function sendVtsCommentaryPush(
+  userId: number,
+  opts: { articleTitle?: string | null }
+) {
+  const scraped = (opts.articleTitle ?? "").trim();
+  const firstLine = "Open to read today's commentary";
+  return sendPushToUser(userId, {
+    title: "Dean's Commentary 🦩",
+    // Second line is the scraped headline when we have one; a feed miss just
+    // leaves the invitation on its own rather than an empty line.
+    body: scraped ? `${firstLine}\n${scraped}` : firstLine,
+    path: "/vts-reading",
+    threadId: "vts-commentary",
+    collapseId: `vts-commentary-${userId}`,
+    sound: PHOEBE_SOUND_MID,
+    emojiSafeTitle: true,
+  });
+}
+
 export function sendContemplationGoalReminderPush(
   userId: number,
   opts: { goalMinutes: number; doneMinutes: number }

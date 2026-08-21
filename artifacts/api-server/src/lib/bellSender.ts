@@ -17,6 +17,7 @@ import {
   prayerFeedSubscriptionsTable,
   prayerFeedEventsTable,
   practiceCompletionTable,
+  reflectionReadsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -26,6 +27,7 @@ import {
   sendLifeEventFollowUpPush,
   sendParishOfficeReminderPush,
   sendContemplationGoalReminderPush,
+  sendVtsCommentaryPush,
   sendWeeklyReviewPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
@@ -41,6 +43,8 @@ import { withSchedulerLog } from "./schedulerHeartbeat";
 import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
+import { buildOfficeOrdoDay } from "./officeOrdo";
+import { resolveTodayVts } from "../routes/vts";
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
@@ -576,12 +580,72 @@ function isAtOrJustAfterMinute(parishTz: string, targetHHMM: string, now: Date):
 // recipient's own local YYYY-MM-DD (already resolved by the caller via
 // todayInZone(tz)) — constructed at noon UTC so the date itself can't drift
 // across a UTC day boundary regardless of the server's own timezone.
-function officeReadingsLine(today: string, side: "morning" | "evening"): string | null {
+// The side's practice, read from the synced routine — the SAME key the client
+// renders the home card from ("phoebe:office:level:<side>"). Reading the very
+// same value is what keeps the push and the home from ever naming different
+// practices: if this is stale, both are stale together and the user can fix it
+// in one place, which the old two-mirror reconciliation could never promise.
+// Returns null when the routine hasn't synced, which selects the neutral copy.
+function sideLevelFromRuleConfig(ruleConfig: unknown, side: "morning" | "evening"): string | null {
   try {
-    const day = getOfficeDay(new Date(`${today}T12:00:00Z`));
-    const readings = getLectionaryReadings(day, side);
-    const psalms = readings.psalms.filter(Boolean);
-    const lessons = [readings.lesson1, readings.lesson2, readings.lesson3].filter(Boolean);
+    const values = (ruleConfig as { values?: Record<string, string> } | null)?.values;
+    const raw = values?.[`phoebe:office:level:${side}`];
+    const v = typeof raw === "string" ? raw.trim() : "";
+    return v.length > 0 ? v : null;
+  } catch { return null; }
+}
+
+// Which practices actually read scripture, and how much of it. Owner: "if their
+// practice does not include Scriptures don't have the scriptures. And if it's
+// only the Psalms, [show only the psalms]."
+//   full   — the office / devotion: psalms AND the lessons
+//   psalms — Praying the Psalms: the psalter only
+//   none   — Contemplative Prayer, the Examen, FDD, a custom anchor: no line.
+//            A silent sit has no appointed reading; printing one implies work
+//            the practice never asks for.
+function scriptureScopeFor(level: string | null): "full" | "psalms" | "none" {
+  switch (level) {
+    case "office":
+    case "devotion":
+      return "full";
+    case "psalms":
+      return "psalms";
+    case "readings":
+      return "full";
+    default:
+      // Includes null (routine not synced) — say nothing rather than guess.
+      return "none";
+  }
+}
+
+// Owner: "have it in the second line of the notification include the psalms and
+// the readings for the day" — now scoped to the practice, and to the SIDE.
+//
+// The side part is a bug fix: owner, "on the morning notification it showed the
+// gospel reading too, which should only be shown for evening prayer." This read
+// [lesson1, lesson2, lesson3] for BOTH sides, but the 1979 daily office splits
+// them — Morning takes the OT + Epistle, Evening takes the Gospel (lesson3).
+// buildOfficeOrdoDay is the selector the office ASSEMBLERS use (including the
+// "Eve of …" evening fallback), so the citation now can't disagree with what
+// the office will actually pray.
+//
+// `today` is the recipient's own local YYYY-MM-DD — constructed at noon UTC so
+// the date can't drift across a UTC boundary regardless of the server's zone.
+function officeReadingsLine(
+  today: string,
+  side: "morning" | "evening",
+  level: string | null,
+): string | null {
+  const scope = scriptureScopeFor(level);
+  if (scope === "none") return null;
+  try {
+    const date = new Date(`${today}T12:00:00Z`);
+    const ordo = buildOfficeOrdoDay(date);
+    const o = side === "evening" ? ordo.evening : ordo.morning;
+    const psalms = (o.psalms ?? []).filter(Boolean);
+    const lessons = scope === "psalms"
+      ? []
+      : (o.lessons ?? []).map((l) => l.ref).filter((r) => r && r.trim().length > 0 && !/^-+$/.test(r.trim()));
     if (psalms.length === 0 && lessons.length === 0) return null;
     const psalmLabel = psalms.length > 0 ? `Psalm${psalms.length > 1 ? "s" : ""} ${psalms.join(", ")}` : null;
     const lessonLabel = lessons.length > 0 ? lessons.join(", ") : null;
@@ -700,10 +764,12 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
           });
           if (!prayedMorningToday) {
             try {
+              const mLevel = sideLevelFromRuleConfig(r.ruleConfig, "morning");
               await sendParishOfficeReminderPush(r.userId, {
                 side: "morning",
                 parishTitle: r.parishTitle,
-                readingsLine: officeReadingsLine(today, "morning"),
+                level: mLevel,
+                readingsLine: officeReadingsLine(today, "morning", mLevel),
               });
               await db
                 .update(usersTable)
@@ -754,10 +820,12 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
           });
           if (!prayedEveningToday) {
             try {
+              const eLevel = sideLevelFromRuleConfig(r.ruleConfig, "evening");
               await sendParishOfficeReminderPush(r.userId, {
                 side: "evening",
                 parishTitle: r.parishTitle,
-                readingsLine: officeReadingsLine(today, "evening"),
+                level: eLevel,
+                readingsLine: officeReadingsLine(today, "evening", eLevel),
               });
               logger.info({ userId: r.userId, pref: r.eveningPref }, "[office-reminder] evening push sent");
               await db
@@ -814,6 +882,8 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
         eveningTime: usersTable.parishOfficeEveningTime,
         eveningSentDate: usersTable.parishOfficeEveningSentDate,
         followupSentDate: usersTable.parishOfficeEveningFollowupSentDate,
+        // The follow-up names the same practice the initial reminder did.
+        ruleConfig: usersTable.ruleConfig,
         parishFeedId: usersTable.parishFeedId,
         parishTitle: prayerFeedsTable.title,
         parishTimezone: prayerFeedsTable.timezone,
@@ -862,7 +932,8 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
           continue;
         }
         try {
-          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle, readingsLine: officeReadingsLine(today, "evening") });
+          const fLevel = sideLevelFromRuleConfig(r.ruleConfig, "evening");
+          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle, level: fLevel, readingsLine: officeReadingsLine(today, "evening", fLevel) });
           logger.info({ userId: r.userId }, "[office-reminder] evening FOLLOW-UP push sent");
           await db.update(usersTable).set({ parishOfficeEveningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
         } catch (err) {
@@ -898,6 +969,8 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
         morningTime: usersTable.parishOfficeMorningTime,
         morningSentDate: usersTable.parishOfficeMorningSentDate,
         followupSentDate: usersTable.parishOfficeMorningFollowupSentDate,
+        // The follow-up names the same practice the initial reminder did.
+        ruleConfig: usersTable.ruleConfig,
         parishFeedId: usersTable.parishFeedId,
         parishTitle: prayerFeedsTable.title,
         parishTimezone: prayerFeedsTable.timezone,
@@ -946,7 +1019,8 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
           continue;
         }
         try {
-          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle, readingsLine: officeReadingsLine(today, "morning") });
+          const fLevel = sideLevelFromRuleConfig(r.ruleConfig, "morning");
+          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle, level: fLevel, readingsLine: officeReadingsLine(today, "morning", fLevel) });
           logger.info({ userId: r.userId }, "[office-reminder] morning FOLLOW-UP push sent");
           await db.update(usersTable).set({ parishOfficeMorningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
         } catch (err) {
@@ -967,6 +1041,103 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
 // send one gentle nudge. Deduped per local day via contemplation_goal_sent_date
 // (stamped on a successful send, or when the goal is already met).
 const CONTEMPLATION_GOAL_TIME = "20:30";
+
+// ── VTS Dean's Commentary — a daily nudge for readers who follow it ─────────
+// Owner: a Dean's Commentary notification carrying today's scraped headline.
+//
+// Audience is the synced routine's reflection source — the SAME keys the client
+// uses to decide whether to render the Dean's Commentary card, so a user who
+// sees the card is exactly the user who gets the push. Weekdays only: VTS
+// doesn't publish Sat/Sun, and the feed just keeps serving Friday's post, so a
+// weekend send would nudge them toward something they already read.
+const VTS_PUSH_TIME = "08:00";
+
+function followsVts(ruleConfig: unknown): boolean {
+  try {
+    const values = (ruleConfig as { values?: Record<string, string> } | null)?.values;
+    if (!values) return false;
+    return values["phoebe:office:reflection-source"] === "vts"
+      || values["phoebe:office:reflection:morning"] === "vts"
+      || values["phoebe:office:reflection:evening"] === "vts";
+  } catch { return false; }
+}
+
+export async function runVtsCommentarySender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        ruleConfig: usersTable.ruleConfig,
+      })
+      .from(usersTable);
+
+    // One feed fetch for the whole fan-out (routes/vts.ts caches per day), and
+    // only when someone actually qualifies — no network call on a quiet tick.
+    let meta: { url: string; title: string } | null = null;
+
+    for (const r of rows) {
+      try {
+        if (!followsVts(r.ruleConfig)) continue;
+        const tz = r.userTimezone || "America/New_York";
+        if (!opts.forceNow) {
+          // Weekday check in the RECIPIENT's zone — "is it a weekday" differs
+          // by timezone around midnight, and the wrong answer here sends a
+          // Saturday push.
+          const dow = new Date(
+            new Date().toLocaleString("en-US", { timeZone: tz }),
+          ).getDay();
+          if (dow === 0 || dow === 6) continue;
+          if (!isWithinTickWindow(tz, VTS_PUSH_TIME)) continue;
+        }
+        const today = todayInZone(tz);
+        const dedupeKey = `${today}-vts`;
+
+        const [already] = await db
+          .select({ id: bellNotificationsTable.id })
+          .from(bellNotificationsTable)
+          .where(and(
+            eq(bellNotificationsTable.userId, r.userId),
+            eq(bellNotificationsTable.bellDate, dedupeKey),
+          ));
+        if (already) continue;
+
+        // Already read it today (any device) — nothing to nudge toward.
+        const [read] = await db
+          .select({ id: reflectionReadsTable.id })
+          .from(reflectionReadsTable)
+          .where(and(
+            eq(reflectionReadsTable.userId, r.userId),
+            eq(reflectionReadsTable.source, "vts"),
+            eq(reflectionReadsTable.ymd, today),
+          ));
+        if (read) continue;
+
+        if (!meta) meta = await resolveTodayVts();
+
+        // Dedupe row goes in only AFTER a successful send, so a transient APNs
+        // failure retries next tick instead of muting the day (same rule the
+        // daily bell above follows).
+        try {
+          await sendVtsCommentaryPush(r.userId, { articleTitle: meta.title });
+        } catch (err) {
+          logger.warn({ err, userId: r.userId }, "[vts-push] dispatch failed — not deduping so we retry");
+          continue;
+        }
+        await db.insert(bellNotificationsTable).values({
+          userId: r.userId,
+          bellDate: dedupeKey,
+          sentAt: new Date(),
+        });
+        logger.info({ userId: r.userId, day: today }, "[vts-push] sent Dean's Commentary");
+      } catch (err) {
+        logger.error({ err, userId: r.userId }, "[vts-push] user processing failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[vts-push] sender failed");
+  }
+}
 
 export async function runContemplationGoalSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // DISABLED — this fired "you haven't hit your contemplation goal" at ~7pm, a
@@ -1448,6 +1619,8 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   // thirty AM," which needs a tick fine enough to land on the user's chosen
   // minute, not this list's 15-minute cadence.
   { name: "contemplation-goal",    run: runContemplationGoalSender },
+  // VTS Dean's Commentary — weekday ~8am nudge for readers who follow it.
+  { name: "vts-commentary",        run: runVtsCommentarySender },
   // Weekly review + weekly digest are turned OFF for now (the settings
   // UI for both was removed). Re-add these lines to bring them back.
   // { name: "weekly-review",         run: runWeeklyReviewSender },

@@ -89,6 +89,14 @@ function parseFirstMatchingItem(xml: string): { url: string; title: string } | n
   return null;
 }
 
+// Exported for the daily Dean's Commentary push (lib/bellSender.ts), which
+// needs today's scraped title for the notification body. Shares this module's
+// day-scoped cache, so the sender's fan-out costs one feed fetch, not one per
+// recipient.
+export async function resolveTodayVts(): Promise<{ url: string; title: string }> {
+  return resolveToday();
+}
+
 async function resolveToday(): Promise<{ url: string; title: string }> {
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS && cached.day === todayStamp()) {
     return { url: cached.url, title: cached.title };
