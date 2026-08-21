@@ -456,6 +456,12 @@ export function sideOfficeTitle(
   if (lvl === "examen") return t("rhythm.card_examen", { defaultValue: "The Examen" });
   if (lvl === "compline") return t("rhythm.card_compline", { defaultValue: "Compline" });
   if (lvl === "guided-prayer") return t("rhythm.card_guided_prayer", { defaultValue: "Guided Prayer" });
+  // "readings" was added as a full side anchor but never given a case here, so
+  // it fell through to the prayerKind default and the card called itself
+  // "Evening Devotion" — the wrong practice name on the evening card of the
+  // signed-out default rule. Same drift the bcpOnSide helper was created to
+  // stop: a new OfficeLevel has to be added to every switch that maps one.
+  if (lvl === "readings") return t("rhythm.card_readings", { defaultValue: "Daily Scripture Readings" });
   if (lvl === "custom") return getSideCustomName(side.toLowerCase() as OfficeSide).trim() || `${side} Practice`;
   return prayerKind === "community"
     ? t("rhythm.card_community", { defaultValue: "Pray together" })

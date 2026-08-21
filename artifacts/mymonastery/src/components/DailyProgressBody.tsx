@@ -875,6 +875,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (lvl === "guided-prayer") return t("rhythm.blurb_guided_prayer", { defaultValue: "Three Minutes to Start Your Day" });
     if (lvl === "reflect-sit") return t("rhythm.blurb_contemplation", { defaultValue: "Loving God in silence" });
     if (lvl === "psalms") return t("rhythm.blurb_psalms", { defaultValue: "Today's appointed psalms" });
+    // Matches sideOfficeTitle's own "readings" case — without it the card read
+    // "Mark the day's end with the office", describing an office the person
+    // isn't praying.
+    if (lvl === "readings") return t("rhythm.blurb_readings", { defaultValue: "Today's appointed readings" });
     if (lvl === "custom") return t("rhythm.blurb_custom", { defaultValue: "Tap to mark done" });
     return side === "morning"
       ? t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" })

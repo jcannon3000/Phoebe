@@ -162,6 +162,9 @@ export function useWidgetSync(): void {
       if (lvl === "reflect-sit") return "Contemplation";
       if (lvl === "examen") return "The Examen";
       if (lvl === "guided-prayer") return "Guided Prayer";
+      // Same gap the home card had: "readings" is a full side anchor but was
+      // missing here, so the widget called it "Evening Devotion".
+      if (lvl === "readings") return "Daily Scripture Readings";
       // A user's own named practice IS this side's prayer — the widget
       // names the card after what they typed, matching the home card.
       if (lvl === "custom") return getSideCustomName(side.toLowerCase() as "morning" | "evening").trim() || `${side} Practice`;
@@ -176,6 +179,7 @@ export function useWidgetSync(): void {
       if (lvl === "reflect-sit") return "Contemplative Prayer";
       if (lvl === "examen") return "Review the day";
       if (lvl === "guided-prayer") return "Three Minutes to Start Your Day";
+      if (lvl === "readings") return "Today's appointed readings";
       if (lvl === "custom") return "Your own practice";
       return "Book of Common Prayer";
     };
