@@ -122,6 +122,21 @@ one of morning | midday | afternoon | evening | anytime:
   phoebe:slot:cobreathe | phoebe:slot:listening (Audio Divina)
   | phoebe:slot:walk (Contemplative Walk) | phoebe:slot:reading
   | phoebe:slot:examen
+Use "anytime" for cobreathe, listening, walk and examen — the app treats those
+four as available all day and ignores any other value. Only reading honours a
+particular time of day.
+
+ANYTHING ELSE THEY KEEP → A CUSTOM PRACTICE. Owner: "if they talk about a
+practice that is not a preset option, make it a custom practice." A rosary, a
+gratitude list, Ignatian reading, a gym walk they pray through, a novena, an
+hour with the church fathers — if it doesn't map onto an option above, DO NOT
+force it onto the nearest preset and DO NOT drop it. Return it in
+"customPractices" (top level of your JSON, alongside "spec"):
+  [{ "title": "The Rosary", "emoji": "📿", "slot": "evening" }]
+title ≤40 chars in their own words, one emoji, slot one of
+morning | midday | afternoon | evening | anytime. At most four, and only for
+things they actually described. Leave the array out when everything they said
+already had a home above — a preset is always the better fit when one exists.
 
 Reminders (officePrefs) — ON BY DEFAULT:
   morning / evening = "office" | "devotion" | "none". A side that has a practice
@@ -531,6 +546,9 @@ const PRACTICE_LABEL: Record<string, string> = {
 // else they keep during the day. Reading and the Examen stay under "practices":
 // one is study, the other belongs to the evening.
 const CONTEMPLATIVE_SLOTS = new Set(["walk", "cobreathe", "listening"]);
+// Practices whose time-of-day slot the app ignores — see the note where this
+// is used. Keep in step with getPracticeSlot() in lib/customAnchors.ts.
+const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);
 
 function logMethodLabel(rc: Record<string, string>): string {
   // "timer" is the app's own default, so an unset value is a timer.
@@ -625,7 +643,14 @@ function describeSpec(spec: {
     // progress." Filing it under "practices" made the Silence slide look empty
     // and prompted us to ask for a contemplative practice they'd just named.
     const section: SpecSection = CONTEMPLATIVE_SLOTS.has(key) ? "contemplation" : "practices";
-    rows.push({ emoji: "✨", label: name, sub: SLOT_LABEL[v], section });
+    // ALWAYS "any time of day" for these four, whatever the spec stored.
+    // getPracticeSlot() (lib/customAnchors.ts) hard-returns "anytime" for
+    // cobreathe / listening / examen / walk — their time-of-day picker was
+    // removed from the customizer — so a read-back promising "in the
+    // afternoon" describes a gate the app does not apply. Reading is the one
+    // that still honours its slot, and still reads back as chosen.
+    const sub = ALWAYS_ANYTIME.has(key) ? SLOT_LABEL["anytime"]! : SLOT_LABEL[v];
+    rows.push({ emoji: "✨", label: name, sub, section });
   }
   return rows;
 }
@@ -791,6 +816,40 @@ function normalizeContemplation(spec: {
   }
 }
 
+
+/**
+ * Practices Phoebe has no preset for, kept as CUSTOM ANCHORS.
+ *
+ * Owner: "if they talk about a practice that is not a preset option, make it a
+ * custom practice." Without this the model has two bad options for a rosary or
+ * a gratitude list — force it onto the nearest preset, so their rhythm claims a
+ * practice they never mentioned, or drop it, so a feature that promises to
+ * mirror what you already do quietly loses part of it.
+ *
+ * These do NOT ride in the spec. Custom anchors sync through their own
+ * snapshot-and-tombstone channel (lib/customAnchors.ts), not through
+ * ruleConfig's key allowlist, so the client writes them locally on apply.
+ */
+type CustomPractice = { title: string; emoji: string; slot: string };
+const CUSTOM_SLOTS = new Set(["morning", "midday", "afternoon", "evening", "anytime"]);
+
+function parseCustomPractices(raw: unknown): CustomPractice[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CustomPractice[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const title = cleanText((item as any).title, 40);
+    if (!title) continue;
+    const emoji = cleanText((item as any).emoji, 8) || "✅";
+    const slotRaw = cleanText((item as any).slot, 20);
+    out.push({ title, emoji, slot: CUSTOM_SLOTS.has(slotRaw) ? slotRaw : "anytime" });
+    // The customizer caps the whole list at 8; four from one interview leaves
+    // room for the ones they added by hand.
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
 // ── POST /api/routine-interview/followups ────────────────────────────────────
 // Owner: "let's have it be at least two questions, but have it be as ... many
 // questions as needed to clarify." So: a floor of two, a ceiling of five, and
@@ -930,6 +989,7 @@ Now produce their routine. Respond with ONLY JSON in exactly this shape:
 {
   "summary": "2-3 sentences, second person, describing the rhythm you programmed in plain language. No option names, no JSON keys.",
   "notes": ["short note about any judgement call or closest-match you had to make"],
+  "customPractices": [{ "title": "The Rosary", "emoji": "📿", "slot": "evening" }],
   "spec": {
     "v": 1,
     "officePrefs": {
@@ -999,12 +1059,24 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   const cardNote = droppedCardNote(out.data?.spec, spec.homeLayout.order);
   const notes = [...modelNotes, ...scrubNotes, ...(cardNote ? [cardNote] : [])].slice(0, 8);
 
+  const customPractices = parseCustomPractices(out.data?.customPractices);
+
   res.json({
     spec,
+    customPractices,
     summary: cleanText(out.data?.summary, 800),
     // Derived from the sanitized spec, not from the model — this is what the
     // review screen asks them to approve. See describeSpec.
-    settings: describeSpec(spec),
+    settings: [
+      ...describeSpec(spec),
+      // Shown on the read-back and the review like any other row, so a custom
+      // practice can be corrected the same way a preset one can.
+      ...customPractices.map((c) => ({
+        emoji: c.emoji, label: c.title,
+        sub: SLOT_LABEL[c.slot] ?? "Each day",
+        section: "practices" as SpecSection,
+      })),
+    ],
     notes,
   });
 });

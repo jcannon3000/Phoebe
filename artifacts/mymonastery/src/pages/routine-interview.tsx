@@ -30,6 +30,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { adoptRoutineConfig } from "@/lib/routineSync";
+import { addCustomAnchor, getCustomAnchors, type CustomSlot } from "@/lib/customAnchors";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -79,7 +80,10 @@ const SLOT_TEXT: Record<string, string> = {
 const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "silence", emoji: "🕯️", label: "Sitting in silence", sub: "A silent sit, however long you like." },
   { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
-  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "afternoon" },
+  // "anytime" on purpose: getPracticeSlot (lib/customAnchors) hard-returns
+  // "anytime" for cobreathe / listening / examen / walk, so any other value
+  // would put a time on the review that the app never actually applies.
+  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
 ];
 const SILENCE_LENGTHS = [5, 10, 15, 20, 30];
@@ -106,9 +110,13 @@ const MEDIUM_OPTIONS: Array<{ value: string; label: string }> = [
 const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "compline", emoji: "🌙", label: "Compline", sub: "The night office — available from 7pm." },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
-  { key: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God.", slot: "evening" },
+  // "anytime", not "evening" — see the note on CONTEMPLATIVE_CHOICES.
+  { key: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God.", slot: "anytime" },
   { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
-  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "afternoon" },
+  // "anytime" on purpose: getPracticeSlot (lib/customAnchors) hard-returns
+  // "anytime" for cobreathe / listening / examen / walk, so any other value
+  // would put a time on the review that the app never actually applies.
+  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
 ];
 
 /**
@@ -124,6 +132,8 @@ const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; sl
  * still gets the box.
  */
 type Question = { q: string; choices?: string[] };
+
+type CustomPractice = { title: string; emoji: string; slot: string };
 
 type Spec = Record<string, unknown>;
 // Same shape the manual customizer's review rows use.
@@ -168,6 +178,10 @@ export default function RoutineInterviewPage() {
   // nice framing but is not evidence of what it programmed.
   const [settings, setSettings] = useState<SpecRow[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
+  // Practices Phoebe has no preset for (a rosary, a gratitude list). They ride
+  // beside the spec rather than inside it — custom anchors sync through their
+  // own channel, not through ruleConfig — so they're written locally on apply.
+  const [customPractices, setCustomPractices] = useState<CustomPractice[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -240,12 +254,16 @@ export default function RoutineInterviewPage() {
         description,
         followups: questions.map((item, i) => ({ q: item.q, a: answers[i] ?? "" })),
         corrections: nextCorrections ?? corrections,
-      })) as { spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[] } | null;
+      })) as {
+        spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[];
+        customPractices?: CustomPractice[];
+      } | null;
       if (!res?.spec) throw new Error("ai_bad_spec");
       setSpec(res.spec);
       setSummary(res.summary ?? "");
       setSettings(res.settings ?? []);
       setNotes(res.notes ?? []);
+      setCustomPractices(res.customPractices ?? []);
       setConfirmIndex(resumeAt);
       setShowFix(false);
       setFixText("");
@@ -273,6 +291,15 @@ export default function RoutineInterviewPage() {
         const rc = (spec as { ruleConfig?: Record<string, string> }).ruleConfig;
         if (rc) adoptRoutineConfig(rc);
       } catch { /* non-fatal — the server already has it */ }
+      // Custom practices, written straight to the anchor list. Skips any title
+      // already there so re-running the interview doesn't leave two rosaries.
+      try {
+        const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
+        for (const c of customPractices) {
+          if (existing.has(c.title.trim().toLowerCase())) continue;
+          addCustomAnchor(c.title, c.emoji, c.slot as CustomSlot);
+        }
+      } catch { /* non-fatal — a custom practice can be re-added by hand */ }
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
       qc.invalidateQueries({ queryKey: ["/api/me/silence-ladder"] });
