@@ -1,0 +1,118 @@
+/**
+ * Weekly routine audit — endpoints.
+ *
+ *   GET  /api/me/routine-audit        → the findings (see lib/routineAudit.ts)
+ *   POST /api/me/routine-audit/apply  → apply ONE finding's change
+ *
+ * Suggestions are never auto-applied. Each one is a single, named change the
+ * person opts into; there is deliberately no "apply all".
+ */
+import { Router, type IRouter } from "express";
+import { eq } from "drizzle-orm";
+import { db, usersTable, betaUsersTable } from "@workspace/db";
+import { buildRoutineAudit } from "../lib/routineAudit";
+import { perUserRateLimit } from "../lib/rate-limit";
+
+const router: IRouter = Router();
+
+function getUserId(req: any): number | null {
+  return req.user ? (req.user as { id: number }).id : null;
+}
+
+// Owner: "this should be only for super admins." Same beta_users.is_admin gate
+// the other admin surfaces use — checked SERVER-SIDE on both endpoints, not
+// just hidden in the UI, since /apply writes to a routine.
+async function isSuperAdmin(userId: number): Promise<boolean> {
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  try {
+    const [beta] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    return beta?.isAdmin === true;
+  } catch { return false; }
+}
+
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+// Only the keys the audit itself can propose. The request names a key, so
+// without this an arbitrary rule-config value could be written through here.
+const APPLYABLE_SLOT_KEYS = new Set([
+  "phoebe:slot:listening", "phoebe:slot:walk", "phoebe:slot:reading",
+  "phoebe:slot:podcasts", "phoebe:slot:cobreathe", "phoebe:slot:examen",
+]);
+const SLOT_VALUES = new Set(["morning", "midday", "afternoon", "evening", "anytime"]);
+
+router.get("/me/routine-audit", async (req, res): Promise<void> => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  // Not 403 — an ungated caller simply has nothing to see, and the home card
+  // that reads this should quietly render nothing rather than an error.
+  if (!(await isSuperAdmin(userId))) { res.json({ findings: [] }); return; }
+  try {
+    res.json({ findings: await buildRoutineAudit(userId) });
+  } catch (err) {
+    console.error("[routine-audit] build failed:", err);
+    // Never 500 a home surface over an advisory feature — an empty list just
+    // means "nothing to suggest".
+    res.json({ findings: [] });
+  }
+});
+
+router.post("/me/routine-audit/apply", perUserRateLimit("routine_audit_apply", {
+  max: 30, windowMs: 60 * 60 * 1000,
+}), async (req, res): Promise<void> => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isSuperAdmin(userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const change = req.body?.change as
+    | { type?: string; key?: string; value?: string; field?: string }
+    | undefined;
+  if (!change || typeof change !== "object") { res.status(400).json({ error: "invalid" }); return; }
+
+  try {
+    if (change.type === "officePrefs") {
+      const field = change.field;
+      if (field !== "morningTime" && field !== "eveningTime") { res.status(400).json({ error: "invalid" }); return; }
+      if (typeof change.value !== "string" || !TIME_RE.test(change.value)) { res.status(400).json({ error: "invalid" }); return; }
+      await db.update(usersTable)
+        .set(field === "morningTime"
+          ? { parishOfficeMorningTime: change.value }
+          : { parishOfficeEveningTime: change.value })
+        .where(eq(usersTable.id, userId));
+      res.json({ ok: true });
+      return;
+    }
+
+    if (change.type === "ruleConfig") {
+      const key = change.key ?? "";
+      if (!APPLYABLE_SLOT_KEYS.has(key)) { res.status(400).json({ error: "invalid" }); return; }
+      const value = change.value ?? "";
+      // "" is the audit's delete sentinel (a dropped practice); anything else
+      // has to be a real slot.
+      if (value !== "" && !SLOT_VALUES.has(value)) { res.status(400).json({ error: "invalid" }); return; }
+
+      const [row] = await db.select({ ruleConfig: usersTable.ruleConfig })
+        .from(usersTable).where(eq(usersTable.id, userId));
+      const cfg = (row?.ruleConfig as { values?: Record<string, string>; updatedAt?: number } | null) ?? {};
+      const values = { ...(cfg.values ?? {}) };
+      if (value === "") delete values[key]; else values[key] = value;
+      await db.update(usersTable)
+        // Bump updatedAt so the device-sync LWW clock treats this as newer than
+        // whatever the phone last pushed — without it the next reconcile would
+        // hand the old routine straight back and the change would vanish.
+        .set({ ruleConfig: { values, updatedAt: Date.now() } })
+        .where(eq(usersTable.id, userId));
+      res.json({ ok: true });
+      return;
+    }
+
+    res.status(400).json({ error: "invalid" });
+  } catch (err) {
+    console.error("[routine-audit] apply failed:", err);
+    res.status(500).json({ error: "apply_failed" });
+  }
+});
+
+export default router;

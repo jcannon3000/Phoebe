@@ -1610,6 +1610,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     swipeTouchStartYRef.current = null;
     if (Math.abs(dy) > Math.abs(dx)) return; // primarily vertical — let scroll handle it
     if (Math.abs(dx) < 50) return;            // too small — ignore
+    // Same reasoning as handleTapNavigate: the welcome slide is a chooser, and
+    // a swipe there would now leave the app entirely for a non-screen way.
+    if (currentSlide.type === "office_intro") return;
     if (dx < 0) next();
     else prev();
   }
@@ -1624,7 +1627,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // The contemplative pause is a chooser — a stray background tap shouldn't
     // page past it (forward) or out of it (back); the person picks breathe or
     // silence, or uses the footer Back/Next deliberately.
-    if (currentSlide.type === "contemplative_pause") return;
+    //
+    // The welcome slide is a chooser too, and became a MUCH worse place for a
+    // stray tap once next() started honouring the chosen way to pray: a
+    // mis-tap on the right half no longer advances a slide, it opens
+    // venite.app / the podcast / the Cathedral stream and leaves the app.
+    // Deliberate controls (Begin, the footer Next) still do that on purpose.
+    if (currentSlide.type === "contemplative_pause" || currentSlide.type === "office_intro") return;
     const target = e.target as HTMLElement | null;
     if (target?.closest("button, a, input, textarea, select, label")) return;
     if (e.clientX < window.innerWidth / 2) prev();

@@ -45,6 +45,7 @@ import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
 import prescribedRoutinesRouter from "./prescribed-routines";
 import routineInterviewRouter from "./routine-interview";
+import routineAuditRouter from "./routine-audit";
 import creatorSeasonsRouter from "./creator-seasons";
 
 const router: IRouter = Router();
@@ -164,6 +165,7 @@ router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(prescribedRoutinesRouter);
 router.use(routineInterviewRouter);
+router.use(routineAuditRouter);
 router.use(creatorSeasonsRouter);
 
 export default router;

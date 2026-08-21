@@ -362,6 +362,7 @@ const PodcastLogPage = lazy(() => import("./pages/podcast-log"));
 const WalkLogPage = lazy(() => import("./pages/walk-log"));
 const FindYourRhythmPage = lazy(() => import("./pages/find-your-rhythm"));
 const RoutineInterviewPage = lazy(() => import("./pages/routine-interview"));
+const RoutineAuditPage = lazy(() => import("./pages/routine-audit"));
 const SpotifyCallbackPage = lazy(() => import("./pages/spotify-callback"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
@@ -742,7 +743,7 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // The branching questionnaire that ENDS in a rule — reached from inside the
   // already-allowlisted /rule-of-life flow, so excluding it broke that flow
   // partway through.
-  "/find-your-rhythm", "/routine-interview",
+  "/find-your-rhythm", "/routine-interview", "/routine-audit",
   "/journey", "/centering-prayer", "/way-of-love-course", "/learn",
   "/begin-prayer", "/prayer-chooser",
   // Media the guest's OWN office routes to: the listen-medium office podcasts
@@ -984,6 +985,7 @@ function Router() {
       <Route path="/walk-log" component={WalkLogPage} />
       <Route path="/find-your-rhythm" component={FindYourRhythmPage} />
       <Route path="/routine-interview" component={RoutineInterviewPage} />
+      <Route path="/routine-audit" component={RoutineAuditPage} />
       <Route path="/spotify-callback" component={SpotifyCallbackPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />

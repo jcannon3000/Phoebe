@@ -1156,6 +1156,22 @@ export function sendContemplationGoalReminderPush(
 // Weekly Way of Love review — the Sunday-evening examen nudge. Invites the user
 // to look back on the week and set the one ahead. Deep-links into the review;
 // deduped to once per Sunday by the sender.
+// The weekly routine audit. Only sent when the audit actually FOUND something
+// (see runRoutineAuditSender) — a push that opens a page saying "nothing to
+// adjust" spends the person's attention to tell them nothing.
+export function sendRoutineAuditPush(userId: number, opts: { count: number }) {
+  return sendPushToUser(userId, {
+    title: "Your week, next to your rule",
+    body: opts.count === 1
+      ? "One thing has drifted from what you programmed. Take a look?"
+      : `${opts.count} things have drifted from what you programmed. Take a look?`,
+    path: "/routine-audit",
+    threadId: "routine-audit",
+    collapseId: `routine-audit-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 export function sendWeeklyReviewPush(userId: number) {
   return sendPushToUser(userId, {
     title: "A new week begins",

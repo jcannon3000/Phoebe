@@ -590,6 +590,39 @@ function droppedCardNote(raw: unknown, keptOrder: string[]): string | null {
   return `These aren't cards Phoebe has, so they were left off: ${dropped.slice(0, 4).join(", ")}.`;
 }
 
+
+/** Backfill homeLayout.order from the routine when the model left it empty. */
+function repairHomeLayout(raw: unknown): void {
+  if (!raw || typeof raw !== "object") return;
+  const spec = raw as Record<string, any>;
+  const hl = (spec.homeLayout && typeof spec.homeLayout === "object") ? spec.homeLayout : {};
+  const existing = Array.isArray(hl.order) ? hl.order.filter((k: unknown) => typeof k === "string") : [];
+  if (existing.length > 0) { spec.homeLayout = { order: existing, hidden: Array.isArray(hl.hidden) ? hl.hidden : [] }; return; }
+
+  const rc = (spec.ruleConfig && typeof spec.ruleConfig === "object") ? spec.ruleConfig as Record<string, string> : {};
+  const order: string[] = [];
+  const add = (k: string) => { if (!order.includes(k)) order.push(k); };
+
+  // A side with any anchor at all needs the office card.
+  for (const side of ["morning", "evening"]) {
+    const lvl = rc[`phoebe:office:level:${side}`];
+    if (lvl && lvl !== "ask") add("office");
+    if (rc[`phoebe:office:contemplation:${side}`] === "1") add("contemplation");
+    const refl = rc[`phoebe:office:reflection:${side}`];
+    if (refl && refl !== "none") add(refl);
+  }
+  const source = rc["phoebe:office:reflection-source"];
+  if (source && source !== "none") add(source);
+  for (const k of Object.keys(rc)) {
+    if (k.startsWith("phoebe:slot:")) add(k.slice("phoebe:slot:".length));
+  }
+  if ((spec.officePrefs?.contemplationGoalMinutes ?? 0) > 0) add("contemplation");
+  // Last resort — a routine with an office is still a routine worth saving.
+  if (order.length === 0) add("office");
+
+  spec.homeLayout = { order, hidden: Array.isArray(hl.hidden) ? hl.hidden : [] };
+}
+
 // ── POST /api/routine-interview/followups ────────────────────────────────────
 // Owner: "ask the LLM for two follow-up questions." Exactly two — the point is
 // one short clarifying round, not an interrogation.
@@ -724,6 +757,14 @@ then. "notes" may be an empty array when nothing needed judgement.`;
 
   const out = await askOpenAi(system, userMsg, 2000);
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
+
+  // sanitizeSpec returns null when homeLayout.order is empty — a reasonable
+  // rule for a spec authored through the customizer UI, but a brutal one here:
+  // the model can produce a perfectly good routine and simply forget the card
+  // list, and the person loses a description and two answers to "the
+  // assistant's answer came back garbled". The layout is derivable from the
+  // routine itself, so derive it rather than fail.
+  repairHomeLayout(out.data?.spec);
 
   // The model's spec is untrusted input. sanitizeSpec allowlists every field
   // and returns null when what's left isn't a usable routine.
