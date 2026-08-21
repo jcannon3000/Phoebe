@@ -446,11 +446,14 @@ const RC_STYLES = new Set(["silent", "cobreathe"]);
 
 function labelFor(key: string): string {
   const side = key.endsWith(":morning") ? "morning" : key.endsWith(":evening") ? "evening" : null;
-  if (key.includes(":level:") && side) return `a ${side} practice`;
+  // "an evening practice", not "a evening practice" — this string is shown to
+  // the person on the review screen, so the article has to agree.
+  if (key.includes(":level:") && side) return `${side === "evening" ? "an" : "a"} ${side} practice`;
   if (key.includes(":entry:") && side) return `a way to pray the ${side} office`;
   if (key.includes(":reflection")) return "a daily reflection";
   if (key.startsWith("phoebe:slot:")) return `a time of day for ${key.slice("phoebe:slot:".length)}`;
   if (key === "phoebe:contemplation-style") return "a style of silent prayer";
+  if (key === "phoebe:contemplation-log-method") return "a way to keep a silent sit";
   return "a setting";
 }
 

@@ -9,10 +9,10 @@
     "build:shell": "vite build --config vite.config.ts",
     "build:compose": "node scripts/compose-www.mjs",
     "build": "pnpm run build:web && pnpm run build:shell && pnpm run build:compose",
-    "cap:sync": "cap sync ios",
+    "cap:sync": "LANG=${LANG:-en_US.UTF-8} cap sync ios",
     "cap:open": "cap open ios",
     "ios": "pnpm run build && pnpm run cap:sync && pnpm run cap:open",
-    "cap:sync:android": "cap sync android",
+    "cap:sync:android": "LANG=${LANG:-en_US.UTF-8} cap sync android",
     "cap:open:android": "cap open android",
     "android": "pnpm run build && pnpm run cap:sync:android && pnpm run cap:open:android",
     "typecheck": "tsc -p tsconfig.json --noEmit"
