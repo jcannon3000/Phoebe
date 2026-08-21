@@ -44,9 +44,12 @@ struct PhoebeStats {
     var contemplationMin: Int      // today's contemplation minutes (sits + Health)
     var contemplationGoalMin: Int  // daily contemplation goal (0 = no goal set)
     // "Past 7 Days" grid — the SAME data + row-label mode
-    // (Turn/Learn/Pray, or Morning/Contemplative/Evening if the viewer set
-    // that in Settings) the home card's WayOfLoveTurnLearnPray shows, via
-    // the shared computeWeeklyGrid on the JS side (lib/weeklyGrid.ts).
+    // (Turn/Learn/Pray, or Morning/·/Evening if the viewer set that in
+    // Settings) the home card's WayOfLoveTurnLearnPray shows, via the shared
+    // computeWeeklyGrid on the JS side (lib/weeklyGrid.ts). The MIDDLE label
+    // is not fixed: it's Contemplative normally, but Reflection for someone
+    // who keeps a newsletter and no silent practice. Always render what
+    // arrives here — never hardcode the triad.
     // weeklyGrid[row][day], oldest day first / today last.
     var weeklyLabels: [String]
     // Per-row emoji (🌅/🕯️/🌙 or 🔄/📖/🙏🏽) — shown as the row label instead
@@ -317,7 +320,8 @@ struct PhoebeWidgetView: View {
     }
 
     // "Past 7 Days" — the SAME dot grid the home card shows (Turn/Learn/Pray,
-    // or Morning/Contemplative/Evening if the viewer set that in Settings),
+    // or Morning/·/Evening if the viewer set that in Settings — the middle
+    // row's label varies, see WidgetStats.weeklyLabels),
     // fed by widgetSync.ts's shared computeWeeklyGrid so this is never a
     // separately-drifting approximation. Owner: the wide (.systemMedium)
     // widget should be this grid, not the "what's next" hero — replaces

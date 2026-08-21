@@ -124,9 +124,38 @@ export function computeWeeklyGrid(params: {
   // that it's in the past its full colored, it needs to be half colored."
   const contemplativePartialFor = (d: PracticeWeekDay) => d.contemplationPartial;
 
+  /**
+   * The MIDDLE row follows what the person actually keeps.
+   *
+   * Owner: "if someone has a newsletter but not a contemplation practice,
+   * let's make that the middle role of the widget, both on the home screen and
+   * also the widget."
+   *
+   * The middle slot is the day's centre — between rising and resting — and for
+   * a reader whose centre is the day's reflection, a permanently empty
+   * Contemplative row was a standing reproach for a practice they never chose,
+   * while the thing they DO keep went uncounted. Silence still wins the slot
+   * whenever it's part of the rhythm; the newsletter only takes it when the
+   * slot would otherwise sit empty.
+   *
+   * Both surfaces get this for free — the home card and the iOS widget both
+   * render from this function, which is the whole reason it exists.
+   */
+  const contemplativeActive = rhythm.silenceActive || rhythm.cobreatheStandaloneActive;
+  const newsletterActive = rhythm.reflections.length > 0;
+  const middleIsNewsletter = !contemplativeActive && newsletterActive;
+  // `d.reflection` is deliberately fdd/ssje/cac only, with Dean's Commentary
+  // reported separately as `d.vts` — so a VTS-only reader needs both, or their
+  // row would be blank every day while they kept it.
+  const newsletterOn = (d: PracticeWeekDay) => d.reflection || d.vts;
+
+  const middleRow = middleIsNewsletter
+    ? { emoji: "📖", label: "Reflection", done: learnFromReflection, historyFor: newsletterOn }
+    : { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor };
+
   const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
     { emoji: "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
-    { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor },
+    middleRow,
     { emoji: "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
