@@ -33,7 +33,7 @@
  * A hallucinated practice name doesn't corrupt a routine; it gets dropped.
  */
 import { Router, type IRouter } from "express";
-import { sanitizeSpec, applyRoutineSpecToUser } from "../lib/routineSpec";
+import { sanitizeSpec, applyRoutineSpecToUser, HOME_MODULE_KEYS } from "../lib/routineSpec";
 import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
@@ -96,11 +96,20 @@ Turn one on by putting its key in homeLayout.order (that list is what the home
 actually reads). "phoebe:office:reflection:<side>" is a single legacy value —
 set it to the primary one if you like, but the LAYOUT is what decides.
 
-Silent prayer:
+Silent prayer. A side's contemplation flag is ONLY for a side whose PRAYER IS
+the silent sit. If they pray Morning Prayer AND sit in silence, that is one
+morning practice plus a silence habit — put the minutes in
+officePrefs.contemplationGoalMinutes and leave the side's flag off. Set the
+per-side flag only when that side has no other practice.
   "phoebe:office:contemplation:<side>" = "1" or "0" — a silent sit attached to
       that side, shown as its own Morning/Evening Contemplation card
   "phoebe:office:minutes:<side>" = minutes for THAT side's sit, e.g. "10"
   "phoebe:contemplation-style" = "silent" or "cobreathe" (a guided breath)
+  "phoebe:contemplation-log-method" = how the sit gets kept —
+      "timer" (sit with a countdown, tap Begin) or "manual" (no timer; tap the
+      card to mark it done). Set it from what they describe: someone who says
+      they set a timer gets "timer"; someone who just sits, or sits in church,
+      or uses a bell, gets "manual".
   officePrefs.contemplationGoalMinutes = total silent minutes across the day (0-180)
 
 Practices available all day, placed with ruleConfig "phoebe:slot:<name>" set to
@@ -438,6 +447,7 @@ function scrubRuleConfig(rc: Record<string, string>): string[] {
     if (k.includes(":reflection")) { if (!RC_REFLECTIONS.has(v)) reject(k, v); continue; }
     if (k.startsWith("phoebe:slot:")) { if (!RC_SLOTS.has(v)) reject(k, v); continue; }
     if (k === "phoebe:contemplation-style") { if (!RC_STYLES.has(v)) reject(k, v); continue; }
+    if (k === "phoebe:contemplation-log-method") { if (v !== "timer" && v !== "manual") reject(k, v); continue; }
     if (k.includes(":contemplation:")) { if (v !== "1" && v !== "0") delete rc[k]; continue; }
     if (k.includes(":minutes:")) {
       const n = Number(v);
@@ -497,14 +507,29 @@ const SLOT_LABEL: Record<string, string> = {
 };
 const PRACTICE_LABEL: Record<string, string> = {
   cobreathe: "Creation Prayer", listening: "Audio Divina",
-  walk: "a Contemplative Walk", reading: "Reading", examen: "the Examen",
+  // Card titles, so no articles: "a Contemplative Walk" reads fine inside a
+  // sentence and wrong as the name at the top of a card.
+  walk: "Contemplative Walk", reading: "Reading", examen: "The Examen",
 };
 
-function prettyTime(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
-  const suffix = h < 12 ? "AM" : "PM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+/**
+ * How a sit gets kept. Owner: "for the contemplation it should be asking the
+ * logging method."
+ *
+ * The manual customizer asks this outright on its Silence slide, because it
+ * changes what the card DOES when tapped — a timer opens a countdown, a manual
+ * log just marks it done. Someone who sits in church, or keeps time with a
+ * bell, does not want a countdown starting when they tap. Showing it on the
+ * read-back is what gives them the chance to say so.
+ */
+// Slot practices that ARE a contemplative practice, as opposed to something
+// else they keep during the day. Reading and the Examen stay under "practices":
+// one is study, the other belongs to the evening.
+const CONTEMPLATIVE_SLOTS = new Set(["walk", "cobreathe", "listening"]);
+
+function logMethodLabel(rc: Record<string, string>): string {
+  // "timer" is the app's own default, so an unset value is a timer.
+  return rc["phoebe:contemplation-log-method"] === "manual" ? "tap to log" : "with a timer";
 }
 
 /** Rows describing what this spec will actually set — same emoji/label/sub
@@ -530,18 +555,22 @@ function describeSpec(spec: {
     const level = rc[`phoebe:office:level:${side}`];
     if (!level || level === "ask") continue; // a side with nothing set gets no row
 
-    // The manual flow's row label is the practice's own name, and its sub is
-    // the medium + reminder time — mirror that rather than inventing a format.
+    // Owner: "have it show the card for the practice and the medium on the
+    // second line. But then as a separate UI ... have it ask if they would like
+    // a notification or [that] it is off."
+    //
+    // So the card is only ever the PRACTICE — its name and how they take it.
+    // The reminder used to ride the same line ("on screen · 7:00 AM"), which
+    // made a setting they hadn't chosen look like something they'd told us, and
+    // left no way to change it without rejecting the whole read-back. It gets
+    // its own control on the slide instead.
     const entry = rc[`phoebe:office:entry:${side}`];
-    const pref = side === "morning" ? spec.officePrefs.morning : spec.officePrefs.evening;
-    const time = side === "morning" ? spec.officePrefs.morningTime : spec.officePrefs.eveningTime;
-    const subBits: string[] = [];
-    if (entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")) subBits.push(ENTRY_LABEL[entry]);
-    subBits.push(pref !== "none" && time ? prettyTime(time) : "No reminder");
+    const medium = entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")
+      ? ENTRY_LABEL[entry] : "";
     rows.push({
       emoji: side === "morning" ? "🌅" : "🌙",
       label: LEVEL_LABEL[level] ? `${cap} ${LEVEL_LABEL[level]}` : `${cap} Prayer`,
-      sub: subBits.join(" · "),
+      sub: medium || (side === "morning" ? "Each morning" : "Each evening"),
       section: side,
     });
 
@@ -550,7 +579,7 @@ function describeSpec(spec: {
       rows.push({
         emoji: "🕯️",
         label: `${cap} Contemplation`,
-        sub: mins ? `${mins} min` : "A silent sit",
+        sub: [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
         section: "contemplation",
       });
     }
@@ -559,7 +588,12 @@ function describeSpec(spec: {
   if (spec.officePrefs.contemplationGoalMinutes > 0
       && rc["phoebe:office:contemplation:morning"] !== "1"
       && rc["phoebe:office:contemplation:evening"] !== "1") {
-    rows.push({ emoji: "🕯️", label: "Silence", sub: `${spec.officePrefs.contemplationGoalMinutes} min a day`, section: "contemplation" });
+    rows.push({
+      emoji: "🕯️",
+      label: "Silence",
+      sub: `${spec.officePrefs.contemplationGoalMinutes} min a day · ${logMethodLabel(rc)}`,
+      section: "contemplation",
+    });
   }
 
   // Newsletters — one row EACH. Owner: "you can definitely do two newsletters."
@@ -574,8 +608,19 @@ function describeSpec(spec: {
 
   for (const [k, v] of Object.entries(rc)) {
     if (!k.startsWith("phoebe:slot:")) continue;
-    const name = PRACTICE_LABEL[k.slice("phoebe:slot:".length)];
-    if (name && SLOT_LABEL[v]) rows.push({ emoji: "✨", label: name, sub: SLOT_LABEL[v], section: "practices" });
+    const key = k.slice("phoebe:slot:".length);
+    const name = PRACTICE_LABEL[key];
+    if (!name || !SLOT_LABEL[v]) continue;
+    // A walk, a breath or sacred listening IS their contemplative practice, so
+    // it reads back under Silence rather than as a footnote under "also".
+    //
+    // Owner: "if they don't talk about a silent meditation in their routine,
+    // but they do say I go on a walk, then that would go as their contemplative
+    // practice slot — and it'd be programmed to count in their weekly
+    // progress." Filing it under "practices" made the Silence slide look empty
+    // and prompted us to ask for a contemplative practice they'd just named.
+    const section: SpecSection = CONTEMPLATIVE_SLOTS.has(key) ? "contemplation" : "practices";
+    rows.push({ emoji: "✨", label: name, sub: SLOT_LABEL[v], section });
   }
   return rows;
 }
@@ -589,7 +634,6 @@ function droppedCardNote(raw: unknown, keptOrder: string[]): string | null {
   if (dropped.length === 0) return null;
   return `These aren't cards Phoebe has, so they were left off: ${dropped.slice(0, 4).join(", ")}.`;
 }
-
 
 /** Backfill homeLayout.order from the routine when the model left it empty. */
 function repairHomeLayout(raw: unknown): void {
@@ -623,9 +667,115 @@ function repairHomeLayout(raw: unknown): void {
   spec.homeLayout = { order, hidden: Array.isArray(hl.hidden) ? hl.hidden : [] };
 }
 
+/**
+ * Hide every card the routine didn't ask for.
+ *
+ * THIS IS LOAD-BEARING, and its absence caused a bad disconnect: the review
+ * screen listed the six things the person described, and their home came back
+ * carrying Forward Day by Day, SSJE, Creation Prayer, Audio Divina, the prayer
+ * list, Reading, Podcasts, Compline and the Examen — none of which they'd
+ * mentioned.
+ *
+ * The reason is cleanHomeLayout (lib/routineSpec.ts), which BACKFILLS every
+ * known module key into `order` so the layout is always complete, and lets
+ * `hidden` decide what actually shows. So an empty `hidden` doesn't mean "just
+ * the cards I listed" — it means "every card in the app". A spec built from a
+ * description has to state the negative space explicitly.
+ */
+function hideUnchosen(spec: {
+  officePrefs: { contemplationGoalMinutes: number };
+  homeLayout: { order: string[]; hidden: string[] };
+  ruleConfig: Record<string, string>;
+}): void {
+  const chosen = new Set(spec.homeLayout.order);
+  const rc = spec.ruleConfig;
+
+  // Before hiding, make sure the layout actually CONTAINS everything the rest
+  // of the spec turned on. The model writes `order` and `ruleConfig`
+  // separately, and it sometimes sets a slot or a contemplation flag without
+  // adding the matching card — harmless while everything was visible by
+  // default, and silently practice-erasing now that absence from `order` means
+  // hidden. Belt and braces: the rule-config is the thing that was validated,
+  // so let it have the last word.
+  const required: string[] = [];
+  if (rc["phoebe:office:level:morning"] || rc["phoebe:office:level:evening"]) required.push("office");
+  for (const k of Object.keys(rc)) {
+    if (k.startsWith("phoebe:slot:")) required.push(k.slice("phoebe:slot:".length));
+  }
+  if (rc["phoebe:office:contemplation:morning"] === "1"
+      || rc["phoebe:office:contemplation:evening"] === "1"
+      || spec.officePrefs.contemplationGoalMinutes > 0) {
+    required.push("contemplation");
+  }
+  for (const side of ["morning", "evening"] as const) {
+    const level = rc[`phoebe:office:level:${side}`];
+    if (level === "compline" || level === "examen" || level === "fdd") required.push(level);
+  }
+  const known = new Set<string>(HOME_MODULE_KEYS);
+  for (const k of required) {
+    if (known.has(k) && !chosen.has(k)) { chosen.add(k); spec.homeLayout.order.push(k); }
+  }
+
+  spec.homeLayout.hidden = HOME_MODULE_KEYS.filter((k) => !chosen.has(k));
+}
+
+/**
+ * A side's silence only belongs to that side when nothing else does.
+ *
+ * Owner: "only attribute contemplation to morning if there is no other morning
+ * practice identified. But as you can see here, it identified Morning Prayer as
+ * the morning practice — so that should be in the morning slot, and the
+ * contemplation should just be general contemplation."
+ *
+ * Phoebe's per-side contemplation card is for a side whose PRAYER is the silent
+ * sit. Someone who prays Morning Prayer and also sits for fifteen minutes has
+ * one morning practice and a silence habit — not two morning anchors — and
+ * showing "Morning Prayer" and "Morning Contemplation" as peers misreads the
+ * day. Their silence belongs in the whole-day goal, which surfaces as the
+ * single Silence card.
+ *
+ * Enforced here rather than left to the prompt: it's a structural rule about
+ * Phoebe's model, true regardless of phrasing, and cheaper to guarantee than to
+ * ask for.
+ */
+function normalizeContemplation(spec: {
+  officePrefs: { contemplationGoalMinutes: number };
+  ruleConfig: Record<string, string>;
+}): void {
+  const rc = spec.ruleConfig;
+  for (const side of ["morning", "evening"] as const) {
+    if (rc[`phoebe:office:contemplation:${side}`] !== "1") continue;
+    const level = rc[`phoebe:office:level:${side}`];
+    const sideIsTaken = !!level && level !== "ask" && level !== "reflect-sit";
+    if (!sideIsTaken) continue;
+    // Carry the minutes over so the silence isn't lost, only re-homed. Take the
+    // larger of the two — the per-side figure is usually the one they actually
+    // named.
+    const mins = parseInt(rc[`phoebe:office:minutes:${side}`] ?? "", 10);
+    if (Number.isFinite(mins) && mins > 0) {
+      spec.officePrefs.contemplationGoalMinutes = Math.max(
+        spec.officePrefs.contemplationGoalMinutes || 0,
+        Math.min(180, mins),
+      );
+    }
+    delete rc[`phoebe:office:contemplation:${side}`];
+    delete rc[`phoebe:office:minutes:${side}`];
+  }
+}
+
 // ── POST /api/routine-interview/followups ────────────────────────────────────
-// Owner: "ask the LLM for two follow-up questions." Exactly two — the point is
-// one short clarifying round, not an interrogation.
+// Owner: "let's have it be at least two questions, but have it be as ... many
+// questions as needed to clarify." So: a floor of two, a ceiling of five, and
+// the model decides where in between. A third question has to be EARNED by a
+// real remaining gap — the ceiling is there because an interview that keeps
+// going stops being a conversation and becomes a form.
+//
+// Questions may come back with CHOICES. Owner: "for something like this that
+// you're asking about three options that pertain to settings, how about instead
+// of [a text] field you list the settings and they choose." A question like
+// "book, screen, or listen?" is a settings picker wearing a sentence — making
+// someone type "Screen" into a textarea to set an enum is work we invented.
+// Free text stays for anything genuinely open.
 router.post("/routine-interview/followups", perUserRateLimit("routine_interview_followups", {
   max: 15, windowMs: 60 * 60 * 1000,
   message: "You've started the interview a lot in the last hour — give it a moment.",
@@ -672,17 +822,46 @@ Never ask about something they already answered clearly. Never ask them to pick
 between Phoebe's internal option names — ask about their practice in their own
 words, the way a person would.
 
-Respond with ONLY JSON: {"questions": ["...", "..."]}
-Exactly two questions. Each one sentence, plainly worded, no jargon.`;
+CONTEMPLATION needs its SHAPE, not just its presence. If silence comes up at
+all, make sure you end up knowing: is it ONE sit, or several practices spread
+through the day — and roughly how many minutes ALL TOLD. Ask only the part
+they haven't already told you.
+
+WHEN THE ANSWER IS A SETTING, LIST THE SETTINGS. If a question has a small fixed
+set of real answers — the form they take an office in, which part of the day
+something falls in, how long a sit runs — put those answers in "choices" and
+they'll be shown as options to tap rather than a box to type in. Write choices
+in plain words ("From my prayer book", "On a screen", "Listening"), never
+Phoebe's internal names, and keep them to five at most. Leave "choices" off for
+anything genuinely open, where a sentence in their own words tells you more
+than a list could.
+
+Respond with ONLY JSON:
+{"questions": [{"q": "...", "choices": ["...", "..."]}, {"q": "..."}]}
+
+AT LEAST TWO questions, at most five. Ask a third or more ONLY when something
+real is still unclear — if two cover it, ask two. Each question one sentence,
+plainly worded, no jargon.`;
 
   const out = await askOpenAi(system, `THEIR DESCRIPTION:\n${description}`, 500);
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
 
   const raw = Array.isArray(out.data?.questions) ? out.data.questions : [];
   const questions = raw
-    .map((q: unknown) => cleanText(q, 300))
-    .filter((q: string) => q.length > 0)
-    .slice(0, 2);
+    // Accept a bare string as well as {q, choices}: that's the older shape, and
+    // a model that falls back to it shouldn't cost us the whole round.
+    .map((item: unknown) => {
+      const q = cleanText(typeof item === "string" ? item : (item as any)?.q, 300);
+      const rawChoices = item && typeof item === "object" ? (item as any).choices : null;
+      const choices = Array.isArray(rawChoices)
+        ? rawChoices.map((c: unknown) => cleanText(c, 60)).filter((c: string) => c.length > 0).slice(0, 5)
+        : [];
+      // A single choice isn't a choice, it's a leading question — drop the list
+      // and let them answer in their own words.
+      return choices.length >= 2 ? { q, choices } : { q };
+    })
+    .filter((item: { q: string }) => item.q.length > 0)
+    .slice(0, 5);
   if (questions.length === 0) { res.status(502).json({ error: "ai_bad_json" }); return; }
   res.json({ questions });
 });
@@ -703,7 +882,7 @@ router.post("/routine-interview/build", perUserRateLimit("routine_interview_buil
 
   const followups: Array<{ q: string; a: string }> = Array.isArray(req.body?.followups)
     ? req.body.followups
-        .slice(0, 4)
+        .slice(0, 5)
         .map((f: any) => ({ q: cleanText(f?.q, 300), a: cleanText(f?.a, 1000) }))
         .filter((f: { q: string; a: string }) => f.q.length > 0)
     : [];
@@ -774,6 +953,8 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   // Value-check the rule-config the model wrote (sanitizeSpec only checked its
   // shape) — mutates `spec.ruleConfig`, so it must run before the response.
   const scrubNotes = scrubRuleConfig(spec.ruleConfig);
+  normalizeContemplation(spec);
+  hideUnchosen(spec);
 
   const modelNotes = Array.isArray(out.data?.notes)
     ? out.data.notes.map((n: unknown) => cleanText(n, 300)).filter((n: string) => n.length > 0).slice(0, 6)
@@ -804,8 +985,11 @@ router.post("/routine-interview/apply", async (req, res): Promise<void> => {
   const spec = sanitizeSpec(req.body?.spec);
   if (!spec) { res.status(400).json({ error: "invalid_spec" }); return; }
   // Same value-check /build runs. Not redundant: this endpoint takes a spec
-  // from the client, which could post one that never went through /build.
+  // from the client, which could post one that never went through /build —
+  // including the extras step's additions, which change what should be hidden.
   scrubRuleConfig(spec.ruleConfig);
+  normalizeContemplation(spec);
+  hideUnchosen(spec);
 
   try {
     await applyRoutineSpecToUser(userId, spec);

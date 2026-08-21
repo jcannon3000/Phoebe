@@ -9,10 +9,14 @@
  * The flow, as the owner described it:
  *   describe  → they write their practice in their own words
  *   thinking  → processing screen while the model reads it
- *   followups → its two questions, ONE PER SLIDE
+ *   followups → its questions (two or more), ONE PER SLIDE. A question whose
+ *               answer is really a setting comes back with choices to tap.
  *   thinking  → processing screen while it builds
- *   confirm   → a read-back slide each for morning, silence, evening; saying
- *               "not quite" on any of them rebuilds with the correction
+ *   confirm   → a read-back slide each for morning, contemplation, evening;
+ *               saying "not quite" on any rebuilds with the correction. The
+ *               office slides carry their own reminder switch, and the
+ *               contemplation slide turns into a picker when we heard no
+ *               contemplative practice at all
  *   extras    → the customizer's "additional practice" step, replicated
  *   review    → the finished routine, in the manual flow's own row format
  *
@@ -46,7 +50,9 @@ type Phase =
 // The read-back sections, in the order the day runs.
 const CONFIRM_SECTIONS: Array<{ key: SpecSection; title: string; ask: string }> = [
   { key: "morning", title: "Your morning", ask: "Is that your morning?" },
-  { key: "contemplation", title: "Silence", ask: "Is that right?" },
+  // Not "Silence": a walk or a breath counts as their contemplative practice
+  // and reads back on this slide, so the heading has to cover more than sitting.
+  { key: "contemplation", title: "Your contemplative practice", ask: "Is that right?" },
   { key: "evening", title: "Your evening", ask: "Is that your evening?" },
 ];
 
@@ -57,6 +63,27 @@ const SLOT_TEXT: Record<string, string> = {
   morning: "in the morning", midday: "at midday", afternoon: "in the afternoon",
   evening: "in the evening", anytime: "any time of day",
 };
+/**
+ * Offered on the Silence slide ONLY when the interview heard no contemplative
+ * practice at all.
+ *
+ * Owner: "if they don't mention a contemplative practice, then ... say 'would
+ * you like a contemplative practice?' And the first one would be sitting in
+ * silence. And if they click that, it goes ... after picking the length, the
+ * method of logging."
+ *
+ * This is the one place the interview offers rather than records, and it's
+ * offering the CATEGORY, not talking anyone into a practice — "not right now"
+ * sits in the list as a real answer, not as a way out of it.
+ */
+const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
+  { key: "silence", emoji: "🕯️", label: "Sitting in silence", sub: "A silent sit, however long you like." },
+  { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
+  { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "afternoon" },
+  { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
+];
+const SILENCE_LENGTHS = [5, 10, 15, 20, 30];
+
 const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "compline", emoji: "🌙", label: "Compline", sub: "The night office — available from 7pm." },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
@@ -64,6 +91,20 @@ const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; sl
   { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },
   { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "afternoon" },
 ];
+
+/**
+ * A follow-up question, and — when its answer is a setting rather than a
+ * story — the settings to choose from.
+ *
+ * Owner: "for something like this that you're asking about three options that
+ * pertain to settings, how about instead of [a text] field you list the
+ * settings and they choose." Asking "from your prayer book, on a screen, or
+ * listening?" and then handing over an empty textarea makes the person
+ * transcribe an option we already knew the shape of — on a phone, mid-keyboard,
+ * to set an enum. The model marks those questions; everything genuinely open
+ * still gets the box.
+ */
+type Question = { q: string; choices?: string[] };
 
 type Spec = Record<string, unknown>;
 // Same shape the manual customizer's review rows use.
@@ -81,7 +122,7 @@ export default function RoutineInterviewPage() {
 
   const [phase, setPhase] = useState<Phase>("describe");
   const [description, setDescription] = useState("");
-  const [questions, setQuestions] = useState<string[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   // Owner: "have the follow up questions on two separate slides." One
   // question at a time reads as a conversation; both at once reads as a form.
@@ -94,6 +135,13 @@ export default function RoutineInterviewPage() {
   const [fixText, setFixText] = useState("");
   const [showFix, setShowFix] = useState(false);
   const [extras, setExtras] = useState<Set<string>>(new Set());
+  // The Silence slide turns into a PICKER when the interview heard no
+  // contemplative practice at all. Its own little sub-flow: choose one, and if
+  // it's a silent sit, choose how long and how it gets kept.
+  const [contPick, setContPick] = useState<string | null>(null);
+  const [contStep, setContStep] = useState<0 | 1 | 2>(0);
+  const [contMinutes, setContMinutes] = useState(10);
+  const [contLog, setContLog] = useState<"timer" | "manual">("timer");
   const [spec, setSpec] = useState<Spec | null>(null);
   const [summary, setSummary] = useState("");
   // Derived server-side FROM the sanitized spec — the authoritative account of
@@ -109,7 +157,7 @@ export default function RoutineInterviewPage() {
   // next question rendered above the fold — it looked like nothing happened.
   useEffect(() => {
     try { window.scrollTo({ top: 0, behavior: "auto" }); } catch { /* ignore */ }
-  }, [phase, qIndex, confirmIndex]);
+  }, [phase, qIndex, confirmIndex, contStep]);
 
   const errorText = (code: string): string => {
     switch (code) {
@@ -134,8 +182,12 @@ export default function RoutineInterviewPage() {
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/followups", {
         description,
-      })) as { questions?: string[] } | null;
-      const qs = (res?.questions ?? []).filter((q) => typeof q === "string" && q.trim().length > 0);
+      })) as { questions?: Array<Question | string> } | null;
+      const qs: Question[] = (res?.questions ?? [])
+        // Tolerate the bare-string shape as well as {q, choices} — the server
+        // normalizes, but this page shouldn't break on an older deploy of it.
+        .map((item) => (typeof item === "string" ? { q: item } : item))
+        .filter((item): item is Question => !!item && typeof item.q === "string" && item.q.trim().length > 0);
       if (qs.length === 0) throw new Error("ai_bad_json");
       setQuestions(qs);
       setAnswers(qs.map(() => ""));
@@ -167,7 +219,7 @@ export default function RoutineInterviewPage() {
     try {
       const res = (await apiRequest("POST", "/api/routine-interview/build", {
         description,
-        followups: questions.map((q, i) => ({ q, a: answers[i] ?? "" })),
+        followups: questions.map((item, i) => ({ q: item.q, a: answers[i] ?? "" })),
         corrections: nextCorrections ?? corrections,
       })) as { spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[] } | null;
       if (!res?.spec) throw new Error("ai_bad_spec");
@@ -402,8 +454,19 @@ export default function RoutineInterviewPage() {
 
   // ── 2. Follow-ups — ONE question per slide ────────────────────────────────
   if (phase === "followups") {
-    const q = questions[qIndex] ?? "";
+    const question = questions[qIndex] ?? { q: "" };
+    const q = question.q;
+    const choices = question.choices ?? [];
+    const answer = answers[qIndex] ?? "";
     const isLast = qIndex >= questions.length - 1;
+    const setAnswer = (v: string) =>
+      setAnswers((prev) => prev.map((a, j) => (j === qIndex ? v : a)));
+    // A tapped choice IS the answer, so tapping one twice clears it rather than
+    // leaving them stuck with a pick they can't take back. "Something else"
+    // opens the box for a practice the list didn't anticipate — the list is the
+    // fast path, never a cage.
+    const chosen = choices.find((c) => c === answer) ?? null;
+    const wroteInstead = answer.length > 0 && !chosen;
     return (
       <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
         <div style={wrap}>
@@ -419,18 +482,63 @@ export default function RoutineInterviewPage() {
           </div>
 
           <p style={{ color: WARM, fontFamily: FONT, fontSize: 16.5, lineHeight: 1.5, margin: 0 }}>{q}</p>
-          <textarea
-            key={qIndex}
-            value={answers[qIndex] ?? ""}
-            onChange={(e) => setAnswers((prev) => prev.map((a, j) => (j === qIndex ? e.target.value : a)))}
-            rows={4}
-            maxLength={1000}
-            placeholder="Your answer…"
-            style={{
-              ...card, width: "100%", boxSizing: "border-box", color: WARM,
-              fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
-            }}
-          />
+
+          {choices.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {choices.map((c) => {
+                const on = chosen === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setAnswer(on ? "" : c)}
+                    style={{
+                      ...card, width: "100%", boxSizing: "border-box", textAlign: "left",
+                      cursor: "pointer", padding: "14px 16px",
+                      display: "flex", alignItems: "center", gap: 12,
+                      color: on ? WARM : SAGE,
+                      fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 500,
+                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                      background: on ? "rgba(45,94,63,0.55)" : CARD,
+                    }}
+                    aria-pressed={on}
+                  >
+                    <span aria-hidden style={{ fontSize: 15, opacity: on ? 1 : 0.45 }}>{on ? "●" : "○"}</span>
+                    {c}
+                  </button>
+                );
+              })}
+              {!wroteInstead && (
+                <button
+                  type="button"
+                  onClick={() => setAnswer(" ")}
+                  style={{
+                    background: "transparent", color: SAGE, border: "none", cursor: "pointer",
+                    fontFamily: FONT, fontSize: 13.5, padding: "6px 2px", textAlign: "left",
+                    textDecoration: "underline", textUnderlineOffset: 3,
+                  }}
+                >
+                  Something else
+                </button>
+              )}
+            </div>
+          )}
+
+          {(choices.length === 0 || wroteInstead) && (
+            <textarea
+              key={qIndex}
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              autoFocus={wroteInstead}
+              rows={4}
+              maxLength={1000}
+              placeholder="Your answer…"
+              style={{
+                ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                fontFamily: FONT, fontSize: 15, lineHeight: 1.6, outline: "none", resize: "vertical",
+              }}
+            />
+          )}
 
           {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
 
@@ -462,12 +570,86 @@ export default function RoutineInterviewPage() {
     const section = CONFIRM_SECTIONS[confirmIndex]!;
     const rows = settings.filter((r) => r.section === section.key);
     const isLast = confirmIndex >= CONFIRM_SECTIONS.length - 1;
+    const specNow = (spec ?? {}) as any;
+    const prefs = (specNow.officePrefs ?? {}) as {
+      morning?: string; evening?: string; morningTime?: string | null; eveningTime?: string | null;
+      contemplationGoalMinutes?: number;
+    };
+    // The Silence slide asks instead of reading back when we heard nothing
+    // contemplative — a walk or a breath already counts, and is filed under
+    // this section server-side, so an empty list here really does mean nothing.
+    const asking = section.key === "contemplation" && rows.length === 0;
+    const isSide = section.key === "morning" || section.key === "evening";
+    const reminderOn = isSide && (prefs as any)[section.key] !== "none" && !!(prefs as any)[section.key];
+    const reminderTime = (isSide && ((prefs as any)[`${section.key}Time`] as string | null))
+      || (section.key === "morning" ? "07:00" : "18:00");
+
+    /** Patch the pending spec in place. Nothing is written to the account until
+     *  the final review, so these edits are free to be direct. */
+    const patchSpec = (fn: (draft: any) => void) => {
+      setSpec((prev) => {
+        const draft = JSON.parse(JSON.stringify(prev ?? {}));
+        draft.officePrefs = draft.officePrefs ?? {};
+        draft.ruleConfig = draft.ruleConfig ?? {};
+        draft.homeLayout = draft.homeLayout ?? { order: [], hidden: [] };
+        fn(draft);
+        return draft;
+      });
+    };
 
     const advance = () => {
       setError(null); setShowFix(false); setFixText("");
       if (isLast) { setPhase("extras"); return; }
       setConfirmIndex((i2) => i2 + 1);
     };
+    /**
+     * Advance the Silence picker: choose → (length → log method) → next slide.
+     *
+     * The chosen practice is written straight onto the pending spec AND
+     * appended to `settings`, because `settings` is what the final review
+     * renders. A pick that changed the spec without showing up there would be
+     * applied to the account while being absent from the screen that asks you
+     * to approve it.
+     */
+    const contNext = () => {
+      setError(null);
+      if (contStep === 0) {
+        if (contPick === "silence") { setContStep(1); return; }
+        const choice = CONTEMPLATIVE_CHOICES.find((c) => c.key === contPick);
+        if (choice?.slot) {
+          patchSpec((d) => {
+            d.ruleConfig[`phoebe:slot:${choice.key}`] = choice.slot;
+            const order: string[] = d.homeLayout.order ?? [];
+            if (!order.includes(choice.key)) order.push(choice.key);
+            d.homeLayout.order = order;
+            d.homeLayout.hidden = (d.homeLayout.hidden ?? []).filter((k: string) => k !== choice.key);
+          });
+          setSettings((prev) => [...prev, {
+            emoji: choice.emoji, label: choice.label,
+            sub: SLOT_TEXT[choice.slot!] ?? "Each day", section: "contemplation",
+          }]);
+        }
+        advance();
+        return;
+      }
+      if (contStep === 1) { setContStep(2); return; }
+      patchSpec((d) => {
+        d.officePrefs.contemplationGoalMinutes = contMinutes;
+        d.ruleConfig["phoebe:contemplation-style"] = "silent";
+        d.ruleConfig["phoebe:contemplation-log-method"] = contLog;
+        const order: string[] = d.homeLayout.order ?? [];
+        if (!order.includes("contemplation")) order.push("contemplation");
+        d.homeLayout.order = order;
+        d.homeLayout.hidden = (d.homeLayout.hidden ?? []).filter((k: string) => k !== "contemplation");
+      });
+      setSettings((prev) => [...prev, {
+        emoji: "🕯️", label: "Silence",
+        sub: `${contMinutes} min a day · ${contLog === "manual" ? "tap to log" : "with a timer"}`,
+        section: "contemplation",
+      }]);
+      advance();
+    };
+
     const saveFix = () => {
       const t = fixText.trim();
       if (!t) { advance(); return; }
@@ -486,13 +668,21 @@ export default function RoutineInterviewPage() {
           {progressBars}
           <div>
             <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${CONFIRM_SECTIONS.length}`} 🌿</p>
-            <h1 style={h1}>{section.title}</h1>
+            <h1 style={h1}>
+              {asking ? (contStep === 1 ? "How long?" : contStep === 2 ? "How you'll keep it" : "A contemplative practice") : section.title}
+            </h1>
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              Here's what we heard.
+              {!asking
+                ? "Here's what we heard."
+                : contStep === 1
+                  ? "However long you actually sit. You can change it any time."
+                  : contStep === 2
+                    ? "What should happen when you tap the card?"
+                    : "We didn't hear one — would you like one? \u201CNot right now\u201D is a real answer."}
             </p>
           </div>
 
-          {rows.length > 0 ? (
+          {rows.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rows.map((r, i2) => (
                 <div key={`${r.label}-${i2}`} style={routineCard}>
@@ -507,11 +697,152 @@ export default function RoutineInterviewPage() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ ...card, textAlign: "center" }}>
-              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14.5, margin: 0, lineHeight: 1.55 }}>
-                Nothing here — we didn't hear anything for this part of your day.
-              </p>
+          )}
+
+          {/* Reminder — its own control, under the practice card. Owner: "as a
+              separate UI, similar to how it is in the manual slideshow, have it
+              ask if they would like a notification or [that] it is off." Same
+              one-line switch the customizer uses, and the time only appears
+              when the switch is on. */}
+          {isSide && rows.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => patchSpec((d) => {
+                  if (reminderOn) {
+                    d.officePrefs[section.key] = "none";
+                  } else {
+                    // Match the reminder to what they actually pray, the way
+                    // the customizer does — a devotion side gets the devotion
+                    // nudge, everything else the office one.
+                    const level = d.ruleConfig[`phoebe:office:level:${section.key}`];
+                    d.officePrefs[section.key] = level === "devotion" ? "devotion" : "office";
+                    if (!d.officePrefs[`${section.key}Time`]) {
+                      d.officePrefs[`${section.key}Time`] = section.key === "morning" ? "07:00" : "18:00";
+                    }
+                  }
+                })}
+                style={{
+                  width: "100%", textAlign: "left", cursor: "pointer",
+                  background: reminderOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${reminderOn ? "rgba(110,180,130,0.5)" : CARD_B}`,
+                  borderRadius: 16, padding: 16, display: "flex", alignItems: "center",
+                  justifyContent: "space-between", gap: 12,
+                }}
+                aria-pressed={reminderOn}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: WARM, fontFamily: FONT, margin: 0 }}>🔔 Remind me</p>
+                  <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
+                    {reminderOn
+                      ? `A gentle nudge to pray in the ${section.key}.`
+                      : "No daily nudge — pray when you like."}
+                  </p>
+                </div>
+                <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: reminderOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
+                  <span style={{ position: "absolute", top: 3, left: reminderOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: WARM, transition: "left 0.2s" }} />
+                </span>
+              </button>
+              {reminderOn && (
+                <input
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    // Only keep a complete HH:MM — a half-typed time would
+                    // fail the server's time check and silently become null.
+                    if (/^\d{2}:\d{2}$/.test(v)) patchSpec((d) => { d.officePrefs[`${section.key}Time`] = v; });
+                  }}
+                  aria-label="Reminder time"
+                  style={{
+                    ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                    fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark", padding: "13px 14px",
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {asking && contStep === 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[...CONTEMPLATIVE_CHOICES, { key: "none", emoji: "🌿", label: "Not right now", sub: "Leave silence out of your rhythm." }].map((c) => {
+                const on = contPick === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setContPick(on ? null : c.key)}
+                    style={{
+                      ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
+                      padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                      background: on ? "rgba(45,94,63,0.55)" : CARD,
+                    }}
+                    aria-pressed={on}
+                  >
+                    <span aria-hidden style={{ fontSize: 20 }}>{c.emoji}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 600 }}>{c.label}</span>
+                      <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{c.sub}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {asking && contStep === 1 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {SILENCE_LENGTHS.map((m) => {
+                const on = contMinutes === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setContMinutes(m)}
+                    style={{
+                      flex: "1 1 28%", cursor: "pointer", padding: "16px 10px", borderRadius: 14,
+                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                      background: on ? "rgba(45,94,63,0.55)" : CARD,
+                      color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 16, fontWeight: on ? 700 : 600,
+                    }}
+                    aria-pressed={on}
+                  >
+                    {m} min
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {asking && contStep === 2 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {([
+                { v: "timer" as const, emoji: "⏱️", label: "Timer", sub: "Sit with a countdown — tap Begin to start it." },
+                { v: "manual" as const, emoji: "✅", label: "Tap to log", sub: "No timer — tap the card to mark it done." },
+              ]).map((o) => {
+                const on = contLog === o.v;
+                return (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setContLog(o.v)}
+                    style={{
+                      ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
+                      padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+                      border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                      background: on ? "rgba(45,94,63,0.55)" : CARD,
+                    }}
+                    aria-pressed={on}
+                  >
+                    <span aria-hidden style={{ fontSize: 20 }}>{o.emoji}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5, fontWeight: on ? 700 : 600 }}>{o.label}</span>
+                      <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{o.sub}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -533,23 +864,37 @@ export default function RoutineInterviewPage() {
 
           {showFix ? (
             <button type="button" onClick={saveFix} style={primaryBtn}>Use this instead</button>
+          ) : asking ? (
+            <button
+              type="button"
+              onClick={contNext}
+              disabled={contStep === 0 && contPick === null}
+              style={{ ...primaryBtn, opacity: contStep === 0 && contPick === null ? 0.45 : 1 }}
+            >
+              Continue
+            </button>
           ) : (
             <button type="button" onClick={advance} style={primaryBtn}>
               {section.ask.replace(/\?$/, "")} — yes
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => (showFix ? setShowFix(false) : setShowFix(true))}
-            style={quietBtn}
-          >
-            {showFix ? "Never mind" : "Not quite"}
-          </button>
+          {/* Nothing to disagree with on a slide that's asking rather than
+              telling — "Not quite" there would just be a second no. */}
+          {!asking && (
+            <button
+              type="button"
+              onClick={() => (showFix ? setShowFix(false) : setShowFix(true))}
+              style={quietBtn}
+            >
+              {showFix ? "Never mind" : "Not quite"}
+            </button>
+          )}
           {!showFix && (
             <button
               type="button"
               onClick={() => {
                 setError(null);
+                if (asking && contStep > 0) { setContStep((st) => (st === 2 ? 1 : 0)); return; }
                 if (confirmIndex > 0) setConfirmIndex((i2) => i2 - 1);
                 else { setQIndex(Math.max(0, questions.length - 1)); setPhase("followups"); }
               }}
@@ -582,7 +927,28 @@ export default function RoutineInterviewPage() {
       cobreathe: rc["phoebe:contemplation-style"] === "cobreathe"
         && (rc["phoebe:office:contemplation:morning"] === "1" || rc["phoebe:office:contemplation:evening"] === "1"),
     };
-    const offered = EXTRAS.filter((e) => !alreadyPrimary[e.key]);
+    /**
+     * Also drop anything the interview ALREADY heard them say.
+     *
+     * Owner: "when it got to the contemplative practices page, I didn't realize
+     * that — hey, I had marked contemplative walk." They hadn't: they'd
+     * described a walk, the model had programmed it, and this page then offered
+     * it as though it were news. Picking it added a SECOND row, so the review
+     * showed "Contemplative Walk, in the morning" and "Contemplative Walk, in
+     * the afternoon" — one practice, contradicting itself.
+     *
+     * A card counts as heard when it's placed in a slot, or sits in the layout
+     * unhidden. `order` alone isn't evidence: the server backfills every module
+     * key into it and uses `hidden` to decide what actually shows.
+     */
+    const hl = ((spec as any)?.homeLayout ?? {}) as { order?: string[]; hidden?: string[] };
+    const hiddenNow = new Set(hl.hidden ?? []);
+    const visibleNow = new Set((hl.order ?? []).filter((k) => !hiddenNow.has(k)));
+    const alreadyHeard = EXTRAS.filter(
+      (e) => alreadyPrimary[e.key] || !!rc[`phoebe:slot:${e.key}`] || visibleNow.has(e.key),
+    );
+    const heardKeys = new Set(alreadyHeard.map((e) => e.key));
+    const offered = EXTRAS.filter((e) => !heardKeys.has(e.key));
 
     const toggle = (k: string) =>
       setExtras((prev) => {
@@ -640,6 +1006,31 @@ export default function RoutineInterviewPage() {
             </p>
           </div>
 
+          {/* Name what we already caught before asking for more, so this page
+              reads as "and anything else?" rather than starting from zero and
+              inviting them to re-add what they just told us. */}
+          {alreadyHeard.length > 0 && (
+            <div>
+              <p style={{ ...eyebrow, marginBottom: 8 }}>Already in your rhythm</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {alreadyHeard.map((e) => (
+                  <span
+                    key={e.key}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 7,
+                      background: "rgba(110,180,130,0.16)", border: `1px solid ${CARD_B}`,
+                      borderRadius: 999, padding: "7px 13px",
+                      color: WARM, fontFamily: FONT, fontSize: 13.5, fontWeight: 600,
+                    }}
+                  >
+                    <span aria-hidden>{e.emoji}</span>
+                    {e.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {offered.map((e) => {
               const on = extras.has(e.key);
@@ -678,6 +1069,21 @@ export default function RoutineInterviewPage() {
   }
 
   // ── 3. Review ──────────────────────────────────────────────────────────────
+  const reviewPrefs = ((spec as any)?.officePrefs ?? {}) as {
+    morning?: string; evening?: string; morningTime?: string | null; eveningTime?: string | null;
+  };
+  const reminderLines = (["morning", "evening"] as const)
+    .map((side) => {
+      const pref = reviewPrefs[side];
+      const time = reviewPrefs[`${side}Time`];
+      if (!pref || pref === "none" || !time) return null;
+      const [h, m] = time.split(":").map((n) => parseInt(n, 10));
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      const hour = h % 12 === 0 ? 12 : h % 12;
+      return `${side === "morning" ? "Morning" : "Evening"} reminder at ${hour}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+    })
+    .filter((l): l is string => l !== null);
+
   return (
     <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
       <div style={wrap}>
@@ -711,6 +1117,21 @@ export default function RoutineInterviewPage() {
                   <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
                   <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
                 </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Reminders, read from the pending spec rather than from `settings`.
+            They came off the practice cards when they got their own control on
+            the read-back slides, and the last screen before saving is the wrong
+            place for a setting to go unmentioned. */}
+        {reminderLines.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {reminderLines.map((line) => (
+              <div key={line} style={rowCard}>
+                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>🔔</span>
+                <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontFamily: FONT }}>{line}</span>
               </div>
             ))}
           </div>
