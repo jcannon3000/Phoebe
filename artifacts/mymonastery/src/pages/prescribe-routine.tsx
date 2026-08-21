@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import WayOfLoveRuleFlow, { type RoutineSpec } from "@/components/WayOfLoveRuleFlow";
 import { Layout } from "@/components/layout";
+import { takePrescribedSpec } from "@/lib/prescribeHandoff";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { pushRoutineConfig, ROUTINE_KEYS } from "@/lib/routineSync";
@@ -86,6 +87,25 @@ export default function PrescribeRoutinePage() {
   // Same full-screen leaf backdrop the normal customizer uses, picked once so
   // it can't reshuffle between steps.
   const flowLeaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+
+  /**
+   * Coming back from the questionnaire with a finished routine.
+   *
+   * The interview runs on its own route and hands the spec over through
+   * sessionStorage (lib/prescribeHandoff). Taking it CONSUMES it, so a refresh
+   * of this screen doesn't resurrect a routine that was already turned into a
+   * link.
+   *
+   * Runs before the design phase renders, so an admin who used the
+   * questionnaire lands straight on naming rather than being dropped back at
+   * the start of the manual customizer they deliberately skipped.
+   */
+  useEffect(() => {
+    const handed = takePrescribedSpec();
+    if (!handed) return;
+    setSpec(handed as RoutineSpec);
+    setPhase("name");
+  }, []);
 
   // Snapshot the admin's own routine on entry; restore on leave.
   useEffect(() => {

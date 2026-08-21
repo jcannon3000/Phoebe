@@ -1566,16 +1566,24 @@ export default function WayOfLoveRuleFlow({
   // a past routine gets it. A first-time customizer still goes straight in —
   // there's nothing to go back to, and an extra slide offering nothing is just
   // friction. The "Ask me" row stays super-admin-gated below.
-  const showEntryChoice = (isSuperAdmin || hasRoutineHistory) && !guest && !pilot && !prescribe;
+  // Prescribe mode gets the slide too — owner: "if I'm building a prayer
+  // routine for someone else, the preset rhythm link in the admin tools, I want
+  // to do it through the questionnaire." Only the interview and the manual path
+  // are offered there; "go back to a past routine" is about the ADMIN's own
+  // history, which has nothing to do with the person they're building for.
+  const showEntryChoice = prescribe
+    ? isSuperAdmin && !guest && !pilot
+    : (isSuperAdmin || hasRoutineHistory) && !guest && !pilot;
   // "Ask me" is the stored default (owner), but it's only offered to super
   // admins — so for everyone else it resolves to the manual path rather than
   // leaving no row selected and a Continue that walks into a page they can't
   // use. Derived rather than initialised, because isSuperAdmin arrives from a
   // query: seeding the state from it would race, and a super admin who loaded
   // slowly would silently lose their default.
+  const canRevert = hasRoutineHistory && !prescribe;
   const effectiveEntryChoice: "ask" | "manual" | "revert" =
     entryChoice === "ask" && !isSuperAdmin ? "manual"
-      : entryChoice === "revert" && !hasRoutineHistory ? "manual"
+      : entryChoice === "revert" && !canRevert ? "manual"
         : entryChoice;
   if (showEntryChoice && !entryChoiceMade) {
     return shell(
@@ -1598,8 +1606,12 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {isSuperAdmin && choiceRow(
             effectiveEntryChoice === "ask",
-            `💬 ${t("wol_rule.entry_ask", { defaultValue: "Ask me about my practice" })}`,
-            t("wol_rule.entry_ask_sub", { defaultValue: "Describe how you already pray, in your own words, and Phoebe programs it for you." }),
+            prescribe
+              ? `💬 ${t("wol_rule.entry_ask_prescribe", { defaultValue: "Describe their practice" })}`
+              : `💬 ${t("wol_rule.entry_ask", { defaultValue: "Ask me about my practice" })}`,
+            prescribe
+              ? t("wol_rule.entry_ask_sub_prescribe", { defaultValue: "Describe how they already pray, and Phoebe builds the routine to match." })
+              : t("wol_rule.entry_ask_sub", { defaultValue: "Describe how you already pray, in your own words, and Phoebe programs it for you." }),
             () => setEntryChoice("ask"),
           )}
           {choiceRow(
@@ -1613,7 +1625,7 @@ export default function WayOfLoveRuleFlow({
               shouldn't be a one-way door — someone who tried a fuller rhythm
               and found it didn't fit needs the old one back, not a from-scratch
               rebuild from memory of what they used to pray. */}
-          {hasRoutineHistory && choiceRow(
+          {canRevert && choiceRow(
             effectiveEntryChoice === "revert",
             `↩️ ${t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" })}`,
             t("wol_rule.entry_revert_sub", { defaultValue: "Restore a rhythm you kept before." }),
@@ -1621,7 +1633,14 @@ export default function WayOfLoveRuleFlow({
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
-          if (effectiveEntryChoice === "ask") { setLocation("/routine-interview"); return; }
+          if (effectiveEntryChoice === "ask") {
+            // Carry the way back, so the finished routine returns to the page
+            // that will name it and mint the link.
+            setLocation(prescribe
+              ? `/routine-interview?prescribe=1&from=${encodeURIComponent(window.location.pathname)}`
+              : "/routine-interview");
+            return;
+          }
           if (effectiveEntryChoice === "revert") { setLocation("/routine-history"); return; }
           setEntryChoiceMade(true);
         })}

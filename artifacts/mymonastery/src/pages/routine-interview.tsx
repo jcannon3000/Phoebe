@@ -30,6 +30,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { adoptRoutineConfig } from "@/lib/routineSync";
+import { PRESCRIBE_SPEC_KEY } from "@/lib/prescribeHandoff";
 import { addCustomAnchor, getCustomAnchors, type CustomSlot } from "@/lib/customAnchors";
 
 const WARM = "#F0EDE6";
@@ -175,6 +176,27 @@ export default function RoutineInterviewPage() {
    * and carries the rest forward.
    */
   const [mode, setMode] = useState<InterviewMode>("adjust");
+  /**
+   * Building for SOMEONE ELSE (?prescribe=1), from the admin tools' preset
+   * rhythm link. Owner: "if I'm building a prayer routine for someone else —
+   * the preset rhythm link in the admin tools — I want to do it through the
+   * questionnaire."
+   *
+   * Everything about the interview holds except the ending: nothing may touch
+   * the admin's own account. The finished spec is handed back to
+   * prescribe-routine.tsx, which names it and mints the link.
+   */
+  const { prescribe, prescribeBack } = useMemo(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const raw = q.get("from") || "";
+      // Only an in-app path. `from` ends up in setLocation, and a value off the
+      // query string is attacker-supplied — "//evil.example" is protocol-
+      // relative and would leave the app entirely.
+      const safeBack = /^\/(?!\/)/.test(raw) ? raw : "/admin/tools";
+      return { prescribe: q.get("prescribe") === "1", prescribeBack: safeBack };
+    } catch { return { prescribe: false, prescribeBack: "/admin/tools" }; }
+  }, []);
   // What they're standing on. Empty = no routine yet, so there is nothing to
   // adjust and the mode slide is skipped entirely.
   const [currentSettings, setCurrentSettings] = useState<SpecRow[]>([]);
@@ -227,6 +249,10 @@ export default function RoutineInterviewPage() {
   // flow immediately rather than a spinner or an empty chooser. Only a person
   // who actually HAS a routine is moved onto the mode slide.
   useEffect(() => {
+    // Building for someone else: the routine in force is the ADMIN's own, which
+    // has nothing to do with the person this is for. Offering to "adjust" it
+    // would be offering to adjust the wrong person's rule of life.
+    if (prescribe) return;
     let cancelled = false;
     apiRequest("GET", "/api/routine-interview/current")
       .then((r: any) => {
@@ -350,6 +376,20 @@ export default function RoutineInterviewPage() {
       // for what is usually a transient model error.
       setPhase(cameFromConfirm ? "confirm" : "followups");
     }
+  };
+
+  /**
+   * Hand the finished routine to prescribe-routine.tsx.
+   *
+   * Via sessionStorage rather than a prop, because the interview is its own
+   * route — and deliberately NOT through /apply, which writes to the caller's
+   * own account. An admin designing a rhythm for someone else must come out of
+   * this with their own routine untouched.
+   */
+  const handOffPrescribed = () => {
+    if (!spec) return;
+    try { sessionStorage.setItem(PRESCRIBE_SPEC_KEY, JSON.stringify(spec)); } catch { /* quota */ }
+    setLocation(prescribeBack);
   };
 
   const applySpec = async () => {
@@ -500,7 +540,7 @@ export default function RoutineInterviewPage() {
       ? "Reading what you wrote…"
       : "Shaping your rhythm in Phoebe…";
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
         <div style={{ ...wrap, minHeight: "60dvh", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
           <div
             aria-hidden
@@ -525,7 +565,7 @@ export default function RoutineInterviewPage() {
   // ── 0. Adjust, or start over? Only for someone who already has a routine. ──
   if (phase === "mode") {
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -603,7 +643,7 @@ export default function RoutineInterviewPage() {
     // you like to change?" about a routine that doesn't exist.
     const adjusting = effectiveMode === "adjust";
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -614,16 +654,20 @@ export default function RoutineInterviewPage() {
                 their whole practice again is how a small change turns into a
                 retyped rule of life with a practice accidentally dropped. */}
             <h1 style={h1}>
-              {adjusting ? "What would you like to adjust?" : "What does your daily routine look like?"}
+              {prescribe
+                ? "What does their daily routine look like?"
+                : adjusting ? "What would you like to adjust?" : "What does your daily routine look like?"}
             </h1>
             {/* Owner: the four things to cover belong in the LLM's prompt, not
                 on screen as a checklist — "that's what we want to look for in
                 the response." So this asks openly and the server prompt does
                 the structuring. */}
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              {adjusting
-                ? "Just the part you want changed. Everything else stays exactly as it is."
-                : "Describe any daily practices you engage in, and any newsletters you may read."}
+              {prescribe
+                ? "Describe the practice you're setting up for them, and any newsletters they read."
+                : adjusting
+                  ? "Just the part you want changed. Everything else stays exactly as it is."
+                  : "Describe any daily practices you engage in, and any newsletters you may read."}
             </p>
           </div>
 
@@ -676,7 +720,7 @@ export default function RoutineInterviewPage() {
     const chosen = choices.find((c) => c === answer) ?? null;
     const wroteInstead = answer.length > 0 && !chosen;
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -901,7 +945,7 @@ export default function RoutineInterviewPage() {
     };
 
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -1398,7 +1442,7 @@ export default function RoutineInterviewPage() {
     };
 
     return (
-      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+      <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
         <div style={wrap}>
           {progressBars}
           <div>
@@ -1467,6 +1511,10 @@ export default function RoutineInterviewPage() {
               read-back so they've seen what we heard, and BEFORE the review so
               whatever they add still gets approved with everything else. A
               fourth stage would be a second screen asking the same question. */}
+          {/* Hidden when building for someone else: a PrescribedRoutineSpec has
+              no place for custom anchors, so anything typed here would be
+              collected and then quietly dropped on the way to the link. */}
+          {!prescribe && (
           <div>
             <p style={{ ...eyebrow, marginBottom: 8 }}>Something not listed?</p>
             <input
@@ -1485,6 +1533,7 @@ export default function RoutineInterviewPage() {
               become a card of your own.
             </p>
           </div>
+          )}
 
           <button type="button" onClick={finish} style={primaryBtn}>Continue</button>
           <button type="button" onClick={() => { setError(null); setConfirmIndex(CONFIRM_SECTIONS.length - 1); setPhase("confirm"); }} style={quietBtn}>
@@ -1512,7 +1561,7 @@ export default function RoutineInterviewPage() {
     .filter((l): l is string => l !== null);
 
   return (
-    <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation("/daily-progress")}>
+    <Layout bgPhoto={backdrop} chromeless onClose={() => setLocation(prescribe ? prescribeBack : "/daily-progress")}>
       <div style={wrap}>
           {progressBars}
         <div>
@@ -1576,14 +1625,24 @@ export default function RoutineInterviewPage() {
         )}
 
         <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.6, margin: 0 }}>
-          Saving this replaces your current routine. You can change any of it
-          afterwards in Customize.
+          {prescribe
+            // A prescribed routine is a PrescribedRoutineSpec, and that shape
+            // has no place for custom anchors — they're written per-device on
+            // accept. Saying so beats letting an admin believe they'd shared a
+            // practice that silently won't arrive.
+            ? "You'll name this and get a link to share. Practices Phoebe doesn't have a name for can't travel in a shared routine."
+            : "Saving this replaces your current routine. You can change any of it afterwards in Customize."}
         </p>
 
         {error && <p style={{ color: "#E5A3A3", fontSize: 13.5, fontFamily: FONT, margin: 0 }}>{error}</p>}
 
-        <button type="button" onClick={applySpec} disabled={applying} style={{ ...primaryBtn, opacity: applying ? 0.6 : 1 }}>
-          {applying ? "Saving…" : "Save this as my rhythm"}
+        <button
+          type="button"
+          onClick={prescribe ? handOffPrescribed : applySpec}
+          disabled={applying}
+          style={{ ...primaryBtn, opacity: applying ? 0.6 : 1 }}
+        >
+          {prescribe ? "Use this routine" : applying ? "Saving…" : "Save this as my rhythm"}
         </button>
         <button type="button" onClick={() => { setError(null); setPhase("extras"); }} style={quietBtn}>
           Not quite — go back
