@@ -204,9 +204,27 @@ function extractParagraphs(html: string): ExtractResult {
   // matches LEAF divs (no nested <div> inside), which is what every real
   // paragraph div on this page actually is — wrapper divs simply fail to
   // match and get skipped entirely, exactly the outcome we want.
-  const pBlocks = main.match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) ?? [];
-  const divBlocks = main.match(/<div\b[^>]*>(?:(?!<\/?div\b)[\s\S])*<\/div>/gi) ?? [];
-  const blocks = [...pBlocks, ...divBlocks];
+  // Two bugs lived in the previous form of this, both fixed by matching in a
+  // SINGLE left-to-right pass instead of concatenating two separate matches:
+  //
+  //  1. Owner: "on the Dean's Commentary, the full text is repeated on an
+  //     extra slide." The leaf-div lookahead excluded nested <div> but NOT
+  //     <p>, so `<div class="container">` wrapping the article's <p>s still
+  //     counted as a leaf and matched the WHOLE body as one block — on top of
+  //     the <p>s already matched individually. Every real paragraph, then the
+  //     entire article concatenated, as a final extra slide. Adding <p to the
+  //     lookahead makes a div holding paragraphs fail to match, which is the
+  //     wanted outcome: it's a wrapper, not a paragraph.
+  //  2. `[...pBlocks, ...divBlocks]` emitted every <p> before every <div>
+  //     regardless of where they sat in the document, so an article mixing
+  //     the two rendered out of order. One alternation scanned left-to-right
+  //     keeps document order by construction.
+  //
+  // A div is still a paragraph when it holds no nested <div> and no <p> —
+  // which is exactly the Outlook-pasted markup described above.
+  const blocks = main.match(
+    /<p\b[^>]*>[\s\S]*?<\/p>|<div\b[^>]*>(?:(?!<\/?div\b|<p\b)[\s\S])*<\/div>/gi,
+  ) ?? [];
   const paragraphs: string[] = [];
   let dateLine: string | null = null;
   for (const block of blocks) {

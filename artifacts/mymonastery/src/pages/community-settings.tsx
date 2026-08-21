@@ -58,8 +58,13 @@ export default function CommunitySettingsPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   // ── Prayer list (owner: "a setting in groups to turn on and off prayer
-  // list") ───────────────────────────────────────────────────────────────
-  const [prayerRequestsEnabled, setPrayerRequestsEnabled] = useState(true);
+  // list"; "don't have list in community directly turned on inherently") ──
+  // Defaults FALSE to match the column default. It was `true` here, which
+  // rendered the checkbox ON for the moment before the group query resolved
+  // — an admin opening settings on an opt-out community saw it checked, and
+  // saving during that window would have turned the list on without them
+  // ever asking for it.
+  const [prayerRequestsEnabled, setPrayerRequestsEnabled] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // Add-intention dialog state. Shape mirrors the intercession flow —
@@ -144,7 +149,9 @@ export default function CommunitySettingsPage() {
       setIsPublic(!!group.isPublic);
       setCity(group.city ?? "");
       setState(group.state ?? "");
-      setPrayerRequestsEnabled(group.prayerRequestsEnabled ?? true);
+      // `?? false` — the column is NOT NULL so the server always sends a real
+      // boolean, but the fallback must not contradict the column default.
+      setPrayerRequestsEnabled(group.prayerRequestsEnabled ?? false);
     }
   }, [group]);
 

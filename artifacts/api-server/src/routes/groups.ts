@@ -2659,7 +2659,16 @@ router.get("/groups/me/circle-intentions", async (req, res): Promise<void> => {
           inArray(circleIntentionsTable.groupId, groupIds),
           isNull(circleIntentionsTable.archivedAt),
         ))
-        .orderBy(asc(circleIntentionsTable.sortOrder), asc(circleIntentionsTable.createdAt));
+        .orderBy(asc(circleIntentionsTable.sortOrder), asc(circleIntentionsTable.createdAt))
+        // Bounded. Each of these becomes its OWN slide in the daily prayer
+        // slideshow (prayer-mode.tsx maps them 1:1 with no cap of its own),
+        // and this feed used to be limited in practice by only prayer-circle
+        // groups having intentions at all. Now that every community can hold
+        // them, an unbounded fan-out is (groups joined × intentions each) —
+        // enough to bury the rest of the office for anyone in a few active
+        // communities. 15 matches the cap assembleIntercessions.ts already
+        // applies to this exact content on the other read path.
+        .limit(15);
     } catch {
       active = [];
     }
