@@ -1043,12 +1043,13 @@ function OfficesOnlyExtras() {
 const HIDE_DP_PILL_KEY = "phoebe:hide-daily-progress-pill";
 // The "Turn · Learn · Pray" status band under the daily rhythm on home —
 // read by WayOfLoveTurnLearnPray.tsx itself via the same key/helpers.
-// Defaults HIDDEN — owner: the customizer's "weekly cards" step presents
-// this as opt-in, not opt-out. Unset or "1" reads as hidden; only an
-// explicit "0" (turned on) shows the card.
+// Defaults SHOWN — owner: "just have it on by default and have that on the
+// settings page." It used to default hidden because the customizer had a step
+// presenting it as opt-in; that step is gone, so an unset key now means on.
+// Only an explicit "1" (turned off here) hides it.
 export const HIDE_TLP_KEY = "phoebe:hide-turn-learn-pray";
 function readTlpHiddenDefaultOn(): boolean {
-  try { return localStorage.getItem(HIDE_TLP_KEY) !== "0"; } catch { return true; }
+  try { return localStorage.getItem(HIDE_TLP_KEY) === "1"; } catch { return false; }
 }
 // Row-labeling mode for that same weekly grid: Morning/Contemplative/
 // Evening Practice (default), or the Way of Love's Turn/Learn/Pray framing
@@ -1254,6 +1255,34 @@ function HomeDisplaySettings() {
             </button>
           </>
         )}
+
+        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
+
+        {/* Owner: "make sure that the weekly card slide is taken out, and just
+            have it on by default and have that on the settings page." The
+            customizer step is gone; this is where it lives now. The state for
+            it already existed here — it just had no row to render it. */}
+        <button
+          onClick={toggleTlp}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Weekly Progress
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              The status card under your daily routine, showing this week at a glance.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${tlpShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${tlpShown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
 
         <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
 

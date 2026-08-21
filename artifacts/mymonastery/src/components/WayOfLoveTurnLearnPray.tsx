@@ -26,16 +26,16 @@ import { ROUTINE_SYNCED_EVENT } from "@/lib/routineSync";
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// Settings → Home display AND the customizer's "weekly cards" step both
-// expose an on/off toggle for this card, stored under the same key
-// settings.tsx writes (HIDE_TLP_KEY there). Defaults OFF (hidden) — owner:
-// the customizer step should present weekly cards as opt-in, not opt-out.
-// Unset or "1" reads as hidden; only an explicit "0" (the viewer turned it
-// on) shows the card.
+// Settings → Home display owns the on/off toggle for this card, stored under
+// the key settings.tsx writes (HIDE_TLP_KEY there). The customizer's "weekly
+// cards" step that used to also set it was removed (owner).
 const HIDE_KEY = "phoebe:hide-turn-learn-pray";
 
+// Defaults SHOWN — owner: "just have it on by default." Only an explicit "1"
+// (turned off in Settings) hides it; unset means on. Must stay in step with
+// readTlpHiddenDefaultOn in settings.tsx, which writes this same key.
 function readHidden(): boolean {
-  try { return localStorage.getItem(HIDE_KEY) !== "0"; } catch { return true; }
+  try { return localStorage.getItem(HIDE_KEY) === "1"; } catch { return false; }
 }
 
 // Live-updates when the toggle flips, without a reload — same pattern the

@@ -99,13 +99,12 @@ type PrayChoice = "none" | "community" | "devotion" | "offices" | "compline" | "
 // page's own Length dropdown (default 12).
 const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
 type Step =
-  | "when"
   | "morning-way" | "morning-custom" | "morning-config"
   | "fdd-mode"
   | "psalms-cycle"
   | "evening-way" | "evening-custom" | "evening-config"
   | "contemplative" | "contemplation-goal"
-  | "learn" | "extras" | "custom" | "weekly" | "weekly-cards" | "done"
+  | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
 // Named starter rules — coherent forms a first author adopts WHOLE and tunes
 // later (you receive a rule, you don't compose one from a blank trellis). Each
@@ -428,34 +427,24 @@ export default function WayOfLoveRuleFlow({
   const { user } = useAuth();
   const entitlements = useEntitlements();
   const [, setLocation] = useLocation();
-  // Weekly home cards — same keys/semantics WayOfLoveTurnLearnPray.tsx and
-  // settings.tsx's HomeDisplaySettings read/write. Defaults OFF (opt-in).
-  const [weeklyProgressOn, setWeeklyProgressOn] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:hide-turn-learn-pray") === "0"; } catch { return false; }
-  });
-  const toggleWeeklyProgress = () => {
-    const next = !weeklyProgressOn;
-    setWeeklyProgressOn(next);
-    try {
-      localStorage.setItem("phoebe:hide-turn-learn-pray", next ? "0" : "1");
-      window.dispatchEvent(new Event("phoebe:prefs-changed"));
-    } catch { /* web no-op */ }
-    // ROUTINE_SYNCED key — bump the clock + push now, or the next
-    // cross-device reconcile can silently revert this toggle (owner:
-    // "showing up on my phone but not on web").
-    if (user) pushRoutineConfig();
-  };
+  // (Removed: the weekly-cards step's own on/off state. That step is gone and
+  // the card defaults ON — its toggle lives in Settings → Home display, which
+  // owns the same phoebe:hide-turn-learn-pray key.)
   // A brand-new author — nobody has chosen a side level yet — is offered the
   // preset picker ("automatic mode"): four whole rules to adopt and tune, so
   // they don't have to know how to "drive stick" to begin. Anyone with an
   // existing rule (or the trimmed pilot flow) opens straight into the manual
-  // shaping flow at "when", as before. "Or build my own →" drops into it too.
+  // shaping flow. "Or build my own →" drops into it too.
+  //
+  // That entry point is "morning-way" now, not the removed "when" step — a
+  // default of "when" would open the flow on a step no longer in orderedSteps,
+  // so indexOf would be -1 and Continue would do nothing.
   const [step, setStep] = useState<Step>(() => {
     // Guests always open the manual flow: their rule is already running (the
     // first-open seed), so the preset picker would re-adopt over it.
-    if (pilot || guest) return "when";
+    if (pilot || guest) return "morning-way";
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
-    return hasRule ? "when" : "starter";
+    return hasRule ? "morning-way" : "starter";
   });
   // Show the "technology of holding" prelude ONCE, before the very first author
   // reaches the preset picker — it names why a daily practice matters and where
@@ -479,18 +468,6 @@ export default function WayOfLoveRuleFlow({
     if (m || e) return { morning: !!m, evening: !!e };
     return { morning: true, evening: true };
   });
-  const toggleSide = (s: "morning" | "evening") => {
-    const turningOn = !sides[s];
-    touchedRef.current = true;
-    setSides((prev) => {
-      const next = { ...prev, [s]: !prev[s] };
-      return next.morning || next.evening ? next : prev; // keep at least one
-    });
-    // Turning a side ON defaults its daily reminder ON, so the notification
-    // step shows it enabled — re-enabling a side shouldn't inherit its old
-    // "off" from a previous save.
-    if (turningOn) setReminderOnBySide((r) => ({ ...r, [s]: true }));
-  };
   // Preload from the user's current settings so Customize reflects what they
   // already chose, not the first-run defaults. localStorage per-side levels +
   // reflection + minutes are instant; the server office-prefs (the global
@@ -863,7 +840,15 @@ export default function WayOfLoveRuleFlow({
   // Set once the user touches any control — so a slow office-prefs response
   // can't clobber a choice they've already made while it was loading.
   const touchedRef = useRef(false);
-  const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => { touchedRef.current = true; setPrayBySide((prev) => ({ ...prev, [side]: p })); };
+  // Picking ANY practice for a side also clears a pending "None" on it —
+  // every row on the way slide routes through here, so choosing a practice
+  // after tapping None can't leave None still marked and silently switch the
+  // side off on Continue.
+  const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => {
+    touchedRef.current = true;
+    setSideOffPending((prev) => (prev[side] ? { ...prev, [side]: false } : prev));
+    setPrayBySide((prev) => ({ ...prev, [side]: p }));
+  };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
   // Owner: "we want a second row that says log method two options. We want
@@ -1301,16 +1286,32 @@ export default function WayOfLoveRuleFlow({
   // progress bar jumped backward) and indexOf(step) went to -1, so goNext's
   // `i >= 0` guard failed and Continue did nothing.
   const bcpOnSide = (s: OfficeSide) => prayBySide[s] === "offices" || prayBySide[s] === "devotion" || prayBySide[s] === "psalms" || prayBySide[s] === "compline" || prayBySide[s] === "readings";
-  const orderedSteps: Step[] = guest
+  // Owner: "take out the first slide of the customizer, have a none option at
+  // the bottom of morning and evening here which would turn morning or evening
+  // off." The "when" step is gone; both way slides ALWAYS render, and a side is
+  // turned off from its own slide instead.
+  //
+  // The way slides staying unconditional is what makes that safe. Gate them on
+  // `sides` and choosing None would delete the step the user is standing on —
+  // orderedSteps shrinks, indexOf(step) goes to -1, and goNext's `i >= 0` guard
+  // makes Continue do nothing. That exact bug is documented just above. Only
+  // the CONFIG/CUSTOM slides are gated, so turning a side off removes slides
+  // that come after the one in hand, never the one under it.
+  //
+  // Built as a function of `sides` so the deferred None (applied on Continue)
+  // can compute the step list that WILL exist rather than navigating with the
+  // stale one — a setState isn't visible to goNext in the same handler.
+  const buildSteps = (sidesArg: Record<OfficeSide, boolean>): Step[] => guest
     // GUEST (public no-login): when → per-side way + ONE merged config slide
     // (the BCP form + medium + reminder all live on side-config — no separate
     // side-bcp slide: "there doesn't need to be more than one slide") → learn →
     // silence goal (fixed only) → custom. No contemplative multi-select, no
     // extras, no weekly.
     ? [
-        "when",
-        ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
-        ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
+        "morning-way",
+        ...(sidesArg.morning ? (["morning-config"] as Step[]) : []),
+        "evening-way",
+        ...(sidesArg.evening ? (["evening-config"] as Step[]) : []),
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
@@ -1320,18 +1321,20 @@ export default function WayOfLoveRuleFlow({
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
     // contemplative multi-select, no per-practice slots, no extras, no weekly.
     ? [
-        "when",
-        ...(sides.morning ? (["morning-way", ...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
-        ...(sides.evening ? (["evening-way", ...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config"] as Step[]) : []),
+        "morning-way",
+        ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
+        "evening-way",
+        ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config"] as Step[]) : []),
         "learn",
         ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
         "contemplation-goal",
         "custom",
       ]
     : [
-    "when",
-    ...(sides.morning ? (["morning-way", ...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
-    ...(sides.evening ? (["evening-way", ...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config"] as Step[]) : []),
+    "morning-way",
+    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
+    "evening-way",
+    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config"] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
@@ -1354,21 +1357,44 @@ export default function WayOfLoveRuleFlow({
     // Globally OFF for now (owner) — skip the step while WEEKLY_PRACTICES_ENABLED
     // is false so the customizer never offers a practice that won't appear.
     ...(WEEKLY_PRACTICES_ENABLED ? (["weekly"] as Step[]) : []),
-    // Weekly-progress home CARDS (the dot-grid status bands) — separate
-    // from the "weekly" step above, which is about weekly PRACTICES
-    // (Commune/Go/Bless/Rest). This just asks whether to show the cards.
-    // Owner: "take the notification slide... out from that slideshow, just
-    // have the nudge option availible in settings" — Gentle/Nudge already
-    // lives in Settings (settings.tsx's notification_style row), so this is
-    // the LAST step of the full flow now; its Continue commits.
-    "weekly-cards",
+    // (Removed: the weekly-progress CARDS step. Owner: "make sure that the
+    // weekly card slide is taken out, and just have it on by default and have
+    // that on the settings page" — the card now defaults on and its toggle
+    // lives in Settings → Home display. "custom" is the last step of the full
+    // flow now, so its Continue is what commits.)
   ];
+  const orderedSteps: Step[] = buildSteps(sides);
   const totalSteps = orderedSteps.length;
+  // "None" is DEFERRED — owner: "if they click none on morning, just have it
+  // wait until they hit continue to put it into effect so it doesn't break."
+  // Tapping None only marks the row; `sides` flips on Continue, and navigation
+  // uses the step list computed from the NEW sides rather than the stale one.
+  const [sideOffPending, setSideOffPending] = useState<Record<OfficeSide, boolean>>(() => ({
+    morning: !sides.morning,
+    evening: !sides.evening,
+  }));
+  const wayContinue = (side: OfficeSide) => {
+    const turningOff = sideOffPending[side];
+    const nextSides = { ...sides, [side]: !turningOff };
+    // Nothing changed for this side — the ordinary path.
+    if (nextSides[side] === sides[side]) { goNext(); return; }
+    setSides(nextSides);
+    // Turning a side back ON defaults its daily reminder ON (carried over from
+    // the removed "when" step's toggleSide) — re-enabling a side shouldn't
+    // inherit the "off" a previous save left behind.
+    if (nextSides[side]) setReminderOnBySide((r) => ({ ...r, [side]: true }));
+    // Navigate against the list this change produces. goNext would read the
+    // pre-update orderedSteps and walk into a config slide that's about to
+    // stop existing (or skip one that's about to appear).
+    const next = buildSteps(nextSides);
+    const i = next.indexOf(side === "morning" ? "morning-way" : "evening-way");
+    if (i >= 0 && i < next.length - 1) setStep(next[i + 1]);
+  };
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
   const goPrev = () => { const i = orderedSteps.indexOf(step); if (i > 0) setStep(orderedSteps[i - 1]); else onBack(); };
   // Is the CURRENT step the last one in whichever flow variant is active
   // (guest/pilot/full)? Used by whatever step now closes each variant
-  // (custom for guest/pilot, weekly-cards for full) to commit instead of
+  // ("custom" now closes every variant) to commit instead of
   // just advancing, now that "notifications" no longer closes every flow.
   const isLastStep = orderedSteps[orderedSteps.length - 1] === step;
 
@@ -1568,24 +1594,6 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Step 1 — When (which offices: morning, evening, or both) ──────────────
-  if (step === "when") {
-    return shell(
-      <>
-        {backRow(onBack)}
-        {stepHeader(t("wol_rule.when_eyebrow", { defaultValue: "Pray" }), t("wol_rule.when_title", { defaultValue: "When" }))}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {t("wol_rule.when_body", { defaultValue: "When would you like to pray? Choose one or both." })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(sides.morning, `🌅 ${t("wol_rule.when_morning", { defaultValue: "Morning" })}`, t("wol_rule.when_morning_sub", { defaultValue: "Begin the day with prayer." }), () => toggleSide("morning"))}
-          {choiceRow(sides.evening, `🌙 ${t("wol_rule.when_evening", { defaultValue: "Evening" })}`, t("wol_rule.when_evening_sub", { defaultValue: "Mark the day's end with prayer." }), () => toggleSide("evening"))}
-        </div>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
-      </>,
-    );
-  }
-
   // ── Per-side WAY slide — titled "Morning" / "Evening" ─────────────────────
   if (step === "morning-way" || step === "evening-way") {
     const side: OfficeSide = step === "morning-way" ? "morning" : "evening";
@@ -1723,8 +1731,25 @@ export default function WayOfLoveRuleFlow({
               choosePrayBySide(side, "ownPractice");
             },
           )}
+          {/* None — turn this side off entirely (owner). Replaces the removed
+              "when" step's Morning/Evening checkboxes. Deferred: this only
+              marks the row; `sides` flips on Continue (see wayContinue), so
+              the slide the user is standing on can't vanish under them. */}
+          {choiceRow(
+            sideOffPending[side],
+            `🚫 ${t("wol_rule.pray_none_label", { defaultValue: "None" })}`,
+            t("wol_rule.pray_none_sub", {
+              side: cap.toLowerCase(),
+              defaultValue: `No ${cap.toLowerCase()} prayer — skip this side of the day.`,
+            }),
+            () => {
+              if (sideOffPending[side]) return; // already selected
+              touchedRef.current = true;
+              setSideOffPending((p) => ({ ...p, [side]: true }));
+            },
+          )}
         </div>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => wayContinue(side))}
       </>,
     );
   }
@@ -2360,50 +2385,6 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Weekly home cards — the dot-grid status band under the daily
-  // routine, not to be confused with the "weekly" PRACTICES step above
-  // (Commune/Go/Bless/Rest). Defaults off (opt-in). ──
-  if (step === "weekly-cards") {
-    return shell(
-      <>
-        {backRow(goPrev)}
-        {stepHeader(t("wol_rule.weekly_cards_eyebrow", { defaultValue: "On your home" }), t("wol_rule.weekly_cards_title", { defaultValue: "Weekly cards" }))}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 20px" }}>
-          {t("wol_rule.weekly_cards_body", { defaultValue: "A quiet dot grid of the past week, right under your daily routine. Turn on whichever you'd like to see." })}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button
-            type="button"
-            onClick={toggleWeeklyProgress}
-            style={{
-              width: "100%", textAlign: "left", cursor: "pointer",
-              background: weeklyProgressOn ? "rgba(46,107,64,0.14)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${weeklyProgressOn ? CARD_B_ACTIVE : CARD_B}`,
-              borderRadius: 16, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              transition: "background 0.2s, border-color 0.2s",
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: CREAM, fontFamily: FONT, margin: 0 }}>
-                {t("wol_rule.weekly_cards_main_label", { defaultValue: "Weekly Progress" })}
-              </p>
-              <p style={{ fontSize: 13, color: SAGE, fontFamily: FONT, margin: "3px 0 0" }}>
-                {t("wol_rule.weekly_cards_main_sub", { defaultValue: "The status card under your daily routine." })}
-              </p>
-            </div>
-            <span style={{ width: 46, height: 28, borderRadius: 999, flexShrink: 0, background: weeklyProgressOn ? CTA : "rgba(143,175,150,0.22)", position: "relative", transition: "background 0.2s" }}>
-              <span style={{ position: "absolute", top: 3, left: weeklyProgressOn ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: CREAM, transition: "left 0.2s" }} />
-            </span>
-          </button>
-        </div>
-        <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={isLastStep ? commit : goNext} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            {isLastStep ? t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }) : t("ruleOfLife.continue", { defaultValue: "Continue" })}
-          </button>
-        </div>
-      </>,
-    );
-  }
 
   // ── Done / review — the practices they set, each tappable to jump back and
   // edit that part of the flow ───────────────────────────────────────────────
@@ -2553,7 +2534,7 @@ export default function WayOfLoveRuleFlow({
           <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
           </button>
-          <button onClick={() => { touchedRef.current = true; setStep("when"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
+          <button onClick={() => { touchedRef.current = true; setStep("morning-way"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>
         </div>
@@ -2594,7 +2575,7 @@ export default function WayOfLoveRuleFlow({
         <button onClick={onDone} style={{ marginTop: 22, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
           {t("wol_rule.tend_done", { defaultValue: "That’s all for now" })}
         </button>
-        <button onClick={() => { touchedRef.current = true; setStep("when"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
+        <button onClick={() => { touchedRef.current = true; setStep("morning-way"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
           {t("wol_rule.tend_reshape", { defaultValue: "Reshape from scratch" })}
         </button>
       </>,
