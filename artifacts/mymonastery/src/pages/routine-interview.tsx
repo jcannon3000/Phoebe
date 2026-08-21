@@ -53,6 +53,10 @@ const CONFIRM_SECTIONS: Array<{ key: SpecSection; title: string; ask: string }> 
 // The manual customizer's "Add an additional practice" step, replicated. Each
 // maps to a home-layout card key; the slot ones also take a time of day, which
 // we leave at the customizer's own defaults rather than asking again.
+const SLOT_TEXT: Record<string, string> = {
+  morning: "in the morning", midday: "at midday", afternoon: "in the afternoon",
+  evening: "in the evening", anytime: "any time of day",
+};
 const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "compline", emoji: "🌙", label: "Compline", sub: "The night office — available from 7pm." },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
@@ -222,6 +226,23 @@ export default function RoutineInterviewPage() {
     background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
     border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
     borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+  };
+  // Owner asked for the read-back cards to look "like how on the weekly detail
+  // page the routine card" — that's /turn-learn-pray's per-slot card, which is
+  // NOT the flat review row: rounded-3xl, a left accent bar, and the emoji in a
+  // circular badge. Reproduced here so the read-back matches the surface the
+  // owner pointed at.
+  const routineCard: React.CSSProperties = {
+    position: "relative", display: "flex", borderRadius: 24, overflow: "hidden",
+    background: "rgba(46,107,64,0.07)", border: `1px solid ${CARD_B}`,
+  };
+  const routineAccent: React.CSSProperties = {
+    width: 6, flexShrink: 0, background: "rgba(110,180,130,0.72)",
+  };
+  const routineBadge: React.CSSProperties = {
+    flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+    borderRadius: 999, width: 26, height: 26, fontSize: 15,
+    background: "rgba(110,180,130,0.18)",
   };
   const eyebrow: React.CSSProperties = {
     fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
@@ -404,12 +425,15 @@ export default function RoutineInterviewPage() {
           {rows.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rows.map((r, i2) => (
-                <div key={`${r.label}-${i2}`} style={rowCard}>
-                  <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-                    <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-                  </span>
+                <div key={`${r.label}-${i2}`} style={routineCard}>
+                  <div style={routineAccent} />
+                  <div style={{ flex: 1, minWidth: 0, padding: "18px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={routineBadge} aria-hidden>{r.emoji}</span>
+                      <p style={{ color: WARM, fontFamily: FONT, fontSize: 18, fontWeight: 600, margin: 0 }}>{r.label}</p>
+                    </div>
+                    <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, margin: "8px 0 0" }}>{r.sub}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -480,14 +504,27 @@ export default function RoutineInterviewPage() {
         // this", not "remove it" — a card the model already placed from what
         // they described stays, and the read-back round is where something
         // wrong gets corrected.
+        const added: SpecRow[] = [];
         for (const e of EXTRAS) {
           if (!extras.has(e.key)) continue;
           if (!order.includes(e.key)) order.push(e.key);
+          // Adding to `order` isn't enough on its own: a key sitting in
+          // `hidden` stays off the home no matter where it is in the order, so
+          // a practice they just picked would silently not appear.
+          const h = hidden.indexOf(e.key);
+          if (h >= 0) hidden.splice(h, 1);
           if (e.slot) rc[`phoebe:slot:${e.key}`] = e.slot;
+          added.push({ emoji: e.emoji, label: e.label, sub: e.slot ? SLOT_TEXT[e.slot] ?? "Each day" : "Each day", section: "practices" });
         }
         next.homeLayout = { ...hl, order, hidden };
         next.ruleConfig = rc;
         setSpec(next);
+        // The review renders `settings`, which came from the server BEFORE
+        // these picks existed. Without appending them, a practice chosen here
+        // would be applied to the account while being absent from the screen
+        // that asks you to approve it — the same "approve what you can't see"
+        // failure the derived-settings change was made to close.
+        if (added.length > 0) setSettings((prev) => [...prev, ...added]);
       }
       setError(null);
       setPhase("review");
