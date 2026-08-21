@@ -14,7 +14,8 @@ import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } fr
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday } from "@/lib/officeManualLog";
-import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, useEffectiveReflectionSource, getContemplationLogMethod, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
+import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, useEffectiveReflectionSource, getContemplationLogMethod, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -780,11 +781,33 @@ export function useRhythmState(): RhythmState {
   // prayed the prayer list."
   const prayerListSlot = getPrayerListSlot();
   const prayerListSlotDone = intentionsTotalCount > 0 && intentionsPrayedCount >= intentionsTotalCount;
+  /**
+   * A side whose custom anchor names a real practice completes when THAT
+   * practice is kept.
+   *
+   * Owner: "the framework that the Audio Divina could be your morning or
+   * evening anchor." Without this the anchor is a checkbox wearing the
+   * practice's name — you could listen for twenty minutes and your morning
+   * would still read as unprayed, because the two knew nothing about each
+   * other.
+   *
+   * Reads the RAW done signals, not listeningDone / walkDone / cobreatheDone
+   * below: those are gated on the practice having its own home card, which is
+   * exactly what it doesn't have when it's serving as the anchor.
+   */
+  const anchorPracticeDone = (side: "morning" | "evening"): boolean => {
+    if (getSideLevel(side) !== "custom") return false;
+    const practice = anchorPracticeFor(getSideCustomName(side));
+    if (!practice) return false;
+    if (practice.key === "cobreathe") return cobreathe?.done ?? false;
+    return practiceLocal[practice.key] || serverDone(practice.key);
+  };
+
   const morningDone = officeLocal.morning || (!officeUndone.morning && (!!todayOffice?.morning
     || (ml === "fdd" && prayerRead.fddMorning) || (ml === "readings" && prayerRead.readingsMorning)
     || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
-    || (ml === "custom" && prayerRead.customMorning)
+    || (ml === "custom" && (prayerRead.customMorning || anchorPracticeDone("morning")))
     || (ml === "examen" && examenKept)
     || (ml === "reflect-sit" && morningSatKept)
     || (prayerListSlot === "morning" && prayerListSlotDone)));
@@ -792,7 +815,7 @@ export function useRhythmState(): RhythmState {
     || (el === "fdd" && prayerRead.fddEvening) || (el === "readings" && prayerRead.readingsEvening)
     || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
-    || (el === "custom" && prayerRead.customEvening)
+    || (el === "custom" && (prayerRead.customEvening || anchorPracticeDone("evening")))
     || (el === "examen" && examenKept)
     // Compline satisfies the evening anchor ONLY when it IS that anchor.
     // officeLocal.evening deliberately no longer folds the compline flag in

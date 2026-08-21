@@ -1865,10 +1865,13 @@ export default function WayOfLoveRuleFlow({
     // practice" step) — minus The Examen, which is already its own primary-
     // anchor choice on the previous step, so offering it again here would
     // just be a confusing second way to pick the same thing.
-    const presets: Array<{ emoji: string; label: string }> = [
-      { emoji: "🎵", label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }) },
-      { emoji: "🌍", label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }) },
-      { emoji: "🚶", label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }) },
+    const presets: Array<{ emoji: string; label: string; sub: string }> = [
+      { emoji: "🎵", label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }),
+        sub: t("wol_rule.cp_audio_anchor_sub", { side: cap.toLowerCase(), defaultValue: `Sacred listening as your ${cap.toLowerCase()} prayer.` }) },
+      { emoji: "🌍", label: t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" }),
+        sub: t("wol_rule.cp_cobreathe_anchor_sub", { side: cap.toLowerCase(), defaultValue: `Breathing with creation as your ${cap.toLowerCase()} prayer.` }) },
+      { emoji: "🚶", label: t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" }),
+        sub: t("wol_rule.cp_walk_anchor_sub", { side: cap.toLowerCase(), defaultValue: `A walk as your ${cap.toLowerCase()} prayer.` }) },
     ];
     const current = customNameBySide[side];
     return shell(
@@ -1894,7 +1897,11 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.custom_or_choose", { defaultValue: "Or choose a practice" })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {presets.map(({ emoji, label }) => choiceRow(current === label, `${emoji} ${label}`, "", () => {
+          {/* These names are what makes the anchor a real practice rather than a
+              label — lib/anchorPractices.ts matches on them, so the card opens
+              the practice and completing it there ticks this side. Rename one
+              here and it silently becomes a plain checkbox again. */}
+          {presets.map(({ emoji, label, sub }) => choiceRow(current === label, `${emoji} ${label}`, sub, () => {
             touchedRef.current = true;
             setCustomNameBySide((p) => ({ ...p, [side]: label }));
             setSideCustomName(side, label);

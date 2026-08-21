@@ -21,6 +21,7 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, type OptionalPractice } from "@/lib/practiceCompletion";
 import { undoOfficeToday } from "@/lib/officeManualLog";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { markContemplationSideDone } from "@/lib/contemplationSideDone";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
@@ -1084,13 +1085,25 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     ...(morningActive && !novenaReplacesMorning ? [{
-      key: "morning", slot: "morning" as CustomSlot, emoji: "🌅", rgb: "46,107,64", done: morningDone,
+      key: "morning", slot: "morning" as CustomSlot,
+      // A contemplative practice serving as the anchor wears its own face —
+      // a morning of sacred listening shouldn't be badged with the sunrise
+      // used for the Daily Office.
+      emoji: (getSideLevel("morning") === "custom" && anchorPracticeFor(getSideCustomName("morning"))?.emoji) || "🌅",
+      rgb: "46,107,64", done: morningDone,
       // A user's own named practice has no page to open — tapping just marks
       // it done for the day, same shape as a custom anchor's check.
-      href: getSideLevel("morning") === "custom" ? "" : "/begin-prayer?side=morning",
+      // Owner: the practice can BE the anchor. So when the custom name is one
+      // Phoebe knows, the card opens that practice; completing it there ticks
+      // this anchor (see anchorPracticeDone in useRhythmState). A name they
+      // typed themselves has no page, and keeps the tap-to-mark-done it had.
+      href: getSideLevel("morning") === "custom"
+        ? (anchorPracticeFor(getSideCustomName("morning"))?.href ?? "")
+        : "/begin-prayer?side=morning",
       // Tapping again once done UN-marks it — a real toggle, not a one-way
       // stamp (see unmarkCustomPrayed's comment for why this matters).
-      ...(getSideLevel("morning") === "custom" ? { onClick: () => (morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) } : {}),
+      ...(getSideLevel("morning") === "custom" && !anchorPracticeFor(getSideCustomName("morning"))?.href
+        ? { onClick: () => (morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) } : {}),
       // Owner: "make sure I can click the check mark on the offices to undo
       // them." A custom level already toggles through onClick above; every
       // other level was a one-way stamp until midnight.
@@ -1115,9 +1128,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // Evening leads the evening slot but stays a quiet "later" card until 3 PM,
       // so the morning rhythm leads the day; from 3 PM on it becomes the office
       // hero. Opt-in — off by default (evening pref "none").
-      key: "evening", slot: "evening" as CustomSlot, emoji: "🌙", rgb: "46,107,64", done: eveningDone,
-      href: getSideLevel("evening") === "custom" ? "" : "/begin-prayer?side=evening",
-      ...(getSideLevel("evening") === "custom" ? { onClick: () => (eveningDone ? unmarkCustomPrayed("evening") : markCustomPrayed("evening")) } : {}),
+      key: "evening", slot: "evening" as CustomSlot,
+      emoji: (getSideLevel("evening") === "custom" && anchorPracticeFor(getSideCustomName("evening"))?.emoji) || "🌙",
+      rgb: "46,107,64", done: eveningDone,
+      href: getSideLevel("evening") === "custom"
+        ? (anchorPracticeFor(getSideCustomName("evening"))?.href ?? "")
+        : "/begin-prayer?side=evening",
+      ...(getSideLevel("evening") === "custom" && !anchorPracticeFor(getSideCustomName("evening"))?.href
+        ? { onClick: () => (eveningDone ? unmarkCustomPrayed("evening") : markCustomPrayed("evening")) } : {}),
       ...(getSideLevel("evening") === "custom" ? {} : { onUnlog: () => undoOfficeToday("evening") }),
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual

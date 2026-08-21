@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { anchorPracticeFor } from "@/lib/anchorPractices";
 
 // ── Storage keys ───────────────────────────────────────────────────
 // Boolean prefs serialize as "1" / "0". Empty / malformed / missing
@@ -479,7 +480,17 @@ export function sideOfficeTitle(
   if (lvl === "readings") {
     return t(`rhythm.card_${side.toLowerCase()}_readings`, { defaultValue: `${side} Scripture Reading` });
   }
-  if (lvl === "custom") return getSideCustomName(side.toLowerCase() as OfficeSide).trim() || `${side} Practice`;
+  if (lvl === "custom") {
+    const name = getSideCustomName(side.toLowerCase() as OfficeSide).trim();
+    if (!name) return `${side} Practice`;
+    // Owner: "if it's going to be the anchor, it has morning and then the
+    // contemplative practice — a morning Contemplative Walk, morning Audio
+    // Divina." Prefixed only for practices Phoebe knows, where it reads as a
+    // name ("Morning Audio Divina"); a name they typed themselves is left
+    // exactly as they wrote it, since "Morning my rosary time" is not an
+    // improvement on "my rosary time".
+    return anchorPracticeFor(name) ? `${side} ${name}` : name;
+  }
   return prayerKind === "community"
     ? t("rhythm.card_community", { defaultValue: "Pray together" })
     : prayerKind === "devotion"
