@@ -54,6 +54,21 @@ const BORDER = "rgba(var(--ot-mist, 200,212,192),0.15)";
 const BUTTON_BG = "var(--oh-cta, #2D5E3F)";
 const SPACE_GROTESK = "var(--office-font, 'Space Grotesk', system-ui, sans-serif)";
 
+// Office deck title scale. These centered glow headlines were tuned on a phone,
+// where the vw term always loses to the floor — so the max was never really
+// exercised and drifted up to 72–88px, far past anything else in the app (the
+// next largest title anywhere is 56px). On a desktop browser the vw term wins
+// instead, and "Evening Prayer" rendered ~70px wide enough to overflow its own
+// 540px container (owner: "adjust the scaling here").
+//
+// Only the MAX moves. Every phone width still lands on the floor, so iOS renders
+// byte-for-byte as before; tablets and desktop (>~600px) settle at a size that
+// sits with the rest of the app. Reuse these instead of writing a fresh clamp,
+// so the deck can't drift apart one slide at a time again.
+const TITLE_XL = "clamp(48px, 9vw, 56px)"; // psalm / canticle section headlines
+const TITLE_LG = "clamp(40px, 8vw, 48px)"; // threshold ("Evening Prayer") title
+const TITLE_MD = "clamp(36px, 7vw, 44px)"; // secondary headlines
+
 // Mode covers the five liturgies this viewer can render. The Daily
 // Office's Morning / Evening / Compline come from /api/office/* and
 // the abbreviated Daily Devotions (BCP pp. 137 / 139) come from
@@ -2211,7 +2226,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 className="title-glow-breathe"
                 style={{
                   fontFamily: SPACE_GROTESK,
-                  fontSize: "clamp(40px, 8vw, 72px)",
+                  fontSize: TITLE_LG,
                   fontWeight: 700,
                   letterSpacing: "-0.02em",
                   color: WARM_TEXT,
@@ -2504,7 +2519,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 className="title-glow-breathe"
                 style={{
                   fontFamily: SPACE_GROTESK,
-                  fontSize: "clamp(48px, 9vw, 88px)",
+                  fontSize: TITLE_XL,
                   fontWeight: 700,
                   letterSpacing: "-0.02em",
                   color: WARM_TEXT,
@@ -2579,7 +2594,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     className="title-glow-breathe"
                     style={{
                       fontFamily: SPACE_GROTESK,
-                      fontSize: "clamp(48px, 9vw, 88px)",
+                      fontSize: TITLE_XL,
                       fontWeight: 700,
                       letterSpacing: "-0.02em",
                       color: WARM_TEXT,
@@ -2646,7 +2661,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     className="title-glow-breathe"
                     style={{
                       fontFamily: SPACE_GROTESK,
-                      fontSize: "clamp(48px, 9vw, 88px)",
+                      fontSize: TITLE_XL,
                       fontWeight: 700,
                       letterSpacing: "-0.02em",
                       color: WARM_TEXT,
@@ -2719,7 +2734,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     className="title-glow-breathe"
                     style={{
                       fontFamily: SPACE_GROTESK,
-                      fontSize: "clamp(36px, 7vw, 64px)",
+                      fontSize: TITLE_MD,
                       fontWeight: 700,
                       letterSpacing: "-0.01em",
                       color: WARM_TEXT,
@@ -2881,7 +2896,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     className="title-glow-breathe"
                     style={{
                       fontFamily: SPACE_GROTESK,
-                      fontSize: "clamp(36px, 7vw, 64px)",
+                      fontSize: TITLE_MD,
                       fontWeight: 700,
                       letterSpacing: "-0.01em",
                       color: WARM_TEXT,
@@ -5120,7 +5135,7 @@ export default function BcpDailyOfficePage() {
           <p className="uppercase font-semibold" style={{ color: "rgba(var(--ot-sage, 143,175,150),0.6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 11, letterSpacing: "0.22em", marginBottom: 12 }}>
             Before you begin
           </p>
-          <h1 style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 16 }}>
+          <h1 style={{ color: "var(--oh-ink, #F0EDE6)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontWeight: 700, fontSize: "clamp(40px, 11vw, 48px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 16 }}>
             Daily Prayer
           </h1>
           <p style={{ color: "rgba(var(--ot-ink3, 240,237,230),0.85)", fontFamily: "var(--office-font, 'Space Grotesk', sans-serif)", fontSize: 16, lineHeight: 1.55, maxWidth: 440, marginBottom: 24 }}>
