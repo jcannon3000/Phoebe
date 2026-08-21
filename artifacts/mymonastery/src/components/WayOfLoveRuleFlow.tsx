@@ -67,6 +67,10 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
 
+// Set once a routine snapshot exists, so the entry slide can offer "go back
+// to a past routine" synchronously instead of racing a fetch.
+const HAS_ROUTINE_HISTORY_KEY = "phoebe:has-routine-history";
+
 const BG = "#091A10";
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -438,8 +442,15 @@ export default function WayOfLoveRuleFlow({
   // computed from it would skip the slide entirely for the admin it's for.
   const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
   const [entryChoiceMade, setEntryChoiceMade] = useState(false);
+  // Whether this person has any past routine to go back to — read synchronously
+  // from the flag the snapshot save leaves behind (see the effect below).
+  const [hasRoutineHistory] = useState(() => {
+    try { return localStorage.getItem(HAS_ROUTINE_HISTORY_KEY) === "1"; } catch { return false; }
+  });
   // Defaults to "ask" (owner) — the interview is the intended path for a super
   // admin opening this; manual is the opt-out.
+  // "Ask me" is the default only for those who have it — everyone else came
+  // here to edit, so the manual path leads.
   const [entryChoice, setEntryChoice] = useState<"ask" | "manual" | "revert">("ask");
   // (Removed: the weekly-cards step's own on/off state. That step is gone and
   // the card defaults ON — its toggle lives in Settings → Home display, which
@@ -858,6 +869,16 @@ export default function WayOfLoveRuleFlow({
   useEffect(() => {
     if (guest || prescribe || pilot) return;
     apiRequest("POST", "/api/me/routine-snapshots", { source: "customizer" })
+      .then((r: any) => {
+        // Remember locally that a backlog exists, so the NEXT visit can offer
+        // "go back to a past routine" on first paint. Reading it from a fetch
+        // instead would pop the option in after the flow had already rendered
+        // its first slide and yank the ground out from under them.
+        try {
+          if ((r?.count ?? 0) > 0) localStorage.setItem(HAS_ROUTINE_HISTORY_KEY, "1");
+          else localStorage.removeItem(HAS_ROUTINE_HISTORY_KEY);
+        } catch { /* private mode */ }
+      })
       .catch(() => { /* non-fatal by design */ });
     // Once per mount — the point is the state on arrival, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1540,7 +1561,23 @@ export default function WayOfLoveRuleFlow({
   //
   // Guests and the pilot flow never see it: both are deliberately stripped
   // shells, and the interview needs an account to write to.
-  if (isSuperAdmin && !guest && !pilot && !prescribe && !entryChoiceMade) {
+  // Owner: "when someone goes to edit their routine, a third option ... revert
+  // to past routine." So this slide is no longer super-admin-only: anyone with
+  // a past routine gets it. A first-time customizer still goes straight in —
+  // there's nothing to go back to, and an extra slide offering nothing is just
+  // friction. The "Ask me" row stays super-admin-gated below.
+  const showEntryChoice = (isSuperAdmin || hasRoutineHistory) && !guest && !pilot && !prescribe;
+  // "Ask me" is the stored default (owner), but it's only offered to super
+  // admins — so for everyone else it resolves to the manual path rather than
+  // leaving no row selected and a Continue that walks into a page they can't
+  // use. Derived rather than initialised, because isSuperAdmin arrives from a
+  // query: seeding the state from it would race, and a super admin who loaded
+  // slowly would silently lose their default.
+  const effectiveEntryChoice: "ask" | "manual" | "revert" =
+    entryChoice === "ask" && !isSuperAdmin ? "manual"
+      : entryChoice === "revert" && !hasRoutineHistory ? "manual"
+        : entryChoice;
+  if (showEntryChoice && !entryChoiceMade) {
     return shell(
       <>
         {stepHeader(
@@ -1559,14 +1596,14 @@ export default function WayOfLoveRuleFlow({
             is operative: open the slide, press Continue, you're in the
             interview. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(
-            entryChoice === "ask",
+          {isSuperAdmin && choiceRow(
+            effectiveEntryChoice === "ask",
             `💬 ${t("wol_rule.entry_ask", { defaultValue: "Ask me about my practice" })}`,
             t("wol_rule.entry_ask_sub", { defaultValue: "Describe how you already pray, in your own words, and Phoebe programs it for you." }),
             () => setEntryChoice("ask"),
           )}
           {choiceRow(
-            entryChoice === "manual",
+            effectiveEntryChoice === "manual",
             `✍️ ${t("wol_rule.entry_manual", { defaultValue: "I'll set it up myself" })}`,
             t("wol_rule.entry_manual_sub", { defaultValue: "Go through the slides and choose each practice." }),
             () => setEntryChoice("manual"),
@@ -1576,16 +1613,16 @@ export default function WayOfLoveRuleFlow({
               shouldn't be a one-way door — someone who tried a fuller rhythm
               and found it didn't fit needs the old one back, not a from-scratch
               rebuild from memory of what they used to pray. */}
-          {choiceRow(
-            entryChoice === "revert",
+          {hasRoutineHistory && choiceRow(
+            effectiveEntryChoice === "revert",
             `↩️ ${t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" })}`,
             t("wol_rule.entry_revert_sub", { defaultValue: "Restore a rhythm you kept before." }),
             () => setEntryChoice("revert"),
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => {
-          if (entryChoice === "ask") { setLocation("/routine-interview"); return; }
-          if (entryChoice === "revert") { setLocation("/routine-history"); return; }
+          if (effectiveEntryChoice === "ask") { setLocation("/routine-interview"); return; }
+          if (effectiveEntryChoice === "revert") { setLocation("/routine-history"); return; }
           setEntryChoiceMade(true);
         })}
       </>,

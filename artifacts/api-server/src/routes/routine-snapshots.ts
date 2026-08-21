@@ -41,11 +41,20 @@ const SOURCES = new Set(["customizer", "interview", "restore"]);
  * opening it again shouldn't leave three identical entries and push the
  * routine they actually want off the end of the list.
  */
-export async function saveRoutineSnapshot(userId: number, source: string): Promise<void> {
+export async function saveRoutineSnapshot(userId: number, source: string): Promise<number> {
+  const countRows = async (): Promise<number> => {
+    const rows = await db
+      .select({ id: routineSnapshotsTable.id })
+      .from(routineSnapshotsTable)
+      .where(eq(routineSnapshotsTable.userId, userId))
+      .limit(MAX_SNAPSHOTS);
+    return rows.length;
+  };
+
   const spec = await captureRoutineSpec(userId);
   // Nothing worth keeping (a fresh account with no layout yet) — storing an
   // empty spec would offer them a "past routine" that wipes their rhythm.
-  if (!spec) return;
+  if (!spec) return countRows();
 
   const [newest] = await db
     .select({ id: routineSnapshotsTable.id, spec: routineSnapshotsTable.spec })
@@ -53,7 +62,7 @@ export async function saveRoutineSnapshot(userId: number, source: string): Promi
     .where(eq(routineSnapshotsTable.userId, userId))
     .orderBy(desc(routineSnapshotsTable.createdAt))
     .limit(1);
-  if (newest && JSON.stringify(newest.spec) === JSON.stringify(spec)) return;
+  if (newest && JSON.stringify(newest.spec) === JSON.stringify(spec)) return countRows();
 
   await db.insert(routineSnapshotsTable).values({
     userId,
@@ -76,6 +85,7 @@ export async function saveRoutineSnapshot(userId: number, source: string): Promi
       and(eq(routineSnapshotsTable.userId, userId), lt(routineSnapshotsTable.createdAt, cutoff)),
     );
   }
+  return keep.length;
 }
 
 router.post("/me/routine-snapshots", perUserRateLimit("routine_snapshot_save", {
@@ -84,13 +94,17 @@ router.post("/me/routine-snapshots", perUserRateLimit("routine_snapshot_save", {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
-    await saveRoutineSnapshot(userId, String(req.body?.source ?? "customizer"));
-    res.json({ ok: true });
+    // `count` is what lets the client know a backlog EXISTS without a second
+    // round trip — it stores that locally so the customizer's entry slide can
+    // offer "go back to a past routine" synchronously on the next visit,
+    // instead of racing a fetch and popping the option in after first paint.
+    const count = await saveRoutineSnapshot(userId, String(req.body?.source ?? "customizer"));
+    res.json({ ok: true, count });
   } catch (err) {
     console.error("[routine-snapshots] save failed:", err);
     // Never block someone from opening the customizer because the backlog
     // couldn't be written — the snapshot is a safety net, not a gate.
-    res.json({ ok: false });
+    res.json({ ok: false, count: 0 });
   }
 });
 
