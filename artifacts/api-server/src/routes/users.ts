@@ -823,7 +823,36 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
     yDate.setUTCDate(yDate.getUTCDate() - 1);
     const yesterdayYmd = yDate.toISOString().slice(0, 10);
 
-    const [contRows, sideContRows, reflectRows, breathRows, pcRows] = await Promise.all([
+    const [officeRows, contRows, sideContRows, reflectRows, breathRows, pcRows] = await Promise.all([
+      // The office anchors — owner: "there should be endpoints in that when
+      // they're completed... so you know when they're completed." They ARE
+      // recorded (prayer_sessions, completed = TRUE, with ended_at), so they
+      // rank like everything else rather than being the one thing that can't.
+      //
+      // Surface→side and the completed/duration gates are copied verbatim from
+      // the office-history query above — that's the authoritative definition of
+      // "the office counts", and a second, looser one here would credit a
+      // partial sit the rest of the app treats as unprayed. Compline stays its
+      // OWN side for the same reason it does there: folding it into 'evening'
+      // would rank Evening Prayer off a Compline-only night.
+      db.execute<{ side: string; at: string }>(sql`
+        SELECT
+          CASE
+            WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
+            WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
+            WHEN surface = 'compline' THEN 'compline'
+          END AS side,
+          MIN(ended_at) AS at
+        FROM prayer_sessions
+        WHERE user_id = ${sessionUserId}
+          AND (
+            (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
+            OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+            OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
+          )
+          AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
+        GROUP BY 1
+      `),
       // The "Contemplation" (silence) anytime card — earliest sit yesterday.
       // Only the SIDELESS sits: a per-side sit belongs to its own card below,
       // and counting it here too would rank both cards off the same moment.
@@ -872,6 +901,10 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
     // is the whole mechanism, and a key that doesn't match simply ranks
     // Infinity and sorts last, silently.
     const entries: Array<{ key: string; at: string }> = [];
+    // 'morning' | 'evening' | 'compline' are already the card keys verbatim.
+    for (const r of officeRows.rows) {
+      if (r.at && r.side) entries.push({ key: r.side, at: r.at });
+    }
     if (contRows.rows[0]?.at) entries.push({ key: "silence", at: contRows.rows[0].at });
     if (breathRows.rows[0]?.at) entries.push({ key: "cobreathe", at: breathRows.rows[0].at });
     for (const r of sideContRows.rows) {

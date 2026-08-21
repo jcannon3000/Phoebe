@@ -1300,13 +1300,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // old `ga === 1` condition skipped them: the two practices most likely to
   // be done back-to-back were exactly the two that could never reorder.
   //
-  // Slot grouping stays the OUTER sort on purpose. Letting rank win outright
-  // would sink any card the feed can't timestamp — including the morning and
-  // evening offices, which it doesn't report at all — below every practice
-  // that was done, which is a worse list than the one being fixed. Grouping
-  // first keeps morning above evening always, and orders each group by what
-  // actually happened; a card with no record stays at its slotted place,
-  // after the ones that do.
+  // Slot grouping stays the OUTER sort on purpose, even though the feed now
+  // reports the offices too (owner: "there should be endpoints in that when
+  // they're completed"), so nearly every card can rank.
+  //
+  // Letting rank win outright reads wrong the moment a day is incomplete: skip
+  // Morning Prayer yesterday but pray Compline, and Compline is the only
+  // ranked card — so it sits at the top of the list at 8am, above the morning
+  // office you're about to pray. Grouping first keeps morning above evening
+  // always, and orders WITHIN each group by what actually happened, which is
+  // where the owner's report lives (Contemplation and Dean's Commentary are
+  // both morning-slotted). A card with no record keeps its slotted place,
+  // after the ones that have one.
   const sortedCards = rawCards
     .map((c, idx) => ({ c, idx }))
     .sort((a, b) => {
