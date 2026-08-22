@@ -55,12 +55,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // Invoked (after the browser dismisses) when the user taps the bottom-bar
     // Journal button. The plugin wires this to fire a `phoebe:open-journal`
     // event into the app so the web layer can navigate to the journal.
+    // Retained for the plugin's call signature only — nothing invokes it now
+    // that the Journal button is gone (the journal page was removed from the
+    // app, and no web listener for phoebe:open-journal ever existed).
     var onJournal: (() -> Void)?
     // Options → "Change format" / "Listen to the office". Both dismiss first,
     // then let the app route: the office intro chooser owns the formats and the
     // podcast player owns the audio, and neither belongs in a web view.
     var onChangeFormat: (() -> Void)?
     var onListen: (() -> Void)?
+    /// Set when an Options action is dismissing us, so viewDidDisappear knows
+    /// this is a hand-off rather than the reader finishing.
+    private var handingOff = false
 
     // Invoked once this view controller has actually left the screen, no
     // matter HOW it got dismissed (Done button, swipe-to-dismiss, or any
@@ -210,6 +216,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // so it alone — guarded to fire once — is the reliable signal here.
         guard !dismissFired else { return }
         dismissFired = true
+        // Leaving VIA an Options action is not finishing the office. UIKit runs
+        // viewDidDisappear BEFORE a dismiss completion, so "Change format" and
+        // "Listen to the office" fired browserfinished first — and the web
+        // side's return handler credited the office and navigated home, for an
+        // office the person had just said they wanted to pray a different way.
+        if handingOff { return }
         onDismiss?()
     }
 
@@ -266,9 +278,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
                     self?.webView.load(URLRequest(url: url))
                 },
                 UIAction(title: "Change format", image: UIImage(systemName: "arrow.triangle.2.circlepath")) { [weak self] _ in
+                    self?.handingOff = true
                     self?.dismiss(animated: true) { self?.onChangeFormat?() }
                 },
                 UIAction(title: "Listen to the office", image: UIImage(systemName: "waveform")) { [weak self] _ in
+                    self?.handingOff = true
                     self?.dismiss(animated: true) { self?.onListen?() }
                 },
                 UIAction(title: "Open in Safari", image: UIImage(systemName: "safari")) { [weak self] _ in
@@ -334,18 +348,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             style: .plain, target: self, action: #selector(share)
         )
         shareButton.accessibilityLabel = "Share"
-        // Journal — a clearly-labelled primary action in the center of the bar,
-        // so the reader can jot a reflection on what they're reading. Closes the
-        // browser and asks the app to open the journal.
-        let journalButton = UIBarButtonItem(
-            title: "Journal", style: .plain, target: self, action: #selector(openJournal)
-        )
-        journalButton.accessibilityLabel = "Journal"
+        // The Journal button is GONE. It dismissed the browser and fired
+        // phoebe:open-journal — an event nothing in the web app listens for,
+        // to a /journal route that no longer exists (the journal was removed).
+        // So mid-office it closed the liturgy, lost the reader's place, and
+        // opened nothing. It only ever "worked" because this whole controller
+        // was unregistered until today; registering the plugin made a dead
+        // button reachable.
         let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         let flex2 = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         backButton.isEnabled = false
         forwardButton.isEnabled = false
-        toolbarItems = [backButton, fixedSpace(16), forwardButton, flex, journalButton, flex2, reloadButton, fixedSpace(24), shareButton]
+        toolbarItems = [backButton, fixedSpace(16), forwardButton, flex, reloadButton, flex2, shareButton]
 
         // Progress bar bound to the load.
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
@@ -414,11 +428,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     // ── Actions ───────────────────────────────────────────────────────────
     @objc private func close() { dismiss(animated: true) }
-    @objc private func openJournal() {
-        // Dismiss first so the browser slides away, then ask the app to open
-        // the journal (completion fires after the dismiss animation).
-        dismiss(animated: true) { [weak self] in self?.onJournal?() }
-    }
     @objc private func reload() { webView.reload() }
     @objc private func goBack() { if webView.canGoBack { webView.goBack() } }
     @objc private func goForward() { if webView.canGoForward { webView.goForward() } }

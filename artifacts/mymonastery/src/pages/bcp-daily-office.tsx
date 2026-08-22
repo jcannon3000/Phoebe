@@ -1031,6 +1031,45 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     } catch { /* non-fatal */ }
   }, [slideIdx, slides.length, resolvedMode]);
   const [loading, setLoading] = useState(true);
+
+  /**
+   * Two entry points that have to work once this deck is mounted.
+   *
+   * ?venite=1 — the Daily Offices picker now routes here instead of opening
+   * venite.app itself, so the dwell test, the Continue state, the credit-on-
+   * return and the Options menu all apply to that path too.
+   *
+   * phoebe:office-change-format — "Change format" in the browser's Options
+   * menu. A same-path query navigation does NOT re-run this page's ?mode=
+   * effect, so routing alone left the screen unchanged and the menu item did
+   * visibly nothing. Handled here, where the chooser actually lives.
+   */
+  useEffect(() => {
+    let ranVenite = false;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("venite") === "1" && !loading && slides.length > 0) {
+        q.delete("venite");
+        const rest = q.toString();
+        window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
+        ranVenite = true;
+        goToVenite(isDevotion ? "devotion" : "office");
+      }
+    } catch { /* ignore */ }
+
+    const onChangeFormat = () => {
+      // Back to this office's own opening chooser — the slide that offers the
+      // ways to pray — rather than a navigation the page would ignore.
+      setVeniteShort(false);
+      veniteLeftAtRef.current = null;
+      setBookOpen(false);
+      setSlideIdx(0);
+    };
+    window.addEventListener("phoebe:office-change-format", onChangeFormat);
+    return () => window.removeEventListener("phoebe:office-change-format", onChangeFormat);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, slides.length, isDevotion]);
+
   const [error, setError] = useState<string | null>(null);
   // A held "breath into the office" opening screen: the office's opening
   // versicle on a gradient, shown for at least ~2.8s (even when slides load
@@ -5192,13 +5231,19 @@ export default function BcpDailyOfficePage() {
   const launchOffice = (side: OfficeSide, method: DefaultOfficeEntry) => {
     if (method === "listen") { setLocation(`/podcast/${side}-office`); return; }
     if (method === "watch" && side === "morning") { setLocation("/ncmp/watch"); return; }
-    // Venite — open today's office on venite.app and credit the side, same as
-    // the in-office chooser's handoff.
+    // Venite — hand off through the OFFICE DECK rather than opening it here.
+    //
+    // This path used to open venite.app and credit the office on the spot, then
+    // navigate away: a mis-tap counted a whole office, the one-minute dwell
+    // rule never applied, and because it unmounted immediately there was no
+    // return handler left to correct anything. That is exactly the bug the
+    // deck's own hand-off was rewritten to fix; this second entry point kept
+    // the old behaviour. Routing through the deck reuses the dwell test, the
+    // "Continue" state, the credit-on-return and the Options menu — and lets a
+    // devotion side serve the devotion, which the hard-coded call here never
+    // could.
     if (method === "venite" && canPrayOnVenite(side)) {
-      try { sessionStorage.setItem("phoebe:venite-side", side); } catch { /* private mode */ }
-      openExternal(veniteOfficeUrl(side));
-      markOfficeBookComplete(side);
-      setLocation("/daily-progress");
+      setLocation(`/bcp/daily-office?mode=${side}&venite=1`);
       return;
     }
     setShowBook(method === "book");
