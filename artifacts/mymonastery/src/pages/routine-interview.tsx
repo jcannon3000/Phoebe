@@ -1236,7 +1236,10 @@ export default function RoutineInterviewPage() {
                     // an intrinsic width from its native control that ignores
                     // width:100%, which is what made the 7:00 AM row sit wider
                     // than the cards above it.
-                    ...card, width: "100%", maxWidth: "100%", minWidth: 0,
+                    // Sized to the value, not the slide — a five-character
+                    // time in a full-width bar reads as an unfinished text
+                    // field (owner, on the customizer's twin of this row).
+                    ...card, width: "auto", maxWidth: 190, minWidth: 0,
                     boxSizing: "border-box", color: WARM,
                     fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark", padding: "13px 14px",
                   }}

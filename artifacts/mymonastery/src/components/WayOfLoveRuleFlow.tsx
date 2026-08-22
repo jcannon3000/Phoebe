@@ -442,6 +442,21 @@ export default function WayOfLoveRuleFlow({
   // computed from it would skip the slide entirely for the admin it's for.
   const { rawIsAdmin: isSuperAdmin } = useBetaStatus();
   const [entryChoiceMade, setEntryChoiceMade] = useState(false);
+  /**
+   * Manual path, second question: rebuild the whole thing, or change one part?
+   *
+   * Owner: "when they [choose] 'I'll set it up myself', before it goes straight
+   * into the morning it should show their routine ... first it should ask,
+   * start from scratch or edit part."
+   *
+   * Walking someone through eight slides to move one reminder is how a small
+   * change becomes an accidental rewrite — the same reason the questionnaire
+   * grew an adjust mode. Only shown when there IS a routine to edit.
+   */
+  const [manualMode, setManualMode] = useState<"pick" | "scratch" | "edit">("pick");
+  const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
+  const [editLoaded, setEditLoaded] = useState(false);
+  const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
   // Whether this person has any past routine to go back to — read synchronously
   // from the flag the snapshot save leaves behind (see the effect below).
   const [hasRoutineHistory] = useState(() => {
@@ -866,6 +881,18 @@ export default function WayOfLoveRuleFlow({
    * guests (no account to read) and for prescribe mode (the admin is designing
    * for someone else — snapshotting their own routine there would be noise).
    */
+  // What they already keep, described the same way the questionnaire's review
+  // describes it — so "edit part" shows the same words the other flow does.
+  useEffect(() => {
+    if (guest || prescribe || pilot) { setEditLoaded(true); return; }
+    apiRequest("GET", "/api/routine-interview/current")
+      .then((r: any) => {
+        setEditRows(Array.isArray(r?.settings) ? r.settings : []);
+      })
+      .catch(() => { /* no routine to edit — the scratch path is the fallback */ })
+      .finally(() => setEditLoaded(true));
+  }, [guest, prescribe, pilot]);
+
   useEffect(() => {
     if (guest || prescribe || pilot) return;
     apiRequest("POST", "/api/me/routine-snapshots", { source: "customizer" })
@@ -1595,6 +1622,162 @@ export default function WayOfLoveRuleFlow({
     entryChoice === "ask" && !isSuperAdmin ? "manual"
       : entryChoice === "revert" && !canRevert ? "manual"
         : entryChoice;
+  /**
+   * Manual path → "start from scratch" or "edit part of it".
+   *
+   * Sits after the entry chooser and before the first real slide. Skipped
+   * entirely when there's nothing to edit (a first author, a guest, prescribe
+   * mode), so a blank routine never gets asked which half of nothing to change.
+   */
+  const canEditParts = !guest && !prescribe && !pilot && editLoaded && editRows.length > 0;
+
+  /** Where the gear on each row goes — the step that actually owns it. */
+  const stepForRow = (id: string): Step | null => {
+    if (id === "side:morning") return "morning-way";
+    if (id === "side:evening") return "evening-way";
+    if (id === "contemplation") return "contemplation-goal";
+    if (id.startsWith("slot:")) return "contemplative";
+    if (id.startsWith("card:")) return "learn";
+    if (id.startsWith("custom:")) return "custom";
+    return null;
+  };
+
+  /** Clear one practice from the customizer's own state. Committed like any
+   *  other edit — on Continue — so it can still be backed out of. */
+  const clearEditRow = (id: string) => {
+    touchedRef.current = true;
+    if (id === "side:morning" || id === "side:evening") {
+      const side: OfficeSide = id === "side:morning" ? "morning" : "evening";
+      choosePrayBySide(side, "none");
+      setContemplationBySide((p) => ({ ...p, [side]: false }));
+    } else if (id === "contemplation") {
+      setContemplationBySide({ morning: false, evening: false });
+      chooseGoal("0");
+    } else if (id.startsWith("slot:")) {
+      const key = id.slice("slot:".length);
+      setContemplative((c) => ({ ...c, [key]: false }));
+      setExtras((e) => (key in e ? { ...e, [key]: false } : e));
+    } else if (id.startsWith("card:")) {
+      setNewsletters((prev) => prev.filter((n) => n !== id.slice("card:".length)));
+    }
+    setEditRows((prev) => prev.filter((r) => r.id !== id));
+    setDeletingEditRow(null);
+  };
+
+  // The manual path's own first question.
+  if (entryChoiceMade && canEditParts && manualMode === "pick") {
+    return shell(
+      <>
+        {stepHeader(
+          t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }),
+          t("wol_rule.manual_pick_title", { defaultValue: "What would you like to do?" }),
+        )}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.manual_pick_body", {
+            defaultValue: "Change one part of what you already keep, or build the whole rhythm again from the beginning.",
+          })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(
+            // Neither is pre-selected: this slide is a fork, and tapping a row
+            // takes it immediately, so a highlighted default would be a lie
+            // about where you already are.
+            false,
+            `✏️ ${t("wol_rule.manual_edit", { defaultValue: "Edit part of it" })}`,
+            t("wol_rule.manual_edit_sub", { defaultValue: "Pick the one thing you want to change. Everything else stays as it is." }),
+            () => setManualMode("edit"),
+          )}
+          {choiceRow(
+            false,
+            `🌱 ${t("wol_rule.manual_scratch", { defaultValue: "Start from scratch" })}`,
+            t("wol_rule.manual_scratch_sub", { defaultValue: "Go through every slide and set the whole rhythm again." }),
+            () => setManualMode("scratch"),
+          )}
+        </div>
+      </>,
+    );
+  }
+
+  // "Edit part of it" — the routine as a list, each row with a gear and an ✕,
+  // the same shape the questionnaire's review uses (owner).
+  if (entryChoiceMade && canEditParts && manualMode === "edit") {
+    const circle: React.CSSProperties = {
+      width: 30, height: 30, flexShrink: 0, borderRadius: 999,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
+      color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
+    };
+    return shell(
+      <>
+        {stepHeader(
+          t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" }),
+          t("wol_rule.manual_edit_title", { defaultValue: "Your rhythm" }),
+        )}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
+          {t("wol_rule.manual_edit_body", { defaultValue: "Tap the gear to change a practice, or the ✕ to take it off." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {editRows.map((r) => (
+            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, padding: "13px 14px" }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+              </span>
+              {stepForRow(r.id) && (
+                <button
+                  type="button"
+                  aria-label={`Settings for ${r.label}`}
+                  onClick={() => { const st = stepForRow(r.id); if (st) { setManualMode("scratch"); setStep(st); } }}
+                  style={circle}
+                >
+                  ⚙
+                </button>
+              )}
+              <button type="button" aria-label={`Remove ${r.label}`} onClick={() => setDeletingEditRow({ id: r.id, label: r.label })} style={circle}>
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setManualMode("scratch"))}
+        <button
+          type="button"
+          onClick={() => setManualMode("pick")}
+          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 14, fontFamily: FONT, cursor: "pointer", padding: "10px 12px" }}
+        >
+          {t("common.back", { defaultValue: "Back" })}
+        </button>
+
+        {deletingEditRow && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setDeletingEditRow(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(4,12,7,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: 18, maxWidth: 380, width: "100%", boxSizing: "border-box" }}>
+              <p style={{ color: CREAM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: 0 }}>
+                Remove {deletingEditRow.label}?
+              </p>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
+                It comes off when you finish. You can add it back any time.
+              </p>
+              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                <button type="button" onClick={() => clearEditRow(deletingEditRow.id)} style={{ flex: 1, background: CTA, color: CREAM, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+                  Remove
+                </button>
+                <button type="button" onClick={() => setDeletingEditRow(null)} style={{ flex: 1, background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+                  Keep it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>,
+    );
+  }
+
   if (showEntryChoice && !entryChoiceMade) {
     return shell(
       <>
@@ -2106,47 +2289,15 @@ export default function WayOfLoveRuleFlow({
             </div>
           </>
         )}
-        {/* Contemplation is this side's prayer → also ask HOW LONG it is (the
-            default the home "Begin" opens straight into). A Creation Prayer
-            side asks in BREATHS (the /cobreathe preset); a silent sit asks in
-            minutes (the shared silence goal / timer length). */}
-        {contemplationBySide[side] && (
-          <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 10px", fontFamily: FONT }}>
-              {isCobreatheSide
-                ? t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })
-                : t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
-            </p>
-            <div style={{ position: "relative", marginBottom: 4 }}>
-              {isCobreatheSide ? (
-                <select
-                  value={String(cobreatheBreaths)}
-                  onChange={(e) => chooseCobreatheBreaths(side, parseInt(e.target.value, 10) || 12)}
-                  aria-label={t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })}
-                  style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-                >
-                  {COBREATHE_LENGTHS.map((n) => (<option key={n} value={String(n)}>{t("wol_rule.n_breaths", { count: n, defaultValue: `${n} breaths` })}</option>))}
-                </select>
-              ) : (
-                <select
-                  value={String(minutesBySide[side])}
-                  onChange={(e) => chooseSideMinutes(side, parseInt(e.target.value, 10) || 15)}
-                  aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
-                  style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-                >
-                  {[5, 10, 15, 20].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
-                </select>
-              )}
-              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-            </div>
-          </>
-        )}
-        {/* Daily reminder — a gentle push to pray this side, at the time you set
-            (or off). Restored per owner. The commit writes the office-reminder
-            pref + time the server's daily push reads. */}
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.reminder_label", { side: cap.toLowerCase(), defaultValue: `Remind me to pray each ${cap.toLowerCase()}` })}
-        </p>
+        {/* The per-side "How long is your sit?" row USED to live here. Owner:
+            "we never want 'how long is your sit' in the same slide with the
+            evening office — take that row out."
+
+            It was the last place the app still treated silence as a property
+            of a side rather than a rhythm of its own. Sitting under the office
+            dropdowns it also read as part of the office, which is how a
+            whole-day quota kept coming back as two per-side sits. The daily
+            amount is set once, on the Silence slide. */}
         {/* Owner: "combine the reminder on or off into one line, and if it is
             off hide the time." One switch row instead of two mutually
             exclusive choice rows — on/off is a binary, and rendering it as two
@@ -2202,7 +2353,11 @@ export default function WayOfLoveRuleFlow({
                   });
                 }}
                 aria-label={t("wol_rule.reminder_time", { defaultValue: "Reminder time" })}
-                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
+                // Owner, three times: "the 6 PM is still too wide." It wasn't
+                // overflowing — it was a full-slide bar holding five
+                // characters, which reads as a text field someone forgot to
+                // size. A time is a small value; the control should be small.
+                style={{ ...FROST_BLUR, width: "auto", maxWidth: 190, minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
               />
             </div>
           )}
