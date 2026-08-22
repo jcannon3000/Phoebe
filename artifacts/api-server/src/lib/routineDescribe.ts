@@ -103,7 +103,30 @@ function logMethodLabel(rc: Record<string, string>): string {
 // own confirmation slide (owner: "we show what we are hearing for morning,
 // contemplation, and evening ... each one has a slide").
 export type SpecSection = "morning" | "contemplation" | "evening" | "newsletters" | "practices";
-export type SpecRow = { emoji: string; label: string; sub: string; section: SpecSection };
+/**
+ * `id` names WHAT the row is, so the review screen can edit or delete it.
+ *
+ * Owner: "when it presents your routine, we want to be able to click into them
+ * and edit them — a settings circle, and an X circle to delete."
+ *
+ * A row was previously just an emoji, a label and a sentence: enough to read,
+ * nothing to act on. Matching back on the label would break the first time a
+ * practice was renamed or translated, so each row now carries the key its
+ * settings actually live under.
+ *
+ *   side:morning | side:evening   an office/devotion anchor
+ *   contemplation                 the silent sit (per-side or the daily goal)
+ *   card:cac | card:fdd | …       a newsletter, by home-layout key
+ *   slot:walk | slot:listening…   a practice placed at a time of day
+ *   custom:<title>                added client-side, has no server key
+ */
+export type SpecRow = {
+  id: string;
+  emoji: string;
+  label: string;
+  sub: string;
+  section: SpecSection;
+};
 
 export function describeSpec(spec: {
   officePrefs: { morning: string; evening: string; morningTime: string | null; eveningTime: string | null; contemplationGoalMinutes: number };
@@ -131,6 +154,7 @@ export function describeSpec(spec: {
     const medium = entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")
       ? ENTRY_LABEL[entry] : "";
     rows.push({
+      id: `side:${side}`,
       emoji: side === "morning" ? "🌅" : "🌙",
       label: LEVEL_LABEL[level] ? `${cap} ${LEVEL_LABEL[level]}` : `${cap} Prayer`,
       sub: medium || (side === "morning" ? "Each morning" : "Each evening"),
@@ -140,6 +164,7 @@ export function describeSpec(spec: {
     if (rc[`phoebe:office:contemplation:${side}`] === "1") {
       const mins = rc[`phoebe:office:minutes:${side}`];
       rows.push({
+        id: "contemplation",
         emoji: "🕯️",
         label: `${cap} Contemplation`,
         sub: [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
@@ -152,6 +177,7 @@ export function describeSpec(spec: {
       && rc["phoebe:office:contemplation:morning"] !== "1"
       && rc["phoebe:office:contemplation:evening"] !== "1") {
     rows.push({
+      id: "contemplation",
       emoji: "🕯️",
       label: "Silence",
       sub: `${spec.officePrefs.contemplationGoalMinutes} min a day · ${logMethodLabel(rc)}`,
@@ -166,7 +192,7 @@ export function describeSpec(spec: {
   const hidden = new Set(spec.homeLayout.hidden);
   for (const key of spec.homeLayout.order) {
     if (!NEWSLETTER_LABEL[key] || hidden.has(key)) continue;
-    rows.push({ emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day", section: "newsletters" });
+    rows.push({ id: `card:${key}`, emoji: key === "vts" ? "🦩" : "📖", label: NEWSLETTER_LABEL[key], sub: "Each day", section: "newsletters" });
   }
 
   for (const [k, v] of Object.entries(rc)) {
@@ -197,7 +223,7 @@ export function describeSpec(spec: {
     // afternoon" describes a gate the app does not apply. Reading is the one
     // that still honours its slot, and still reads back as chosen.
     const sub = ALWAYS_ANYTIME.has(key) ? SLOT_LABEL["anytime"]! : SLOT_LABEL[v];
-    rows.push({ emoji: PRACTICE_EMOJI[key] ?? "✨", label: name, sub, section });
+    rows.push({ id: `slot:${key}`, emoji: PRACTICE_EMOJI[key] ?? "✨", label: name, sub, section });
   }
   return rows;
 }

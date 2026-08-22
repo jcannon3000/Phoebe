@@ -1133,6 +1133,7 @@ then. "notes" may be an empty array when nothing needed judgement.`;
       // Shown on the read-back and the review like any other row, so a custom
       // practice can be corrected the same way a preset one can.
       ...customPractices.map((c) => ({
+        id: `custom:${c.title}`,
         emoji: c.emoji, label: c.title,
         sub: SLOT_LABEL[c.slot] ?? "Each day",
         section: "practices" as SpecSection,

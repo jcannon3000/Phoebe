@@ -156,7 +156,9 @@ type CustomPractice = { title: string; emoji: string; slot: string };
 type Spec = Record<string, unknown>;
 // Same shape the manual customizer's review rows use.
 type SpecSection = "morning" | "contemplation" | "evening" | "newsletters" | "practices";
-type SpecRow = { emoji: string; label: string; sub: string; section: SpecSection };
+// `id` names what the row IS, so it can be edited or deleted — see the server's
+// routineDescribe.ts for the shapes ("side:morning", "slot:walk", …).
+type SpecRow = { id: string; emoji: string; label: string; sub: string; section: SpecSection };
 
 
 /**
@@ -316,6 +318,11 @@ export default function RoutineInterviewPage() {
   // else" revealed a textarea below the fold and autoFocus raised the keyboard
   // over it, so the caret was somewhere you couldn't see.
   const freeTextRef = useRef<HTMLTextAreaElement | null>(null);
+  // Review-screen row editing. Owner: "a settings circle, and an X circle on
+  // the right — settings to configure it, X to delete it, with some type of
+  // popup that says [are you sure] you want to delete it."
+  const [editingRow, setEditingRow] = useState<string | null>(null);
+  const [deletingRow, setDeletingRow] = useState<SpecRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -1060,6 +1067,7 @@ export default function RoutineInterviewPage() {
             d.homeLayout.hidden = (d.homeLayout.hidden ?? []).filter((k: string) => k !== choice.key);
           });
           setSettings((prev) => [...prev, {
+            id: `slot:${choice.key}`,
             emoji: choice.emoji, label: choice.label,
             sub: SLOT_TEXT[choice.slot!] ?? "Each day", section: "contemplation",
           }]);
@@ -1079,6 +1087,7 @@ export default function RoutineInterviewPage() {
         d.homeLayout.hidden = (d.homeLayout.hidden ?? []).filter((k: string) => k !== "contemplation");
       });
       setSettings((prev) => [...prev, {
+        id: "contemplation",
         emoji: "🕯️", label: "Silence",
         sub: `${contMinutes} min a day · ${contLog === "manual" ? "tap to log" : "with a timer"}`,
         section: "contemplation",
@@ -1569,7 +1578,7 @@ export default function RoutineInterviewPage() {
           const h = hidden.indexOf(e.key);
           if (h >= 0) hidden.splice(h, 1);
           if (e.slot) rc[`phoebe:slot:${e.key}`] = e.slot;
-          added.push({ emoji: e.emoji, label: e.label, sub: e.slot ? SLOT_TEXT[e.slot] ?? "Each day" : "Each day", section: "practices" });
+          added.push({ id: e.slot ? `slot:${e.key}` : `card:${e.key}`, emoji: e.emoji, label: e.label, sub: e.slot ? SLOT_TEXT[e.slot] ?? "Each day" : "Each day", section: "practices" });
         }
         next.homeLayout = { ...hl, order, hidden };
         next.ruleConfig = rc;
@@ -1591,6 +1600,7 @@ export default function RoutineInterviewPage() {
         if (!already) {
           setCustomPractices((prev) => [...prev, { title: typed.slice(0, 40), emoji: "🌿", slot: "anytime" }]);
           setSettings((prev) => [...prev, {
+            id: `custom:${typed.slice(0, 40)}`,
             emoji: "🌿", label: typed.slice(0, 40), sub: "Any time of day", section: "practices",
           }]);
         }
@@ -1702,6 +1712,84 @@ export default function RoutineInterviewPage() {
     );
   }
 
+  /**
+   * Editing and deleting a row on the review.
+   *
+   * Both work off the row's `id` rather than its label — a label is display
+   * text, and matching on it breaks the first time a practice is renamed.
+   *
+   * Delete removes the practice from the SPEC as well as from the list: a row
+   * that vanished from the screen while its rule-config entry survived would be
+   * the worst of both, applying a practice they'd just told us to drop.
+   */
+  const patchReviewSpec = (fn: (draft: any) => void) => {
+    setSpec((prev) => {
+      const draft = JSON.parse(JSON.stringify(prev ?? {}));
+      draft.officePrefs = draft.officePrefs ?? {};
+      draft.ruleConfig = draft.ruleConfig ?? {};
+      draft.homeLayout = draft.homeLayout ?? { order: [], hidden: [] };
+      fn(draft);
+      return draft;
+    });
+  };
+
+  const hideCard = (draft: any, key: string) => {
+    draft.homeLayout.order = (draft.homeLayout.order ?? []).filter((k: string) => k !== key);
+    const hidden: string[] = draft.homeLayout.hidden ?? [];
+    if (!hidden.includes(key)) hidden.push(key);
+    draft.homeLayout.hidden = hidden;
+  };
+
+  const deleteRow = (row: SpecRow) => {
+    const [kind, rest] = [row.id.slice(0, row.id.indexOf(":")), row.id.slice(row.id.indexOf(":") + 1)];
+    patchReviewSpec((d) => {
+      if (row.id === "contemplation") {
+        d.officePrefs.contemplationGoalMinutes = 0;
+        delete d.ruleConfig["phoebe:office:contemplation:morning"];
+        delete d.ruleConfig["phoebe:office:contemplation:evening"];
+        delete d.ruleConfig["phoebe:office:minutes:morning"];
+        delete d.ruleConfig["phoebe:office:minutes:evening"];
+        delete d.ruleConfig["phoebe:contemplation-sits"];
+        hideCard(d, "contemplation");
+        return;
+      }
+      if (kind === "side") {
+        // "ask" is how Phoebe says a side has no anchor — the same thing the
+        // customizer's None option sets.
+        d.ruleConfig[`phoebe:office:level:${rest}`] = "ask";
+        delete d.ruleConfig[`phoebe:office:entry:${rest}`];
+        d.officePrefs[rest] = "none";
+        d.officePrefs[`${rest}Time`] = null;
+        // Only drop the office card when NEITHER side is left using it.
+        const other = rest === "morning" ? "evening" : "morning";
+        const otherLevel = d.ruleConfig[`phoebe:office:level:${other}`];
+        if (!otherLevel || otherLevel === "ask") hideCard(d, "office");
+        return;
+      }
+      if (kind === "slot") { delete d.ruleConfig[`phoebe:slot:${rest}`]; hideCard(d, rest); return; }
+      if (kind === "card") { hideCard(d, rest); return; }
+    });
+    if (row.id.startsWith("custom:")) {
+      const title = row.id.slice("custom:".length);
+      setCustomPractices((prev) => prev.filter((c) => c.title !== title));
+    }
+    setSettings((prev) => prev.filter((r) => r.id !== row.id));
+    setDeletingRow(null);
+    setEditingRow(null);
+  };
+
+  /** The slot rows and custom practices share one setting: time of day. */
+  const setRowSlot = (row: SpecRow, slot: string) => {
+    if (row.id.startsWith("slot:")) {
+      const key = row.id.slice("slot:".length);
+      patchReviewSpec((d) => { d.ruleConfig[`phoebe:slot:${key}`] = slot; });
+    } else if (row.id.startsWith("custom:")) {
+      const title = row.id.slice("custom:".length);
+      setCustomPractices((prev) => prev.map((c) => (c.title === title ? { ...c, slot } : c)));
+    }
+    setSettings((prev) => prev.map((r) => (r.id === row.id ? { ...r, sub: SLOT_TEXT[slot] ?? "Each day" } : r)));
+  };
+
   // ── 3. Review ──────────────────────────────────────────────────────────────
   const reviewPrefs = ((spec as any)?.officePrefs ?? {}) as {
     morning?: string; evening?: string; morningTime?: string | null; eveningTime?: string | null;
@@ -1744,15 +1832,102 @@ export default function RoutineInterviewPage() {
             routine and programming another. */}
         {settings.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {settings.map((r, i) => (
-              <div key={`${r.label}-${i}`} style={rowCard}>
-                <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
-                  <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
-                </span>
-              </div>
-            ))}
+            {settings.map((r, i) => {
+              const open = editingRow === r.id;
+              // Only rows with something to configure get a gear. A newsletter
+              // is on or off — offering settings that hold nothing is worse
+              // than offering none.
+              const slotEditable = r.id.startsWith("slot:") || r.id.startsWith("custom:");
+              const configurable = slotEditable || r.id === "contemplation" || r.id.startsWith("side:");
+              const circle: React.CSSProperties = {
+                width: 30, height: 30, flexShrink: 0, borderRadius: 999,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(255,255,255,0.06)", border: `1px solid ${CARD_B}`,
+                color: SAGE, fontSize: 14, cursor: "pointer", padding: 0,
+              };
+              return (
+                <div key={r.id || `${r.label}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  <div style={rowCard}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
+                      <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
+                    </span>
+                    {configurable && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // The office and the sit already HAVE a full editor —
+                          // their read-back slide, with the format dropdown,
+                          // the reminder switch and the sit controls. Send them
+                          // there rather than growing a second copy here that
+                          // would drift from the first.
+                          const target = r.id === "contemplation"
+                            ? "contemplation"
+                            : r.id.startsWith("side:") ? r.id.slice("side:".length) : null;
+                          if (target) {
+                            const idx = confirmSections.findIndex((sec) => sec.key === target);
+                            if (idx >= 0) {
+                              setError(null);
+                              setEditingRow(null);
+                              setConfirmIndex(idx);
+                              setPhase("confirm");
+                              return;
+                            }
+                          }
+                          setEditingRow(open ? null : r.id);
+                        }}
+                        aria-label={`Settings for ${r.label}`}
+                        aria-expanded={open}
+                        style={{ ...circle, background: open ? "rgba(45,94,63,0.55)" : circle.background, color: open ? WARM : SAGE }}
+                      >
+                        ⚙
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDeletingRow(r)}
+                      aria-label={`Remove ${r.label}`}
+                      style={{ ...circle, marginLeft: 8 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {open && (
+                    <div style={{ ...card, marginTop: -2, borderTopLeftRadius: 0, borderTopRightRadius: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                      {slotEditable && (
+                        <div>
+                          <p style={{ ...eyebrow, marginBottom: 8 }}>When</p>
+                          <SelectPill
+                            value={(Object.keys(SLOT_TEXT).find((k) => SLOT_TEXT[k] === r.sub)) ?? "anytime"}
+                            ariaLabel={`When you keep ${r.label}`}
+                            onChange={(v) => setRowSlot(r, v)}
+                          >
+                            {Object.entries(SLOT_TEXT).map(([k, label]) => (
+                              <option key={k} value={k}>{label}</option>
+                            ))}
+                          </SelectPill>
+                        </div>
+                      )}
+                      {(r.id === "contemplation" || r.id.startsWith("side:")) && (
+                        <p style={{ color: SAGE, fontFamily: FONT, fontSize: 13, lineHeight: 1.55, margin: 0 }}>
+                          {/* The office and the sit are configured on their own
+                              read-back slides, which carry the reminder switch,
+                              the format dropdown and the sit controls. Pointing
+                              back there beats reproducing all of it twice and
+                              letting the two copies drift. */}
+                          {r.id === "contemplation"
+                            ? "How often you sit, how long, and how you keep it"
+                            : "The format and the reminder"} are set on the read-back
+                          screen for this part of your day.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -1805,6 +1980,63 @@ export default function RoutineInterviewPage() {
         <button type="button" onClick={() => { setError(null); setPhase("extras"); }} style={quietBtn}>
           Not quite — go back
         </button>
+
+        {/* Delete confirmation. Owner: "X to delete it, and have some type of
+            popup that says [are you sure] you want to delete it." Worth the
+            interruption — the ✕ sits inches from the gear on a phone, and the
+            thing behind it is a practice they just spent five screens
+            describing. */}
+        {deletingRow && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Remove ${deletingRow.label}`}
+            onClick={() => setDeletingRow(null)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 300,
+              background: "rgba(4,12,7,0.72)",
+              backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+              display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...card, maxWidth: 380, width: "100%", boxSizing: "border-box" }}
+            >
+              <p style={{ color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 700, margin: 0 }}>
+                Remove {deletingRow.label}?
+              </p>
+              <p style={{ color: SAGE, fontFamily: FONT, fontSize: 14, lineHeight: 1.55, margin: "8px 0 0" }}>
+                It won't be part of the rhythm you save. You can add it back in
+                Customize whenever you like.
+              </p>
+              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                <button
+                  type="button"
+                  onClick={() => deleteRow(deletingRow)}
+                  style={{
+                    flex: 1, background: CTA, color: WARM, border: `1px solid ${CARD_B}`,
+                    borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 700,
+                    fontFamily: FONT, cursor: "pointer",
+                  }}
+                >
+                  Remove
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingRow(null)}
+                  style={{
+                    flex: 1, background: "transparent", color: SAGE,
+                    border: "1px solid rgba(143,175,150,0.25)", borderRadius: 12,
+                    padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
+                  }}
+                >
+                  Keep it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
