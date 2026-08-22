@@ -63,6 +63,31 @@ function getUserId(req: any): number | null {
 // practice you already keep.
 const MODEL = process.env.ROUTINE_INTERVIEW_MODEL || "gpt-5.6-luna";
 
+/**
+ * The two calls are different jobs, so they can run on different models.
+ *
+ * Owner: "there's two or three different times we run things through the LLM —
+ * could the [one] be a higher model and the clarifying ones a lower model?"
+ *
+ * FOLLOW-UPS is the judgment call, and the one worth paying for. It has to
+ * notice what someone DIDN'T say — that a detailed morning never mentioned
+ * silence, and that the gap matters more than the exact minute of a reminder —
+ * and it gets two or three questions to do it in. It also has NO safety net: a
+ * wasted question is a gap that never gets filled, and nothing downstream can
+ * recover it.
+ *
+ * BUILD is mapping free text onto a fixed vocabulary, and it is heavily
+ * guarded: sanitizeSpec allowlists every field, scrubRuleConfig rejects values
+ * that aren't real, PRESET_BY_TITLE folds mislabelled presets back, and
+ * normalizeContemplation / defaultEntryToVenite / hideUnchosen fix the
+ * structural mistakes deterministically. Its failure modes are the ones we
+ * already catch, which is exactly where a cheaper model is safe.
+ *
+ * Both default to ROUTINE_INTERVIEW_MODEL, so setting nothing changes nothing.
+ */
+const FOLLOWUP_MODEL = process.env.ROUTINE_INTERVIEW_FOLLOWUP_MODEL || MODEL;
+const BUILD_MODEL = process.env.ROUTINE_INTERVIEW_BUILD_MODEL || MODEL;
+
 // ── Phoebe's vocabulary ──────────────────────────────────────────────────────
 // Kept as ONE string used by both calls so the two can't describe different
 // apps. Every value here is one sanitizeSpec() actually accepts — if you add a
@@ -354,15 +379,15 @@ type OpenAiResult = { ok: true; data: any } | { ok: false; status: number; error
 // modern shape and fall back ONCE on a 400 mentioning a parameter. Costs one
 // wasted request the first time someone points this at a legacy model, and
 // nothing at all otherwise.
-function requestBody(system: string, user: string, budget: number, legacy: boolean) {
+function requestBody(system: string, user: string, budget: number, legacy: boolean, model: string) {
   const messages = [
     { role: "system", content: system },
     { role: "user", content: user },
   ];
   return legacy
-    ? { model: MODEL, temperature: 0.2, max_tokens: budget, response_format: { type: "json_object" }, messages }
+    ? { model, temperature: 0.2, max_tokens: budget, response_format: { type: "json_object" }, messages }
     : {
-        model: MODEL,
+        model,
         max_completion_tokens: budget,
         reasoning_effort: "low",
         response_format: { type: "json_object" },
@@ -370,7 +395,12 @@ function requestBody(system: string, user: string, budget: number, legacy: boole
       };
 }
 
-async function askOpenAi(system: string, user: string, maxTokens: number): Promise<OpenAiResult> {
+async function askOpenAi(
+  system: string,
+  user: string,
+  maxTokens: number,
+  model: string = MODEL,
+): Promise<OpenAiResult> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
     return { ok: false, status: 503, error: "ai_unconfigured" };
@@ -392,7 +422,7 @@ async function askOpenAi(system: string, user: string, maxTokens: number): Promi
       return await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify(requestBody(system, user, budget, legacy)),
+        body: JSON.stringify(requestBody(system, user, budget, legacy, model)),
         signal: controller.signal,
       });
     } finally {
@@ -412,7 +442,7 @@ async function askOpenAi(system: string, user: string, maxTokens: number): Promi
       }
     }
   } catch (err) {
-    console.warn(`[routine-interview] OpenAI network error (model "${MODEL}"):`, err);
+    console.warn(`[routine-interview] OpenAI network error (model "${model}"):`, err);
     return { ok: false, status: 502, error: "ai_unreachable" };
   }
   if (!res.ok) {
@@ -420,7 +450,7 @@ async function askOpenAi(system: string, user: string, maxTokens: number): Promi
     // Name the model in the log: the commonest cause of a 404 here is a model
     // this account cannot see, and a log line that omits WHICH model sends you
     // hunting through env vars.
-    console.warn(`[routine-interview] OpenAI ${res.status} for model "${MODEL}": ${body.slice(0, 300)}`);
+    console.warn(`[routine-interview] OpenAI ${res.status} for model "${model}": ${body.slice(0, 300)}`);
     // Distinguish the failures that need a HUMAN to fix something from the ones
     // that are worth retrying. They used to collapse into one "couldn't reach
     // the assistant", which reads as a network blip — so a bad key or a model
@@ -484,6 +514,97 @@ function cleanText(v: unknown, max: number): string {
 //
 // Keep in sync with mymonastery/src/lib/officePrefs.ts (OfficeLevel,
 // DefaultOfficeEntry, ReflectionSource) and lib/customAnchors.ts (CustomSlot).
+
+/**
+ * What Phoebe can hold, in PLAIN WORDS — for the question-asking call only.
+ *
+ * The follow-up call used to get PHOEBE_VOCAB: a thousand words of ruleConfig
+ * key syntax ("phoebe:office:level:<side>", allowed enum values, homeLayout
+ * mechanics). It writes no rule-config and never will. Measured, 60% of its
+ * prompt was instructions for an output it doesn't produce — spent by the one
+ * call whose whole job is judgment about a person.
+ *
+ * What it actually needs is the SHAPE of what's answerable, so it can tell a
+ * real gap from a detail. That's this: names, not keys.
+ */
+const PRACTICE_MENU_PLAIN = `
+WHAT PHOEBE CAN RECORD — so you know what counts as an answer:
+
+  Morning, and evening, each hold ONE main practice. It can be the Daily Office
+  (Morning/Evening Prayer), a short devotion, the appointed psalms, the day's
+  readings, Simple Guided Prayer, the Examen, Forward Day by Day, a silent sit,
+  Compline, or something they name themselves. A side can also be empty.
+
+  How they take an office: from their prayer book, on a screen, read aloud, or
+  on venite.app. DON'T ASK — a later screen offers this as a dropdown.
+
+  Silence: whether they sit, how many minutes ALL TOLD across the day, and
+  whether that's one sit or several.
+
+  Daily reflections, any number: the CAC meditation, Forward Day by Day, SSJE,
+  the VTS Dean's Commentary.
+
+  Practices kept through the day: a contemplative walk, sacred listening,
+  Creation Prayer (a guided breath), reading.
+
+  Anything else they keep is recorded under its own name, so an unusual
+  practice is never a problem — you don't need to force it onto this list.
+
+  Reminders are ON by default at a sensible hour. Only worth asking about if
+  they raise the subject.
+`.trim();
+
+/**
+ * The scribe framing, written for ASKING rather than programming.
+ *
+ * TRANSCRIBE_NOT_PRESCRIBE is six numbered rules about producing a spec —
+ * don't lengthen their times, leave the reminder "none", your notes describe
+ * what you recorded. All correct for the build call, all noise for this one.
+ */
+const ASKING_BRIEF = `
+Someone has just described the daily prayer practice they ALREADY KEEP, in
+their own words. Your only job is to decide what still isn't clear, and ask.
+
+You are a scribe, not a spiritual director. You are not designing a rhythm or
+improving one. A question that nudges them toward a fuller practice is a
+failure of this task even if the practice would be good for them.
+
+An unmentioned area is a gap in YOUR KNOWLEDGE, not a hole in their life. Ask
+because you don't know, never because something is missing.
+`.trim();
+
+/**
+ * One worked example. The rules describe how to phrase a question; this shows
+ * the harder thing — WHICH questions are worth spending, and why the obvious
+ * ones aren't. That judgment is the whole reason this call exists, and it was
+ * the one thing the prompt never demonstrated.
+ */
+const FOLLOWUP_EXAMPLE = `
+WORKED EXAMPLE — what good judgement looks like here.
+
+They wrote: "I do Morning Prayer most days from my prayer book, usually around
+7. I read the CAC meditation with my coffee. Evenings are hit or miss."
+
+Good questions:
+  · "Do you pray anything in the evening on the days it does happen?"
+  · "Is there any part of the day you spend in silence?"
+
+Why those: the morning is fully answered — "Morning Prayer" names the office,
+"from my prayer book" names the form, "around 7" names the time, so asking
+anything about the morning wastes a question. "Hit or miss" says the evening
+EXISTS but not what it is. Silence was never mentioned at all, and an unasked
+silence is the difference between a rhythm with a contemplative centre and one
+without.
+
+Bad questions, and why:
+  · "How do you take Morning Prayer?" — already answered, and it's a dropdown
+    later regardless.
+  · "Would you like to add Compline?" — proposes a practice. Not your job.
+  · "What time do you read the CAC meditation?" — a detail that changes almost
+    nothing about the routine.
+`.trim();
+
+
 const RC_LEVELS = new Set([
   "ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd",
   "readings", "psalms", "examen", "creation", "guided-prayer", "custom", "compline",
@@ -887,9 +1008,28 @@ router.post("/routine-interview/followups", perUserRateLimit("routine_interview_
   const description = cleanText(req.body?.description, 4000);
   if (description.length < 10) { res.status(400).json({ error: "too_short" }); return; }
 
-  const system = `${TRANSCRIBE_NOT_PRESCRIBE}
+  /**
+   * The follow-up prompt is NOT the build prompt.
+   *
+   * It used to be: both calls got TRANSCRIBE_NOT_PRESCRIBE (six rules about
+   * writing a spec) plus PHOEBE_VOCAB (a thousand words of ruleConfig key
+   * syntax). Measured, 60% of this call's prompt described an output it never
+   * produces — spent by the one call whose entire job is judgment about a
+   * person. It now gets the asking brief, the four areas, the Episcopal
+   * reading, the voice, a plain menu of what's answerable, and a worked
+   * example of which questions are worth spending.
+   */
+  const system = `${ASKING_BRIEF}
 
-${PHOEBE_VOCAB}
+${FOUR_THINGS}
+
+${EPISCOPAL_LENS}
+
+${VOICE}
+
+${PRACTICE_MENU_PLAIN}
+
+${FOLLOWUP_EXAMPLE}
 
 Right now you are ONLY asking follow-up questions — do not produce a routine yet.
 
@@ -979,6 +1119,7 @@ often), never about the rest of their day.`
     askSystem,
     adjusting ? `WHAT THEY WANT TO ADJUST:\n${description}` : `THEIR DESCRIPTION:\n${description}`,
     500,
+    FOLLOWUP_MODEL,
   );
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
 
@@ -1085,7 +1226,7 @@ then. "notes" may be an empty array when nothing needed judgement.`;
       : "",
   ].join("");
 
-  const out = await askOpenAi(system, userMsg, 2000);
+  const out = await askOpenAi(system, userMsg, 2000, BUILD_MODEL);
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
 
   // sanitizeSpec returns null when homeLayout.order is empty — a reasonable
