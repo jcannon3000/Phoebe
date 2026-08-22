@@ -396,12 +396,30 @@ async function askOpenAi(system: string, user: string, maxTokens: number): Promi
       }
     }
   } catch (err) {
-    console.warn("[routine-interview] OpenAI network error:", err);
+    console.warn(`[routine-interview] OpenAI network error (model "${MODEL}"):`, err);
     return { ok: false, status: 502, error: "ai_unreachable" };
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    console.warn(`[routine-interview] OpenAI ${res.status}: ${body.slice(0, 300)}`);
+    // Name the model in the log: the commonest cause of a 404 here is a model
+    // this account cannot see, and a log line that omits WHICH model sends you
+    // hunting through env vars.
+    console.warn(`[routine-interview] OpenAI ${res.status} for model "${MODEL}": ${body.slice(0, 300)}`);
+    // Distinguish the failures that need a HUMAN to fix something from the ones
+    // that are worth retrying. They used to collapse into one "couldn't reach
+    // the assistant", which reads as a network blip — so a bad key or a model
+    // this account can't see looked like weather, and nobody went to check.
+    // Nothing from the upstream body is echoed to the client; only which KIND
+    // of failure it was.
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, status: 502, error: "ai_bad_key" };
+    }
+    if (res.status === 404 || /model_not_found|does not exist|do not have access/i.test(body)) {
+      return { ok: false, status: 502, error: "ai_bad_model" };
+    }
+    if (res.status === 429) {
+      return { ok: false, status: 502, error: "ai_rate_limited" };
+    }
     return { ok: false, status: 502, error: "ai_failed" };
   }
   const payload = (await res.json().catch(() => null)) as

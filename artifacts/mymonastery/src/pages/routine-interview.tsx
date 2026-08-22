@@ -297,6 +297,15 @@ export default function RoutineInterviewPage() {
     switch (code) {
       case "ai_unconfigured":
         return "The assistant isn't switched on yet for this server.";
+      // Three failures that need a person to change something, named
+      // separately so they can't be mistaken for a passing network blip and
+      // waited out.
+      case "ai_bad_key":
+        return "The assistant's API key was rejected. It needs updating on the server.";
+      case "ai_bad_model":
+        return "The assistant's model isn't available to this server's account. Check ROUTINE_INTERVIEW_MODEL.";
+      case "ai_rate_limited":
+        return "The assistant is over its rate limit right now. Give it a minute.";
       case "ai_unreachable":
       case "ai_failed":
         return "Couldn't reach the assistant just now. Try again in a moment.";
