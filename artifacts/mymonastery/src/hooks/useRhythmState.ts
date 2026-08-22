@@ -816,7 +816,16 @@ export function useRhythmState(): RhythmState {
   // their morning or evening, fill in the dot... based on where they
   // prayed the prayer list."
   const prayerListSlot = getPrayerListSlot();
-  const prayerListSlotDone = intentionsTotalCount > 0 && intentionsPrayedCount >= intentionsTotalCount;
+  // Declared here, above the anchor clause that reads it. It used to sit ~90
+  // lines further down, which made that read a use-before-declaration —
+  // evaluated during render, so it would throw rather than merely misbehave.
+  const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
+  // Same signal the card and the pill use — walking the slideshow, not a tally.
+  // This clause (the prayer list satisfying a side's anchor) was the last place
+  // still counting items, so a complete walk that skipped two prayers filled
+  // the Prayer List card and its dot while leaving Morning un-kept: exactly the
+  // disagreement the card was moved off counting to remove.
+  const prayerListSlotDone = intentionsTotalCount > 0 && prayerListDone;
   /**
    * A side whose custom anchor names a real practice completes when THAT
    * practice is kept.
@@ -902,7 +911,6 @@ export function useRhythmState(): RhythmState {
   // satisfies eveningDone below and complineActive is false — so there's no
   // case where the two should credit each other.
   const complineDone = complineActive && (officeLocal.compline || (!officeUndone.compline && !!todayOffice?.compline));
-  const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
@@ -1081,7 +1089,12 @@ export function useRhythmState(): RhythmState {
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
     ...(complineActive ? [complineDone] : []),
-    ...(prayerListActive ? [prayerListDone] : []),
+    // Only an anchor when there IS a list. The layout check alone counted it
+    // for everyone — including guests, whose intentions query never runs — so
+    // totalAnchors carried a practice with no card and no dot, doneCount
+    // stopped one short forever, and "the day is kept" could never fire. The
+    // card and the pill dot already gate on this; the count now agrees.
+    ...(prayerListActive && intentionsTotalCount > 0 ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),

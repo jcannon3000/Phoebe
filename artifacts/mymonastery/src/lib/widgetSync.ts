@@ -337,7 +337,12 @@ export function useWidgetSync(): void {
     r.silenceActive, r.silenceDone, r.reflectActive, reflSig,
     r.cobreatheActive, r.cobreatheDone, r.listeningActive, r.listeningDone,
     r.walkActive, r.walkDone, r.complineActive, r.complineDone,
-    r.readingActive, r.readingDone, r.prayerListActive, r.prayerListDone,
+    // podcastsActive/Done are READ by this effect (the Way of Love item) and
+    // were missing here, while prayerListActive/Done were listed but never
+    // read — the Prayer List is deliberately excluded from the widget's items.
+    // So logging a podcast changed nothing the effect depended on and the
+    // widget kept showing it as next-up until some unrelated refresh.
+    r.readingActive, r.readingDone, r.podcastsActive, r.podcastsDone,
     r.examenActive, r.examenDone,
     r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title, r.novenaReplacesMorning, r.novenaReplacesEvening,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
