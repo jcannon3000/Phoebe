@@ -900,13 +900,12 @@ export default function WayOfLoveRuleFlow({
   // Set once the user touches any control — so a slow office-prefs response
   // can't clobber a choice they've already made while it was loading.
   const touchedRef = useRef(false);
-  // Picking ANY practice for a side also clears a pending "None" on it —
-  // every row on the way slide routes through here, so choosing a practice
-  // after tapping None can't leave None still marked and silently switch the
-  // side off on Continue.
+  // No longer has to clear a pending "None": the None row is gone, and a side
+  // being off is now derived from nothing being selected (see sideIsBlank), so
+  // selecting a practice turns the side back on by definition rather than by
+  // remembering to reset a second flag.
   const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => {
     touchedRef.current = true;
-    setSideOffPending((prev) => (prev[side] ? { ...prev, [side]: false } : prev));
     setPrayBySide((prev) => ({ ...prev, [side]: p }));
   };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
@@ -1429,12 +1428,23 @@ export default function WayOfLoveRuleFlow({
   // wait until they hit continue to put it into effect so it doesn't break."
   // Tapping None only marks the row; `sides` flips on Continue, and navigation
   // uses the step list computed from the NEW sides rather than the stale one.
-  const [sideOffPending, setSideOffPending] = useState<Record<OfficeSide, boolean>>(() => ({
-    morning: !sides.morning,
-    evening: !sides.evening,
-  }));
+  /**
+   * A side is OFF when nothing on its slide is selected.
+   *
+   * Owner: "instead of doing a 'none' card, let's just have it if they don't
+   * click one." Derived rather than stored, so the row highlighting and the
+   * on/off state cannot disagree — which is exactly what a separate
+   * sideOffPending flag allowed: a side could be marked None while a practice
+   * still showed as chosen.
+   *
+   * Still deferred to Continue (the original reason the flag existed): `sides`
+   * only flips in wayContinue, so the slide someone is standing on can't
+   * vanish underneath them mid-tap.
+   */
+  const sideIsBlank = (side: OfficeSide): boolean =>
+    prayBySide[side] === "none" && !contemplationBySide[side];
   const wayContinue = (side: OfficeSide) => {
-    const turningOff = sideOffPending[side];
+    const turningOff = sideIsBlank(side);
     const nextSides = { ...sides, [side]: !turningOff };
     // Nothing changed for this side — the ordinary path.
     if (nextSides[side] === sides[side]) { goNext(); return; }
@@ -1758,7 +1768,16 @@ export default function WayOfLoveRuleFlow({
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
+          {/* Owner: "have the question be, how would you like to pray in the
+              evening? Select one — select your method, or leave blank if you
+              would like to not have a practice in the evening." The second
+              sentence is doing real work now that the None row is gone: with
+              nothing selected meaning "this side is off", that has to be said
+              out loud or it's a hidden rule. */}
+          {t("wol_rule.side_way_body", {
+            side: cap.toLowerCase(),
+            defaultValue: `How would you like to pray in the ${cap.toLowerCase()}? Select one — or leave it blank if you'd rather not have a practice in the ${cap.toLowerCase()}.`,
+          })}
         </p>
         {/* SIMPLIFIED daily-prayer choice (owner): exactly two ways, single-select
             — the Book of Common Prayer (its type + medium chosen on the next
@@ -1788,7 +1807,11 @@ export default function WayOfLoveRuleFlow({
               `🙌 ${label}`,
               sub,
               () => {
-                if (selected) return; // already selected
+                // Tapping the selected row CLEARS it. Owner: "instead of a
+                // 'none' card, let's just have it that if they don't click one
+                // ... I can't unclick either of them." A side with nothing
+                // chosen is a side that's off.
+                if (selected) { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
                 touchedRef.current = true;
                 if (contemplationBySide[side]) toggleContemplationSide(side);
                 choosePrayBySide(side, isEveningExamen ? "examen" : "guidedPrayer");
@@ -1812,7 +1835,7 @@ export default function WayOfLoveRuleFlow({
             // this same choice.
             const bcpSub = t("wol_rule.pray_bcp_sub", { defaultValue: "Prayer with the BCP — Psalms, Devotion, or the full Office." });
             return choiceRow(bcpOn, `📖 ${t("wol_rule.pray_bcp_label", { defaultValue: "With the Book of Common Prayer" })}`, bcpSub, () => {
-              if (bcpOn) return; // already selected — nothing to switch
+              if (bcpOn) { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
               touchedRef.current = true;
               // Selecting BCP replaces any per-side contemplation on this side
               // (silent Contemplation OR the Creation Prayer breath).
@@ -1838,7 +1861,10 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.cp_contemplation_sub", { defaultValue: "A silent sit — loving God in silence." }),
             () => {
               const on = contemplationBySide[side] && contemplationStyle === "silent";
-              if (on) return; // already selected — nothing to switch
+              // Reported: "I can't unclick contemplative." Turning it off is
+              // the only way to say "no silent sit on this side", and without
+              // it the row was a one-way door.
+              if (on) { touchedRef.current = true; toggleContemplationSide(side); return; }
               touchedRef.current = true;
               if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               choosePrayBySide(side, "none");
@@ -1846,25 +1872,6 @@ export default function WayOfLoveRuleFlow({
               chooseContemplationStyle("silent");
               chooseSideMinutes(side, 10);
               if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
-            },
-          )}
-          {/* Forward Day by Day as the morning prayer itself — morning only,
-              above "Create your own" at the bottom of the list (owner).
-              Choosing it also follows it as a daily reflection (see the
-              "learn" step below), so it shows checked there too — same
-              signal in both places. Unchecking it on "learn" later is
-              fine; that step notes when it's still the morning practice
-              even if unchecked as a reflection. */}
-          {side === "morning" && choiceRow(
-            prayBySide[side] === "fdd",
-            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`,
-            t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
-            () => {
-              if (prayBySide[side] === "fdd") return; // already selected
-              touchedRef.current = true;
-              if (contemplationBySide[side]) toggleContemplationSide(side);
-              choosePrayBySide(side, "fdd");
-              setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
             },
           )}
           {/* Create your own — name a practice of your own and it BECOMES this
@@ -1879,28 +1886,30 @@ export default function WayOfLoveRuleFlow({
             `✨ ${t("wol_rule.cp_custom", { defaultValue: "Create your own" })}`,
             t("wol_rule.cp_custom_sub", { defaultValue: "Name a practice of your own." }),
             () => {
-              if (prayBySide[side] === "ownPractice") return; // already selected
+              if (prayBySide[side] === "ownPractice") { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
               touchedRef.current = true;
               if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               if (contemplationBySide[side]) toggleContemplationSide(side);
               choosePrayBySide(side, "ownPractice");
             },
           )}
-          {/* None — turn this side off entirely (owner). Replaces the removed
-              "when" step's Morning/Evening checkboxes. Deferred: this only
-              marks the row; `sides` flips on Continue (see wayContinue), so
-              the slide the user is standing on can't vanish under them. */}
-          {choiceRow(
-            sideOffPending[side],
-            `🚫 ${t("wol_rule.pray_none_label", { defaultValue: "None" })}`,
-            t("wol_rule.pray_none_sub", {
-              side: cap.toLowerCase(),
-              defaultValue: `No ${cap.toLowerCase()} prayer — skip this side of the day.`,
-            }),
+          {/* Forward Day by Day as the morning prayer itself — morning only,
+              above "Create your own" at the bottom of the list (owner).
+              Choosing it also follows it as a daily reflection (see the
+              "learn" step below), so it shows checked there too — same
+              signal in both places. Unchecking it on "learn" later is
+              fine; that step notes when it's still the morning practice
+              even if unchecked as a reflection. */}
+          {side === "morning" && choiceRow(
+            prayBySide[side] === "fdd",
+            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`,
+            t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
             () => {
-              if (sideOffPending[side]) return; // already selected
+              if (prayBySide[side] === "fdd") { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
               touchedRef.current = true;
-              setSideOffPending((p) => ({ ...p, [side]: true }));
+              if (contemplationBySide[side]) toggleContemplationSide(side);
+              choosePrayBySide(side, "fdd");
+              setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
             },
           )}
         </div>

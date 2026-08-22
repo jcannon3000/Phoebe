@@ -686,7 +686,21 @@ function normalizeContemplation(spec: {
         Math.min(180, mins),
       );
     }
-    delete rc[`phoebe:office:contemplation:${side}`];
+    // Write "0", don't DELETE — and this one is worth spelling out.
+    //
+    // getSideContemplationExplicit() returns NULL for a missing key, and the
+    // customizer has a legacy migration keyed on exactly that: "a goal with no
+    // explicit per-side pick must be an old global goal, so check BOTH sides."
+    // Deleting the keys here made a freshly-built routine look exactly like
+    // that legacy state, so opening Customize turned a 90-minute daily quota
+    // into Morning + Evening Contemplation at 5 minutes each — and finishing
+    // the customizer then wrote those sits back over the quota. Reported as:
+    // "when I went to the manual it showed morning and evening instead of
+    // being a quota ... and I didn't change anything."
+    //
+    // "0" means off. Absence means unknown. They are not the same thing, and
+    // the difference was a routine quietly rewriting itself.
+    rc[`phoebe:office:contemplation:${side}`] = "0";
     delete rc[`phoebe:office:minutes:${side}`];
   }
 }

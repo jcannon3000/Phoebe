@@ -44,6 +44,12 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:contemplation-minutes",
   "phoebe:office:show-cac-close", "phoebe:office:show-fdd-close", "phoebe:office:show-ssje-close",
   "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:contemplation-style", "phoebe:contemplation-log-method",
+  // Whether the daily silence is one sit or several. Reported: "even though I
+  // had multiple sits saved, it defaulted to one sit when I came back" — the
+  // interview was writing it into the spec, but a key missing from THIS list is
+  // never mirrored to localStorage and never synced, so it could not survive
+  // the trip back.
+  "phoebe:contemplation-sits",
   // Creation Prayer breath-count preset (customizer "How many breaths?" +
   // the /cobreathe Length dropdown share this key).
   "phoebe:cobreathe-length",
