@@ -1791,6 +1791,19 @@ export async function migrate() {
     `);
     // The only read pattern: this user's snapshots, newest first.
     await run(client, `CREATE INDEX IF NOT EXISTS routine_snapshots_user_created_idx ON routine_snapshots (user_id, created_at)`);
+
+    // What each person's daily silence goal WAS on a given day, so raising the
+    // goal can't retroactively un-keep days they actually kept. Written lazily
+    // when the practice week is computed.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS contemplation_goal_history (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ymd TEXT NOT NULL,
+        goal_minutes INTEGER NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, ymd)
+      )
+    `);
     // source: a display tag for WHERE a contemplation sit came from, distinct
     // from `surface` (which stays "contemplation" so the goal/stats/streak
     // rollups keep counting it). Today only "cobreathe" is set — so the

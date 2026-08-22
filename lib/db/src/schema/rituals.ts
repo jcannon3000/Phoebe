@@ -9,7 +9,6 @@ export const ritualsTable = pgTable("rituals", {
   description: text("description"),
   frequency: text("frequency").notNull(),
   dayPreference: text("day_preference"),
-  participants: jsonb("participants").notNull().default([]),
   intention: text("intention"),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   location: text("location"),
@@ -32,13 +31,9 @@ export const ritualsTable = pgTable("rituals", {
   // Onboarding template the creator picked (coffee, meal, walk, book_club, custom).
   // Used so the dashboard can show a matching emoji (e.g. 🚶🏽 for a walk).
   template: text("template"),
-  // Toggle: when true, any member of the gathering can invite new people.
-  // When false, only the owner can. Default is open.
-  allowMemberInvites: boolean("allow_member_invites").notNull().default(true),
   // Optional link to a community. When set, this gathering shows up on
-  // the community's Gatherings tab and every joined member of the
-  // community is auto-added as a participant at create time. Null for
-  // "personal" gatherings that aren't scoped to a community.
+  // the community's Gatherings tab. Null for "personal" gatherings that
+  // aren't scoped to a community.
   groupId: integer("group_id"),
 });
 

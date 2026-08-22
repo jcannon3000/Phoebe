@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray } from "drizzle-orm";
-import { db, ritualsTable, usersTable, momentUserTokensTable } from "@workspace/db";
+import { db, usersTable, momentUserTokensTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -19,18 +19,8 @@ router.get("/contacts/search", async (req, res): Promise<void> => {
   const userId = (req.user as { id: number }).id;
   const lq = q.toLowerCase();
 
-  // ── 1. Members from existing traditions (rituals) ─────────────────────────
-  const rituals = await db.select({ participants: ritualsTable.participants })
-    .from(ritualsTable)
-    .where(eq(ritualsTable.ownerId, userId));
-
-  const ritualMembers: Array<{ name: string; email: string }> = [];
-  for (const r of rituals) {
-    const parts = (r.participants as Array<{ name: string; email: string }>) ?? [];
-    for (const p of parts) {
-      if (p.email) ritualMembers.push({ name: p.name ?? p.email, email: p.email });
-    }
-  }
+  // Members from existing traditions (rituals) was removed as a contact
+  // source — gatherings no longer carry a participants list.
 
   // ── 2. Members from existing practices (moments) ──────────────────────────
   const [userRow] = await db.select({ email: usersTable.email })
@@ -70,7 +60,6 @@ router.get("/contacts/search", async (req, res): Promise<void> => {
     }
   };
 
-  for (const p of ritualMembers) addIfMatch(p);
   for (const p of momentMembers) addIfMatch(p);
 
   res.json(merged.slice(0, 15));

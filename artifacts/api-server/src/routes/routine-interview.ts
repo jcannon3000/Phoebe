@@ -35,7 +35,7 @@
 import { Router, type IRouter } from "express";
 import { sanitizeSpec, applyRoutineSpecToUser, captureRoutineSpec, HOME_MODULE_KEYS } from "../lib/routineSpec";
 import { perUserRateLimit } from "../lib/rate-limit";
-import { describeSpec, SLOT_LABEL, type SpecSection } from "../lib/routineDescribe";
+import { describeSpec, SLOT_LABEL, type SpecRow, type SpecSection } from "../lib/routineDescribe";
 import { saveRoutineSnapshot } from "./routine-snapshots";
 
 const router: IRouter = Router();
@@ -763,6 +763,33 @@ router.get("/routine-interview/current", async (req, res): Promise<void> => {
   }
 });
 
+
+/**
+ * Which parts of the day an adjustment actually touched.
+ *
+ * Owner: "if we're in the adjustment flow and the adjustment does not pertain
+ * to the morning or evening practice, don't go through morning and evening and
+ * contemplation on the third stage. If it's pertaining to the morning, just
+ * show morning."
+ *
+ * Derived by DIFFING the rebuilt routine against the one in force, not by
+ * asking the model what it changed. A model reporting on its own edit is the
+ * same unreliable narrator the review rows were introduced to get away from —
+ * and here a wrong answer either hides a change they never agreed to, or makes
+ * them re-confirm two parts of their day they never mentioned.
+ *
+ * Compared as rendered rows, because that's exactly what the read-back shows:
+ * if the slide would look identical, there is nothing on it to confirm.
+ */
+function changedSections(before: SpecRow[], after: SpecRow[]): SpecSection[] {
+  const key = (rows: SpecRow[], section: SpecSection) =>
+    JSON.stringify(
+      rows.filter((r) => r.section === section).map((r) => [r.emoji, r.label, r.sub]),
+    );
+  const sections: SpecSection[] = ["morning", "contemplation", "evening"];
+  return sections.filter((sec) => key(before, sec) !== key(after, sec));
+}
+
 // ── POST /api/routine-interview/followups ────────────────────────────────────
 // Owner: "let's have it be at least two questions, but have it be as ... many
 // questions as needed to clarify." So: a floor of two, a ceiling of five, and
@@ -956,6 +983,16 @@ then. "notes" may be an empty array when nothing needed judgement.`;
 
   const buildAdjusting = req.body?.mode === "adjust";
   const buildContext = buildAdjusting ? await currentRoutineContext(userId) : "";
+  // Snapshot how the routine reads BEFORE the change, so the diff below has
+  // something to compare against. Only for an adjustment — a from-scratch build
+  // has no "before" and confirms every part of the day.
+  let beforeRows: SpecRow[] = [];
+  if (buildAdjusting) {
+    try {
+      const cur = await captureRoutineSpec(userId);
+      if (cur) beforeRows = describeSpec(cur);
+    } catch { /* no baseline — fall back to confirming everything */ }
+  }
 
   const userMsg = [
     buildContext ? `${buildContext}\n\n` : "",
@@ -1000,15 +1037,23 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   const notes = [...modelNotes, ...scrubNotes, ...(cardNote ? [cardNote] : [])].slice(0, 8);
 
   const customPractices = parseCustomPractices(out.data?.customPractices);
+  const afterRows = describeSpec(spec);
+  // Empty for a from-scratch build, and for an adjustment with no baseline —
+  // both of which mean "confirm the whole day", which is what the client does
+  // when this is absent.
+  const touched = buildAdjusting && beforeRows.length > 0
+    ? changedSections(beforeRows, afterRows)
+    : [];
 
   res.json({
     spec,
+    changedSections: touched,
     customPractices,
     summary: cleanText(out.data?.summary, 800),
     // Derived from the sanitized spec, not from the model — this is what the
     // review screen asks them to approve. See describeSpec.
     settings: [
-      ...describeSpec(spec),
+      ...afterRows,
       // Shown on the read-back and the review like any other row, so a custom
       // practice can be corrected the same way a preset one can.
       ...customPractices.map((c) => ({

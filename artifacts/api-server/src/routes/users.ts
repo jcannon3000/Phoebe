@@ -10,6 +10,7 @@ import {
   morningPrayerCacheTable,
   userConnectionsCacheTable,
   waitlistTable,
+  contemplationGoalHistoryTable,
 } from "@workspace/db";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
@@ -738,16 +739,61 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     for (const r of contRows.rows) {
       contemplationMinByDay.set(r.day, (contemplationMinByDay.get(r.day) ?? 0) + (Number(r.secs) || 0) / 60);
     }
-    // Every day (today AND past) is judged against the CURRENT goal, not just
-    // "any sit that day" for past days — owner: a day short of the goal
-    // should stay half-shaded once it rolls into the past, not flip to fully
-    // kept. (This drops the old "don't retroactively unkeep a day if you
-    // later raise your goal" protection — a real tradeoff, but the owner
-    // explicitly wants an under-goal day to keep reading as incomplete.)
+    /**
+     * Each day is judged against the goal that was in force ON THAT DAY.
+     *
+     * Both of the owner's rules hold together this way. A day short of its own
+     * goal stays half-shaded when it rolls into the past — and raising the goal
+     * from 20 to 45 no longer reaches back and un-keeps a fortnight of days
+     * that genuinely met 20. Judging history by today's rule let the app
+     * rewrite someone's past to say they'd fallen short of something that
+     * didn't exist yet.
+     *
+     * Today's goal is recorded here, on read, rather than at the five places
+     * that write users.contemplation_goal_minutes — one read-side choke point
+     * can't be forgotten by the sixth writer.
+     */
+    try {
+      await db
+        .insert(contemplationGoalHistoryTable)
+        .values({ userId: sessionUserId, ymd: todayYmd, goalMinutes: contemplationGoalMin })
+        .onConflictDoUpdate({
+          target: [contemplationGoalHistoryTable.userId, contemplationGoalHistoryTable.ymd],
+          set: { goalMinutes: contemplationGoalMin },
+        });
+    } catch (err) {
+      // Never fail the weekly grid over its own bookkeeping.
+      console.warn("[practice-week] goal-history write failed:", err);
+    }
+
+    const goalHistory = await db
+      .select({
+        ymd: contemplationGoalHistoryTable.ymd,
+        goalMinutes: contemplationGoalHistoryTable.goalMinutes,
+      })
+      .from(contemplationGoalHistoryTable)
+      .where(eq(contemplationGoalHistoryTable.userId, sessionUserId));
+    goalHistory.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0));
+
+    // The goal in force on `day`: the most recent record dated on or before it.
+    // For days BEFORE we started recording, use the earliest record rather than
+    // today's goal — those days were kept under some older rule we never saw,
+    // and the current one is the least likely candidate.
+    const goalOn = (day: string): number => {
+      if (goalHistory.length === 0) return contemplationGoalMin;
+      let g = goalHistory[0]!.goalMinutes;
+      for (const row of goalHistory) {
+        if (row.ymd > day) break;
+        g = row.goalMinutes;
+      }
+      return g;
+    };
+
     const contemplation = new Set<string>();
     const contemplationPartial = new Set<string>();
     for (const [day, mins] of contemplationMinByDay) {
-      const met = contemplationGoalMin > 0 ? mins >= contemplationGoalMin : mins > 0;
+      const dayGoal = goalOn(day);
+      const met = dayGoal > 0 ? mins >= dayGoal : mins > 0;
       if (met) contemplation.add(day);
       else if (mins > 0) contemplationPartial.add(day);
     }

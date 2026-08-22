@@ -1,9 +1,7 @@
-import { getInviteBaseUrl } from "../lib/urls";
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, and, ne, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { db, ritualsTable, meetupsTable, ritualMessagesTable, usersTable, momentUserTokensTable, groupMembersTable, groupsTable, ritualGroupsTable } from "@workspace/db";
-import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, createGatheringCalendarEvent, updateGatheringCalendarEvent } from "../lib/calendar";
+import { db, ritualsTable, meetupsTable, ritualMessagesTable, usersTable, groupMembersTable, groupsTable, ritualGroupsTable } from "@workspace/db";
 import { sendNewGatheringPush } from "../lib/pushSender";
 import {
   CreateRitualBody,
@@ -29,171 +27,6 @@ import { getWelcomeMessage, getCoordinatorResponse } from "../lib/agent";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
-
-// ─── Multi-community helpers ─────────────────────────────────────────────────
-// A gathering's "linked groups" = its primary host (rituals.group_id)
-// UNION the rows in ritual_groups. Most fan-outs (push, calendar
-// attendees, access checks) want the union, so isolate it here to
-// avoid drifting variants across the file.
-
-async function resolveLinkedGroupIds(ritualId: number, primaryGroupId: number | null): Promise<number[]> {
-  // Wrap the ritual_groups read so a brand-new deploy whose migration
-  // hasn't created the table yet doesn't take down every fan-out path
-  // (calendar sync, push, access checks). On a missing table we just
-  // fall back to the primary host group — matches behavior pre-multi-
-  // community.
-  let rows: Array<{ groupId: number }> = [];
-  try {
-    rows = await db
-      .select({ groupId: ritualGroupsTable.groupId })
-      .from(ritualGroupsTable)
-      .where(eq(ritualGroupsTable.ritualId, ritualId));
-  } catch {
-    rows = [];
-  }
-  const set = new Set<number>(rows.map((r) => r.groupId));
-  if (primaryGroupId != null) set.add(primaryGroupId);
-  return Array.from(set);
-}
-
-// ─── Gathering calendar-invite sync ──────────────────────────────────────────
-// Keep the meetup's Google Calendar event in lock-step with its scheduled
-// time and attendee list. SCOPED INTENTIONALLY: only fires for VIDEO-CALL
-// gatherings (ritual.meetingUrl present) tied to a community
-// (ritual.groupId != null). In-person gatherings — even community ones —
-// don't get Google Calendar invites; that's a deliberate product choice.
-// Personal rituals are never touched. Every non-gathering caller of
-// calendar.ts continues to use the attendee-less helpers.
-//
-// Behavior:
-//   • no event yet  → creates one with the joined group members as
-//                     attendees (excluding the creator and any
-//                     hidden_admin observers). sendUpdates:"all" so
-//                     Google emails the invitation.
-//   • event exists  → patches start/end/attendees so a moved gathering
-//                     re-notifies the attendees.
-//
-// Fire-and-forget at call sites — meetup creation/confirmation still
-// succeeds in the API response even if Google's Calendar API hiccups.
-async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
-  try {
-    const [meetup] = await db
-      .select()
-      .from(meetupsTable)
-      .where(eq(meetupsTable.id, meetupId))
-      .limit(1);
-    if (!meetup) return;
-
-    const [ritual] = await db
-      .select()
-      .from(ritualsTable)
-      .where(eq(ritualsTable.id, meetup.ritualId))
-      .limit(1);
-    if (!ritual || ritual.groupId == null) return; // personal ritual — no community to invite
-
-    // ── Video-call-only gate ──
-    // A gathering counts as a video call when the ritual carries a
-    // non-empty meetingUrl (the field set by the "video call" gathering
-    // format on creation). Anything else — in-person addresses,
-    // unspecified — is intentionally skipped.
-    const meetingUrl = (ritual.meetingUrl ?? "").trim();
-    if (!meetingUrl) return;
-
-    // Linked communities = primary host + any additional invited
-    // communities. The attendee list is the UNION of joined members
-    // across all of them (deduped by email), so a multi-community
-    // gathering produces one calendar event with the full roster.
-    const linkedGroupIds = await resolveLinkedGroupIds(ritual.id, ritual.groupId);
-    if (linkedGroupIds.length === 0) return;
-
-    const [group] = await db
-      .select({ name: groupsTable.name })
-      .from(groupsTable)
-      .where(eq(groupsTable.id, ritual.groupId));
-
-    // Joined members with a usersTable row, excluding the creator (they
-    // already know — and including them tends to surface a duplicate
-    // event on their own calendar). NULL-safe role check matches the
-    // newsletter route's IS DISTINCT FROM pattern.
-    const memberRows = await db
-      .select({ email: usersTable.email })
-      .from(groupMembersTable)
-      .innerJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
-      .where(
-        and(
-          inArray(groupMembersTable.groupId, linkedGroupIds),
-          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-          sql`${groupMembersTable.role} IS DISTINCT FROM 'hidden_admin'`,
-          ne(groupMembersTable.userId, ritual.ownerId),
-        ),
-      );
-    // Dedup by lowercased email so a single person who happens to be in
-    // both communities still only gets one invite.
-    const attendees = Array.from(
-      new Set(memberRows.map((m) => m.email.toLowerCase())),
-    );
-
-    // No attendees AND no existing event → solo gathering, nothing to
-    // do. If there IS an existing event but the attendee list became
-    // empty (everyone left the linked communities), still PATCH with
-    // an empty attendee array below so Google notifies the old
-    // attendees the gathering is no longer for them, instead of
-    // silently leaving them on a stale invite.
-    if (attendees.length === 0 && !meetup.googleCalendarEventId) return;
-
-    const startDate = new Date(meetup.scheduledDate);
-    if (Number.isNaN(startDate.getTime())) return;
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1h default
-
-    // A short description with the host community name + the meeting
-    // link itself so the calendar event is "tap to join" without
-    // bouncing through Phoebe. Google Calendar turns URLs in
-    // descriptions into clickable links automatically.
-    const description = [
-      ritual.intention?.trim() || "",
-      "",
-      `Join the call: ${meetingUrl}`,
-      "",
-      group?.name ? `Hosted by ${group.name}` : "",
-      "Sent through Phoebe — RSVPs live in the app.",
-    ].filter(Boolean).join("\n");
-
-    // For video calls, the meeting link IS the location — many
-    // calendar clients render the location prominently with a click
-    // target. Falls back to a textual location if for some reason
-    // someone set both.
-    const location = meetup.location ?? meetingUrl;
-
-    if (meetup.googleCalendarEventId) {
-      await updateGatheringCalendarEvent(meetup.googleCalendarEventId, {
-        summary: ritual.name,
-        description,
-        location,
-        startDate,
-        endDate,
-        attendees,
-      });
-      return;
-    }
-
-    const eventId = await createGatheringCalendarEvent({
-      summary: ritual.name,
-      description,
-      location,
-      startDate,
-      endDate,
-      attendees,
-    });
-    if (eventId) {
-      await db
-        .update(meetupsTable)
-        .set({ googleCalendarEventId: eventId })
-        .where(eq(meetupsTable.id, meetupId));
-    }
-  } catch (err) {
-    console.warn("[gathering-calendar] sync failed", { meetupId, err });
-  }
-}
 
 async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: typeof meetupsTable.$inferSelect[]) {
   const { streak, lastMeetupDate, nextMeetupDate: computedNext, status } = computeStreak(meetups, ritual.frequency);
@@ -254,7 +87,6 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
 
   return {
     ...ritual,
-    participants: (ritual.participants as Array<{ name: string; email: string }>) ?? [],
     streak,
     lastMeetupDate,
     nextMeetupDate,
@@ -271,18 +103,11 @@ router.get("/rituals", async (req, res): Promise<void> => {
   // ?ownerId from the query (so any user's id could be enumerated) and,
   // with no param at all, fell through to an undefined WHERE that returned
   // EVERY ritual in the system — an unauthenticated cross-tenant dump of
-  // participants and meeting logistics. Derive the owner from the session
-  // and ignore any client-supplied id.
+  // meeting logistics. Derive the owner from the session and ignore any
+  // client-supplied id.
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const ownerId: number | null = sessionUserId;
-
-  // Also fetch rituals where the user appears as a participant (by email)
-  let userEmail: string | null = null;
-  if (ownerId !== null && !isNaN(ownerId)) {
-    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, ownerId));
-    userEmail = u?.email ?? null;
-  }
 
   // Rituals visible through community membership — the user is a
   // joined member of either the ritual's primary host community
@@ -319,26 +144,18 @@ router.get("/rituals", async (req, res): Promise<void> => {
       }
     } catch {
       // ritual_groups may not exist on a fresh schema yet; fall through
-      // with no community-membership broadening (existing
-      // owner/participants path still works).
+      // with no community-membership broadening (existing owner path
+      // still works).
     }
   }
 
   const whereClause = ownerId !== null && !isNaN(ownerId)
-    ? userEmail
+    ? visibleViaCommunityRitualIds.length > 0
       ? or(
           eq(ritualsTable.ownerId, ownerId),
-          sql`${ritualsTable.participants} @> ${JSON.stringify([{ email: userEmail }])}::jsonb`,
-          visibleViaCommunityRitualIds.length > 0
-            ? inArray(ritualsTable.id, visibleViaCommunityRitualIds)
-            : undefined,
+          inArray(ritualsTable.id, visibleViaCommunityRitualIds),
         )
-      : visibleViaCommunityRitualIds.length > 0
-        ? or(
-            eq(ritualsTable.ownerId, ownerId),
-            inArray(ritualsTable.id, visibleViaCommunityRitualIds),
-          )
-        : eq(ritualsTable.ownerId, ownerId)
+      : eq(ritualsTable.ownerId, ownerId)
     : undefined;
 
   const rituals = await db
@@ -466,7 +283,6 @@ router.post("/rituals", async (req, res): Promise<void> => {
           description: body.description ?? null,
           frequency: body.frequency,
           dayPreference: body.dayPreference ?? null,
-          participants: body.participants ?? [],
           intention: body.intention ?? null,
           location,
           meetingUrl,
@@ -586,12 +402,12 @@ router.get("/rituals/:id", async (req, res): Promise<void> => {
   );
 });
 
-// Caller's access to a gathering. isMember = owner OR a participant (by email)
-// OR a joined member of the host community; isGroupAdmin = a joined admin /
-// hidden_admin of the host community. Used to gate the gathering's read/write
-// routes, which previously only checked that the ritual existed — so any
-// signed-in user could overwrite a gathering, read/inject its chat, or log
-// meetups for it by guessing the id.
+// Caller's access to a gathering. isMember = owner OR a joined member of the
+// host community; isGroupAdmin = a joined admin / hidden_admin of the host
+// community. Used to gate the gathering's read/write routes, which
+// previously only checked that the ritual existed — so any signed-in user
+// could overwrite a gathering, read/inject its chat, or log meetups for it
+// by guessing the id.
 async function getRitualAccess(ritualId: number, sessionUserId: number): Promise<
   { ritual: typeof ritualsTable.$inferSelect; isOwner: boolean; isGroupAdmin: boolean; isMember: boolean } | null
 > {
@@ -601,12 +417,6 @@ async function getRitualAccess(ritualId: number, sessionUserId: number): Promise
   let isMember = isOwner;
   let isGroupAdmin = false;
 
-  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, sessionUserId));
-  const emailLower = (u?.email ?? "").toLowerCase();
-  if (emailLower) {
-    const participants = (ritual.participants as Array<{ email?: string | null }> | null) ?? [];
-    if (participants.some(p => (p.email ?? "").toLowerCase() === emailLower)) isMember = true;
-  }
   if (ritual.groupId) {
     const [m] = await db.select({ role: groupMembersTable.role })
       .from(groupMembersTable)
@@ -634,7 +444,7 @@ router.put("/rituals/:id", async (req, res): Promise<void> => {
   }
 
   // AuthZ: only the owner or a community admin may edit a gathering. (Was
-  // unauthenticated + IDOR — any caller could overwrite name/participants/etc.)
+  // unauthenticated + IDOR — any caller could overwrite name/etc.)
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const access = await getRitualAccess(params.data.id, sessionUserId);
@@ -649,33 +459,7 @@ router.put("/rituals/:id", async (req, res): Promise<void> => {
   if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
   if (parsed.data.frequency !== undefined) updateData.frequency = parsed.data.frequency;
   if (parsed.data.dayPreference !== undefined) updateData.dayPreference = parsed.data.dayPreference;
-  if (parsed.data.participants !== undefined) {
-    // Additive MERGE, never a wholesale replace: a PATCH (often built from a
-    // stale/partial client form) could send an empty or shrunken participants
-    // array and silently erase attendees. Union the incoming list with the
-    // stored one so PATCH can only ADD — removals go through the dedicated
-    // DELETE /rituals/:id/participants/:email endpoint (which is safe).
-    const [existingRow] = await db.select({ p: ritualsTable.participants }).from(ritualsTable).where(eq(ritualsTable.id, params.data.id)).limit(1);
-    const existing = Array.isArray(existingRow?.p) ? (existingRow!.p as unknown[]) : [];
-    const incoming = Array.isArray(parsed.data.participants) ? (parsed.data.participants as unknown[]) : [];
-    const keyOf = (el: unknown): string =>
-      (el && typeof el === "object" && "email" in el) ? String((el as { email: unknown }).email).toLowerCase() : JSON.stringify(el);
-    const seen = new Set<string>();
-    const union: unknown[] = [];
-    for (const el of [...existing, ...incoming]) {
-      const k = keyOf(el);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      union.push(el);
-    }
-    updateData.participants = union as typeof updateData.participants;
-  }
   if (parsed.data.intention !== undefined) updateData.intention = parsed.data.intention;
-  // allowMemberInvites bypasses zod since the generated UpdateRitualBody
-  // doesn't include it yet — read directly from req.body.
-  if (typeof (req.body as { allowMemberInvites?: unknown }).allowMemberInvites === "boolean") {
-    updateData.allowMemberInvites = (req.body as { allowMemberInvites: boolean }).allowMemberInvites;
-  }
 
   const [ritual] = await db
     .update(ritualsTable)
@@ -892,20 +676,6 @@ router.delete("/rituals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  // Delete Google Calendar events from meetups before removing DB records
-  try {
-    const meetupsToClean = await db.select({ id: meetupsTable.id, googleCalendarEventId: meetupsTable.googleCalendarEventId })
-      .from(meetupsTable).where(eq(meetupsTable.ritualId, params.data.id));
-    for (const m of meetupsToClean) {
-      if (m.googleCalendarEventId) {
-        try {
-          await deleteCalendarEvent(sessionUserId, m.googleCalendarEventId);
-          console.info(`Deleted tradition GCal event ${m.googleCalendarEventId}`);
-        } catch { /* best effort */ }
-      }
-    }
-  } catch { /* non-fatal */ }
-
   // Delete all dependent records (tables without ON DELETE CASCADE in the actual DB)
   await db.delete(meetupsTable).where(eq(meetupsTable.ritualId, params.data.id));
   await db.delete(ritualMessagesTable).where(eq(ritualMessagesTable.ritualId, params.data.id));
@@ -957,7 +727,7 @@ router.post("/rituals/:id/meetups", async (req, res): Promise<void> => {
   }
 
   // AuthZ: only a member of the gathering may log meetups (was existence-only,
-  // so any signed-in user could inject meetups + spam calendar invites).
+  // so any signed-in user could inject meetups).
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const access = await getRitualAccess(params.data.id, sessionUserId);
@@ -973,13 +743,6 @@ router.post("/rituals/:id/meetups", async (req, res): Promise<void> => {
       notes: parsed.data.notes ?? null,
     })
     .returning();
-
-  // Fire-and-forget: send the Google Calendar invite to every joined
-  // group member if this is a community gathering. See
-  // syncMeetupCalendarInvite for the gating rules.
-  syncMeetupCalendarInvite(meetup.id).catch((err) =>
-    req.log.warn({ err, meetupId: meetup.id }, "[gathering-calendar] sync failed"),
-  );
 
   res.status(201).json(meetup);
 });
@@ -1050,13 +813,8 @@ router.post("/rituals/:id/chat", async (req, res): Promise<void> => {
     content: m.content,
   }));
 
-  const enrichedRitual = {
-    ...ritual,
-    participants: (ritual.participants as Array<{ name: string; email: string }>) ?? [],
-  };
-
   const aiResponse = await getCoordinatorResponse(
-    { ritual: enrichedRitual, streak, lastMeetupDate, nextMeetupDate },
+    { ritual, streak, lastMeetupDate, nextMeetupDate },
     chatHistory,
     parsed.data.content
   );
@@ -1142,14 +900,9 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
     return;
   }
 
-  // No RSVP/availability polling is collected — participants are informed via
-  // a Google Calendar invite (below), not an in-app response page.
-  const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-
   // Create a planned meetup row so dashboard shows the proposed date.
   // Location is per-meetup: when the organizer supplies a location with
   // proposed times, stamp it onto the planned meetup row.
-  let meetupId: number | null = null;
   try {
     if (parsed.data.proposedTimes && parsed.data.proposedTimes.length > 0) {
       const placeholderTimeISO = new Date(parsed.data.proposedTimes[0]).toISOString();
@@ -1166,135 +919,19 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
         const meetupPatch: Partial<typeof meetupsTable.$inferInsert> = { scheduledDate: placeholderTimeISO };
         if (meetupLocation !== undefined) meetupPatch.location = meetupLocation;
         await db.update(meetupsTable).set(meetupPatch).where(eq(meetupsTable.id, existingPlanned.id));
-        meetupId = existingPlanned.id;
       } else {
-        const [inserted] = await db.insert(meetupsTable).values({
+        await db.insert(meetupsTable).values({
           ritualId: id,
           scheduledDate: placeholderTimeISO,
           status: "planned",
           location: meetupLocation ?? null,
         }).returning();
-        meetupId = inserted.id;
       }
     }
   } catch (err: unknown) {
     req.log.error({ err }, "Failed to create/update planned meetup for proposed-times");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to save meetup" });
     return;
-  }
-
-  // Re-sync the Google Calendar invite for the planned meetup. The
-  // scheduledDate just changed (proposed-times moved the gathering),
-  // so any existing event needs a patch so attendees see the new time.
-  // No-op for non-video-call gatherings — syncMeetupCalendarInvite
-  // gates on ritual.meetingUrl. Fire-and-forget; the API response
-  // doesn't depend on Google.
-  if (meetupId !== null) {
-    syncMeetupCalendarInvite(meetupId).catch((err) =>
-      req.log.warn({ err, meetupId }, "[gathering-calendar] proposed-times sync failed"),
-    );
-  }
-
-  // ─── Create Google Calendar event for the tradition ─────────────────────────
-  try {
-    const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-    if (organizer && parsed.data.proposedTimes.length > 0) {
-      const appBase = getInviteBaseUrl();
-      const organizerFirstName = (organizer.name ?? organizer.email ?? "Someone").split(" ")[0];
-
-      const isOnce = ritual.frequency === "once";
-
-      // Warm one-liner — use the stored intention (tagline) if available
-      const warmLine = (ritual.intention && ritual.intention.trim())
-        ? ritual.intention.trim()
-        : isOnce
-          ? "A gathering worth keeping."
-          : "A recurring tradition worth tending.";
-
-      // Frequency label
-      const FREQ_LABELS: Record<string, string> = {
-        once: "Just once",
-        weekly: "Every week",
-        biweekly: "Every 2 weeks",
-        monthly: "Once a month",
-      };
-      const freqLabel = FREQ_LABELS[ritual.frequency] ?? ritual.frequency;
-
-      // Format proposed times for the description
-      function formatProposedTime(isoStr: string): string {
-        const d = new Date(isoStr);
-        const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-        const day = dayNames[d.getDay()];
-        const month = monthNames[d.getMonth()];
-        const date = d.getDate();
-        const h = d.getHours();
-        const m = d.getMinutes();
-        const period = h < 12 ? "AM" : "PM";
-        const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-        const minStr = m === 0 ? "" : `:${String(m).padStart(2, "0")}`;
-        return `${day}, ${month} ${date} · ${hour12}${minStr} ${period}`;
-      }
-
-      // Create ONE group calendar event with all participants as attendees.
-      // Each person gets their individual invite link via the Eleanor invite page, not the calendar.
-      const proposedTimes = parsed.data.proposedTimes;
-      // Include the organizer so they also receive a calendar invite to their own calendar
-      const attendeeEmails = [...new Set([organizer.email, ...participants.map(p => p.email)])];
-
-      // No RSVP/response page anymore — the link just opens the tradition in
-      // Phoebe (informational only, no polling to respond to).
-      const scheduleUrl = `${appBase}/ritual/${id}`;
-
-      // Build description — emoji first, creator name, link on the second line,
-      // then the practical details. No Phoebe tagline.
-      const lines: string[] = [];
-      lines.push(`🌿 ${organizerFirstName} invited you to ${ritual.name}.`);
-      lines.push(scheduleUrl);
-      lines.push("");
-
-      // A single confirmed time — no guest voting on alternates.
-      if (proposedTimes.length > 0) {
-        lines.push(`When: ${formatProposedTime(proposedTimes[0])}`);
-      }
-
-      if (ritual.location && ritual.location.trim()) {
-        lines.push(`Location: ${ritual.location.trim()}`);
-      }
-
-      lines.push(isOnce ? "A one-time gathering." : `A ${freqLabel.toLowerCase()} tradition.`);
-
-      if (warmLine && warmLine !== "A recurring tradition worth tending." && warmLine !== "A gathering worth keeping.") {
-        lines.push("");
-        lines.push(warmLine);
-      }
-
-      const description = lines.join("\n");
-      const eventStart = new Date(proposedTimes[0]);
-      const eventEnd = new Date(eventStart.getTime() + 60 * 60_000);
-
-      const eventId = await createCalendarEvent(sessionUserId, {
-        summary: ritual.name,
-        description,
-        startDate: eventStart,
-        endDate: eventEnd,
-        attendees: attendeeEmails,
-        colorId: "5",
-        status: "tentative",
-        reminders: [
-          { method: "email", minutes: 1440 },
-          { method: "popup", minutes: 120 },
-        ],
-      });
-
-      if (eventId && meetupId) {
-        await db.update(meetupsTable)
-          .set({ googleCalendarEventId: eventId })
-          .where(eq(meetupsTable.id, meetupId));
-      }
-    }
-  } catch (calErr) {
-    console.error("Tradition calendar event creation failed (non-fatal):", calErr);
   }
 
   res.json({ proposedTimes: updated.proposedTimes, confirmedTime: updated.confirmedTime });
@@ -1335,13 +972,6 @@ router.get("/rituals/:id/timeline", async (req, res): Promise<void> => {
 
   const past = allMeetups.filter((m) => m.status !== "planned");
 
-  // Check if the creator's calendar event for the upcoming meetup was deleted
-  let calendarEventMissing = false;
-  if (upcoming?.googleCalendarEventId) {
-    const calEvent = await getCalendarEvent(sessionUserId, upcoming.googleCalendarEventId);
-    if (!calEvent) calendarEventMissing = true;
-  }
-
   // Location is per-meetup: prefer the upcoming meetup's location, fall
   // back to the legacy ritual-level location for older rows.
   const upcomingLocation = upcoming?.location ?? ritual.location ?? null;
@@ -1362,7 +992,6 @@ router.get("/rituals/:id/timeline", async (req, res): Promise<void> => {
     past: past.map((m) => ({ ...m, scheduledDate: toIso(m.scheduledDate), location: m.location ?? null })),
     location: upcomingLocation,
     confirmedTime: ritual.confirmedTime,
-    calendarEventMissing,
   });
 });
 
@@ -1446,281 +1075,27 @@ router.post("/rituals/:id/confirm-time", async (req, res): Promise<void> => {
     .where(eq(meetupsTable.ritualId, id));
   const existingPlanned = existingMeetups.find((m) => m.status === "planned");
 
-  let confirmedMeetupId: number;
   if (existingPlanned) {
     await db.update(meetupsTable).set({ scheduledDate: confirmedTimeIso }).where(eq(meetupsTable.id, existingPlanned.id));
-    confirmedMeetupId = existingPlanned.id;
   } else {
-    const [inserted] = await db.insert(meetupsTable).values({
+    await db.insert(meetupsTable).values({
       ritualId: id,
       scheduledDate: confirmedTimeIso,
       status: "planned",
     }).returning({ id: meetupsTable.id });
-    confirmedMeetupId = inserted!.id;
   }
-
-  // Send/update the Google Calendar invite for the confirmed time. Fire
-  // and forget — the confirm-time endpoint succeeds even if calendar
-  // sync hiccups.
-  syncMeetupCalendarInvite(confirmedMeetupId).catch((err) =>
-    req.log.warn({ err, meetupId: confirmedMeetupId }, "[gathering-calendar] sync failed"),
-  );
 
   res.json({ confirmedTime: confirmedTimeIso });
 });
 
-// ─── GET /api/rituals/:id/connections ─────────────────────────────────────────
-// Returns Eleanor users who share a moment or tradition with the current user
-// but are NOT already a member of this tradition
-router.get("/rituals/:id/connections", async (req, res): Promise<void> => {
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const ritualId = parseInt(req.params.id, 10);
-  if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
-
-  // Gate on membership like every sibling read on this router. Without it,
-  // diffing this endpoint's output across ritual ids leaks whether a known
-  // contact participates in a stranger's gathering (audit finding #18).
-  const access = await getRitualAccess(ritualId, sessionUserId);
-  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
-  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can view its connections" }); return; }
-  const ritual = access.ritual;
-  const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-  if (!currentUser) { res.status(404).json({ error: "User not found" }); return; }
-
-  const currentParticipants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-  const currentEmails = new Set(currentParticipants.map(p => p.email.toLowerCase()));
-
-  // Collect emails from existing moment connections
-  const myMomentTokens = await db.select().from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.email, currentUser.email));
-  const momentIds = [...new Set(myMomentTokens.map(t => t.momentId))];
-  const allConnections: Map<string, string> = new Map(); // email -> name
-
-  if (momentIds.length > 0) {
-    for (const mid of momentIds) {
-      const allTokens = await db.select().from(momentUserTokensTable)
-        .where(eq(momentUserTokensTable.momentId, mid));
-      for (const t of allTokens) {
-        if (t.email.toLowerCase() !== currentUser.email.toLowerCase()) {
-          allConnections.set(t.email.toLowerCase(), t.name ?? t.email);
-        }
-      }
-    }
-  }
-
-  // Collect emails from other rituals the user is in
-  const allRituals = await db.select().from(ritualsTable);
-  for (const r of allRituals) {
-    const parts = (r.participants as Array<{ name: string; email: string }>) ?? [];
-    const isMember = parts.some(p => p.email.toLowerCase() === currentUser.email.toLowerCase());
-    if (isMember) {
-      for (const p of parts) {
-        if (p.email.toLowerCase() !== currentUser.email.toLowerCase()) {
-          allConnections.set(p.email.toLowerCase(), p.name ?? p.email);
-        }
-      }
-    }
-  }
-
-  // Filter out already-members of this tradition
-  const connections = Array.from(allConnections.entries())
-    .filter(([email]) => !currentEmails.has(email))
-    .map(([email, name]) => ({ email, name }));
-
-  res.json({ connections });
-});
-
-// ─── POST /api/rituals/:id/invite ────────────────────────────────────────────
-// Adds new participants to the tradition
-router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
-  try {
-    const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-    if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-    const ritualId = parseInt(req.params.id, 10);
-    if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
-
-    const parsed = z.object({
-      participants: z.array(z.object({ name: z.string(), email: z.string().email() })).min(1),
-    }).safeParse(req.body);
-    if (!parsed.success) { res.status(400).json({ error: "Validation failed" }); return; }
-
-    const access = await getRitualAccess(ritualId, sessionUserId);
-    if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
-    const { ritual } = access;
-    const isOwner = access.isOwner;
-    // Non-owners may invite ONLY when the ritual allows member invites AND they
-    // are actually a member/participant. The flag alone must not authorize the
-    // whole world — that turned this into an id-enumerable calendar-invite /
-    // email-spam primitive sent from our own credentials.
-    if (!isOwner && !(ritual.allowMemberInvites && access.isMember)) {
-      res.status(403).json({ error: "Only the owner can invite people to this tradition" });
-      return;
-    }
-
-    // Load the inviter so non-owner invites can be attributed in the calendar
-    const [inviter] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-
-    const current = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-    const currentEmails = new Set(current.map(p => p.email.toLowerCase()));
-
-    // Merge new participants (deduplicate by email)
-    const newParts = parsed.data.participants.filter(p => !currentEmails.has(p.email.toLowerCase()));
-    if (newParts.length === 0) {
-      res.json({ participants: current, added: [] });
-      return;
-    }
-    const merged = [...current, ...newParts];
-
-    await db.update(ritualsTable).set({ participants: merged }).where(eq(ritualsTable.id, ritualId));
-
-    // Calendar invites
-    //   - Owner inviting: add attendees to the existing shared meetup event.
-    //   - Non-owner inviting: create a one-off calendar event from the
-    //     inviter's credentials so the invitee sees the invite coming from
-    //     them (not the owner). We don't touch the shared event because
-    //     Google Calendar attribution is bound to the event owner.
-    try {
-      const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritualId));
-      const plannedMeetup = meetups.find(m => m.status === "planned");
-
-      if (isOwner && plannedMeetup?.googleCalendarEventId) {
-        const newEmails = newParts.map(p => p.email);
-        await addAttendeesToCalendarEvent(sessionUserId, plannedMeetup.googleCalendarEventId, newEmails);
-      } else if (!isOwner && plannedMeetup && inviter) {
-        const inviterFirst = (inviter.name ?? "").trim().split(/\s+/)[0] || inviter.name || "A friend";
-        const shortLink = `${getInviteBaseUrl()}/rituals/${ritualId}`;
-        const eventStart = new Date(plannedMeetup.scheduledDate);
-        const eventEnd = new Date(eventStart.getTime() + 60 * 60_000);
-        const description = [
-          `${inviterFirst} invited you to join "${ritual.name}" on Phoebe.`,
-          ritual.intention ? `"${ritual.intention}"` : null,
-          "",
-          `Open in Phoebe → ${shortLink}`,
-        ].filter(Boolean).join("\n");
-
-        for (const p of newParts) {
-          await createCalendarEvent(sessionUserId, {
-            summary: ritual.name,
-            description,
-            startDate: eventStart,
-            endDate: eventEnd,
-            attendees: [p.email],
-            colorId: "5",
-            status: "tentative",
-            reminders: [
-              { method: "email", minutes: 1440 },
-              { method: "popup", minutes: 120 },
-            ],
-          }).catch(() => null);
-        }
-      }
-    } catch { /* non-fatal */ }
-
-    res.json({ participants: merged, added: newParts });
-  } catch (err) {
-    console.error("POST /api/rituals/:id/invite error:", err);
-    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ─── DELETE /api/rituals/:id/participants/:email — owner removes a member ─────
-router.delete("/rituals/:id/participants/:email", async (req, res): Promise<void> => {
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const ritualId = parseInt(req.params.id, 10);
-  if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
-
-  const emailToRemove = decodeURIComponent(req.params.email).toLowerCase();
-
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
-
-  if (ritual.ownerId !== sessionUserId) {
-    res.status(403).json({ error: "Only the owner can remove members" });
-    return;
-  }
-
-  // Can't remove yourself
-  const [owner] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-  if (owner && owner.email.toLowerCase() === emailToRemove) {
-    res.status(400).json({ error: "Cannot remove yourself. Delete the tradition instead." });
-    return;
-  }
-
-  const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-  const updated = participants.filter(p => p.email.toLowerCase() !== emailToRemove);
-  if (updated.length === participants.length) {
-    res.status(404).json({ error: "Member not found in this tradition" });
-    return;
-  }
-
-  // Update participants array
-  await db.update(ritualsTable).set({ participants: updated }).where(eq(ritualsTable.id, ritualId));
-
-  // Remove from calendar event
-  try {
-    const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritualId));
-    const plannedMeetup = meetups.find(m => m.status === "planned" && m.googleCalendarEventId);
-    if (plannedMeetup?.googleCalendarEventId) {
-      await removeAttendeesFromCalendarEvent(sessionUserId, plannedMeetup.googleCalendarEventId, [emailToRemove]);
-    }
-  } catch { /* non-fatal */ }
-
-  res.json({ success: true, participants: updated, removed: emailToRemove });
-});
-
-// ─── POST /api/rituals/:id/restore-calendar — owner restores deleted calendar event ───
-router.post("/rituals/:id/restore-calendar", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
-
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, id));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
-  if (ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
-
-  const [planned] = await db.select().from(meetupsTable)
-    .where(and(eq(meetupsTable.ritualId, id), eq(meetupsTable.status, "planned")));
-  if (!planned) { res.status(400).json({ error: "No upcoming gathering to restore" }); return; }
-
-  const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-  const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-  if (!organizer) { res.status(404).json({ error: "User not found" }); return; }
-
-  const eventStart = new Date(planned.scheduledDate);
-  const eventEnd = new Date(eventStart.getTime() + 60 * 60_000);
-  const attendeeEmails = participants.map(p => p.email); // All members get invites from scheduler
-
-  const eventId = await createCalendarEvent(sessionUserId, {
-    summary: ritual.name,
-    description: [
-      `${ritual.name} — restored via Eleanor`,
-      ritual.intention ? `"${ritual.intention}"` : "",
-      "",
-      `View this tradition → ${getInviteBaseUrl()}/ritual/${id}`,
-    ].filter(Boolean).join("\n"),
-    startDate: eventStart,
-    endDate: eventEnd,
-    attendees: attendeeEmails,
-    colorId: "5",
-    status: ritual.confirmedTime ? "confirmed" : "tentative",
-    reminders: [
-      { method: "popup", minutes: 30 },
-    ],
-  });
-
-  if (!eventId) { res.status(500).json({ error: "Could not create calendar event" }); return; }
-
-  await db.update(meetupsTable)
-    .set({ googleCalendarEventId: eventId })
-    .where(eq(meetupsTable.id, planned.id));
-
-  res.json({ success: true });
-});
+// GET /api/rituals/:id/connections, POST /api/rituals/:id/invite,
+// DELETE /api/rituals/:id/participants/:email, and
+// POST /api/rituals/:id/restore-calendar were removed — a gathering no
+// longer has an invitee/attendee list or a Google Calendar sync to
+// restore. It's now a posted announcement only. Confirmed via grep across
+// artifacts/mymonastery/src that no client code called any of these
+// (the "Who" invite step in tradition-new.tsx, the only plausible caller
+// of /connections, was removed in the same change).
 
 // Member "suggest a time" (ritual_time_suggestions) was removed — it collected
 // a participant's name/email + a suggested meeting time, the same category of

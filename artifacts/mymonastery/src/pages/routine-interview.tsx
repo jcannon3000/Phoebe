@@ -91,10 +91,10 @@ const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; 
   { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
   { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
 ];
-const SILENCE_LENGTHS = [5, 10, 15, 20, 30];
-// Totals run longer than a single sit — three tens and a twenty is a real
-// shape, and capping the choices at 30 would quietly under-record it.
-const SILENCE_TOTALS = [15, 20, 30, 45, 60, 90];
+// One list, not two. A dropdown that swaps its options when you toggle
+// "once / more than once" can strand the value you already picked; the toggle
+// changes what the number MEANS, not which numbers are sayable.
+const SILENCE_LENGTHS = [5, 10, 15, 20, 30, 45, 60, 90];
 
 /**
  * How they take the office — asked here as a dropdown rather than spent on one
@@ -153,6 +153,56 @@ type SpecSection = "morning" | "contemplation" | "evening" | "newsletters" | "pr
 type SpecRow = { emoji: string; label: string; sub: string; section: SpecSection };
 
 
+/**
+ * A one-row select pill — the manual customizer's dropdown, reproduced.
+ *
+ * Owner: "the time should be in a dropdown, wide one-row pill like the manual
+ * customizer" and "the medium drop needs a more clear dropdown UI."
+ *
+ * The chevron is the whole point. A bare <select> with appearance:none looks
+ * exactly like a read-only field, so the medium row read as a statement of
+ * fact rather than something you could change — and a grid of minute chips
+ * isn't a dropdown at all.
+ */
+function SelectPill({
+  value, onChange, ariaLabel, children,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ position: "relative" }}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          border: `1px solid ${CARD_B}`, borderRadius: 12,
+          // Right padding leaves room for the chevron.
+          padding: "14px 40px 14px 14px",
+          color: WARM, fontSize: 16, fontFamily: FONT, outline: "none",
+          colorScheme: "dark", appearance: "none", WebkitAppearance: "none",
+        }}
+      >
+        {children}
+      </select>
+      <span
+        aria-hidden
+        style={{
+          position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+          color: SAGE, fontSize: 12, pointerEvents: "none",
+        }}
+      >
+        ▾
+      </span>
+    </div>
+  );
+}
+
 export default function RoutineInterviewPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -200,6 +250,16 @@ export default function RoutineInterviewPage() {
   // What they're standing on. Empty = no routine yet, so there is nothing to
   // adjust and the mode slide is skipped entirely.
   const [currentSettings, setCurrentSettings] = useState<SpecRow[]>([]);
+  /**
+   * Which parts of the day an adjustment actually touched, from the server's
+   * diff of the rebuilt routine against the one in force.
+   *
+   * Owner: "if it's pertaining to the morning, just show morning" — don't walk
+   * someone through contemplation and evening to confirm a change that never
+   * went near them. Empty means "confirm everything", which is right for a
+   * from-scratch build and for an adjustment we couldn't get a baseline for.
+   */
+  const [touchedSections, setTouchedSections] = useState<SpecSection[]>([]);
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -293,6 +353,19 @@ export default function RoutineInterviewPage() {
   // frame a first-time description as a change to something.
   const effectiveMode: InterviewMode = currentSettings.length > 0 ? mode : "scratch";
 
+  /**
+   * The read-back slides to actually walk.
+   *
+   * An adjustment confirms only what it changed (owner). A from-scratch build,
+   * or an adjustment the server couldn't diff, confirms the whole day — an
+   * empty list from the server means "no information", not "nothing changed",
+   * and silently skipping the entire read-back would be the worse reading of
+   * an ambiguous signal.
+   */
+  const confirmSections = touchedSections.length > 0
+    ? CONFIRM_SECTIONS.filter((sec) => touchedSections.includes(sec.key))
+    : CONFIRM_SECTIONS;
+
   const errorText = (code: string): string => {
     switch (code) {
       case "ai_unconfigured":
@@ -369,18 +442,26 @@ export default function RoutineInterviewPage() {
         corrections: nextCorrections ?? corrections,
       })) as {
         spec?: Spec; summary?: string; settings?: SpecRow[]; notes?: string[];
-        customPractices?: CustomPractice[];
+        customPractices?: CustomPractice[]; changedSections?: SpecSection[];
       } | null;
       if (!res?.spec) throw new Error("ai_bad_spec");
       setSpec(res.spec);
       setSummary(res.summary ?? "");
       setSettings(res.settings ?? []);
       setNotes(res.notes ?? []);
+      const touched = Array.isArray(res.changedSections) ? res.changedSections : [];
+      setTouchedSections(touched);
       setCustomPractices(res.customPractices ?? []);
       setConfirmIndex(resumeAt);
       setShowFix(false);
       setFixText("");
-      setPhase("confirm");
+      // An adjustment that changed none of the three parts of the day has
+      // nothing to read back — sending them through "is that your morning?"
+      // for a routine we didn't touch is a question with no purpose.
+      const nothingToConfirm = touched.length === 0
+        && Array.isArray(res.changedSections)
+        && (res.settings ?? []).length > 0;
+      setPhase(nothingToConfirm ? "extras" : "confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
       // Return them where they were. A failed rebuild during the read-back used
@@ -494,15 +575,15 @@ export default function RoutineInterviewPage() {
   const sectionFill = ((): [number, number, number] => {
     const qN = Math.max(1, questions.length);
     // Third section's steps: one per read-back slide, plus extras, plus review.
-    const lastN = CONFIRM_SECTIONS.length + 2;
+    const lastN = confirmSections.length + 2;
     switch (phase) {
       case "describe":            return [0, 0, 0];
       case "thinking-followups":  return [1, 0, 0];
       case "followups":           return [1, qIndex / qN, 0];
       case "thinking-build":      return [1, 1, 0];
       case "confirm":             return [1, 1, confirmIndex / lastN];
-      case "extras":              return [1, 1, CONFIRM_SECTIONS.length / lastN];
-      case "review":              return [1, 1, (CONFIRM_SECTIONS.length + 1) / lastN];
+      case "extras":              return [1, 1, confirmSections.length / lastN];
+      case "review":              return [1, 1, (confirmSections.length + 1) / lastN];
       default:                    return [0, 0, 0];
     }
   })();
@@ -740,9 +821,10 @@ export default function RoutineInterviewPage() {
               {questions.length > 1 ? `Question ${qIndex + 1} of ${questions.length}` : "One question"} 🌿
             </p>
             <h1 style={h1}>Just to be sure</h1>
-            <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              "I don't" is a perfectly good answer.
-            </p>
+            {/* Owner: '"I don\'t" doesn\'t make sense here. Take it out.' It was
+                written for "do you sit in silence?" and reads as a non-sequitur
+                against a question like "one sit or several?" — which is not a
+                yes/no at all. */}
           </div>
 
           <p style={{ color: WARM, fontFamily: FONT, fontSize: 16.5, lineHeight: 1.5, margin: 0 }}>{q}</p>
@@ -831,9 +913,12 @@ export default function RoutineInterviewPage() {
   // SANITIZED spec, so this is a read-back of the routine itself, not of the
   // model's prose about it.
   if (phase === "confirm") {
-    const section = CONFIRM_SECTIONS[confirmIndex]!;
+    // Guard the index: a rebuild triggered by a correction can come back with a
+    // SHORTER list than the one being walked, and reading past the end would
+    // crash the slide.
+    const section = confirmSections[Math.min(confirmIndex, confirmSections.length - 1)]!;
     const rows = settings.filter((r) => r.section === section.key);
-    const isLast = confirmIndex >= CONFIRM_SECTIONS.length - 1;
+    const isLast = confirmIndex >= confirmSections.length - 1;
     const specNow = (spec ?? {}) as any;
     const prefs = (specNow.officePrefs ?? {}) as {
       morning?: string; evening?: string; morningTime?: string | null; eveningTime?: string | null;
@@ -961,7 +1046,7 @@ export default function RoutineInterviewPage() {
         <div style={wrap}>
           {progressBars}
           <div>
-            <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${CONFIRM_SECTIONS.length}`} 🌿</p>
+            <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${confirmSections.length}`} 🌿</p>
             <h1 style={h1}>
               {asking ? (contStep === 1 ? "How long?" : contStep === 2 ? "How you'll keep it" : "A contemplative practice") : section.title}
             </h1>
@@ -1013,23 +1098,15 @@ export default function RoutineInterviewPage() {
               {/* Owner: "it shouldn't say how do you take it... it should ask what
                   format." */}
               <p style={{ ...eyebrow, marginBottom: 8 }}>What format</p>
-              <select
+              <SelectPill
                 value={mediumValue}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  patchSpec((d) => { d.ruleConfig[`phoebe:office:entry:${section.key}`] = v; });
-                }}
-                aria-label="What format"
-                style={{
-                  ...card, width: "100%", boxSizing: "border-box", color: WARM,
-                  fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark",
-                  padding: "13px 14px", appearance: "none", WebkitAppearance: "none",
-                }}
+                ariaLabel="What format"
+                onChange={(v) => patchSpec((d) => { d.ruleConfig[`phoebe:office:entry:${section.key}`] = v; })}
               >
                 {MEDIUM_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
-              </select>
+              </SelectPill>
             </div>
           )}
 
@@ -1134,39 +1211,40 @@ export default function RoutineInterviewPage() {
               </div>
 
               <div>
-                {/* Phoebe's goal field is a DAILY TOTAL either way, so both
+                {/* Owner: "it should be contemplation time, [and] the time
+                    should be in a dropdown, wide one-row pill like the manual
+                    customizer."
+
+                    Phoebe's goal field is a DAILY TOTAL either way, so both
                     answers write the same number — asking "once or more?" is
                     what makes that number right. Someone who sits three times
-                    reads "How long?" as one sit and under-reports the day. */}
-                <p style={{ ...eyebrow, marginBottom: 8 }}>
-                  {contOften === "more" ? "Total time across the day" : "How long you sit"}
+                    reads a bare "how long?" as one sit and under-reports the
+                    day, so the hint below says which is being asked for. */}
+                <p style={{ ...eyebrow, marginBottom: 8 }}>Contemplation time</p>
+                <SelectPill
+                  value={String(contMinutes)}
+                  ariaLabel="Contemplation time"
+                  onChange={(v) => {
+                    const m = parseInt(v, 10);
+                    if (!Number.isFinite(m)) return;
+                    setContMinutes(m);
+                    patchSpec((d) => { d.officePrefs.contemplationGoalMinutes = m; });
+                    syncSitRows(m, contLog, contOften);
+                  }}
+                >
+                  {/* Keep a value that came from their description even when it
+                      isn't one of ours (14 minutes is a real answer), so opening
+                      this dropdown can't silently round their practice. */}
+                  {!SILENCE_LENGTHS.includes(contMinutes) && (
+                    <option value={String(contMinutes)}>{contMinutes} min</option>
+                  )}
+                  {SILENCE_LENGTHS.map((m) => (
+                    <option key={m} value={String(m)}>{m} min</option>
+                  ))}
+                </SelectPill>
+                <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, margin: "8px 0 0" }}>
+                  {contOften === "more" ? "Across the whole day." : "For your daily sit."}
                 </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  {(contOften === "more" ? SILENCE_TOTALS : SILENCE_LENGTHS).map((m) => {
-                    const on = contMinutes === m;
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => {
-                          setContMinutes(m);
-                          patchSpec((d) => { d.officePrefs.contemplationGoalMinutes = m; });
-                          syncSitRows(m, contLog, contOften);
-                        }}
-                        style={{
-                          flex: "1 1 28%", cursor: "pointer", padding: "14px 10px", borderRadius: 14,
-                          border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
-                          background: on ? "rgba(45,94,63,0.55)" : CARD,
-                          color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15.5,
-                          fontWeight: on ? 700 : 600,
-                        }}
-                        aria-pressed={on}
-                      >
-                        {m} min
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               <div>
@@ -1548,7 +1626,7 @@ export default function RoutineInterviewPage() {
           )}
 
           <button type="button" onClick={finish} style={primaryBtn}>Continue</button>
-          <button type="button" onClick={() => { setError(null); setConfirmIndex(CONFIRM_SECTIONS.length - 1); setPhase("confirm"); }} style={quietBtn}>
+          <button type="button" onClick={() => { setError(null); setConfirmIndex(confirmSections.length - 1); setPhase("confirm"); }} style={quietBtn}>
             Back
           </button>
         </div>

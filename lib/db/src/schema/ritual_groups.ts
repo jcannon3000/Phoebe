@@ -17,9 +17,10 @@ import { groupsTable } from "./groups";
 // invited to the same gathering, so a Zoom call can span two parishes
 // without duplicating the ritual.
 //
-// Members of any linked community (primary OR additional) can RSVP and
-// see the gathering on their dashboard. Calendar invites and the
-// "new gathering" push fan out across the union of joined members.
+// Members of any linked community (primary OR additional) see the
+// gathering on their dashboard, and the "new gathering" push fans out
+// across the union of joined members — a gathering has no RSVP or
+// calendar invites, it's just a posted announcement.
 //
 // Mirrors the "additional group ids" pattern intercessions use for
 // the same multi-community case.

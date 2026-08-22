@@ -13,7 +13,6 @@ export const meetupsTable = pgTable("meetups", {
   // place). The ritual-level `location` column is kept only for backward
   // compatibility with older rows.
   location: text("location"),
-  googleCalendarEventId: text("google_calendar_event_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // Stamped when the day-before reminder push has been sent for this meetup.
   // Null means the reminder hasn't fired yet.
