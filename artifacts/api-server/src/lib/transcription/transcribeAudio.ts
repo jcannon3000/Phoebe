@@ -25,14 +25,50 @@ export type Transcript = {
 // with a clear message instead of an opaque 413.
 const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
 
+/**
+ * The single gate on every Whisper pass — and the app's whole OpenAI audio
+ * bill runs through it.
+ *
+ * Owner: "it looks like it was running transcriptions each day, that was
+ * supposed to be turned off." It was: the hourly office-alignment scheduler
+ * had no off switch at all, and Whisper was $4.95 of a $5.02 fortnight — 98.6%
+ * of the spend, against under a cent for everything else.
+ *
+ * OFF BY DEFAULT, and the flag must be set explicitly to turn it back on.
+ * Costly background work that nobody asked for should be opt-in; the previous
+ * arrangement had it running from the moment the server booted.
+ *
+ * Gating HERE rather than in the scheduler is the point. Disabling the
+ * scheduler alone would not have saved a penny — routes/office-alignment.ts
+ * and routes/podcast.ts both kick off a transcription on demand when today's
+ * marks are missing, so the cost would simply have moved to whoever opened the
+ * read-along first. Every path reaches this function, and both builders
+ * already degrade gracefully when it returns false: they record "pending" and
+ * return "skipped", never throw.
+ *
+ * What switching it off costs: the office read-aloud word highlighting and the
+ * Forward Day by Day skip markers stop being computed. Those surfaces handle
+ * the absence (no highlighting, no skip marks) rather than breaking.
+ */
 export function transcriptionEnabled(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY);
+  if (!process.env.OPENAI_API_KEY) return false;
+  const flag = process.env.OFFICE_TRANSCRIPTION_ENABLED;
+  return flag === "1" || flag === "true";
 }
 
 export async function transcribeAudio(audioUrl: string): Promise<Transcript | null> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
     console.warn("[office-align] OPENAI_API_KEY not set — transcription disabled");
+    return null;
+  }
+  // Belt and braces on the function that actually spends the money. Callers
+  // are supposed to check transcriptionEnabled() first, and today all of them
+  // do — but this is the one place a Whisper charge is incurred, so a future
+  // caller that forgets should cost nothing rather than quietly reopening the
+  // daily bill.
+  if (!transcriptionEnabled()) {
+    console.warn("[office-align] transcription disabled — set OFFICE_TRANSCRIPTION_ENABLED=1 to enable");
     return null;
   }
 

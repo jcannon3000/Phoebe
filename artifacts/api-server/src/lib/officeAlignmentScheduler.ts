@@ -23,6 +23,7 @@
 import { buildOfficeAlignment } from "./transcription/buildOfficeAlignment";
 import { buildFddAlignment } from "./transcription/buildFddAlignment";
 import { logger } from "./logger";
+import { transcriptionEnabled } from "./transcription/transcribeAudio";
 
 const MORNING_UTC_START = 9;
 const MORNING_UTC_END = 18;
@@ -89,6 +90,13 @@ let alignInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startOfficeAlignmentScheduler(): void {
   if (alignInterval) return;
+  // Don't even tick when transcription is off. The real cost gate is
+  // transcriptionEnabled() (every on-demand path reaches it too), but there's
+  // no reason to poll two podcast feeds hourly, forever, to do nothing.
+  if (!transcriptionEnabled()) {
+    logger.info("[office-align-sched] transcription disabled — scheduler not started (set OFFICE_TRANSCRIPTION_ENABLED=1 to enable)");
+    return;
+  }
 
   // First attempt after 60s so the server is fully booted and the
   // DB pool is warm before we make the first Whisper call.
