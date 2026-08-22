@@ -304,6 +304,9 @@ export default function RoutineInterviewPage() {
         return "The assistant's API key was rejected. It needs updating on the server.";
       case "ai_bad_model":
         return "The assistant's model isn't available to this server's account. Check ROUTINE_INTERVIEW_MODEL.";
+      case "ai_no_credits":
+        // Not a wait-and-retry: the balance is empty until someone tops it up.
+        return "The assistant's OpenAI account is out of credits. Add credits to switch it back on.";
       case "ai_rate_limited":
         return "The assistant is over its rate limit right now. Give it a minute.";
       case "ai_unreachable":

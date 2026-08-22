@@ -417,6 +417,15 @@ async function askOpenAi(system: string, user: string, maxTokens: number): Promi
     if (res.status === 404 || /model_not_found|does not exist|do not have access/i.test(body)) {
       return { ok: false, status: 502, error: "ai_bad_model" };
     }
+    // OpenAI returns 429 for two unrelated things: too many requests, and an
+    // account with no money in it. Only the first is worth waiting out — an
+    // exhausted balance never clears on its own, so "give it a minute" would
+    // send someone away to retry forever. Checked BEFORE the rate-limit case
+    // because both arrive as 429; the body is the only thing that separates
+    // them.
+    if (/insufficient_quota|credit_balance_exhausted|billing/i.test(body)) {
+      return { ok: false, status: 502, error: "ai_no_credits" };
+    }
     if (res.status === 429) {
       return { ok: false, status: 502, error: "ai_rate_limited" };
     }
