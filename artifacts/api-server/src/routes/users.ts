@@ -609,7 +609,13 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [meTz] = await db
-      .select({ timezone: usersTable.timezone, contemplationGoalMinutes: usersTable.contemplationGoalMinutes })
+      .select({
+        timezone: usersTable.timezone,
+        contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
+        // Needed to tell a side's ANCHOR from a practice riding alongside it —
+        // see the devotion note where the office rows are folded up.
+        ruleConfig: usersTable.ruleConfig,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     // usersTable.timezone has no writer anywhere in the codebase — nothing
@@ -664,7 +670,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     // now the sole source of contemplative minutes.
     const [officeRows, contRows, reflRows, cacRows, pcRows, breathRows, vtsRows] = await Promise.all([
       // Office, by side — same surfaces + completed gate as office-history-week.
-      db.execute<{ day: string; side: string }>(sql`
+      db.execute<{ day: string; side: string; surface: string }>(sql`
         SELECT DISTINCT
           to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
           CASE
@@ -672,7 +678,8 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
             WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
             -- Its own side, never folded into 'evening' — see office-history-week.
             WHEN surface = 'compline' THEN 'compline'
-          END AS side
+          END AS side,
+          surface
         FROM prayer_sessions
         WHERE user_id = ${sessionUserId}
           AND (
@@ -723,12 +730,38 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       `),
     ]);
 
+    /**
+     * A side's dot belongs to that side's ANCHOR.
+     *
+     * Owner: "the main thing they chose is the anchor, which goes in their
+     * weekly practice, and the devotion would show up as an additional
+     * practice that is not their anchor."
+     *
+     * The SQL folds morning-prayer and morning-devotion into one 'morning'
+     * bucket, which was right while a side could hold only one of them. Now
+     * that a devotion can ride alongside the office, that fold would let a
+     * two-minute devotion fill Morning Prayer's weekly dot. So the devotion
+     * surface counts for the anchor only when the devotion IS the anchor.
+     * Mirrors anchorModesFor() on the client, which does the same for today.
+     */
+    const rcValues = ((meTz?.ruleConfig as { values?: Record<string, string> } | null)?.values) ?? {};
+    const isDevotionAnchor = (side: "morning" | "evening") =>
+      rcValues[`phoebe:office:level:${side}`] === "devotion";
+    const DEVOTION_SURFACE: Record<string, string> = {
+      morning: "morning-devotion",
+      evening: "early-evening-devotion",
+    };
+    const countsForAnchor = (side: "morning" | "evening", surface: string): boolean => {
+      const devotion = DEVOTION_SURFACE[side]!;
+      return surface === devotion ? isDevotionAnchor(side) : !isDevotionAnchor(side);
+    };
+
     const morning = new Set<string>();
     const evening = new Set<string>();
     const compline = new Set<string>();
     for (const r of officeRows.rows) {
-      if (r.side === "morning") morning.add(r.day);
-      if (r.side === "evening") evening.add(r.day);
+      if (r.side === "morning" && countsForAnchor("morning", r.surface)) morning.add(r.day);
+      if (r.side === "evening" && countsForAnchor("evening", r.surface)) evening.add(r.day);
       if (r.side === "compline") compline.add(r.day);
     }
     // Total contemplative minutes per local day (in-app sits only — Apple

@@ -64,6 +64,28 @@ function localDay(): string {
 
 // Did the user finish an office on a given side today, per the localStorage
 // flags the office viewer writes synchronously (before the server query lands)?
+/**
+ * Which office-completion flags satisfy a SIDE'S ANCHOR.
+ *
+ * Owner: "the main thing they chose is the anchor, which goes in their weekly
+ * practice, and the devotion would show up as an additional practice that is
+ * not their anchor."
+ *
+ * This used to accept the office flag OR the devotion flag for a side, which
+ * was fine while a side could only hold one of them. Now that a devotion can
+ * ride alongside the office as an extra practice, that OR would let praying
+ * the two-minute devotion tick Morning Prayer as kept — filling the anchor's
+ * weekly dot for a practice they hadn't done.
+ *
+ * So the anchor accepts only ITS OWN flag: the devotion counts when the
+ * devotion IS the anchor, and not otherwise. The additional practice keeps its
+ * own card and its own completion.
+ */
+function anchorModesFor(side: "morning" | "evening"): string[] {
+  const devotionMode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  return getSideLevel(side) === "devotion" ? [devotionMode] : [side];
+}
+
 function officeLocalDone(sides: string[]): boolean {
   const day = localDay();
   try {
@@ -388,8 +410,8 @@ export function useRhythmState(): RhythmState {
   // the local flag flips the anchor the moment the office is logged, and the
   // OFFICE_DONE_EVENT lets an in-place quick-log refresh the home without a nav.
   const [officeLocal, setOfficeLocal] = useState(() => ({
-    morning: officeLocalDone(["morning", "morning-devotion"]),
-    evening: officeLocalDone(["evening", "early-evening-devotion"]),
+    morning: officeLocalDone(anchorModesFor("morning")),
+    evening: officeLocalDone(anchorModesFor("evening")),
     // Compline tracked on its own too — as an opt-in add-on card it needs a
     // done-flag independent of the evening anchor (which compline also
     // satisfies, hence its presence in BOTH lists).
@@ -407,8 +429,8 @@ export function useRhythmState(): RhythmState {
   useEffect(() => {
     const recheck = () => {
       setOfficeLocal({
-        morning: officeLocalDone(["morning", "morning-devotion"]),
-        evening: officeLocalDone(["evening", "early-evening-devotion"]),
+        morning: officeLocalDone(anchorModesFor("morning")),
+        evening: officeLocalDone(anchorModesFor("evening")),
         compline: officeLocalDone(["compline"]),
       });
       setOfficeUndone({
