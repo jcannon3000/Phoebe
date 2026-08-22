@@ -14,6 +14,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { FirstOpenOnboarding } from "@/components/FirstOpenOnboarding";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -678,7 +679,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, intentionsTotalCount, intentionsPrayedCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -702,6 +703,14 @@ function DailyProgressPill() {
   // out entirely, matching the cards + the reduced count.
   const cDots = (slot: string) =>
     customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
+  // The prayer-list dot, emitted in whichever slot the card sits in — same
+  // getPrayerListSlot the home uses, so dot order matches card order.
+  const prayerListSlot = getPrayerListSlot() ?? "anytime";
+  const plDot = (slot: string) =>
+    intentionsTotalCount > 0 && prayerListSlot === slot
+      ? [{ key: "prayer-list", done: intentionsPrayedCount >= intentionsTotalCount }]
+      : [];
+
   const dotDefs = [
     // A novena in "replace" mode takes over this slot's dot entirely — mirrors
     // DailyProgressBody's rawCards replace-mode entries (same gates).
@@ -715,17 +724,21 @@ function DailyProgressPill() {
     // matching the two home cards, not a single aggregate "silence" dot (that
     // under-counted: 2 dots for 3 cards). Morning sits here; evening near Evening.
     ...(morningContemplationActive ? [{ key: "contemplation-morning", done: morningContemplationDone }] : []),
+    ...plDot("morning"),
     // The silence GOAL card exactly as the home renders it — the solo card, OR
     // the goal-progress card riding alongside per-side Creation Prayer cards
     // (whose own dots are the per-side entries above).
     ...(silenceGoalCardActive ? [{ key: "silence", done: silenceGoalCardDone }] : []),
-    // NOTE: Prayer List is NOT a rhythm card — DailyProgressBody deliberately
-    // gives it its own dedicated home-screen section instead of a Next/Done
-    // row (see its rawCards comment), so it must not get a dot here either —
-    // that was over-counting the pill by one whenever prayerListActive.
+    // Prayer List DOES get a dot. That exclusion was written when the list had
+    // its own dedicated block at the bottom of the home; that block was removed
+    // and the Next/Done row is now the only surface it has — so leaving it out
+    // here under-counted the pill by one (reported: five dots, six practices).
+    // Gated on intentionsTotalCount, exactly as the card is, rather than on
+    // prayerListActive, so the dot and the card can't disagree.
     // The active novena rides "anytime" alongside custom anytime anchors —
     // matches DailyProgressBody's rawCards entry (same novenaActive/Done).
     ...(novenaActive && !novenaReplacesMorning && !novenaReplacesEvening ? [{ key: "novena", done: novenaDone }] : []),
+    ...plDot("anytime"),
     ...cDots("anytime"),
     ...cDots("midday"),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
@@ -740,6 +753,7 @@ function DailyProgressPill() {
     ...(eveningActive && !novenaReplacesEvening ? [{ key: "evening", done: eveningDone }] : []),
     ...(novenaReplacesEvening && novenaActive ? [{ key: "novena-evening", done: novenaDone }] : []),
     ...(eveningContemplationActive ? [{ key: "contemplation-evening", done: eveningContemplationDone }] : []),
+    ...plDot("evening"),
     // Compline closes the day — its own dot, after Evening Prayer. Its own
     // done-flag too: praying Evening Prayer must not fill this dot (they're
     // two distinct offices; see useRhythmState's complineDone).

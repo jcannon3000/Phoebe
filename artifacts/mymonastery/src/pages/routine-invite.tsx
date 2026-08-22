@@ -197,8 +197,14 @@ export default function RoutineInvitePage() {
         <h1 style={{ fontSize: 25, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.22 }}>
           {data.label?.trim() || "A daily rhythm to try"}
         </h1>
+        {/* Owner: "have it show who built it for them — like, this was tailored
+            for you by Jeremy Cannon." Naming the person is the point: a rule of
+            life arriving from a name you know is an invitation, and the same
+            thing arriving from nobody is a settings import. */}
         <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, marginTop: 8 }}>
-          {fromWho} put this together for you.
+          {data.createdByName
+            ? `This was tailored for you by ${data.createdByName}${data.groupName ? ` · ${data.groupName}` : ""}.`
+            : `${fromWho} put this together for you.`}
         </p>
       </div>
 
@@ -220,7 +226,18 @@ export default function RoutineInvitePage() {
           // parish QR sign) begins RIGHT HERE — no account. We provision an
           // anonymous device user behind the scenes and apply the rhythm.
           applied ? (
-            <button type="button" disabled style={{ ...primaryBtn, opacity: 0.7 }}>Beginning… ✓</button>
+            // The no-login path has its OWN end state; the attribution belongs
+            // on both, or a newcomer who begins without an account never learns
+            // whose rhythm they're praying.
+            <>
+              <button type="button" disabled style={{ ...primaryBtn, opacity: 0.7 }}>Beginning… ✓</button>
+              {data.createdByName && (
+                <p style={{ fontSize: 13.5, color: SAGE, fontFamily: FONT, textAlign: "center", lineHeight: 1.55 }}>
+                  Tailored for you by {data.createdByName}
+                  {data.groupName ? ` · ${data.groupName}` : ""}.
+                </p>
+              )}
+            </>
           ) : (
             <>
               {error && <p style={{ color: "#E5A3A3", fontSize: 13, fontFamily: FONT, textAlign: "center" }}>{error}</p>}
@@ -254,7 +271,19 @@ export default function RoutineInvitePage() {
           </>
         )
       ) : applied ? (
-        <button type="button" disabled style={{ ...primaryBtn, opacity: 0.7 }}>Added to your day ✓</button>
+        <>
+          <button type="button" disabled style={{ ...primaryBtn, opacity: 0.7 }}>Added to your day ✓</button>
+          {/* Owner: "at the end, when someone receives it, show who built it for
+              them." Repeated here on purpose — the landing line is read before
+              they've decided, and this is the moment it becomes their own
+              rhythm. Whose hand shaped it is worth carrying into that. */}
+          {data.createdByName && (
+            <p style={{ fontSize: 13.5, color: SAGE, fontFamily: FONT, textAlign: "center", lineHeight: 1.55 }}>
+              Tailored for you by {data.createdByName}
+              {data.groupName ? ` · ${data.groupName}` : ""}.
+            </p>
+          )}
+        </>
       ) : (
         <>
           {error && <p style={{ color: "#E5A3A3", fontSize: 13, fontFamily: FONT, textAlign: "center" }}>{error}</p>}

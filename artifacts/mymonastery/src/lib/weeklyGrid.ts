@@ -105,8 +105,21 @@ export function computeWeeklyGrid(params: {
   const contemplativePracticeOn = (d: PracticeWeekDay) => d.contemplation || d.cobreathe;
   const morningPractice = rhythm.morningDone;
   const eveningPractice = rhythm.eveningDone;
-  const contemplativePractice = rhythm.morningContemplationDone || rhythm.eveningContemplationDone
-    || rhythm.silenceGoalCardDone || rhythm.cobreatheDone;
+  /**
+   * Silence is kept when the DAY'S RULE is met, not when any sit happened.
+   *
+   * Reported: "I've only done some of the contemplation yet it is fully shaded
+   * today" — 8 of 60 minutes, a full dot. The old OR filled the dot on
+   * `morningContemplationDone`, which is a per-SIDE flag set by finishing any
+   * sit on that side, whatever its length. For someone whose contemplation is a
+   * daily minutes quota, one 8-minute sit therefore read as the whole day kept,
+   * and the half-shaded state could never appear.
+   *
+   * rhythm.silenceDone already draws that distinction correctly — a minutes
+   * goal is met by MINUTES, per-side cards are met by keeping the sides — so
+   * use it rather than a second, looser copy of the same idea.
+   */
+  const contemplativePractice = rhythm.silenceDone || rhythm.cobreatheDone;
   // Today — some minutes logged, but short of the daily goal, read from the
   // LIVE rhythm state (more current than the practice-week snapshot, which
   // can lag a just-finished sit by a few seconds). Never true once
