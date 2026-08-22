@@ -1712,7 +1712,7 @@ export default function WayOfLoveRuleFlow({
             value={String(goalMin)}
             onChange={(e) => chooseGoal(e.target.value)}
             aria-label={t("wol_rule.silence_goal_label", { defaultValue: "Choose how much silence you'd like to practice each day." })}
-            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+            style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
           >
             <option value="0">{t("wol_rule.silence_none", { defaultValue: "No daily goal" })}</option>
             {/* Preserve a previously-saved non-standard goal (e.g. 144) as an option. */}
@@ -2114,7 +2114,7 @@ export default function WayOfLoveRuleFlow({
                   value={String(cobreatheBreaths)}
                   onChange={(e) => chooseCobreatheBreaths(side, parseInt(e.target.value, 10) || 12)}
                   aria-label={t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })}
-                  style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                  style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
                 >
                   {COBREATHE_LENGTHS.map((n) => (<option key={n} value={String(n)}>{t("wol_rule.n_breaths", { count: n, defaultValue: `${n} breaths` })}</option>))}
                 </select>
@@ -2123,7 +2123,7 @@ export default function WayOfLoveRuleFlow({
                   value={String(minutesBySide[side])}
                   onChange={(e) => chooseSideMinutes(side, parseInt(e.target.value, 10) || 15)}
                   aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is your sit?" })}
-                  style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                  style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
                 >
                   {[5, 10, 15, 20].map((m) => (<option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>))}
                 </select>

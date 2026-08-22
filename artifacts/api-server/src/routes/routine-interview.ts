@@ -132,6 +132,18 @@ Use "anytime" for cobreathe, listening, walk and examen — the app treats those
 four as available all day and ignores any other value. Only reading honours a
 particular time of day.
 
+TWO PRACTICES ON ONE SIDE. A side has exactly ONE anchor, but people really do
+keep two — owner: "one user wanted both the devotion and the office in the
+morning, because they'd use the devotion themselves and then go to Morning
+Prayer." Don't drop one and don't merge them. Instead:
+  · The one they name as their main prayer for that half of the day is the
+    ANCHOR (phoebe:office:level:<side>).
+  · The other becomes a "customPractices" entry, titled the way they'd say it —
+    "Morning Devotion", "Evening Devotion" — with the matching slot.
+If it isn't obvious which is the anchor, ASK. That is exactly what a follow-up
+question is for: "Which of those is your main morning prayer?" Never guess
+between two practices someone told you they both keep.
+
 ANYTHING ELSE THEY KEEP → A CUSTOM PRACTICE. Owner: "if they talk about a
 practice that is not a preset option, make it a custom practice." A rosary, a
 gratitude list, Ignatian reading, a gym walk they pray through, a novena, an
@@ -854,6 +866,12 @@ what they told you. A person who prays once a day has given you a whole answer.
 Never ask about something they already answered clearly. Never ask them to pick
 between Phoebe's internal option names — ask about their practice in their own
 words, the way a person would.
+
+IF THEY NAMED TWO PRACTICES FOR ONE SIDE, ask which is the anchor. A side holds
+one anchor, and choosing for them gets the person's own rhythm backwards half
+the time. Ask it as a choice between the two things they actually said —
+"Which of those is your main morning prayer, and which is the extra?" — with
+both as "choices".
 
 CONTEMPLATION needs its SHAPE, not just its presence. If silence comes up at
 all, make sure you end up knowing: is it ONE sit, or several practices spread

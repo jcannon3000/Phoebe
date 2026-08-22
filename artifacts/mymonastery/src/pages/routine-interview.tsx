@@ -60,6 +60,12 @@ const CONFIRM_SECTIONS: Array<{ key: SpecSection; title: string; ask: string }> 
   // and reads back on this slide, so the heading has to cover more than sitting.
   { key: "contemplation", title: "Your contemplative practice", ask: "Is that right?" },
   { key: "evening", title: "Your evening", ask: "Is that your evening?" },
+  // Owner: "if there's something in addition to an anchor practice ... a fourth
+  // slide." Where a second practice on a side lands (a Morning Devotion kept
+  // alongside Morning Prayer), plus anything else Phoebe has no name for — so
+  // it gets read back and can be corrected, rather than appearing for the first
+  // time on the final review.
+  { key: "practices", title: "Anything else you keep", ask: "Is that right?" },
 ];
 
 // The manual customizer's "Add an additional practice" step, replicated. Each
@@ -179,7 +185,11 @@ function SelectPill({
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
         style={{
-          width: "100%", boxSizing: "border-box",
+          // maxWidth/minWidth are the guard that matters: a <select> keeps
+          // min-width:auto and won't shrink below its longest option inside a
+          // flex row, which is the one way these actually overflow (Tailwind's
+          // preflight already gives everything border-box).
+          width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box",
           background: CARD, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
           border: `1px solid ${CARD_B}`, borderRadius: 12,
           // Right padding leaves room for the chevron.
@@ -362,9 +372,27 @@ export default function RoutineInterviewPage() {
    * and silently skipping the entire read-back would be the worse reading of
    * an ambiguous signal.
    */
-  const confirmSections = touchedSections.length > 0
-    ? CONFIRM_SECTIONS.filter((sec) => touchedSections.includes(sec.key))
-    : CONFIRM_SECTIONS;
+  const confirmSections = (
+    touchedSections.length > 0
+      ? CONFIRM_SECTIONS.filter((sec) => touchedSections.includes(sec.key))
+      : CONFIRM_SECTIONS
+  ).filter((sec) =>
+    // Contemplation earns its slide even when empty — that's the one that ASKS
+    // (see the picker). Every other section with nothing in it is a slide with
+    // no card and a question about nothing, which is what an empty morning
+    // used to render.
+    sec.key === "contemplation" || settings.some((r) => r.section === sec.key),
+  );
+
+  // Every read-back section filtered out — nothing left to confirm. Move on
+  // rather than render an empty slide. In an EFFECT, not during render: calling
+  // setPhase mid-render is the kind of thing that warns today and loops
+  // tomorrow, and this component has already cost one crash from a hook in the
+  // wrong place.
+  useEffect(() => {
+    if (phase === "confirm" && confirmSections.length === 0) setPhase("extras");
+  }, [phase, confirmSections.length]);
+
 
   const errorText = (code: string): string => {
     switch (code) {
