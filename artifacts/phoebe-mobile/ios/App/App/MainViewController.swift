@@ -52,6 +52,13 @@ class MainViewController: CAPBridgeViewController {
         // and just kept whatever number the last one sent. Registering it makes
         // the client the badge's actual author, as intended.
         bridge?.registerPluginInstance(PhoebeBadgePlugin())
+        // BibleBrowser was written, wired on the JS side, and never registered
+        // here — so Capacitor.Plugins.BibleBrowser did not exist, the guard in
+        // native-shell's openInAppBrowser always failed, and EVERY in-app link
+        // fell through to SFSafariViewController. That is why the office opened
+        // with a bare ✕ and a toolbar that collapses on scroll: the custom
+        // controller built to avoid exactly that has been dead code.
+        bridge?.registerPluginInstance(BibleBrowserPlugin())
     }
 
     // Edge-to-edge: render the WebView UNDER a transparent status bar

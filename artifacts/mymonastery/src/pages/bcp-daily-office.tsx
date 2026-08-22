@@ -5186,6 +5186,7 @@ export default function BcpDailyOfficePage() {
     // Venite — open today's office on venite.app and credit the side, same as
     // the in-office chooser's handoff.
     if (method === "venite" && canPrayOnVenite(side)) {
+      try { sessionStorage.setItem("phoebe:venite-side", side); } catch { /* private mode */ }
       openExternal(veniteOfficeUrl(side));
       markOfficeBookComplete(side);
       setLocation("/daily-progress");

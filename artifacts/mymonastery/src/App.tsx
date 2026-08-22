@@ -672,6 +672,41 @@ function NotificationTapPrewarm() {
   return null;
 }
 
+/**
+ * The in-app browser's Options menu, routed.
+ *
+ * Praying the office on venite.app was a one-way trip: the only way to change
+ * how you pray it, or to switch to the audio, was to back all the way out and
+ * start again. The native browser now offers those in a menu and fires an
+ * event; the routing lives here, because the browser has no business knowing
+ * app routes.
+ *
+ * The SIDE comes from sessionStorage, stamped when the hand-off opened. The
+ * browser can be entered from the office deck or straight from the home card,
+ * and neither passes it through iOS — remembering it at the door is simpler
+ * than threading it out and back.
+ */
+function OfficeBrowserOptions() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    const side = () => {
+      try { return sessionStorage.getItem("phoebe:venite-side") === "evening" ? "evening" : "morning"; }
+      catch { return "morning"; }
+    };
+    // The office deck's own intro slide is the format chooser — land on it
+    // rather than rebuilding the same list of ways to pray somewhere else.
+    const onChangeFormat = () => setLocation(`/bcp/daily-office?mode=${side()}`);
+    const onListen = () => setLocation(`/podcast/${side()}-office`);
+    window.addEventListener("phoebe:office-change-format", onChangeFormat);
+    window.addEventListener("phoebe:office-listen", onListen);
+    return () => {
+      window.removeEventListener("phoebe:office-change-format", onChangeFormat);
+      window.removeEventListener("phoebe:office-listen", onListen);
+    };
+  }, [setLocation]);
+  return null;
+}
+
 // PilotGate — the simplified public "pilot" shell. Modeled on ParishGate.
 // When a session is in pilot mode (see usePilotMode: pilot is the default for
 // everyone EXCEPT community admins + beta testers, gated by PHOEBE_PILOT_ENABLED
@@ -1262,6 +1297,7 @@ function App() {
           <PracticeSyncFailedToast />
           <AndroidBackButton />
           <NotificationTapPrewarm />
+      <OfficeBrowserOptions />
           <PullToRefresh />
           <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

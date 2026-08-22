@@ -52,6 +52,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // Journal button. The plugin wires this to fire a `phoebe:open-journal`
     // event into the app so the web layer can navigate to the journal.
     var onJournal: (() -> Void)?
+    // Options → "Change format" / "Listen to the office". Both dismiss first,
+    // then let the app route: the office intro chooser owns the formats and the
+    // podcast player owns the audio, and neither belongs in a web view.
+    var onChangeFormat: (() -> Void)?
+    var onListen: (() -> Void)?
 
     // Invoked once this view controller has actually left the screen, no
     // matter HOW it got dismissed (Done button, swipe-to-dismiss, or any
@@ -179,6 +184,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         wv.allowsBackForwardNavigationGestures = false
         wv.backgroundColor = PhoebeBrowserColor.bar
         wv.isOpaque = false
+        // Owner: "increase the zoom by 20%." Liturgy is read at arm's length
+        // and often at the start or end of a day; venite.app's default sizing
+        // is a desktop's. pageZoom scales layout as well as text, so the
+        // rubrics, the versicle/response indents and the psalm pointing keep
+        // their relationship to one another — which text-size-adjust alone
+        // would break.
+        if #available(iOS 14.0, *) { wv.pageZoom = 1.2 }
         return wv
     }
 
@@ -217,22 +229,54 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // distinct from the web-history back chevron in the bottom toolbar.
         // Named appBackButton (not backButton) — `backButton` is already the
         // bottom-bar web-history item; reusing the name shadows it.
-        let appBackButton = UIButton(type: .system)
-        appBackButton.setImage(UIImage(systemName: "chevron.backward"), for: .normal)
-        appBackButton.setTitle(" Back", for: .normal)
-        appBackButton.tintColor = PhoebeBrowserColor.tint
-        appBackButton.setTitleColor(PhoebeBrowserColor.tint, for: .normal)
-        appBackButton.titleLabel?.font = .systemFont(ofSize: 17)
-        appBackButton.addTarget(self, action: #selector(close), for: .touchUpInside)
-        appBackButton.accessibilityLabel = "Back"
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: appBackButton)
+        // Owner: "can we change the ✕ to a Done pill." A bare glyph reads as
+        // "discard"; leaving an office you have just prayed is a completion,
+        // and the word says so. A filled pill also gives it a real tap target
+        // at the top of a long scrolling page.
+        let doneButton = UIButton(type: .system)
+        doneButton.setTitle("Done", for: .normal)
+        doneButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        doneButton.setTitleColor(PhoebeBrowserColor.text, for: .normal)
+        doneButton.backgroundColor = PhoebeBrowserColor.tint.withAlphaComponent(0.22)
+        doneButton.layer.cornerRadius = 15
+        doneButton.layer.borderWidth = 1
+        doneButton.layer.borderColor = PhoebeBrowserColor.tint.withAlphaComponent(0.45).cgColor
+        doneButton.contentEdgeInsets = UIEdgeInsets(top: 6, left: 16, bottom: 6, right: 16)
+        doneButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+        doneButton.accessibilityLabel = "Done"
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: doneButton)
 
-        let safariItem = UIBarButtonItem(
-            image: UIImage(systemName: "safari"),
-            style: .plain, target: self, action: #selector(openInSafari)
+        // Owner: "at the top right could it be Options, and that brings down a
+        // dropdown — kind of similar to the settings of the office slideshow."
+        //
+        // Praying the office on venite.app used to be a one-way trip: the only
+        // controls were Safari and back. These are the three things someone
+        // actually reaches for mid-office, and each hands off to the surface
+        // that owns it rather than trying to reproduce it in here.
+        let optionsItem = UIBarButtonItem(
+            title: "Options",
+            image: nil,
+            primaryAction: nil,
+            menu: UIMenu(children: [
+                UIAction(title: "Configure office", image: UIImage(systemName: "slider.horizontal.3")) { [weak self] _ in
+                    // Venite's own settings page — same site, so it stays in
+                    // this browser rather than bouncing out and back.
+                    guard let url = URL(string: "https://www.venite.app/home") else { return }
+                    self?.webView.load(URLRequest(url: url))
+                },
+                UIAction(title: "Change format", image: UIImage(systemName: "arrow.triangle.2.circlepath")) { [weak self] _ in
+                    self?.dismiss(animated: true) { self?.onChangeFormat?() }
+                },
+                UIAction(title: "Listen to the office", image: UIImage(systemName: "waveform")) { [weak self] _ in
+                    self?.dismiss(animated: true) { self?.onListen?() }
+                },
+                UIAction(title: "Open in Safari", image: UIImage(systemName: "safari")) { [weak self] _ in
+                    self?.openInSafari()
+                },
+            ])
         )
-        safariItem.accessibilityLabel = "Open in Safari"
-        navigationItem.rightBarButtonItem = safariItem
+        optionsItem.accessibilityLabel = "Options"
+        navigationItem.rightBarButtonItem = optionsItem
 
         // ── WebView ── adopt a preloaded one when present (already loading in
         // the background, so it appears instantly), otherwise build a fresh
@@ -526,11 +570,20 @@ final class BibleBrowser: NSObject {
         return wv
     }
 
-    func present(url: URL, from presenter: UIViewController?, onJournal: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
+    func present(
+        url: URL,
+        from presenter: UIViewController?,
+        onJournal: (() -> Void)? = nil,
+        onDismiss: (() -> Void)? = nil,
+        onChangeFormat: (() -> Void)? = nil,
+        onListen: (() -> Void)? = nil
+    ) {
         guard let presenter = presenter else { return }
         let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
         vc.onJournal = onJournal
         vc.onDismiss = onDismiss
+        vc.onChangeFormat = onChangeFormat
+        vc.onListen = onListen
         let nav = UINavigationController(rootViewController: vc)
         nav.overrideUserInterfaceStyle = .dark
         // Keep the top + bottom bars pinned — never collapse/minimize on scroll

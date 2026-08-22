@@ -109,6 +109,16 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             let onDismiss: () -> Void = { [weak self] in
                 self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
             }
+            // Options → the two hand-offs. The browser dismisses first, then
+            // the app routes: the office intro chooser owns the formats, the
+            // podcast player owns the audio. Fired as window events so the web
+            // layer decides WHERE, and this plugin stays ignorant of routes.
+            let onChangeFormat: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:office-change-format")
+            }
+            let onListen: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:office-listen")
+            }
             // Bible.com host detection. We only try the Universal Link
             // hop for URLs that YouVersion has actually registered —
             // sending a random outbound link through `.universalLinksOnly`
@@ -127,7 +137,9 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         url: url,
                         from: self?.bridge?.viewController,
                         onJournal: onJournal,
-                        onDismiss: onDismiss
+                        onDismiss: onDismiss,
+                        onChangeFormat: onChangeFormat,
+                        onListen: onListen
                     )
                     call.resolve()
                 }
@@ -137,7 +149,9 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 url: url,
                 from: self?.bridge?.viewController,
                 onJournal: onJournal,
-                onDismiss: onDismiss
+                onDismiss: onDismiss,
+                onChangeFormat: onChangeFormat,
+                onListen: onListen
             )
             call.resolve()
         }
