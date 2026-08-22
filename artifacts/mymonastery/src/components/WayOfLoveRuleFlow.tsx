@@ -977,13 +977,26 @@ export default function WayOfLoveRuleFlow({
     // the real goal was 60).
     if (typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
       setGoal(String(prefs.contemplationGoalMinutes));
-      // An existing silence goal means Contemplative Prayer is already part of the
-      // rhythm. Migrate a legacy GLOBAL goal (no explicit per-side pick yet) onto
-      // BOTH sides so it opens with Morning + Evening Contemplation checked; an
-      // explicit per-side choice is left untouched.
-      if (getSideContemplationExplicit("morning") === null && getSideContemplationExplicit("evening") === null) {
-        setContemplationBySide((p) => touchedRef.current ? p : { morning: true, evening: true });
-      }
+      /**
+       * A goal NO LONGER implies per-side sits.
+       *
+       * This used to migrate a "legacy global goal" — a goal with no explicit
+       * per-side pick — onto BOTH sides, so Customize opened with Morning AND
+       * Evening Contemplation checked. That inference is now backwards: a
+       * whole-day quota with the sides off is the ORDINARY shape, produced by
+       * the questionnaire and by anyone who sets a daily amount without
+       * attaching it to a side. The silence has its own card and its own
+       * Silence slide; it does not need a side to live on.
+       *
+       * Owner, repeatedly: a 90-minute quota kept reappearing here as Morning +
+       * Evening Contemplation at five minutes each, and finishing the
+       * customizer wrote those sits back over the quota. Writing "0" instead of
+       * deleting the keys (see normalizeContemplation) stops NEW routines
+       * looking legacy — but every routine built before that still has the keys
+       * absent, so the inference had to go, not just the ambiguity feeding it.
+       *
+       * Per-side contemplation is now only ever what someone explicitly chose.
+       */
     }
     setTimeBySide((prev) => ({
       morning: typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime) ? prefs.morningTime : prev.morning,
@@ -1488,7 +1501,17 @@ export default function WayOfLoveRuleFlow({
     if (i >= 0 && i < next.length - 1) setStep(next[i + 1]);
   };
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
-  const goPrev = () => { const i = orderedSteps.indexOf(step); if (i > 0) setStep(orderedSteps[i - 1]); else onBack(); };
+  const goPrev = () => {
+    const i = orderedSteps.indexOf(step);
+    if (i > 0) { setStep(orderedSteps[i - 1]); return; }
+    // Reported: "the back goes to the home screen and not the previous thing in
+    // the customizer." From the FIRST step that used to be true by definition —
+    // but there are now slides in front of it (the entry chooser, and the
+    // scratch-or-edit fork), so leaving the app entirely skips right past them.
+    if (canEditParts && manualMode !== "pick") { setManualMode("pick"); return; }
+    if (entryChoiceMade && showEntryChoice) { setEntryChoiceMade(false); return; }
+    onBack();
+  };
   // Is the CURRENT step the last one in whichever flow variant is active
   // (guest/pilot/full)? Used by whatever step now closes each variant
   // ("custom" now closes every variant) to commit instead of

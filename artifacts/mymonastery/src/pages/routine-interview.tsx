@@ -796,7 +796,7 @@ export default function RoutineInterviewPage() {
                 <button
                   key={o.v}
                   type="button"
-                  onClick={() => setMode(o.v)}
+                  onClick={() => { setMode(o.v); setError(null); setPhase("describe"); }}
                   style={{
                     ...card, width: "100%", boxSizing: "border-box", textAlign: "left", cursor: "pointer",
                     padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
@@ -815,18 +815,14 @@ export default function RoutineInterviewPage() {
             })}
           </div>
 
-          <button type="button" onClick={() => { setError(null); setPhase("describe"); }} style={primaryBtn}>
-            Continue
+          {/* No Continue (owner). Tapping a row IS the choice on a two-way
+              fork, and confirming it again only added a step. The Back that
+              used to sit here pointed at this very slide — an edit meant for
+              the description screen landed on this one, since the two ended
+              with identical buttons. */}
+          <button type="button" onClick={() => setLocation("/rule-of-life")} style={quietBtn}>
+            I'd rather set it up myself
           </button>
-          {currentSettings.length > 0 ? (
-            <button type="button" onClick={() => { setError(null); setPhase("mode"); }} style={quietBtn}>
-              Back
-            </button>
-          ) : (
-            <button type="button" onClick={() => setLocation("/rule-of-life")} style={quietBtn}>
-              I'd rather set it up myself
-            </button>
-          )}
         </div>
       </Layout>
     );
@@ -891,9 +887,18 @@ export default function RoutineInterviewPage() {
           >
             Continue
           </button>
-          <button type="button" onClick={() => setLocation("/rule-of-life")} style={quietBtn}>
-            I'd rather set it up myself
-          </button>
+          {/* Back to the fork when there was one. Reported: "the back goes to
+              the home screen and not the previous thing" — leaving the flow
+              entirely is a heavy answer to "I picked the wrong option". */}
+          {currentSettings.length > 0 ? (
+            <button type="button" onClick={() => { setError(null); setPhase("mode"); }} style={quietBtn}>
+              Back
+            </button>
+          ) : (
+            <button type="button" onClick={() => setLocation("/rule-of-life")} style={quietBtn}>
+              I'd rather set it up myself
+            </button>
+          )}
         </div>
       </Layout>
     );
