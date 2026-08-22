@@ -103,6 +103,33 @@ const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; 
 const SILENCE_LENGTHS = [5, 10, 15, 20, 30, 45, 60, 90];
 
 /**
+ * The practices a side can hold — for changing one BY HAND on the read-back.
+ *
+ * Owner: "instead of 'not quite', how about it goes to an adjust where they do
+ * it manually for whatever that is."
+ *
+ * "Not quite" opened a text box and rebuilt the whole routine through the
+ * model: a spinner, a fresh spec, and a chance for something else to move,
+ * all to say "it's the devotion, not the office". The format and the reminder
+ * were already editable in place on this slide; the PRACTICE was the one thing
+ * that still had to go back through the model. Now it doesn't.
+ *
+ * Labels are the side-prefixed names the cards use, built per side so the row
+ * reads the same before and after the change.
+ */
+const SIDE_PRACTICES: Array<{ level: string; label: (cap: string) => string; sub: string }> = [
+  { level: "office", label: (c) => `${c} Prayer`, sub: "The full Daily Office." },
+  { level: "devotion", label: (c) => `${c} Devotion`, sub: "A short devotion." },
+  { level: "psalms", label: (c) => `${c} Psalms`, sub: "The day's appointed psalms." },
+  { level: "readings", label: (c) => `${c} Scripture Reading`, sub: "The day's appointed readings." },
+  { level: "guided-prayer", label: () => "Simple Guided Prayer", sub: "About three minutes." },
+  { level: "examen", label: (c) => `${c} Examen`, sub: "Review the day with God." },
+  { level: "fdd", label: () => "Forward Day by Day", sub: "Today's meditation." },
+  { level: "reflect-sit", label: (c) => `${c} Contemplation`, sub: "A silent sit." },
+  { level: "compline", label: () => "Compline", sub: "The night office." },
+];
+
+/**
  * How they take the office — asked here as a dropdown rather than spent on one
  * of the two clarifying questions.
  *
@@ -328,6 +355,8 @@ export default function RoutineInterviewPage() {
   // read-back and made you walk forward through every remaining section and
   // the extras page to get back — losing your place to change one dropdown.
   const [returnToReview, setReturnToReview] = useState(false);
+  // Read-back → "Change it myself": the practice picker, open on one section.
+  const [pickingPractice, setPickingPractice] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -361,6 +390,10 @@ export default function RoutineInterviewPage() {
   useEffect(() => {
     try { window.scrollTo({ top: 0, behavior: "auto" }); } catch { /* ignore */ }
   }, [phase, qIndex, confirmIndex, contStep]);
+
+  // Close the picker whenever the slide changes, so it never appears already
+  // open on a section they haven't asked to edit.
+  useEffect(() => { setPickingPractice(false); }, [confirmIndex, phase]);
 
   // Seed the sit controls from what was actually built, so the panel opens
   // showing their minutes and log method rather than the component defaults.
@@ -1400,6 +1433,58 @@ export default function RoutineInterviewPage() {
             </div>
           )}
 
+          {/* Change the practice by hand — no rebuild, no spinner, nothing else
+              in the routine moves. Writes the level straight onto the pending
+              spec and relabels the row, which is all "not quite" was ever
+              really being asked to accomplish for a side. */}
+          {pickingPractice && isSide && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <p style={{ ...eyebrow, marginBottom: 2 }}>What do you pray instead?</p>
+              {SIDE_PRACTICES
+                // Compline is the night office — never a morning anchor.
+                .filter((o) => !(o.level === "compline" && section.key === "morning"))
+                .map((o) => {
+                  const cap = section.key === "morning" ? "Morning" : "Evening";
+                  const on = sideLevel === o.level;
+                  return (
+                    <button
+                      key={o.level}
+                      type="button"
+                      onClick={() => {
+                        patchSpec((d) => {
+                          d.ruleConfig[`phoebe:office:level:${section.key}`] = o.level;
+                          // The format only applies to the office and the short
+                          // devotion; carrying "on venite.app" onto the Examen
+                          // would describe a way to pray it that doesn't exist.
+                          if (o.level !== "office" && o.level !== "devotion") {
+                            delete d.ruleConfig[`phoebe:office:entry:${section.key}`];
+                          }
+                        });
+                        setSettings((prev) => prev.map((r) => (
+                          r.id === `side:${section.key}`
+                            ? { ...r, label: o.label(cap), sub: o.sub }
+                            : r
+                        )));
+                        setPickingPractice(false);
+                      }}
+                      style={{
+                        ...card, width: "100%", boxSizing: "border-box", textAlign: "left",
+                        cursor: "pointer", padding: "13px 15px",
+                        border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,
+                        background: on ? "rgba(45,94,63,0.55)" : CARD,
+                      }}
+                      aria-pressed={on}
+                    >
+                      <span style={{ display: "block", color: on ? WARM : SAGE, fontFamily: FONT, fontSize: 15, fontWeight: on ? 700 : 600 }}>
+                        {o.label(cap)}
+                      </span>
+                      <span style={{ display: "block", color: SAGE, fontFamily: FONT, fontSize: 12.5, marginTop: 2 }}>{o.sub}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          )}
+
           {asking && contStep === 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[...CONTEMPLATIVE_CHOICES, { key: "none", emoji: "🌿", label: "Not right now", sub: "Leave silence out of your rhythm." }].map((c) => {
@@ -1517,13 +1602,33 @@ export default function RoutineInterviewPage() {
           )}
           {/* Nothing to disagree with on a slide that's asking rather than
               telling — "Not quite" there would just be a second no. */}
-          {!asking && (
+          {/* Owner: "instead of 'not quite', how about it goes to an adjust
+              where they do it manually."
+
+              For a side, the manual path is complete — format and reminder are
+              already inline above, and the picker covers the practice — so it
+              leads, and the model is never involved in a correction. Describing
+              it in words stays as a quiet second option, for the case the
+              picker can't express ("I alternate", "only on Fridays"), where a
+              rebuild really is the right tool. */}
+          {!asking && isSide && !showFix && (
+            <button
+              type="button"
+              onClick={() => setPickingPractice((v) => !v)}
+              style={quietBtn}
+            >
+              {pickingPractice ? "Never mind" : "Change it myself"}
+            </button>
+          )}
+          {!asking && !pickingPractice && (
             <button
               type="button"
               onClick={() => (showFix ? setShowFix(false) : setShowFix(true))}
-              style={quietBtn}
+              style={isSide
+                ? { background: "none", border: "none", color: "rgba(143,175,150,0.75)", fontSize: 13.5, fontFamily: FONT, cursor: "pointer", padding: "8px 12px" }
+                : quietBtn}
             >
-              {showFix ? "Never mind" : "Not quite"}
+              {showFix ? "Never mind" : isSide ? "Or describe the change" : "Not quite"}
             </button>
           )}
           {!showFix && (
