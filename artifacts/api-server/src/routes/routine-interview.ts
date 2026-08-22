@@ -1336,7 +1336,12 @@ then. "notes" may be an empty array when nothing needed judgement.`;
 // Applies a spec to the CALLER'S OWN account only. Re-sanitized here rather
 // than trusted from the round-trip: /build handed the client a spec, and the
 // client could send back anything.
-router.post("/routine-interview/apply", async (req, res): Promise<void> => {
+// Rate-limited like its siblings. /apply doesn't call the model, so it was
+// left open — but it WRITES a whole rule of life, and a loop against it would
+// churn the routine plus a snapshot on every call.
+router.post("/routine-interview/apply", perUserRateLimit("routine_interview_apply", {
+  max: 30, windowMs: 60 * 60 * 1000,
+}), async (req, res): Promise<void> => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 

@@ -4066,7 +4066,14 @@ export default function PrayerModePage() {
     // they finish rather than partway through.
     // Only when their own list was actually part of this walk — a slideshow of
     // purely community intercessions shouldn't tick "Prayer List".
-    if (displaySlides.some((sl) => sl.kind === "intercession" && sl.isPersonal)) {
+    //
+    // And never on the closing-only path: the physical-book "I prayed this
+    // office" attestation lands straight on the celebration with
+    // skipListCredit=1, and the deck is still BUILT (so it contains personal
+    // slides) even though not one of them is ever shown. Attesting to an office
+    // was marking the prayer list prayed. The flag was already honoured for the
+    // streak; it wasn't here.
+    if (!skipListCredit && displaySlides.some((sl) => sl.kind === "intercession" && sl.isPersonal)) {
       markPracticeDoneToday("prayer-list");
     }
     // Log a check-in for every intercession the user has just prayed

@@ -725,7 +725,11 @@ const PILOT_ALLOWED_EXACT = new Set<string>([
 ]);
 // Podcasts is an intended pilot feature — allow its show/publisher/episode
 // subpaths, not just the index. Same for /cobreathe (intro → breath).
-const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/settings/", "/podcasts", "/cobreathe"];
+// "/podcast" (singular) covers the office read-aloud routes — /podcast/morning-office
+// and /podcast/evening-office — which "/podcasts" does NOT prefix-match. The
+// guest allowlist already lists them; the pilot one never did, so the office
+// browser's "Listen to the office" bounced pilot users to the pilot home.
+const PILOT_ALLOWED_PREFIX = ["/bcp", "/prayer-mode", "/p/", "/settings/", "/podcast", "/cobreathe"];
 
 function PilotGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
