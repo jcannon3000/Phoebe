@@ -893,6 +893,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   };
 
   const goToVenite = (form: "office" | "devotion") => {
+    // Stamp the side for the browser's Options menu. Without this the menu read
+    // a stale value (or defaulted to morning), so "Listen to the office" from
+    // an EVENING hand-off opened the morning podcast.
+    try { sessionStorage.setItem("phoebe:venite-side", officeSide); } catch { /* private mode */ }
     setVeniteForm(form);
     setVeniteShort(false);
     veniteLeftAtRef.current = Date.now();
@@ -925,8 +929,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       setVeniteShort(true);
     };
     window.addEventListener("phoebe:browserfinished", onBack);
+    // visibilitychange is the WEB fallback only. On native it also fires when
+    // the APP is backgrounded — so a notification pulling you away 20 seconds
+    // into the office consumed this one-shot return, and the twenty minutes you
+    // then prayed were never credited. The in-app browser emits
+    // phoebe:browserfinished on close, which is the actual signal.
     const onVisible = () => { if (document.visibilityState === "visible") onBack(); };
-    document.addEventListener("visibilitychange", onVisible);
+    if (!isNativeShell()) document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("phoebe:browserfinished", onBack);
       document.removeEventListener("visibilitychange", onVisible);

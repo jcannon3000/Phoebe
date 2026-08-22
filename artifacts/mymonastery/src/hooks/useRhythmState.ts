@@ -83,7 +83,13 @@ function localDay(): string {
  */
 function anchorModesFor(side: "morning" | "evening"): string[] {
   const devotionMode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
-  return getSideLevel(side) === "devotion" ? [devotionMode] : [side];
+  // The devotion MODE is shared by most non-office practices — psalms, Simple
+  // Guided Prayer, the readings, FDD-as-prayer and a custom practice all write
+  // that flag, and the shipped default rule uses two of them. Accepting only
+  // the office flag for those levels made their anchors permanently un-kept.
+  // The exclusion is narrow: when the anchor is the FULL OFFICE, a devotion
+  // prayed alongside it is an extra practice, not the office.
+  return getSideLevel(side) === "office" ? [side] : [side, devotionMode];
 }
 
 function officeLocalDone(sides: string[]): boolean {

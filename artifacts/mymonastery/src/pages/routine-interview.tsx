@@ -438,6 +438,14 @@ export default function RoutineInterviewPage() {
    */
   const skipExtras = effectiveMode === "adjust";
 
+  // Does anything contemplative exist at all — a sit, or a walk/breath/listening
+  // in a slot? Decides whether the contemplation slide has something to show or
+  // something to ask; without it the slide can be neither.
+  const hasAnyContemplativePractice = (() => {
+    const rc = ((spec as any)?.ruleConfig ?? {}) as Record<string, string>;
+    return ["walk", "cobreathe", "listening"].some((k) => !!rc[`phoebe:slot:${k}`]);
+  })();
+
   const confirmSections = (
     touchedSections.length > 0
       ? CONFIRM_SECTIONS.filter((sec) => touchedSections.includes(sec.key))
@@ -447,7 +455,14 @@ export default function RoutineInterviewPage() {
     // (see the picker). Every other section with nothing in it is a slide with
     // no card and a question about nothing, which is what an empty morning
     // used to render.
-    sec.key === "contemplation" || settings.some((r) => r.section === sec.key),
+    // Contemplation earns a slide when it has rows OR when it's going to ASK.
+    // It used to be exempt unconditionally, which rendered an empty slide —
+    // heading, "here's what we heard", no card, no controls — for anyone whose
+    // contemplative practice is a walk or a breath, since those rows live in
+    // the "practices" section now.
+    sec.key === "contemplation"
+      ? settings.some((r) => r.section === "contemplation") || !hasAnyContemplativePractice
+      : settings.some((r) => r.section === sec.key),
   );
 
   // Every read-back section filtered out — nothing left to confirm. Move on
@@ -560,8 +575,15 @@ export default function RoutineInterviewPage() {
       // An adjustment that changed none of the three parts of the day has
       // nothing to read back — sending them through "is that your morning?"
       // for a routine we didn't touch is a question with no purpose.
-      const nothingToConfirm = touched.length === 0
-        && Array.isArray(res.changedSections)
+      // Only an ADJUSTMENT can have "nothing to confirm". The server sends
+      // changedSections on every build — empty for a from-scratch one — so
+      // testing Array.isArray meant every first-time interview skipped the
+      // whole read-back round and jumped to extras. Morning, contemplation and
+      // evening were never shown to the people the read-back was built for,
+      // and the "would you like a contemplative practice?" picker was dead on
+      // the only path that reaches it.
+      const nothingToConfirm = effectiveMode === "adjust"
+        && touched.length === 0
         && (res.settings ?? []).length > 0;
       setPhase(nothingToConfirm ? (skipExtras ? "review" : "extras") : "confirm");
     } catch (e: any) {
@@ -1040,7 +1062,11 @@ export default function RoutineInterviewPage() {
     // Guard the index: a rebuild triggered by a correction can come back with a
     // SHORTER list than the one being walked, and reading past the end would
     // crash the slide.
-    const section = confirmSections[Math.min(confirmIndex, confirmSections.length - 1)]!;
+    // Empty list → Math.min(0, -1) is -1 → undefined → `section.key` throws a
+    // white screen mid-flow. The useEffect that redirects runs AFTER this
+    // render, so it cannot save us; render nothing and let it move us on.
+    if (confirmSections.length === 0) return null;
+    const section = confirmSections[Math.max(0, Math.min(confirmIndex, confirmSections.length - 1))]!;
     const rows = settings.filter((r) => r.section === section.key);
     const isLast = confirmIndex >= confirmSections.length - 1;
     const specNow = (spec ?? {}) as any;
@@ -1061,9 +1087,7 @@ export default function RoutineInterviewPage() {
      * their walk gets asked whether they'd like a contemplative practice.
      */
     const rcNow = (specNow.ruleConfig ?? {}) as Record<string, string>;
-    const hasContemplativePractice = ["walk", "cobreathe", "listening"]
-      .some((k) => !!rcNow[`phoebe:slot:${k}`]);
-    const asking = section.key === "contemplation" && rows.length === 0 && !hasContemplativePractice;
+    const asking = section.key === "contemplation" && rows.length === 0 && !hasAnyContemplativePractice;
     // A sit we DID hear — the slide becomes an editable panel for it.
     const hasSit = section.key === "contemplation" && rows.length > 0;
     const isSide = section.key === "morning" || section.key === "evening";

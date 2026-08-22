@@ -745,15 +745,31 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
      * Mirrors anchorModesFor() on the client, which does the same for today.
      */
     const rcValues = ((meTz?.ruleConfig as { values?: Record<string, string> } | null)?.values) ?? {};
-    const isDevotionAnchor = (side: "morning" | "evening") =>
-      rcValues[`phoebe:office:level:${side}`] === "devotion";
     const DEVOTION_SURFACE: Record<string, string> = {
       morning: "morning-devotion",
       evening: "early-evening-devotion",
     };
+    /**
+     * The devotion SURFACE is shared by most non-office practices.
+     *
+     * Psalms, Simple Guided Prayer, the day's Readings, Forward Day by Day and
+     * a custom practice all POST surface "morning-devotion" — it's the bucket
+     * every older rollup already agreed on, not a claim that the person prays
+     * the short devotion. The shipped DEFAULT rule is guided-prayer in the
+     * morning and readings in the evening, so both default sides log there.
+     *
+     * An earlier version of this filter only accepted that surface when the
+     * level was literally "devotion", which silently emptied the Morning and
+     * Evening rows of the weekly grid for every user on the default rule.
+     *
+     * So the exclusion is narrow, and covers only the case it was written for:
+     * when the anchor is the FULL OFFICE, a devotion prayed alongside it is an
+     * additional practice and must not fill the office's dot. Every other
+     * level owns that surface.
+     */
     const countsForAnchor = (side: "morning" | "evening", surface: string): boolean => {
-      const devotion = DEVOTION_SURFACE[side]!;
-      return surface === devotion ? isDevotionAnchor(side) : !isDevotionAnchor(side);
+      if (surface !== DEVOTION_SURFACE[side]) return true;
+      return rcValues[`phoebe:office:level:${side}`] !== "office";
     };
 
     const morning = new Set<string>();
