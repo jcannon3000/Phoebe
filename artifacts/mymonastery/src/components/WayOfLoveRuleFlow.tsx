@@ -2347,6 +2347,10 @@ export default function WayOfLoveRuleFlow({
             </div>
           </>
         )}
+        {/* Space above the reminder. Removing the per-side sit row left this
+            card butted straight against the format dropdown, reading as part
+            of the same group when it's a different question. */}
+        <div style={{ height: 18 }} aria-hidden />
         {/* Owner: "combine the reminder on or off into one line, and if it is
             off hide the time." One switch row instead of two mutually
             exclusive choice rows — on/off is a binary, and rendering it as two
@@ -2402,11 +2406,13 @@ export default function WayOfLoveRuleFlow({
                   });
                 }}
                 aria-label={t("wol_rule.reminder_time", { defaultValue: "Reminder time" })}
-                // Owner, three times: "the 6 PM is still too wide." It wasn't
-                // overflowing — it was a full-slide bar holding five
-                // characters, which reads as a text field someone forgot to
-                // size. A time is a small value; the control should be small.
-                style={{ ...FROST_BLUR, width: "auto", maxWidth: 190, minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
+                // Full length again (owner) — it lines up with the dropdowns
+                // above it, which is what "too wide" actually meant: it was
+                // overflowing the slide, not merely long. maxWidth/minWidth are
+                // what stop the overflow; iOS gives input[type=time] an
+                // intrinsic width from its native control that ignores
+                // width:100%.
+                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
               />
             </div>
           )}

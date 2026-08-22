@@ -679,7 +679,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // queries only fire when the pill is actually rendered (signed-in).
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, intentionsTotalCount, intentionsPrayedCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
+  const { morningDone, eveningDone, morningActive, eveningActive, morningContemplationActive, morningContemplationDone, eveningContemplationActive, eveningContemplationDone, silenceGoalCardActive, silenceGoalCardDone, reflections, examenActive, examenDone, listeningActive, listeningDone, readingActive, readingDone, podcastsActive, podcastsDone, walkActive, walkDone, complineActive, complineDone, cobreatheStandaloneActive, cobreatheDone, prayerListDone, intentionsTotalCount, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening } = useRhythmState();
   // The pill can be turned off in Settings → Home display ("Daily progress
   // dots"). Read the flag and react to live toggles (same-tab custom event +
   // cross-tab storage event) so flipping it in settings updates the header at
@@ -708,7 +708,11 @@ function DailyProgressPill() {
   const prayerListSlot = getPrayerListSlot() ?? "anytime";
   const plDot = (slot: string) =>
     intentionsTotalCount > 0 && prayerListSlot === slot
-      ? [{ key: "prayer-list", done: intentionsPrayedCount >= intentionsTotalCount }]
+      // Same signal the card uses — walking the slideshow, not a per-prayer
+      // tally. Counting here would have re-created the disagreement the card
+      // just lost: a dot stuck at "not yet" after a complete walk that skipped
+      // one prayer.
+      ? [{ key: "prayer-list", done: prayerListDone }]
       : [];
 
   const dotDefs = [

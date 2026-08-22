@@ -3897,11 +3897,19 @@ export default function PrayerModePage() {
     // against the intention, not a moment; there's no momentToken here.
     if (current && current.kind === "intercession" && current.isPersonal && typeof current.intentionId === "number") {
       markIntentionPrayedToday(current.intentionId);
-      // Legacy per-day OptionalPractice flag (weekly-grid row, widget
-      // sync) — used to be set only by intentions.tsx's now-removed
-      // PrayThrough on finishing the whole list. Set per-slide here,
-      // matching how markIntentionPrayedToday itself already works.
-      markPracticeDoneToday("prayer-list");
+      // The per-day OptionalPractice flag is NOT set here any more.
+      //
+      // Owner: "once I hit the second one, Amen, I could feel the haptic of
+      // the card being completed in the background, which should not be
+      // happening — the completion animation should only happen after I'm
+      // done with the full slideshow."
+      //
+      // markPracticeDoneToday fires the completion swell and flips the card,
+      // the weekly row and the widget. Calling it on the FIRST personal
+      // intercession meant the day was marked kept while the person was still
+      // several prayers from the end, and the celebration went off behind a
+      // slideshow they were in the middle of. It moved to handleDone, which is
+      // what "finished" actually means here.
     }
     if (current && current.kind === "intercession" && current.momentToken) {
       const mt = current.momentToken;
@@ -4051,6 +4059,16 @@ export default function PrayerModePage() {
   };
 
   const handleDone = async (opts?: { skipBless?: boolean }) => {
+    // Walking the slideshow IS the practice. Owner: "if they go through the
+    // slideshow, let's just have it slideshow completion, not how many they
+    // have left — they might even skip them, but if they go through it, let's
+    // have it completed." Set once, here at the end, so the swell lands when
+    // they finish rather than partway through.
+    // Only when their own list was actually part of this walk — a slideshow of
+    // purely community intercessions shouldn't tick "Prayer List".
+    if (displaySlides.some((sl) => sl.kind === "intercession" && sl.isPersonal)) {
+      markPracticeDoneToday("prayer-list");
+    }
     // Log a check-in for every intercession the user has just prayed
     // through — skipping ones we already logged per-slide in `advance`.
     // Server-side check-ins are idempotent per day anyway, but avoiding

@@ -26,7 +26,11 @@ import WebKit
 // Phoebe palette — mirrors the web app's dark-green theme so the chrome
 // reads as the same product.
 private enum PhoebeBrowserColor {
-    static let bar = UIColor(red: 0.047, green: 0.122, blue: 0.071, alpha: 1)   // #0C1F12
+    // Owner: "for Venite, make the top and bottom black." venite.app renders
+    // its own page on black, so Phoebe's green chrome met it at a visible seam
+    // — two dark surfaces that don't match read as a rendering fault rather
+    // than a frame. Black on black lets the liturgy sit in the window.
+    static let bar = UIColor.black
     static let text = UIColor(red: 0.941, green: 0.929, blue: 0.902, alpha: 1)  // #F0EDE6
     static let tint = UIColor(red: 0.659, green: 0.773, blue: 0.627, alpha: 1)  // #A8C5A0
 }
@@ -184,13 +188,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         wv.allowsBackForwardNavigationGestures = false
         wv.backgroundColor = PhoebeBrowserColor.bar
         wv.isOpaque = false
-        // Owner: "increase the zoom by 20%." Liturgy is read at arm's length
-        // and often at the start or end of a day; venite.app's default sizing
-        // is a desktop's. pageZoom scales layout as well as text, so the
-        // rubrics, the versicle/response indents and the psalm pointing keep
-        // their relationship to one another — which text-size-adjust alone
-        // would break.
-        if #available(iOS 14.0, *) { wv.pageZoom = 1.2 }
+        // No pageZoom (owner, after seeing it): venite.app already sizes its
+        // own liturgy, and scaling the whole page pushed the Long/Short and
+        // Rite II/EOW pickers toward the edges without making the prose easier
+        // to read. Left at 1.0 so the site's own typography stands.
         return wv
     }
 

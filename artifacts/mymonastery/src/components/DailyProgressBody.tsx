@@ -789,7 +789,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, intentionsTotalCount, intentionsPrayedCount } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1009,7 +1009,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // (intentionsPrayedCount from useRhythmState, itself backed by
   // prayer_intention_prayed_days — see lib/intentionsPrayed.ts).
   const prayerListActiveCard = intentionsTotalCount > 0;
-  const prayerListDoneCard = prayerListActiveCard && intentionsPrayedCount >= intentionsTotalCount;
+  /**
+   * Kept by WALKING the list, not by counting it off.
+   *
+   * Owner: "let's get rid of the 2 of 3 — if they go through the slideshow,
+   * let's just have it slideshow completion, not how many they have left. They
+   * might even skip them, but if they go through it, let's have it completed."
+   *
+   * Counting had two failures they hit in one sitting. It could never finish
+   * for anyone who skipped a prayer, so the card sat at "2 of 3" after a
+   * complete walk — and it made the card's done-state disagree with the weekly
+   * row and the widget, which were already reading the practice flag. One
+   * signal now: prayerListDone, set once when the slideshow finishes.
+   */
+  const prayerListDoneCard = prayerListActiveCard && prayerListDone;
   const prayerListCard = {
     // Owner: "the card on the home screen only does the personal list in
     // the bad ui" / "both should show up in the slideshows" — routes into
@@ -1021,10 +1034,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     key: "prayer-list-card", emoji: "🕊️", rgb: "96,140,180", done: prayerListDoneCard,
     href: prayerListDoneCard ? "/prayer-list" : "/prayer-mode?reset=1",
     title: t("rhythm.card_prayer_list", { defaultValue: "Prayer List" }),
-    blurb: t("rhythm.blurb_prayer_list_count", {
-      done: intentionsPrayedCount, total: intentionsTotalCount,
-      defaultValue: `${intentionsPrayedCount} of ${intentionsTotalCount} prayers have been prayed`,
-    }),
+    // No count (owner). "2 of 3" turned a prayer list into a checklist and was
+    // wrong as often as not.
+    blurb: prayerListDoneCard
+      ? t("rhythm.blurb_prayer_list_done", { defaultValue: "Prayed today" })
+      : t("rhythm.blurb_prayer_list", {
+          count: intentionsTotalCount,
+          defaultValue: intentionsTotalCount === 1 ? "One prayer to pray through" : `${intentionsTotalCount} prayers to pray through`,
+        }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   // Compline is only reachable after 7pm, but — like Evening Prayer below —
