@@ -1096,14 +1096,35 @@ AT LEAST TWO questions, at most five. Ask a third or more ONLY when something
 real is still unclear — if two cover it, ask two. Each question one sentence,
 plainly worded, no jargon.`;
 
+  // In an ADJUSTMENT the floor of two is wrong, and expensively so. Someone who
+  // said "move my evening reminder to nine" has told you everything; forcing
+  // two questions makes the model invent them, and the person pays for a
+  // manufactured interrogation plus a second model round-trip to answer a
+  // request that was already complete. Zero is the right answer more often than
+  // not here.
+  const adjusting = req.body?.mode === "adjust";
+  const questionFloor = adjusting
+    ? `
+OVERRIDE — THIS IS AN ADJUSTMENT, SO THE MINIMUM IS ZERO.
+
+Return {"questions": []} whenever their request is already clear enough to act
+on. That is the common case: "move evening prayer to 9", "turn off my morning
+reminder", "add a contemplative walk" need nothing from you. Ask ONLY when you
+genuinely cannot carry out the change without knowing more — an ambiguous time,
+a practice named two ways, a change that could mean two different things.
+
+Never ask to confirm what they already said. Never ask about a part of their
+day the change does not touch.`
+    : "";
+
   // In the ADJUST flow the questions have to be about the CHANGE, not a fresh
   // inventory of their whole day — asking "do you pray in the morning?" of
   // someone who just asked to move their evening reminder is an interrogation
   // about things we already know.
-  const adjusting = req.body?.mode === "adjust";
   const context = adjusting ? await currentRoutineContext(userId) : "";
   const askSystem = context
     ? `${system}
+${questionFloor}
 
 THIS IS AN ADJUSTMENT, NOT A NEW ROUTINE.
 
@@ -1139,7 +1160,10 @@ often), never about the rest of their day.`
     })
     .filter((item: { q: string }) => item.q.length > 0)
     .slice(0, 5);
-  if (questions.length === 0) { res.status(502).json({ error: "ai_bad_json" }); return; }
+  // Zero questions is a real answer for an adjustment ("move it to 9" needs
+  // nothing) — the client skips straight to building. For a from-scratch run
+  // it means the model returned nothing usable, which IS an error.
+  if (questions.length === 0 && !adjusting) { res.status(502).json({ error: "ai_bad_json" }); return; }
   res.json({ questions });
 });
 

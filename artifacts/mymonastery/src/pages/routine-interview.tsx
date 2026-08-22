@@ -323,6 +323,11 @@ export default function RoutineInterviewPage() {
   // popup that says [are you sure] you want to delete it."
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [deletingRow, setDeletingRow] = useState<SpecRow | null>(null);
+  // Set when a read-back slide was opened FROM the review's gear. Without it,
+  // fixing one thing from the review dropped you back into the middle of the
+  // read-back and made you walk forward through every remaining section and
+  // the extras page to get back — losing your place to change one dropdown.
+  const [returnToReview, setReturnToReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -390,6 +395,16 @@ export default function RoutineInterviewPage() {
    * and silently skipping the entire read-back would be the worse reading of
    * an ambiguous signal.
    */
+  /**
+   * "Anything else you keep?" is a from-scratch question.
+   *
+   * Someone adjusting one thing has already said what they wanted; offering
+   * them the full extras picker and a custom-practice field afterwards is a
+   * page of noise between them and Save — and an invitation to add practices
+   * they never came here for.
+   */
+  const skipExtras = effectiveMode === "adjust";
+
   const confirmSections = (
     touchedSections.length > 0
       ? CONFIRM_SECTIONS.filter((sec) => touchedSections.includes(sec.key))
@@ -408,7 +423,7 @@ export default function RoutineInterviewPage() {
   // tomorrow, and this component has already cost one crash from a hook in the
   // wrong place.
   useEffect(() => {
-    if (phase === "confirm" && confirmSections.length === 0) setPhase("extras");
+    if (phase === "confirm" && confirmSections.length === 0) setPhase(skipExtras ? "review" : "extras");
   }, [phase, confirmSections.length]);
 
 
@@ -453,10 +468,18 @@ export default function RoutineInterviewPage() {
         // normalizes, but this page shouldn't break on an older deploy of it.
         .map((item) => (typeof item === "string" ? { q: item } : item))
         .filter((item): item is Question => !!item && typeof item.q === "string" && item.q.trim().length > 0);
-      if (qs.length === 0) throw new Error("ai_bad_json");
       setQuestions(qs);
       setAnswers(qs.map(() => ""));
       setQIndex(0);
+      // An adjustment that needed nothing clarified goes straight to the build.
+      // "Move my evening reminder to nine" is complete as stated, and making
+      // someone answer two invented questions to get there is the slowest
+      // possible way to change one line.
+      if (qs.length === 0) {
+        if (effectiveMode !== "adjust") throw new Error("ai_bad_json");
+        void submitFollowups();
+        return;
+      }
       setPhase("followups");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
@@ -507,7 +530,7 @@ export default function RoutineInterviewPage() {
       const nothingToConfirm = touched.length === 0
         && Array.isArray(res.changedSections)
         && (res.settings ?? []).length > 0;
-      setPhase(nothingToConfirm ? "extras" : "confirm");
+      setPhase(nothingToConfirm ? (skipExtras ? "review" : "extras") : "confirm");
     } catch (e: any) {
       setError(errorText(e?.body?.error ?? e?.message ?? ""));
       // Return them where they were. A failed rebuild during the read-back used
@@ -1041,7 +1064,10 @@ export default function RoutineInterviewPage() {
 
     const advance = () => {
       setError(null); setShowFix(false); setFixText("");
-      if (isLast) { setPhase("extras"); return; }
+      // Came here from the review's gear → go straight back to it. They came to
+      // change one thing, not to re-walk the flow.
+      if (returnToReview) { setReturnToReview(false); setPhase("review"); return; }
+      if (isLast) { setPhase(skipExtras ? "review" : "extras"); return; }
       setConfirmIndex((i2) => i2 + 1);
     };
     /**
@@ -1101,7 +1127,15 @@ export default function RoutineInterviewPage() {
       // Rebuild with the correction folded in rather than patching the spec
       // here — the model owns turning "actually I use the book" into a level
       // and an entry, and a half-corrected spec is worse than a fresh one.
-      const next = [...corrections, `${section.title}: ${t}`];
+      // Replace this section's correction rather than appending. Correcting
+      // the same slide twice used to send BOTH lines to the model — "Morning:
+      // actually the book" followed by "Morning: no, on screen" — leaving it
+      // to reconcile two contradictory instructions from the same person about
+      // the same thing. The latest word wins, which is what they mean.
+      const next = [
+        ...corrections.filter((c) => !c.startsWith(`${section.title}: `)),
+        `${section.title}: ${t}`,
+      ];
       setCorrections(next);
       // Come back to THIS section so they can see their correction landed.
       void submitFollowups(next, confirmIndex);
@@ -1874,6 +1908,7 @@ export default function RoutineInterviewPage() {
                               setError(null);
                               setEditingRow(null);
                               setConfirmIndex(idx);
+                              setReturnToReview(true);
                               setPhase("confirm");
                               return;
                             }
@@ -1980,7 +2015,18 @@ export default function RoutineInterviewPage() {
         >
           {prescribe ? "Use this routine" : applying ? "Saving…" : "Save this as my rhythm"}
         </button>
-        <button type="button" onClick={() => { setError(null); setPhase("extras"); }} style={quietBtn}>
+        {/* Back to whatever actually preceded this. In an adjustment the extras
+            page is skipped, so "go back" must land on the read-back rather than
+            a page they never saw. */}
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            if (skipExtras) { setConfirmIndex(Math.max(0, confirmSections.length - 1)); setPhase("confirm"); }
+            else setPhase("extras");
+          }}
+          style={quietBtn}
+        >
           Not quite — go back
         </button>
 
