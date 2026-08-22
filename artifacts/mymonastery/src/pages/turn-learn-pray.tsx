@@ -232,7 +232,13 @@ export default function TurnLearnPrayPage() {
               "listen" CTA. */}
           <div className="flex items-center gap-3 mt-9 mb-2">
             <h2 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
-              {practiceMode ? "Morning Contemplative Evening" : "Turn Learn Pray"}
+              {/* Owner: call this "Anchor practices". The old heading was just
+                  the three row labels run together, which read as a fragment
+                  rather than a name for what the section is — and the middle
+                  row isn't always "Contemplative" now (it becomes Reflection
+                  for someone who keeps a newsletter and no silent practice),
+                  so the literal list had started to lie as well. */}
+              {practiceMode ? "Anchor practices" : "Turn Learn Pray"}
             </h2>
             <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
           </div>
