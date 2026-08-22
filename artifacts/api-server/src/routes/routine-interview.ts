@@ -724,7 +724,17 @@ function hideUnchosen(spec: {
   // hidden. Belt and braces: the rule-config is the thing that was validated,
   // so let it have the last word.
   const required: string[] = [];
-  if (rc["phoebe:office:level:morning"] || rc["phoebe:office:level:evening"]) required.push("office");
+  // "ask" means the side has NO practice — and it's a truthy string, so a plain
+  // presence check forced the Office card onto the home of someone who
+  // described only a walk and a newsletter. The build prompt explicitly asks
+  // for "ask" on an empty side, so that output is expected, not exceptional.
+  // describeSpec emits no row for it either, meaning the card appeared without
+  // ever showing up on the review they approved.
+  const realLevel = (side: string) => {
+    const lvl = rc[`phoebe:office:level:${side}`];
+    return !!lvl && lvl !== "ask";
+  };
+  if (realLevel("morning") || realLevel("evening")) required.push("office");
   for (const k of Object.keys(rc)) {
     if (k.startsWith("phoebe:slot:")) required.push(k.slice("phoebe:slot:".length));
   }

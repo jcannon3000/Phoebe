@@ -670,9 +670,26 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
   ) {
     return "invalid";
   }
-  // 4xx generally = something about the request is wrong permanently;
-  // invalidate so we don't keep retrying. 5xx = transient, retry later.
-  return result.status >= 400 && result.status < 500 ? "invalid" : "error";
+  /**
+   * A 4xx is NOT proof the device token is dead.
+   *
+   * 403 covers ExpiredProviderToken / InvalidProviderToken / MissingProviderToken
+   * and 429 is TooManyProviderTokenUpdates — all statements about OUR signing
+   * credential, identical for every device. Retiring the token on those meant a
+   * rotated or revoked .p8 key would mark the ENTIRE user base's tokens invalid
+   * in a single scheduler tick, and nothing un-invalidates a token except the
+   * app registering a fresh one. Push would simply stop, permanently, for
+   * everyone, from one credential change.
+   *
+   * The FCM path already guards this and its comment cites the 2026-07-21
+   * notification audit; the APNs path it refers to was never actually fixed.
+   *
+   * Only reasons that name THIS token retire it: the BadDeviceToken /
+   * DeviceTokenNotForTopic check above, plus 410 Unregistered, which is APNs
+   * telling us the device uninstalled. Everything else is a retry.
+   */
+  if (result.status === 410) return "invalid";
+  return "error";
 }
 
 // Open an HTTP/2 session to APNs, send one request, return the response.
@@ -689,12 +706,19 @@ async function apnsRequest(
   return new Promise((resolve, reject) => {
     const session = http2.connect(APNS_HOST);
     let settled = false;
+    // Node's http2 has NO default timeout, and this loop is serial over every
+    // device token — so one half-open socket to Apple stalled an entire
+    // scheduler run indefinitely, which in turn let the 60-second tick launch
+    // overlapping copies of the same fan-out. The FCM path sets 10s; match it.
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const finish = (resOrErr: { status: number; reason: string } | Error) => {
       if (settled) return;
       settled = true;
+      if (timer) { clearTimeout(timer); timer = null; }
       try { session.close(); } catch { /* already closed */ }
       if (resOrErr instanceof Error) reject(resOrErr); else resolve(resOrErr);
     };
+    timer = setTimeout(() => finish(new Error("APNs request timed out")), 10_000);
 
     session.on("error", err => finish(err));
 

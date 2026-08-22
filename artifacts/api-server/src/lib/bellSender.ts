@@ -1706,15 +1706,28 @@ const OFFICE_REMINDER_SENDERS: Array<{ name: string; run: () => Promise<void> }>
   { name: "parish-office-morning-followup", run: runParishOfficeMorningFollowUpSender },
 ];
 
+// Senders currently mid-run. The office reminders tick every 60 SECONDS, but a
+// fan-out over the whole user base is serial and can take longer than that —
+// and dedupe is a read-then-write (the sent-date is stamped AFTER the push), so
+// an overlapping tick re-reads the same unstamped rows and sends the reminder
+// again, up to once a minute across the grace window. A name-keyed in-flight
+// guard is the cheap half of the fix; the APNs timeout is the other half.
+const inFlight = new Set<string>();
+
 function fireSenderList(senders: Array<{ name: string; run: () => Promise<void> }>): void {
   for (const sender of senders) {
+    if (inFlight.has(sender.name)) {
+      logger.warn({ sender: sender.name }, "[scheduler] previous run still in flight — skipping this tick");
+      continue;
+    }
     // withSchedulerLog already swallows exceptions internally so a
     // failure in one sender doesn't break the others. We still
     // attach a tail .catch as belt-and-suspenders for the case
     // where the heartbeat insert itself throws synchronously.
-    void withSchedulerLog(sender.name, sender.run).catch(() => {
-      /* unreachable — withSchedulerLog never rejects */
-    });
+    inFlight.add(sender.name);
+    void withSchedulerLog(sender.name, sender.run)
+      .catch(() => { /* unreachable — withSchedulerLog never rejects */ })
+      .finally(() => { inFlight.delete(sender.name); });
   }
 }
 

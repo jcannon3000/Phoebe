@@ -69,7 +69,17 @@ migrate()
       // (undeployed) worker before, so it never ran in this web-only deploy.
       // Idempotent on the episode guid: a real Whisper pass happens once per
       // new episode.
-      startOfficeAlignmentScheduler();
+      // NOT covered by the "double-running is safe" note above. That reasoning
+      // holds for the scanner (atomic WHERE sent_at IS NULL) and the idempotent
+      // cleanup jobs — but buildOfficeAlignment takes no lock: it only skips
+      // when a 'done' row already exists. Two processes hitting the hour
+      // together both see no row and both run a full Whisper pass plus the
+      // alignment calls, double-billing the line item that was 98.6% of the
+      // OpenAI spend. So this one defers to the worker when a worker owns the
+      // schedulers, matching app.ts's gate rather than index.ts's.
+      if (process.env["RUN_SCHEDULERS_IN_WORKER"] !== "true") {
+        startOfficeAlignmentScheduler();
+      }
     }
   })
   .catch((err) => {

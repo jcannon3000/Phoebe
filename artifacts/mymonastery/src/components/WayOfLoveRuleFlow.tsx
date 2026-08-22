@@ -1115,6 +1115,14 @@ export default function WayOfLoveRuleFlow({
     // the designer has none, since applying a config REMOVES omitted keys).
     const ruleConfig = collectRoutineValues();
     delete ruleConfig["phoebe:commitment-start"];
+    // Course progress is PERSONAL, and applying a config OVERWRITES any key it
+    // carries — ADDITIVE_KEYS only protects against a key being omitted, not
+    // against being replaced. Left in, an admin who had worked through a course
+    // would hand their own lesson completions to everyone who opened the link,
+    // wiping the adopter's. Strip them the same way commitment-start is.
+    for (const k of Object.keys(ruleConfig)) {
+      if (k.startsWith("phoebe:course:")) delete ruleConfig[k];
+    }
     return {
       v: 1,
       officePrefs,
@@ -1678,8 +1686,17 @@ export default function WayOfLoveRuleFlow({
       chooseGoal("0");
     } else if (id.startsWith("slot:")) {
       const key = id.slice("slot:".length);
-      setContemplative((c) => ({ ...c, [key]: false }));
+      // The row id uses the CARD key ("listening"); the contemplative state
+      // calls that same practice "audio". Writing contemplative.listening set a
+      // field commit() never reads, so deleting Audio Divina did nothing at all.
+      const contemplativeKey = key === "listening" ? "audio" : key;
+      setContemplative((c) => (contemplativeKey in c ? { ...c, [contemplativeKey]: false } : c));
       setExtras((e) => (key in e ? { ...e, [key]: false } : e));
+      // Also clear the slot key itself. commit() never removes these, and both
+      // the edit list and the interview's "your current routine" read them
+      // straight from the rule-config — so a deleted walk came back on the next
+      // visit even though its home card was hidden.
+      try { localStorage.removeItem(`phoebe:slot:${key}`); } catch { /* private mode */ }
     } else if (id.startsWith("card:")) {
       setNewsletters((prev) => prev.filter((n) => n !== id.slice("card:".length)));
     }

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, inArray, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -815,13 +815,21 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       console.warn("[practice-week] goal-history write failed:", err);
     }
 
+    // Bounded: the window plus a small run-up. This table gains a row per user
+    // per day forever, and goalOn() scans it per day — unbounded, a long-lived
+    // account would load thousands of rows on every home view. The rows OLDER
+    // than the window still matter (they carry the goal in force before it), so
+    // take a slice rather than only the seven days, and fall back to the
+    // earliest row we did load.
     const goalHistory = await db
       .select({
         ymd: contemplationGoalHistoryTable.ymd,
         goalMinutes: contemplationGoalHistoryTable.goalMinutes,
       })
       .from(contemplationGoalHistoryTable)
-      .where(eq(contemplationGoalHistoryTable.userId, sessionUserId));
+      .where(eq(contemplationGoalHistoryTable.userId, sessionUserId))
+      .orderBy(desc(contemplationGoalHistoryTable.ymd))
+      .limit(60);
     goalHistory.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0));
 
     // The goal in force on `day`: the most recent record dated on or before it.
