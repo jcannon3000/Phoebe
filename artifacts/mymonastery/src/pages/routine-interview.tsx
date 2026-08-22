@@ -23,7 +23,7 @@
  * The model's spec is validated server-side (sanitizeSpec) before it ever gets
  * here and again on apply, so nothing on this page has to trust it.
  */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -311,6 +311,11 @@ export default function RoutineInterviewPage() {
   // Typed on the extras step — "is there any other practice you do that isn't
   // named here?" See the field itself for why it lives on that step.
   const [ownPractice, setOwnPractice] = useState("");
+  // The free-text box on a follow-up question. Reported: "the just to be sure
+  // field, I can[']t type cause the page won't scroll up" — tapping "Something
+  // else" revealed a textarea below the fold and autoFocus raised the keyboard
+  // over it, so the caret was somewhere you couldn't see.
+  const freeTextRef = useRef<HTMLTextAreaElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -355,6 +360,12 @@ export default function RoutineInterviewPage() {
     if (typeof mins === "number" && mins > 0) setContMinutes(mins);
     const lm = sp.ruleConfig?.["phoebe:contemplation-log-method"];
     if (lm === "manual" || lm === "timer") setContLog(lm);
+    // Reported: "even though I had multiple sits saved, it defaulted to one sit
+    // when I came back." It had nowhere to be saved — the answer only lived in
+    // component state, so any rebuild (a correction, a re-entry) silently reset
+    // it to "once" and the minutes then read as one sit.
+    const sits = sp.ruleConfig?.["phoebe:contemplation-sits"];
+    if (sits === "one" || sits === "several") setContOften(sits === "several" ? "more" : "once");
   }, [spec]);
 
   // "adjust" is the default, but it only MEANS anything when there's a routine
@@ -882,10 +893,26 @@ export default function RoutineInterviewPage() {
                   </button>
                 );
               })}
-              {!wroteInstead && (
+              {/* Only when the model didn't already offer one — it sometimes
+                  includes "Something else" as a choice, and two of them next to
+                  each other is just confusing. */}
+              {!wroteInstead && !choices.some((c) => /^something else$/i.test(c.trim())) && (
                 <button
                   type="button"
-                  onClick={() => setAnswer(" ")}
+                  onClick={() => {
+                    setAnswer(" ");
+                    // Bring it above the keyboard. Deferred a frame because the
+                    // textarea doesn't exist until this state change renders,
+                    // and again after the keyboard animates in — iOS resizes
+                    // the viewport partway through, so a single scroll lands
+                    // short.
+                    requestAnimationFrame(() => {
+                      freeTextRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+                    });
+                    setTimeout(() => {
+                      freeTextRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+                    }, 350);
+                  }}
                   style={{
                     background: "transparent", color: SAGE, border: "none", cursor: "pointer",
                     fontFamily: FONT, fontSize: 13.5, padding: "6px 2px", textAlign: "left",
@@ -903,6 +930,7 @@ export default function RoutineInterviewPage() {
               key={qIndex}
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
+              ref={freeTextRef}
               autoFocus={wroteInstead}
               rows={4}
               maxLength={1000}
@@ -1044,6 +1072,7 @@ export default function RoutineInterviewPage() {
         d.officePrefs.contemplationGoalMinutes = contMinutes;
         d.ruleConfig["phoebe:contemplation-style"] = "silent";
         d.ruleConfig["phoebe:contemplation-log-method"] = contLog;
+        d.ruleConfig["phoebe:contemplation-sits"] = contOften === "more" ? "several" : "one";
         const order: string[] = d.homeLayout.order ?? [];
         if (!order.includes("contemplation")) order.push("contemplation");
         d.homeLayout.order = order;
@@ -1194,7 +1223,12 @@ export default function RoutineInterviewPage() {
                   }}
                   aria-label="Reminder time"
                   style={{
-                    ...card, width: "100%", boxSizing: "border-box", color: WARM,
+                    // maxWidth/minWidth matter here: iOS gives input[type=time]
+                    // an intrinsic width from its native control that ignores
+                    // width:100%, which is what made the 7:00 AM row sit wider
+                    // than the cards above it.
+                    ...card, width: "100%", maxWidth: "100%", minWidth: 0,
+                    boxSizing: "border-box", color: WARM,
                     fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark", padding: "13px 14px",
                   }}
                 />
@@ -1221,7 +1255,13 @@ export default function RoutineInterviewPage() {
                       <button
                         key={o.v}
                         type="button"
-                        onClick={() => { setContOften(o.v); syncSitRows(contMinutes, contLog, o.v); }}
+                        onClick={() => {
+                          setContOften(o.v);
+                          patchSpec((d) => {
+                            d.ruleConfig["phoebe:contemplation-sits"] = o.v === "more" ? "several" : "one";
+                          });
+                          syncSitRows(contMinutes, contLog, o.v);
+                        }}
                         style={{
                           flex: 1, cursor: "pointer", padding: "14px 10px", borderRadius: 14,
                           border: `1px solid ${on ? "rgba(110,180,130,0.62)" : CARD_B}`,

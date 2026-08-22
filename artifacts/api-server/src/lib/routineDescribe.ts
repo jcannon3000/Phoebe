@@ -81,6 +81,13 @@ const PRACTICE_LABEL: Record<string, string> = {
 // one is study, the other belongs to the evening.
 // Practices whose time-of-day slot the app ignores — see the note where this
 // is used. Keep in step with getPracticeSlot() in lib/customAnchors.ts.
+// Each practice's own face. They all used to share a generic ✨, which read
+// oddly next to the same practice's real card elsewhere in the app — the globe
+// for Creation Prayer, the walker for a walk.
+const PRACTICE_EMOJI: Record<string, string> = {
+  cobreathe: "🌍", listening: "🎵", walk: "🚶", reading: "📖", examen: "🌗",
+};
+
 const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);
 
 function logMethodLabel(rc: Record<string, string>): string {
@@ -190,7 +197,7 @@ export function describeSpec(spec: {
     // afternoon" describes a gate the app does not apply. Reading is the one
     // that still honours its slot, and still reads back as chosen.
     const sub = ALWAYS_ANYTIME.has(key) ? SLOT_LABEL["anytime"]! : SLOT_LABEL[v];
-    rows.push({ emoji: "✨", label: name, sub, section });
+    rows.push({ emoji: PRACTICE_EMOJI[key] ?? "✨", label: name, sub, section });
   }
   return rows;
 }

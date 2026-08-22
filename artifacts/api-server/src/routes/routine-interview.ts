@@ -116,6 +116,10 @@ per-side flag only when that side has no other practice.
       that side, shown as its own Morning/Evening Contemplation card
   "phoebe:office:minutes:<side>" = minutes for THAT side's sit, e.g. "10"
   "phoebe:contemplation-style" = "silent" or "cobreathe" (a guided breath)
+  "phoebe:contemplation-sits" = "one" or "several" — whether the daily minutes
+      are a single sit or spread across the day. Doesn't change what's counted
+      (the goal is a daily TOTAL either way); it's what makes the number mean
+      the right thing, and it's remembered so we don't ask twice.
   "phoebe:contemplation-log-method" = how the sit gets kept —
       "timer" (sit with a countdown, tap Begin) or "manual" (no timer; tap the
       card to mark it done). Set it from what they describe: someone who says
@@ -516,6 +520,7 @@ function scrubRuleConfig(rc: Record<string, string>): string[] {
     if (k.startsWith("phoebe:slot:")) { if (!RC_SLOTS.has(v)) reject(k, v); continue; }
     if (k === "phoebe:contemplation-style") { if (!RC_STYLES.has(v)) reject(k, v); continue; }
     if (k === "phoebe:contemplation-log-method") { if (v !== "timer" && v !== "manual") reject(k, v); continue; }
+    if (k === "phoebe:contemplation-sits") { if (v !== "one" && v !== "several") delete rc[k]; continue; }
     if (k.includes(":contemplation:")) { if (v !== "1" && v !== "0") delete rc[k]; continue; }
     if (k.includes(":minutes:")) {
       const n = Number(v);
@@ -702,6 +707,49 @@ function normalizeContemplation(spec: {
  */
 type CustomPractice = { title: string; emoji: string; slot: string };
 const CUSTOM_SLOTS = new Set(["morning", "midday", "afternoon", "evening", "anytime"]);
+
+/**
+ * Titles that are ACTUALLY Phoebe presets, however the model labelled them.
+ *
+ * Reported: "I asked it to add creation prayer to the routine and it didn't
+ * recognise it as a Phoebe practice." It came back as a custom practice —
+ * alongside the real Creation Prayer card — so the review showed the same
+ * practice twice, once as "Creation prayer, in the afternoon" with a leaf, once
+ * as "Creation Prayer, any time of day" with the globe, plus a note explaining
+ * it "does not match a preset option". It plainly does.
+ *
+ * Enforced here rather than by asking the prompt more nicely. The vocabulary
+ * already lists these; a model that misses the mapping once will miss it again,
+ * and the cost is a duplicated practice in someone's rule of life.
+ */
+const PRESET_BY_TITLE: Record<string, string> = {
+  "creation prayer": "cobreathe",
+  "co-breathe": "cobreathe",
+  "cobreathe": "cobreathe",
+  "audio divina": "listening",
+  "sacred listening": "listening",
+  "contemplative walk": "walk",
+  "prayer walk": "walk",
+  "walking prayer": "walk",
+  "the examen": "examen",
+  "examen": "examen",
+  "reading": "reading",
+};
+
+/** Split what the model called "custom" into real presets and genuine customs. */
+function splitCustomPractices(items: CustomPractice[]): {
+  presets: Array<{ key: string; slot: string }>;
+  customs: CustomPractice[];
+} {
+  const presets: Array<{ key: string; slot: string }> = [];
+  const customs: CustomPractice[] = [];
+  for (const item of items) {
+    const key = PRESET_BY_TITLE[item.title.trim().toLowerCase()];
+    if (key) presets.push({ key, slot: item.slot });
+    else customs.push(item);
+  }
+  return { presets, customs };
+}
 
 function parseCustomPractices(raw: unknown): CustomPractice[] {
   if (!Array.isArray(raw)) return [];
@@ -1054,7 +1102,17 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   const cardNote = droppedCardNote(out.data?.spec, spec.homeLayout.order);
   const notes = [...modelNotes, ...scrubNotes, ...(cardNote ? [cardNote] : [])].slice(0, 8);
 
-  const customPractices = parseCustomPractices(out.data?.customPractices);
+  const parsedCustoms = parseCustomPractices(out.data?.customPractices);
+  const { presets: mislabelled, customs: customPractices } = splitCustomPractices(parsedCustoms);
+  // A preset the model called "custom" becomes the real thing: its own slot and
+  // its own card, not a second look-alike beside it. Done before hideUnchosen
+  // so the card it turns on is kept visible.
+  for (const { key, slot } of mislabelled) {
+    spec.ruleConfig[`phoebe:slot:${key}`] = RC_SLOTS.has(slot) ? slot : "anytime";
+  }
+  if (mislabelled.length > 0) {
+    hideUnchosen(spec);
+  }
   const afterRows = describeSpec(spec);
   // Empty for a from-scratch build, and for an adjustment with no baseline —
   // both of which mean "confirm the whole day", which is what the client does
