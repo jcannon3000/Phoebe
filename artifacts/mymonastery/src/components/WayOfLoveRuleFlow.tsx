@@ -2297,7 +2297,33 @@ export default function WayOfLoveRuleFlow({
             of a side rather than a rhythm of its own. Sitting under the office
             dropdowns it also read as part of the office, which is how a
             whole-day quota kept coming back as two per-side sits. The daily
-            amount is set once, on the Silence slide. */}
+            amount is set once, on the Silence slide.
+
+            The BREATH count stays. It isn't a sit length — Creation Prayer is
+            counted in breaths, has no daily-minutes goal to inherit from the
+            Silence slide, and this is its only home. Removing the whole block
+            took it out along with the minutes row, which left a Creation
+            Prayer side with no way to change its length at all. */}
+        {isCobreatheSide && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })}
+            </p>
+            <div style={{ position: "relative", marginBottom: 4 }}>
+              <select
+                value={String(cobreatheBreaths)}
+                onChange={(e) => chooseCobreatheBreaths(side, parseInt(e.target.value, 10) || 12)}
+                aria-label={t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })}
+                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+              >
+                {COBREATHE_LENGTHS.map((n) => (
+                  <option key={n} value={String(n)}>{t("wol_rule.n_breaths", { count: n, defaultValue: `${n} breaths` })}</option>
+                ))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            </div>
+          </>
+        )}
         {/* Owner: "combine the reminder on or off into one line, and if it is
             off hide the time." One switch row instead of two mutually
             exclusive choice rows — on/off is a binary, and rendering it as two
