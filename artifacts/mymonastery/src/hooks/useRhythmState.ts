@@ -440,12 +440,20 @@ export function useRhythmState(): RhythmState {
       });
     };
     window.addEventListener(OFFICE_DONE_EVENT, recheck);
+    // Also on a PREFS change: anchorModesFor() reads the side's level, so
+    // switching between the office and the devotion changes which completion
+    // flag counts. Without this the anchor kept answering with the old level
+    // until some unrelated event (a focus, an app resume) happened to refresh
+    // it — a dependency this effect gained when the anchor stopped accepting
+    // both flags.
+    window.addEventListener(OFFICE_PREFS_EVENT, recheck);
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
     window.addEventListener("storage", recheck);
     window.addEventListener("phoebe:appactive", recheck);
     return () => {
       window.removeEventListener(OFFICE_DONE_EVENT, recheck);
+      window.removeEventListener(OFFICE_PREFS_EVENT, recheck);
       window.removeEventListener("focus", recheck);
       window.removeEventListener("pageshow", recheck);
       window.removeEventListener("storage", recheck);

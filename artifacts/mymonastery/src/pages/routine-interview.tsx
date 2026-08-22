@@ -1637,8 +1637,14 @@ export default function RoutineInterviewPage() {
               onClick={() => {
                 setError(null);
                 if (asking && contStep > 0) { setContStep((st) => (st === 2 ? 1 : 0)); return; }
-                if (confirmIndex > 0) setConfirmIndex((i2) => i2 - 1);
-                else { setQIndex(Math.max(0, questions.length - 1)); setPhase("followups"); }
+                if (confirmIndex > 0) { setConfirmIndex((i2) => i2 - 1); return; }
+                // An adjustment that needed no clarification has no follow-up
+                // slides to go back to. Sending them there rendered a live
+                // dead-end: "One question", no question text, an empty box and
+                // a Continue that rebuilt from nothing.
+                if (questions.length === 0) { setPhase("describe"); return; }
+                setQIndex(questions.length - 1);
+                setPhase("followups");
               }}
               style={{ ...quietBtn, border: "none", color: "rgba(143,175,150,0.7)" }}
             >
