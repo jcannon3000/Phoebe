@@ -390,23 +390,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // item, so while their styles differed the two could not have matched
         // whatever colour was set. Both are plain now, and applyChrome tints
         // each of them explicitly.
-        // officeChrome uses "← Back" (the office's own top-left control);
-        // an article uses a plain X-circle icon, matching officeChrome's own
-        // close glyph — owner: "let's change Done to an X circle" — everywhere
-        // "Done" used to be the label EXCEPT a plain office/Venite open, which
-        // keeps the text "Done" (there's real ambiguity otherwise: is an icon
-        // alone "leave" or "mark finished"? "Done" as a word says the latter,
-        // which matters for something you're actively praying through).
+        // officeChrome uses "← Back" (the office's own top-left control).
+        // Owner tried an X-circle for articles, then: "let's revert the
+        // newsletters' top bar back to the Done and no Reader." Plain "Done"
+        // for both an article and a plain office/Venite open.
         if officeChrome {
             let backItem = UIBarButtonItem(title: "← Back", style: .plain, target: self, action: #selector(close))
             backItem.accessibilityLabel = "Back to the office"
             self.doneItem = backItem
             navigationItem.leftBarButtonItem = backItem
-        } else if isArticle {
-            let closeItem = UIBarButtonItem(image: UIImage(systemName: "xmark.circle.fill"), style: .plain, target: self, action: #selector(close))
-            closeItem.accessibilityLabel = "Close"
-            self.doneItem = closeItem
-            navigationItem.leftBarButtonItem = closeItem
         } else {
             let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
             doneItem.accessibilityLabel = "Done"
@@ -469,22 +461,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             // The title pill: same text the office's own header pill shows.
             title = officeTitleText
         } else if isArticle {
-            // No Options menu on an article — every item on it is about
-            // praying an office; on a newsletter they are meaningless at best
-            // and actively wrong at worst ("Listen to the office" would start
-            // a liturgy podcast over a Rohr meditation).
-            //
-            // In its place: Reader. Owner: "on the newsletters, can we do a
-            // button on the top right, same style as Done, which says Reader
-            // and brings up the reader view." SFSafariViewController's own
-            // Reader mode (entersReaderIfAvailable) already exists for this —
-            // openReaderView(_:) below builds the identical view for the JS
-            // front door; this reuses that SAME builder rather than a second
-            // copy, so both paths stay in lockstep.
-            let readerItem = UIBarButtonItem(title: "Reader", style: .plain, target: self, action: #selector(openReaderMode))
-            readerItem.accessibilityLabel = "Reader view"
-            self.optionsItem = readerItem
-            navigationItem.rightBarButtonItem = readerItem
+            // No Options, no Reader button — owner reverted both. Every
+            // Options item is about praying an office; on a newsletter they
+            // are meaningless at best and actively wrong at worst ("Listen to
+            // the office" would start a liturgy podcast over a Rohr
+            // meditation). onOpenReaderView / openReaderMode / presentReaderView
+            // are left wired below (harmless, unreachable from here) rather
+            // than torn back out, in case Reader comes back later.
+            navigationItem.rightBarButtonItem = nil
             title = nil
         } else {
             // A plain office/Venite open. Every Options item genuinely
@@ -755,10 +739,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         host.addSubview(blur)
         officeNavPill = blur
 
+        // Owner: "on the Bible reader, have Back say Next and have it
+        // progress to the next slide, the canticle." Both pill buttons now
+        // read "Next →" and both advance — kept as two buttons (not
+        // collapsed to one) since that's the literal shape asked for; the
+        // property/selector names below still say "Back" because renaming
+        // them everywhere is unrelated churn, not because either still goes
+        // backward.
         let back = UIButton(type: .system)
-        back.setTitle("Back", for: .normal)
+        back.setTitle("Next →", for: .normal)
         back.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
-        back.addTarget(self, action: #selector(officeNavBack), for: .touchUpInside)
+        back.addTarget(self, action: #selector(officeNavNext), for: .touchUpInside)
         back.layer.cornerRadius = 14
         back.layer.borderWidth = 1
         back.contentEdgeInsets = UIEdgeInsets(top: 7, left: 14, bottom: 7, right: 14)
