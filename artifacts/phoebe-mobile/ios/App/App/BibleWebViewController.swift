@@ -333,7 +333,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
         doneItem.accessibilityLabel = "Done"
         self.doneItem = doneItem
-        navigationItem.leftBarButtonItem = doneItem
+        // An ARTICLE hides the top bar altogether and carries Done, centred, on
+        // a bar at the bottom.
+        //
+        // Owner: "move the bar to the bottom of the screen, and we don't need
+        // the page title because it's reflected in the page — just have Done
+        // centred on the bar." A newsletter opens with its own masthead and its
+        // own headline; our bar was repeating the headline in truncated form
+        // directly above the full one, and pushing the article's own design
+        // down the screen to do it. An office is different — its bar carries
+        // Options, which is real navigation — so this is articles only.
+        if isArticle {
+            navigationItem.leftBarButtonItem = nil
+        } else {
+            navigationItem.leftBarButtonItem = doneItem
+        }
 
         // Owner: "at the top right could it be Options, and that brings down a
         // dropdown — kind of similar to the settings of the office slideshow."
@@ -374,6 +388,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // liturgy podcast over a Rohr meditation). Done is the only control a
         // reader needs, and it stays.
         navigationItem.rightBarButtonItem = isArticle ? nil : optionsItem
+        // No title on an article either — the page states it, better than we can.
+        if isArticle { title = nil }
 
         // ── WebView ── adopt a preloaded one when present (already loading in
         // the background, so it appears instantly), otherwise build a fresh
@@ -441,7 +457,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let flex2 = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         backButton.isEnabled = false
         forwardButton.isEnabled = false
-        toolbarItems = [backButton, fixedSpace(16), forwardButton, flex, reloadButton, flex2, shareButton]
+        toolbarItems = isArticle
+            ? [flex, doneItem, flex2]
+            : [backButton, fixedSpace(16), forwardButton, flex, reloadButton, flex2, shareButton]
 
         // Progress bar bound to the load.
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
@@ -453,7 +471,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         // Title follows the page's <title> once it loads.
         titleObservation = webView.observe(\.title, options: [.new]) { [weak self] webView, _ in
-            if let t = webView.title, !t.isEmpty { self?.title = t }
+            guard let self, !self.isArticle else { return }
+            if let t = webView.title, !t.isEmpty { self.title = t }
         }
 
         // A preloaded web view is already loading/loaded — only kick off the
@@ -629,6 +648,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         navBar?.scrollEdgeAppearance = appearance
         navBar?.compactAppearance = appearance
         navBar?.tintColor = tint
+        // The article's Done lives down here, so the bottom bar takes the same
+        // treatment — otherwise a dark page would leave black-on-black.
+        let toolbarAppearance = UIToolbarAppearance()
+        toolbarAppearance.configureWithOpaqueBackground()
+        toolbarAppearance.backgroundColor = bar
+        toolbarAppearance.shadowColor = UIColor.clear
+        let toolbar = navigationController?.toolbar
+        toolbar?.standardAppearance = toolbarAppearance
+        toolbar?.compactAppearance = toolbarAppearance
+        if #available(iOS 15.0, *) { toolbar?.scrollEdgeAppearance = toolbarAppearance }
+        toolbar?.tintColor = tint
         // Carries the rest of UIKit with it — bar-button capsules, the menu
         // that drops out of Options, the scroll indicators.
         navigationController?.overrideUserInterfaceStyle = isLight ? .light : .dark
@@ -937,19 +967,24 @@ final class BibleBrowser: NSObject {
         // …and the bottom toolbar.
         let toolbarAppearance = UIToolbarAppearance()
         toolbarAppearance.configureWithOpaqueBackground()
-        toolbarAppearance.backgroundColor = PhoebeBrowserColor.bar
-        toolbarAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        toolbarAppearance.backgroundColor = isArticle ? .white : PhoebeBrowserColor.bar
+        toolbarAppearance.shadowColor = UIColor.clear
         nav.toolbar.standardAppearance = toolbarAppearance
         nav.toolbar.compactAppearance = toolbarAppearance
         if #available(iOS 15.0, *) {
             nav.toolbar.scrollEdgeAppearance = toolbarAppearance
         }
-        nav.toolbar.tintColor = PhoebeBrowserColor.tint
-        // Owner: "we don't actually need the bottom bar." Everything on it is
-        // either duplicated in Options (reload, share) or unused while praying
-        // an office — and on a liturgy you scroll for ten minutes, a permanent
-        // bar is just less page. Done and Options stay pinned at the top.
-        nav.setToolbarHidden(true, animated: false)
+        nav.toolbar.tintColor = isArticle ? .black : PhoebeBrowserColor.tint
+        // An OFFICE has no bottom bar. Owner: "we don't actually need the
+        // bottom bar" — everything on it was duplicated in Options (reload,
+        // share) or unused mid-liturgy, and on something you scroll for ten
+        // minutes a permanent bar is just less page. Done and Options stay
+        // pinned at the top there.
+        //
+        // An ARTICLE is the mirror image: no top bar, and the bottom one
+        // carries Done alone. See where the toolbar items are built.
+        nav.setToolbarHidden(!isArticle, animated: false)
+        nav.setNavigationBarHidden(isArticle, animated: false)
 
         // Slide in from the right (next-slide feel), over the app rather than
         // replacing it, so the dismiss can slide back to reveal it.
