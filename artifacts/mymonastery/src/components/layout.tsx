@@ -1042,8 +1042,17 @@ function OpeningSplash() {
           transition={{ duration: 0.35, ease: "easeOut" }}
           style={{
             position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
+            // Centred by auto margins, NOT translateX(-50%).
+            //
+            // This is a motion.button animating `y`, and Framer Motion writes
+            // the element's `transform` to do that — overwriting the inline
+            // translateX and leaving the button's LEFT EDGE at the midpoint, so
+            // it sat half its own width to the right of centre. Margins can't
+            // be clobbered by an animated transform.
+            left: 0,
+            right: 0,
+            marginInline: "auto",
+            width: "fit-content",
             // Clear of the home indicator on a notched phone, and of the
             // screen edge on one without.
             bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)",
