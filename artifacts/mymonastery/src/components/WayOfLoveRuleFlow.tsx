@@ -2571,7 +2571,9 @@ export default function WayOfLoveRuleFlow({
             </span>
           </button>
           {reminderOnBySide[side] && (
-            <div style={{ position: "relative" }}>
+            // Width constraints on the WRAPPER as well — see the twin of this
+            // row in routine-interview.tsx.
+            <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
               <input
                 type="time"
                 value={timeBySide[side]}

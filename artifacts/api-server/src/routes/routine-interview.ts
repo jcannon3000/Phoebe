@@ -222,9 +222,18 @@ Prayer." Don't drop one and don't merge them. Instead:
     ANCHOR (phoebe:office:level:<side>).
   · The other becomes a "customPractices" entry, titled the way they'd say it —
     "Morning Devotion", "Evening Devotion" — with the matching slot.
-If it isn't obvious which is the anchor, ASK. That is exactly what a follow-up
-question is for: "Which of those is your main morning prayer?" Never guess
-between two practices someone told you they both keep.
+DON'T ASK WHEN ONE OF THEM IS CONTEMPLATIVE. If a side has two practices and
+one is a silent sit — centering prayer, contemplative prayer, meditation —
+then the OTHER one is the anchor and the sit is their contemplative practice.
+That isn't a guess, it's what the two things are. Reported: "I said I do
+centering prayer in the morning and daily scripture reading in the morning, and
+it asked me which one was my main practice" — the answer was already there.
+
+Ask only when the two are genuinely the same KIND of thing and nothing
+distinguishes them ("I read Forward Day by Day and I read the Dean's
+Commentary" — which anchors the morning?). Phrase it as the anchor:
+"Which of those is your main morning prayer?" Never guess between two practices
+of the same kind that someone told you they both keep.
 
 ANYTHING ELSE THEY KEEP → A CUSTOM PRACTICE. Owner: "if they talk about a
 practice that is not a preset option, make it a custom practice." A rosary, a
@@ -897,6 +906,37 @@ function defaultRemindersOn(spec: {
   }
 }
 
+/**
+ * One practice, recorded once.
+ *
+ * Reported twice: "whenever the questionnaire hears scripture reading, it adds
+ * scripture reading AND reading as a separate practice." The prompt forbids it
+ * and the model kept doing it anyway — the two really are near-synonyms in
+ * English, so this is the kind of thing to settle in code rather than ask for.
+ *
+ * A side whose ANCHOR is the appointed readings already has the lectionary; a
+ * "reading" slot beside it is the same act listed twice. Same for a side whose
+ * anchor is the Examen, the psalms, or a silent sit — each has a slot twin.
+ */
+const ANCHOR_SLOT_TWINS: Record<string, string> = {
+  readings: "reading",
+  examen: "examen",
+};
+
+function dropSlotTwinsOfAnchors(spec: { ruleConfig: Record<string, string> }): string[] {
+  const rc = spec.ruleConfig;
+  const notes: string[] = [];
+  for (const side of ["morning", "evening"] as const) {
+    const level = rc[`phoebe:office:level:${side}`];
+    const twin = level ? ANCHOR_SLOT_TWINS[level] : undefined;
+    if (twin && rc[`phoebe:slot:${twin}`]) {
+      delete rc[`phoebe:slot:${twin}`];
+      notes.push(`That's one practice, not two — it's recorded as your ${side} prayer rather than twice.`);
+    }
+  }
+  return notes;
+}
+
 function normalizeContemplation(spec: {
   officePrefs: { contemplationGoalMinutes: number };
   ruleConfig: Record<string, string>;
@@ -1388,6 +1428,7 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   // shape) — mutates `spec.ruleConfig`, so it must run before the response.
   const scrubNotes = scrubRuleConfig(spec.ruleConfig);
   normalizeContemplation(spec);
+  dropSlotTwinsOfAnchors(spec);
   defaultEntryToVenite(spec);
   defaultRemindersOn(spec);
   hideUnchosen(spec);
@@ -1461,6 +1502,7 @@ router.post("/routine-interview/apply", perUserRateLimit("routine_interview_appl
   // including the extras step's additions, which change what should be hidden.
   scrubRuleConfig(spec.ruleConfig);
   normalizeContemplation(spec);
+  dropSlotTwinsOfAnchors(spec);
   defaultEntryToVenite(spec);
   defaultRemindersOn(spec);
   hideUnchosen(spec);

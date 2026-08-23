@@ -7,6 +7,8 @@ import { getSideLevel, getSideEntry, getSideContemplation, type OfficeSide } fro
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
+import { getReadingsTodayUrl, recordReadingsOpened } from "@/lib/cacReadState";
+import { openExternalThenMarkRead } from "@/lib/openExternal";
 
 // /begin-prayer — landing page for the iOS "Begin prayer" home-screen
 // shortcut. iOS quick actions are static (configured in Info.plist),
@@ -148,7 +150,18 @@ export default function BeginPrayerPage() {
         setLocation(`/bcp/daily-office?mode=${mode}&venite=1`, { replace: true });
         return;
       }
-      setLocation(`/dashboard?readings=${side}`, { replace: true });
+      // Open the readings HERE, rather than handing off to a card and hoping
+      // it mounts and notices. Reported twice: "morning scripture reading isn't
+      // going forward, it just refreshes the home screen." The ?readings= param
+      // only works if the ReadingsHomeCard happens to be rendered on the
+      // dashboard for that side — a lot of conditions between a tap and a
+      // lectionary. The tap that got us here is the user gesture, so opening
+      // directly is both simpler and more reliable.
+      openExternalThenMarkRead(
+        getReadingsTodayUrl(),
+        () => recordReadingsOpened({ side }),
+      );
+      setLocation("/dashboard", { replace: true });
       return;
     }
     // A practice the user named themselves IS this side's prayer → there's no

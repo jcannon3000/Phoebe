@@ -1338,7 +1338,12 @@ export default function RoutineInterviewPage() {
                 // was missing, so the row read as a plain field beside two
                 // pills that clearly opened something. input[type=time] DOES
                 // open a picker on tap — the affordance just wasn't drawn.
-                <div style={{ position: "relative" }}>
+                // The WRAPPER carries the width constraints too, not just the
+                // input. A bare position:relative div is sized by its content,
+                // so it inherited input[type=time]'s intrinsic native width and
+                // pushed the row past the cards above it — the bar stayed
+                // oversized even after the input itself was capped.
+                <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
                 <input
                   type="time"
                   value={reminderTime}
