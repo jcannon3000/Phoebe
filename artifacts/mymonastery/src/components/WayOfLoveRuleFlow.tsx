@@ -2214,58 +2214,6 @@ export default function WayOfLoveRuleFlow({
             },
           )}
         </div>
-        {/* A SECOND practice for this side (owner). Not an anchor: it becomes a
-            card of its own in this side's slot, and the weekly progress row
-            keeps reading the anchor above. The side's own choice is filtered
-            out — offering "Morning Devotion" to someone whose anchor already
-            IS the devotion would just duplicate it. */}
-        <div style={{ marginTop: 18 }}>
-          {extraBySide[side] ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
-              <span aria-hidden style={{ fontSize: 18 }}>{EXTRA_PRACTICE_EMOJI[extraBySide[side]!] ?? "🌿"}</span>
-              <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontFamily: FONT }}>{extraBySide[side]}</span>
-              <button
-                type="button"
-                onClick={() => { touchedRef.current = true; setExtraBySide((p) => ({ ...p, [side]: null })); }}
-                aria-label={`Remove ${extraBySide[side]}`}
-                style={{ background: "none", border: "none", color: SAGE, fontSize: 15, cursor: "pointer", padding: "2px 6px" }}
-              >
-                ✕
-              </button>
-            </div>
-          ) : pickingExtra === side ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {EXTRA_PRACTICES
-                .filter((e) => !(side === "morning" && e.title === "Evening Devotion"))
-                .filter((e) => !(side === "evening" && e.title === "Morning Devotion"))
-                .filter((e) => !(e.title.endsWith("Devotion") && prayBySide[side] === "devotion"))
-                .filter((e) => !(e.title === "Compline" && prayBySide[side] === "compline"))
-                .map((e) => choiceRow(false, `${e.emoji} ${e.title}`, e.sub, () => {
-                  touchedRef.current = true;
-                  setExtraBySide((p) => ({ ...p, [side]: e.title }));
-                  setPickingExtra(null);
-                }))}
-              <button
-                type="button"
-                onClick={() => setPickingExtra(null)}
-                style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13.5, fontFamily: FONT, cursor: "pointer", padding: "8px 12px" }}
-              >
-                {t("common.cancel", { defaultValue: "Never mind" })}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setPickingExtra(side)}
-              style={{ width: "100%", background: "transparent", border: `1px dashed ${CARD_B}`, borderRadius: 14, padding: "13px 16px", color: SAGE, fontSize: 14.5, fontFamily: FONT, cursor: "pointer" }}
-            >
-              {t("wol_rule.add_extra_practice", {
-                side: cap.toLowerCase(),
-                defaultValue: `+ Add an additional ${cap.toLowerCase()} practice`,
-              })}
-            </button>
-          )}
-        </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => wayContinue(side))}
       </>,
     );
@@ -2564,6 +2512,65 @@ export default function WayOfLoveRuleFlow({
               {/* The picker affordance, matching the dropdowns above it. */}
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
+          )}
+        </div>
+        {/* A SECOND practice for this side — on the CONFIG slide, not the one
+            before it (owner). The first slide is where the anchor gets chosen;
+            an "add another" button sitting under those options competed with
+            that single decision. Here the anchor is already settled and this
+            page is where the rest of the side is set up, so it reads as the
+            next thing rather than an alternative to the last one.
+
+            (owner, on the model). Not an anchor: it becomes a
+            card of its own in this side's slot, and the weekly progress row
+            keeps reading the anchor above. The side's own choice is filtered
+            out — offering "Morning Devotion" to someone whose anchor already
+            IS the devotion would just duplicate it. */}
+        <div style={{ marginTop: 18 }}>
+          {extraBySide[side] ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
+              <span aria-hidden style={{ fontSize: 18 }}>{EXTRA_PRACTICE_EMOJI[extraBySide[side]!] ?? "🌿"}</span>
+              <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontFamily: FONT }}>{extraBySide[side]}</span>
+              <button
+                type="button"
+                onClick={() => { touchedRef.current = true; setExtraBySide((p) => ({ ...p, [side]: null })); }}
+                aria-label={`Remove ${extraBySide[side]}`}
+                style={{ background: "none", border: "none", color: SAGE, fontSize: 15, cursor: "pointer", padding: "2px 6px" }}
+              >
+                ✕
+              </button>
+            </div>
+          ) : pickingExtra === side ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {EXTRA_PRACTICES
+                .filter((e) => !(side === "morning" && e.title === "Evening Devotion"))
+                .filter((e) => !(side === "evening" && e.title === "Morning Devotion"))
+                .filter((e) => !(e.title.endsWith("Devotion") && prayBySide[side] === "devotion"))
+                .filter((e) => !(e.title === "Compline" && prayBySide[side] === "compline"))
+                .map((e) => choiceRow(false, `${e.emoji} ${e.title}`, e.sub, () => {
+                  touchedRef.current = true;
+                  setExtraBySide((p) => ({ ...p, [side]: e.title }));
+                  setPickingExtra(null);
+                }))}
+              <button
+                type="button"
+                onClick={() => setPickingExtra(null)}
+                style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13.5, fontFamily: FONT, cursor: "pointer", padding: "8px 12px" }}
+              >
+                {t("common.cancel", { defaultValue: "Never mind" })}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickingExtra(side)}
+              style={{ width: "100%", background: "transparent", border: `1px dashed ${CARD_B}`, borderRadius: 14, padding: "13px 16px", color: SAGE, fontSize: 14.5, fontFamily: FONT, cursor: "pointer" }}
+            >
+              {t("wol_rule.add_extra_practice", {
+                side: cap.toLowerCase(),
+                defaultValue: `+ Add an additional ${cap.toLowerCase()} practice`,
+              })}
+            </button>
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
