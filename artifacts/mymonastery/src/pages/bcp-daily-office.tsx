@@ -31,7 +31,7 @@ import { PrayerPromptsSlide } from "@/components/PrayerPromptsSlide";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
-import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
+import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, setSideLevel, getSideExtra, extraOfficeMode, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
 import { getOfficeCacheEntry, putOfficeCacheEntry } from "@/lib/officeOfflineCache";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
@@ -639,6 +639,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     resolvedMode === "creation-evening";
 
   /**
+   * Which home CARD this office completes.
+   *
+   * Normally the side's anchor ("morning"/"evening"). But when the side carries
+   * a SECOND practice and THIS is the office that practice runs as, the card
+   * that was prayed is the extra's, not the anchor's — see DailyProgressBody's
+   * extraCard, whose key this must match exactly.
+   */
+  const completedCardKey = (() => {
+    const extra = getSideExtra(officeSide);
+    if (!extra) return officeSide;
+    return extraOfficeMode(officeSide, extra) === resolvedMode ? `extra-${officeSide}` : officeSide;
+  })();
+
+  /**
    * Did we arrive here purely to hand off to venite.app?
    *
    * Read ONCE at mount, before the query is scrubbed below. Owner: "I don't
@@ -899,6 +913,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    */
   const veniteVisitsKey = `phoebe:venite-visits:${officeSide}:${new Date().toLocaleDateString("en-CA")}`;
   const veniteLeftAtRef = useRef<number | null>(null);
+  /**
+   * This deck is a way-station, not a screen.
+   *
+   * Reported: "when it comes out you see the office first page — it shouldn't
+   * be there." Arriving with ?venite=1 mounts the deck only so the credit-on-
+   * return and Options wiring have somewhere to live; the person is meant to
+   * see the browser, then the home. But the deck still RENDERS underneath, so
+   * the welcome slide ("Before you begin — Morning Devotion") was on screen for
+   * the frames between the browser dismissing and the navigation home.
+   *
+   * While this is true the deck paints a plain field in its own backdrop
+   * colour instead — the same thing /begin-prayer shows while it decides where
+   * to send you, so the whole hand-off is one continuous surface.
+   */
+  // Seeded from veniteDirect so even the FIRST frame is the plain field — the
+  // hand-off starts in an effect, which runs after that frame has painted.
+  const [veniteHandingOff, setVeniteHandingOff] = useState(veniteDirect);
   const [veniteForm, setVeniteForm] = useState<"office" | "devotion">("office");
 
 
@@ -908,6 +939,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // an EVENING hand-off opened the morning podcast.
     try { sessionStorage.setItem("phoebe:venite-side", officeSide); } catch { /* private mode */ }
     setVeniteForm(form);
+    setVeniteHandingOff(true);
     veniteLeftAtRef.current = Date.now();
     openExternal(veniteOfficeUrl(officeSide, new Date(), form));
   };
@@ -941,11 +973,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       {
         // Credited the same way the physical-book attestation is, so the
         // anchor flips, the reminder push clears, and Daily progress counts it.
-        // Credit the MODE that was actually prayed. The devotion and the full
-        // office are different practices on the same side, and a side can now
-        // carry both — passing only the side ticked whichever one the anchor
-        // happens to be.
-        markOfficeBookComplete(officeSide, resolvedMode);
+        // Credit the MODE that was actually prayed, and play the moment on the
+        // CARD that was prayed. The devotion and the full office are different
+        // practices on the same side, and a side can now carry both — passing
+        // only the side ticked whichever one the anchor happens to be, and
+        // animated the anchor's card either way.
+        markOfficeBookComplete(officeSide, resolvedMode, completedCardKey);
         // Home, not Daily progress. Owner: "Venite goes back to the daily
         // progress page instead of the home screen" — and earlier, of this same
         // return: "it should go back to the home screen, where the office is
@@ -1091,6 +1124,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       // Back to this office's own opening chooser — the slide that offers the
       // ways to pray — rather than a navigation the page would ignore.
       veniteLeftAtRef.current = null;
+      // They asked to pray it another way — the deck is a real screen again.
+      setVeniteHandingOff(false);
       setBookOpen(false);
       setSlideIdx(0);
     };
@@ -1532,6 +1567,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // opened today — e.g. back from the intercessions) gets a quiet spinner, never
   // the versicle again; a fresh open gets the held-breath versicle. Once the deck
   // is ready the office renders and the versicle becomes the fading overlay.
+  // A hand-off in flight paints nothing but the backdrop — see veniteHandingOff.
+  // Placed above the loading branch so it wins in both states: the deck must not
+  // show its face on the way OUT to the browser or on the way back.
+  if (veniteHandingOff) {
+    return (
+      <div style={{ ...officeThemeStyle(display.backdrop, display.font), minHeight: "100dvh", background: BG }} />
+    );
+  }
+
   if (loading) {
     if (alreadyOpenedToday) {
       return (
@@ -2160,7 +2204,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             type="button"
             // resolvedMode, not just the side — this slide belongs to whichever
             // office is open, and a side can carry two.
-            onClick={(e) => { e.stopPropagation(); markOfficeBookComplete(officeSide, resolvedMode); setViewerLocation("/dashboard"); }}
+            onClick={(e) => { e.stopPropagation(); markOfficeBookComplete(officeSide, resolvedMode, completedCardKey); setViewerLocation("/dashboard"); }}
             style={{
               width: "100%",
               background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",

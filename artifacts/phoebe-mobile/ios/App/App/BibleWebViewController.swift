@@ -55,8 +55,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * syncChromeToPage could look at the body — a flash of the wrong frame on
      * every read. The caller knows which kind of page it is asking for, so it
      * says; the page's own background still has the last word.
+     *
+     * It settles the Options menu too. Owner: "these top-right options should
+     * not be showing up in the newsletter" — Configure office / Change format /
+     * Listen to the office are all about praying an office, and on a Richard
+     * Rohr meditation they are three commands that either do nothing useful or
+     * throw the reader into a liturgy they didn't ask for.
      */
-    var startsLight = false
+    var isArticle = false
 
     /**
      * A held veil over the page while it loads.
@@ -84,6 +90,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     private let loadingVeil = UIView()
     private let veilImage = UIImageView(image: UIImage(named: "Splash"))
+    // Owner: "there needs to be a circle loading animation above the splash
+    // too." The leaf alone is a still image — handsome, but it gives no sign
+    // that anything is happening, so a slow page reads as a frozen app.
+    private let veilSpinner = UIActivityIndicatorView(style: .large)
     private var veilShownAt: CFTimeInterval = 0
     private var veilDismissed = false
     private let veilMinSeconds: CFTimeInterval = 1.2
@@ -346,7 +356,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         )
         optionsItem.accessibilityLabel = "Options"
         self.optionsItem = optionsItem
-        navigationItem.rightBarButtonItem = optionsItem
+        // An article gets no Options at all. Every item on that menu is about
+        // praying an office; on a newsletter they are meaningless at best and
+        // actively wrong at worst ("Listen to the office" would start a
+        // liturgy podcast over a Rohr meditation). Done is the only control a
+        // reader needs, and it stays.
+        navigationItem.rightBarButtonItem = isArticle ? nil : optionsItem
 
         // ── WebView ── adopt a preloaded one when present (already loading in
         // the background, so it appears instantly), otherwise build a fresh
@@ -438,7 +453,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // Start in the chrome the caller expects, so the first frame is already
         // right; syncChromeToPage corrects it from the page's own background
         // once that paints.
-        applyChrome(isLight: startsLight)
+        applyChrome(isLight: isArticle)
 
         // The veil goes on LAST so it covers the web view and the progress bar.
         loadingVeil.translatesAutoresizingMaskIntoConstraints = false
@@ -454,16 +469,30 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         veilImage.translatesAutoresizingMaskIntoConstraints = false
         veilImage.contentMode = .scaleAspectFill
         loadingVeil.addSubview(veilImage)
-        view.addSubview(loadingVeil)
+        veilSpinner.translatesAutoresizingMaskIntoConstraints = false
+        veilSpinner.color = UIColor.white.withAlphaComponent(0.85)
+        veilSpinner.startAnimating()
+        loadingVeil.addSubview(veilSpinner)
+        // Hosted on the NAVIGATION CONTROLLER's view, not this one. Owner: "the
+        // splash needs to go over the top bar." A view controller's own view
+        // begins below the navigation bar, so a veil added there left Done,
+        // Options and the title sitting on a black strip above the leaf — the
+        // chrome of a page you cannot see yet, which is the half-loaded look
+        // the veil exists to hide. The nav controller's view is the whole
+        // screen, bar included.
+        let veilHost: UIView = navigationController?.view ?? view
+        veilHost.addSubview(loadingVeil)
         NSLayoutConstraint.activate([
-            loadingVeil.topAnchor.constraint(equalTo: view.topAnchor),
-            loadingVeil.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            loadingVeil.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            loadingVeil.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingVeil.topAnchor.constraint(equalTo: veilHost.topAnchor),
+            loadingVeil.bottomAnchor.constraint(equalTo: veilHost.bottomAnchor),
+            loadingVeil.leadingAnchor.constraint(equalTo: veilHost.leadingAnchor),
+            loadingVeil.trailingAnchor.constraint(equalTo: veilHost.trailingAnchor),
             veilImage.topAnchor.constraint(equalTo: loadingVeil.topAnchor),
             veilImage.bottomAnchor.constraint(equalTo: loadingVeil.bottomAnchor),
             veilImage.leadingAnchor.constraint(equalTo: loadingVeil.leadingAnchor),
             veilImage.trailingAnchor.constraint(equalTo: loadingVeil.trailingAnchor),
+            veilSpinner.centerXAnchor.constraint(equalTo: loadingVeil.centerXAnchor),
+            veilSpinner.centerYAnchor.constraint(equalTo: loadingVeil.centerYAnchor),
         ])
         veilShownAt = CACurrentMediaTime()
         // A warmed web view may have finished loading before this controller
@@ -560,6 +589,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseInOut], animations: { [weak self] in
             self?.loadingVeil.alpha = 0
         }, completion: { [weak self] _ in
+            self?.veilSpinner.stopAnimating()
             self?.loadingVeil.isHidden = true
         })
     }
@@ -803,17 +833,17 @@ final class BibleBrowser: NSObject {
         onDismiss: (() -> Void)? = nil,
         onChangeFormat: (() -> Void)? = nil,
         onListen: (() -> Void)? = nil,
-        lightChrome: Bool = false
+        isArticle: Bool = false
     ) {
         guard let presenter = presenter else { return }
         let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
-        vc.startsLight = lightChrome
+        vc.isArticle = isArticle
         vc.onJournal = onJournal
         vc.onDismiss = onDismiss
         vc.onChangeFormat = onChangeFormat
         vc.onListen = onListen
         let nav = UINavigationController(rootViewController: vc)
-        nav.overrideUserInterfaceStyle = lightChrome ? .light : .dark
+        nav.overrideUserInterfaceStyle = isArticle ? .light : .dark
         // Keep the top + bottom bars pinned — never collapse/minimize on scroll
         // or tap, so the back + Journal buttons stay reachable the whole read.
         nav.hidesBarsOnSwipe = false
@@ -822,15 +852,13 @@ final class BibleBrowser: NSObject {
         // Dark Phoebe chrome for the top navigation bar.
         let barAppearance = UINavigationBarAppearance()
         barAppearance.configureWithOpaqueBackground()
-        barAppearance.backgroundColor = lightChrome ? .white : PhoebeBrowserColor.bar
-        barAppearance.titleTextAttributes = [.foregroundColor: lightChrome ? UIColor.black : PhoebeBrowserColor.text]
+        barAppearance.backgroundColor = isArticle ? .white : PhoebeBrowserColor.bar
+        barAppearance.titleTextAttributes = [.foregroundColor: isArticle ? UIColor.black : PhoebeBrowserColor.text]
         barAppearance.shadowColor = UIColor.clear
         nav.navigationBar.standardAppearance = barAppearance
         nav.navigationBar.scrollEdgeAppearance = barAppearance
         nav.navigationBar.compactAppearance = barAppearance
-        nav.navigationBar.tintColor = lightChrome
-            ? UIColor(red: 0.11, green: 0.27, blue: 0.16, alpha: 1)
-            : PhoebeBrowserColor.tint
+        nav.navigationBar.tintColor = isArticle ? .black : .white
 
         // …and the bottom toolbar.
         let toolbarAppearance = UIToolbarAppearance()

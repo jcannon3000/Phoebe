@@ -70,7 +70,7 @@ export function undoOfficeToday(side: OfficeUndoSide): void {
 
 /** True if this office has already been logged/prayed today (local flag). */
 export function isOfficeLoggedToday(mode: string): boolean {
-  try { return localStorage.getItem(flagKey(side)) !== null; } catch { return false; }
+  try { return localStorage.getItem(flagKey(mode)) !== null; } catch { return false; }
 }
 
 /** Mark a full office prayed from the physical book: flip the instant local
@@ -91,6 +91,17 @@ export function isOfficeLoggedToday(mode: string): boolean {
 export function markOfficeBookComplete(
   side: "morning" | "evening",
   mode: string = side,
+  /**
+   * Which CARD to play the completion moment on. Defaults to the side, which
+   * is the anchor's card key.
+   *
+   * Reported: praying the Devotion as a second morning practice "shows the
+   * animation for completing Morning Prayer." The flag was going to the right
+   * place by then, but this stamp still named the side — so the home pinned
+   * the ANCHOR card in Next, ticked it, and slid it down to Done while the
+   * card that had actually been prayed sat there unremarked.
+   */
+  cardKey: string = side,
 ): void {
   const surface: PrayerSurface = side === "morning" ? "morning-prayer" : "evening-prayer";
   const wasAlreadyLogged = isOfficeLoggedToday(mode);
@@ -99,8 +110,7 @@ export function markOfficeBookComplete(
     // A deliberate re-log outranks an earlier undo today.
     localStorage.removeItem(UNDO_PREFIX + side);
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
-    // The side anchor card is keyed by the side itself on the home.
-    if (!wasAlreadyLogged) markRecentCompletion(side);
+    if (!wasAlreadyLogged) markRecentCompletion(cardKey);
   } catch { /* private mode / quota — non-fatal */ }
   // A fresh office log (from the book) → the swell haptic.
   if (!wasAlreadyLogged) swellHaptic();
