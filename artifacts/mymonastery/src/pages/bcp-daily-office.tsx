@@ -941,7 +941,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       {
         // Credited the same way the physical-book attestation is, so the
         // anchor flips, the reminder push clears, and Daily progress counts it.
-        markOfficeBookComplete(officeSide);
+        // Credit the MODE that was actually prayed. The devotion and the full
+        // office are different practices on the same side, and a side can now
+        // carry both — passing only the side ticked whichever one the anchor
+        // happens to be.
+        markOfficeBookComplete(officeSide, resolvedMode);
         // Home, not Daily progress. Owner: "Venite goes back to the daily
         // progress page instead of the home screen" — and earlier, of this same
         // return: "it should go back to the home screen, where the office is
@@ -2154,7 +2158,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         {canChoose && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); markOfficeBookComplete(officeSide); setViewerLocation("/dashboard"); }}
+            // resolvedMode, not just the side — this slide belongs to whichever
+            // office is open, and a side can carry two.
+            onClick={(e) => { e.stopPropagation(); markOfficeBookComplete(officeSide, resolvedMode); setViewerLocation("/dashboard"); }}
             style={{
               width: "100%",
               background: "rgba(var(--ot-deep, 9,26,16), 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",

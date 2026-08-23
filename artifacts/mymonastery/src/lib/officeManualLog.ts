@@ -21,10 +21,10 @@ function todayKey(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
-function flagKey(side: "morning" | "evening"): string {
+function flagKey(mode: string): string {
   // Same key shape the office viewer writes (phoebe:office-completed:<mode>:<day>),
   // so useRhythmState.officeLocalDone(["morning"…]) / (["evening"…]) picks it up.
-  return `phoebe:office-completed:${side}:${todayKey()}`;
+  return `phoebe:office-completed:${mode}:${todayKey()}`;
 }
 
 // ── Undoing a day's office ──────────────────────────────────────────────────
@@ -69,7 +69,7 @@ export function undoOfficeToday(side: OfficeUndoSide): void {
 }
 
 /** True if this office has already been logged/prayed today (local flag). */
-export function isOfficeLoggedToday(side: "morning" | "evening"): boolean {
+export function isOfficeLoggedToday(mode: string): boolean {
   try { return localStorage.getItem(flagKey(side)) !== null; } catch { return false; }
 }
 
@@ -77,11 +77,25 @@ export function isOfficeLoggedToday(side: "morning" | "evening"): boolean {
  *  flag, notify the rhythm, and POST a completed prayer-session. The
  *  morning-prayer / evening-prayer surfaces bypass the 5s session floor, so a
  *  nominal duration still credits office-history + the streak. */
-export function markOfficeBookComplete(side: "morning" | "evening"): void {
+/**
+ * `mode` is which office was actually prayed; it defaults to the side, which is
+ * the same thing whenever the side's practice IS the full office.
+ *
+ * It stopped being the same thing when a side gained a SECOND practice. The
+ * completion flag is keyed by MODE — "morning" for the office,
+ * "morning-devotion" for the devotion — and crediting the side unconditionally
+ * meant praying the devotion on Venite ticked the anchor and left the devotion
+ * card untouched. Reported as: "I had Devotion as a second morning practice …
+ * it also wasn't logging." It was logging; it was logging the other practice.
+ */
+export function markOfficeBookComplete(
+  side: "morning" | "evening",
+  mode: string = side,
+): void {
   const surface: PrayerSurface = side === "morning" ? "morning-prayer" : "evening-prayer";
-  const wasAlreadyLogged = isOfficeLoggedToday(side);
+  const wasAlreadyLogged = isOfficeLoggedToday(mode);
   try {
-    localStorage.setItem(flagKey(side), "1");
+    localStorage.setItem(flagKey(mode), "1");
     // A deliberate re-log outranks an earlier undo today.
     localStorage.removeItem(UNDO_PREFIX + side);
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));

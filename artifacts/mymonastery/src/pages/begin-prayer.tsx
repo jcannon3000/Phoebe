@@ -269,7 +269,25 @@ export default function BeginPrayerPage() {
     const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
     const officeModeForLink = isMorning ? "morning" : "evening";
     const reset = prayedToday ? "&reset=1" : "";
-    const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${reset}`;
+    /**
+     * The devotion, on Venite when that is how they pray.
+     *
+     * Owner: "for any practice that uses Venite, like Daily Scripture Reading
+     * or Devotion, have it open straight to Venite. I had Devotion as a second
+     * morning practice and it was going to an opening office slide first."
+     *
+     * Only the full OFFICE and the readings consulted the entry before this;
+     * the devotion always went to the Phoebe deck, so someone who prays on
+     * venite.app got their own site for one practice and Phoebe's slides for
+     * another. Venite serves the Daily Devotions as a {version} rather than an
+     * {office} — see lib/venite — so the hand-off is real, not a redirect to
+     * the full office.
+     *
+     * `entry` is read below, so this is a function rather than a value.
+     */
+    const devotionHrefFor = (e: string | null) => (e === "venite"
+      ? `/bcp/daily-devotions?mode=${devotionMode}${reset}&picked=1&venite=1`
+      : `/bcp/daily-devotions?mode=${devotionMode}${reset}`);
     // Route straight into the reader's saved "way to pray" for this side —
     // this used to only special-case "listen", so a Physical-BCP or Watch
     // default still landed on the digital text office (this is the routing
@@ -303,7 +321,7 @@ export default function BeginPrayerPage() {
     const ctaHref =
       defaultPrayerLevel === "intercessions" ? intercessionsHref
       : defaultPrayerLevel === "office" ? officeHref
-      : devotionHref;
+      : devotionHrefFor(entry);
 
     setLocation(ctaHref, { replace: true });
   }, [authLoading, user, officePrefs, officeHistory, prefsLoading, historyLoading, setLocation]);
