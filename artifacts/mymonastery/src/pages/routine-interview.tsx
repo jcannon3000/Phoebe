@@ -1431,7 +1431,17 @@ export default function RoutineInterviewPage() {
                     what makes that number right. Someone who sits three times
                     reads a bare "how long?" as one sit and under-reports the
                     day, so the hint below says which is being asked for. */}
+                {/* Ask the question, don't just label the field (owner). A
+                    bare "Contemplation time" over a number box leaves the
+                    person to infer whether it means one sit or the whole day —
+                    which is the exact ambiguity the "how often" row above is
+                    there to settle. */}
                 <p style={{ ...eyebrow, marginBottom: 8 }}>Contemplation time</p>
+                <p style={{ color: WARM, fontFamily: FONT, fontSize: 15.5, lineHeight: 1.5, margin: "0 0 10px" }}>
+                  {contOften === "more"
+                    ? "How much time would you like to spend in contemplative prayer across the day?"
+                    : "How much time would you like to spend in contemplative prayer?"}
+                </p>
                 {/* A text field, not presets (owner). A silence practice is
                     whatever length it actually is — 12 minutes, 25, 40 — and a
                     fixed list quietly rounds people to the nearest option we

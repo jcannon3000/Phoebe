@@ -1987,7 +1987,7 @@ export default function WayOfLoveRuleFlow({
         {/* Owner: say what's being asked before the picker, rather than
             leaving a bare dropdown under a one-word heading. */}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
-          {t("wol_rule.silence_ask", { defaultValue: "How much time would you like to spend in silence throughout the day?" })}
+          {t("wol_rule.silence_ask", { defaultValue: "How much time would you like to spend in contemplative prayer throughout the day?" })}
         </p>
         {/* Just the fixed daily-minutes goal — the "grow toward 30" ladder option
             was removed (owner); everyone sets a fixed amount. */}
@@ -2041,6 +2041,32 @@ export default function WayOfLoveRuleFlow({
       <>
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
+        {/* What this whole flow is for, said once at the top of it.
+            Owner: "let's have a tutorial-nature line about the intention of
+            your customizing — I will help you pick a practice to centre your
+            mornings around, to centre your evenings around, and to include
+            contemplation in your day. We'll give you options to expand beyond
+            that."
+
+            On the FIRST slide only. Someone who has already chosen a morning
+            and reached the evening doesn't need the shape of the flow
+            explained to them again, and repeating it there would read as the
+            app having lost its place. */}
+        {side === "morning" && (
+          <div
+            style={{
+              background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14,
+              padding: "14px 16px", margin: "14px 0 18px",
+            }}
+          >
+            <p style={{ color: CREAM, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.6, margin: 0 }}>
+              {t("wol_rule.flow_intent", {
+                defaultValue:
+                  "Together we'll pick a practice to centre your mornings around, one for your evenings, and a place for contemplation in your day. After that there's room to add whatever else you keep.",
+              })}
+            </p>
+          </div>
+        )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {/* Owner: "have the question be, how would you like to pray in the
               evening? Select one — select your method, or leave blank if you
