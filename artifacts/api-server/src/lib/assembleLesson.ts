@@ -125,6 +125,18 @@ export function buildLessonSlides(
   reference: string,
   kind: LessonKind,
   idGen: () => string,
+  /**
+   * Merged onto the title slide's metadata as-is.
+   *
+   * Its one caller today: Morning Prayer's Epistle slide, which carries the
+   * SAME day's Gospel reference (gospelReadUrl/gospelReference) — the Daily
+   * Office Lectionary appoints OT+Epistle at MP and the Gospel at EP, but
+   * that's a LAYOUT choice (see assembleMorningPrayer.ts's own note on the
+   * split), not a reason the Epistle slide can't point at it. Owner: "on the
+   * Epistle title slide in Morning Prayer, have a button under it that says
+   * Read Gospel."
+   */
+  extraMetadata?: Record<string, unknown>,
 ): Slide[] {
   const trimmed = reference?.trim() ?? "";
   if (!trimmed || /^-+$/.test(trimmed)) return [];
@@ -158,6 +170,7 @@ export function buildLessonSlides(
       // No inline WEB text anymore — always false, so the client renders the
       // single external "Read in NRSV" (oremus) pill on this title slide.
       inlineWeb: false,
+      ...extraMetadata,
     },
   };
 

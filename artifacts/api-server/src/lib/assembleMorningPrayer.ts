@@ -505,7 +505,7 @@ export async function assembleMorningPrayer(
 
   // 2. Assemble
   const liturgicalDay = getOfficeDay(date);
-  const { psalms, lesson1, lesson2 } = getLectionaryReadings(liturgicalDay);
+  const { psalms, lesson1, lesson2, lesson3 } = getLectionaryReadings(liturgicalDay);
   const { afterOT, afterNT } = getCanticles(liturgicalDay);
 
   // Parse appointed psalms up front — we keep both the bare number
@@ -930,8 +930,18 @@ export async function assembleMorningPrayer(
   // Second Lesson — Epistle (the new layout: MP shows OT + Epistle,
   // EP shows Gospel only). Skipped on feast days where the BCP
   // appoints no Epistle at MP.
+  //
+  // The SAME day's Gospel (lesson3, which Evening Prayer reads as its own
+  // lesson) rides along as an optional extra on this slide — see
+  // buildLessonSlides' extraMetadata param and the "Read Gospel" button it
+  // powers client-side. Owner: "the Gospel is what the evening prayer shows" —
+  // confirming lesson3 (not a fresh lookup) is the right source.
   if (isLessonPresent(lesson2)) {
-    for (const s of buildLessonSlides(lesson2, "second_morning", id)) {
+    const gospelTrimmed = (lesson3 ?? "").trim();
+    const gospelExtra = isLessonPresent(gospelTrimmed)
+      ? { gospelReference: gospelTrimmed, gospelReadUrl: bibleGatewayUrl(gospelTrimmed) }
+      : undefined;
+    for (const s of buildLessonSlides(lesson2, "second_morning", id, gospelExtra)) {
       slides.push(s);
     }
   }

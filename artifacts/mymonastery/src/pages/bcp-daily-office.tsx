@@ -4062,6 +4062,45 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               slides directly (see lessonReadUrl + its use in next()), so the
               title alone is the whole slide, same as a canticle/psalm title —
               the "content" it advances into is the passage itself. */}
+          {/* "Read Gospel" — the Epistle slide only. Owner: "on the Epistle
+              title slide in Morning Prayer, have a button under it that says
+              Read Gospel, which would then have the gospel reading for the
+              day on the next slide" — then, confirming the source: "the
+              Gospel is what the evening prayer shows." The Daily Office
+              Lectionary appoints OT+Epistle at MP and the Gospel at EP;
+              lesson2's slide carries the SAME day's Gospel reference as an
+              optional extra (see buildLessonSlides' extraMetadata in
+              assembleLesson.ts/assembleMorningPrayer.ts) precisely so this
+              button can point at it without a second lectionary lookup.
+              Deliberately a BUTTON, not next()'s own hijack the way a bare
+              lesson_title is — the Epistle's own Next still has to reach the
+              canticle that actually follows it; this is an optional side
+              reading, not the slide's only path forward. */}
+          {currentSlide.type === "lesson_title" && (() => {
+            const meta = currentSlide.metadata as { gospelReadUrl?: unknown } | undefined;
+            const gospelUrl = typeof meta?.gospelReadUrl === "string" ? meta.gospelReadUrl : null;
+            if (!gospelUrl) return null;
+            return (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => openOfficeReading(gospelUrl, {
+                    officeTitle,
+                    slideLabel: `${slideIdx + 1} of ${slides.length}`,
+                    sectionLabel,
+                  })}
+                  style={{
+                    padding: "10px 18px", borderRadius: 999,
+                    background: "rgba(var(--ot-green, 46,107,64),0.18)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
+                    color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {"Read Gospel →"}
+                </button>
+              </div>
+            );
+          })()}
           {/* "Learn more" pill on feed-scoped intercession slides
               when the admin set a learn_more_url on the entry. Shares
               ExternalLinkPill with the prayer-mode slideshow so the
