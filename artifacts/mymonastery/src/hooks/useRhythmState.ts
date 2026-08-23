@@ -15,7 +15,7 @@ import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, useEffectiveReflectionSource, getContemplationLogMethod, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -89,7 +89,38 @@ function anchorModesFor(side: "morning" | "evening"): string[] {
   // the office flag for those levels made their anchors permanently un-kept.
   // The exclusion is narrow: when the anchor is the FULL OFFICE, a devotion
   // prayed alongside it is an extra practice, not the office.
-  return getSideLevel(side) === "office" ? [side] : [side, devotionMode];
+  if (getSideLevel(side) === "office") return [side];
+  // …but when this side also carries a SECOND practice, the wide net is exactly
+  // wrong: the extra's completion writes one of these very flags, so the anchor
+  // would report itself prayed the moment the extra was. With two practices on
+  // one side each has to ask for only the mode it actually runs as.
+  if (getSideExtra(side)) {
+    const own = extraOfficeMode(side, getSideLevel(side) ?? "ask");
+    return [own ?? devotionMode];
+  }
+  return [side, devotionMode];
+}
+
+/**
+ * The completion flags a side's SECOND practice writes.
+ *
+ * Deliberately narrow — exactly the one mode that practice runs as, never the
+ * anchor's. anchorModesFor casts a wide net because a side's anchor can be any
+ * of half a dozen levels that all complete as the devotion; an extra is one
+ * known level, so it can ask for exactly its own flag.
+ *
+ * Empty when the extra shares a mode with the anchor. Nothing can tell those
+ * two apart — one flag, two practices — so the customizer never stores such a
+ * pair (it falls back to a plain logged practice instead), and this returns
+ * nothing rather than reporting the anchor's prayer as the extra's.
+ */
+function extraModesFor(side: "morning" | "evening"): string[] {
+  const level = getSideExtra(side);
+  if (!level) return [];
+  const mode = extraOfficeMode(side, level);
+  if (!mode) return [];
+  if (anchorModesFor(side).includes(mode)) return [];
+  return [mode];
 }
 
 function officeLocalDone(sides: string[]): boolean {
@@ -105,6 +136,13 @@ export type RhythmState = {
   /** Have the done-state queries settled? Consumers fade in their first paint
    *  on this so the Next/Done split doesn't visibly reshuffle as data lands. */
   ready: boolean;
+  /** A SECOND practice on the side, alongside its anchor — the level it is,
+   *  or null for none. Null also when the stored extra can't be distinguished
+   *  from the anchor (see extraModesFor). */
+  morningExtraLevel: OfficeLevel | null;
+  eveningExtraLevel: OfficeLevel | null;
+  morningExtraDone: boolean;
+  eveningExtraDone: boolean;
   morningDone: boolean;
   reflectDone: boolean;
   silenceDone: boolean;
@@ -422,6 +460,12 @@ export function useRhythmState(): RhythmState {
     // done-flag independent of the evening anchor (which compline also
     // satisfies, hence its presence in BOTH lists).
     compline: officeLocalDone(["compline"]),
+    // A side's SECOND practice completes on its own mode flag — which is a
+    // different flag from the anchor's whenever the two run through different
+    // office modes (see extraModesFor). That separation is the whole reason a
+    // second practice can be a real practice rather than a checkbox.
+    morningExtra: officeLocalDone(extraModesFor("morning")),
+    eveningExtra: officeLocalDone(extraModesFor("evening")),
   }));
   // "I didn't actually pray this" — set by tapping the ✓ on a done office card
   // (lib/officeManualLog). Masks the SERVER-derived done signals for the rest
@@ -438,6 +482,8 @@ export function useRhythmState(): RhythmState {
         morning: officeLocalDone(anchorModesFor("morning")),
         evening: officeLocalDone(anchorModesFor("evening")),
         compline: officeLocalDone(["compline"]),
+        morningExtra: officeLocalDone(extraModesFor("morning")),
+        eveningExtra: officeLocalDone(extraModesFor("evening")),
       });
       setOfficeUndone({
         morning: isOfficeUndoneToday("morning"),
@@ -1123,8 +1169,23 @@ export function useRhythmState(): RhythmState {
     officePrefs !== undefined &&
     (!anyExtraActive || completions !== undefined || offline));
 
+  /**
+   * The side's SECOND practice — active when one is stored AND it can be told
+   * apart from the anchor. extraModesFor returns nothing for a colliding pair,
+   * and a card whose done-state is really the anchor's would be worse than no
+   * card, so the two conditions are the same condition.
+   */
+  const morningExtraLevel = extraModesFor("morning").length > 0 ? getSideExtra("morning") : null;
+  const eveningExtraLevel = extraModesFor("evening").length > 0 ? getSideExtra("evening") : null;
+  const morningExtraDone = officeLocal.morningExtra;
+  const eveningExtraDone = officeLocal.eveningExtra;
+
   return {
     ready,
+    morningExtraLevel,
+    eveningExtraLevel,
+    morningExtraDone,
+    eveningExtraDone,
     morningDone,
     reflectDone,
     silenceDone,

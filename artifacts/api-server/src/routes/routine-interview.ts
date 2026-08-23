@@ -708,6 +708,7 @@ function labelFor(key: string): string {
   // "an evening practice", not "a evening practice" — this string is shown to
   // the person on the review screen, so the article has to agree.
   if (key.includes(":level:") && side) return `${side === "evening" ? "an" : "a"} ${side} practice`;
+  if (key.startsWith("phoebe:office:extra:") && side) return `a second ${side} practice`;
   if (key.includes(":entry:") && side) return `a way to pray the ${side} office`;
   if (key.includes(":reflection")) return "a daily reflection";
   if (key.startsWith("phoebe:slot:")) return `a time of day for ${key.slice("phoebe:slot:".length)}`;
@@ -725,6 +726,10 @@ function scrubRuleConfig(rc: Record<string, string>): string[] {
   };
   for (const [k, v] of Object.entries({ ...rc })) {
     if (k.includes(":level:")) { if (!RC_LEVELS.has(v)) reject(k, v); continue; }
+    // A side's SECOND practice holds a LEVEL too, so it validates against the
+    // same enum. Without a case here it fell through unchecked and any string
+    // the model invented would have been stored as a practice.
+    if (k.startsWith("phoebe:office:extra:")) { if (!RC_LEVELS.has(v)) reject(k, v); continue; }
     if (k.includes(":entry:")) { if (!RC_ENTRIES.has(v)) reject(k, v); continue; }
     if (k.includes(":reflection")) { if (!RC_REFLECTIONS.has(v)) reject(k, v); continue; }
     if (k.startsWith("phoebe:slot:")) { if (!RC_SLOTS.has(v)) reject(k, v); continue; }

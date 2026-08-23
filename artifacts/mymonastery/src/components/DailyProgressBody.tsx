@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, type ReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -789,7 +789,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -926,6 +926,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Morning/Contemplative/Evening per-slot summary names the same practice
   // this card does instead of a separately-maintained guess.
   const officeTitle = (side: "Morning" | "Evening") => sideOfficeTitle(side, prayerKind, t);
+
+  /** The card for a side's second practice. See its use below for why. */
+  const EXTRA_EMOJI: Partial<Record<OfficeLevel, string>> = {
+    office: "\uD83D\uDCD6", devotion: "\uD83D\uDD4A\uFE0F", psalms: "\uD83D\uDCDC",
+    readings: "\uD83D\uDCF0", compline: "\uD83C\uDF19", "guided-prayer": "\uD83D\uDE4C",
+  };
+  const extraCard = (side: "morning" | "evening", level: OfficeLevel, done: boolean) => {
+    const cap = side === "morning" ? "Morning" : "Evening";
+    return {
+      key: `extra-${side}`, slot: side as CustomSlot,
+      emoji: EXTRA_EMOJI[level] ?? "\uD83C\uDF3F",
+      rgb: "96,140,110", done,
+      href: `/begin-prayer?side=${side}&practice=${level}`,
+      onUnlog: () => undoOfficeToday(side),
+      title: extraPracticeTitle(cap, level, t),
+      blurb: done ? prayed : t("rhythm.extra_blurb", { defaultValue: "Alongside your main practice" }),
+      cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      later: side === "evening" && hour < EVENING_OPEN_HOUR,
+    };
+  };
 
   // Custom practices slot into the rhythm by their time-of-day: morning ones
   // ride with Morning Prayer, midday after contemplation, afternoon after the
@@ -1130,6 +1150,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
       cta: getSideLevel("morning") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
+    /**
+     * A side's SECOND practice — a real card that opens the real practice.
+     *
+     * Owner: "if they chose a secondary morning practice ... it should be a
+     * full practice that leads to the practice." It used to be written as a
+     * custom anchor, so someone whose morning was Morning Prayer AND a short
+     * devotion got the office plus a checkbox captioned "Your daily practice".
+     *
+     * Routed through /begin-prayer with ?practice=, so it reaches its page
+     * through the same router the anchor uses — the Venite hand-off, the
+     * readings' Forward Movement open, the psalms reader. Its own emoji is
+     * deliberately not the anchor's sunrise: two cards on one side badged
+     * identically read as a duplicate rather than a second practice.
+     */
+    ...(morningExtraLevel ? [extraCard("morning", morningExtraLevel, morningExtraDone)] : []),
     ...(novenaReplacesEvening && novena ? [{
       key: "novena", slot: "evening" as CustomSlot, emoji: "🕊️", rgb: "150,120,90", done: novenaDone,
       href: "/novena",
@@ -1164,6 +1199,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: getSideLevel("evening") === "custom" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < EVENING_OPEN_HOUR,
     }] : []),
+    ...(eveningExtraLevel ? [extraCard("evening", eveningExtraLevel, eveningExtraDone)] : []),
     // Reflection cards lead the morning (default second, right after Morning).
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).

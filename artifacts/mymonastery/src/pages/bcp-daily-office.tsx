@@ -897,15 +897,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * boundary the moment loading finished, not just the Venite path. Anything
    * added here must stay above line ~1390.
    */
-  const VENITE_MIN_MS = 60_000;
   const veniteVisitsKey = `phoebe:venite-visits:${officeSide}:${new Date().toLocaleDateString("en-CA")}`;
   const veniteLeftAtRef = useRef<number | null>(null);
-  const [veniteShort, setVeniteShort] = useState(false);
   const [veniteForm, setVeniteForm] = useState<"office" | "devotion">("office");
 
-  const readVeniteVisits = (): number => {
-    try { return parseInt(localStorage.getItem(veniteVisitsKey) ?? "0", 10) || 0; } catch { return 0; }
-  };
 
   const goToVenite = (form: "office" | "devotion") => {
     // Stamp the side for the browser's Options menu. Without this the menu read
@@ -913,7 +908,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // an EVENING hand-off opened the morning podcast.
     try { sessionStorage.setItem("phoebe:venite-side", officeSide); } catch { /* private mode */ }
     setVeniteForm(form);
-    setVeniteShort(false);
     veniteLeftAtRef.current = Date.now();
     openExternal(veniteOfficeUrl(officeSide, new Date(), form));
   };
@@ -928,20 +922,34 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       if (leftAt == null) return;
       veniteLeftAtRef.current = null;
 
-      const visits = readVeniteVisits() + 1;
-      try { localStorage.setItem(veniteVisitsKey, String(visits)); } catch { /* non-fatal */ }
-      const longEnough = Date.now() - leftAt >= VENITE_MIN_MS;
-
-      if (longEnough || visits >= 2) {
+      /**
+       * Credited on RETURN, full stop — no dwell test.
+       *
+       * There used to be a one-minute floor: come back sooner and the office
+       * wasn't counted, with a "that was a quick visit" line and a Continue
+       * button to send you back. Owner: "get rid of the thing where it doesn't
+       * mark complete until you do thirty seconds."
+       *
+       * It was guessing at sincerity from a stopwatch, and guessing badly in
+       * both directions — someone who prays the office in a tab they already
+       * had open, or reads fast, or steps away and comes back, was told their
+       * prayer didn't count. Every other hand-off in Phoebe (the physical book,
+       * the Cathedral stream) takes the person at their word; this one is the
+       * same act and now behaves the same way.
+       */
+      try { localStorage.removeItem(veniteVisitsKey); } catch { /* non-fatal */ }
+      {
         // Credited the same way the physical-book attestation is, so the
         // anchor flips, the reminder push clears, and Daily progress counts it.
         markOfficeBookComplete(officeSide);
-        try { localStorage.removeItem(veniteVisitsKey); } catch { /* non-fatal */ }
-        setViewerLocation("/daily-progress");
+        // Home, not Daily progress. Owner: "Venite goes back to the daily
+        // progress page instead of the home screen" — and earlier, of this same
+        // return: "it should go back to the home screen, where the office is
+        // now completed." Matches the physical-book attestation below, which is
+        // the other credit-and-leave path.
+        setViewerLocation("/dashboard");
         return;
       }
-      // Back too soon on the first trip — don't count it, and say so.
-      setVeniteShort(true);
     };
     window.addEventListener("phoebe:browserfinished", onBack);
     // visibilitychange is the WEB fallback only. On native it also fires when
@@ -1078,7 +1086,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     const onChangeFormat = () => {
       // Back to this office's own opening chooser — the slide that offers the
       // ways to pray — rather than a navigation the page would ignore.
-      setVeniteShort(false);
       veniteLeftAtRef.current = null;
       setBookOpen(false);
       setSlideIdx(0);
@@ -2164,27 +2171,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             ✓ Mark as already prayed
           </button>
         )}
-        {/* Back from Venite inside a minute, first trip. The office is NOT
-            counted — saying so plainly is the point, since the alternative is
-            a silent non-completion they'd discover on the home screen. One tap
-            goes back to where they were; returning again completes it. */}
-        {veniteShort && (
-          <p
-            style={{
-              width: "100%", margin: "2px 0 0", textAlign: "center",
-              color: "rgba(var(--ot-sage, 143,175,150),0.95)",
-              fontFamily: SPACE_GROTESK, fontSize: 13.5, lineHeight: 1.5,
-            }}
-          >
-            That was a quick visit — not counted yet.
-          </p>
-        )}
-        {/* Row 3 — Begin, or Continue when they came back too soon. */}
+        {/* Row 3 — Begin. (There used to be a "that was a quick visit — not
+            counted yet" line and a Continue button here, for a return inside
+            the old one-minute floor. The floor is gone; see the credit-on-
+            return handler.) */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            if (veniteShort) { goToVenite(veniteForm); return; }
             canChoose ? launchWay(wayToPray, screenOnly ? "screen" : prayMethod) : next();
           }}
           style={{
@@ -2202,7 +2196,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             padding: "14px 24px",
           }}
         >
-          {veniteShort ? "Continue" : "Begin"}
+          {"Begin"}
         </button>
       </div>
     );

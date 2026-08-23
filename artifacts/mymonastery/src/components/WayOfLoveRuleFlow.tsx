@@ -62,6 +62,8 @@ import {
   type ReflectionSource,
   type OfficeSide,
   type DefaultOfficeEntry,
+  setSideExtra,
+  getSideExtra,
 } from "@/lib/officePrefs";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
@@ -114,6 +116,26 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  * of Morning Office rules out Morning Office and leaves Morning Devotion
  * choosable.
  */
+/**
+ * What an extra actually TURNS ON.
+ *
+ * Owner: "if they chose a secondary morning practice ... it should be a full
+ * practice that leads to the practice." Every extra used to be written as a
+ * custom anchor — a log-only row that happened to be titled "Morning Devotion".
+ * Each of these is a real practice Phoebe already has a card and a page for, so
+ * the extra turns THAT on instead of minting a checkbox with its name.
+ *
+ *  - "level":     a second office-form on the side (getSideExtra). Its card
+ *                 opens the office; it completes on its own mode flag.
+ *  - "practice":  one of the standing all-day cards, already wired.
+ *  - "contemplation": the side's own Contemplation card.
+ *  - "newsletter":    a reflection source.
+ */
+type ExtraMapping =
+  | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" }
+  | { kind: "contemplation" }
+  | { kind: "newsletter"; src: ReflectionSource };
 type ExtraPractice = {
   title: (cap: string) => string;
   emoji: string;
@@ -121,21 +143,43 @@ type ExtraPractice = {
   /** The anchor level this duplicates — filtered out when it matches. */
   excludes: string;
   side?: OfficeSide;
+  maps: ExtraMapping;
 };
 const EXTRA_PRACTICES: ExtraPractice[] = [
-  { title: (c) => `${c} Office`, emoji: "📖", sub: "The full Daily Office.", excludes: "office" },
-  { title: (c) => `${c} Devotion`, emoji: "📖", sub: "A short devotion.", excludes: "devotion" },
-  { title: (c) => `${c} Psalms`, emoji: "📜", sub: "The day's appointed psalms.", excludes: "psalms" },
-  { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings" },
-  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Three minutes to start your day.", excludes: "guided-prayer", side: "morning" },
-  { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen" },
-  { title: () => "Forward Day by Day", emoji: "📖", sub: "Today's meditation.", excludes: "fdd" },
-  { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening" },
-  { title: () => "Contemplative Prayer", emoji: "🕯️", sub: "A silent sit.", excludes: "reflect-sit" },
-  { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__" },
-  { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__" },
-  { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__" },
+  { title: (c) => `${c} Office`, emoji: "📖", sub: "The full Daily Office.", excludes: "office", maps: { kind: "level", level: "office" } },
+  { title: (c) => `${c} Devotion`, emoji: "📖", sub: "A short devotion.", excludes: "devotion", maps: { kind: "level", level: "devotion" } },
+  { title: (c) => `${c} Psalms`, emoji: "📜", sub: "The day's appointed psalms.", excludes: "psalms", maps: { kind: "level", level: "psalms" } },
+  { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings", maps: { kind: "level", level: "readings" } },
+  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Three minutes to start your day.", excludes: "guided-prayer", side: "morning", maps: { kind: "level", level: "guided-prayer" } },
+  { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen", maps: { kind: "practice", key: "examen" } },
+  { title: () => "Forward Day by Day", emoji: "📖", sub: "Today's meditation.", excludes: "fdd", maps: { kind: "newsletter", src: "fdd" } },
+  { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening", maps: { kind: "practice", key: "compline" } },
+  { title: () => "Contemplative Prayer", emoji: "🕯️", sub: "A silent sit.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
+  { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } },
+  { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } },
+  { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } },
 ];
+
+/** The extra chosen for a side, as its catalogue entry. */
+function extraEntryFor(title: string | null, cap: string): ExtraPractice | null {
+  if (!title) return null;
+  return EXTRA_PRACTICES.find((e) => e.title(cap) === title) ?? null;
+}
+
+/**
+ * The office MODE a level completes as — mirrors officePrefs.extraOfficeMode.
+ * Used here to refuse a pairing the home could never tell apart: two practices
+ * on one side that write the same completion flag are one practice with two
+ * cards, and the second would tick itself whenever the first was prayed.
+ */
+function levelOfficeMode(side: OfficeSide, level: string): string | null {
+  if (level === "office") return side;
+  if (level === "compline") return "compline";
+  if (level === "devotion" || level === "psalms" || level === "readings" || level === "guided-prayer") {
+    return side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  }
+  return null;
+}
 // bcpForm's liturgy → the PrayChoice it corresponds to, so the extra slide can
 // rule out the exact liturgy chosen as the anchor rather than the BCP as a whole.
 const BCP_FORM_TO_PRAY: Record<string, PrayChoice> = {
@@ -159,6 +203,8 @@ type Step =
   // The "add an additional practice" slide — the same picker as the side's
   // first slide, minus whatever is already its anchor.
   | "morning-extra" | "evening-extra"
+  // …and its own details slide, when the practice they picked has details.
+  | "morning-extra-config" | "evening-extra-config"
   | "contemplative" | "contemplation-goal"
   | "learn" | "extras" | "custom" | "weekly" | "done"
   | "starter" | "tend";
@@ -857,11 +903,26 @@ export default function WayOfLoveRuleFlow({
    * backend half of this already landed (anchorModesFor / countsForAnchor), so
    * a devotion kept beside the office no longer fills the office's dot.
    */
-  const [extraBySide, setExtraBySide] = useState<Record<OfficeSide, string | null>>({ morning: null, evening: null });
+  const [extraBySide, setExtraBySide] = useState<Record<OfficeSide, string | null>>(() => {
+    // Seeded from the stored second practice, so re-opening the customizer
+    // shows what they already keep instead of a blank slide that then WRITES
+    // the blank back over it on Continue. Only the office-form extras live in
+    // this key; the rest are standing practices, hydrated by their own toggles.
+    const titleFor = (side: OfficeSide): string | null => {
+      const level = getSideExtra(side);
+      if (!level) return null;
+      const cap = side === "morning" ? "Morning" : "Evening";
+      return EXTRA_PRACTICES.find((e) => e.maps.kind === "level" && e.maps.level === level)?.title(cap) ?? null;
+    };
+    return { morning: titleFor("morning"), evening: titleFor("evening") };
+  });
   // Which sides asked for the additional-practice slide. It's a real step in
   // the flow (see buildSteps) rather than an inline expansion — owner: "not
   // expand to a list, but advance to a second slide".
-  const [extraWantedBySide, setExtraWantedBySide] = useState<Record<OfficeSide, boolean>>({ morning: false, evening: false });
+  const [extraWantedBySide, setExtraWantedBySide] = useState<Record<OfficeSide, boolean>>(() => ({
+    morning: !!getSideExtra("morning"),
+    evening: !!getSideExtra("evening"),
+  }));
 
   const [contemplationBySide, setContemplationBySide] = useState<Record<OfficeSide, boolean>>(() => ({
     morning: getSideContemplationExplicit("morning") ?? (getSideLevel("morning") === "reflect-sit"),
@@ -1204,16 +1265,53 @@ export default function WayOfLoveRuleFlow({
     };
   };
 
-  /** Write the per-side extra practices as custom anchors. Skips one already
-   *  in the list so re-running the customizer doesn't leave two. */
+  /**
+   * The per-side extra practices — each written as the REAL practice it names.
+   *
+   * Owner: "if they chose a secondary morning practice ... it should be a full
+   * practice that leads to the practice." This used to call addCustomAnchor for
+   * every extra, so choosing a second morning devotion produced a log-only row
+   * captioned "Your daily practice" that had nothing to do with the devotion.
+   *
+   * Most of the menu is practices Phoebe already has a card and a page for, and
+   * those are just turned on (their toggles are read by the same commit that
+   * writes everything else, so this only has to set the state). The office
+   * forms have no standing card of their own, so they go to the side's extra
+   * LEVEL, which the home renders as a real card and routes through
+   * /begin-prayer?practice=.
+   *
+   * A custom anchor is what's left for the one case nothing can represent: an
+   * extra whose completion flag would be the anchor's own (see levelOfficeMode).
+   * A logged practice is a poorer thing, but it is at least honest — the
+   * alternative is a card that ticks itself when you pray something else.
+   */
   const commitExtraPractices = () => {
     const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
     for (const side of SIDES) {
+      const cap = side === "morning" ? "Morning" : "Evening";
       const title = extraBySide[side];
-      if (!title) continue;
-      if (existing.has(title.trim().toLowerCase())) continue;
-      addCustomAnchor(title, EXTRA_PRACTICE_EMOJI[title] ?? "🌿", side as CustomSlot);
-      existing.add(title.trim().toLowerCase());
+      const entry = extraEntryFor(title, cap);
+      if (!title || !entry) { setSideExtra(side, null); continue; }
+      if (entry.maps.kind === "level") {
+        const anchorLevel = PRAY_LEVEL[prayBySide[side]];
+        const anchorMode = anchorLevel === "office"
+          ? side
+          : (levelOfficeMode(side, anchorLevel) ?? (side === "morning" ? "morning-devotion" : "early-evening-devotion"));
+        const extraMode = levelOfficeMode(side, entry.maps.level);
+        if (extraMode && extraMode !== anchorMode) {
+          setSideExtra(side, entry.maps.level);
+          continue;
+        }
+        // Indistinguishable from the anchor — fall through to a logged anchor.
+        setSideExtra(side, null);
+        if (!existing.has(title.trim().toLowerCase())) {
+          addCustomAnchor(title, EXTRA_PRACTICE_EMOJI[title] ?? "🌿", side as CustomSlot);
+          existing.add(title.trim().toLowerCase());
+        }
+        continue;
+      }
+      // Everything else is a real standing practice; its own toggle carries it.
+      setSideExtra(side, null);
     }
   };
 
@@ -1494,6 +1592,37 @@ export default function WayOfLoveRuleFlow({
   // Built as a function of `sides` so the deferred None (applied on Continue)
   // can compute the step list that WILL exist rather than navigating with the
   // stale one — a setState isn't visible to goNext in the same handler.
+  /**
+   * Does this side's chosen extra have details to set?
+   *
+   * Owner: "in the additional-practice slide, if they chose one, there needs to
+   * be a details page for that — if it is something that, if it was the main
+   * practice, would get a details page."
+   *
+   * So the test is the same one the anchor's own config slide applies, asked of
+   * the extra: a silent sit needs its length, Creation Prayer its breaths, the
+   * Psalter its cycle, an office form the way you take it. Everything else
+   * (a walk, the Examen, Audio Divina) has nothing to ask as an anchor either,
+   * and gets no slide here for the same reason.
+   */
+  const extraConfigKindFor = (side: OfficeSide): "medium" | "psalms" | "breaths" | null => {
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const entry = extraEntryFor(extraBySide[side], cap);
+    if (!entry) return null;
+    // A SILENT sit gets no slide here on purpose. Its length is a daily total
+    // set once on the Silence slide, and asking for it per-side is the exact
+    // inference that has turned a 90-minute quota into two 5-minute per-side
+    // sits twice now. Creation Prayer is different — it's counted in breaths,
+    // has no daily goal to inherit, and this is its only home.
+    if (entry.maps.kind === "contemplation") return contemplationStyle === "cobreathe" ? "breaths" : null;
+    if (entry.maps.kind === "practice" && entry.maps.key === "cobreathe") return "breaths";
+    if (entry.maps.kind !== "level") return null;
+    if (entry.maps.level === "psalms") return "psalms";
+    if (entry.maps.level === "office" || entry.maps.level === "devotion") return "medium";
+    return null;
+  };
+  const extraNeedsConfig = (side: OfficeSide): boolean => extraConfigKindFor(side) !== null;
+
   const buildSteps = (sidesArg: Record<OfficeSide, boolean>): Step[] => guest
     // GUEST (public no-login): when → per-side way + ONE merged config slide
     // (the BCP form + medium + reminder all live on side-config — no separate
@@ -1528,9 +1657,9 @@ export default function WayOfLoveRuleFlow({
     : [
     "intro",
     "morning-way",
-    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : [])] as Step[]) : []),
+    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
     "evening-way",
-    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : [])] as Step[]) : []),
+    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : []), ...(extraNeedsConfig("evening") ? ["evening-extra-config"] : [])] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
@@ -2361,9 +2490,18 @@ export default function WayOfLoveRuleFlow({
     const anchorLevel =
       prayBySide[side] === "offices" ? PRAY_LEVEL[BCP_FORM_TO_PRAY[bcpForm[side]] ?? "offices"]
         : PRAY_LEVEL[prayBySide[side]];
+    // The anchor's own completion flag, so a second office-form that writes the
+    // SAME one can be kept off the menu. Offering it would promise a card the
+    // home can't tell from the anchor's — it would tick itself the moment the
+    // anchor was prayed. (commitExtraPractices degrades gracefully if one gets
+    // through; this is so nobody is offered the bad pairing in the first place.)
+    const anchorMode = anchorLevel === "office"
+      ? side
+      : (levelOfficeMode(side, anchorLevel) ?? (side === "morning" ? "morning-devotion" : "early-evening-devotion"));
     const options = EXTRA_PRACTICES
       .filter((e) => !e.side || e.side === side)
-      .filter((e) => e.excludes !== anchorLevel);
+      .filter((e) => e.excludes !== anchorLevel)
+      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);
     return shell(
       <>
         {backRow(goPrev)}
@@ -2385,7 +2523,23 @@ export default function WayOfLoveRuleFlow({
                 touchedRef.current = true;
                 // Tapping the chosen one clears it — the same toggle the
                 // anchor rows use, so "actually, nothing else" costs one tap.
-                setExtraBySide((p) => ({ ...p, [side]: p[side] === title ? null : title }));
+                const turningOff = extraBySide[side] === title;
+                setExtraBySide((p) => ({ ...p, [side]: turningOff ? null : title }));
+                // …and turn the real practice on (or back off). Everything in
+                // this menu except the office forms is a standing practice with
+                // its own card; the picker used to only remember the NAME, which
+                // is how a chosen Audio Divina became a checkbox called "Audio
+                // Divina" sitting next to the real one.
+                const on = !turningOff;
+                if (e.maps.kind === "practice") {
+                  const key = e.maps.key;
+                  setContemplative((p) => ({ ...p, [key]: on }));
+                } else if (e.maps.kind === "contemplation") {
+                  setContemplationBySide((p) => ({ ...p, [side]: on }));
+                } else if (e.maps.kind === "newsletter") {
+                  const src = e.maps.src;
+                  setNewsletters((p) => (on ? [...new Set([...p, src])] : p.filter((x) => x !== src)));
+                }
               },
             );
           })}
@@ -2750,6 +2904,77 @@ export default function WayOfLoveRuleFlow({
             })}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection." }), chooseNoReflection)}
         </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── The chosen extra's own details slide ──────────────────────────────────
+  if (step === "morning-extra-config" || step === "evening-extra-config") {
+    const side: OfficeSide = step === "morning-extra-config" ? "morning" : "evening";
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const kind = extraConfigKindFor(side);
+    const title = extraBySide[side] ?? cap;
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(cap, title)}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {kind === "breaths"
+            ? t("wol_rule.extra_cfg_breaths", { defaultValue: "How many breaths would you like?" })
+            : kind === "psalms"
+              ? t("wol_rule.extra_cfg_psalms", { defaultValue: "Choose how the Psalter unfolds." })
+              : t("wol_rule.extra_cfg_medium", { side: cap.toLowerCase(), defaultValue: `How would you like to pray it?` })}
+        </p>
+
+        {kind === "medium" && (
+          <div style={{ position: "relative" }}>
+            <select
+              value={methodBySide[side]}
+              onChange={(e) => chooseMethodBySide(side, e.target.value as DefaultOfficeEntry)}
+              aria-label={t("wol_rule.method_label", { defaultValue: "Default way to pray" })}
+              style={{ width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+            >
+              <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
+              <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
+              {!pilot && <option value="venite">🕊️ {t("wol_rule.method_venite", { defaultValue: "Venite Digital" })}</option>}
+              {!pilot && <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>}
+              {side === "morning" && !pilot && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
+            </select>
+            <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            {/* Said out loud, because it is shared. The format is stored per
+                SIDE, so both of this morning's practices take it — better to
+                name that than to let someone set it here and wonder why the
+                other card changed too. */}
+            <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, lineHeight: 1.5, margin: "10px 2px 0" }}>
+              {t("wol_rule.extra_cfg_medium_note", { side: cap.toLowerCase(), defaultValue: `This is how you take the ${cap.toLowerCase()} office, so it applies to both of your ${cap.toLowerCase()} practices.` })}
+            </p>
+          </div>
+        )}
+
+        {kind === "psalms" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {choiceRow(psalmCycle === "office", `📖 ${t("wol_rule.psalms_office_label", { defaultValue: "In step with the office" })}`, t("wol_rule.psalms_office_sub", { defaultValue: "The psalms appointed in the daily office — about 2–3 a day." }), () => choosePsalmCycle("office"))}
+            {choiceRow(psalmCycle === "monthly", `📜 ${t("wol_rule.psalms_monthly_label", { defaultValue: "The whole Psalter, monthly" })}`, t("wol_rule.psalms_monthly_sub", { defaultValue: "All 150 psalms across a month — fuller, more psalms a day (about 5)." }), () => choosePsalmCycle("monthly"))}
+          </div>
+        )}
+
+        {kind === "breaths" && (
+          <div style={{ position: "relative" }}>
+            <select
+              value={String(cobreatheBreaths)}
+              onChange={(e) => chooseCobreatheBreaths(side, parseInt(e.target.value, 10) || 12)}
+              aria-label={t("wol_rule.cobreathe_length_label", { defaultValue: "How many breaths?" })}
+              style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+            >
+              {COBREATHE_LENGTHS.map((n) => (
+                <option key={n} value={String(n)}>{t("wol_rule.n_breaths", { count: n, defaultValue: `${n} breaths` })}</option>
+              ))}
+            </select>
+            <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+          </div>
+        )}
+
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );

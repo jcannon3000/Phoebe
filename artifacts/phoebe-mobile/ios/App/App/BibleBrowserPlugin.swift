@@ -95,6 +95,10 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             call.reject("Missing or invalid url")
             return
         }
+        // Articles (newsletters, reflections) are light pages — start the
+        // chrome white so a cream page doesn't open behind a black bar for the
+        // beat before syncChromeToPage can read the body. See `startsLight`.
+        let lightChrome = call.getBool("lightChrome") ?? false
         DispatchQueue.main.async { [weak self] in
             // The Journal button in the browser's bottom bar fires this event
             // into the app's web view, which then navigates to the journal.
@@ -139,7 +143,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         onJournal: onJournal,
                         onDismiss: onDismiss,
                         onChangeFormat: onChangeFormat,
-                        onListen: onListen
+                        onListen: onListen,
+                        lightChrome: lightChrome
                     )
                     call.resolve()
                 }
@@ -151,7 +156,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 onJournal: onJournal,
                 onDismiss: onDismiss,
                 onChangeFormat: onChangeFormat,
-                onListen: onListen
+                onListen: onListen,
+                lightChrome: lightChrome
             )
             call.resolve()
         }

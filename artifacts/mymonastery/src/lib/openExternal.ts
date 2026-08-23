@@ -12,7 +12,7 @@
 
 type PhoebeNative = {
   isNative?: () => boolean;
-  openInAppBrowser?: (url: string) => Promise<void>;
+  openInAppBrowser?: (url: string, opts?: { lightChrome?: boolean }) => Promise<void>;
   preloadInAppBrowser?: (url: string) => Promise<void>;
 };
 
@@ -29,8 +29,11 @@ type PhoebeNative = {
  * fade, the same Done button and the same Options menu as the office, so
  * outbound reading is one surface rather than two that behave differently.
  *
- * Left as an accepted no-op rather than removed so the ~dozen call sites don't
- * all have to change to make one behavioural decision.
+ * It does still carry one bit of real information, and the browser uses it:
+ * these are ARTICLES, which are overwhelmingly light pages. The chrome resolves
+ * its colour from the page's own background once that paints, and this says
+ * which way to start so a cream article doesn't open behind a black bar for a
+ * beat. Owner: "for the newsletters default to a white top bar."
  */
 type OpenOpts = { reader?: boolean };
 
@@ -38,9 +41,8 @@ export function openExternal(url: string, opts?: OpenOpts): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
-  // `reader` is accepted and IGNORED — see the note on the type above.
   if (native?.openInAppBrowser) {
-    void native.openInAppBrowser(url);
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader });
     return;
   }
   // Web fallback. noopener for security; noreferrer to keep the
@@ -65,7 +67,7 @@ export function openExternalThenMarkRead(
   // read the INSTANT the link opens rather than when the person comes back —
   // that was the "newsletter dot flips at tap time" bug.
   if (native?.isNative?.() && native?.openInAppBrowser) {
-    void native.openInAppBrowser(url);
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader });
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
       markRead();

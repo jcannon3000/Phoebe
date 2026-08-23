@@ -47,6 +47,43 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private var backButton: UIBarButtonItem!
     private var forwardButton: UIBarButtonItem!
 
+    /**
+     * Which way to paint the chrome BEFORE the page reports its own colour.
+     *
+     * Owner: "for the newsletters default to a white top bar." Newsletters are
+     * cream articles and were opening behind black chrome for the beat before
+     * syncChromeToPage could look at the body — a flash of the wrong frame on
+     * every read. The caller knows which kind of page it is asking for, so it
+     * says; the page's own background still has the last word.
+     */
+    var startsLight = false
+
+    /**
+     * A held veil over the page while it loads.
+     *
+     * Owner: "for newsletters, can you do a loading screen like an office
+     * loading screen for like two seconds while you're loading the page in the
+     * background — so we don't see the page flashing in, we just see it loaded
+     * once the loading screen fades out."
+     *
+     * A remote article paints in stages — background, then unstyled text, then
+     * the web font, then images reflowing what you were already reading. The
+     * veil holds that offstage and reveals a settled page, the same way the
+     * office holds its opening versicle rather than showing a spinner.
+     *
+     * Two bounds, both necessary. A FLOOR, so a cached page doesn't flash the
+     * veil for 80ms (a flicker is worse than no veil at all), and a CEILING, so
+     * a page that never finishes — a hung request, a redirect chain — can't
+     * leave someone staring at a blank field. Whichever the page beats, it is
+     * revealed on.
+     */
+    private let loadingVeil = UIView()
+    private let veilSpinner = UIActivityIndicatorView(style: .medium)
+    private var veilShownAt: CFTimeInterval = 0
+    private var veilDismissed = false
+    private let veilMinSeconds: CFTimeInterval = 1.2
+    private let veilMaxSeconds: TimeInterval = 5.0
+
     // Retained strongly here because UIViewController.transitioningDelegate
     // is a WEAK reference — without an owner the slide animation is dropped.
     // The nav controller retains this VC (its root), this VC retains the
@@ -247,19 +284,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // "discard"; leaving an office you have just prayed is a completion,
         // and the word says so. A filled pill also gives it a real tap target
         // at the top of a long scrolling page.
-        let doneButton = UIButton(type: .system)
-        doneButton.setTitle("Done", for: .normal)
-        doneButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        doneButton.setTitleColor(PhoebeBrowserColor.text, for: .normal)
-        // Plain text, no chrome. Owner: "fix the Done button — don't need the
-        // borders, no green shading." The filled-pill treatment was fighting
-        // the bar it sits in; a bar button is already understood as tappable,
-        // and the tinted capsule only made the top of the page look busier
-        // than the office it is framing.
-        doneButton.contentEdgeInsets = UIEdgeInsets(top: 6, left: 2, bottom: 6, right: 16)
-        doneButton.addTarget(self, action: #selector(close), for: .touchUpInside)
-        doneButton.accessibilityLabel = "Done"
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: doneButton)
+        //
+        // A PLAIN bar button item, deliberately — not a UIButton in a
+        // customView. Owner: "fix the Done button, don't need the borders, no
+        // green shading", then "should be as wide as Options".
+        //
+        // Both were symptoms of the same thing. iOS draws bar buttons as filled
+        // capsules, and it sizes and insets them itself; a customView opts out
+        // of all of that, so Done was carrying a hand-rolled border and tint
+        // that fought the system capsule, sized by its own content insets, and
+        // pushed hard against the screen edge while Options — a real bar item —
+        // sat properly inset. Matching the KIND of control is what makes the two
+        // match; setting a width would only have matched them at one font size.
+        let doneItem = UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(close))
+        doneItem.accessibilityLabel = "Done"
+        navigationItem.leftBarButtonItem = doneItem
 
         // Owner: "at the top right could it be Options, and that brings down a
         // dropdown — kind of similar to the settings of the office slideshow."
@@ -382,6 +421,38 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             webView.load(URLRequest(url: url))
         }
         updateNavButtons()
+        // Start in the chrome the caller expects, so the first frame is already
+        // right; syncChromeToPage corrects it from the page's own background
+        // once that paints.
+        applyChrome(isLight: startsLight)
+
+        // The veil goes on LAST so it covers the web view and the progress bar.
+        loadingVeil.translatesAutoresizingMaskIntoConstraints = false
+        loadingVeil.backgroundColor = startsLight ? .white : .black
+        veilSpinner.translatesAutoresizingMaskIntoConstraints = false
+        veilSpinner.color = startsLight ? UIColor.black.withAlphaComponent(0.35) : PhoebeBrowserColor.tint
+        veilSpinner.startAnimating()
+        loadingVeil.addSubview(veilSpinner)
+        view.addSubview(loadingVeil)
+        NSLayoutConstraint.activate([
+            loadingVeil.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingVeil.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            loadingVeil.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingVeil.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            veilSpinner.centerXAnchor.constraint(equalTo: loadingVeil.centerXAnchor),
+            veilSpinner.centerYAnchor.constraint(equalTo: loadingVeil.centerYAnchor),
+        ])
+        veilShownAt = CACurrentMediaTime()
+        // A warmed web view may have finished loading before this controller
+        // existed, in which case didFinish has already been and gone and would
+        // never fire again — the veil would sit until the ceiling. Reveal on
+        // the floor instead.
+        if !webView.isLoading { hideVeil() }
+        // The ceiling. A page that never reports finishing must not hold the
+        // veil forever.
+        DispatchQueue.main.asyncAfter(deadline: .now() + veilMaxSeconds) { [weak self] in
+            self?.hideVeil()
+        }
 
         // Swipe right from the left edge to flick the browser back out — the
         // interactive twin of the slide-in present.
@@ -435,6 +506,73 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     /// matching if the site changes, and it works for the other pages this
     /// browser opens too. Falls back to what's already set when the page
     /// doesn't answer — a wrong-but-stable bar beats a flashing one.
+    /**
+     * Paint every piece of chrome for a light or dark page, together.
+     *
+     * The bug this replaces: syncChromeToPage set the bar's BACKGROUND and
+     * TITLE from the page, and nothing else. The nav bar's tintColor, the
+     * interface style, and the Done button's own title colour all stayed on
+     * their dark-mode values, so a cream newsletter got a white bar carrying
+     * black capsule buttons with unreadable content — a bar half-flipped.
+     *
+     * Anything that depends on light-vs-dark belongs in here. A second place
+     * that decides part of it is how the halves got out of step in the first
+     * place.
+     */
+    /**
+     * Reveal the page. Idempotent — called by didFinish, by didFail, and by the
+     * ceiling timer, and only the first of those does anything.
+     */
+    private func hideVeil() {
+        guard !veilDismissed else { return }
+        let elapsed = CACurrentMediaTime() - veilShownAt
+        if elapsed < veilMinSeconds {
+            // The floor: wait out the remainder rather than flashing.
+            DispatchQueue.main.asyncAfter(deadline: .now() + (veilMinSeconds - elapsed)) { [weak self] in
+                self?.hideVeil()
+            }
+            return
+        }
+        veilDismissed = true
+        UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseInOut], animations: { [weak self] in
+            self?.loadingVeil.alpha = 0
+        }, completion: { [weak self] _ in
+            self?.veilSpinner.stopAnimating()
+            self?.loadingVeil.isHidden = true
+        })
+    }
+
+    private func applyChrome(isLight: Bool) {
+        let bar: UIColor = isLight ? .white : .black
+        let text: UIColor = isLight ? .black : PhoebeBrowserColor.text
+        // The bar tint colours the bar-button items. On a light bar iOS renders
+        // them as filled capsules, so this is the capsule's own colour — a dark
+        // one on white, not the pale sage that only reads on black.
+        let tint: UIColor = isLight ? UIColor(red: 0.11, green: 0.27, blue: 0.16, alpha: 1) : PhoebeBrowserColor.tint
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = bar
+        appearance.titleTextAttributes = [.foregroundColor: text]
+        appearance.shadowColor = UIColor.clear
+        let navBar = navigationController?.navigationBar
+        navBar?.standardAppearance = appearance
+        navBar?.scrollEdgeAppearance = appearance
+        navBar?.compactAppearance = appearance
+        navBar?.tintColor = tint
+        // Carries the rest of UIKit with it — bar-button capsules, the menu
+        // that drops out of Options, the scroll indicators.
+        navigationController?.overrideUserInterfaceStyle = isLight ? .light : .dark
+        view.backgroundColor = bar
+        webView?.backgroundColor = bar
+        // …including the veil, while it is still up. Learning the page is dark
+        // AFTER painting a white veil would otherwise reveal the page through a
+        // colour flip — the flash this is here to prevent.
+        if !veilDismissed {
+            loadingVeil.backgroundColor = bar
+            veilSpinner.color = isLight ? UIColor.black.withAlphaComponent(0.35) : PhoebeBrowserColor.tint
+        }
+    }
+
     private func syncChromeToPage() {
         webView.evaluateJavaScript(
             "getComputedStyle(document.body).backgroundColor"
@@ -448,20 +586,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             if nums.count >= 4, nums[3] == 0 { return }
             let luma = (0.299 * nums[0] + 0.587 * nums[1] + 0.114 * nums[2]) / 255.0
             let isLight = luma > 0.5
-            let bar: UIColor = isLight ? .white : .black
-            let text: UIColor = isLight ? .black : PhoebeBrowserColor.text
-            DispatchQueue.main.async {
-                let appearance = UINavigationBarAppearance()
-                appearance.configureWithOpaqueBackground()
-                appearance.backgroundColor = bar
-                appearance.titleTextAttributes = [.foregroundColor: text]
-                appearance.shadowColor = UIColor.clear
-                self.navigationController?.navigationBar.standardAppearance = appearance
-                self.navigationController?.navigationBar.scrollEdgeAppearance = appearance
-                self.navigationController?.navigationBar.compactAppearance = appearance
-                self.view.backgroundColor = bar
-                self.webView.backgroundColor = bar
-            }
+            DispatchQueue.main.async { self.applyChrome(isLight: isLight) }
         }
     }
 
@@ -488,11 +613,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         updateNavButtons()
         // The page has painted — take its background and match the chrome to it.
         syncChromeToPage()
+        hideVeil()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         UIView.animate(withDuration: 0.25) { [weak self] in self?.progressView.alpha = 0 }
         updateNavButtons()
+        // Reveal whatever there is — an error page they can read beats a veil
+        // that never lifts.
+        hideVeil()
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
@@ -649,16 +778,18 @@ final class BibleBrowser: NSObject {
         onJournal: (() -> Void)? = nil,
         onDismiss: (() -> Void)? = nil,
         onChangeFormat: (() -> Void)? = nil,
-        onListen: (() -> Void)? = nil
+        onListen: (() -> Void)? = nil,
+        lightChrome: Bool = false
     ) {
         guard let presenter = presenter else { return }
         let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
+        vc.startsLight = lightChrome
         vc.onJournal = onJournal
         vc.onDismiss = onDismiss
         vc.onChangeFormat = onChangeFormat
         vc.onListen = onListen
         let nav = UINavigationController(rootViewController: vc)
-        nav.overrideUserInterfaceStyle = .dark
+        nav.overrideUserInterfaceStyle = lightChrome ? .light : .dark
         // Keep the top + bottom bars pinned — never collapse/minimize on scroll
         // or tap, so the back + Journal buttons stay reachable the whole read.
         nav.hidesBarsOnSwipe = false
@@ -667,13 +798,15 @@ final class BibleBrowser: NSObject {
         // Dark Phoebe chrome for the top navigation bar.
         let barAppearance = UINavigationBarAppearance()
         barAppearance.configureWithOpaqueBackground()
-        barAppearance.backgroundColor = PhoebeBrowserColor.bar
-        barAppearance.titleTextAttributes = [.foregroundColor: PhoebeBrowserColor.text]
-        barAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        barAppearance.backgroundColor = lightChrome ? .white : PhoebeBrowserColor.bar
+        barAppearance.titleTextAttributes = [.foregroundColor: lightChrome ? UIColor.black : PhoebeBrowserColor.text]
+        barAppearance.shadowColor = UIColor.clear
         nav.navigationBar.standardAppearance = barAppearance
         nav.navigationBar.scrollEdgeAppearance = barAppearance
         nav.navigationBar.compactAppearance = barAppearance
-        nav.navigationBar.tintColor = PhoebeBrowserColor.tint
+        nav.navigationBar.tintColor = lightChrome
+            ? UIColor(red: 0.11, green: 0.27, blue: 0.16, alpha: 1)
+            : PhoebeBrowserColor.tint
 
         // …and the bottom toolbar.
         let toolbarAppearance = UIToolbarAppearance()

@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getSideLevel, getSideEntry, getSideContemplation, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideEntry, getSideContemplation, OFFICE_LEVELS_SET, type OfficeLevel, type OfficeSide } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
@@ -73,9 +73,27 @@ export default function BeginPrayerPage() {
     const isMorning = sideParam === "morning" ? true : sideParam === "evening" ? false : hourNow < 12;
     const side: OfficeSide = isMorning ? "morning" : "evening";
 
+    /**
+     * ?practice=<level> — open THAT practice on this side, whatever the side's
+     * own anchor is.
+     *
+     * A side can carry a second practice alongside its anchor (see
+     * getSideExtra), and its card has to lead somewhere real. Overriding the
+     * level here rather than routing the card itself means the second practice
+     * reaches its page through the SAME brain the anchor does — the Venite
+     * hand-off, the readings' Forward Movement open, the psalms reader — all of
+     * which live below and none of which are worth a second copy.
+     */
+    const practiceOverride = (() => {
+      try {
+        const raw = new URLSearchParams(window.location.search).get("practice");
+        return raw && (OFFICE_LEVELS_SET as Set<string>).has(raw) ? (raw as OfficeLevel) : null;
+      } catch { return null; }
+    })();
+
     // Per-side depth override (Morning/Evening split) wins; otherwise the
     // shared server default; otherwise "ask".
-    const defaultPrayerLevel = getSideLevel(side) ?? officePrefs?.defaultPrayerLevel ?? "ask";
+    const defaultPrayerLevel = practiceOverride ?? getSideLevel(side) ?? officePrefs?.defaultPrayerLevel ?? "ask";
 
     // Contemplation as a side's prayer — open the silence timer directly
     // (NOT the Forward Day by Day reflection). Self-contained (sets its own
@@ -189,7 +207,9 @@ export default function BeginPrayerPage() {
     // home contemplation card links to for this style (DailyProgressBody's
     // creationStyle branch): Co-Breathe direct for the Creation style, the
     // silence timer for the plain contemplative style.
-    if (getSideContemplation(side)) {
+    // Only when nothing more specific was asked for — an explicit ?practice=
+    // is the whole point of the override, and this flag would swallow it.
+    if (!practiceOverride && getSideContemplation(side)) {
       let style: "silent" | "cobreathe" = "silent";
       try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
       setLocation(

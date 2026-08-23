@@ -297,6 +297,8 @@ export type OfficeSide = "morning" | "evening";
 // (the appointed psalms, per the chosen cycle). Both per-user, set in Customize.
 export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal" | "fdd" | "readings" | "psalms" | "examen" | "creation" | "guided-prayer" | "custom" | "compline";
 const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal", "fdd", "readings", "psalms", "examen", "creation", "guided-prayer", "custom", "compline"];
+/** The same list as a set, for validating a level that arrived from a URL. */
+export const OFFICE_LEVELS_SET: ReadonlySet<string> = new Set<string>(OFFICE_LEVELS);
 
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).
@@ -448,17 +450,80 @@ export function setSideCustomName(side: OfficeSide, v: string): void {
   } catch { /* non-fatal */ }
 }
 
+/**
+ * A SECOND practice on a side, alongside its anchor.
+ *
+ * Owner: "if they chose a secondary morning practice ... it should be a full
+ * practice that leads to the practice." It used to be written as a custom
+ * anchor — a log-only "Your daily practice / Log →" row that happened to be
+ * titled "Morning Devotion" and had nothing to do with the Morning Devotion.
+ *
+ * Stored as a LEVEL, the same vocabulary the anchor uses, so the card can route
+ * and complete through the machinery that already exists rather than a parallel
+ * one. `anchorModesFor` was already written for exactly this case — when a
+ * side's anchor is the full office, the devotion flag it checks is deliberately
+ * NOT folded in, "a devotion prayed alongside it is an extra practice, not the
+ * office" — so the two practices keep separate completions for free.
+ *
+ * "ask" (the anchor default) is the empty value here: no second practice.
+ */
+export function getSideExtra(side: OfficeSide): OfficeLevel | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:extra:${side}`);
+    if (!raw || raw === "ask") return null;
+    return (OFFICE_LEVELS as string[]).includes(raw) ? coerceRetiredLevel(raw as OfficeLevel) : null;
+  } catch { return null; }
+}
+export function setSideExtra(side: OfficeSide, v: OfficeLevel | null): void {
+  try {
+    if (!v || v === "ask") localStorage.removeItem(`phoebe:office:extra:${side}`);
+    else localStorage.setItem(`phoebe:office:extra:${side}`, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+/**
+ * The office MODE a level completes as — the `phoebe:office-completed:<mode>`
+ * flag it writes when it finishes.
+ *
+ * Only levels that run through the office deck have one. Everything else
+ * (the Examen, Audio Divina, a walk) keeps its own practice flag and never
+ * reaches here.
+ */
+export function extraOfficeMode(side: OfficeSide, level: OfficeLevel): string | null {
+  if (level === "office") return side;
+  if (level === "compline") return "compline";
+  // Psalms / readings / the devotion / guided prayer all complete as the
+  // side's DEVOTION mode — see anchorModesFor's note on the shared flag.
+  if (level === "devotion" || level === "psalms" || level === "readings" || level === "guided-prayer") {
+    return side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  }
+  return null;
+}
+
 // What a side's card actually calls itself — extracted from DailyProgressBody
 // so /turn-learn-pray's per-slot summary (in Morning/Contemplative/Evening
 // mode) names the SAME practice the home card does instead of a
 // separately-maintained guess that drifts. `prayerKind` is useRhythmState's
 // field of the same name; `t` is the caller's i18n function.
-export function sideOfficeTitle(
+/**
+ * The name of a practice named by an EXPLICIT level, or null when the level
+ * doesn't pin one down on its own.
+ *
+ * Split out of sideOfficeTitle so a side's SECOND practice names itself the
+ * same way its anchor would. Both callers want the same answer to the same
+ * question, and two copies of this switch is exactly how the "readings" case
+ * below went missing from one of them for a release.
+ *
+ * Returns null for the levels whose name depends on more than the level —
+ * "custom" (which needs the stored name) and the office/devotion/ask family
+ * (which the anchor resolves through prayerKind). Callers supply those.
+ */
+export function explicitLevelTitle(
   side: "Morning" | "Evening",
-  prayerKind: string | undefined,
+  lvl: OfficeLevel,
   t: (k: string, o?: Record<string, unknown>) => string,
-): string {
-  const lvl = getSideLevel(side.toLowerCase() as OfficeSide);
+): string | null {
   if (lvl === "psalms") {
     return t(`rhythm.card_${side.toLowerCase()}_psalms`, { defaultValue: `${side} Psalms` });
   }
@@ -480,6 +545,31 @@ export function sideOfficeTitle(
   if (lvl === "readings") {
     return t(`rhythm.card_${side.toLowerCase()}_readings`, { defaultValue: `${side} Scripture Reading` });
   }
+  return null;
+}
+
+/** A SECOND practice's card title. Same names the anchor uses. */
+export function extraPracticeTitle(
+  side: "Morning" | "Evening",
+  lvl: OfficeLevel,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string {
+  return explicitLevelTitle(side, lvl, t)
+    ?? (lvl === "intercessions"
+      ? t("rhythm.card_community", { defaultValue: "Pray together" })
+      : lvl === "devotion"
+        ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
+        : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` }));
+}
+
+export function sideOfficeTitle(
+  side: "Morning" | "Evening",
+  prayerKind: string | undefined,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string {
+  const lvl = getSideLevel(side.toLowerCase() as OfficeSide);
+  const explicit = lvl ? explicitLevelTitle(side, lvl, t) : null;
+  if (explicit) return explicit;
   if (lvl === "custom") {
     const name = getSideCustomName(side.toLowerCase() as OfficeSide).trim();
     if (!name) return `${side} Practice`;
