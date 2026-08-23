@@ -1220,10 +1220,15 @@ export default function RoutineInterviewPage() {
           <div>
             <p style={eyebrow}>{`Part ${confirmIndex + 1} of ${confirmSections.length}`} 🌿</p>
             <h1 style={h1}>
-              {asking ? (contStep === 1 ? "How long?" : contStep === 2 ? "How you'll keep it" : "A contemplative practice") : section.title}
+              {pickingPractice
+                ? (section.key === "morning" ? "Your morning" : "Your evening")
+                : asking ? (contStep === 1 ? "How long?" : contStep === 2 ? "How you'll keep it" : "A contemplative practice")
+                  : section.title}
             </h1>
             <p style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>
-              {!asking
+              {pickingPractice
+                ? "Choose what you pray, then how you take it."
+                : !asking
                 ? "Here's what we heard."
                 : contStep === 1
                   ? "However long you actually sit. You can change it any time."
@@ -1233,7 +1238,7 @@ export default function RoutineInterviewPage() {
             </p>
           </div>
 
-          {rows.length > 0 && (
+          {rows.length > 0 && !pickingPractice && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rows.map((r, i2) => (
                 <div key={`${r.label}-${i2}`} style={routineCard}>
@@ -1327,6 +1332,13 @@ export default function RoutineInterviewPage() {
                 </span>
               </button>
               {reminderOn && (
+                // Wrapped so the chevron can sit on it. Owner: "the time needs
+                // to go full length of the screen — there's no drop-down arrow
+                // on that bar right now." Full width it already is; the arrow
+                // was missing, so the row read as a plain field beside two
+                // pills that clearly opened something. input[type=time] DOES
+                // open a picker on tap — the affordance just wasn't drawn.
+                <div style={{ position: "relative" }}>
                 <input
                   type="time"
                   value={reminderTime}
@@ -1348,9 +1360,21 @@ export default function RoutineInterviewPage() {
                     // an intrinsic native width that ignores width:100%.
                     ...card, width: "100%", maxWidth: "100%", minWidth: 0,
                     boxSizing: "border-box", color: WARM,
-                    fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark", padding: "13px 14px",
+                    fontFamily: FONT, fontSize: 16, outline: "none", colorScheme: "dark",
+                    // Room for the chevron on the right.
+                    padding: "13px 40px 13px 14px",
                   }}
                 />
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+                    color: SAGE, fontSize: 12, pointerEvents: "none",
+                  }}
+                >
+                  ▾
+                </span>
+                </div>
               )}
             </div>
           )}
@@ -1486,7 +1510,16 @@ export default function RoutineInterviewPage() {
           {/* Change the practice by hand — no rebuild, no spinner, nothing else
               in the routine moves. Writes the level straight onto the pending
               spec and relabels the row, which is all "not quite" was ever
-              really being asked to accomplish for a side. */}
+              really being asked to accomplish for a side.
+
+              Rendered as its OWN screen, not a list under the card. Owner: "it
+              shouldn't just do a list on that screen — it should go into the
+              full UI of the manual editor, another slide, the first slide of
+              the morning where it has those main top-level options and then the
+              secondary options." So while this is open the card, the read-back
+              question and the yes/no buttons are all hidden (see the guards
+              below), leaving the practice list on top and the format and
+              reminder beneath it — the customizer's morning slide, in here. */}
           {pickingPractice && isSide && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <p style={{ ...eyebrow, marginBottom: 2 }}>What do you pray instead?</p>
@@ -1644,6 +1677,10 @@ export default function RoutineInterviewPage() {
               style={{ ...primaryBtn, opacity: contStep === 0 && contPick === null ? 0.45 : 1 }}
             >
               Continue
+            </button>
+          ) : pickingPractice ? (
+            <button type="button" onClick={() => setPickingPractice(false)} style={primaryBtn}>
+              Done
             </button>
           ) : (
             <button type="button" onClick={advance} style={primaryBtn}>

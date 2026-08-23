@@ -2532,8 +2532,10 @@ export default function WayOfLoveRuleFlow({
                 // what stop the overflow; iOS gives input[type=time] an
                 // intrinsic width from its native control that ignores
                 // width:100%.
-                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
+                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
               />
+              {/* The picker affordance, matching the dropdowns above it. */}
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
           )}
         </div>
