@@ -545,35 +545,57 @@ final class SlideTransitionAnimator: NSObject, UIViewControllerAnimatedTransitio
 
     func animateTransition(using ctx: UIViewControllerContextTransitioning) {
         let container = ctx.containerView
-        let width = container.bounds.width
         let duration = transitionDuration(using: ctx)
 
+        /**
+         * A FADE, not a slide.
+         *
+         * Owner: "change the way the external website content comes in — not
+         * that slide-in, but the way it transitions to other pages or
+         * slideshows, like a fade."
+         *
+         * A horizontal slide announces "a different app opened on top of
+         * yours". Everywhere else Phoebe changes what you're looking at by
+         * cross-fading — the office slides, the page reveals — and the office
+         * continuing on venite.app is a change of surface, not a departure. The
+         * fade makes the browser feel like the next page of the liturgy rather
+         * than somewhere you were sent.
+         *
+         * The very slight scale keeps a pure opacity fade from reading as a
+         * flicker; it's small enough to feel like settling rather than zooming.
+         */
         if presenting {
             guard let toVC = ctx.viewController(forKey: .to),
                   let toView = ctx.view(forKey: .to) else {
                 ctx.completeTransition(false); return
             }
             toView.frame = ctx.finalFrame(for: toVC)
-            toView.transform = CGAffineTransform(translationX: width, y: 0)
+            toView.alpha = 0
+            toView.transform = CGAffineTransform(scaleX: 1.02, y: 1.02)
             container.addSubview(toView)
             UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseOut], animations: {
+                toView.alpha = 1
                 toView.transform = .identity
             }, completion: { _ in
                 ctx.completeTransition(!ctx.transitionWasCancelled)
             })
         } else {
-            // The presenter's view stays behind (overFullScreen), so we just
-            // slide the browser back out to the right to reveal it.
+            // The presenter's view stays behind (overFullScreen), so fading the
+            // browser out reveals it. Driven by the same percent-based
+            // interactive transition as before, so the edge-swipe still tracks
+            // the finger — it dims across the drag instead of sliding.
             guard let fromView = ctx.view(forKey: .from) else {
                 ctx.completeTransition(false); return
             }
             UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn], animations: {
-                fromView.transform = CGAffineTransform(translationX: width, y: 0)
+                fromView.alpha = 0
+                fromView.transform = CGAffineTransform(scaleX: 1.02, y: 1.02)
             }, completion: { _ in
                 if ctx.transitionWasCancelled {
-                    // Released before the threshold — restore the browser in
-                    // place (UIView.animate otherwise leaves the model layer
-                    // at the final, off-screen transform).
+                    // Released before the threshold — restore it in place.
+                    // UIView.animate otherwise leaves the model layer at the
+                    // final (invisible) values.
+                    fromView.alpha = 1
                     fromView.transform = .identity
                 } else {
                     fromView.removeFromSuperview()
