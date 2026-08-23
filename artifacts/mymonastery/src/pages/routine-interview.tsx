@@ -208,7 +208,12 @@ function SelectPill({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ position: "relative" }}>
+    // The WRAPPER carries the constraints too, not just the select. A bare
+    // position:relative div is sized by its content, so on iOS it can inherit
+    // the native control's intrinsic width and push the row wider than the
+    // cards above it — the exact way the reminder-time bar overflowed even
+    // after the input itself had been capped.
+    <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

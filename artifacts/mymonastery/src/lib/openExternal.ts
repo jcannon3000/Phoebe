@@ -13,22 +13,32 @@
 type PhoebeNative = {
   isNative?: () => boolean;
   openInAppBrowser?: (url: string) => Promise<void>;
-  openReaderView?: (url: string) => Promise<void>;
   preloadInAppBrowser?: (url: string) => Promise<void>;
 };
 
-export function openExternal(url: string, opts?: { reader?: boolean }): void {
+/**
+ * `reader` is accepted for the callers that still pass it, and deliberately
+ * does nothing.
+ *
+ * It used to route newsletters to SFSafariViewController with Reader mode on.
+ * Owner, twice: "undo the reader-mode automation for the CAC newsletter", then
+ * "I want a similar animation on CAC and all the newsletters." Reader mode was
+ * a different presentation entirely — a sheet that slides up from the bottom,
+ * with Safari's own chrome and a toolbar that collapses as you scroll. Sending
+ * everything through the one in-app browser gives newsletters the same cross-
+ * fade, the same Done button and the same Options menu as the office, so
+ * outbound reading is one surface rather than two that behave differently.
+ *
+ * Left as an accepted no-op rather than removed so the ~dozen call sites don't
+ * all have to change to make one behavioural decision.
+ */
+type OpenOpts = { reader?: boolean };
+
+export function openExternal(url: string, opts?: OpenOpts): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
-  // Newsletters / reflections pass reader:true → open in Safari Reader view
-  // (clean article text). Falls back to the normal in-app browser if the shell
-  // doesn't expose a reader view, then to a web tab. Don't await — keeps the
-  // call within the user-gesture context.
-  if (opts?.reader && native?.openReaderView) {
-    void native.openReaderView(url);
-    return;
-  }
+  // `reader` is accepted and IGNORED — see the note on the type above.
   if (native?.openInAppBrowser) {
     void native.openInAppBrowser(url);
     return;
@@ -46,26 +56,16 @@ export function openExternal(url: string, opts?: { reader?: boolean }): void {
 export function openExternalThenMarkRead(
   url: string,
   markRead: () => void,
-  opts?: { reader?: boolean },
+  opts?: OpenOpts,
 ): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
-  // Gate on whichever method will ACTUALLY be called, not unconditionally on
-  // openInAppBrowser — the old check required openInAppBrowser to exist even
-  // for the reader:true path, which calls openReaderView instead. A native
-  // build exposing openReaderView but not openInAppBrowser (or any other
-  // partial-plugin state) fell through to the web fallback below despite
-  // being genuinely native, marking read the INSTANT the link opened rather
-  // than waiting for the browser to close. That's the "newsletter cards
-  // don't wait until the person comes back" bug: the mark-read + weekly-grid
-  // dot flip fired at tap time, before the article was even shown.
-  const wantsReader = opts?.reader && native?.openReaderView;
-  const nativeMethodAvailable = wantsReader ? native?.openReaderView : native?.openInAppBrowser;
-  if (native?.isNative?.() && nativeMethodAvailable) {
-    // Newsletters (reader:true) open in Safari reader view; everything else in
-    // the normal in-app browser. Both emit phoebe:browserfinished on close.
-    if (wantsReader) void native!.openReaderView!(url);
-    else void native!.openInAppBrowser!(url);
+  // Gate on the method that will ACTUALLY be called. A native build where the
+  // gate and the call disagree falls through to the web branch below and marks
+  // read the INSTANT the link opens rather than when the person comes back —
+  // that was the "newsletter dot flips at tap time" bug.
+  if (native?.isNative?.() && native?.openInAppBrowser) {
+    void native.openInAppBrowser(url);
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
       markRead();

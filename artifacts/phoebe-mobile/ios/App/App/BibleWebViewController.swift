@@ -251,11 +251,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         doneButton.setTitle("Done", for: .normal)
         doneButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
         doneButton.setTitleColor(PhoebeBrowserColor.text, for: .normal)
-        doneButton.backgroundColor = PhoebeBrowserColor.tint.withAlphaComponent(0.22)
-        doneButton.layer.cornerRadius = 15
-        doneButton.layer.borderWidth = 1
-        doneButton.layer.borderColor = PhoebeBrowserColor.tint.withAlphaComponent(0.45).cgColor
-        doneButton.contentEdgeInsets = UIEdgeInsets(top: 6, left: 16, bottom: 6, right: 16)
+        // Plain text, no chrome. Owner: "fix the Done button — don't need the
+        // borders, no green shading." The filled-pill treatment was fighting
+        // the bar it sits in; a bar button is already understood as tappable,
+        // and the tinted capsule only made the top of the page look busier
+        // than the office it is framing.
+        doneButton.contentEdgeInsets = UIEdgeInsets(top: 6, left: 2, bottom: 6, right: 16)
         doneButton.addTarget(self, action: #selector(close), for: .touchUpInside)
         doneButton.accessibilityLabel = "Done"
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: doneButton)

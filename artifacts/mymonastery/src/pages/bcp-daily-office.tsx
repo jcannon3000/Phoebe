@@ -638,6 +638,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     resolvedMode === "creation-morning" ||
     resolvedMode === "creation-evening";
 
+  /**
+   * Did we arrive here purely to hand off to venite.app?
+   *
+   * Read ONCE at mount, before the query is scrubbed below. Owner: "I don't
+   * want the Venite flow to first go to the opening slide — I want it to go
+   * right to Venite from the home screen." The hand-off used to wait for the
+   * office fetch, so the held-breath opening and then the chooser slide both
+   * painted before the browser appeared. Nothing about the Venite URL depends
+   * on the fetch (it's built from the route's side and today's date), so the
+   * wait bought nothing and cost the whole point of a direct card.
+   */
+  const veniteDirect = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get("venite") === "1"; } catch { return false; }
+  }, []);
+
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
@@ -1044,19 +1059,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * effect, so routing alone left the screen unchanged and the menu item did
    * visibly nothing. Handled here, where the chooser actually lives.
    */
+  // The hand-off itself: mount-only, so it does not wait on the fetch.
   useEffect(() => {
-    let ranVenite = false;
+    if (!veniteDirect) return;
     try {
+      // Scrub the flag so a later back-navigation to this deck doesn't bounce
+      // them straight out to the browser again.
       const q = new URLSearchParams(window.location.search);
-      if (q.get("venite") === "1" && !loading && slides.length > 0) {
-        q.delete("venite");
-        const rest = q.toString();
-        window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
-        ranVenite = true;
-        goToVenite(isDevotion ? "devotion" : "office");
-      }
+      q.delete("venite");
+      const rest = q.toString();
+      window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
     } catch { /* ignore */ }
+    goToVenite(isDevotion ? "devotion" : "office");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [veniteDirect]);
 
+  useEffect(() => {
     const onChangeFormat = () => {
       // Back to this office's own opening chooser — the slide that offers the
       // ways to pray — rather than a navigation the page would ignore.
@@ -1067,8 +1085,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     };
     window.addEventListener("phoebe:office-change-format", onChangeFormat);
     return () => window.removeEventListener("phoebe:office-change-format", onChangeFormat);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, slides.length, isDevotion]);
+  }, []);
 
   const [error, setError] = useState<string | null>(null);
   // A held "breath into the office" opening screen: the office's opening
@@ -1086,10 +1103,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     try { return sessionStorage.getItem(openedKey) === "1"; } catch { return false; }
   }, [openedKey]);
   useEffect(() => {
-    if (alreadyOpenedToday) { setMinLoadDone(true); return; }
+    // Skip the 2.8s held breath when we're handing straight off — it would be
+    // a calm beat on a screen nobody is looking at, and it's still on screen
+    // underneath when they come back.
+    if (alreadyOpenedToday || veniteDirect) { setMinLoadDone(true); return; }
     const t = setTimeout(() => setMinLoadDone(true), 2800);
     return () => clearTimeout(t);
-  }, [alreadyOpenedToday]);
+  }, [alreadyOpenedToday, veniteDirect]);
   // Remember the opening has been shown, so a later re-entry skips the psalm.
   useEffect(() => { try { sessionStorage.setItem(openedKey, "1"); } catch { /* non-fatal */ } }, [openedKey]);
 

@@ -932,6 +932,42 @@ const ANCHOR_SLOT_TWINS: Record<string, string> = {
   examen: "examen",
 };
 
+/**
+ * Carry a sit-frequency ANSWER into the spec, deterministically.
+ *
+ * Reported: the follow-up asked "once a day or more than once?", they answered
+ * "more than once", and the third stage still came up with "Once a day"
+ * selected. The vocab documents "phoebe:contemplation-sits", but the model
+ * treats it as optional and routinely omits it — and an absent key reads as
+ * "one" on the client, so a direct answer to a direct question was being
+ * thrown away.
+ *
+ * This is not something to fix by asking the prompt more firmly. When the
+ * person has already answered in words, the answer is data; a post-pass that
+ * reads it is exact, and costs nothing when the model got it right.
+ */
+function carrySitFrequency(
+  spec: { ruleConfig: Record<string, string> },
+  followups: Array<{ q: string; a: string }>,
+): void {
+  for (const f of followups) {
+    const q = (f?.q || "").toLowerCase();
+    const a = (f?.a || "").toLowerCase();
+    if (!a) continue;
+    // Only a question that actually offered the choice — otherwise "twice" in
+    // an answer about anything else would land here.
+    const asksFrequency = /(once|how (many times|often))/.test(q)
+      && /(sit|silen|contempl|medit|pray)/.test(q);
+    if (!asksFrequency) continue;
+    // Check "more" first: "more than once" contains "once".
+    if (/(more than once|several|multiple|twice|three times|a few times|couple of times|throughout the day|morning and (evening|night))/.test(a)) {
+      spec.ruleConfig["phoebe:contemplation-sits"] = "several";
+    } else if (/(once|one time|just the once|single sit)/.test(a)) {
+      spec.ruleConfig["phoebe:contemplation-sits"] = "one";
+    }
+  }
+}
+
 function dropSlotTwinsOfAnchors(spec: { ruleConfig: Record<string, string> }): string[] {
   const rc = spec.ruleConfig;
   const notes: string[] = [];
@@ -1442,6 +1478,7 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   // Value-check the rule-config the model wrote (sanitizeSpec only checked its
   // shape) — mutates `spec.ruleConfig`, so it must run before the response.
   const scrubNotes = scrubRuleConfig(spec.ruleConfig);
+  carrySitFrequency(spec, followups);
   normalizeContemplation(spec);
   dropSlotTwinsOfAnchors(spec);
   defaultEntryToVenite(spec);

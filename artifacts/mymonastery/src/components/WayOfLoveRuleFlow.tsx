@@ -150,6 +150,8 @@ const EXTRA_PRACTICE_EMOJI: Record<string, string> = Object.fromEntries(
   EXTRA_PRACTICES.flatMap((e) => ["Morning", "Evening"].map((c) => [e.title(c), e.emoji])),
 );
 type Step =
+  // The opening slide: what this whole flow is for, and nothing else on it.
+  | "intro"
   | "morning-way" | "morning-custom" | "morning-config"
   | "fdd-mode"
   | "psalms-cycle"
@@ -532,9 +534,9 @@ export default function WayOfLoveRuleFlow({
   const [step, setStep] = useState<Step>(() => {
     // Guests always open the manual flow: their rule is already running (the
     // first-open seed), so the preset picker would re-adopt over it.
-    if (pilot || guest) return "morning-way";
+    if (pilot || guest) return "intro";
     const hasRule = !!getExplicitSideLevel("morning") || !!getExplicitSideLevel("evening");
-    return hasRule ? "morning-way" : "starter";
+    return hasRule ? "intro" : "starter";
   });
   // Show the "technology of holding" prelude ONCE, before the very first author
   // reaches the preset picker — it names why a daily practice matters and where
@@ -1499,6 +1501,7 @@ export default function WayOfLoveRuleFlow({
     // silence goal (fixed only) → custom. No contemplative multi-select, no
     // extras, no weekly.
     ? [
+        "intro",
         "morning-way",
         ...(sidesArg.morning ? (["morning-config"] as Step[]) : []),
         "evening-way",
@@ -1512,6 +1515,7 @@ export default function WayOfLoveRuleFlow({
     // Pilot: morning/evening → reflections → silence → one custom anchor. No
     // contemplative multi-select, no per-practice slots, no extras, no weekly.
     ? [
+        "intro",
         "morning-way",
         ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config"] as Step[]) : []),
         "evening-way",
@@ -1522,6 +1526,7 @@ export default function WayOfLoveRuleFlow({
         "custom",
       ]
     : [
+    "intro",
     "morning-way",
     ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : [])] as Step[]) : []),
     "evening-way",
@@ -2071,6 +2076,55 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
+  // ── Opening slide — what this flow is for, and nothing else ───────────────
+  //
+  // Owner: "this description is supposed to be an intro slide, not on the
+  // morning page ... have it be in like glowing centred text, but sized
+  // properly." It was riding on top of the morning picker, where it pushed the
+  // actual question and the first two options below the fold — a paragraph
+  // explaining the flow was the loudest thing on the slide where the flow's
+  // first real choice is made. On its own slide it can be read once and left
+  // behind.
+  //
+  // "Glowing" is a text-shadow, not a brighter colour: the type stays the same
+  // cream everything else uses and the light comes off it, so it reads as lit
+  // rather than as an alert. "Sized properly" is the other half — this is the
+  // only thing on the slide, so it gets headline-ish type (clamped, so it does
+  // not run to 30px on a phone and 30px on a tablet alike) instead of the 14.5
+  // it had while squeezed into a card.
+  if (step === "intro") {
+    return shell(
+      <>
+        {stepHeader("Before you begin", "Before you begin")}
+        <div
+          style={{
+            flex: 1, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            textAlign: "center", padding: "8px 4px",
+          }}
+        >
+          <p
+            style={{
+              color: CREAM, fontFamily: FONT,
+              fontSize: "clamp(19px, 5.2vw, 24px)", lineHeight: 1.55,
+              fontWeight: 500, margin: 0, maxWidth: "22em",
+              // The glow. Two shadows: a tight warm one for the lit edge and a
+              // wide faint one for the halo — a single large-radius shadow just
+              // reads as blur.
+              textShadow: "0 0 14px rgba(220,240,225,0.34), 0 0 42px rgba(140,200,160,0.20)",
+            }}
+          >
+            {t("wol_rule.flow_intent", {
+              defaultValue:
+                "You'll be guided through picking a practice to centre your mornings around, one for your evenings, and a place for contemplation in your day. After that there's room to add whatever else you keep.",
+            })}
+          </p>
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
   // ── Per-side WAY slide — titled "Morning" / "Evening" ─────────────────────
   if (step === "morning-way" || step === "evening-way") {
     const side: OfficeSide = step === "morning-way" ? "morning" : "evening";
@@ -2079,33 +2133,6 @@ export default function WayOfLoveRuleFlow({
       <>
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
-        {/* What this whole flow is for, said once at the top of it.
-            Owner: a tutorial-nature line about the intention of the
-            customizing, in "you will be guided through to pick" language —
-            explicitly NOT "we"/"together". No first person: the app isn't a
-            companion sitting alongside them here, it's a form they're being
-            walked through, and pretending otherwise is the performed warmth
-            the voice guidance rules out everywhere else.
-
-            On the FIRST slide only. Someone who has already chosen a morning
-            and reached the evening doesn't need the shape of the flow
-            explained to them again, and repeating it there would read as the
-            app having lost its place. */}
-        {side === "morning" && (
-          <div
-            style={{
-              background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14,
-              padding: "14px 16px", margin: "14px 0 18px",
-            }}
-          >
-            <p style={{ color: CREAM, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.6, margin: 0 }}>
-              {t("wol_rule.flow_intent", {
-                defaultValue:
-                  "You'll be guided through picking a practice to centre your mornings around, one for your evenings, and a place for contemplation in your day. After that there's room to add whatever else you keep.",
-              })}
-            </p>
-          </div>
-        )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {/* Owner: "have the question be, how would you like to pray in the
               evening? Select one — select your method, or leave blank if you
@@ -3146,7 +3173,7 @@ export default function WayOfLoveRuleFlow({
           <button onClick={() => setLocation("/find-your-rhythm")} style={{ background: "none", border: "none", color: CREAM, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_help_choose", { defaultValue: "Not sure? Help me choose →" })}
           </button>
-          <button onClick={() => { touchedRef.current = true; setStep("morning-way"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
+          <button onClick={() => { touchedRef.current = true; setStep("intro"); }} style={{ background: "none", border: "none", color: SAGE, fontSize: 13.5, fontFamily: FONT, cursor: "pointer" }}>
             {t("wol_rule.starter_build_own", { defaultValue: "Or build my own →" })}
           </button>
         </div>
@@ -3187,7 +3214,7 @@ export default function WayOfLoveRuleFlow({
         <button onClick={onDone} style={{ marginTop: 22, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "16px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
           {t("wol_rule.tend_done", { defaultValue: "That’s all for now" })}
         </button>
-        <button onClick={() => { touchedRef.current = true; setStep("morning-way"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
+        <button onClick={() => { touchedRef.current = true; setStep("intro"); }} style={{ marginTop: 12, background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 13, fontFamily: FONT, cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
           {t("wol_rule.tend_reshape", { defaultValue: "Reshape from scratch" })}
         </button>
       </>,
