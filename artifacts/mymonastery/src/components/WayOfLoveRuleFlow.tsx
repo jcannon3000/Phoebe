@@ -101,6 +101,16 @@ const SIDES = ["morning", "evening"] as const;
 // back (prayFromLevel) and migrates forward on the next save.
 type PrayChoice = "none" | "community" | "devotion" | "offices" | "compline" | "contemplation" | "fdd" | "readings" | "psalms" | "examen" | "creation" | "guidedPrayer" | "ownPractice";
 
+/**
+ * Owner: "let's hide the questionnaire from Shape your rhythm for right
+ * now, take that out of the options."
+ *
+ * The "Ask me about my practice" row was already super-admin-only; this
+ * takes it off even for them, temporarily. Flip back to false to restore
+ * it — nothing else about the interview (the route, the server) changes.
+ */
+const ROUTINE_INTERVIEW_ENTRY_HIDDEN = true;
+
 // Creation Prayer lengths — 6-breath increments, mirroring the /cobreathe
 // page's own Length dropdown (default 12).
 const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
@@ -1868,7 +1878,7 @@ export default function WayOfLoveRuleFlow({
   // slowly would silently lose their default.
   const canRevert = hasRoutineHistory && !prescribe;
   const effectiveEntryChoice: "ask" | "manual" | "revert" =
-    entryChoice === "ask" && !isSuperAdmin ? "manual"
+    entryChoice === "ask" && (!isSuperAdmin || ROUTINE_INTERVIEW_ENTRY_HIDDEN) ? "manual"
       : entryChoice === "revert" && !canRevert ? "manual"
         : entryChoice;
   /**
@@ -2055,7 +2065,7 @@ export default function WayOfLoveRuleFlow({
             is operative: open the slide, press Continue, you're in the
             interview. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {isSuperAdmin && choiceRow(
+          {isSuperAdmin && !ROUTINE_INTERVIEW_ENTRY_HIDDEN && choiceRow(
             effectiveEntryChoice === "ask",
             prescribe
               ? `💬 ${t("wol_rule.entry_ask_prescribe", { defaultValue: "Describe their practice" })}`
