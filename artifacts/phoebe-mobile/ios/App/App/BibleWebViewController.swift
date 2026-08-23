@@ -106,7 +106,9 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private let veilSpinner = OfficeSpinnerView()
     private var veilShownAt: CFTimeInterval = 0
     private var veilDismissed = false
-    private let veilMinSeconds: CFTimeInterval = 1.2
+    // 1.2s originally; shortened 30% (owner). Still long enough that a cached
+    // page doesn't flash the veil, which is the only reason there is a floor.
+    private let veilMinSeconds: CFTimeInterval = 0.84
     private let veilMaxSeconds: TimeInterval = 5.0
 
     // Retained strongly here because UIViewController.transitioningDelegate
