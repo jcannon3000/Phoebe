@@ -12,7 +12,16 @@
 
 type PhoebeNative = {
   isNative?: () => boolean;
-  openInAppBrowser?: (url: string, opts?: { lightChrome?: boolean }) => Promise<void>;
+  openInAppBrowser?: (
+    url: string,
+    opts?: {
+      lightChrome?: boolean;
+      officeChrome?: boolean;
+      officeTitle?: string;
+      slideLabel?: string;
+      sectionLabel?: string;
+    },
+  ) => Promise<void>;
   preloadInAppBrowser?: (url: string) => Promise<void>;
 };
 
@@ -77,6 +86,47 @@ export function openExternalThenMarkRead(
   }
   window.open(url, "_blank", "noopener,noreferrer");
   markRead();
+}
+
+/**
+ * Open a Bible passage FROM inside the office — the "Read online" pill on a
+ * lesson slide.
+ *
+ * Owner: "what if the verse page operates as splash and it fades from that
+ * into the web page... then it has a top bar with the same buttons the office
+ * has, but in white, and a floating bottom bar with the same buttons and
+ * progress, also in white... when you click forward next on the bottom bar it
+ * goes to the next screen, which would be the canticle."
+ *
+ * On native this is a distinct browser flavour (see BibleWebViewController's
+ * `officeChrome`): the veil is a screenshot of the office slide already on
+ * screen rather than the generic Splash leaf, the top bar carries the
+ * office's own controls (← Back / title / Display gear / close) instead of
+ * Done, and a floating bottom pill mirrors the office's — tapping its Back or
+ * Next dismisses the browser and steps the OFFICE'S OWN slide index (the deck
+ * underneath is a real, already-mounted screen; see the
+ * phoebe:office-{prev,next}-slide listeners in bcp-daily-office.tsx).
+ *
+ * On web there is no native chrome to build, and injecting fixed UI into a
+ * third-party origin tab isn't possible — falls back to the plain external
+ * open, same as any other outbound link.
+ */
+export function openOfficeReading(
+  url: string,
+  ctx: { officeTitle: string; slideLabel: string; sectionLabel: string },
+): void {
+  if (!url) return;
+  const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
+  if (native?.openInAppBrowser) {
+    void native.openInAppBrowser(url, {
+      officeChrome: true,
+      officeTitle: ctx.officeTitle,
+      slideLabel: ctx.slideLabel,
+      sectionLabel: ctx.sectionLabel,
+    });
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 // Warm a URL in the native in-app browser's background so a later openExternal

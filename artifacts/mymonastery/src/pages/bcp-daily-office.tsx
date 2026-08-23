@@ -12,7 +12,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
-import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead, openOfficeReading } from "@/lib/openExternal";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
@@ -719,8 +719,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // bound ONCE here (before the deck's early returns, so hook order is stable)
   // and calls through keyNavRef, which the render updates below with the current
   // next()/prev() + whether a sheet is open.
-  const keyNavRef = useRef<{ next: () => void; prev: () => void; blocked: boolean }>({
-    next: () => {}, prev: () => {}, blocked: false,
+  const keyNavRef = useRef<{ next: () => void; prev: () => void; nextPastLessonReading: () => void; blocked: boolean }>({
+    next: () => {}, prev: () => {}, nextPastLessonReading: () => {}, blocked: false,
   });
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1130,7 +1130,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       setSlideIdx(0);
     };
     window.addEventListener("phoebe:office-change-format", onChangeFormat);
-    return () => window.removeEventListener("phoebe:office-change-format", onChangeFormat);
+
+    /**
+     * The office-reading browser's own Back/Next/Display-gear, reported once
+     * it has dismissed (see BibleWebViewController's officeChrome + the
+     * BibleBrowserPlugin events of the same names). Read through keyNavRef —
+     * see its own comment — rather than closing over next()/prev() directly,
+     * since this effect is mount-only and the office may have moved on by the
+     * time any of these actually fire.
+     */
+    const onOfficePrevSlide = () => keyNavRef.current.prev();
+    const onOfficeNextSlide = () => keyNavRef.current.nextPastLessonReading();
+    const onOfficeDisplaySettings = () => setDisplayOpen(true);
+    window.addEventListener("phoebe:office-prev-slide", onOfficePrevSlide);
+    window.addEventListener("phoebe:office-next-slide", onOfficeNextSlide);
+    window.addEventListener("phoebe:office-display-settings", onOfficeDisplaySettings);
+
+    return () => {
+      window.removeEventListener("phoebe:office-change-format", onChangeFormat);
+      window.removeEventListener("phoebe:office-prev-slide", onOfficePrevSlide);
+      window.removeEventListener("phoebe:office-next-slide", onOfficeNextSlide);
+      window.removeEventListener("phoebe:office-display-settings", onOfficeDisplaySettings);
+    };
   }, []);
 
   const [error, setError] = useState<string | null>(null);
@@ -1728,6 +1749,95 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // collapses to a single option and the method picker is moot.
   const wayIsScreenOnly = wayToPray === "intercessions" || wayToPray === "psalms";
 
+  /**
+   * The passage this LESSON reads externally — null when there's nothing to
+   * jump out to (a compline body, or a reading bundled inline as WEB text).
+   *
+   * Hoisted for the same reason canChooseWay is: next() needs it too, and it
+   * used to be computed only inside the pill's own render closure.
+   *
+   * Owner: "let's take out the Read Online button, and just have it the way
+   * the canticles or psalms work — show the title, then go to next, which
+   * would fade into the page." A canticle/psalm title slide's "next" already
+   * IS its content; a lesson with nothing bundled has no content slide to be
+   * — the reading itself, on the page, is that beat. So next() (below) treats
+   * this exactly like the office_intro/intercessions_portal special-cases
+   * right above it: leaving THIS slide forward doesn't step the deck, it
+   * fades into the passage instead.
+   */
+  const lessonReadUrl = (() => {
+    if (currentSlide.type !== "lesson" && currentSlide.type !== "lesson_title") return null;
+    if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) return null;
+    const inlineWeb = currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb === true;
+    if (inlineWeb) return null; // the WEB text is already on screen — nothing to jump out to
+    const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
+    if (typeof meta?.readUrl === "string" && meta.readUrl) return meta.readUrl;
+    return currentSlide.title ? bibleUrl(currentSlide.title) : null;
+  })();
+
+  /**
+   * Finish the office: stamp completion, clear the reminder, and route to
+   * the closing summary.
+   *
+   * Hoisted out of the bottom-bar button's render closure — where it used to
+   * live — so tap-to-advance and swipe can reach it too. Reported: "the last
+   * slide of the office only advances if you hit Next; it should be able to
+   * do tap forward too." The bottom bar's own button already branched to this
+   * on the last slide (`atEnd ? handleEnd : next`); handleTapNavigate and the
+   * swipe handler called next() unconditionally, and next() is a no-op once
+   * atEnd — so the right-half tap and the swipe-left gesture both went dead
+   * on the final slide while the visible "Done"/"Amen" pill kept working.
+   */
+  function handleEnd() {
+    // Mark today's pass complete so the dashboard PrayerOfficeCard
+    // flips to "Pray again" copy for the rest of the day. Same
+    // stamp the Amen-path uses in amen() above — kept in both
+    // places because either button can be the final tap (Amen
+    // for prayer-shaped closings, Done for non-prayer ones).
+    completedRef.current = true;
+    try {
+      if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
+        // completion moment (the side anchor card is keyed "morning"/"evening").
+        markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
+      localStorage.removeItem(officeProgressKey(resolvedMode));
+    } catch { /* non-fatal */ }
+    // Clear the daily reminder pushes — the "Done" path is the
+    // other way an office can finish (a non-prayer closing
+    // slide). The Amen path clears these too; covering both
+    // means completing the office always sweeps the reminder
+    // off the lock screen.
+    clearOfficeReminderNotifications();
+    // Public /pray page: hand off to its own sign-up close.
+    if (onComplete) { onComplete(); return; }
+    if (parishOnly) {
+      setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
+    } else if (officesOnlyViewer) {
+      setViewerLocation("/parish");
+    } else {
+      // Always route to the closing summary + habit slide.
+      // Used to gate on seamlessReturnRef so a direct-entry
+      // office finish exited without the recap; user
+      // explicitly wanted the habit-rhythm screen for every
+      // office completion.
+      // Same warm-cache handoff as amen() above — the last-
+      // three-slides effect already started this fetch, so
+      // it should resolve near-instantly here rather than
+      // opening prayer-mode cold into its "Gathering the
+      // prayers of your community…" loader.
+      void prefetchIntercessions().finally(() => {
+        setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+      });
+    }
+  }
+
+  /** The right dispatch for "advance from here", used by the bottom-bar
+   *  button, tap-to-navigate, and swipe alike — see handleEnd's comment. */
+  function advance() {
+    if (isIntercessionSlide) { void amen(); return; }
+    if (atEnd) { handleEnd(); return; }
+    next();
+  }
+
   function next() {
     if (atEnd) return;
     // The welcome slide has TWO ways forward — its own "Begin" button and the
@@ -1740,6 +1850,21 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the physical book).
     if (currentSlide.type === "office_intro" && canChooseWay) {
       launchWay(wayToPray, wayIsScreenOnly ? "screen" : prayMethod);
+      return;
+    }
+    // A lesson with nothing bundled to show — its "next" fades into the
+    // passage rather than stepping the deck. See lessonReadUrl's own comment.
+    // The deck's slideIdx does NOT move here — nothing about this office
+    // changes underneath while the browser is up. Landing on the real next
+    // section is the RETURN action's job (phoebe:office-next-slide below), at
+    // the moment the reader actually asks for it, exactly mirroring what
+    // tapping Next on this slide would otherwise have done.
+    if (lessonReadUrl) {
+      openOfficeReading(lessonReadUrl, {
+        officeTitle,
+        slideLabel: `${slideIdx + 1} of ${slides.length}`,
+        sectionLabel,
+      });
       return;
     }
     // Tapping "Next" on the intercessions portal should mean "take me
@@ -1782,10 +1907,30 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     setSlideIdx(prevIdx);
   }
 
+  /**
+   * Land on the real next section after a lesson-reading hand-off returns.
+   *
+   * The reader has been looking at the passage in the browser, not at this
+   * deck — the lesson_title/bare-lesson slide(s) they left FROM are now
+   * exactly what they just read, so walking straight past them (rather than
+   * landing back on one) is what makes the browser's own Next actually feel
+   * like "next" instead of "back to where I already was."
+   */
+  function nextPastLessonReading() {
+    let target = slideIdx + 1;
+    while (target < slides.length && (slides[target]?.type === "lesson" || slides[target]?.type === "lesson_verses")) {
+      target += 1;
+    }
+    setSlideIdx(Math.min(target, slides.length - 1));
+  }
+
   // Keep the arrow-key handler (bound once above) pointing at the current
   // next()/prev() and gated while the ⚙ sheet is open. Plain assignment (not a
-  // hook) so it's safe to sit after the deck's early returns.
-  keyNavRef.current = { next, prev, blocked: displayOpen };
+  // hook) so it's safe to sit after the deck's early returns. Also read by the
+  // phoebe:office-{prev,next}-slide listeners below, for the same reason:
+  // those are bound once too, and a captured next()/prev() from the FIRST
+  // render would replay against a slideIdx that's since moved on.
+  keyNavRef.current = { next, prev, nextPastLessonReading, blocked: displayOpen };
 
   // Swipe left → next, swipe right → prev. We check that horizontal
   // movement dominates vertical so we don't hijack scroll gestures on
@@ -1808,7 +1953,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // Same reasoning as handleTapNavigate: the welcome slide is a chooser, and
     // a swipe there would now leave the app entirely for a non-screen way.
     if (currentSlide.type === "office_intro") return;
-    if (dx < 0) next();
+    if (dx < 0) advance();
     else prev();
   }
 
@@ -1832,7 +1977,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     const target = e.target as HTMLElement | null;
     if (target?.closest("button, a, input, textarea, select, label")) return;
     if (e.clientX < window.innerWidth / 2) prev();
-    else next();
+    else advance();
   }
 
   // Amen flow on intercession slides — fires the right endpoint for
@@ -3206,10 +3351,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   >
                     From the Daily Office Lectionary
                   </p>
-                  {/* The "Open your Bible, or read online" invitation is rendered
-                      with the Read-online pill below (the lesson || lesson_title
-                      block), so it always sits right above the pill — no longer
-                      dependent on the server sending a per-slide prompt. */}
+                  {/* No separate invitation line any more — see the removed
+                      Read-online pill's note further down: a lesson_title with
+                      nothing bundled is now a plain title card, like a
+                      canticle/psalm title, and Next is what takes the reader
+                      to the passage. */}
                 </div>
               );
             })()
@@ -3833,57 +3979,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               />
             );
           })()}
-          {/* On lesson slides we link out to YouVersion (bible.com)
-              for the appointed passage in NRSVUE. The URL is computed
-              client-side from the slide title (the reference). We render an
-              actual <a> with href so iOS won't swallow the click — onClick
-              still goes through openExternal so the iOS shell shows
-              SFSafariViewController instead of bouncing out to mobile
-              Safari. (We tried embedding Forward Movement's readings page
-              inline, but it's a cross-origin JS app we can't auto-scroll to
-              the appointed reading — so the jump-out button is the better
-              UX.) Compline lesson BODY slides render their short text inline,
-              so a pill there would be redundant. */}
-          {(currentSlide.type === "lesson" || currentSlide.type === "lesson_title") && (() => {
-            if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) {
-              return null;
-            }
-            // The WEB passage is shown inline on the verse slides that follow an
-            // inline-WEB title, so the "read online" link is redundant THERE.
-            // Otherwise (reference-only fallback title, or a plain lesson) offer
-            // the oremus read link. (The "Listen to this reading" pill was
-            // removed per owner — reading/psalm slides no longer offer audio.)
-            const inlineWeb = currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb === true;
-            const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
-            const readHref = inlineWeb
-              ? null
-              : ((typeof meta?.readUrl === "string" && meta.readUrl)
-                  ? meta.readUrl
-                  : (currentSlide.title ? bibleUrl(currentSlide.title) : null));
-            if (!readHref) return null;
-            return (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 4 }}>
-                {/* Invite a physical Bible first; the pill is the online option. */}
-                <p style={{ fontSize: 15, fontFamily: SPACE_GROTESK, color: "rgba(var(--ot-sage, 143,175,150),0.9)", margin: 0, textAlign: "center" }}>
-                  Open your Bible, or read online
-                </p>
-                <a
-                  href={readHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => { e.preventDefault(); openExternal(readHref); }}
-                  style={{
-                    padding: "10px 18px", borderRadius: 999,
-                    background: "rgba(var(--ot-green, 46,107,64),0.18)", border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
-                    color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
-                    textDecoration: "none", display: "inline-block",
-                  }}
-                >
-                  Read online →
-                </a>
-              </div>
-            );
-          })()}
+          {/* No more Read-online pill on lesson/lesson_title slides. Owner:
+              "take out the Read Online button, and just have it the way the
+              canticles or psalms work — show the title, then go to next,
+              which would fade into the page." next() now special-cases these
+              slides directly (see lessonReadUrl + its use in next()), so the
+              title alone is the whole slide, same as a canticle/psalm title —
+              the "content" it advances into is the passage itself. */}
           {/* "Learn more" pill on feed-scoped intercession slides
               when the admin set a learn_more_url on the entry. Shares
               ExternalLinkPill with the prayer-mode slideshow so the
@@ -4076,56 +4178,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             // "Amen" wins over "Done" on prayer-shaped slides — the
             // closing collect IS the seal of the office, so the pill
             // should say Amen even when it's the very last slide. The
-            // tap still exits the office (handler logic below).
+            // tap still exits the office (handleEnd, hoisted above next()/
+            // prev() — see its own comment).
             const label = isAmenSlide ? "Amen" : (atEnd ? "Done" : "Next");
-            // When the user has completed the seamless intercessions
-            // handoff and is now finishing the closing collect, route
-            // them to /prayer-mode?closingOnly=1 so they get the
-            // streak / co-prayers celebration that we deferred from
-            // mid-flow. Parish-only users get the parish celebration
-            // instead — "N from your parish prayed today / this
-            // week". Otherwise the final-slide tap just exits.
-            const handleEnd = () => {
-              // Mark today's pass complete so the dashboard PrayerOfficeCard
-              // flips to "Pray again" copy for the rest of the day. Same
-              // stamp the Amen-path uses in amen() above — kept in both
-              // places because either button can be the final tap (Amen
-              // for prayer-shaped closings, Done for non-prayer ones).
-              completedRef.current = true;
-              try {
-                if (viewerUser) { localStorage.setItem(officeCompletedKey(resolvedMode), "1"); // Stamp the home card this office completes, so returning home plays its
-                  // completion moment (the side anchor card is keyed "morning"/"evening").
-                  markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
-                localStorage.removeItem(officeProgressKey(resolvedMode));
-              } catch { /* non-fatal */ }
-              // Clear the daily reminder pushes — the "Done" path is the
-              // other way an office can finish (a non-prayer closing
-              // slide). The Amen path clears these too; covering both
-              // means completing the office always sweeps the reminder
-              // off the lock screen.
-              clearOfficeReminderNotifications();
-              // Public /pray page: hand off to its own sign-up close.
-              if (onComplete) { onComplete(); return; }
-              if (parishOnly) {
-                setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
-              } else if (officesOnlyViewer) {
-                setViewerLocation("/parish");
-              } else {
-                // Always route to the closing summary + habit slide.
-                // Used to gate on seamlessReturnRef so a direct-entry
-                // office finish exited without the recap; user
-                // explicitly wanted the habit-rhythm screen for every
-                // office completion.
-                // Same warm-cache handoff as amen() above — the last-
-                // three-slides effect already started this fetch, so
-                // it should resolve near-instantly here rather than
-                // opening prayer-mode cold into its "Gathering the
-                // prayers of your community…" loader.
-                void prefetchIntercessions().finally(() => {
-                  setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
-                });
-              }
-            };
             const handler = isIntercessionSlide
               ? amen
               : atEnd ? handleEnd : next;

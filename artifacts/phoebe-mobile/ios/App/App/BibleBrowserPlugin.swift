@@ -49,30 +49,59 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             return
         }
         DispatchQueue.main.async { [weak self] in
-            let config = SFSafariViewController.Configuration()
-            config.entersReaderIfAvailable = true
-            let vc = SFSafariViewController(url: url, configuration: config)
-            vc.delegate = self
-            vc.dismissButtonStyle = .done
-            vc.preferredControlTintColor = UIColor(red: 0.18, green: 0.42, blue: 0.25, alpha: 1.0)
-            // Owner: "we want all forward pages to open in light mode." This
-            // reader-mode path (used for FDD and other newsletter links) has
-            // no explicit appearance override otherwise, so it just follows
-            // the device's system dark/light setting — on a dark-mode device,
-            // Forward Movement's own pages rendered dark. Force light for
-            // their domain specifically; every other reader-mode source keeps
-            // following the system setting as before.
-            let host = url.host?.lowercased() ?? ""
-            if host == "forwardmovement.org" || host.hasSuffix(".forwardmovement.org") {
-                vc.overrideUserInterfaceStyle = .light
-            }
-            self?.bridge?.viewController?.present(vc, animated: true)
+            self?.presentReaderView(url: url)
             call.resolve()
         }
     }
 
+    /**
+     * Safari's own Reader mode (SFSafariViewController, entersReaderIfAvailable)
+     * for `url`. Shared by two callers: openReader (the JS front door) and the
+     * article browser's own "Reader" button (BibleWebViewController.onOpenReaderView) —
+     * one builder, so the two paths can't drift into two different-looking
+     * reader views.
+     */
+    private func presentReaderView(url: URL) {
+        let config = SFSafariViewController.Configuration()
+        config.entersReaderIfAvailable = true
+        let vc = SFSafariViewController(url: url, configuration: config)
+        vc.delegate = self
+        vc.dismissButtonStyle = .done
+        vc.preferredControlTintColor = UIColor(red: 0.18, green: 0.42, blue: 0.25, alpha: 1.0)
+        // Owner: "we want all forward pages to open in light mode." This
+        // reader-mode path (used for FDD and other newsletter links) has
+        // no explicit appearance override otherwise, so it just follows
+        // the device's system dark/light setting — on a dark-mode device,
+        // Forward Movement's own pages rendered dark. Force light for
+        // their domain specifically; every other reader-mode source keeps
+        // following the system setting as before.
+        let host = url.host?.lowercased() ?? ""
+        if host == "forwardmovement.org" || host.hasSuffix(".forwardmovement.org") {
+            vc.overrideUserInterfaceStyle = .light
+        }
+        bridge?.viewController?.present(vc, animated: true)
+    }
+
     public func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
         bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
+    }
+
+    /**
+     * A snapshot of the app's own view — whatever office slide is currently on
+     * screen — taken synchronously on the main thread right before the browser
+     * presents over it.
+     *
+     * `afterScreenUpdates: false` deliberately: this should capture EXACTLY
+     * what the reader is looking at at the instant they tapped, not force a
+     * fresh layout pass first (which could itself take a visible beat, and
+     * might not even match — a scroll position mid-animation, say).
+     */
+    private func snapshotBridgeView() -> UIImage? {
+        guard let view = bridge?.viewController?.view, view.bounds.width > 0, view.bounds.height > 0 else { return nil }
+        let renderer = UIGraphicsImageRenderer(bounds: view.bounds)
+        return renderer.image { _ in
+            view.drawHierarchy(in: view.bounds, afterScreenUpdates: false)
+        }
     }
 
     // Warm a URL in a background web view so a later open() shows it instantly.
@@ -100,6 +129,19 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
         // opening behind a black bar flashes the wrong frame — and whether the
         // office Options menu is offered at all. See `isArticle`.
         let isArticle = call.getBool("lightChrome") ?? false
+        // Is this a BIBLE PASSAGE opened from an office slide (the "Read
+        // online" pill on a lesson)? See officeChrome's own doc comment on
+        // BibleWebViewController for the full shape of what this turns on.
+        let officeChrome = call.getBool("officeChrome") ?? false
+        let officeTitle = call.getString("officeTitle")
+        let officeSlideLabel = call.getString("slideLabel")
+        let officeSectionLabel = call.getString("sectionLabel")
+        // A snapshot of the office slide already on screen — becomes the
+        // loading veil in place of the generic Splash leaf, so the browser
+        // opens as a continuation of what the reader was just looking at
+        // rather than a jump to a different screen. Taken HERE, before
+        // anything changes on screen, and only when it will actually be used.
+        let snapshotVeilImage: UIImage? = officeChrome ? self.snapshotBridgeView() : nil
         DispatchQueue.main.async { [weak self] in
             // The Journal button in the browser's bottom bar fires this event
             // into the app's web view, which then navigates to the journal.
@@ -124,6 +166,27 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
             let onListen: () -> Void = { [weak self] in
                 self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:office-listen")
             }
+            // The bottom pill's Back/Next and the top bar's Display gear —
+            // office-chrome only. Fired as window events for the same reason
+            // as onChangeFormat/onListen above: the web layer owns what
+            // "previous slide" / "next slide" / "open Display settings"
+            // actually DO (an already-mounted OfficeViewer underneath), this
+            // plugin just reports that the reader tapped one.
+            let onOfficePrev: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:office-prev-slide")
+            }
+            let onOfficeNext: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:office-next-slide")
+            }
+            let onOfficeDisplaySettings: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:office-display-settings")
+            }
+            // Article's "Reader" button — stays entirely native, no JS round
+            // trip needed (unlike the events above, nothing on the web side
+            // has to decide anything; it's just "show reader mode for this url").
+            let onOpenReaderView: (URL) -> Void = { [weak self] readerUrl in
+                self?.presentReaderView(url: readerUrl)
+            }
             // Bible.com host detection. We only try the Universal Link
             // hop for URLs that YouVersion has actually registered —
             // sending a random outbound link through `.universalLinksOnly`
@@ -145,7 +208,16 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         onDismiss: onDismiss,
                         onChangeFormat: onChangeFormat,
                         onListen: onListen,
-                        isArticle: isArticle
+                        isArticle: isArticle,
+                        officeChrome: officeChrome,
+                        officeTitle: officeTitle,
+                        officeSlideLabel: officeSlideLabel,
+                        officeSectionLabel: officeSectionLabel,
+                        snapshotVeilImage: snapshotVeilImage,
+                        onOfficePrev: onOfficePrev,
+                        onOfficeNext: onOfficeNext,
+                        onOfficeDisplaySettings: onOfficeDisplaySettings,
+                        onOpenReaderView: onOpenReaderView
                     )
                     call.resolve()
                 }
@@ -158,7 +230,16 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 onDismiss: onDismiss,
                 onChangeFormat: onChangeFormat,
                 onListen: onListen,
-                isArticle: isArticle
+                isArticle: isArticle,
+                officeChrome: officeChrome,
+                officeTitle: officeTitle,
+                officeSlideLabel: officeSlideLabel,
+                officeSectionLabel: officeSectionLabel,
+                snapshotVeilImage: snapshotVeilImage,
+                onOfficePrev: onOfficePrev,
+                onOfficeNext: onOfficeNext,
+                onOfficeDisplaySettings: onOfficeDisplaySettings,
+                onOpenReaderView: onOpenReaderView
             )
             call.resolve()
         }

@@ -65,6 +65,51 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     var isArticle = false
 
     /**
+     * This reading was opened FROM an office slide (the "Read online" pill on
+     * a lesson), and should feel like a continuation of the office rather than
+     * a trip out of it.
+     *
+     * Owner: "what if the verse page operates as splash and it fades from that
+     * into the web page... then it has a top bar with the same buttons the
+     * office has, but in white, and a floating bottom bar with the same
+     * buttons and progress, also in white... when you click forward next on
+     * the bottom bar it goes to the next screen, which would be the canticle."
+     *
+     * Four things follow from this flag, each covered where it applies below:
+     *   • the veil is a SNAPSHOT of the office slide already on screen, not
+     *     the generic Splash leaf (see `snapshotVeilImage`)
+     *   • the top bar shows the office's own control set (← Back / title /
+     *     Display gear / close), not Done+Options or a bare Done
+     *   • a floating bottom pill mirrors the office's own — Back · progress ·
+     *     Next — and lives above the page for the whole read, not just while
+     *     it loads
+     *   • Back/Next on that pill dismiss the browser and step the OFFICE'S OWN
+     *     slide index, via onOfficePrev/onOfficeNext — the office underneath
+     *     is a real, already-mounted screen, not something we simulate here
+     */
+    var officeChrome = false
+    /** The office's own title pill text — "Morning Prayer" — for the top bar. */
+    var officeTitleText: String?
+    /** "N of M" — mirrors the office's own bottom-pill progress label. */
+    var officeSlideLabel: String?
+    /** The office's own section label ("LESSON", "CANTICLE", …). */
+    var officeSectionLabel: String?
+    /** A screenshot of the office slide, taken just before this browser opened
+     *  — the veil for `officeChrome`, in place of the Splash leaf. nil falls
+     *  back to Splash, so a snapshot failure degrades rather than crashes. */
+    var snapshotVeilImage: UIImage?
+    var onOfficePrev: (() -> Void)?
+    var onOfficeNext: (() -> Void)?
+    /** The office's own Display-settings (⚙) sheet — text size, backdrop. */
+    var onOfficeDisplaySettings: (() -> Void)?
+    // The floating bottom pill itself, built only when officeChrome is set —
+    // see buildOfficeNavPill().
+    private var officeNavPill: UIView?
+    private var officeNavLabel: UILabel?
+    private var officeBackButton: UIButton?
+    private var officeNextButton: UIButton?
+
+    /**
      * A held veil over the page while it loads.
      *
      * Owner: "for newsletters, can you do a loading screen like an office
@@ -87,9 +132,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // be the same KIND and the same COLOUR — see where they are built.
     private var doneItem: UIBarButtonItem?
     private var optionsItem: UIBarButtonItem?
+    // officeChrome's close-X — a second right-bar item alongside optionsItem
+    // (which doubles as the Display gear there), so applyChrome can tint it too.
+    private var closeXItem: UIBarButtonItem?
 
     private let loadingVeil = UIView()
-    private let veilImage = UIImageView(image: UIImage(named: "Splash"))
+    private lazy var veilImage = UIImageView(image: snapshotVeilImage ?? UIImage(named: "Splash"))
     // Owner: "there needs to be a circle loading animation above the splash
     // too", then: "I want the loading animation circle that is before the
     // office slideshow." So not a UIActivityIndicatorView — that is iOS's
@@ -137,6 +185,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // podcast player owns the audio, and neither belongs in a web view.
     var onChangeFormat: (() -> Void)?
     var onListen: (() -> Void)?
+    /** Article-only: "Reader" in the top-right — dismiss, then hand the
+     *  CURRENT url to the plugin's own SFSafariViewController reader-mode
+     *  presenter (see BibleBrowserPlugin.presentReaderView). */
+    var onOpenReaderView: ((URL) -> Void)?
     /// Set when an Options action is dismissing us, so viewDidDisappear knows
     /// this is a hand-off rather than the reader finishing.
     private var handingOff = false
@@ -338,10 +390,29 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // item, so while their styles differed the two could not have matched
         // whatever colour was set. Both are plain now, and applyChrome tints
         // each of them explicitly.
-        let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
-        doneItem.accessibilityLabel = "Done"
-        self.doneItem = doneItem
-        navigationItem.leftBarButtonItem = doneItem
+        // officeChrome uses "← Back" (the office's own top-left control);
+        // an article uses a plain X-circle icon, matching officeChrome's own
+        // close glyph — owner: "let's change Done to an X circle" — everywhere
+        // "Done" used to be the label EXCEPT a plain office/Venite open, which
+        // keeps the text "Done" (there's real ambiguity otherwise: is an icon
+        // alone "leave" or "mark finished"? "Done" as a word says the latter,
+        // which matters for something you're actively praying through).
+        if officeChrome {
+            let backItem = UIBarButtonItem(title: "← Back", style: .plain, target: self, action: #selector(close))
+            backItem.accessibilityLabel = "Back to the office"
+            self.doneItem = backItem
+            navigationItem.leftBarButtonItem = backItem
+        } else if isArticle {
+            let closeItem = UIBarButtonItem(image: UIImage(systemName: "xmark.circle.fill"), style: .plain, target: self, action: #selector(close))
+            closeItem.accessibilityLabel = "Close"
+            self.doneItem = closeItem
+            navigationItem.leftBarButtonItem = closeItem
+        } else {
+            let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
+            doneItem.accessibilityLabel = "Done"
+            self.doneItem = doneItem
+            navigationItem.leftBarButtonItem = doneItem
+        }
 
         // Owner: "at the top right could it be Options, and that brings down a
         // dropdown — kind of similar to the settings of the office slideshow."
@@ -376,18 +447,50 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         )
         optionsItem.accessibilityLabel = "Options"
         self.optionsItem = optionsItem
-        // An article gets no Options at all. Every item on that menu is about
-        // praying an office; on a newsletter they are meaningless at best and
-        // actively wrong at worst ("Listen to the office" would start a
-        // liturgy podcast over a Rohr meditation). Done is the only control a
-        // reader needs, and it stays.
-        navigationItem.rightBarButtonItem = isArticle ? nil : optionsItem
-        // No TITLE on an article. Owner: "we don't need the page title because
-        // it's reflected in the page." A newsletter opens with its own headline
-        // and our bar was repeating it, truncated, directly above the full one.
-        // (The bar itself stays at the top — an earlier move to the bottom was
-        // reverted; only the title goes.)
-        if isArticle { title = nil }
+        if officeChrome {
+            // The office's own top-right pair: the ⚙ Display sheet, and a
+            // close X — same two controls, same order, as the office deck's
+            // header. rightBarButtonItems lays out index 0 at the FAR right,
+            // so [X, gear] reads gear-then-X left to right, matching the
+            // office's own row.
+            let displayItem = UIBarButtonItem(
+                image: UIImage(systemName: "slider.horizontal.3"),
+                style: .plain, target: self, action: #selector(openOfficeDisplaySettings)
+            )
+            displayItem.accessibilityLabel = "Display settings"
+            let closeItem = UIBarButtonItem(
+                image: UIImage(systemName: "xmark.circle.fill"),
+                style: .plain, target: self, action: #selector(close)
+            )
+            closeItem.accessibilityLabel = "Close"
+            self.optionsItem = displayItem
+            self.closeXItem = closeItem
+            navigationItem.rightBarButtonItems = [closeItem, displayItem]
+            // The title pill: same text the office's own header pill shows.
+            title = officeTitleText
+        } else if isArticle {
+            // No Options menu on an article — every item on it is about
+            // praying an office; on a newsletter they are meaningless at best
+            // and actively wrong at worst ("Listen to the office" would start
+            // a liturgy podcast over a Rohr meditation).
+            //
+            // In its place: Reader. Owner: "on the newsletters, can we do a
+            // button on the top right, same style as Done, which says Reader
+            // and brings up the reader view." SFSafariViewController's own
+            // Reader mode (entersReaderIfAvailable) already exists for this —
+            // openReaderView(_:) below builds the identical view for the JS
+            // front door; this reuses that SAME builder rather than a second
+            // copy, so both paths stay in lockstep.
+            let readerItem = UIBarButtonItem(title: "Reader", style: .plain, target: self, action: #selector(openReaderMode))
+            readerItem.accessibilityLabel = "Reader view"
+            self.optionsItem = readerItem
+            navigationItem.rightBarButtonItem = readerItem
+            title = nil
+        } else {
+            // A plain office/Venite open. Every Options item genuinely
+            // applies here.
+            navigationItem.rightBarButtonItem = optionsItem
+        }
 
         // ── WebView ── adopt a preloaded one when present (already loading in
         // the background, so it appears instantly), otherwise build a fresh
@@ -525,6 +628,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             veilSpinner.widthAnchor.constraint(equalToConstant: 22),
             veilSpinner.heightAnchor.constraint(equalToConstant: 22),
         ])
+        // The floating bottom pill — office chrome only. Built now so it can
+        // be positioned relative to the same veilHost, but kept invisible
+        // until the veil lifts: the SNAPSHOT already shows the office's own
+        // pill baked into the image, so both on screen at once would read as
+        // a duplicate. See hideVeil().
+        if officeChrome { buildOfficeNavPill(in: veilHost) }
+
         veilShownAt = CACurrentMediaTime()
         // A warmed web view may have finished loading before this controller
         // existed, in which case didFinish has already been and gone and would
@@ -619,10 +729,75 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         veilDismissed = true
         UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseInOut], animations: { [weak self] in
             self?.loadingVeil.alpha = 0
+            // Cross-fade the REAL pill in exactly as the screenshot's baked-in
+            // one fades out — the "fades from that into the web page" the
+            // office-reading flavour asks for.
+            self?.officeNavPill?.alpha = 1
         }, completion: { [weak self] _ in
             self?.veilSpinner.stopAnimating()
             self?.loadingVeil.isHidden = true
         })
+    }
+
+    /**
+     * The floating bottom pill — Back · progress · Next — mirroring the
+     * office deck's own. A UIVisualEffectView capsule rather than a UIToolbar:
+     * the office's pill is sized to its content and floats centred above the
+     * safe area, not a full-width bar, and a toolbar cannot do that shape.
+     */
+    private func buildOfficeNavPill(in host: UIView) {
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        blur.layer.cornerRadius = 22
+        blur.clipsToBounds = true
+        blur.layer.borderWidth = 1
+        blur.alpha = 0  // see hideVeil() — hidden until the snapshot's own pill fades out
+        host.addSubview(blur)
+        officeNavPill = blur
+
+        let back = UIButton(type: .system)
+        back.setTitle("Back", for: .normal)
+        back.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        back.addTarget(self, action: #selector(officeNavBack), for: .touchUpInside)
+        back.layer.cornerRadius = 14
+        back.layer.borderWidth = 1
+        back.contentEdgeInsets = UIEdgeInsets(top: 7, left: 14, bottom: 7, right: 14)
+        officeBackButton = back
+
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 10, weight: .semibold)
+        label.text = [officeSlideLabel, officeSectionLabel].compactMap { $0 }.joined(separator: " · ").uppercased()
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+        officeNavLabel = label
+
+        let next = UIButton(type: .system)
+        // Always "Next →" — the lesson slide this pill is reached from is
+        // never the office's last slide and never an intercession, so the
+        // office's own Amen/Done relabeling never applies here.
+        next.setTitle("Next →", for: .normal)
+        next.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        next.addTarget(self, action: #selector(officeNavNext), for: .touchUpInside)
+        next.layer.cornerRadius = 14
+        next.contentEdgeInsets = UIEdgeInsets(top: 7, left: 16, bottom: 7, right: 16)
+        officeNextButton = next
+
+        let stack = UIStackView(arrangedSubviews: [back, label, next])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 12
+        blur.contentView.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            blur.centerXAnchor.constraint(equalTo: host.centerXAnchor),
+            blur.bottomAnchor.constraint(equalTo: host.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            blur.leadingAnchor.constraint(greaterThanOrEqualTo: host.leadingAnchor, constant: 16),
+            blur.trailingAnchor.constraint(lessThanOrEqualTo: host.trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: blur.contentView.topAnchor, constant: 8),
+            stack.bottomAnchor.constraint(equalTo: blur.contentView.bottomAnchor, constant: -8),
+            stack.leadingAnchor.constraint(equalTo: blur.contentView.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: blur.contentView.trailingAnchor, constant: -12),
+        ])
     }
 
     private func applyChrome(isLight: Bool, statusStrip: UIColor? = nil) {
@@ -678,11 +853,27 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // tintColor is only a default, and individual items can escape it.
         doneItem?.tintColor = tint
         optionsItem?.tintColor = tint
+        closeXItem?.tintColor = tint
+        applyOfficePillChrome(bar: bar, tint: tint, text: text)
         view.backgroundColor = bar
         navigationController?.view.backgroundColor = bar
         // The page's own body, behind the web view — not the bar's band, or a
         // cream masthead would tint the whole of a dark article's backdrop.
         webView?.backgroundColor = isLight ? .white : .black
+    }
+
+    /** Colour the floating bottom pill to match — see buildOfficeNavPill. */
+    private func applyOfficePillChrome(bar: UIColor, tint: UIColor, text: UIColor) {
+        guard officeChrome else { return }
+        officeNavPill?.layer.borderColor = tint.withAlphaComponent(0.35).cgColor
+        officeNavLabel?.textColor = tint.withAlphaComponent(0.85)
+        officeBackButton?.setTitleColor(text, for: .normal)
+        officeBackButton?.layer.borderColor = tint.withAlphaComponent(0.45).cgColor
+        // Next is the pill's one FILLED control, same emphasis the office's own
+        // green Next button carries — tint-filled, bar-coloured label, so it
+        // reads as the primary action against either a light or dark page.
+        officeNextButton?.backgroundColor = tint
+        officeNextButton?.setTitleColor(bar, for: .normal)
     }
 
     /** Parse a CSS rgb()/rgba() string. nil for anything transparent. */
@@ -756,6 +947,26 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     // ── Actions ───────────────────────────────────────────────────────────
     @objc private func close() { dismiss(animated: true) }
+    @objc private func openReaderMode() {
+        handingOff = true
+        let current = webView.url ?? url
+        dismiss(animated: true) { [weak self] in self?.onOpenReaderView?(current) }
+    }
+    @objc private func openOfficeDisplaySettings() {
+        handingOff = true
+        dismiss(animated: true) { [weak self] in self?.onOfficeDisplaySettings?() }
+    }
+    // Bottom pill Back/Next — dismiss first (viewDidDisappear's onDismiss
+    // still fires after these; onOfficePrev/onOfficeNext run once we're
+    // actually gone, mirroring the Options actions above).
+    @objc private func officeNavBack() {
+        handingOff = true
+        dismiss(animated: true) { [weak self] in self?.onOfficePrev?() }
+    }
+    @objc private func officeNavNext() {
+        handingOff = true
+        dismiss(animated: true) { [weak self] in self?.onOfficeNext?() }
+    }
     @objc private func reload() { webView.reload() }
     @objc private func goBack() { if webView.canGoBack { webView.goBack() } }
     @objc private func goForward() { if webView.canGoForward { webView.goForward() } }
@@ -1009,17 +1220,53 @@ final class BibleBrowser: NSObject {
         onDismiss: (() -> Void)? = nil,
         onChangeFormat: (() -> Void)? = nil,
         onListen: (() -> Void)? = nil,
-        isArticle: Bool = false
+        isArticle: Bool = false,
+        officeChrome: Bool = false,
+        officeTitle: String? = nil,
+        officeSlideLabel: String? = nil,
+        officeSectionLabel: String? = nil,
+        snapshotVeilImage: UIImage? = nil,
+        onOfficePrev: (() -> Void)? = nil,
+        onOfficeNext: (() -> Void)? = nil,
+        onOfficeDisplaySettings: (() -> Void)? = nil,
+        onOpenReaderView: ((URL) -> Void)? = nil
     ) {
         guard let presenter = presenter else { return }
         let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
-        vc.isArticle = isArticle
+        // officeChrome is its OWN light-chrome page (bible.com / oremus are
+        // light), so it gets the article-flavoured starting posture — no dark
+        // flash before the page paints — on top of its own button set below.
+        vc.isArticle = isArticle || officeChrome
+        vc.officeChrome = officeChrome
+        vc.officeTitleText = officeTitle
+        vc.officeSlideLabel = officeSlideLabel
+        vc.officeSectionLabel = officeSectionLabel
+        vc.snapshotVeilImage = snapshotVeilImage
+        vc.onOfficePrev = onOfficePrev
+        vc.onOfficeNext = onOfficeNext
+        vc.onOfficeDisplaySettings = onOfficeDisplaySettings
+        vc.onOpenReaderView = onOpenReaderView
         vc.onJournal = onJournal
         vc.onDismiss = onDismiss
         vc.onChangeFormat = onChangeFormat
         vc.onListen = onListen
+        // Office-chrome pages are light pages too (bible.com / oremus) — one
+        // flag decides the starting posture for both flavours, so it can't
+        // drift the way two independent checks would.
+        //
+        // Venite specifically joins them. Owner: "on Venite, is it doing dark
+        // mode automatically — take that out." Forcing .dark here doesn't just
+        // colour our own bars; it cascades to the WEB VIEW too (see viewDidLoad's
+        // own note on why — matching prefers-color-scheme so most sites render
+        // dark), which was pushing Venite's OWN page into a dark rendering it
+        // never asked for, on top of our chrome. Venite is normally light, so it
+        // gets the same "start neutral, let syncChromeToPage correct it after
+        // paint" treatment as an article — not forced into a theme it doesn't
+        // choose for itself.
+        let isVenite = url.host?.lowercased().hasSuffix("venite.app") ?? false
+        let startsLight = isArticle || officeChrome || isVenite
         let nav = UINavigationController(rootViewController: vc)
-        nav.overrideUserInterfaceStyle = isArticle ? .light : .dark
+        nav.overrideUserInterfaceStyle = startsLight ? .light : .dark
         // Keep the top + bottom bars pinned — never collapse/minimize on scroll
         // or tap, so the back + Journal buttons stay reachable the whole read.
         nav.hidesBarsOnSwipe = false
@@ -1028,25 +1275,25 @@ final class BibleBrowser: NSObject {
         // Dark Phoebe chrome for the top navigation bar.
         let barAppearance = UINavigationBarAppearance()
         barAppearance.configureWithOpaqueBackground()
-        barAppearance.backgroundColor = isArticle ? .white : PhoebeBrowserColor.bar
-        barAppearance.titleTextAttributes = [.foregroundColor: isArticle ? UIColor.black : PhoebeBrowserColor.text]
+        barAppearance.backgroundColor = startsLight ? .white : PhoebeBrowserColor.bar
+        barAppearance.titleTextAttributes = [.foregroundColor: startsLight ? UIColor.black : PhoebeBrowserColor.text]
         barAppearance.shadowColor = UIColor.clear
         nav.navigationBar.standardAppearance = barAppearance
         nav.navigationBar.scrollEdgeAppearance = barAppearance
         nav.navigationBar.compactAppearance = barAppearance
-        nav.navigationBar.tintColor = isArticle ? .black : .white
+        nav.navigationBar.tintColor = startsLight ? .black : .white
 
         // …and the bottom toolbar.
         let toolbarAppearance = UIToolbarAppearance()
         toolbarAppearance.configureWithOpaqueBackground()
-        toolbarAppearance.backgroundColor = isArticle ? .white : PhoebeBrowserColor.bar
+        toolbarAppearance.backgroundColor = startsLight ? .white : PhoebeBrowserColor.bar
         toolbarAppearance.shadowColor = UIColor.clear
         nav.toolbar.standardAppearance = toolbarAppearance
         nav.toolbar.compactAppearance = toolbarAppearance
         if #available(iOS 15.0, *) {
             nav.toolbar.scrollEdgeAppearance = toolbarAppearance
         }
-        nav.toolbar.tintColor = isArticle ? .black : PhoebeBrowserColor.tint
+        nav.toolbar.tintColor = startsLight ? .black : PhoebeBrowserColor.tint
         // Owner: "we don't actually need the bottom bar." Everything on it is
         // either duplicated in Options (reload, share) or unused while reading
         // — and on something you scroll for ten minutes, a permanent bar is
