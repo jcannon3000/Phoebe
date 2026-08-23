@@ -77,8 +77,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * leave someone staring at a blank field. Whichever the page beats, it is
      * revealed on.
      */
+    // Both top-bar items, held so applyChrome can tint them together. They must
+    // be the same KIND and the same COLOUR — see where they are built.
+    private var doneItem: UIBarButtonItem?
+    private var optionsItem: UIBarButtonItem?
+
     private let loadingVeil = UIView()
-    private let veilSpinner = UIActivityIndicatorView(style: .medium)
+    private let veilImage = UIImageView(image: UIImage(named: "Splash"))
     private var veilShownAt: CFTimeInterval = 0
     private var veilDismissed = false
     private let veilMinSeconds: CFTimeInterval = 1.2
@@ -296,8 +301,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // pushed hard against the screen edge while Options — a real bar item —
         // sat properly inset. Matching the KIND of control is what makes the two
         // match; setting a width would only have matched them at one font size.
-        let doneItem = UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(close))
+        //
+        // .plain, NOT .done. Owner: "why is the Done button blue?" A .done item
+        // is the PROMINENT variant: iOS fills it with the system accent and it
+        // ignores the navigation bar's tintColor entirely. Options is a plain
+        // item, so while their styles differed the two could not have matched
+        // whatever colour was set. Both are plain now, and applyChrome tints
+        // each of them explicitly.
+        let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
         doneItem.accessibilityLabel = "Done"
+        self.doneItem = doneItem
         navigationItem.leftBarButtonItem = doneItem
 
         // Owner: "at the top right could it be Options, and that brings down a
@@ -332,6 +345,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             ])
         )
         optionsItem.accessibilityLabel = "Options"
+        self.optionsItem = optionsItem
         navigationItem.rightBarButtonItem = optionsItem
 
         // ── WebView ── adopt a preloaded one when present (already loading in
@@ -428,19 +442,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
         // The veil goes on LAST so it covers the web view and the progress bar.
         loadingVeil.translatesAutoresizingMaskIntoConstraints = false
-        loadingVeil.backgroundColor = startsLight ? .white : .black
-        veilSpinner.translatesAutoresizingMaskIntoConstraints = false
-        veilSpinner.color = startsLight ? UIColor.black.withAlphaComponent(0.35) : PhoebeBrowserColor.tint
-        veilSpinner.startAnimating()
-        loadingVeil.addSubview(veilSpinner)
+        // Owner: "I wanted it to be like how the office loads." The office
+        // holds the splash leaf while it assembles, so this holds the same one
+        // — the same asset, full-bleed, no spinner. A spinner says "the machine
+        // is busy"; the leaf says the page is being made ready, which is the
+        // same thing said in the app's own voice. The image is what the eye
+        // reads, so the background colour behind it only matters if the asset
+        // is ever missing.
+        loadingVeil.backgroundColor = .black
+        loadingVeil.clipsToBounds = true
+        veilImage.translatesAutoresizingMaskIntoConstraints = false
+        veilImage.contentMode = .scaleAspectFill
+        loadingVeil.addSubview(veilImage)
         view.addSubview(loadingVeil)
         NSLayoutConstraint.activate([
             loadingVeil.topAnchor.constraint(equalTo: view.topAnchor),
             loadingVeil.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             loadingVeil.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             loadingVeil.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            veilSpinner.centerXAnchor.constraint(equalTo: loadingVeil.centerXAnchor),
-            veilSpinner.centerYAnchor.constraint(equalTo: loadingVeil.centerYAnchor),
+            veilImage.topAnchor.constraint(equalTo: loadingVeil.topAnchor),
+            veilImage.bottomAnchor.constraint(equalTo: loadingVeil.bottomAnchor),
+            veilImage.leadingAnchor.constraint(equalTo: loadingVeil.leadingAnchor),
+            veilImage.trailingAnchor.constraint(equalTo: loadingVeil.trailingAnchor),
         ])
         veilShownAt = CACurrentMediaTime()
         // A warmed web view may have finished loading before this controller
@@ -537,7 +560,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseInOut], animations: { [weak self] in
             self?.loadingVeil.alpha = 0
         }, completion: { [weak self] _ in
-            self?.veilSpinner.stopAnimating()
             self?.loadingVeil.isHidden = true
         })
     }
@@ -548,7 +570,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // The bar tint colours the bar-button items. On a light bar iOS renders
         // them as filled capsules, so this is the capsule's own colour — a dark
         // one on white, not the pale sage that only reads on black.
-        let tint: UIColor = isLight ? UIColor(red: 0.11, green: 0.27, blue: 0.16, alpha: 1) : PhoebeBrowserColor.tint
+        // Owner: "white when the others are white, black when the others are
+        // black." Not the app's sage — that only ever read on the dark bar, and
+        // on white it was a third colour next to two that agreed.
+        let tint: UIColor = isLight ? .black : .white
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = bar
@@ -562,15 +587,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // Carries the rest of UIKit with it — bar-button capsules, the menu
         // that drops out of Options, the scroll indicators.
         navigationController?.overrideUserInterfaceStyle = isLight ? .light : .dark
+        // Per-item as well as on the bar. Owner: "I want it to match the other
+        // buttons — white when the others are white, black when the others are
+        // black." Setting it on each item is what makes them agree; the bar's
+        // tintColor is only a default, and individual items can escape it.
+        doneItem?.tintColor = tint
+        optionsItem?.tintColor = tint
         view.backgroundColor = bar
         webView?.backgroundColor = bar
-        // …including the veil, while it is still up. Learning the page is dark
-        // AFTER painting a white veil would otherwise reveal the page through a
-        // colour flip — the flash this is here to prevent.
-        if !veilDismissed {
-            loadingVeil.backgroundColor = bar
-            veilSpinner.color = isLight ? UIColor.black.withAlphaComponent(0.35) : PhoebeBrowserColor.tint
-        }
     }
 
     private func syncChromeToPage() {

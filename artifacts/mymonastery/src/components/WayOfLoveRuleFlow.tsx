@@ -2928,6 +2928,11 @@ export default function WayOfLoveRuleFlow({
         </p>
 
         {kind === "medium" && (
+          // The relative box wraps ONLY the select. The chevron is positioned
+          // at top:50% of its offset parent, so including the note below it
+          // centred the arrow on select-plus-paragraph and left it sitting at
+          // the bottom edge of the pill.
+          <div>
           <div style={{ position: "relative" }}>
             <select
               value={methodBySide[side]}
@@ -2942,13 +2947,14 @@ export default function WayOfLoveRuleFlow({
               {side === "morning" && !pilot && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
             </select>
             <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-            {/* Said out loud, because it is shared. The format is stored per
-                SIDE, so both of this morning's practices take it — better to
-                name that than to let someone set it here and wonder why the
-                other card changed too. */}
-            <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, lineHeight: 1.5, margin: "10px 2px 0" }}>
-              {t("wol_rule.extra_cfg_medium_note", { side: cap.toLowerCase(), defaultValue: `This is how you take the ${cap.toLowerCase()} office, so it applies to both of your ${cap.toLowerCase()} practices.` })}
-            </p>
+          </div>
+          {/* Said out loud, because it is shared. The format is stored per
+              SIDE, so both of this morning's practices take it — better to name
+              that than to let someone set it here and wonder why the other card
+              changed too. */}
+          <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, lineHeight: 1.5, margin: "10px 2px 0" }}>
+            {t("wol_rule.extra_cfg_medium_note", { side: cap.toLowerCase(), defaultValue: `This is how you take the ${cap.toLowerCase()} office, so it applies to both of your ${cap.toLowerCase()} practices.` })}
+          </p>
           </div>
         )}
 
