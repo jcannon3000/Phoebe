@@ -976,14 +976,29 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // Suffrages
+  // Suffrages. BCP p. 97 prints BOTH sets (A and B) side by side and leaves
+  // the choice to whoever is officiating — pickSuffragesKey's alternation is
+  // Phoebe's own default, not a rubric. Owner: "we could have a toggle
+  // between A and B at the top, like the toggle between Forward [Movement]
+  // and Church of England on the podcast" — so both texts ride along in
+  // metadata (cheap: both are already resolvable via localized()), and the
+  // client renders a real toggle instead of only ever showing the pick.
   const suffrageText = localized(suffragesKey);
   const suffrageLabel = suffragesKey === "suffrages_a" ? "A" : "B";
+  const suffragesAltKey = suffragesKey === "suffrages_a" ? "suffrages_b" : "suffrages_a";
+  const suffragesAltText = localized(suffragesAltKey);
   slides.push(
     slide(id(), "suffrages", "🕊️", `${pick(locale, EYEBROWS.suffrages)} ${suffrageLabel}`, suffrageText, {
       bcpReference: "BCP p. 97",
       isCallAndResponse: true,
       callAndResponseLines: parseSuffrages(suffrageText),
+      metadata: {
+        suffragesSelected: suffrageLabel,
+        suffragesOptions: {
+          [suffrageLabel]: { text: suffrageText, lines: parseSuffrages(suffrageText) },
+          [suffragesAltKey === "suffrages_a" ? "A" : "B"]: { text: suffragesAltText, lines: parseSuffrages(suffragesAltText) },
+        },
+      },
     }),
   );
 

@@ -674,6 +674,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // ⚙ sheet; re-read on its event so the deck updates without a remount.
   const display = useOfficeDisplay();
   const [displayOpen, setDisplayOpen] = useState(false);
+  /**
+   * Suffrages A/B — a real toggle instead of only ever showing Phoebe's own
+   * pick.
+   *
+   * Owner: "we could have a toggle between A and B at the top, like the
+   * toggle between Forward [Movement] and Church of England on the podcast."
+   * BCP p. 97 prints both sets side by side and leaves the choice to whoever
+   * is praying — pickSuffragesKey's alternation (server-side) is a sensible
+   * default, not a rubric, so both texts ride along in the slide's metadata
+   * (see assembleMorningPrayer.ts/assembleEveningPrayer.ts) and this just
+   * picks which one is ON SCREEN. null = "use the server's own pick".
+   *
+   * Declared here, not down by currentSlide (its natural reset target) —
+   * currentSlide is derived from `slides`/`slideIdx`, both declared far below
+   * this point, and a reset effect keyed on it has to sit AFTER that
+   * declaration or it's a TDZ crash. See the effect itself, next to
+   * currentSlide's own declaration.
+   */
+  const [suffragesChoice, setSuffragesChoice] = useState<"A" | "B" | null>(null);
   // Skip Ahead sheet — same section list the physical-book guide builds
   // (buildBookSections), but tapping a row jumps the DIGITAL slideshow to
   // that slide instead of just showing a page number. Owner: "another bar
@@ -1717,6 +1736,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }
 
   const currentSlide = slides[slideIdx];
+  // Reset the suffrages A/B pick on every slide change — see its own
+  // declaration for why this can't live up there with the state itself.
+  // Switching to a DIFFERENT suffrages slide (a later office, a different
+  // day) should start from what THAT slide actually chose, not replay a
+  // stale tap from wherever the reader was before.
+  useEffect(() => { setSuffragesChoice(null); }, [currentSlide?.id]);
   // Communal mode reads the Absolution in the priest "you/your" form; alone it
   // stays the lay "us/our" text the server ships.
   const slideBody =
@@ -3721,24 +3746,75 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             // as one continuous prayer. Together, the labels are the point:
             // they mark who says which line. A label renders when the
             // speaker CHANGES so a wrapped suffrage line isn't re-labelled.
-            <div style={{ display: "flex", flexDirection: "column", gap: communal ? 16 : 10, maxWidth: 560 }}>
-              {currentSlide.callAndResponseLines.map((line, i) => {
-                const prev = currentSlide.callAndResponseLines?.[i - 1];
-                const showLabel = communal && (!prev || prev.speaker !== line.speaker);
-                return (
-                  <div key={i}>
-                    {showLabel && (
-                      <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 3px", fontWeight: 600 }}>
-                        {pickLoc(SPEAKER_LABEL[line.speaker] ?? SPEAKER_LABEL.both)}
-                      </p>
-                    )}
-                    <p style={{ fontSize: 20, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK }}>
-                      {fixQuoteDirection(line.text)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
+            (() => {
+              // Suffrages A/B — only when the slide actually carries both
+              // (see assembleMorningPrayer.ts/assembleEveningPrayer.ts). Every
+              // other call-and-response slide (the Creed, the versicles, the
+              // other suffrages beat — "Let us bless the Lord") falls straight
+              // through to the plain render below, unchanged.
+              const suffMeta = currentSlide.type === "suffrages"
+                ? (currentSlide.metadata as {
+                    suffragesSelected?: "A" | "B";
+                    suffragesOptions?: Record<"A" | "B", { text: string; lines: { speaker: "officiant" | "people" | "both"; text: string }[] }>;
+                  } | undefined)
+                : undefined;
+              const suffOptions = suffMeta?.suffragesOptions;
+              const hasToggle = !!(suffOptions?.A && suffOptions?.B);
+              const active = suffragesChoice ?? suffMeta?.suffragesSelected ?? "A";
+              const lines = hasToggle ? suffOptions![active].lines : currentSlide.callAndResponseLines;
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: communal ? 16 : 10, maxWidth: 560, width: "100%", alignItems: hasToggle ? "center" : "stretch" }}>
+                  {hasToggle && (
+                    // Same two-pill "tablist" shape as the podcast player's
+                    // Forward Movement / Church of England toggle (owner's own
+                    // reference), redrawn in the office's own token colours.
+                    <div
+                      role="tablist"
+                      aria-label="Suffrages"
+                      style={{ display: "inline-flex", gap: 4, background: "rgba(var(--ot-deep, 9,26,16), 0.4)", border: `1px solid ${BORDER}`, borderRadius: 999, padding: 4, marginBottom: 4 }}
+                    >
+                      {(["A", "B"] as const).map((opt) => {
+                        const on = active === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            role="tab"
+                            aria-selected={on}
+                            onClick={() => setSuffragesChoice(opt)}
+                            style={{
+                              borderRadius: 999, padding: "6px 20px", fontSize: 12, fontWeight: 700, fontFamily: SPACE_GROTESK,
+                              cursor: "pointer", border: `1px solid ${on ? "rgba(var(--ot-sage, 143,175,150),0.5)" : "transparent"}`,
+                              background: on ? "rgba(var(--ot-green, 46,107,64),0.55)" : "transparent",
+                              color: on ? WARM_TEXT : FAINT_GREEN,
+                              transition: "background 0.15s, color 0.15s",
+                            }}
+                          >
+                            {`Suffrages ${opt}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {lines?.map((line, i) => {
+                    const prev = lines[i - 1];
+                    const showLabel = communal && (!prev || prev.speaker !== line.speaker);
+                    return (
+                      <div key={i} style={{ width: "100%" }}>
+                        {showLabel && (
+                          <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 3px", fontWeight: 600 }}>
+                            {pickLoc(SPEAKER_LABEL[line.speaker] ?? SPEAKER_LABEL.both)}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 20, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK }}>
+                          {fixQuoteDirection(line.text)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
           ) : currentSlide.type === "invitatory_psalm" && currentSlide.content ? (
             // Invitatory psalm body — canticle-shaped lines (no
             // numeric verse markers). When metadata carries

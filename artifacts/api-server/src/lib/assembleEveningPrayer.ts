@@ -568,14 +568,29 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 14. Suffrages
+  // 14. Suffrages. BCP p. 97 (and p. 121 for Evening) prints BOTH sets side
+  // by side; pickSuffragesKey's alternation is Phoebe's own default choice,
+  // not a rubric. Owner: "a toggle between A and B at the top, like the
+  // toggle between Forward [Movement] and Church of England on the podcast" —
+  // both texts ride along in metadata (both already resolvable via
+  // localized()), same shape assembleMorningPrayer.ts uses.
   const suffrageText = localized(suffragesKey);
   const suffrageData = getTextData(suffragesKey);
+  const suffrageLabel = suffragesKey === "suffrages_a" ? "A" : "B";
+  const suffragesAltKey = suffragesKey === "suffrages_a" ? "suffrages_b" : "suffrages_a";
+  const suffragesAltText = localized(suffragesAltKey);
   slides.push(
-    slide(id(), "suffrages", "🕊️", `${pick(locale, EYEBROWS.suffrages)} ${suffragesKey === "suffrages_a" ? "A" : "B"}`, suffrageText, {
+    slide(id(), "suffrages", "🕊️", `${pick(locale, EYEBROWS.suffrages)} ${suffrageLabel}`, suffrageText, {
       bcpReference: suffrageData.bcpReference,
       isCallAndResponse: true,
       callAndResponseLines: parseSuffrages(suffrageText),
+      metadata: {
+        suffragesSelected: suffrageLabel,
+        suffragesOptions: {
+          [suffrageLabel]: { text: suffrageText, lines: parseSuffrages(suffrageText) },
+          [suffragesAltKey === "suffrages_a" ? "A" : "B"]: { text: suffragesAltText, lines: parseSuffrages(suffragesAltText) },
+        },
+      },
     }),
   );
 
