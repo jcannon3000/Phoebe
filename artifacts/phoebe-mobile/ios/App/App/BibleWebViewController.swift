@@ -91,9 +91,19 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private let loadingVeil = UIView()
     private let veilImage = UIImageView(image: UIImage(named: "Splash"))
     // Owner: "there needs to be a circle loading animation above the splash
-    // too." The leaf alone is a still image — handsome, but it gives no sign
-    // that anything is happening, so a slow page reads as a frozen app.
-    private let veilSpinner = UIActivityIndicatorView(style: .large)
+    // too", then: "I want the loading animation circle that is before the
+    // office slideshow." So not a UIActivityIndicatorView — that is iOS's
+    // pinwheel and looks nothing like it. The office's held-breath screen
+    // draws its own ring, and this is that ring rebuilt in CoreAnimation:
+    //
+    //   22×22, a 2pt stroke, sage at 25% all the way round with the top
+    //   quarter at 75%, spinning once a second, sitting 44pt above the safe
+    //   area rather than centred.
+    //
+    // Those numbers are copied from the office's own spinner (see the
+    // held-breath veil in bcp-daily-office.tsx) — if that one is ever
+    // restyled, this is the second place to change.
+    private let veilSpinner = OfficeSpinnerView()
     private var veilShownAt: CFTimeInterval = 0
     private var veilDismissed = false
     private let veilMinSeconds: CFTimeInterval = 1.2
@@ -470,7 +480,6 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         veilImage.contentMode = .scaleAspectFill
         loadingVeil.addSubview(veilImage)
         veilSpinner.translatesAutoresizingMaskIntoConstraints = false
-        veilSpinner.color = UIColor.white.withAlphaComponent(0.85)
         veilSpinner.startAnimating()
         loadingVeil.addSubview(veilSpinner)
         // Hosted on the NAVIGATION CONTROLLER's view, not this one. Owner: "the
@@ -492,7 +501,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             veilImage.leadingAnchor.constraint(equalTo: loadingVeil.leadingAnchor),
             veilImage.trailingAnchor.constraint(equalTo: loadingVeil.trailingAnchor),
             veilSpinner.centerXAnchor.constraint(equalTo: loadingVeil.centerXAnchor),
-            veilSpinner.centerYAnchor.constraint(equalTo: loadingVeil.centerYAnchor),
+            // Low on the screen, like the office's — a ring under the artwork
+            // rather than a badge stamped across the middle of it.
+            veilSpinner.bottomAnchor.constraint(equalTo: veilHost.safeAreaLayoutGuide.bottomAnchor, constant: -44),
+            veilSpinner.widthAnchor.constraint(equalToConstant: 22),
+            veilSpinner.heightAnchor.constraint(equalToConstant: 22),
         ])
         veilShownAt = CACurrentMediaTime()
         // A warmed web view may have finished loading before this controller
@@ -695,6 +708,65 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         }
         decisionHandler(.allow)
     }
+}
+
+/**
+ * The office's loading ring, in CoreAnimation.
+ *
+ * The web one is a CSS circle whose border is uniformly faint except for
+ * `border-top-color`, spun by `animate-spin`. There is no border-side colour in
+ * CoreAnimation, so it is drawn as two strokes on the same circle — the full
+ * faint ring, and a quarter-arc at the top over it — and the arc is what spins.
+ */
+final class OfficeSpinnerView: UIView {
+    // rgb(143,175,150) — the --ot-sage the office's ring uses.
+    private static let sage = UIColor(red: 143.0 / 255, green: 175.0 / 255, blue: 150.0 / 255, alpha: 1)
+    private let track = CAShapeLayer()
+    private let head = CAShapeLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        for layer in [track, head] {
+            layer.fillColor = UIColor.clear.cgColor
+            layer.lineWidth = 2
+            self.layer.addSublayer(layer)
+        }
+        track.strokeColor = Self.sage.withAlphaComponent(0.25).cgColor
+        head.strokeColor = Self.sage.withAlphaComponent(0.75).cgColor
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Inset by half the stroke so the ring sits inside the bounds, the way
+        // a CSS border does.
+        let rect = bounds.insetBy(dx: 1, dy: 1)
+        let centre = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        track.frame = bounds
+        head.frame = bounds
+        track.path = UIBezierPath(ovalIn: rect).cgPath
+        // The top quarter: from -135° to -45°, i.e. centred on straight up.
+        head.path = UIBezierPath(
+            arcCenter: centre, radius: radius,
+            startAngle: -3 * .pi / 4, endAngle: -.pi / 4, clockwise: true
+        ).cgPath
+    }
+
+    func startAnimating() {
+        guard head.animation(forKey: "spin") == nil else { return }
+        let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+        spin.fromValue = 0
+        spin.toValue = 2 * Double.pi
+        spin.duration = 1            // Tailwind's animate-spin is 1s linear.
+        spin.repeatCount = .infinity
+        spin.timingFunction = CAMediaTimingFunction(name: .linear)
+        // Rotate about the middle, not the layer's origin.
+        head.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        head.add(spin, forKey: "spin")
+    }
+    func stopAnimating() { head.removeAnimation(forKey: "spin") }
 }
 
 // ── Slide transition ────────────────────────────────────────────────────────
