@@ -2042,11 +2042,12 @@ export default function WayOfLoveRuleFlow({
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
         {/* What this whole flow is for, said once at the top of it.
-            Owner: "let's have a tutorial-nature line about the intention of
-            your customizing — I will help you pick a practice to centre your
-            mornings around, to centre your evenings around, and to include
-            contemplation in your day. We'll give you options to expand beyond
-            that."
+            Owner: a tutorial-nature line about the intention of the
+            customizing, in "you will be guided through to pick" language —
+            explicitly NOT "we"/"together". No first person: the app isn't a
+            companion sitting alongside them here, it's a form they're being
+            walked through, and pretending otherwise is the performed warmth
+            the voice guidance rules out everywhere else.
 
             On the FIRST slide only. Someone who has already chosen a morning
             and reached the evening doesn't need the shape of the flow
@@ -2062,7 +2063,7 @@ export default function WayOfLoveRuleFlow({
             <p style={{ color: CREAM, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.6, margin: 0 }}>
               {t("wol_rule.flow_intent", {
                 defaultValue:
-                  "Together we'll pick a practice to centre your mornings around, one for your evenings, and a place for contemplation in your day. After that there's room to add whatever else you keep.",
+                  "You'll be guided through picking a practice to centre your mornings around, one for your evenings, and a place for contemplation in your day. After that there's room to add whatever else you keep.",
               })}
             </p>
           </div>
