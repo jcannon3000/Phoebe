@@ -1603,6 +1603,48 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     </>
   );
 
+  /**
+   * Warm every outbound passage this office will offer, the moment the deck
+   * loads — not when the reader reaches the slide.
+   *
+   * Owner: "the web page with the bible reading should be loaded in the
+   * background so that when the slide advances there is no need to do a
+   * loading circle." preloadExternal already existed for exactly this (a
+   * newsletter-card comment describes it) but had no caller anywhere in the
+   * app — this is the first one. Native-only and best-effort: preload()
+   * starts a background WKWebView load keyed by URL, and BibleBrowser.present
+   * (via takeWarm) adopts it instead of building a cold one, so the veil's
+   * floor (not a real load wait) is the only delay left by the time Next is
+   * actually tapped.
+   *
+   * Placed HERE, above the loading/veniteHandingOff early returns — not down
+   * by currentSlide, its more natural neighbour. This component returns early
+   * in three places (loading, a hand-off in flight, an error); a hook placed
+   * after any of those runs on some renders and not others — different hook
+   * COUNTS between renders — which is a hard React crash ("Rendered more
+   * hooks than during the previous render"), not a subtle bug. Reads
+   * slides[slideIdx] directly since currentSlide itself is declared below
+   * this point.
+   */
+  useEffect(() => {
+    if (slides.length === 0) return;
+    const urls = new Set<string>();
+    for (const s of slides) {
+      if (s.type !== "lesson" && s.type !== "lesson_title") continue;
+      const meta = s.metadata as { readUrl?: unknown; gospelReadUrl?: unknown; inlineWeb?: unknown } | undefined;
+      if (meta?.inlineWeb === true) continue; // nothing to jump out to
+      if (typeof meta?.readUrl === "string" && meta.readUrl) urls.add(meta.readUrl);
+      if (typeof meta?.gospelReadUrl === "string" && meta.gospelReadUrl) urls.add(meta.gospelReadUrl);
+    }
+    urls.forEach((u) => preloadExternal(u));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides]);
+  // Reset the suffrages A/B pick on every slide change (see its own
+  // declaration) — same "must stay above the early returns" reasoning as the
+  // preload effect just above. Reads slides[slideIdx] directly for the same
+  // reason.
+  useEffect(() => { setSuffragesChoice(null); }, [slides[slideIdx]?.id]);
+
   // Slides not ready yet → the load screen fills the page. Re-entry (already
   // opened today — e.g. back from the intercessions) gets a quiet spinner, never
   // the versicle again; a fresh open gets the held-breath versicle. Once the deck
@@ -1736,39 +1778,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }
 
   const currentSlide = slides[slideIdx];
-  /**
-   * Warm every outbound passage this office will offer, the moment the deck
-   * loads — not when the reader reaches the slide.
-   *
-   * Owner: "the web page with the bible reading should be loaded in the
-   * background so that when the slide advances there is no need to do a
-   * loading circle." preloadExternal already existed for exactly this (a
-   * newsletter-card comment describes it) but had no caller anywhere in the
-   * app — this is the first one. Native-only and best-effort: preload()
-   * starts a background WKWebView load keyed by URL, and BibleBrowser.present
-   * (via takeWarm) adopts it instead of building a cold one, so the veil's
-   * floor (not a real load wait) is the only delay left by the time Next is
-   * actually tapped.
-   */
-  useEffect(() => {
-    if (slides.length === 0) return;
-    const urls = new Set<string>();
-    for (const s of slides) {
-      if (s.type !== "lesson" && s.type !== "lesson_title") continue;
-      const meta = s.metadata as { readUrl?: unknown; gospelReadUrl?: unknown; inlineWeb?: unknown } | undefined;
-      if (meta?.inlineWeb === true) continue; // nothing to jump out to
-      if (typeof meta?.readUrl === "string" && meta.readUrl) urls.add(meta.readUrl);
-      if (typeof meta?.gospelReadUrl === "string" && meta.gospelReadUrl) urls.add(meta.gospelReadUrl);
-    }
-    urls.forEach((u) => preloadExternal(u));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slides]);
-  // Reset the suffrages A/B pick on every slide change — see its own
-  // declaration for why this can't live up there with the state itself.
-  // Switching to a DIFFERENT suffrages slide (a later office, a different
-  // day) should start from what THAT slide actually chose, not replay a
-  // stale tap from wherever the reader was before.
-  useEffect(() => { setSuffragesChoice(null); }, [currentSlide?.id]);
   // Communal mode reads the Absolution in the priest "you/your" form; alone it
   // stays the lay "us/our" text the server ships.
   const slideBody =
