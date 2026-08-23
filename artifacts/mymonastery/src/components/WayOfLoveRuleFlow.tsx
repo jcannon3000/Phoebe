@@ -2398,16 +2398,25 @@ export default function WayOfLoveRuleFlow({
               choosePrayBySide(side, "ownPractice");
             },
           )}
-          {/* Forward Day by Day as the morning prayer itself — morning only,
-              above "Create your own" at the bottom of the list (owner).
-              Choosing it also follows it as a daily reflection (see the
-              "learn" step below), so it shows checked there too — same
-              signal in both places. Unchecking it on "learn" later is
-              fine; that step notes when it's still the morning practice
-              even if unchecked as a reflection. */}
+          {/* A reflection as the morning prayer itself — morning only, above
+              "Create your own" at the bottom of the list. Owner: "where it
+              says Forward Day by Day as a morning option, let's have that
+              say Reflection." Choosing it also follows it as a daily
+              reflection (see the "learn" step below), so it shows checked
+              there too — same signal in both places. Unchecking it on
+              "learn" later is fine; that step notes when it's still the
+              morning practice even if unchecked as a reflection.
+              The ANCHOR LEVEL underneath is still literally "fdd" — the only
+              OfficeLevel that means "a reflection replaces the office here"
+              (getSideLevel, DailyProgressBody's FddHomeCard, begin-prayer.tsx
+              are all keyed on that exact string). Letting someone pick CAC or
+              SSJE as the actual anchor — not just as one of the "learn" step's
+              newsletter cards — needs a real OfficeLevel of its own (or a
+              stored "which source" pref the home card reads), not a label
+              change; flagged rather than guessed at. */}
           {side === "morning" && choiceRow(
             prayBySide[side] === "fdd",
-            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Forward Day by Day" })}`,
+            `📖 ${t("wol_rule.pray_fdd_label", { defaultValue: "Reflection" })}`,
             t("wol_rule.pray_fdd_sub", { defaultValue: "Today's meditation from Forward Movement." }),
             () => {
               if (prayBySide[side] === "fdd") { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
