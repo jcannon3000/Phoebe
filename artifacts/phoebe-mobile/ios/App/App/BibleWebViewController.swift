@@ -628,7 +628,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         })
     }
 
-    private func applyChrome(isLight: Bool) {
+    private func applyChrome(isLight: Bool, statusStrip: UIColor? = nil) {
         let bar: UIColor = isLight ? .white : .black
         let text: UIColor = isLight ? .black : PhoebeBrowserColor.text
         // The bar tint colours the bar-button items. On a light bar iOS renders
@@ -668,24 +668,81 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // tintColor is only a default, and individual items can escape it.
         doneItem?.tintColor = tint
         optionsItem?.tintColor = tint
-        view.backgroundColor = bar
+        // The strip behind the status bar is this view showing through above
+        // the web view, so the page's own top band goes here — see
+        // syncChromeToPage. Before the page has reported anything it is just
+        // the bar colour.
+        view.backgroundColor = statusStrip ?? bar
+        navigationController?.view.backgroundColor = statusStrip ?? bar
         webView?.backgroundColor = bar
     }
 
+    /** Parse a CSS rgb()/rgba() string. nil for anything transparent. */
+    private func parseCSSColor(_ css: String?) -> UIColor? {
+        guard let css else { return nil }
+        let nums = css.split(whereSeparator: { !"0123456789.".contains($0) })
+            .compactMap { Double($0) }
+        guard nums.count >= 3 else { return nil }
+        // rgba(…, 0) tells us nothing about what the reader actually sees.
+        if nums.count >= 4, nums[3] == 0 { return nil }
+        return UIColor(red: nums[0] / 255, green: nums[1] / 255, blue: nums[2] / 255, alpha: 1)
+    }
+
+    private static func isLightColor(_ c: UIColor) -> Bool {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (0.299 * r + 0.587 * g + 0.114 * b) > 0.5
+    }
+
+    /**
+     * Read the page's own colours and dress the app's chrome to match.
+     *
+     * TWO colours, not one. The BODY background decides light-vs-dark for the
+     * bars and their labels. The colour of whatever sits at the very TOP of the
+     * page is a separate question, and it is what fills the strip behind the
+     * iPhone's status bar.
+     *
+     * Owner: "if the page has a top bar with a colour, have that extend to the
+     * top of the page behind the iPhone top bar." CAC opens with a cream
+     * masthead; the strip above it was taking the body's white, so the article
+     * began with a seam across it. Sampling the header instead lets the page's
+     * own band run to the top of the screen.
+     *
+     * The probe walks UP from whatever element is at the top-centre of the
+     * viewport until it finds an opaque background — the text or logo you
+     * actually hit is nearly always transparent, and its container is the thing
+     * with the colour.
+     */
     private func syncChromeToPage() {
-        webView.evaluateJavaScript(
-            "getComputedStyle(document.body).backgroundColor"
-        ) { [weak self] value, _ in
-            guard let self, let css = value as? String else { return }
-            let nums = css.split(whereSeparator: { !"0123456789.".contains($0) })
-                .compactMap { Double($0) }
-            guard nums.count >= 3 else { return }
-            // rgba(…, 0) is a transparent body — it tells us nothing about what
-            // the reader actually sees, so leave the bar alone.
-            if nums.count >= 4, nums[3] == 0 { return }
-            let luma = (0.299 * nums[0] + 0.587 * nums[1] + 0.114 * nums[2]) / 255.0
-            let isLight = luma > 0.5
-            DispatchQueue.main.async { self.applyChrome(isLight: isLight) }
+        let probe = """
+        (function () {
+          var body = getComputedStyle(document.body).backgroundColor;
+          var top = null;
+          var el = document.elementFromPoint(window.innerWidth / 2, 3);
+          while (el && el !== document.documentElement) {
+            var bg = getComputedStyle(el).backgroundColor;
+            var m = bg && bg.match(/[0-9.]+/g);
+            if (m && m.length >= 3 && (m.length < 4 || parseFloat(m[3]) > 0.95)) { top = bg; break; }
+            el = el.parentElement;
+          }
+          return JSON.stringify({ body: body, top: top });
+        })()
+        """
+        webView.evaluateJavaScript(probe) { [weak self] value, _ in
+            guard let self,
+                  let json = value as? String,
+                  let data = json.data(using: .utf8),
+                  let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return }
+            let bodyColor = self.parseCSSColor(parsed["body"] as? String)
+            // Fall back to the body when the page has no distinct band up top —
+            // then the strip simply continues the page, which is what it did
+            // before and is still right.
+            let topColor = self.parseCSSColor(parsed["top"] as? String) ?? bodyColor
+            guard let bodyColor else { return }
+            DispatchQueue.main.async {
+                self.applyChrome(isLight: Self.isLightColor(bodyColor), statusStrip: topColor)
+            }
         }
     }
 
@@ -712,6 +769,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         updateNavButtons()
         // The page has painted — take its background and match the chrome to it.
         syncChromeToPage()
+        // …and again shortly after. Plenty of sites paint a plain body first and
+        // drop their masthead in a beat later (a web font, a lazy stylesheet),
+        // and the first sample would then have read the page before it had the
+        // band we are trying to match.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.syncChromeToPage()
+        }
         hideVeil()
     }
 
