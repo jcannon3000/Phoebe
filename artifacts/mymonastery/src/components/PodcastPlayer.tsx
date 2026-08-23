@@ -1511,10 +1511,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                   aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
                   style={{ display: "inline-flex", flexWrap: "wrap", justifyContent: "center", gap: 4, maxWidth: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
                 >
-                  {(["forward-movement", "church-of-england", "gregory"] as const).map((s) => {
+                  {/* Owner: two options at the bottom, not three — Gregorian is
+                    out of the read-aloud picker. The value stays valid in
+                    officePrefs so anyone already set to it keeps playing; it
+                    just isn't offered any more. */}
+                {(["forward-movement", "church-of-england"] as const).map((s) => {
                     const active = officeAudioSource === s;
-                    const i18nKey = s === "gregory" ? "podcasts.office_source_gregory" : s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm";
-                    const label = s === "gregory" ? "Gregorian" : s === "church-of-england" ? "Church of England" : "Forward Movement";
+                    const i18nKey = s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm";
+                    const label = s === "church-of-england" ? "Church of England" : "Forward Movement";
                     return (
                       <button key={s} type="button" role="tab" aria-selected={active}
                         onClick={() => switchOfficeSource(s)} disabled={sourceSwitching}

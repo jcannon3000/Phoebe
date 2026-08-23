@@ -2817,7 +2817,13 @@ export function CacHomeCard() {
     // Open the meditation, and mark it read only once the reader is CLOSED —
     // so the card's done animation waits until they've X'd out, not the
     // instant they tap in. (Web has no close event, so it marks on open.)
-    openExternalThenMarkRead(CAC_TODAY_URL, recordCacOpened, { reader: true });
+    // Owner: "undo the reader-mode automation for the CAC newsletter." Reader
+    // view strips the CAC's own page — the images, the pull quotes, the way a
+    // meditation is laid out — and it forces the SFSafari chrome instead of
+    // Phoebe's in-app browser. Opening it plainly keeps the page as published
+    // AND routes it through BibleBrowser, which still marks it read on close
+    // rather than on tap.
+    openExternalThenMarkRead(CAC_TODAY_URL, recordCacOpened);
   };
   return (
     <div

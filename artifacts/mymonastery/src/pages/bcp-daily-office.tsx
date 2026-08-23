@@ -5253,8 +5253,16 @@ export default function BcpDailyOfficePage() {
 
   // Launch a short devotion the chosen way: the slideshow, the physical-BCP
   // page guide, or (Morning only) St. John's daily devotion video.
-  const launchDevotion = (mode: "morning-devotion" | "early-evening-devotion", method: "read" | "book" | "watch") => {
+  const launchDevotion = (
+    mode: "morning-devotion" | "early-evening-devotion",
+    method: "read" | "book" | "watch" | "venite",
+  ) => {
     if (method === "watch" && mode === "morning-devotion") { setLocation("/devotion/watch"); return; }
+    // Venite serves the Daily Devotions too. Reported: choosing Venite Digital
+    // and tapping Begin opened the digital slideshow instead — the caller was
+    // narrowing anything that wasn't book/watch to "read", so the choice was
+    // discarded one line before it could be honoured.
+    if (method === "venite") { setLocation(`/bcp/daily-devotions?mode=${mode}&venite=1`); return; }
     setShowBook(method === "book");
     setStartSlide(1); // skip the devotion's welcome — the picker already was it
     setShowMode(mode);
@@ -5346,7 +5354,7 @@ export default function BcpDailyOfficePage() {
     }
     if (practicePick === "devotion") {
       const mode = todPick === "morning" ? "morning-devotion" : "early-evening-devotion";
-      const m = (effMethod === "book" || effMethod === "watch") ? effMethod : "read";
+      const m = (effMethod === "book" || effMethod === "watch" || effMethod === "venite") ? effMethod : "read";
       launchDevotion(mode, m);
     } else {
       launchOffice(todPick, effMethod);

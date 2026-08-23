@@ -237,6 +237,13 @@ export default function BeginPrayerPage() {
       entry === "listen" ? `/podcast/${officeModeForLink}-office?flow=daily`
       : entry === "watch" && isMorning && isWeekday ? "/ncmp/watch"
       : entry === "book" ? `/bcp/daily-office?mode=${officeModeForLink}${reset}&book=1`
+      // Owner: "if they have Venite as the default, we want to go straight to
+      // the web from the routine card." The intro slide was the escape hatch
+      // for changing your mind — that now lives in the browser's own Options
+      // menu, so stopping at a chooser they already answered in Settings is a
+      // tap that buys nothing. The deck still mounts (venite=1), which is what
+      // keeps the dwell test, the credit-on-return and Options working.
+      : entry === "venite" ? `/bcp/daily-office?mode=${officeModeForLink}${reset}&venite=1`
       : `/bcp/daily-office?mode=${officeModeForLink}${reset}`;
     const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
 

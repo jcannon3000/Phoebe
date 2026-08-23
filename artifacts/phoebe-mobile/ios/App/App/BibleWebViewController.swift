@@ -26,11 +26,12 @@ import WebKit
 // Phoebe palette — mirrors the web app's dark-green theme so the chrome
 // reads as the same product.
 private enum PhoebeBrowserColor {
-    // Owner: "for Venite, make the top and bottom black." venite.app renders
-    // its own page on black, so Phoebe's green chrome met it at a visible seam
-    // — two dark surfaces that don't match read as a rendering fault rather
-    // than a frame. Black on black lets the liturgy sit in the window.
-    static let bar = UIColor.black
+    // Owner: "make the top and bottom black or white depending on the
+    // background of Venite." The chrome should disappear into the page — two
+    // near-but-not-quite matching darks read as a rendering fault rather than
+    // a frame. Resolved at runtime from the page's own background (see
+    // syncChromeToPage); this is the starting value before the page paints.
+    static var bar = UIColor.black
     static let text = UIColor(red: 0.941, green: 0.929, blue: 0.902, alpha: 1)  // #F0EDE6
     static let tint = UIColor(red: 0.659, green: 0.773, blue: 0.627, alpha: 1)  // #A8C5A0
 }
@@ -426,6 +427,43 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         forwardButton?.isEnabled = webView.canGoForward
     }
 
+    /// Match the navigation bar to the page's own background.
+    ///
+    /// Owner: "black or white depending on the background of Venite." Asking
+    /// the page rather than hard-coding either one means the chrome keeps
+    /// matching if the site changes, and it works for the other pages this
+    /// browser opens too. Falls back to what's already set when the page
+    /// doesn't answer — a wrong-but-stable bar beats a flashing one.
+    private func syncChromeToPage() {
+        webView.evaluateJavaScript(
+            "getComputedStyle(document.body).backgroundColor"
+        ) { [weak self] value, _ in
+            guard let self, let css = value as? String else { return }
+            let nums = css.split(whereSeparator: { !"0123456789.".contains($0) })
+                .compactMap { Double($0) }
+            guard nums.count >= 3 else { return }
+            // rgba(…, 0) is a transparent body — it tells us nothing about what
+            // the reader actually sees, so leave the bar alone.
+            if nums.count >= 4, nums[3] == 0 { return }
+            let luma = (0.299 * nums[0] + 0.587 * nums[1] + 0.114 * nums[2]) / 255.0
+            let isLight = luma > 0.5
+            let bar: UIColor = isLight ? .white : .black
+            let text: UIColor = isLight ? .black : PhoebeBrowserColor.text
+            DispatchQueue.main.async {
+                let appearance = UINavigationBarAppearance()
+                appearance.configureWithOpaqueBackground()
+                appearance.backgroundColor = bar
+                appearance.titleTextAttributes = [.foregroundColor: text]
+                appearance.shadowColor = UIColor.clear
+                self.navigationController?.navigationBar.standardAppearance = appearance
+                self.navigationController?.navigationBar.scrollEdgeAppearance = appearance
+                self.navigationController?.navigationBar.compactAppearance = appearance
+                self.view.backgroundColor = bar
+                self.webView.backgroundColor = bar
+            }
+        }
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────
     @objc private func close() { dismiss(animated: true) }
     @objc private func reload() { webView.reload() }
@@ -447,6 +485,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             self?.progressView.setProgress(0, animated: false)
         }
         updateNavButtons()
+        // The page has painted — take its background and match the chrome to it.
+        syncChromeToPage()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -623,7 +663,11 @@ final class BibleBrowser: NSObject {
             nav.toolbar.scrollEdgeAppearance = toolbarAppearance
         }
         nav.toolbar.tintColor = PhoebeBrowserColor.tint
-        nav.setToolbarHidden(false, animated: false)
+        // Owner: "we don't actually need the bottom bar." Everything on it is
+        // either duplicated in Options (reload, share) or unused while praying
+        // an office — and on a liturgy you scroll for ten minutes, a permanent
+        // bar is just less page. Done and Options stay pinned at the top.
+        nav.setToolbarHidden(true, animated: false)
 
         // Slide in from the right (next-slide feel), over the app rather than
         // replacing it, so the dismiss can slide back to reveal it.
