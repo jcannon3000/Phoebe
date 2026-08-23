@@ -106,9 +106,17 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private let veilSpinner = OfficeSpinnerView()
     private var veilShownAt: CFTimeInterval = 0
     private var veilDismissed = false
-    // 1.2s originally; shortened 30% (owner). Still long enough that a cached
-    // page doesn't flash the veil, which is the only reason there is a floor.
-    private let veilMinSeconds: CFTimeInterval = 0.84
+    /**
+     * The floor is ONLY an anti-flicker guard, not a duration.
+     *
+     * Owner: "it should fade out once the page is loaded." It always was
+     * load-driven — didFinish calls hideVeil — but a 0.84s floor meant a page
+     * that arrived in 200ms still sat behind the leaf for another 600, which
+     * reads as a timer rather than as waiting for the page. Cut to the smallest
+     * value that still stops a sub-blink flash on a cached page, so what you
+     * see now tracks the load.
+     */
+    private let veilMinSeconds: CFTimeInterval = 0.3
     private let veilMaxSeconds: TimeInterval = 5.0
 
     // Retained strongly here because UIViewController.transitioningDelegate
@@ -333,21 +341,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
         doneItem.accessibilityLabel = "Done"
         self.doneItem = doneItem
-        // An ARTICLE hides the top bar altogether and carries Done, centred, on
-        // a bar at the bottom.
-        //
-        // Owner: "move the bar to the bottom of the screen, and we don't need
-        // the page title because it's reflected in the page — just have Done
-        // centred on the bar." A newsletter opens with its own masthead and its
-        // own headline; our bar was repeating the headline in truncated form
-        // directly above the full one, and pushing the article's own design
-        // down the screen to do it. An office is different — its bar carries
-        // Options, which is real navigation — so this is articles only.
-        if isArticle {
-            navigationItem.leftBarButtonItem = nil
-        } else {
-            navigationItem.leftBarButtonItem = doneItem
-        }
+        navigationItem.leftBarButtonItem = doneItem
 
         // Owner: "at the top right could it be Options, and that brings down a
         // dropdown — kind of similar to the settings of the office slideshow."
@@ -388,7 +382,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // liturgy podcast over a Rohr meditation). Done is the only control a
         // reader needs, and it stays.
         navigationItem.rightBarButtonItem = isArticle ? nil : optionsItem
-        // No title on an article either — the page states it, better than we can.
+        // No TITLE on an article. Owner: "we don't need the page title because
+        // it's reflected in the page." A newsletter opens with its own headline
+        // and our bar was repeating it, truncated, directly above the full one.
+        // (The bar itself stays at the top — an earlier move to the bottom was
+        // reverted; only the title goes.)
         if isArticle { title = nil }
 
         // ── WebView ── adopt a preloaded one when present (already loading in
@@ -457,9 +455,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let flex2 = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         backButton.isEnabled = false
         forwardButton.isEnabled = false
-        toolbarItems = isArticle
-            ? [flex, doneItem, flex2]
-            : [backButton, fixedSpace(16), forwardButton, flex, reloadButton, flex2, shareButton]
+        toolbarItems = [backButton, fixedSpace(16), forwardButton, flex, reloadButton, flex2, shareButton]
 
         // Progress bar bound to the load.
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
@@ -522,9 +518,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             veilImage.leadingAnchor.constraint(equalTo: loadingVeil.leadingAnchor),
             veilImage.trailingAnchor.constraint(equalTo: loadingVeil.trailingAnchor),
             veilSpinner.centerXAnchor.constraint(equalTo: loadingVeil.centerXAnchor),
-            // Low on the screen, like the office's — a ring under the artwork
-            // rather than a badge stamped across the middle of it.
-            veilSpinner.bottomAnchor.constraint(equalTo: veilHost.safeAreaLayoutGuide.bottomAnchor, constant: -44),
+            // Centred (owner). The office sits its ring low because there is a
+            // versicle above it to read; this splash is the leaf alone, so the
+            // middle is where the eye already is.
+            veilSpinner.centerYAnchor.constraint(equalTo: loadingVeil.centerYAnchor),
             veilSpinner.widthAnchor.constraint(equalToConstant: 22),
             veilSpinner.heightAnchor.constraint(equalToConstant: 22),
         ])
@@ -629,15 +626,28 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     }
 
     private func applyChrome(isLight: Bool, statusStrip: UIColor? = nil) {
-        let bar: UIColor = isLight ? .white : .black
-        let text: UIColor = isLight ? .black : PhoebeBrowserColor.text
+        /**
+         * With the top bar restored, the bar IS the strip behind the status bar
+         * — a UINavigationBar extends its own background up under the clock. So
+         * the page's top band goes on the bar itself, and "if the page has a top
+         * bar with a colour, have that extend to the top of the page" comes out
+         * as the bar simply continuing the page.
+         *
+         * Contrast is then a question about the BAR, not about the body: a cream
+         * masthead over a dark article still needs dark labels. So the bar's own
+         * colour decides its content colour, and the body only decides the web
+         * view's backdrop.
+         */
+        let bar: UIColor = statusStrip ?? (isLight ? .white : .black)
+        let barIsLight = Self.isLightColor(bar)
+        let text: UIColor = barIsLight ? .black : PhoebeBrowserColor.text
         // The bar tint colours the bar-button items. On a light bar iOS renders
         // them as filled capsules, so this is the capsule's own colour — a dark
         // one on white, not the pale sage that only reads on black.
         // Owner: "white when the others are white, black when the others are
         // black." Not the app's sage — that only ever read on the dark bar, and
         // on white it was a third colour next to two that agreed.
-        let tint: UIColor = isLight ? .black : .white
+        let tint: UIColor = barIsLight ? .black : .white
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = bar
@@ -661,20 +671,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         toolbar?.tintColor = tint
         // Carries the rest of UIKit with it — bar-button capsules, the menu
         // that drops out of Options, the scroll indicators.
-        navigationController?.overrideUserInterfaceStyle = isLight ? .light : .dark
+        navigationController?.overrideUserInterfaceStyle = barIsLight ? .light : .dark
         // Per-item as well as on the bar. Owner: "I want it to match the other
         // buttons — white when the others are white, black when the others are
         // black." Setting it on each item is what makes them agree; the bar's
         // tintColor is only a default, and individual items can escape it.
         doneItem?.tintColor = tint
         optionsItem?.tintColor = tint
-        // The strip behind the status bar is this view showing through above
-        // the web view, so the page's own top band goes here — see
-        // syncChromeToPage. Before the page has reported anything it is just
-        // the bar colour.
-        view.backgroundColor = statusStrip ?? bar
-        navigationController?.view.backgroundColor = statusStrip ?? bar
-        webView?.backgroundColor = bar
+        view.backgroundColor = bar
+        navigationController?.view.backgroundColor = bar
+        // The page's own body, behind the web view — not the bar's band, or a
+        // cream masthead would tint the whole of a dark article's backdrop.
+        webView?.backgroundColor = isLight ? .white : .black
     }
 
     /** Parse a CSS rgb()/rgba() string. nil for anything transparent. */
@@ -1039,16 +1047,12 @@ final class BibleBrowser: NSObject {
             nav.toolbar.scrollEdgeAppearance = toolbarAppearance
         }
         nav.toolbar.tintColor = isArticle ? .black : PhoebeBrowserColor.tint
-        // An OFFICE has no bottom bar. Owner: "we don't actually need the
-        // bottom bar" — everything on it was duplicated in Options (reload,
-        // share) or unused mid-liturgy, and on something you scroll for ten
-        // minutes a permanent bar is just less page. Done and Options stay
-        // pinned at the top there.
-        //
-        // An ARTICLE is the mirror image: no top bar, and the bottom one
-        // carries Done alone. See where the toolbar items are built.
-        nav.setToolbarHidden(!isArticle, animated: false)
-        nav.setNavigationBarHidden(isArticle, animated: false)
+        // Owner: "we don't actually need the bottom bar." Everything on it is
+        // either duplicated in Options (reload, share) or unused while reading
+        // — and on something you scroll for ten minutes, a permanent bar is
+        // just less page. Done (and, for an office, Options) stay pinned at the
+        // top.
+        nav.setToolbarHidden(true, animated: false)
 
         // Slide in from the right (next-slide feel), over the app rather than
         // replacing it, so the dismiss can slide back to reveal it.
