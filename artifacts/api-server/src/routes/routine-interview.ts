@@ -111,8 +111,37 @@ practice, set by ruleConfig "phoebe:office:level:<side>":
                   side's prayer IS that sit, this is that side's level — don't
                   reach for "office" and bolt silence on beside it.
   compline      — Compline, the night office
-  custom        — a practice of their own naming
+  custom        — a practice of their own naming. NAME IT AS THEY NAMED IT:
+                  "Chapel", "The Rosary", "Morning Pages". NEVER a placeholder
+                  like "Morning practice" or "Evening practice" — that is a
+                  label for the slot, not a practice, and it tells them nothing
+                  they didn't already know. Reported: someone said "I go to
+                  Chapel at seminary in the morning" and got an anchor called
+                  "Morning practice" with Chapel demoted to a second practice.
+                  Chapel WAS the anchor.
   ask           — no anchor on this side (the side is effectively off)
+
+CHOOSING THE ANCHOR. The anchor is the MAIN thing they pray on that side, in
+their own words. Work from what they actually said:
+  "I go to Chapel"                → custom, named "Chapel"
+  "I close my day with Audio Divina" → that IS the evening anchor. Set the
+                                    evening level to custom named "Audio Divina"
+                                    (a preset slot practice can't be an anchor,
+                                    but a custom one carrying its name can, and
+                                    the app links it to the real practice).
+  "I read the lectionary / the daily readings / the appointed readings"
+                                  → level "readings". This is Daily Scripture
+                                    Reading, an ANCHOR — not the "reading"
+                                    slot practice, which is a book they're
+                                    working through at their own pace.
+  "I read scripture in the morning" → ambiguous. ASK whether that's the
+                                    lectionary (the appointed readings) or
+                                    something they've chosen themselves. The
+                                    first is level "readings"; the second is
+                                    phoebe:slot:reading.
+NEVER record the same practice twice — once as the anchor and again as a slot
+or custom practice. Reported: "morning scripture reading" produced BOTH the
+lectionary anchor AND a custom reading practice.
 
 How they take the office, ruleConfig "phoebe:office:entry:<side>":
   read (on screen) | book (their physical BCP) | listen (read-aloud audio)
@@ -128,9 +157,28 @@ definitely do two newsletters." Someone who reads both Forward Day by Day and
 the Dean's Commentary gets BOTH; never make them choose.
   cac (Center for Action and Contemplation) | fdd (Forward Day by Day)
   | ssje (Society of St John the Evangelist) | vts (VTS Dean's Commentary)
+These are four DIFFERENT publications; do not substitute one for another.
+"the Dean's Commentary", "the Dean's", "VTS" → vts, never fdd.
+"Forward Day by Day", "FDD", "Forward Movement" → fdd.
+"the CAC", "Richard Rohr", "the daily meditation" → cac.
+"SSJE", "Brother Give Us a Word" → ssje.
 Turn one on by putting its key in homeLayout.order (that list is what the home
 actually reads). "phoebe:office:reflection:<side>" is a single legacy value —
 set it to the primary one if you like, but the LAYOUT is what decides.
+
+A SIT THAT IS THE ANCHOR IS NOT ALSO THE CONTEMPLATIVE PRACTICE.
+
+If their morning prayer IS a silent sit, or their evening prayer is, that sit is
+the SIDE'S ANCHOR (level "reflect-sit") and nothing else. Do not also set a
+contemplation flag, a silence goal, or a contemplative slot for it — that
+records one practice twice and makes their day look fuller than it is.
+
+Someone can have a sit as an anchor AND separate silence elsewhere; that's real,
+but only when they describe both. If a sit is their only contemplative practice
+and it's serving as an anchor, then contemplation is EMPTY — and the middle of
+their day is whatever else they keep (a newsletter, a walk). Don't invent a
+second sit to fill it, and if you can't tell what the middle of their day is,
+ASK.
 
 Silent prayer. A side's contemplation flag is ONLY for a side whose PRAYER IS
 the silent sit. If they pray Morning Prayer AND sit in silence, that is one
@@ -145,6 +193,11 @@ per-side flag only when that side has no other practice.
       are a single sit or spread across the day. Doesn't change what's counted
       (the goal is a daily TOTAL either way); it's what makes the number mean
       the right thing, and it's remembered so we don't ask twice.
+  "phoebe:contemplation-log-method" — INFER "timer" when they name a length.
+      "fifteen minutes", "I sit for twenty" means they are timing it, so give
+      them the countdown; they can switch to a manual log on the screen. Only
+      choose "manual" when the way they describe it rules a timer out — sitting
+      in church, keeping time by a bell, a sit with no length at all.
   "phoebe:contemplation-log-method" = how the sit gets kept —
       "timer" (sit with a countdown, tap Begin) or "manual" (no timer; tap the
       card to mark it done). Set it from what they describe: someone who says
@@ -262,6 +315,15 @@ NOT ask again:
   "the psalter" / "the appointed psalms"              → level "psalms"
   "centering prayer" / "silence" / "contemplative prayer" → a silent sit
   "the lectionary readings" / "the daily readings"    → level "readings"
+
+PLURALS AND COLLECTIVES ARE ANSWERS TOO:
+  "I pray the offices" / "I pray the Daily Office"  → BOTH sides, level
+      "office". They have told you morning AND evening. Do not ask which ones,
+      and do not ask what they pray at each — you already know. Reported: "I
+      said I pray the offices and it asked me if I pray morning and evening and
+      what I pray at each."
+  "I pray the hours"                → same: the offices, both sides.
+  "I do Morning and Evening Prayer" → both sides, level "office".
 
 Contrast, and this is the distinction that matters:
   "I pray in the evening"        → vague. WHAT they pray is still unknown; ask.
@@ -571,6 +633,15 @@ failure of this task even if the practice would be good for them.
 
 An unmentioned area is a gap in YOUR KNOWLEDGE, not a hole in their life. Ask
 because you don't know, never because something is missing.
+
+WHAT THEY WANT TO START COUNTS TOO. "I'd like to pray the office more often",
+"I want to start sitting in silence", "I've been meaning to read Compline" —
+that is a person telling you what to put in their rhythm. Program it. Do NOT
+interrogate whether they already do it: asking "are you currently practicing
+contemplative prayer?" of someone who just said they'd like to practise it more
+answers a question they didn't ask and refuses the one they did. Reported
+verbatim. Ask about the SHAPE of the practice they want — when, how long — not
+about whether they've earned it yet.
 `.trim();
 
 /**
@@ -794,6 +865,35 @@ function defaultEntryToVenite(spec: { ruleConfig: Record<string, string> }): voi
     // psalms, the Examen and Compline have no deep link that renders.
     if (level !== "office" && level !== "devotion") continue;
     if (!rc[`phoebe:office:entry:${side}`]) rc[`phoebe:office:entry:${side}`] = "venite";
+  }
+}
+
+/**
+ * A side with a practice gets a reminder.
+ *
+ * Owner: "we want notifications to be defaulted on." The prompt has said so
+ * since the beginning, but a prompt is a request — the model still returned
+ * "none" often enough that people landed on a routine with the bell off and no
+ * idea why. Enforced here instead, the same way the Venite default is.
+ *
+ * Turning it OFF stays easy and visible: the read-back slide carries the
+ * switch. This only decides where the switch STARTS.
+ */
+function defaultRemindersOn(spec: {
+  officePrefs: {
+    morning: string; evening: string;
+    morningTime: string | null; eveningTime: string | null;
+  };
+  ruleConfig: Record<string, string>;
+}): void {
+  for (const side of ["morning", "evening"] as const) {
+    const level = spec.ruleConfig[`phoebe:office:level:${side}`];
+    if (!level || level === "ask") continue;
+    const op = spec.officePrefs as unknown as Record<string, string | null>;
+    if (!op[side] || op[side] === "none") {
+      op[side] = level === "devotion" ? "devotion" : "office";
+    }
+    if (!op[`${side}Time`]) op[`${side}Time`] = side === "morning" ? "07:00" : "18:00";
   }
 }
 
@@ -1090,6 +1190,14 @@ all, make sure you end up knowing: is it ONE sit, or several practices spread
 through the day — and roughly how many minutes ALL TOLD. Ask only the part
 they haven't already told you.
 
+A YES/NO QUESTION MUST HAVE YES/NO CHOICES. "Should Evening Prayer be your
+evening practice?" is not a paragraph to compose — give it
+  "choices": ["Yes", "No"]
+and let them tap. The same holds for any question with a small closed set of
+answers. Reported: the questions had gone back to being open text fields even
+where the answer was obviously one of two or three things. A free-text box is
+for something only their own words can express.
+
 WHEN THE ANSWER IS A SETTING, LIST THE SETTINGS. If a question has a small fixed
 set of real answers — the form they take an office in, which part of the day
 something falls in, how long a sit runs — put those answers in "choices" and
@@ -1281,6 +1389,7 @@ then. "notes" may be an empty array when nothing needed judgement.`;
   const scrubNotes = scrubRuleConfig(spec.ruleConfig);
   normalizeContemplation(spec);
   defaultEntryToVenite(spec);
+  defaultRemindersOn(spec);
   hideUnchosen(spec);
 
   const modelNotes = Array.isArray(out.data?.notes)
@@ -1353,6 +1462,7 @@ router.post("/routine-interview/apply", perUserRateLimit("routine_interview_appl
   scrubRuleConfig(spec.ruleConfig);
   normalizeContemplation(spec);
   defaultEntryToVenite(spec);
+  defaultRemindersOn(spec);
   hideUnchosen(spec);
 
   try {

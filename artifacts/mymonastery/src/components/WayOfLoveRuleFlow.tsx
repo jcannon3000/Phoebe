@@ -102,6 +102,21 @@ type PrayChoice = "none" | "community" | "devotion" | "offices" | "compline" | "
 // Creation Prayer lengths — 6-breath increments, mirroring the /cobreathe
 // page's own Length dropdown (default 12).
 const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
+
+// What can ride alongside a side's anchor as a second practice. Deliberately
+// includes the short devotion — the case that prompted this ("the morning
+// devotion in addition to the morning office").
+const EXTRA_PRACTICES: Array<{ title: string; emoji: string; sub: string }> = [
+  { title: "Morning Devotion", emoji: "📖", sub: "The short devotion, alongside your office." },
+  { title: "Evening Devotion", emoji: "📖", sub: "The short devotion, alongside your office." },
+  { title: "Compline", emoji: "🌙", sub: "The night office." },
+  { title: "The Examen", emoji: "🌗", sub: "Review the day with God." },
+  { title: "Audio Divina", emoji: "🎵", sub: "Sacred listening." },
+  { title: "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer." },
+  { title: "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation." },
+];
+const EXTRA_PRACTICE_EMOJI: Record<string, string> =
+  Object.fromEntries(EXTRA_PRACTICES.map((e) => [e.title, e.emoji]));
 type Step =
   | "morning-way" | "morning-custom" | "morning-config"
   | "fdd-mode"
@@ -791,6 +806,23 @@ export default function WayOfLoveRuleFlow({
   // explicit per-side flag; else the legacy reflect-sit level for that side.
   // (A pre-existing single silence goal is migrated to both sides in the
   // office-prefs hydration effect below.)
+  /**
+   * A second practice on a side, alongside the anchor.
+   *
+   * Owner: "have a [button] at the bottom — add additional practice — where
+   * they could choose anything else, even the morning devotion in addition to
+   * the morning [office]. It would show up as a morning card, but it just
+   * wouldn't be their anchor for the weekly progress card."
+   *
+   * Stored as a CUSTOM ANCHOR in that side's slot, which is exactly those
+   * semantics: its own card, its own completion, and invisible to the anchor —
+   * the weekly Morning row reads the side's level, never a custom anchor. The
+   * backend half of this already landed (anchorModesFor / countsForAnchor), so
+   * a devotion kept beside the office no longer fills the office's dot.
+   */
+  const [extraBySide, setExtraBySide] = useState<Record<OfficeSide, string | null>>({ morning: null, evening: null });
+  const [pickingExtra, setPickingExtra] = useState<OfficeSide | null>(null);
+
   const [contemplationBySide, setContemplationBySide] = useState<Record<OfficeSide, boolean>>(() => ({
     morning: getSideContemplationExplicit("morning") ?? (getSideLevel("morning") === "reflect-sit"),
     evening: getSideContemplationExplicit("evening") ?? (getSideLevel("evening") === "reflect-sit"),
@@ -1132,7 +1164,21 @@ export default function WayOfLoveRuleFlow({
     };
   };
 
+  /** Write the per-side extra practices as custom anchors. Skips one already
+   *  in the list so re-running the customizer doesn't leave two. */
+  const commitExtraPractices = () => {
+    const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
+    for (const side of SIDES) {
+      const title = extraBySide[side];
+      if (!title) continue;
+      if (existing.has(title.trim().toLowerCase())) continue;
+      addCustomAnchor(title, EXTRA_PRACTICE_EMOJI[title] ?? "🌿", side as CustomSlot);
+      existing.add(title.trim().toLowerCase());
+    }
+  };
+
   const commit = () => {
+    commitExtraPractices();
     // Prescribe mode: capture the routine and hand it back, writing NOTHING to
     // the (admin) user's own account. The prescribe page takes it from here.
     if (prescribe && onPrescribe) { onPrescribe(buildPrescribeSpec()); return; }
@@ -1938,6 +1984,11 @@ export default function WayOfLoveRuleFlow({
       <>
         {backRow(goPrev)}
         {stepHeader(t("wol_rule.silence_eyebrow", { defaultValue: "Return" }), t("wol_rule.silence_title", { defaultValue: "Silence" }))}
+        {/* Owner: say what's being asked before the picker, rather than
+            leaving a bare dropdown under a one-word heading. */}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
+          {t("wol_rule.silence_ask", { defaultValue: "How much time would you like to spend in silence throughout the day?" })}
+        </p>
         {/* Just the fixed daily-minutes goal — the "grow toward 30" ladder option
             was removed (owner); everyone sets a fixed amount. */}
         <div style={{ position: "relative", marginTop: 24 }}>
@@ -2134,6 +2185,58 @@ export default function WayOfLoveRuleFlow({
               choosePrayBySide(side, "fdd");
               setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
             },
+          )}
+        </div>
+        {/* A SECOND practice for this side (owner). Not an anchor: it becomes a
+            card of its own in this side's slot, and the weekly progress row
+            keeps reading the anchor above. The side's own choice is filtered
+            out — offering "Morning Devotion" to someone whose anchor already
+            IS the devotion would just duplicate it. */}
+        <div style={{ marginTop: 18 }}>
+          {extraBySide[side] ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
+              <span aria-hidden style={{ fontSize: 18 }}>{EXTRA_PRACTICE_EMOJI[extraBySide[side]!] ?? "🌿"}</span>
+              <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontFamily: FONT }}>{extraBySide[side]}</span>
+              <button
+                type="button"
+                onClick={() => { touchedRef.current = true; setExtraBySide((p) => ({ ...p, [side]: null })); }}
+                aria-label={`Remove ${extraBySide[side]}`}
+                style={{ background: "none", border: "none", color: SAGE, fontSize: 15, cursor: "pointer", padding: "2px 6px" }}
+              >
+                ✕
+              </button>
+            </div>
+          ) : pickingExtra === side ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {EXTRA_PRACTICES
+                .filter((e) => !(side === "morning" && e.title === "Evening Devotion"))
+                .filter((e) => !(side === "evening" && e.title === "Morning Devotion"))
+                .filter((e) => !(e.title.endsWith("Devotion") && prayBySide[side] === "devotion"))
+                .filter((e) => !(e.title === "Compline" && prayBySide[side] === "compline"))
+                .map((e) => choiceRow(false, `${e.emoji} ${e.title}`, e.sub, () => {
+                  touchedRef.current = true;
+                  setExtraBySide((p) => ({ ...p, [side]: e.title }));
+                  setPickingExtra(null);
+                }))}
+              <button
+                type="button"
+                onClick={() => setPickingExtra(null)}
+                style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13.5, fontFamily: FONT, cursor: "pointer", padding: "8px 12px" }}
+              >
+                {t("common.cancel", { defaultValue: "Never mind" })}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickingExtra(side)}
+              style={{ width: "100%", background: "transparent", border: `1px dashed ${CARD_B}`, borderRadius: 14, padding: "13px 16px", color: SAGE, fontSize: 14.5, fontFamily: FONT, cursor: "pointer" }}
+            >
+              {t("wol_rule.add_extra_practice", {
+                side: cap.toLowerCase(),
+                defaultValue: `+ Add an additional ${cap.toLowerCase()} practice`,
+              })}
+            </button>
           )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => wayContinue(side))}

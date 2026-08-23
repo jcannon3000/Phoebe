@@ -162,13 +162,25 @@ export function computeWeeklyGrid(params: {
   // row would be blank every day while they kept it.
   const newsletterOn = (d: PracticeWeekDay) => d.reflection || d.vts;
 
+  /**
+   * No middle row at all when there is nothing to put in it.
+   *
+   * Owner: "I did a routine where it only had morning and evening prayer, yet
+   * the weekly card is still showing three rows — it should collapse to two."
+   * An always-present Contemplative row asked someone to account for a
+   * practice they never chose, and showed them an empty week for it every
+   * single day. Silence wins the slot when they keep it, a newsletter takes it
+   * when they don't, and when they keep neither the card is simply two rows.
+   */
   const middleRow = middleIsNewsletter
     ? { emoji: "📖", label: "Reflection", done: learnFromReflection, historyFor: newsletterOn }
-    : { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor };
+    : contemplativeActive
+      ? { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor }
+      : null;
 
   const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
     { emoji: "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
-    middleRow,
+    ...(middleRow ? [middleRow] : []),
     { emoji: "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },

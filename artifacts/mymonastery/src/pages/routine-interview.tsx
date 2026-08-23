@@ -460,9 +460,13 @@ export default function RoutineInterviewPage() {
     // heading, "here's what we heard", no card, no controls — for anyone whose
     // contemplative practice is a walk or a breath, since those rows live in
     // the "practices" section now.
-    sec.key === "contemplation"
-      ? settings.some((r) => r.section === "contemplation") || !hasAnyContemplativePractice
-      : settings.some((r) => r.section === sec.key),
+    // Owner: "take out the last slide in the third stage that shows
+    // contemplative practices — if they haven't said it already, let's not do
+    // that at this stage." So contemplation gets a slide only when there is
+    // something to READ BACK. The interview records what they keep; offering a
+    // menu of practices they never mentioned is the recommending job, and it
+    // belongs to the customizer, not here.
+    settings.some((r) => r.section === sec.key),
   );
 
   // Every read-back section filtered out — nothing left to confirm. Move on
@@ -1087,7 +1091,11 @@ export default function RoutineInterviewPage() {
      * their walk gets asked whether they'd like a contemplative practice.
      */
     const rcNow = (specNow.ruleConfig ?? {}) as Record<string, string>;
-    const asking = section.key === "contemplation" && rows.length === 0 && !hasAnyContemplativePractice;
+    // Always false now that a contemplation slide requires rows (see the
+    // filter above). The picker markup below is left in place but unreachable;
+    // it is the only implementation of "choose a contemplative practice" and
+    // will be wanted again if that step ever returns to this flow.
+    const asking = false as boolean;
     // A sit we DID hear — the slide becomes an editable panel for it.
     const hasSit = section.key === "contemplation" && rows.length > 0;
     const isSide = section.key === "morning" || section.key === "evening";
@@ -1185,7 +1193,9 @@ export default function RoutineInterviewPage() {
 
     const saveFix = () => {
       const t = fixText.trim();
-      if (!t) { advance(); return; }
+      // Empty box → close it, don't advance. Advancing here is what made the
+      // correction path feel like it "just goes back".
+      if (!t) { setShowFix(false); return; }
       // Rebuild with the correction folded in rather than patching the spec
       // here — the model owns turning "actually I use the book" into a level
       // and an entry, and a half-corrected spec is worse than a fresh one.
@@ -1398,27 +1408,37 @@ export default function RoutineInterviewPage() {
                     reads a bare "how long?" as one sit and under-reports the
                     day, so the hint below says which is being asked for. */}
                 <p style={{ ...eyebrow, marginBottom: 8 }}>Contemplation time</p>
-                <SelectPill
-                  value={String(contMinutes)}
-                  ariaLabel="Contemplation time"
-                  onChange={(v) => {
-                    const m = parseInt(v, 10);
-                    if (!Number.isFinite(m)) return;
-                    setContMinutes(m);
-                    patchSpec((d) => { d.officePrefs.contemplationGoalMinutes = m; });
-                    syncSitRows(m, contLog, contOften);
-                  }}
-                >
-                  {/* Keep a value that came from their description even when it
-                      isn't one of ours (14 minutes is a real answer), so opening
-                      this dropdown can't silently round their practice. */}
-                  {!SILENCE_LENGTHS.includes(contMinutes) && (
-                    <option value={String(contMinutes)}>{contMinutes} min</option>
-                  )}
-                  {SILENCE_LENGTHS.map((m) => (
-                    <option key={m} value={String(m)}>{m} min</option>
-                  ))}
-                </SelectPill>
+                {/* A text field, not presets (owner). A silence practice is
+                    whatever length it actually is — 12 minutes, 25, 40 — and a
+                    fixed list quietly rounds people to the nearest option we
+                    happened to think of. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={180}
+                    value={contMinutes === 0 ? "" : String(contMinutes)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      // Allow the field to be empty mid-edit without writing 0
+                      // to the spec — clearing it to type "45" shouldn't land
+                      // as "no silence" for the keystroke in between.
+                      if (raw === "") { setContMinutes(0); return; }
+                      const m = Math.max(1, Math.min(180, parseInt(raw, 10)));
+                      setContMinutes(m);
+                      patchSpec((d) => { d.officePrefs.contemplationGoalMinutes = m; });
+                      syncSitRows(m, contLog, contOften);
+                    }}
+                    aria-label="Contemplation time in minutes"
+                    style={{
+                      ...card, width: 120, maxWidth: "100%", minWidth: 0, boxSizing: "border-box",
+                      color: WARM, fontFamily: FONT, fontSize: 17, fontWeight: 600,
+                      outline: "none", colorScheme: "dark", padding: "13px 14px",
+                    }}
+                  />
+                  <span style={{ color: SAGE, fontFamily: FONT, fontSize: 15 }}>minutes</span>
+                </div>
                 <p style={{ color: SAGE, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, margin: "8px 0 0" }}>
                   {contOften === "more" ? "Across the whole day." : "For your daily sit."}
                 </p>
@@ -1650,15 +1670,20 @@ export default function RoutineInterviewPage() {
               {pickingPractice ? "Never mind" : "Change it myself"}
             </button>
           )}
-          {!asking && !pickingPractice && (
+          {/* On a SIDE there is no "Not quite" any more. Everything it used to
+              cover is editable in place — the practice picker above, the format
+              dropdown and the reminder switch on the card — so the old button
+              opened a text box that rebuilt the routine, and tapping through it
+              with nothing typed simply advanced. Reported as "not quite doesn't
+              have you edit it, it just goes back". The remaining sections have
+              no inline controls yet, so they keep it. */}
+          {!asking && !pickingPractice && !isSide && (
             <button
               type="button"
               onClick={() => (showFix ? setShowFix(false) : setShowFix(true))}
-              style={isSide
-                ? { background: "none", border: "none", color: "rgba(143,175,150,0.75)", fontSize: 13.5, fontFamily: FONT, cursor: "pointer", padding: "8px 12px" }
-                : quietBtn}
+              style={quietBtn}
             >
-              {showFix ? "Never mind" : isSide ? "Or describe the change" : "Not quite"}
+              {showFix ? "Never mind" : "Not quite"}
             </button>
           )}
           {!showFix && (
