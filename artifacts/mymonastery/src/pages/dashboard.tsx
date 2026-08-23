@@ -3121,6 +3121,9 @@ function FddHomeCard() {
     } catch { return undefined; }
   });
   const recordOpened = () => recordFddOpened({ side: praySide });
+  // Same hand-off as the readings card above (?fdd=<side> from begin-prayer),
+  // and it had the same gap: arriving on the dashboard was the whole journey.
+  const fddAutoOpenedRef = useRef(false);
   useEffect(() => {
     const refresh = () => setHasRead(hasReadFddToday());
     window.addEventListener(FDD_READ_EVENT, refresh);
@@ -3173,6 +3176,17 @@ function FddHomeCard() {
     // Written: mark read only once the reader is closed (see CAC card above).
     openExternalThenMarkRead(FDD_TODAY_URL, recordOpened, { reader: true });
   };
+  useEffect(() => {
+    if (!praySide || fddAutoOpenedRef.current) return;
+    fddAutoOpenedRef.current = true;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("fdd");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+    } catch { /* ignore */ }
+    onClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [praySide]);
   const pillLabel = mode === "audio"
     ? (hasRead ? "Listen again" : "Listen")
     : (hasRead ? "Read again" : "Read");
@@ -3252,6 +3266,29 @@ function ReadingsHomeCard({ side = "morning", hero = false }: { side?: "morning"
   const onClick = () => {
     openExternalThenMarkRead(getReadingsTodayUrl(), () => recordReadingsOpened({ side: praySide ?? side }), { reader: true });
   };
+  /**
+   * The routine card asked to PRAY this, so open it.
+   *
+   * begin-prayer hands off with ?readings=<side> when the day's readings are
+   * that side's anchor — but landing on the dashboard was the whole journey.
+   * Reported: "morning scripture reading isn't going forward, it just refreshes
+   * the home screen." It wasn't refreshing; it had arrived and stopped.
+   *
+   * The param is cleared first so a back-navigation doesn't reopen it, and the
+   * ref makes it once-per-mount regardless.
+   */
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!praySide || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("readings");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+    } catch { /* ignore */ }
+    onClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [praySide]);
   // The day's appointed psalm + lessons — the same lectionary line the office
   // hero and Psalms card show, so the card matches what Forward Movement's
   // daily-readings page actually opens to. Owner: "show the scriptures on

@@ -1945,7 +1945,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
     if (onThisSurface) {
       if (method === "book") { setBookOpen(true); return; }
-      next();
+      // Advance the deck DIRECTLY, never through next().
+      //
+      // next() routes the intro slide back through launchWay (so a tap or a
+      // swipe honours the chosen way, not just the Begin button) — and
+      // launchWay's on-screen case used to answer by calling next(). The two
+      // called each other and the deck never moved: picking "On screen" and
+      // tapping Begin did nothing at all. Reported exactly that way.
+      //
+      // From the intro slide the next slide is always index 1; there are no
+      // portal slides to skip this early, which is the only thing next()'s
+      // loop adds.
+      setSlideIdx((i) => (i === 0 ? 1 : i + 1));
       return;
     }
     // A different surface than the one loaded — route there. The reader has

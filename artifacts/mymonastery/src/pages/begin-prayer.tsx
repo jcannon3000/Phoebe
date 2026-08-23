@@ -125,9 +125,29 @@ export default function BeginPrayerPage() {
       setLocation(`/dashboard?fdd=${side}`, { replace: true });
       return;
     }
-    // Daily Scripture Readings IS this side's prayer → same handoff as FDD
-    // above, just the simpler (no audio) reading card.
+    /**
+     * Daily Scripture Readings IS this side's prayer.
+     *
+     * Owner: the lectionary readings go through Forward Movement, "but you
+     * could also send them through Venite." So the side's own format decides,
+     * the same way it does for the office — Venite carries the day's appointed
+     * lessons inside the office, and someone who has chosen Venite as how they
+     * read shouldn't be handed a different site for this one anchor.
+     *
+     * Anything else keeps the Forward Movement hand-off, which now actually
+     * OPENS the readings rather than just landing on the home.
+     */
     if (defaultPrayerLevel === "readings") {
+      if (getSideEntry(side) === "venite") {
+        // Computed inline: the shared officeModeForLink/reset are declared
+        // further down, and this branch returns long before them.
+        const mode = isMorning ? "morning" : "evening";
+        // No &reset= here: prayedToday is computed further down, and a Venite
+        // hand-off doesn't resume a slide position anyway — the deck opens only
+        // to pass them straight to the browser.
+        setLocation(`/bcp/daily-office?mode=${mode}&venite=1`, { replace: true });
+        return;
+      }
       setLocation(`/dashboard?readings=${side}`, { replace: true });
       return;
     }
