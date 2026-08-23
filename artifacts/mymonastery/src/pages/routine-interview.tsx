@@ -503,7 +503,12 @@ export default function RoutineInterviewPage() {
         return "The assistant's answer came back garbled. Try again — it usually works on a second pass.";
       case "too_short":
         return "Tell us a little more first — a sentence or two about your day.";
+      // Name the code we didn't map. "Something went wrong" is the least
+      // actionable sentence in the app — it tells the person nothing and tells
+      // us nothing when they report it. If a code reaches here it's one we
+      // haven't given words to yet, and showing it is how it gets words.
       default:
+        if (code) return `Something went wrong (${code}). Try again in a moment.`;
         return "Something went wrong. Try again in a moment.";
     }
   };

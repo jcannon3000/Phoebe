@@ -222,9 +222,11 @@ Prayer." Don't drop one and don't merge them. Instead:
     ANCHOR (phoebe:office:level:<side>).
   · The other becomes a "customPractices" entry, titled the way they'd say it —
     "Morning Devotion", "Evening Devotion" — with the matching slot.
-DON'T ASK WHEN ONE OF THEM IS CONTEMPLATIVE. If a side has two practices and
-one is a silent sit — centering prayer, contemplative prayer, meditation —
-then the OTHER one is the anchor and the sit is their contemplative practice.
+DON'T ASK WHEN ONE OF THEM ISN'T AN ANCHOR-SHAPED PRACTICE. If a side has two
+practices and one of them is a silent sit (centering prayer, contemplative
+prayer, meditation), sacred listening / Audio Divina, a contemplative walk, or
+Creation Prayer, then the OTHER one is the anchor and that one is the
+additional practice.
 That isn't a guess, it's what the two things are. Reported: "I said I do
 centering prayer in the morning and daily scripture reading in the morning, and
 it asked me which one was my main practice" — the answer was already there.
@@ -234,6 +236,13 @@ distinguishes them ("I read Forward Day by Day and I read the Dean's
 Commentary" — which anchors the morning?). Phrase it as the anchor:
 "Which of those is your main morning prayer?" Never guess between two practices
 of the same kind that someone told you they both keep.
+
+AND NAME THE RIGHT SIDE. A question about the evening offers evening practices;
+one about the morning offers morning ones. Reported: "Which is your main
+evening practice, Morning Prayer or Audio Divina?" — which asks about one half
+of the day and then offers a practice from the other, so neither answer can be
+right. If a practice they named belongs to a different side than the one you're
+asking about, that is itself the thing to sort out, not a choice to offer.
 
 ANYTHING ELSE THEY KEEP → A CUSTOM PRACTICE. Owner: "if they talk about a
 practice that is not a preset option, make it a custom practice." A rosary, a
@@ -1408,7 +1417,13 @@ then. "notes" may be an empty array when nothing needed judgement.`;
       : "",
   ].join("");
 
-  const out = await askOpenAi(system, userMsg, 2000, BUILD_MODEL);
+  // 3200, not 2000. The system prompt has grown by roughly a third today
+  // (the anchor rules, the Episcopal reading, the newsletter disambiguation),
+  // and on a reasoning model the thinking tokens come out of the SAME budget
+  // as the answer. A spec that gets truncated mid-JSON surfaces as "the
+  // assistant's answer came back garbled", which reads like a fluke rather
+  // than a budget we quietly outgrew.
+  const out = await askOpenAi(system, userMsg, 3200, BUILD_MODEL);
   if (!out.ok) { res.status(out.status).json({ error: out.error }); return; }
 
   // sanitizeSpec returns null when homeLayout.order is empty — a reasonable
