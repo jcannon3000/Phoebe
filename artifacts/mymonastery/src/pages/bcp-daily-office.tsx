@@ -3960,7 +3960,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     <div
                       role="tablist"
                       aria-label="Suffrages"
-                      style={{ display: "inline-flex", gap: 4, background: "rgba(var(--ot-deep, 9,26,16), 0.4)", border: `1px solid ${BORDER}`, borderRadius: 999, padding: 4, marginBottom: 4 }}
+                      // alignSelf, because inline-flex is not enough here: the
+                      // parent is a COLUMN flex container, whose default
+                      // align-items:stretch overrides an item's own intrinsic
+                      // width and pulled the pill the full width of the slide.
+                      // Owner: "the toggle bar was full width but too long, it
+                      // should be around the two options."
+                      style={{ alignSelf: "flex-start", display: "inline-flex", gap: 4, background: "rgba(var(--ot-deep, 9,26,16), 0.4)", border: `1px solid ${BORDER}`, borderRadius: 999, padding: 4, marginBottom: 4 }}
                     >
                       {(["A", "B"] as const).map((opt) => {
                         const on = active === opt;

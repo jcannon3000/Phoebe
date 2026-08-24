@@ -9,7 +9,7 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
-import { CANTICLE_CATALOG, INVITATORY_CATALOG, buildCanticleRun, buildInvitatoryRun } from "../lib/officeSwap";
+import { INVITATORY_CATALOG, canticlesForRite, buildCanticleRun, buildInvitatoryRun } from "../lib/officeSwap";
 import { parseRite } from "../lib/officeRite";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
@@ -449,9 +449,13 @@ router.get("/devotion/:kind", async (req, res) => {
  * invitatory mid-office. Static catalogues (no DB), so the sheet can render
  * instantly when the reader taps the pill.
  */
-router.get("/office/swap-options", (_req, res) => {
+router.get("/office/swap-options", (req, res) => {
+  // Rite-scoped: Rite I offers canticles 1-7, Rite II offers 8-21. Mixing the
+  // two series inside one office is a category error — the BCP prints each
+  // series in its own rite. (parseRite coerces to II while Rite I is gated
+  // off, so this is today's list unchanged.)
   res.setHeader("Cache-Control", "public, max-age=3600");
-  return res.json({ canticles: CANTICLE_CATALOG, invitatories: INVITATORY_CATALOG });
+  return res.json({ canticles: canticlesForRite(parseRite(req.query["rite"])), invitatories: INVITATORY_CATALOG });
 });
 
 /**

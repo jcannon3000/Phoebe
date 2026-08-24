@@ -69,6 +69,33 @@ export const CANTICLE_CATALOG: Array<{ key: string; label: string; latin: string
   { key: "canticle_21", label: "You are God",                  latin: "Te Deum laudamus",     ref: "BCP p. 95" },
 ];
 
+/**
+ * The RITE I canticles, 1–7 — traditional language, and a separate series
+ * from 8–21 rather than variants of them (which is why they carry no _rite1
+ * suffix; see seeds/bcpTextsRite1.ts).
+ *
+ * Audit finding: these were seeded with no way to reach them. The canticle
+ * SELECTOR only ever returns 8–21, and the picker below listed only 8–21, so
+ * all seven were dead rows. They're offered here instead — and offered
+ * INSTEAD OF 8–21 rather than alongside, because mixing the series inside one
+ * office is a category error: the 1979 BCP prints 1–7 in the Rite I office
+ * and 8–21 in the Rite II one.
+ */
+export const RITE1_CANTICLE_CATALOG: Array<{ key: string; label: string; latin: string; ref: string }> = [
+  { key: "canticle_1", label: "A Song of Creation",    latin: "Benedicite, omnia opera Domini", ref: "BCP p. 47" },
+  { key: "canticle_2", label: "A Song of Praise",      latin: "Benedictus es, Domine",          ref: "BCP p. 49" },
+  { key: "canticle_3", label: "The Song of Mary",      latin: "Magnificat",                     ref: "BCP p. 50" },
+  { key: "canticle_4", label: "The Song of Zechariah", latin: "Benedictus Dominus Deus",        ref: "BCP p. 50" },
+  { key: "canticle_5", label: "The Song of Simeon",    latin: "Nunc dimittis",                  ref: "BCP p. 51" },
+  { key: "canticle_6", label: "Glory be to God",       latin: "Gloria in excelsis",             ref: "BCP p. 52" },
+  { key: "canticle_7", label: "We Praise Thee",        latin: "Te Deum laudamus",               ref: "BCP p. 52" },
+];
+
+/** The canticles offered for a given rite. */
+export function canticlesForRite(rite: "I" | "II") {
+  return rite === "I" ? RITE1_CANTICLE_CATALOG : CANTICLE_CATALOG;
+}
+
 /** Venite / Jubilate only — see the INVITATORY SCOPE note in the file header. */
 export const INVITATORY_CATALOG: Array<{ key: string; label: string; latin: string; ref: string }> = [
   { key: "venite",   label: "Psalm 95",  latin: "Venite",   ref: "BCP p. 82" },
@@ -76,6 +103,10 @@ export const INVITATORY_CATALOG: Array<{ key: string; label: string; latin: stri
 ];
 
 const CANTICLE_EMOJI: Record<string, string> = {
+  // Rite I 1–7, mirroring their Rite II counterparts' emoji where the canticle
+  // is the same song in the other rite (1↔12, 2↔13, 3↔15, 4↔16, 5↔17, 6↔20, 7↔21).
+  canticle_1: "🌍", canticle_2: "🙌", canticle_3: "🌟", canticle_4: "🌅",
+  canticle_5: "🕯️", canticle_6: "🎶", canticle_7: "📜",
   canticle_8: "🌊", canticle_9: "💧", canticle_10: "🔍", canticle_11: "✨",
   canticle_12: "🌍", canticle_13: "🙌", canticle_14: "🕊️", canticle_15: "🌟",
   canticle_16: "🌅", canticle_17: "🕯️", canticle_18: "🐑", canticle_19: "👑",
@@ -109,7 +140,8 @@ async function resolveCanticleText(key: string): Promise<{ content: string; titl
  * can find this run in turn.
  */
 export async function buildCanticleRun(key: string, idPrefix: string): Promise<Slide[] | null> {
-  const meta = CANTICLE_CATALOG.find((c) => c.key === key);
+  // Look across BOTH series — a swap targets whichever the office is in.
+  const meta = [...CANTICLE_CATALOG, ...RITE1_CANTICLE_CATALOG].find((c) => c.key === key);
   if (!meta) return null;
   const text = await resolveCanticleText(key);
   if (!text) return null;

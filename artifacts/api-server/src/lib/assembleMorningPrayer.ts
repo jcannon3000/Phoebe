@@ -555,7 +555,15 @@ export async function assembleMorningPrayer(
     afterNT,
     "apostles_creed",
     "lords_prayer_contemporary",
-    suffragesKey,
+    // BOTH suffrages sets, not just the appointed one. The slide carries the
+    // alternate so the client can offer the A/B toggle (BCP p. 97 prints both
+    // and leaves the choice open) — and the alternate has to be FETCHED for
+    // that to work. It wasn't: localized(suffragesAltKey) fell through to the
+    // "[key — see BCP]" placeholder, parseSuffrages found no V./R. lines in
+    // it, and switching to the other set rendered an empty slide. Reported as
+    // "Suffrages A was not working."
+    "suffrages_a",
+    "suffrages_b",
     liturgicalDay.collectKey,
     prayerForMissionKey,
     "general_thanksgiving",
@@ -723,13 +731,22 @@ export async function assembleMorningPrayer(
   // is appointed "with the Invitatory Psalm" (BCP p. 80) — Venite or
   // Jubilate — so it's suppressed for Pascha Nostrum, which is a set of
   // anthems carrying its own alleluias, not a psalm that takes one.
-  const antiphonText = getText(liturgicalDay.antiphonKey);
+  // Same reasoning as psalmBody below: routed through localized() so a seeded
+  // <antiphon>_rite1 is picked up whenever those land. No Rite I antiphons
+  // exist yet, and with none seeded this is byte-identical to getText.
+  const antiphonText = localized(liturgicalDay.antiphonKey);
   const hasAntiphon =
     invitPsalmKey !== "pascha_nostrum" &&
     !!antiphonText &&
     antiphonText.trim().length > 0 &&
     !antiphonText.startsWith("[");
-  const psalmBody = getText(invitPsalmKey);
+  // localized(), NOT getText() — this is the invitatory's BODY (the Venite /
+  // Jubilate text itself). Audit finding: it was the one text on this slide
+  // fetched raw, so venite_rite1 / jubilate_rite1 were seeded and permanently
+  // unreachable — a Rite I office would have shown the contemporary Venite
+  // under Rite I chrome, which reads as "Rite I works" while being silently
+  // wrong. For Rite II / English this resolves identically to getText.
+  const psalmBody = localized(invitPsalmKey);
   const invitEyebrow = invitPsalmEyebrows[invitPsalmKey] ?? "PSALM 95";
   const invitHeadline = invitPsalmHeadlines[invitPsalmKey] ?? "Venite";
   const invitBcpRef = invitPsalmRefs[invitPsalmKey] ?? "BCP p. 82";
@@ -1046,7 +1063,7 @@ export async function assembleMorningPrayer(
   // focused. A Prayer for Mission follows below as the BCP appoints.
   const collectData = texts[liturgicalDay.collectKey];
   slides.push(
-    slide(id(), "collect", "📅", pick(locale, EYEBROWS.the_collect_of_the_day), getText(liturgicalDay.collectKey), {
+    slide(id(), "collect", "📅", pick(locale, EYEBROWS.the_collect_of_the_day), localized(liturgicalDay.collectKey), {
       title: liturgicalDay.sundayLabel,
       bcpReference: collectData?.bcpReference ?? "BCP p. 211",
     }),

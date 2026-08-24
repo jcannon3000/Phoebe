@@ -20,7 +20,13 @@
  * change alters what shape a cached slide/metadata carries; leave it alone
  * for changes that only touch content (a new liturgical text, a copy edit).
  */
-export const OFFICE_CACHE_SCHEMA_VERSION = 2;
+// 3: the Suffrages A/B options shipped with the ALTERNATE set unfetched, so
+//    every office cached before this carries suffragesOptions whose alternate
+//    has zero parsed lines — switching rendered an empty slide. The fix is in
+//    the assembler (both suffrages keys are fetched now), but a cache hit
+//    never re-runs it, so the stale rows have to be invalidated too. This is
+//    precisely what this version stamp exists for.
+export const OFFICE_CACHE_SCHEMA_VERSION = 3;
 
 /** Read the version a cached slide array was written with. 1 (not 0) for a
  *  row from before this stamp existed at all — distinct from "unset". */
