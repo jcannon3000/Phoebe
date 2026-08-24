@@ -390,17 +390,12 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // item, so while their styles differed the two could not have matched
         // whatever colour was set. Both are plain now, and applyChrome tints
         // each of them explicitly.
-        // Owner: "the bottom bar left button on the scripture page should
-        // still say Back — it's the TOP LEFT button that should say Next
-        // instead of Back." The bottom pill's left button reverts to Back
-        // below (buildOfficeNavPill); this top-left one — which used to just
-        // dismiss — now advances too, so there are two ways to move forward
-        // (top-left, bottom-right) and one to step back (bottom-left).
+        // Owner: "take the settings and the X button out of the top right
+        // and move the Next button in the top left to the top right." No
+        // left item at all for officeChrome now — leaving is the edge-swipe
+        // dismiss (still wired below) or the bottom pill's own Back/Next.
         if officeChrome {
-            let backItem = UIBarButtonItem(title: "Next →", style: .plain, target: self, action: #selector(officeNavNext))
-            backItem.accessibilityLabel = "Next"
-            self.doneItem = backItem
-            navigationItem.leftBarButtonItem = backItem
+            navigationItem.leftBarButtonItem = nil
         } else {
             let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
             doneItem.accessibilityLabel = "Done"
@@ -442,24 +437,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         optionsItem.accessibilityLabel = "Options"
         self.optionsItem = optionsItem
         if officeChrome {
-            // The office's own top-right pair: the ⚙ Display sheet, and a
-            // close X — same two controls, same order, as the office deck's
-            // header. rightBarButtonItems lays out index 0 at the FAR right,
-            // so [X, gear] reads gear-then-X left to right, matching the
-            // office's own row.
-            let displayItem = UIBarButtonItem(
-                image: UIImage(systemName: "slider.horizontal.3"),
-                style: .plain, target: self, action: #selector(openOfficeDisplaySettings)
-            )
-            displayItem.accessibilityLabel = "Display settings"
-            let closeItem = UIBarButtonItem(
-                image: UIImage(systemName: "xmark.circle.fill"),
-                style: .plain, target: self, action: #selector(close)
-            )
-            closeItem.accessibilityLabel = "Close"
-            self.optionsItem = displayItem
-            self.closeXItem = closeItem
-            navigationItem.rightBarButtonItems = [closeItem, displayItem]
+            // Owner: "take the settings and the X button out of the top
+            // right and move the Next button ... to the top right." Gear
+            // and close X are gone; Next lives here instead (and still at
+            // the bottom pill too, alongside Back).
+            let nextItem = UIBarButtonItem(title: "Next →", style: .plain, target: self, action: #selector(officeNavNext))
+            nextItem.accessibilityLabel = "Next"
+            self.doneItem = nextItem
+            navigationItem.rightBarButtonItem = nextItem
             // The title pill: same text the office's own header pill shows.
             title = officeTitleText
         } else if isArticle {
@@ -638,6 +623,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         let edgePan = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handleDismissPan(_:)))
         edgePan.edges = .left
         view.addGestureRecognizer(edgePan)
+
+        // Owner: "would it be possible that if someone swipes on that screen,
+        // it moves forward?" — mirroring the office deck's own "swipe left →
+        // next" on the page it handed off to. A discrete swipe (not a pan),
+        // so it coexists with the page's own vertical scroll rather than
+        // fighting it — WKWebView's scroll view pans vertically; this only
+        // fires on a clearly horizontal, leftward flick anywhere on the page.
+        if officeChrome {
+            let swipeNext = UISwipeGestureRecognizer(target: self, action: #selector(officeNavNext))
+            swipeNext.direction = .left
+            view.addGestureRecognizer(swipeNext)
+        }
     }
 
     // Drives the interactive swipe-to-dismiss. The percent-driven interactor
