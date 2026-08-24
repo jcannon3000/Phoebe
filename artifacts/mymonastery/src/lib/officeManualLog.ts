@@ -58,12 +58,32 @@ export function isOfficeUndoneToday(side: OfficeUndoSide): boolean {
   try { return localStorage.getItem(UNDO_PREFIX + side) === todayKey(); } catch { return false; }
 }
 
-export function undoOfficeToday(side: OfficeUndoSide): void {
+/**
+ * `onlyMode` un-ticks exactly ONE practice on this side, rather than the
+ * whole side.
+ *
+ * SIDE_MODES casts a deliberately wide net — a side's anchor can complete as
+ * either the office OR the devotion flag depending on its level, and undo has
+ * to clear whichever one it actually used. That was fine when a side held one
+ * practice. It stopped being fine once a side could hold TWO: tapping the ✓ on
+ * the SECOND practice's card called undoOfficeToday(side), which wiped both
+ * flags and left the anchor un-done too — the mirror image of the
+ * "logged the wrong practice" bug already fixed on the write side.
+ *
+ * Same reasoning as extraModesFor/anchorModesFor in useRhythmState: with two
+ * practices on one side, each control has to name the mode it owns.
+ */
+export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
   try {
-    for (const mode of SIDE_MODES[side]) {
+    const modes = onlyMode ? [onlyMode] : SIDE_MODES[side];
+    for (const mode of modes) {
       localStorage.removeItem(`phoebe:office-completed:${mode}:${todayKey()}`);
     }
-    localStorage.setItem(UNDO_PREFIX + side, todayKey());
+    // The tombstone masks the non-local (server) signals for the rest of the
+    // day, and it is per-SIDE — so it only applies to a whole-side undo. A
+    // single-practice undo would otherwise silently mask the OTHER practice's
+    // server completion too, which is the very thing onlyMode exists to avoid.
+    if (!onlyMode) localStorage.setItem(UNDO_PREFIX + side, todayKey());
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
   } catch { /* private mode / quota — non-fatal */ }
 }

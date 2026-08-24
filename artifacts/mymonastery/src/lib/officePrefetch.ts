@@ -18,7 +18,7 @@
 
 import { useEffect } from "react";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { getSideLevel, getSideConfession, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideExtra, getSideConfession, type OfficeSide } from "@/lib/officePrefs";
 import { putOfficeCacheEntry, pruneOfficeCacheBefore, type OfficeCacheKey } from "@/lib/officeOfflineCache";
 import type { LiturgyMode } from "@/pages/bcp-daily-office";
 
@@ -59,9 +59,28 @@ function ymdPlusDays(n: number): string {
 // has its own offline story or isn't a BCP office at all, so it's skipped.
 function modeForSide(side: OfficeSide): LiturgyMode | null {
   const level = getSideLevel(side);
+  return modeForLevel(side, level);
+}
+
+function modeForLevel(side: OfficeSide, level: string | null): LiturgyMode | null {
   if (level === "office") return side === "morning" ? "morning" : "evening";
   if (level === "devotion") return side === "morning" ? "morning-devotion" : "early-evening-devotion";
   return null;
+}
+
+/**
+ * A side's SECOND practice, when it's an office form that this prefetch can
+ * actually cache. Same in-scope rule as modeForSide — office/devotion only;
+ * every other level has its own offline story or isn't a BCP office.
+ *
+ * Without this the extra practice was the ONE anchor-shaped card that had no
+ * offline copy: the reader could open their morning office on a plane but not
+ * the devotion they keep alongside it.
+ */
+function extraModeForSide(side: OfficeSide): LiturgyMode | null {
+  const mode = modeForLevel(side, getSideExtra(side));
+  // Never duplicate the anchor's own job — same mode, same cache key.
+  return mode && mode !== modeForSide(side) ? mode : null;
 }
 
 // Same confession-param shape bcp-daily-office.tsx's load() computes, baked
@@ -125,11 +144,16 @@ export async function runOfficePrefetch(): Promise<void> {
 
     const morningMode = modeForSide("morning");
     const eveningMode = modeForSide("evening");
+    const morningExtraMode = extraModeForSide("morning");
+    const eveningExtraMode = extraModeForSide("evening");
     const jobs: Array<() => Promise<void>> = [];
     for (let i = 0; i < WINDOW_DAYS; i++) {
       const date = ymdPlusDays(i);
       if (morningMode) jobs.push(() => fetchAndCacheOne(morningMode, date, confessionFor(morningMode, "morning")));
       if (eveningMode) jobs.push(() => fetchAndCacheOne(eveningMode, date, confessionFor(eveningMode, "evening")));
+      // A side's SECOND practice gets the same offline treatment as its anchor.
+      if (morningExtraMode) jobs.push(() => fetchAndCacheOne(morningExtraMode, date, confessionFor(morningExtraMode, "morning")));
+      if (eveningExtraMode) jobs.push(() => fetchAndCacheOne(eveningExtraMode, date, confessionFor(eveningExtraMode, "evening")));
       // Compline has no side/level of its own — always available every
       // evening, so always warmed regardless of either side's rule.
       jobs.push(() => fetchAndCacheOne("compline", date, ""));

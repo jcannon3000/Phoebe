@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { getSideLevel, getSideCustomName } from "@/lib/officePrefs";
+import { getSideLevel, getSideCustomName, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
@@ -170,6 +170,18 @@ export function useWidgetSync(): void {
       // A user's own named practice IS this side's prayer — the widget
       // names the card after what they typed, matching the home card.
       if (lvl === "custom") return getSideCustomName(side.toLowerCase() as "morning" | "evening").trim() || `${side} Practice`;
+      // A REFLECTION as this side's prayer. The level is the shared sentinel
+      // "fdd" for all four sources, so without naming the actual source this
+      // fell through and called a CAC anchor "Morning Prayer" — the same gap
+      // "readings" had above. Must never disagree with the home card, which
+      // is why both now answer this from the same stored per-side source.
+      if (lvl === "fdd") {
+        const src = getSideReflectionExplicit(side.toLowerCase() as "morning" | "evening") ?? "fdd";
+        if (src === "cac") return "CAC Daily Meditation";
+        if (src === "ssje") return "Brother, Give Us a Word";
+        if (src === "vts") return "VTS Dean's Commentary";
+        return "Forward Day by Day";
+      }
       if (r.prayerKind === "community") return "Pray together";
       if (r.prayerKind === "devotion") return `${side} Devotion`;
       return `${side} Prayer`;
@@ -183,6 +195,7 @@ export function useWidgetSync(): void {
       if (lvl === "guided-prayer") return "Three Minutes to Start Your Day";
       if (lvl === "readings") return "Today's appointed readings";
       if (lvl === "custom") return "Your own practice";
+      if (lvl === "fdd") return "Today's reflection";
       return "Book of Common Prayer";
     };
     const officeSubtitle = (isMorning: boolean): string =>

@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel, getSideMinutes, getSideCustomName, sideOfficeTitle, extraPracticeTitle, extraOfficeMode, type OfficeLevel, type ReflectionSource } from "@/lib/officePrefs";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, VTS_TODAY_URL, markVtsRead, markCustomPrayed, unmarkCustomPrayed } from "@/lib/cacReadState";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getPracticeSlot, isSlotOpen, isSlotPast, slotOpensLabel, EVENING_OPEN_HOUR, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
@@ -967,7 +967,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       emoji: EXTRA_EMOJI[level] ?? "\uD83C\uDF3F",
       rgb: "96,140,110", done,
       href: `/begin-prayer?side=${side}&practice=${level}`,
-      onUnlog: () => undoOfficeToday(side),
+      // Un-tick THIS practice only — not the whole side. Without the mode
+      // argument this cleared the anchor's flag too (see undoOfficeToday).
+      onUnlog: () => undoOfficeToday(side, extraOfficeMode(side, level) ?? undefined),
       title: extraPracticeTitle(cap, level, t),
       blurb: done ? prayed : t("rhythm.extra_blurb", { defaultValue: "Alongside your main practice" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
