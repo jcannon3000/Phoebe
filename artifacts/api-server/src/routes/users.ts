@@ -534,7 +534,7 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
     // duration so a quick tap-away doesn't light up the rhythm grid).
     // It maps to the 'morning' side in the CASE below; the duration
     // gate lives in the WHERE so the CASE can stay surface-only.
-    const rows = await db.execute<{ day: string; side: string }>(sql`
+    const rows = await db.execute<{ day: string; side: string; surface: string }>(sql`
       SELECT DISTINCT
         to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
         CASE
@@ -547,7 +547,18 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           -- client credit the right thing; folding it into 'evening' here
           -- would tick Evening Prayer for every add-on user.
           WHEN surface = 'compline' THEN 'compline'
-        END AS side
+        END AS side,
+        -- The RAW surface too, alongside the folded side. Reported: a
+        -- secondary practice (a devotion alongside a Morning Prayer anchor)
+        -- logged correctly on the phone but read back on web as the ANCHOR
+        -- being done — because this endpoint only ever reported "was ANY
+        -- known surface logged for this side", which a side's SECOND
+        -- practice satisfies just as well as its anchor does. The folded
+        -- boolean stays (the weekly grid only wants "something happened"),
+        -- but useRhythmState now also gets the specific surface(s) so it can
+        -- tell anchor-done from extra-done, the same distinction
+        -- anchorModesFor/extraModesFor already draw from the LOCAL flags.
+        surface
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
         AND (
@@ -562,24 +573,25 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);
-    const byDay = new Map<string, { morning: boolean; evening: boolean; compline: boolean }>();
+    const byDay = new Map<string, { morning: boolean; evening: boolean; compline: boolean; surfaces: string[] }>();
     for (const r of rows.rows) {
-      const slot = byDay.get(r.day) ?? { morning: false, evening: false, compline: false };
+      const slot = byDay.get(r.day) ?? { morning: false, evening: false, compline: false, surfaces: [] };
       if (r.side === "morning") slot.morning = true;
       if (r.side === "evening") slot.evening = true;
       if (r.side === "compline") slot.compline = true;
+      if (r.surface && !slot.surfaces.includes(r.surface)) slot.surfaces.push(r.surface);
       byDay.set(r.day, slot);
     }
     // Build the 7-day window in user-tz, oldest first.
     const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
     const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
-    const days: { ymd: string; morning: boolean; evening: boolean; compline: boolean }[] = [];
+    const days: { ymd: string; morning: boolean; evening: boolean; compline: boolean; surfaces: string[] }[] = [];
     for (let i = 6; i >= 0; i--) {
       const dt = new Date(Date.UTC(ty, tm - 1, td));
       dt.setUTCDate(dt.getUTCDate() - i);
       const ymd = dt.toISOString().slice(0, 10);
-      const slot = byDay.get(ymd) ?? { morning: false, evening: false, compline: false };
-      days.push({ ymd, morning: slot.morning, evening: slot.evening, compline: slot.compline });
+      const slot = byDay.get(ymd) ?? { morning: false, evening: false, compline: false, surfaces: [] };
+      days.push({ ymd, morning: slot.morning, evening: slot.evening, compline: slot.compline, surfaces: slot.surfaces });
     }
     res.json({ days });
   } catch (err) {

@@ -123,6 +123,24 @@ function extraModesFor(side: "morning" | "evening"): string[] {
   return [mode];
 }
 
+/**
+ * The PrayerSurface a client-side office MODE writes server-side.
+ *
+ * Mirrors api-server's officeManualLog surfaceForMode — the server posts this
+ * exact mapping (see lib/officeManualLog.ts's own note on why it has to), and
+ * this is what lets anchorSurfaceHit/extraSurfaceHit ask the SAME "which
+ * practice wrote this" question of the server's data that anchorModesFor /
+ * extraModesFor already ask of the local flags.
+ */
+function officeModeToSurface(mode: string): string | null {
+  if (mode === "morning") return "morning-prayer";
+  if (mode === "evening") return "evening-prayer";
+  if (mode === "compline") return "compline";
+  if (mode === "morning-devotion") return "morning-devotion";
+  if (mode === "early-evening-devotion") return "early-evening-devotion";
+  return null;
+}
+
 function officeLocalDone(sides: string[]): boolean {
   const day = localDay();
   try {
@@ -544,7 +562,7 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
-  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean; compline: boolean }> }>({
+  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean; compline: boolean; surfaces?: string[] }> }>({
     // Date-scoped so a day rollover always re-fetches instead of serving the
     // pre-midnight cached week (same reasoning as contemplation-stats' key).
     // Without `day` here, an app backgrounded overnight came back holding
@@ -842,6 +860,41 @@ export function useRhythmState(): RhythmState {
   // the offices marked "Prayed" into the new day. Same check dashboard.tsx makes.
   const lastOfficeDay = officeHistory?.days?.[officeHistory.days.length - 1];
   const todayOffice = lastOfficeDay?.ymd === day ? lastOfficeDay : undefined;
+  /**
+   * Anchor-vs-extra, read from the SERVER — the counterpart to
+   * anchorModesFor/extraModesFor's LOCAL read.
+   *
+   * Reported: a secondary practice logged correctly on the phone (the local
+   * flag), but the OTHER device (web) showed the ANCHOR as done instead.
+   * todayOffice.morning/.evening are a blunt "was ANY known surface logged for
+   * this side" boolean (fine for the weekly grid, which only wants a per-day
+   * dot) — a side's second practice satisfies that boolean exactly as well as
+   * its anchor does, so it can't tell them apart. todayOffice.surfaces carries
+   * the RAW surfaces instead, so these ask the SAME "which specific practice"
+   * question of the server's data that officeLocal already asks of this
+   * device's own flags.
+   *
+   * `surfaces` is undefined for a response cached from before this field
+   * existed — falls back to the old blunt boolean for the ANCHOR check only
+   * (never worse than today), and to `false` for the extra (which had no
+   * server signal at all before this).
+   */
+  const anchorSurfaceHit = (side: "morning" | "evening"): boolean => {
+    const surfaces = todayOffice?.surfaces;
+    if (!surfaces) return side === "morning" ? !!todayOffice?.morning : !!todayOffice?.evening;
+    return anchorModesFor(side).some((m) => {
+      const surf = officeModeToSurface(m);
+      return surf != null && surfaces.includes(surf);
+    });
+  };
+  const extraSurfaceHit = (side: "morning" | "evening"): boolean => {
+    const surfaces = todayOffice?.surfaces;
+    if (!surfaces) return false;
+    return extraModesFor(side).some((m) => {
+      const surf = officeModeToSurface(m);
+      return surf != null && surfaces.includes(surf);
+    });
+  };
   // A side is kept when the practice that side is SET TO has been done. Every
   // level that can be a side's prayer needs a clause here — a missing one means
   // that side can never be marked kept and its dot stays unlit forever, which
@@ -894,7 +947,7 @@ export function useRhythmState(): RhythmState {
     return practiceLocal[practice.key] || serverDone(practice.key);
   };
 
-  const morningDone = officeLocal.morning || (!officeUndone.morning && (!!todayOffice?.morning
+  const morningDone = officeLocal.morning || (!officeUndone.morning && (anchorSurfaceHit("morning")
     || (ml === "fdd" && prayerRead.fddMorning) || (ml === "readings" && prayerRead.readingsMorning)
     || (ml === "psalms" && prayerRead.psalmsMorning)
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
@@ -902,7 +955,7 @@ export function useRhythmState(): RhythmState {
     || (ml === "examen" && examenKept)
     || (ml === "reflect-sit" && morningSatKept)
     || (prayerListSlot === "morning" && prayerListSlotDone)));
-  const eveningDone = officeLocal.evening || (!officeUndone.evening && (!!todayOffice?.evening
+  const eveningDone = officeLocal.evening || (!officeUndone.evening && (anchorSurfaceHit("evening")
     || (el === "fdd" && prayerRead.fddEvening) || (el === "readings" && prayerRead.readingsEvening)
     || (el === "psalms" && prayerRead.psalmsEvening)
     || (el === "guided-prayer" && prayerRead.guidedPrayerEvening)
@@ -1177,8 +1230,8 @@ export function useRhythmState(): RhythmState {
    */
   const morningExtraLevel = extraModesFor("morning").length > 0 ? getSideExtra("morning") : null;
   const eveningExtraLevel = extraModesFor("evening").length > 0 ? getSideExtra("evening") : null;
-  const morningExtraDone = officeLocal.morningExtra;
-  const eveningExtraDone = officeLocal.eveningExtra;
+  const morningExtraDone = officeLocal.morningExtra || extraSurfaceHit("morning");
+  const eveningExtraDone = officeLocal.eveningExtra || extraSurfaceHit("evening");
 
   return {
     ready,

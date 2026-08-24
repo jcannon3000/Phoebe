@@ -88,6 +88,31 @@ export function isOfficeLoggedToday(mode: string): boolean {
  * card untouched. Reported as: "I had Devotion as a second morning practice …
  * it also wasn't logging." It was logging; it was logging the other practice.
  */
+/**
+ * The server-side surface a MODE actually completes as.
+ *
+ * Reported: "when I logged my secondary practice, it saved properly on my
+ * phone, but on web it shows I did my main practice." The LOCAL flag was
+ * already keyed by mode (see markOfficeBookComplete's own note on that fix),
+ * but the SERVER write below still computed `surface` from the SIDE alone —
+ * so a devotion prayed as a second practice correctly flipped the phone's
+ * devotion card, while the /api/prayer-sessions row it posted said
+ * "morning-prayer" regardless. Web reads that server row, not the phone's
+ * localStorage flag, so it showed the ANCHOR as prayed — the exact
+ * two-devices-disagree bug reported.
+ *
+ * Only compline/devotion have their OWN PrayerSurface value; anything else
+ * (the full office itself, or a mode with no dedicated surface — e.g.
+ * creation-morning/evening) falls back to the side's own office surface,
+ * same as before this fix for every case that isn't a second practice.
+ */
+function surfaceForMode(side: "morning" | "evening", mode: string): PrayerSurface {
+  if (mode === "compline") return "compline";
+  if (mode === "morning-devotion") return "morning-devotion";
+  if (mode === "early-evening-devotion") return "early-evening-devotion";
+  return side === "morning" ? "morning-prayer" : "evening-prayer";
+}
+
 export function markOfficeBookComplete(
   side: "morning" | "evening",
   mode: string = side,
@@ -103,7 +128,7 @@ export function markOfficeBookComplete(
    */
   cardKey: string = side,
 ): void {
-  const surface: PrayerSurface = side === "morning" ? "morning-prayer" : "evening-prayer";
+  const surface: PrayerSurface = surfaceForMode(side, mode);
   const wasAlreadyLogged = isOfficeLoggedToday(mode);
   try {
     localStorage.setItem(flagKey(mode), "1");
