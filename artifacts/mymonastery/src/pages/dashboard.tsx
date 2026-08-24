@@ -46,6 +46,7 @@ import {
   PSALMS_READ_EVENT, hasPrayedPsalmsToday,
   GUIDED_PRAYER_READ_EVENT, hasPrayedGuidedPrayerToday,
   CUSTOM_PRAYER_READ_EVENT, hasPrayedCustomToday, markCustomPrayed, unmarkCustomPrayed,
+  markReflectionPrayed,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -2793,6 +2794,23 @@ function CreationHomeCard({ side, hero = false }: { side: "morning" | "evening";
 // without a full re-render.
 export function CacHomeCard() {
   const [hasRead, setHasRead] = useState(() => hasReadCacToday());
+  /**
+   * Did the reader arrive from a Morning/Evening card whose PRAYER is the CAC
+   * meditation (/begin-prayer?side=… → /dashboard?cac=side)? Then this card
+   * stands in for that side's office and taking it keeps that ONE side.
+   *
+   * Mirrors the FDD card's own praySide/auto-open pair exactly. Before this,
+   * only Forward Day by Day had it — so a CAC anchor landed on the dashboard
+   * and simply stopped there, with nothing opened and nothing credited.
+   */
+  const [praySide] = useState<"morning" | "evening" | undefined>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("cac");
+      if (v !== "morning" && v !== "evening") return undefined;
+      return getSideLevel(v) === "fdd" ? v : undefined;
+    } catch { return undefined; }
+  });
+  const cacAutoOpenedRef = useRef(false);
   useEffect(() => {
     const refresh = () => setHasRead(hasReadCacToday());
     window.addEventListener(CAC_READ_EVENT, refresh);
@@ -2823,8 +2841,24 @@ export function CacHomeCard() {
     // Phoebe's in-app browser. Opening it plainly keeps the page as published
     // AND routes it through BibleBrowser, which still marks it read on close
     // rather than on tap.
-    openExternalThenMarkRead(CAC_TODAY_URL, recordCacOpened);
+    openExternalThenMarkRead(CAC_TODAY_URL, () => {
+      recordCacOpened();
+      // Taking it AS this side's prayer also credits that side (its own
+      // per-side tracker + prayer-session row) — see markReflectionPrayed.
+      if (praySide) markReflectionPrayed("cac", praySide);
+    });
   };
+  useEffect(() => {
+    if (!praySide || cacAutoOpenedRef.current) return;
+    cacAutoOpenedRef.current = true;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("cac");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+    } catch { /* ignore */ }
+    onClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [praySide]);
   return (
     <div
       role="button"
@@ -3520,6 +3554,16 @@ function PsalmsHomeCard({ side, hero = false }: { side: "morning" | "evening"; h
 // and the sea-teal FDD card when all three stack on the home.
 function SsjeHomeCard() {
   const [hasRead, setHasRead] = useState(() => hasReadSsjeToday());
+  // ?ssje=<side> — arrived from a side whose PRAYER is SSJE. Same pair as the
+  // CAC and FDD cards; see the CAC card's own note.
+  const [praySide] = useState<"morning" | "evening" | undefined>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("ssje");
+      if (v !== "morning" && v !== "evening") return undefined;
+      return getSideLevel(v) === "fdd" ? v : undefined;
+    } catch { return undefined; }
+  });
+  const ssjeAutoOpenedRef = useRef(false);
   useEffect(() => {
     const refresh = () => setHasRead(hasReadSsjeToday());
     window.addEventListener(SSJE_READ_EVENT, refresh);
@@ -3531,8 +3575,22 @@ function SsjeHomeCard() {
   }, []);
   const onClick = () => {
     // Mark read only once the reader is closed (see CAC card above).
-    openExternalThenMarkRead(SSJE_TODAY_URL, recordSsjeOpened, { reader: true });
+    openExternalThenMarkRead(SSJE_TODAY_URL, () => {
+      recordSsjeOpened();
+      if (praySide) markReflectionPrayed("ssje", praySide);
+    }, { reader: true });
   };
+  useEffect(() => {
+    if (!praySide || ssjeAutoOpenedRef.current) return;
+    ssjeAutoOpenedRef.current = true;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("ssje");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+    } catch { /* ignore */ }
+    onClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [praySide]);
   return (
     <div
       role="button"

@@ -570,6 +570,20 @@ export function sideOfficeTitle(
   const lvl = getSideLevel(side.toLowerCase() as OfficeSide);
   const explicit = lvl ? explicitLevelTitle(side, lvl, t) : null;
   if (explicit) return explicit;
+  /**
+   * A REFLECTION as this side's prayer. The level is the sentinel "fdd"
+   * whichever source it actually is, so titling it from the level alone
+   * called a CAC or SSJE or Dean's-Commentary anchor "Morning Prayer" —
+   * the generic fall-through at the bottom of this function. Name the
+   * source the reader actually chose.
+   */
+  if (lvl === "fdd") {
+    const src = getSideReflectionExplicit(side.toLowerCase() as OfficeSide) ?? "fdd";
+    if (src === "cac") return "CAC Daily Meditation";
+    if (src === "ssje") return "Brother, Give Us a Word";
+    if (src === "vts") return "VTS Dean's Commentary";
+    return "Forward Day by Day";
+  }
   if (lvl === "custom") {
     const name = getSideCustomName(side.toLowerCase() as OfficeSide).trim();
     if (!name) return `${side} Practice`;

@@ -23,7 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
-import { markVtsRead } from "@/lib/cacReadState";
+import { markVtsRead, markReflectionPrayed } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 import { SPLASH_PHOTO, LEAF_PHOTOS } from "@/lib/earthPhotos";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
@@ -85,6 +85,20 @@ export default function VtsReadingPage() {
     if (markedRead) return;
     setMarkedRead(true);
     markVtsRead();
+    /**
+     * ?side=<morning|evening> — arrived from a side whose PRAYER is the
+     * Dean's Commentary (begin-prayer routes a reflection anchor here when
+     * VTS is the chosen source). Credit that side too: its own per-side
+     * tracker plus a prayer-session row, so the anchor completes and syncs
+     * across devices rather than only stamping the reflection card.
+     *
+     * Same bar as the reflection mark itself — stepping past the title slide
+     * — so it can't credit an office for merely landing on the page.
+     */
+    try {
+      const v = new URLSearchParams(window.location.search).get("side");
+      if (v === "morning" || v === "evening") markReflectionPrayed("vts", v);
+    } catch { /* ignore */ }
   };
 
   const paragraphs = data?.paragraphs ?? [];

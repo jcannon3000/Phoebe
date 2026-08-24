@@ -267,6 +267,90 @@ const fddTrackerFor = (side: "morning" | "evening") => (side === "evening" ? fdd
 export function hasPrayedFddToday(side: "morning" | "evening" = "morning"): boolean { return fddTrackerFor(side).hasReadToday(); }
 export function markFddPrayed(side: "morning" | "evening" = "morning"): void { fddTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
 
+/**
+ * Any of the four reflection sources can serve as a side's actual ANCHOR
+ * (the "Reflection" row in the customizer — see WayOfLoveRuleFlow.tsx's own
+ * note on this) — not just Forward Day by Day, which is all this originally
+ * supported. Owner: "audit especially how any newsletter can be an anchor
+ * practice, make sure this works properly."
+ *
+ * Mirrors fddTrackerMorning/Evening exactly, one factory call per source, so
+ * CAC/SSJE/VTS get the SAME separation FDD already had: reading one as a
+ * plain reflection (the global tracker above) stamps only the reflection;
+ * taking it AS this side's prayer stamps this side too, and posts its own
+ * prayer-session row so office-history / streaks / cross-device sync all
+ * see it — the exact thing that was missing (the "Reflection" row wrote
+ * level "fdd" unconditionally regardless of which source was actually
+ * chosen, so CAC/SSJE/VTS never credited anything as an anchor at all).
+ *
+ * The LEVEL stays the single string "fdd" for every source (a deliberate,
+ * pre-existing sentinel meaning "a reflection is this side's anchor" — see
+ * getSideLevel/OfficeLevel); WHICH source is a separate question these
+ * trackers don't need to answer themselves, only the callers that already
+ * know which source they're crediting.
+ */
+function syncCacSession(side: "morning" | "evening"): void {
+  if (!sideIsSetTo(side, "fdd")) return;
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60, slidesCompleted: 99, completed: true,
+    startedAt: now.toISOString(), endedAt: now.toISOString(),
+  }).catch(() => { /* best effort — the local flag already credited it today */ });
+}
+export const CAC_PRAYED_EVENT = "phoebe:cac-prayed";
+const cacTrackerMorning = makeDailyReadTracker("phoebe:cac:morning:last-read-day", CAC_PRAYED_EVENT, () => syncCacSession("morning"), "morning");
+const cacTrackerEvening = makeDailyReadTracker("phoebe:cac:evening:last-read-day", CAC_PRAYED_EVENT, () => syncCacSession("evening"), "evening");
+const cacTrackerFor = (side: "morning" | "evening") => (side === "evening" ? cacTrackerEvening : cacTrackerMorning);
+export function hasPrayedCacToday(side: "morning" | "evening" = "morning"): boolean { return cacTrackerFor(side).hasReadToday(); }
+export function markCacPrayed(side: "morning" | "evening" = "morning"): void { cacTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+
+function syncSsjeSession(side: "morning" | "evening"): void {
+  if (!sideIsSetTo(side, "fdd")) return;
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60, slidesCompleted: 99, completed: true,
+    startedAt: now.toISOString(), endedAt: now.toISOString(),
+  }).catch(() => { /* best effort */ });
+}
+export const SSJE_PRAYED_EVENT = "phoebe:ssje-prayed";
+const ssjeTrackerMorning = makeDailyReadTracker("phoebe:ssje:morning:last-read-day", SSJE_PRAYED_EVENT, () => syncSsjeSession("morning"), "morning");
+const ssjeTrackerEvening = makeDailyReadTracker("phoebe:ssje:evening:last-read-day", SSJE_PRAYED_EVENT, () => syncSsjeSession("evening"), "evening");
+const ssjeTrackerFor = (side: "morning" | "evening") => (side === "evening" ? ssjeTrackerEvening : ssjeTrackerMorning);
+export function hasPrayedSsjeToday(side: "morning" | "evening" = "morning"): boolean { return ssjeTrackerFor(side).hasReadToday(); }
+export function markSsjePrayed(side: "morning" | "evening" = "morning"): void { ssjeTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+
+function syncVtsSession(side: "morning" | "evening"): void {
+  if (!sideIsSetTo(side, "fdd")) return;
+  const now = new Date();
+  void apiRequest("POST", "/api/prayer-sessions", {
+    surface: side === "morning" ? "morning-devotion" : "early-evening-devotion",
+    durationSeconds: 60, slidesCompleted: 99, completed: true,
+    startedAt: now.toISOString(), endedAt: now.toISOString(),
+  }).catch(() => { /* best effort */ });
+}
+export const VTS_PRAYED_EVENT = "phoebe:vts-prayed";
+const vtsTrackerMorning = makeDailyReadTracker("phoebe:vts:morning:last-read-day", VTS_PRAYED_EVENT, () => syncVtsSession("morning"), "morning");
+const vtsTrackerEvening = makeDailyReadTracker("phoebe:vts:evening:last-read-day", VTS_PRAYED_EVENT, () => syncVtsSession("evening"), "evening");
+const vtsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? vtsTrackerEvening : vtsTrackerMorning);
+export function hasPrayedVtsToday(side: "morning" | "evening" = "morning"): boolean { return vtsTrackerFor(side).hasReadToday(); }
+export function markVtsPrayed(side: "morning" | "evening" = "morning"): void { vtsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
+
+/** Which per-side tracker owns a given reflection source's anchor credit. */
+export function hasPrayedReflectionToday(source: "cac" | "fdd" | "ssje" | "vts", side: "morning" | "evening" = "morning"): boolean {
+  if (source === "cac") return hasPrayedCacToday(side);
+  if (source === "ssje") return hasPrayedSsjeToday(side);
+  if (source === "vts") return hasPrayedVtsToday(side);
+  return hasPrayedFddToday(side);
+}
+export function markReflectionPrayed(source: "cac" | "fdd" | "ssje" | "vts", side: "morning" | "evening" = "morning"): void {
+  if (source === "cac") { markCacPrayed(side); return; }
+  if (source === "ssje") { markSsjePrayed(side); return; }
+  if (source === "vts") { markVtsPrayed(side); return; }
+  markFddPrayed(side);
+}
+
 // Daily Scripture Readings (Forward Movement's daily-readings page) USED AS
 // a side's prayer — same shape as FDD above, anchor-only (no separate
 // reflection-newsletter concept — this practice is never offered as one of

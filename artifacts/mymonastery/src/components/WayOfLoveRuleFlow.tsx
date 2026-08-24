@@ -2716,6 +2716,38 @@ export default function WayOfLoveRuleFlow({
         {/* Praying the Psalms — choose the cycle right here (combined with the
             reminder), shown on EACH Psalms side. The cycle is shared: set it
             once and it applies wherever you pray the Psalms (morning + evening). */}
+        {/* WHICH reflection, when a reflection is this side's anchor.
+            Owner: "on the detail page they could pick any of the three."
+            The anchor LEVEL is the single sentinel "fdd" whichever source is
+            picked (see the Reflection row on the way-step); this is where the
+            source itself is chosen, stored per side via setSideReflection on
+            commit and read back by begin-prayer + useRhythmState. Without it
+            the row silently always meant Forward Day by Day. */}
+        {prayBySide[side] === "fdd" && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.reflection_which", { defaultValue: "Which reflection?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+              {NEWSLETTERS
+                .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes("vts"))
+                .map((n) => choiceRow(
+                  (newsletters[0] ?? "fdd") === n.id,
+                  n.label,
+                  n.sub,
+                  () => {
+                    touchedRef.current = true;
+                    // The anchor's source is newsletters[0] at commit time
+                    // (setSideReflection(side, primary)) — so picking here
+                    // moves that source to the front rather than replacing
+                    // the list, which would silently drop the reader's other
+                    // followed reflections.
+                    setNewsletters((prev) => [n.id, ...prev.filter((x) => x !== n.id)]);
+                  },
+                ))}
+            </div>
+          </>
+        )}
         {prayBySide[side] === "psalms" && (
           <>
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>

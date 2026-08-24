@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getSideLevel, getSideEntry, getSideContemplation, OFFICE_LEVELS_SET, type OfficeLevel, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideEntry, getSideContemplation, getSideReflectionExplicit, OFFICE_LEVELS_SET, type OfficeLevel, type OfficeSide } from "@/lib/officePrefs";
 import { CREATION_PRAYER_ENABLED } from "@/lib/creationFlag";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { getOfficeBackdrop, officeVeilBg } from "@/lib/officeDisplay";
@@ -132,17 +132,30 @@ export default function BeginPrayerPage() {
       setLocation(`/guided-prayer?side=${side}`, { replace: true });
       return;
     }
-    // Forward Day by Day IS this side's prayer → its home card (the office slot)
-    // opens the reading / plays the audio per the user's choice, so land on the
-    // home rather than the generic prayer chooser.
+    /**
+     * A REFLECTION is this side's prayer.
+     *
+     * The level is the single string "fdd" whichever of the four sources it
+     * actually is — a pre-existing sentinel meaning "a reflection is this
+     * side's anchor" (see OfficeLevel). WHICH source is a separate stored
+     * answer: getSideReflectionExplicit(side).
+     *
+     * That distinction had never been honoured here: this always routed to
+     * the Forward Day by Day card, so someone whose morning anchor was CAC or
+     * SSJE or the Dean's Commentary was handed Forward Movement's reading
+     * instead of the one they chose. VTS has its own in-app reader; the other
+     * three open externally through their home card, which is what knows
+     * whether the reader takes it by reading or by audio.
+     *
+     * The ?<source>=<side> param carries the SIDE through so the card stamps
+     * that side's own day-flag when actually opened — taking it as morning
+     * prayer keeps the morning and doesn't also tick the evening (or the
+     * reflection card, which stays its own separate anchor).
+     */
     if (defaultPrayerLevel === "fdd") {
-      // Carry the SIDE through: the home card is the only surface that knows
-      // whether the reader took FDD by reading or by audio, but it can't know
-      // which side sent them. With ?fdd=<side> the card stamps that side's
-      // day-flag when it's actually opened — so taking FDD as morning prayer
-      // keeps the morning, and doesn't also tick the evening (or the FDD
-      // reflection card, which stays its own separate anchor).
-      setLocation(`/dashboard?fdd=${side}`, { replace: true });
+      const source = getSideReflectionExplicit(side) ?? "fdd";
+      if (source === "vts") { setLocation(`/vts-reading?side=${side}`, { replace: true }); return; }
+      setLocation(`/dashboard?${source}=${side}`, { replace: true });
       return;
     }
     /**

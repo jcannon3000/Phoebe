@@ -7,6 +7,7 @@ import {
   hasPrayedPsalmsToday, PSALMS_READ_EVENT,
   hasPrayedGuidedPrayerToday, GUIDED_PRAYER_READ_EVENT,
   hasPrayedFddToday, FDD_PRAYED_EVENT,
+  hasPrayedReflectionToday, CAC_PRAYED_EVENT, SSJE_PRAYED_EVENT, VTS_PRAYED_EVENT,
   hasPrayedReadingsToday, READINGS_PRAYED_EVENT,
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
@@ -15,7 +16,7 @@ import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -139,6 +140,14 @@ function officeModeToSurface(mode: string): string | null {
   if (mode === "morning-devotion") return "morning-devotion";
   if (mode === "early-evening-devotion") return "early-evening-devotion";
   return null;
+}
+
+/** Which reflection source is THIS side's anchor, when its level says a
+ *  reflection is. Defaults to fdd — the historical behaviour, and the level
+ *  sentinel's own name — when no explicit per-side pick has synced yet. */
+function anchorReflectionSource(side: "morning" | "evening"): "cac" | "fdd" | "ssje" | "vts" {
+  const explicit = getSideReflectionExplicit(side);
+  return explicit === "cac" || explicit === "ssje" || explicit === "vts" ? explicit : "fdd";
 }
 
 function officeLocalDone(sides: string[]): boolean {
@@ -326,7 +335,13 @@ export function useRhythmState(): RhythmState {
   // the global one lit BOTH sides plus the reflection card off a single read.
   const [prayerRead, setPrayerRead] = useState(() => ({
     fdd: hasReadFddToday(),
-    fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
+    // A side whose anchor is a REFLECTION stores level "fdd" whichever source
+    // it actually is (the level is a sentinel meaning "a reflection is this
+    // side's prayer"; getSideReflectionExplicit names the source). Ask the
+    // tracker for THAT source, or CAC/SSJE/VTS-as-anchor could never light
+    // their side — only Forward Day by Day ever did.
+    fddMorning: hasPrayedReflectionToday(anchorReflectionSource("morning"), "morning"),
+    fddEvening: hasPrayedReflectionToday(anchorReflectionSource("evening"), "evening"),
     readingsMorning: hasPrayedReadingsToday("morning"), readingsEvening: hasPrayedReadingsToday("evening"),
     psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
     guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
@@ -337,7 +352,13 @@ export function useRhythmState(): RhythmState {
       setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
       setPrayerRead({
         fdd: hasReadFddToday(),
-        fddMorning: hasPrayedFddToday("morning"), fddEvening: hasPrayedFddToday("evening"),
+        // A side whose anchor is a REFLECTION stores level "fdd" whichever source
+    // it actually is (the level is a sentinel meaning "a reflection is this
+    // side's prayer"; getSideReflectionExplicit names the source). Ask the
+    // tracker for THAT source, or CAC/SSJE/VTS-as-anchor could never light
+    // their side — only Forward Day by Day ever did.
+    fddMorning: hasPrayedReflectionToday(anchorReflectionSource("morning"), "morning"),
+    fddEvening: hasPrayedReflectionToday(anchorReflectionSource("evening"), "evening"),
         readingsMorning: hasPrayedReadingsToday("morning"), readingsEvening: hasPrayedReadingsToday("evening"),
         psalmsMorning: hasPrayedPsalmsToday("morning"), psalmsEvening: hasPrayedPsalmsToday("evening"),
         guidedPrayerMorning: hasPrayedGuidedPrayerToday("morning"), guidedPrayerEvening: hasPrayedGuidedPrayerToday("evening"),
@@ -359,6 +380,12 @@ export function useRhythmState(): RhythmState {
     window.addEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
     window.addEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
     window.addEventListener(FDD_PRAYED_EVENT, recheck);
+    // The other three reflection sources fire their OWN prayed-events when
+    // used as an anchor — without these listeners a CAC/SSJE/VTS anchor
+    // wouldn't refresh its side until some unrelated event happened to.
+    window.addEventListener(CAC_PRAYED_EVENT, recheck);
+    window.addEventListener(SSJE_PRAYED_EVENT, recheck);
+    window.addEventListener(VTS_PRAYED_EVENT, recheck);
     window.addEventListener(READINGS_PRAYED_EVENT, recheck);
     window.addEventListener("visibilitychange", recheck);
     window.addEventListener("focus", recheck);
@@ -388,6 +415,9 @@ export function useRhythmState(): RhythmState {
       window.removeEventListener(GUIDED_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(CUSTOM_PRAYER_READ_EVENT, recheck);
       window.removeEventListener(FDD_PRAYED_EVENT, recheck);
+      window.removeEventListener(CAC_PRAYED_EVENT, recheck);
+      window.removeEventListener(SSJE_PRAYED_EVENT, recheck);
+      window.removeEventListener(VTS_PRAYED_EVENT, recheck);
       window.removeEventListener(READINGS_PRAYED_EVENT, recheck);
       window.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);

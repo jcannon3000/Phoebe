@@ -1077,9 +1077,13 @@ export function sendParishOfficeReminderPush(
     /** The side's own name for a "custom" level — see the reminder about
      *  PRACTICE_NAME below. Ignored for every other level. */
     customName?: string | null;
+    /** Which reflection source, when level is the "fdd" sentinel (which means
+     *  "a reflection is this side's prayer" for ANY of the four sources).
+     *  Ignored for every other level. */
+    reflectionSource?: string | null;
   }
 ) {
-  const { side, parishTitle, level, readingsLine, customName } = opts;
+  const { side, parishTitle, level, readingsLine, customName, reflectionSource } = opts;
   const cap = side === "morning" ? "Morning" : "Evening";
   // Owner: "The notification should be 'start your day in prayer'... and
   // instead of 'a few quiet minutes to start the day', that first line should
@@ -1112,9 +1116,19 @@ export function sendParishOfficeReminderPush(
   // practice ("Rosary", "Morning walk"). Falls back to the generic copy
   // (never "Custom Practice") when the name didn't sync for some reason —
   // same "don't guess" rule the missing-level case already follows.
+  // A reflection anchor names the SOURCE the reader chose, not "Forward Day
+  // by Day" for all four — the level is a shared sentinel, not the title.
+  const REFLECTION_NAME: Record<string, string> = {
+    fdd: "Forward Day by Day",
+    cac: "CAC Daily Meditation",
+    ssje: "Brother, Give Us a Word",
+    vts: "VTS Dean's Commentary",
+  };
   const practiceName = level === "custom"
     ? (customName ?? undefined)
-    : level ? PRACTICE_NAME[level] : undefined;
+    : level === "fdd"
+      ? (REFLECTION_NAME[reflectionSource ?? "fdd"] ?? PRACTICE_NAME.fdd)
+      : level ? PRACTICE_NAME[level] : undefined;
   const firstLine = practiceName
     // A parish still gets its communal nod, but after the practice rather than
     // instead of it — the practice is what the owner asked to lead.

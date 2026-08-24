@@ -597,6 +597,21 @@ function sideLevelFromRuleConfig(ruleConfig: unknown, side: "morning" | "evening
   } catch { return null; }
 }
 
+/**
+ * Which reflection SOURCE is a side's anchor, when its level is the "fdd"
+ * sentinel (which means "a reflection is this side's prayer" for any of the
+ * four sources, not Forward Day by Day specifically). Synced alongside the
+ * level itself — phoebe:office:reflection:<side>, in ROUTINE_KEYS.
+ */
+function sideReflectionFromRuleConfig(ruleConfig: unknown, side: "morning" | "evening"): string | null {
+  try {
+    const values = (ruleConfig as { values?: Record<string, string> } | null)?.values;
+    const raw = values?.[`phoebe:office:reflection:${side}`];
+    const v = typeof raw === "string" ? raw.trim() : "";
+    return v.length > 0 ? v : null;
+  } catch { return null; }
+}
+
 /** The name a side's "Create your own" practice was given — synced the same
  *  way the level itself is (phoebe:office:custom-name:<side>, in
  *  ROUTINE_KEYS). Only meaningful when the level IS "custom". */
@@ -784,7 +799,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
                 parishTitle: r.parishTitle,
                 level: mLevel,
                 readingsLine: officeReadingsLine(today, "morning", mLevel),
-                customName: sideCustomNameFromRuleConfig(r.ruleConfig, "morning"),
+                customName: sideCustomNameFromRuleConfig(r.ruleConfig, "morning"), reflectionSource: sideReflectionFromRuleConfig(r.ruleConfig, "morning"),
               });
               await db
                 .update(usersTable)
@@ -841,7 +856,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
                 parishTitle: r.parishTitle,
                 level: eLevel,
                 readingsLine: officeReadingsLine(today, "evening", eLevel),
-                customName: sideCustomNameFromRuleConfig(r.ruleConfig, "evening"),
+                customName: sideCustomNameFromRuleConfig(r.ruleConfig, "evening"), reflectionSource: sideReflectionFromRuleConfig(r.ruleConfig, "evening"),
               });
               logger.info({ userId: r.userId, pref: r.eveningPref }, "[office-reminder] evening push sent");
               await db
@@ -949,7 +964,7 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
         }
         try {
           const fLevel = sideLevelFromRuleConfig(r.ruleConfig, "evening");
-          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle, level: fLevel, readingsLine: officeReadingsLine(today, "evening", fLevel), customName: sideCustomNameFromRuleConfig(r.ruleConfig, "evening") });
+          await sendParishOfficeReminderPush(r.userId, { side: "evening", parishTitle: r.parishTitle, level: fLevel, readingsLine: officeReadingsLine(today, "evening", fLevel), customName: sideCustomNameFromRuleConfig(r.ruleConfig, "evening"), reflectionSource: sideReflectionFromRuleConfig(r.ruleConfig, "evening") });
           logger.info({ userId: r.userId }, "[office-reminder] evening FOLLOW-UP push sent");
           await db.update(usersTable).set({ parishOfficeEveningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
         } catch (err) {
@@ -1036,7 +1051,7 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
         }
         try {
           const fLevel = sideLevelFromRuleConfig(r.ruleConfig, "morning");
-          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle, level: fLevel, readingsLine: officeReadingsLine(today, "morning", fLevel), customName: sideCustomNameFromRuleConfig(r.ruleConfig, "morning") });
+          await sendParishOfficeReminderPush(r.userId, { side: "morning", parishTitle: r.parishTitle, level: fLevel, readingsLine: officeReadingsLine(today, "morning", fLevel), customName: sideCustomNameFromRuleConfig(r.ruleConfig, "morning"), reflectionSource: sideReflectionFromRuleConfig(r.ruleConfig, "morning") });
           logger.info({ userId: r.userId }, "[office-reminder] morning FOLLOW-UP push sent");
           await db.update(usersTable).set({ parishOfficeMorningFollowupSentDate: today }).where(eq(usersTable.id, r.userId));
         } catch (err) {
