@@ -3563,25 +3563,30 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             })()
           ) : (
             <>
-              <p
-                style={{
-                  color: FAINT_GREEN,
-                  fontSize: 10,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  margin: 0,
-                  fontWeight: 600,
-                }}
-              >
-                {/* Lesson slides take their own branches above (the
-                    inline-Compline one at 1239 and the centered title
-                    at 1306), so by the time we reach this fallback
-                    eyebrow the slide is never a lesson — TypeScript's
-                    type narrowing already proved it dead. We render
-                    the slide's literal eyebrow / fallback label
-                    instead. */}
-                {currentSlide.eyebrow || sectionLabel}
-              </p>
+              {/* Owner: "left align the suffrages toggle, and we don't need
+                  the eyebrow above." The A/B pill already names what this
+                  slide is — a second label above it just repeated that. */}
+              {currentSlide.type !== "suffrages" && (
+                <p
+                  style={{
+                    color: FAINT_GREEN,
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                    fontWeight: 600,
+                  }}
+                >
+                  {/* Lesson slides take their own branches above (the
+                      inline-Compline one at 1239 and the centered title
+                      at 1306), so by the time we reach this fallback
+                      eyebrow the slide is never a lesson — TypeScript's
+                      type narrowing already proved it dead. We render
+                      the slide's literal eyebrow / fallback label
+                      instead. */}
+                  {currentSlide.eyebrow || sectionLabel}
+                </p>
+              )}
               {/* Communal mode: the BCP's "said by" rubric under the
                   eyebrow — Officiant / Officiant and People / all. */}
               {communal && SAID_BY[currentSlide.type] && (
@@ -3799,7 +3804,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               const active = suffragesChoice ?? suffMeta?.suffragesSelected ?? "A";
               const lines = hasToggle ? suffOptions![active].lines : currentSlide.callAndResponseLines;
               return (
-                <div style={{ display: "flex", flexDirection: "column", gap: communal ? 16 : 10, maxWidth: 560, width: "100%", alignItems: hasToggle ? "center" : "stretch" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: communal ? 16 : 10, maxWidth: 560, width: "100%", alignItems: "stretch" }}>
                   {hasToggle && (
                     // Same two-pill "tablist" shape as the podcast player's
                     // Forward Movement / Church of England toggle (owner's own

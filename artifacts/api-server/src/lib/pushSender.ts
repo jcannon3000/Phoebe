@@ -1074,9 +1074,12 @@ export function sendParishOfficeReminderPush(
     // body when present; omitted entirely (undefined/null) leaves the body
     // exactly as before — best-effort, never blocks the push itself.
     readingsLine?: string | null;
+    /** The side's own name for a "custom" level — see the reminder about
+     *  PRACTICE_NAME below. Ignored for every other level. */
+    customName?: string | null;
   }
 ) {
-  const { side, parishTitle, level, readingsLine } = opts;
+  const { side, parishTitle, level, readingsLine, customName } = opts;
   const cap = side === "morning" ? "Morning" : "Evening";
   // Owner: "The notification should be 'start your day in prayer'... and
   // instead of 'a few quiet minutes to start the day', that first line should
@@ -1094,12 +1097,24 @@ export function sendParishOfficeReminderPush(
     fdd: "Forward Day by Day",
     readings: "Daily Scripture Readings",
     examen: "The Examen",
+    // These three were missing — a side set to any of them fell through to
+    // the generic "a few quiet minutes" copy even though the level WAS
+    // known, same as the covered levels above.
+    "guided-prayer": "Simple Guided Prayer",
+    creation: "Creation Prayer",
+    compline: "Compline",
   };
   const title = side === "morning" ? "Start your day in prayer" : "Close your day in prayer";
   // The practice, when the synced routine tells us what it is. With no level
   // (routine never synced) we keep the old neutral line rather than name a
   // practice we'd be guessing at — the 2026-07-21 audit's rule still holds.
-  const practiceName = level ? PRACTICE_NAME[level] : undefined;
+  // "custom" has no fixed name — it's whatever the reader called their own
+  // practice ("Rosary", "Morning walk"). Falls back to the generic copy
+  // (never "Custom Practice") when the name didn't sync for some reason —
+  // same "don't guess" rule the missing-level case already follows.
+  const practiceName = level === "custom"
+    ? (customName ?? undefined)
+    : level ? PRACTICE_NAME[level] : undefined;
   const firstLine = practiceName
     // A parish still gets its communal nod, but after the practice rather than
     // instead of it — the practice is what the owner asked to lead.
