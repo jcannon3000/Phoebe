@@ -172,7 +172,14 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // sub-picker drops Forward when Forward IS the anchor).
   { title: () => "Reflection Newsletter", emoji: "📖", sub: "Forward, SSJE, CAC, or VTS.", excludes: "__none__", maps: { kind: "newsletter" } },
   { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening", maps: { kind: "practice", key: "compline" } },
-  { title: () => "Contemplative Prayer", emoji: "🕯️", sub: "A silent sit.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
+  // Owner: "the contemplative one should have a description that reflects
+  // that it could be a practice like Contemplative Walk and not just
+  // silence." Sitting in stillness is still the mechanism this row turns on
+  // (the per-side sit timer, same as before), but the WORDS shouldn't read
+  // as if silence were the only legitimate form of contemplative prayer
+  // when "Contemplative Walk" is right there as a sibling option in this
+  // same menu.
+  { title: () => "Contemplative Prayer", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
   { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } },
   { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } },
@@ -2537,10 +2544,21 @@ export default function WayOfLoveRuleFlow({
     const anchorMode = anchorLevel === "office"
       ? side
       : (levelOfficeMode(side, anchorLevel) ?? (side === "morning" ? "morning-devotion" : "early-evening-devotion"));
+    // A reflection is offered on BOTH sides, but can only be kept in ONE of
+    // them (owner: "if they chose CAC in the morning, it can't be in the
+    // evening too") — a newsletter has one card and one read-flag a day, so
+    // the second side's card would tick itself the moment the first was read.
+    // Whichever side claimed it keeps it; the row simply isn't offered on the
+    // other until it's released.
+    const otherSide: OfficeSide = side === "morning" ? "evening" : "morning";
+    const otherCap = otherSide === "morning" ? "Morning" : "Evening";
+    const newsletterTakenByOtherSide =
+      extraEntryFor(extraBySide[otherSide], otherCap)?.maps.kind === "newsletter";
     const options = EXTRA_PRACTICES
       .filter((e) => !e.side || e.side === side)
       .filter((e) => e.excludes !== anchorLevel)
-      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);
+      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode)
+      .filter((e) => e.maps.kind !== "newsletter" || !newsletterTakenByOtherSide);
     return shell(
       <>
         {backRow(goPrev)}
@@ -2978,10 +2996,8 @@ export default function WayOfLoveRuleFlow({
         {kind === "newsletter" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {NEWSLETTERS
-              // VTS is feed-gated exactly as it is on the Learn step — hidden
-              // until the viewer follows the VTS feed, unless they already
-              // have it selected.
-              .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes(n.id))
+              // All four are open to everyone — the Dean's Commentary is no
+              // longer gated behind following the VTS feed (owner).
               // A reflection that's already this side's ANCHOR can't also be
               // its second practice — that's one practice with two cards.
               .filter((n) => !(n.id === "fdd" && prayBySide[side] === "fdd"))
@@ -2995,16 +3011,13 @@ export default function WayOfLoveRuleFlow({
                   if (prev === n.id) return; // already chosen — a no-op, not a toggle-off
                   setExtraNewsletterBySide((p) => ({ ...p, [side]: n.id }));
                   // Swap, don't accumulate: re-picking must not leave the
-                  // previous choice behind as a second home card. A source
-                  // chosen on the OTHER side (or on the Learn step) is left
-                  // alone — only this side's own previous pick is withdrawn.
-                  setNewsletters((p) => {
-                    const otherSide: OfficeSide = side === "morning" ? "evening" : "morning";
-                    const keep = prev && prev !== extraNewsletterBySide[otherSide]
-                      ? p.filter((x) => x !== prev)
-                      : p;
-                    return [...new Set([...keep, n.id])];
-                  });
+                  // previous choice behind as a second home card. Only one
+                  // side can hold a newsletter extra at a time (see the
+                  // options filter on the previous step), so this side's own
+                  // previous pick is the only one to withdraw.
+                  setNewsletters((p) => [
+                    ...new Set([...(prev ? p.filter((x) => x !== prev) : p), n.id]),
+                  ]);
                 },
               ))}
           </div>
