@@ -271,7 +271,7 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel } = useRhythmState();
   // When a side's contemplative practice IS the breath, that side's practice is
   // Creation Prayer — not a silent sit AND a breath. The daily cards already
   // collapse the two (the standalone Co-Breathe card is suppressed); this row
@@ -287,7 +287,7 @@ export function WeeklyGridCard() {
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; morningExtra: boolean; eveningExtra: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -313,6 +313,10 @@ export function WeeklyGridCard() {
   const CUSTOM_PALETTE = ["46,107,64", "60,124,80", "40,96,58", "72,140,94", "52,116,72", "84,150,104"];
   const rows: Array<{ id: string; emoji: string; label: string; rgb: string; doneFor: (d: Day) => boolean }> = [
     ...(morningActive ? [{ id: "morning", emoji: "🌅", label: t("rhythm.row_morning", { defaultValue: "Morning" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.morning }] : []),
+    // A side's SECOND practice gets its own row, right under that side's
+    // anchor. It had a card on the home and a dot in the pill but no row here,
+    // so the grid quietly described a smaller rule than the one being kept.
+    ...(morningExtraLevel ? [{ id: "morning-extra", emoji: "🌿", label: extraPracticeTitle("Morning", morningExtraLevel, t), rgb: "96,140,110", doneFor: (d: Day) => !!d.morningExtra }] : []),
     // Reflection rides right after Morning Prayer — it's the second beat of the
     // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
@@ -323,6 +327,7 @@ export function WeeklyGridCard() {
     ...(podcastsActive ? [{ id: "podcasts", emoji: "🎙️", label: t("rhythm.row_podcasts", { defaultValue: "Podcasts" }), rgb: "150,120,150", doneFor: (d: Day) => !!d.podcasts }] : []),
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.evening }] : []),
+    ...(eveningExtraLevel ? [{ id: "evening-extra", emoji: "🌿", label: extraPracticeTitle("Evening", eveningExtraLevel, t), rgb: "96,140,110", doneFor: (d: Day) => !!d.eveningExtra }] : []),
     ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
     // Compline closes the day — its own row, reading its own server flag
     // (never d.evening; the two offices are tracked separately end to end).

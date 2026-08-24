@@ -1199,8 +1199,21 @@ export function useRhythmState(): RhythmState {
   // two per-side cards the home renders — not the single `silenceActive`
   // aggregate, which under-counted the dots (2 dots for 3 cards). silenceActive/
   // silenceDone stay as aggregates for the splash/widget/what's-next consumers.
+  // Declared ABOVE coreFlags because coreFlags now counts them. They used to
+  // live ~60 lines below it; reading them from there would be a
+  // use-before-declaration evaluated during render — a throw, not a misread.
+  const morningExtraLevel = extraModesFor("morning").length > 0 ? getSideExtra("morning") : null;
+  const eveningExtraLevel = extraModesFor("evening").length > 0 ? getSideExtra("evening") : null;
+  const morningExtraDone = officeLocal.morningExtra || extraSurfaceHit("morning");
+  const eveningExtraDone = officeLocal.eveningExtra || extraSurfaceHit("evening");
   const coreFlags = [
     ...(morningActive ? [morningDone] : []),
+    // A side's SECOND practice has its own card, so it needs its own dot. It
+    // had neither a dot here nor a row in the weekly grid, so the pill counted
+    // fewer anchors than the home showed cards — and "the day is kept" could
+    // never fire for anyone keeping two practices on a side, because the
+    // second one's completion was counted nowhere.
+    ...(morningExtraLevel ? [morningExtraDone] : []),
     ...(morningContemplationActive ? [morningContemplationDone] : []),
     // The SOLO Silence goal anchor — one goal card (with a progress bar) when
     // neither side carries a contemplation card (all guests; signed-in users
@@ -1209,6 +1222,7 @@ export function useRhythmState(): RhythmState {
     ...(silenceGoalCardActive ? [silenceGoalCardDone] : []),
     ...reflections.map((r) => r.done),
     ...(eveningActive ? [eveningDone] : []),
+    ...(eveningExtraLevel ? [eveningExtraDone] : []),
     ...(eveningContemplationActive ? [eveningContemplationDone] : []),
   ];
   const extraFlags = [
@@ -1258,10 +1272,6 @@ export function useRhythmState(): RhythmState {
    * and a card whose done-state is really the anchor's would be worse than no
    * card, so the two conditions are the same condition.
    */
-  const morningExtraLevel = extraModesFor("morning").length > 0 ? getSideExtra("morning") : null;
-  const eveningExtraLevel = extraModesFor("evening").length > 0 ? getSideExtra("evening") : null;
-  const morningExtraDone = officeLocal.morningExtra || extraSurfaceHit("morning");
-  const eveningExtraDone = officeLocal.eveningExtra || extraSurfaceHit("evening");
 
   return {
     ready,

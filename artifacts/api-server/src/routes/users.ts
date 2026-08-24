@@ -787,9 +787,25 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const morning = new Set<string>();
     const evening = new Set<string>();
     const compline = new Set<string>();
+    /**
+     * …and the SECOND practice's own days — the exact inverse of the test
+     * above. countsForAnchor is false only for a devotion-surface row prayed
+     * on a side whose anchor is the full office, which is precisely what an
+     * additional practice is. The anchor rows already refuse to count it; it
+     * simply had nowhere else to go, so a second practice showed a card on the
+     * home and no row in the weekly grid at all.
+     */
+    const morningExtra = new Set<string>();
+    const eveningExtra = new Set<string>();
     for (const r of officeRows.rows) {
-      if (r.side === "morning" && countsForAnchor("morning", r.surface)) morning.add(r.day);
-      if (r.side === "evening" && countsForAnchor("evening", r.surface)) evening.add(r.day);
+      if (r.side === "morning") {
+        if (countsForAnchor("morning", r.surface)) morning.add(r.day);
+        else morningExtra.add(r.day);
+      }
+      if (r.side === "evening") {
+        if (countsForAnchor("evening", r.surface)) evening.add(r.day);
+        else eveningExtra.add(r.day);
+      }
       if (r.side === "compline") compline.add(r.day);
     }
     // Total contemplative minutes per local day (in-app sits only — Apple
@@ -891,6 +907,8 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       ymd,
       morning: morning.has(ymd),
       evening: evening.has(ymd),
+      morningExtra: morningExtra.has(ymd),
+      eveningExtra: eveningExtra.has(ymd),
       compline: compline.has(ymd),
       contemplation: contemplation.has(ymd),
       // "Started but short of the goal" — the weekly grid's half-shaded dot,
