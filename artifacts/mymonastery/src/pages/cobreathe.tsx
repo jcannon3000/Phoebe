@@ -18,6 +18,7 @@ import { computeFingerprint } from "@/lib/cobreatheOrder";
 import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
+import { verifyAtPlace, type BreathPlace } from "@/lib/breathPlaces";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation, getSideLevel } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
@@ -147,11 +148,25 @@ export default function CobreathePage() {
   // The Laurel Kearns "Prayer of Con-Spiring" slideshow is removed (owner) —
   // landing on /cobreathe goes straight to the "before you begin" screen for
   // everyone (a ?start=1 quick-launch still jumps into the breath).
-  const [mode, setMode] = useState<"intro" | "howto" | "breathing" | "done">(() =>
+  const [mode, setMode] = useState<"intro" | "location" | "howto" | "breathing" | "done">(() =>
     // A ?start=1 quick-launch jumps in — but a FIRST-time breather still gets the
     // one-time "how it works" intro first.
     wantsStart() ? (cobreatheHowtoSeen() ? "breathing" : "howto") : "intro",
   );
+  /**
+   * Where they're breathing, if they named a designated place.
+   *
+   * Owner: "a button on the opening slide that says Enter location, that would
+   * go to a second intro slide where they pick the location." Session-scoped
+   * on purpose — where you are today says nothing about where you'll be
+   * tomorrow, so this is never persisted as a preference.
+   */
+  const [place, setPlace] = useState<BreathPlace | null>(null);
+  // Did the device confirm they're within the place's radius? Checked on pick
+  // (see the location slide), never re-checked, and false is a normal state —
+  // see lib/breathPlaces.
+  const [placeVerified, setPlaceVerified] = useState(false);
+
   // Breath count — 12 by default, adjustable on this screen. Reads/writes
   // phoebe:cobreathe-length so the customizer's Creation Prayer "How many
   // breaths?" preset stays in sync with whatever's picked here (the home
@@ -259,11 +274,50 @@ export default function CobreathePage() {
     queryFn: () => apiRequest("GET", `/api/breath/today?day=${day}`),
   });
 
+  /**
+   * The designated places, with today's counts.
+   *
+   * Fetched only once the reader actually opens the location slide — this is
+   * an optional detour off the opening screen, and everyone who never taps it
+   * (which will be most people, most days) shouldn't pay a request for it.
+   */
+  const { data: placesData, isLoading: placesLoading } = useQuery<{ places: BreathPlace[] }>({
+    queryKey: ["/api/breath/places", day],
+    queryFn: () => apiRequest("GET", `/api/breath/places?day=${day}`),
+    enabled: mode === "location",
+    staleTime: 60_000,
+  });
+  const places = placesData?.places ?? [];
+  const [verifying, setVerifying] = useState(false);
+
+  /**
+   * Pick a place, then ask the device to confirm it.
+   *
+   * The pick lands IMMEDIATELY and the verification follows — so the choice
+   * never waits on a GPS fix that may be slow indoors or never come at all.
+   * A failed or denied check leaves the place chosen and simply unverified,
+   * which is a real state and not an error: the breath counts either way.
+   */
+  const pickPlace = useCallback(async (p: BreathPlace) => {
+    setPlace(p);
+    setPlaceVerified(false);
+    setVerifying(true);
+    try {
+      setPlaceVerified(await verifyAtPlace(p));
+    } finally {
+      setVerifying(false);
+    }
+  }, []);
+
   const record = useMutation({
     mutationFn: (seconds: number) =>
       apiRequest<BreathState & { ok: boolean }>("POST", "/api/breath/today", {
         day,
         seconds,
+        // Only the place's id and a boolean — never coordinates. See
+        // lib/breathPlaces for why that distinction carries the whole design.
+        placeId: place?.id ?? null,
+        placeVerified,
       }),
     onSuccess: (resp) => {
       setDoneState(resp);
@@ -441,6 +495,109 @@ export default function CobreathePage() {
   // (app header + page background) so navigating in doesn't flash the page
   // behind the breath for a frame. (The breath's own opaque field covers the
   // screen from the first paint.)
+  /**
+   * The second intro slide: pick where you're breathing.
+   *
+   * Same shape as the opening slide it came from — eyebrow, big title, a line
+   * of orientation, then the choices — so it reads as the next page of one
+   * introduction rather than a settings screen bolted on.
+   *
+   * Each place shows how many have breathed there today, which is the whole
+   * point of the feature: you're choosing to join people, not just tagging a
+   * location.
+   */
+  if (mode === "location") {
+    return (
+      <Layout bgPhoto={introBgPhoto}>
+        <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+          <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
+            <div className="flex flex-col items-center text-center pt-8">
+              <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+                {t("cobreathe.before_begin", { defaultValue: "Before you begin" })}
+              </p>
+              <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(32px, 8.5vw, 46px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 14 }}>
+                {t("cobreathe.location_title", { defaultValue: "Where are you breathing?" })}
+              </h1>
+              <p style={{ color: "rgba(240,237,230,0.85)", fontFamily: SPACE_GROTESK, fontSize: 15.5, lineHeight: 1.55, maxWidth: 420, marginBottom: 22 }}>
+                {t("cobreathe.location_blurb", { defaultValue: "Choose a place and your breath joins everyone who has breathed there today." })}
+              </p>
+
+              <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440 }}>
+                {placesLoading && (
+                  <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14 }}>
+                    {t("common.loading", { defaultValue: "Loading…" })}
+                  </p>
+                )}
+                {!placesLoading && places.length === 0 && (
+                  <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.5 }}>
+                    {t("cobreathe.location_none", { defaultValue: "No places have been set up yet. You can breathe anywhere — the practice is the same." })}
+                  </p>
+                )}
+                {places.map((p) => {
+                  const on = place?.id === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      disabled={verifying}
+                      onClick={() => pickPlace(p)}
+                      className="w-full rounded-2xl py-3.5 px-4 text-left transition-opacity active:scale-[0.99]"
+                      style={{
+                        background: on ? "rgba(46,107,64,0.32)" : "rgba(9,26,16, 0.297)",
+                        backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                        border: `1px solid ${on ? "rgba(168,197,160,0.6)" : "rgba(168,197,160,0.25)"}`,
+                        color: WARM, fontFamily: SPACE_GROTESK, cursor: verifying ? "wait" : "pointer",
+                        opacity: verifying && !on ? 0.5 : 1,
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                      }}
+                    >
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                        <span style={{ display: "block", fontSize: 13, color: "rgba(200,212,192,0.72)", marginTop: 2 }}>
+                          {/* The count is the invitation. Zero is said plainly
+                              rather than hidden — being the first today is a
+                              real and good thing to be told. */}
+                          {p.breathsToday > 0
+                            ? t("cobreathe.location_count", { count: p.breathsToday, defaultValue: `${p.breathsToday} breathed here today` })
+                            : t("cobreathe.location_first", { defaultValue: "Be the first here today" })}
+                          {p.subtitle ? ` · ${p.subtitle}` : ""}
+                        </span>
+                      </span>
+                      {on && (
+                        <span style={{ flexShrink: 0, fontSize: 13, color: "rgba(200,212,192,0.85)" }}>
+                          {verifying ? "…" : placeVerified ? "✓ here" : "✓"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {place && (
+                  <button
+                    type="button"
+                    onClick={() => { setPlace(null); setPlaceVerified(false); }}
+                    style={{ background: "none", border: "none", color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 13.5, cursor: "pointer", padding: "8px 0", marginTop: 2 }}
+                  >
+                    {t("cobreathe.location_clear", { defaultValue: "Breathe without a place" })}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setMode("intro")}
+                  className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  style={{ marginTop: 10, background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
+                >
+                  {t("common.done", { defaultValue: "Done" })}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   // First-time "how it works" — three slides after Begin, then the breath.
   if (mode === "howto") {
     return (
@@ -587,7 +744,35 @@ export default function CobreathePage() {
               {t("cobreathe.invite_note", { defaultValue: "An invitation, not a goal — breathe as many as you have in you, and stop whenever you like." })}
             </p>
 
-            <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
+            <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 14 }} />
+
+            {/* Owner: "a button on the opening slide that says Enter location,
+                that would go to a second intro slide where they pick the
+                location." Once a place is chosen the button becomes the place
+                — it's both the entry point and the current state, so there's
+                no separate row restating what was picked. */}
+            <button
+              type="button"
+              onClick={() => setMode("location")}
+              className="w-full rounded-2xl py-3.5 px-4 mb-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{
+                background: place ? "rgba(46,107,64,0.28)" : "rgba(9,26,16, 0.297)",
+                backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+                border: `1px solid ${place ? "rgba(168,197,160,0.55)" : "rgba(168,197,160,0.28)"}`,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span aria-hidden>📍</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {place ? place.name : t("cobreathe.enter_location", { defaultValue: "Enter location" })}
+                </span>
+              </span>
+              <span style={{ flexShrink: 0, color: "rgba(200,212,192,0.7)", fontSize: 13 }}>
+                {place && placeVerified ? "✓" : "›"}
+              </span>
+            </button>
 
             {/* Begin — into the synced breath (a first-timer sees the one-time
                 "how it works" intro first). */}
