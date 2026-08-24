@@ -390,6 +390,21 @@ export function WeeklyGridCard() {
                 </div>
               ))}
             </div>
+            {/* Owner: "on the weekly page with the anchor practices, there
+                should be a pill at the bottom that says adjust your
+                practices." Same destination "Shape your rhythm" already
+                uses elsewhere (home-beta.tsx's footer link) — one entry
+                point into the customizer, not a second one with different
+                copy that could drift. */}
+            <div className="flex justify-center mt-4">
+              <Link
+                href="/rule-of-life"
+                className="rounded-full text-[12.5px] font-semibold px-4 py-2"
+                style={{ background: "rgba(46,107,64,0.16)", border: "1px solid rgba(46,107,64,0.4)", color: WARM, fontFamily: FONT, textDecoration: "none" }}
+              >
+                {t("rhythm.adjust_practices", { defaultValue: "Adjust your practices" })}
+              </Link>
+            </div>
           </>
         );
       })()}

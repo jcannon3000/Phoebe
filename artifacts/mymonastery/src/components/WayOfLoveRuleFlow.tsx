@@ -2544,21 +2544,10 @@ export default function WayOfLoveRuleFlow({
     const anchorMode = anchorLevel === "office"
       ? side
       : (levelOfficeMode(side, anchorLevel) ?? (side === "morning" ? "morning-devotion" : "early-evening-devotion"));
-    // A reflection is offered on BOTH sides, but can only be kept in ONE of
-    // them (owner: "if they chose CAC in the morning, it can't be in the
-    // evening too") — a newsletter has one card and one read-flag a day, so
-    // the second side's card would tick itself the moment the first was read.
-    // Whichever side claimed it keeps it; the row simply isn't offered on the
-    // other until it's released.
-    const otherSide: OfficeSide = side === "morning" ? "evening" : "morning";
-    const otherCap = otherSide === "morning" ? "Morning" : "Evening";
-    const newsletterTakenByOtherSide =
-      extraEntryFor(extraBySide[otherSide], otherCap)?.maps.kind === "newsletter";
     const options = EXTRA_PRACTICES
       .filter((e) => !e.side || e.side === side)
       .filter((e) => e.excludes !== anchorLevel)
-      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode)
-      .filter((e) => e.maps.kind !== "newsletter" || !newsletterTakenByOtherSide);
+      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);
     return shell(
       <>
         {backRow(goPrev)}
