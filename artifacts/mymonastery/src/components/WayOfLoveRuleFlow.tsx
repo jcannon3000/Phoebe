@@ -139,13 +139,18 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  *                 opens the office; it completes on its own mode flag.
  *  - "practice":  one of the standing all-day cards, already wired.
  *  - "contemplation": the side's own Contemplation card.
- *  - "newsletter":    a reflection source.
+ *  - "newsletter":    a reflection source. WHICH one is asked on the extra's
+ *                     own details slide (extraConfigKindFor -> "newsletter"),
+ *                     not baked in here — this row used to BE "Forward Day by
+ *                     Day", which made Forward the only reflection reachable
+ *                     as a second practice even though the home renders a card
+ *                     for all four (owner).
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
   | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" }
   | { kind: "contemplation" }
-  | { kind: "newsletter"; src: ReflectionSource };
+  | { kind: "newsletter" };
 type ExtraPractice = {
   title: (cap: string) => string;
   emoji: string;
@@ -162,7 +167,10 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings", maps: { kind: "level", level: "readings" } },
   { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Three minutes to start your day.", excludes: "guided-prayer", side: "morning", maps: { kind: "level", level: "guided-prayer" } },
   { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen", maps: { kind: "practice", key: "examen" } },
-  { title: () => "Forward Day by Day", emoji: "📖", sub: "Today's meditation.", excludes: "fdd", maps: { kind: "newsletter", src: "fdd" } },
+  // Not excluded by any anchor level: which newsletter is chosen on the next
+  // slide, so the row can't clash with the anchor until that's known (the
+  // sub-picker drops Forward when Forward IS the anchor).
+  { title: () => "Reflection Newsletter", emoji: "📖", sub: "Forward, SSJE, CAC, or VTS.", excludes: "__none__", maps: { kind: "newsletter" } },
   { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening", maps: { kind: "practice", key: "compline" } },
   { title: () => "Contemplative Prayer", emoji: "🕯️", sub: "A silent sit.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
   { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } },
@@ -926,6 +934,15 @@ export default function WayOfLoveRuleFlow({
     };
     return { morning: titleFor("morning"), evening: titleFor("evening") };
   });
+  // Which reflection newsletter the "Reflection Newsletter" extra resolved to,
+  // per side — asked on that extra's own details slide. Only a staging value
+  // for the picker: what actually persists is `newsletters` (which drives the
+  // home cards), so this starts empty on every open, exactly like the
+  // newsletter extra itself.
+  const [extraNewsletterBySide, setExtraNewsletterBySide] = useState<Record<OfficeSide, ReflectionSource | null>>({
+    morning: null,
+    evening: null,
+  });
   // Which sides asked for the additional-practice slide. It's a real step in
   // the flow (see buildSteps) rather than an inline expansion — owner: "not
   // expand to a list, but advance to a second slide".
@@ -1615,10 +1632,13 @@ export default function WayOfLoveRuleFlow({
    * (a walk, the Examen, Audio Divina) has nothing to ask as an anchor either,
    * and gets no slide here for the same reason.
    */
-  const extraConfigKindFor = (side: OfficeSide): "medium" | "psalms" | "breaths" | null => {
+  const extraConfigKindFor = (side: OfficeSide): "medium" | "psalms" | "breaths" | "newsletter" | null => {
     const cap = side === "morning" ? "Morning" : "Evening";
     const entry = extraEntryFor(extraBySide[side], cap);
     if (!entry) return null;
+    // "Reflection Newsletter" is a family, not a practice — WHICH of the four
+    // is the whole question, so it always earns its slide.
+    if (entry.maps.kind === "newsletter") return "newsletter";
     // A SILENT sit gets no slide here on purpose. Its length is a daily total
     // set once on the Silence slide, and asking for it per-side is the exact
     // inference that has turned a 90-minute quota into two 5-minute per-side
@@ -2556,8 +2576,15 @@ export default function WayOfLoveRuleFlow({
                 } else if (e.maps.kind === "contemplation") {
                   setContemplationBySide((p) => ({ ...p, [side]: on }));
                 } else if (e.maps.kind === "newsletter") {
-                  const src = e.maps.src;
-                  setNewsletters((p) => (on ? [...new Set([...p, src])] : p.filter((x) => x !== src)));
+                  // Nothing to add yet — WHICH newsletter is the next slide's
+                  // question. Turning the row back off has to withdraw
+                  // whatever that slide already picked, or an abandoned
+                  // choice would stay on the home as a card nobody asked for.
+                  if (!on) {
+                    const picked = extraNewsletterBySide[side];
+                    if (picked) setNewsletters((p) => p.filter((x) => x !== picked));
+                    setExtraNewsletterBySide((p) => ({ ...p, [side]: null }));
+                  }
                 }
               },
             );
@@ -2943,8 +2970,45 @@ export default function WayOfLoveRuleFlow({
             ? t("wol_rule.extra_cfg_breaths", { defaultValue: "How many breaths would you like?" })
             : kind === "psalms"
               ? t("wol_rule.extra_cfg_psalms", { defaultValue: "Choose how the Psalter unfolds." })
-              : t("wol_rule.extra_cfg_medium", { side: cap.toLowerCase(), defaultValue: `How would you like to pray it?` })}
+              : kind === "newsletter"
+                ? t("wol_rule.extra_cfg_newsletter", { defaultValue: "Which reflection would you like to read?" })
+                : t("wol_rule.extra_cfg_medium", { side: cap.toLowerCase(), defaultValue: `How would you like to pray it?` })}
         </p>
+
+        {kind === "newsletter" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {NEWSLETTERS
+              // VTS is feed-gated exactly as it is on the Learn step — hidden
+              // until the viewer follows the VTS feed, unless they already
+              // have it selected.
+              .filter((n) => n.id !== "vts" || entitlements.vts || newsletters.includes(n.id))
+              // A reflection that's already this side's ANCHOR can't also be
+              // its second practice — that's one practice with two cards.
+              .filter((n) => !(n.id === "fdd" && prayBySide[side] === "fdd"))
+              .map((n) => choiceRow(
+                extraNewsletterBySide[side] === n.id,
+                n.label,
+                n.sub,
+                () => {
+                  touchedRef.current = true;
+                  const prev = extraNewsletterBySide[side];
+                  if (prev === n.id) return; // already chosen — a no-op, not a toggle-off
+                  setExtraNewsletterBySide((p) => ({ ...p, [side]: n.id }));
+                  // Swap, don't accumulate: re-picking must not leave the
+                  // previous choice behind as a second home card. A source
+                  // chosen on the OTHER side (or on the Learn step) is left
+                  // alone — only this side's own previous pick is withdrawn.
+                  setNewsletters((p) => {
+                    const otherSide: OfficeSide = side === "morning" ? "evening" : "morning";
+                    const keep = prev && prev !== extraNewsletterBySide[otherSide]
+                      ? p.filter((x) => x !== prev)
+                      : p;
+                    return [...new Set([...keep, n.id])];
+                  });
+                },
+              ))}
+          </div>
+        )}
 
         {kind === "medium" && (
           // The relative box wraps ONLY the select. The chevron is positioned
