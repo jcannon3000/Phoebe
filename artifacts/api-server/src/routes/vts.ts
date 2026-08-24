@@ -34,7 +34,7 @@ const FEED_USER_AGENT =
 // never hits vts.edu directly.
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-let cached: { url: string; title: string; fetchedAt: number; day: string } | null = null;
+let cached: { url: string; title: string; isToday: boolean; fetchedAt: number; day: string } | null = null;
 
 // Same local-date string every "today"-scoped query key in this codebase
 // uses (toLocaleDateString("en-CA") on the client; here just a plain day
@@ -69,7 +69,7 @@ function decodeEntities(s: string): string {
 // Find the newest <item> tagged with CATEGORY (an item can carry several
 // <category> tags — WordPress's default RSS is newest-first, so the
 // first match found walking top-to-bottom is the latest one).
-function parseFirstMatchingItem(xml: string): { url: string; title: string } | null {
+function parseFirstMatchingItem(xml: string): { url: string; title: string; pubDate: string | null } | null {
   const items = xml.match(/<item\b[^>]*>[\s\S]*?<\/item>/g);
   if (!items) return null;
   for (const block of items) {
@@ -84,22 +84,45 @@ function parseFirstMatchingItem(xml: string): { url: string; title: string } | n
     if (!/^https?:\/\/(?:www\.)?vts\.edu\//i.test(url)) continue;
     const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/);
     const title = titleMatch ? decodeEntities(titleMatch[1]) : "";
-    return { url, title };
+    // <pubDate> — RFC 822, e.g. "Mon, 24 Aug 2026 09:00:00 +0000". Used to
+    // tell "today's post is up" from "nothing new yet, this is Friday's" —
+    // see isFromToday below.
+    const pubDateMatch = block.match(/<pubDate>([^<]+)<\/pubDate>/);
+    const pubDate = pubDateMatch ? pubDateMatch[1].trim() : null;
+    return { url, title, pubDate };
   }
   return null;
+}
+
+/**
+ * Is this RSS pubDate the SAME calendar day as `now`, in the PUBLISHER's own
+ * timezone (VTS posts from the US Eastern seaboard) — not the server's.
+ *
+ * Owner: "if the Dean's commentary has not been updated yet, and it's a
+ * weekday, put it in later faded, and second line being waiting for update."
+ * Without this, a stale feed (VTS hasn't posted yet this morning) reads
+ * exactly like a fresh one — same title, same "open to read" — so the reader
+ * has no way to tell "today's is up" from "that's still yesterday's."
+ */
+function isFromToday(pubDate: string | null): boolean {
+  if (!pubDate) return false;
+  const posted = new Date(pubDate);
+  if (Number.isNaN(posted.getTime())) return false;
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" });
+  return fmt.format(posted) === fmt.format(new Date());
 }
 
 // Exported for the daily Dean's Commentary push (lib/bellSender.ts), which
 // needs today's scraped title for the notification body. Shares this module's
 // day-scoped cache, so the sender's fan-out costs one feed fetch, not one per
 // recipient.
-export async function resolveTodayVts(): Promise<{ url: string; title: string }> {
+export async function resolveTodayVts(): Promise<{ url: string; title: string; isToday: boolean }> {
   return resolveToday();
 }
 
-async function resolveToday(): Promise<{ url: string; title: string }> {
+async function resolveToday(): Promise<{ url: string; title: string; isToday: boolean }> {
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS && cached.day === todayStamp()) {
-    return { url: cached.url, title: cached.title };
+    return { url: cached.url, title: cached.title, isToday: cached.isToday };
   }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
@@ -114,19 +137,20 @@ async function resolveToday(): Promise<{ url: string; title: string }> {
     });
     if (!res.ok) {
       logger.warn({ status: res.status }, "[vts] feed fetch non-ok");
-      return { url: FALLBACK_URL, title: "" };
+      return { url: FALLBACK_URL, title: "", isToday: false };
     }
     const xml = await res.text();
     const parsed = parseFirstMatchingItem(xml);
     if (!parsed) {
       logger.warn({ bytes: xml.length }, "[vts] could not find a Dean's Commentary item");
-      return { url: FALLBACK_URL, title: "" };
+      return { url: FALLBACK_URL, title: "", isToday: false };
     }
-    cached = { ...parsed, fetchedAt: Date.now(), day: todayStamp() };
-    return parsed;
+    const isToday = isFromToday(parsed.pubDate);
+    cached = { url: parsed.url, title: parsed.title, isToday, fetchedAt: Date.now(), day: todayStamp() };
+    return { url: parsed.url, title: parsed.title, isToday };
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[vts] feed fetch failed");
-    return { url: FALLBACK_URL, title: "" };
+    return { url: FALLBACK_URL, title: "", isToday: false };
   } finally {
     clearTimeout(timeout);
   }
@@ -144,9 +168,9 @@ router.get("/vts/today", async (_req: Request, res: Response): Promise<void> => 
 // GET /api/vts/today-meta → { title, url } — powers the home card's
 // headline (today's commentary title) without embedding VTS's content.
 router.get("/vts/today-meta", async (_req: Request, res: Response): Promise<void> => {
-  const { url, title } = await resolveToday();
+  const { url, title, isToday } = await resolveToday();
   res.setHeader("Cache-Control", "public, max-age=300");
-  res.json({ title, url });
+  res.json({ title, url, isToday });
 });
 
 // ── Full-text scrape, for the in-app paragraph slideshow ────────────────────

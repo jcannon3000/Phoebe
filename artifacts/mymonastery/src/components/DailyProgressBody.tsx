@@ -855,13 +855,26 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   });
   const cacTitle = (cacMeta?.title ?? "").trim();
   // Same idea for today's VTS Dean's Commentary title.
-  const { data: vtsMeta } = useQuery<{ title?: string }>({
+  const { data: vtsMeta } = useQuery<{ title?: string; isToday?: boolean }>({
     queryKey: ["/api/vts/today-meta"],
     queryFn: () => apiRequest("GET", "/api/vts/today-meta"),
     staleTime: 60 * 60_000,
     enabled: reflectionSource === "vts",
   });
   const vtsTitle = (vtsMeta?.title ?? "").trim();
+  /**
+   * VTS posts the Dean's Commentary on WEEKDAY mornings, not always by the
+   * time an early riser opens Phoebe. Owner: "if the Dean's commentary has
+   * not been updated yet, and it's a weekday, put it in later faded, and
+   * second line being waiting for update." Without this the card showed
+   * yesterday's (or Friday's, on a Monday) title looking exactly like a
+   * fresh one — no way to tell "today's is up" from "that's still stale."
+   * `isToday` comes from the server comparing the feed's own pubDate against
+   * today in VTS's timezone (routes/vts.ts) — not the reader's device clock,
+   * which could disagree with when VTS actually considers "today" to start.
+   */
+  const vtsWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
+  const vtsWaitingForUpdate = reflectionSource === "vts" && vtsWeekday && vtsMeta?.isToday === false;
   // What you put on for today's Audio Divina — shown as the card's second line
   // once it's done (e.g. the album/track), in place of the generic "kept".
   const { data: listeningLogData } = useQuery<{ entries: Array<{ day: string; what: string }> }>({
@@ -1226,11 +1239,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // gave permission to bring the text into Phoebe rather than just
       // linking out, unlike CAC/FDD/SSJE, which still open externally.
       const isVts = r.source === "vts";
+      const waitingForUpdate = isVts && vtsWaitingForUpdate;
       return {
         key: `reflect-${r.source}`, slot: "morning" as CustomSlot, emoji: isVts ? "🦩" : "📖", rgb: "96,141,209", done: r.done, href: isVts ? "/vts-reading" : "",
         title: PUBLICATION_NAME[r.source],
-        blurb: scrapedTitle || (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
+        blurb: waitingForUpdate
+          ? t("rhythm.vts_waiting", { defaultValue: "Waiting for update" })
+          : (scrapedTitle || (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }))),
         blurbCycle: undefined,
+        // Faded, non-actionable — same treatment the evening card uses before
+        // its own open hour. laterLabel doubles as the CTA/hero text; the
+        // blurb above already carries the "Waiting for update" line, so this
+        // just needs to be non-empty for the faded state to render correctly.
+        ...(waitingForUpdate ? { later: true, laterLabel: t("rhythm.vts_waiting", { defaultValue: "Waiting for update" }) } : {}),
         // BUG FIXED (CAC/FDD/SSJE only): `mark()` — the actual read-tracking
         // call that flips this card's dot — used to fire HERE, immediately
         // at tap time, completely bypassing openExternalThenMarkRead's whole
