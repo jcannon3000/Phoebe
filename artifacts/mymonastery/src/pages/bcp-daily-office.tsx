@@ -37,6 +37,7 @@ import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markOfficeBookComplete } from "@/lib/officeManualLog";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 
@@ -1746,6 +1747,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (!completedRef.current) swellHaptic();
     suppressSessionPostRef.current = true;
     completedRef.current = true;
+    creditPrayerListIfIncluded();
     apiRequest("POST", "/api/prayer-sessions", {
       surface: officeSurface,
       durationSeconds,
@@ -1912,7 +1914,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    * atEnd — so the right-half tap and the swipe-left gesture both went dead
    * on the final slide while the visible "Done"/"Amen" pill kept working.
    */
+  /**
+   * Owner: "if I went through the office with the prayers included, the prayer
+   * list card should be marked done."
+   *
+   * The office splices a prayer_intentions slide in whenever the reader has
+   * active intentions, so praying the office IS praying the list — but the two
+   * kept separate books, and the Prayer List card sat in Next afterwards asking
+   * for the same prayers a second time. Finishing the deck is the gate (the
+   * office's own completion invariant), and the slide has to actually be IN
+   * this deck: an office prayed on a day with no intentions credits nothing.
+   */
+  function creditPrayerListIfIncluded() {
+    if (!viewerUser) return;
+    if (!slides.some((s) => s.type === "prayer_intentions")) return;
+    try { markPracticeDoneToday("prayer-list"); } catch { /* non-fatal */ }
+  }
+
   function handleEnd() {
+    creditPrayerListIfIncluded();
     // Mark today's pass complete so the dashboard PrayerOfficeCard
     // flips to "Pray again" copy for the rest of the day. Same
     // stamp the Amen-path uses in amen() above — kept in both

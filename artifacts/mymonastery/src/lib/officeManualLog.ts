@@ -3,6 +3,7 @@ import { swellHaptic } from "@/lib/swellHaptic";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { PRACTICE_SYNC_FAILED_EVENT } from "@/lib/practiceCompletion";
 
 // Manual "I prayed it" logging for the offices — for people praying Morning
 // or Evening Prayer straight from their physical Book of Common Prayer rather
@@ -164,7 +165,14 @@ export function markOfficeBookComplete(
   // phoebe:clear-notifications handler removes matching delivered pushes.
   clearOfficeReminderNotifications();
   const now = new Date();
-  void apiRequest("POST", "/api/prayer-sessions", {
+  // This POST is the ENTIRE cross-device record of the office. The local flag
+  // above credits the logging device no matter what, so a dropped request was
+  // invisible: the phone showed the practice kept and the web never learned it
+  // happened. Reported as "Devotion keeps not staying logged on web" — the
+  // devotion was logged, on one device only. Same one-retry + visible-failure
+  // treatment lib/practiceCompletion.ts already gives its own sync, for the
+  // same reason.
+  const payload = {
     surface,
     durationSeconds: 60,
     // High enough to clear the "actually prayed an office" (>=3 slides) filter.
@@ -172,5 +180,16 @@ export function markOfficeBookComplete(
     completed: true,
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
-  }).catch(() => { /* best effort — the local flag already credited it */ });
+  };
+  const post = () => apiRequest("POST", "/api/prayer-sessions", payload);
+  post().catch(() => {
+    setTimeout(() => {
+      post().catch((err) => {
+        console.error(`[officeManualLog] sync failed for "${surface}" after retry:`, err);
+        try {
+          window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section: surface } }));
+        } catch { /* non-fatal */ }
+      });
+    }, 3000);
+  });
 }

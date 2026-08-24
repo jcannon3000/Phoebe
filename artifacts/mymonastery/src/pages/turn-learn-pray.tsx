@@ -336,6 +336,23 @@ export default function TurnLearnPrayPage() {
             </div>
           ))}
           </div>
+          {/* Owner: a "shape your routine" button at the bottom of this. The
+              page explains what each row IS; the natural next thought is
+              changing them, and until now that meant backing out to the menu. */}
+          {practiceMode && (
+            <button
+              type="button"
+              onClick={() => setLocation("/rule-of-life")}
+              className="w-full mt-5 rounded-2xl text-[15px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{
+                background: "rgba(46,107,64,0.55)",
+                border: `1px solid ${CARD_BORDER}`,
+                color: WARM, fontFamily: FONT, padding: "14px 20px", cursor: "pointer",
+              }}
+            >
+              {t("menu.shape_routine", { defaultValue: "Shape your routine" })} →
+            </button>
+          )}
         </div>
     </Layout>
   );
