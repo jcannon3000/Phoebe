@@ -250,6 +250,16 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
   const day = String(req.query["day"] ?? "");
   if (!isValidYmd(day)) { res.status(400).json({ error: "bad_request" }); return; }
+  /**
+   * Admins can ask for retired places too — without this, Retire was a
+   * ONE-WAY DOOR: a retired place drops out of this list, and this list is
+   * the only thing the admin screen reads, so the row that could un-retire
+   * it became unreachable the moment it was retired.
+   *
+   * Gated on super-admin rather than the query param alone, so an ordinary
+   * reader can't surface places that were deliberately taken down.
+   */
+  const wantsInactive = req.query["includeInactive"] === "1" && (await isSuperAdminUser(userId));
   try {
     const rows = await db
       .select({
@@ -274,9 +284,10 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
           SELECT COUNT(*)::int FROM breath_sessions bs
           WHERE bs.place_id = ${breathPlacesTable.id} AND bs.day = ${day} AND bs.place_verified = TRUE
         )`,
+        active: breathPlacesTable.active,
       })
       .from(breathPlacesTable)
-      .where(eq(breathPlacesTable.active, true))
+      .where(wantsInactive ? undefined : eq(breathPlacesTable.active, true))
       .orderBy(asc(breathPlacesTable.name));
     res.json({ places: rows });
   } catch (err) {

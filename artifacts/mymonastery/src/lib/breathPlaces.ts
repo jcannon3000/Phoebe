@@ -45,6 +45,8 @@ export type BreathPlace = {
   photoUrls: string[];
   /** Glyph for the centre of the breathing rings. Null = the default globe. */
   centerEmoji: string | null;
+  /** Only present on the admin listing (includeInactive=1); undefined elsewhere. */
+  active?: boolean;
   breathsToday: number;
   verifiedToday: number;
 };

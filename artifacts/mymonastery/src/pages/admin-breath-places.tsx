@@ -66,9 +66,16 @@ export default function AdminBreathPlacesPage() {
   }, [user, isAdmin, authLoading, betaLoading, setLocation]);
 
   const day = localDay();
+  /**
+   * Admins see RETIRED places too, on their own query key.
+   *
+   * The key must differ from the reader's ["/api/breath/places", day] — same
+   * key, different response would let this screen's admin-only payload
+   * (retired places included) be served to the Co-Breathe picker from cache.
+   */
   const listQ = useQuery<{ places: BreathPlace[] }>({
-    queryKey: ["/api/breath/places", day],
-    queryFn: () => apiRequest("GET", `/api/breath/places?day=${day}`),
+    queryKey: ["/api/breath/places", day, "admin"],
+    queryFn: () => apiRequest("GET", `/api/breath/places?day=${day}&includeInactive=1`),
     enabled: !!user && isAdmin,
   });
   const places = listQ.data?.places ?? [];
@@ -95,7 +102,7 @@ export default function AdminBreathPlacesPage() {
       editingId === null
         ? apiRequest("POST", "/api/breath/places", body())
         : apiRequest("PATCH", `/api/breath/places/${editingId}`, body()),
-    onSuccess: () => { reset(); void qc.invalidateQueries({ queryKey: ["/api/breath/places", day] }); },
+    onSuccess: () => { reset(); void qc.invalidateQueries({ queryKey: ["/api/breath/places"] }); },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "Couldn't save."),
   });
 
@@ -253,13 +260,13 @@ export default function AdminBreathPlacesPage() {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {places.map((p) => (
-            <div key={p.id} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
+            <div key={p.id} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px", opacity: p.active === false ? 0.55 : 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>{p.centerEmoji || "🌍"}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
                   <p style={{ color: FAINT, fontFamily: FONT, fontSize: 12, margin: "2px 0 0" }}>
-                    {p.breathsToday} today · {p.radiusMeters}m · {(p.photoUrls ?? []).length} photo{(p.photoUrls ?? []).length === 1 ? "" : "s"}
+                    {p.active === false ? "Retired · " : ""}{p.breathsToday} today · {p.radiusMeters}m · {(p.photoUrls ?? []).length} photo{(p.photoUrls ?? []).length === 1 ? "" : "s"}
                     {p.subtitle ? ` · ${p.subtitle}` : ""}
                   </p>
                 </div>
@@ -267,10 +274,13 @@ export default function AdminBreathPlacesPage() {
                   style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "4px 8px", flexShrink: 0 }}>
                   Edit
                 </button>
-                {/* Retire, never delete — the breaths kept here are real history. */}
-                <button type="button" onClick={() => setActive.mutate({ id: p.id, active: false })}
-                  style={{ background: "none", border: "none", color: "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "4px 8px", flexShrink: 0 }}>
-                  Retire
+                {/* Retire, never delete — the breaths kept here are real
+                    history. Reversible, which it wasn't until this screen
+                    started asking for inactive places: a retired row dropped
+                    out of the only list that could bring it back. */}
+                <button type="button" onClick={() => setActive.mutate({ id: p.id, active: p.active === false })}
+                  style={{ background: "none", border: "none", color: p.active === false ? SAGE : "rgba(143,175,150,0.55)", fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "4px 8px", flexShrink: 0 }}>
+                  {p.active === false ? "Restore" : "Retire"}
                 </button>
               </div>
             </div>
