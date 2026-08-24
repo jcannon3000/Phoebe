@@ -12,6 +12,7 @@
  */
 
 import { db, bcpTextsTable } from "@workspace/db";
+import { RITE1_TEXTS } from "./bcpTextsRite1";
 import { sql } from "drizzle-orm";
 
 const DELAY_MS = 500;
@@ -749,9 +750,20 @@ async function seedPsalter() {
 /*  Main                                                               */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Rite I — the traditional-language texts. Purely local (no scrape), so it
+ * runs first and costs nothing; see seeds/bcpTextsRite1.ts for what is and
+ * isn't covered yet.
+ */
+async function seedRite1Texts() {
+  for (const row of RITE1_TEXTS) await upsert(row);
+  console.log(`  ✓ Rite I texts (${RITE1_TEXTS.length})`);
+}
+
 export async function seedBcpTexts(): Promise<{ inserted: number; skipped: number }> {
   console.log("=== BCP Texts Seed Script ===\n");
   await seedStaticTexts();
+  await seedRite1Texts();
   await sleep(DELAY_MS);
   await seedCollectsFromScrape();
   await sleep(DELAY_MS);
