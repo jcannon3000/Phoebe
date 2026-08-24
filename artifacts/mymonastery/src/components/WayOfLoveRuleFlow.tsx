@@ -2990,6 +2990,13 @@ export default function WayOfLoveRuleFlow({
               // A reflection that's already this side's ANCHOR can't also be
               // its second practice — that's one practice with two cards.
               .filter((n) => !(n.id === "fdd" && prayBySide[side] === "fdd"))
+              // BOTH sides may keep a reflection, but not the SAME one
+              // (owner: "if they chose CAC in the morning, it can't be in
+              // the evening too") — one newsletter is one card with one
+              // read-flag a day, so the second side's card would tick itself
+              // the moment the first was read. Morning CAC + evening SSJE is
+              // fine; CAC twice is not.
+              .filter((n) => n.id !== extraNewsletterBySide[side === "morning" ? "evening" : "morning"])
               .map((n) => choiceRow(
                 extraNewsletterBySide[side] === n.id,
                 n.label,
@@ -3000,10 +3007,10 @@ export default function WayOfLoveRuleFlow({
                   if (prev === n.id) return; // already chosen — a no-op, not a toggle-off
                   setExtraNewsletterBySide((p) => ({ ...p, [side]: n.id }));
                   // Swap, don't accumulate: re-picking must not leave the
-                  // previous choice behind as a second home card. Only one
-                  // side can hold a newsletter extra at a time (see the
-                  // options filter on the previous step), so this side's own
-                  // previous pick is the only one to withdraw.
+                  // previous choice behind as a second home card. The other
+                  // side can never hold the same source (filtered above), so
+                  // this side's own previous pick is the only one to
+                  // withdraw.
                   setNewsletters((p) => [
                     ...new Set([...(prev ? p.filter((x) => x !== prev) : p), n.id]),
                   ]);
