@@ -8,6 +8,7 @@
 
 import { eq, inArray } from "drizzle-orm";
 import { OFFICE_CACHE_SCHEMA_VERSION, cachedSchemaVersion, stampSchemaVersion } from "./officeCacheVersion";
+import { expandKeysForRite, riteKeyCandidates, type Rite } from "./officeRite";
 import {
   db,
   bcpTextsTable,
@@ -450,6 +451,8 @@ export async function assembleMorningPrayer(
   userId: number,
   locale: Locale = "en",
   confessionOverride?: boolean,
+  /** Rite I / Rite II. Inert until content exists — see lib/officeRite.ts. */
+  rite: Rite = "II",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -464,7 +467,13 @@ export async function assembleMorningPrayer(
   // entirely for non-English locales: re-assemble on every request
   // for those users (correct, just slower than English; no emergency
   // fallback). English is unchanged — same cache hits, same speed.
-  const cacheEnabled = locale === "en";
+  //
+  // RITE is the same problem with the same answer. A Rite I office and a Rite
+  // II office on the same DATE would collide on that one-column key and serve
+  // each other's text — a far worse failure than a slow assembly — so Rite I
+  // skips the cache too until that compound key lands. (Rite II is unchanged:
+  // same cache hits, same speed, which is everyone today.)
+  const cacheEnabled = locale === "en" && rite === "II";
 
   // 1. Check cache
   const cached = cacheEnabled
@@ -569,7 +578,9 @@ export async function assembleMorningPrayer(
     db
       .select()
       .from(bcpTextsTable)
-      .where(inArray(bcpTextsTable.textKey, keysNeeded)),
+      // Rite I variants ride along in the SAME query as the Rite II keys, so
+      // localized()'s fallback resolves without a second round trip.
+      .where(inArray(bcpTextsTable.textKey, expandKeysForRite(keysNeeded, rite))),
     db
       .select()
       .from(bcpTextsTable)
@@ -598,6 +609,16 @@ export async function assembleMorningPrayer(
   // sentences stay on bcp_texts in either locale — those rows are
   // English-only today; a Spanish seed pass will add Spanish bodies.
   function localized(key: string): string {
+    // RITE first: a Rite I variant, where one has been seeded, wins over the
+    // Rite II original. Falls through to the locale logic below when there
+    // isn't one, so an unseeded Rite I text renders contemporary rather than
+    // as a missing-text placeholder — see lib/officeRite.ts on why that
+    // fallback is what makes the content shippable one category at a time.
+    if (rite === "I") {
+      for (const candidate of riteKeyCandidates(key, rite)) {
+        if (texts[candidate]?.content) return texts[candidate]!.content;
+      }
+    }
     if (locale !== "es") return getText(key);
     const esKey = SPANISH_OVERRIDES[key];
     if (esKey) return pick(locale, PRAYERS[esKey]);

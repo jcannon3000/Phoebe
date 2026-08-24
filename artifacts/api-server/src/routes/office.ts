@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { CANTICLE_CATALOG, INVITATORY_CATALOG, buildCanticleRun, buildInvitatoryRun } from "../lib/officeSwap";
+import { parseRite } from "../lib/officeRite";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCreationDevotion } from "../lib/assembleCreationDevotion";
@@ -56,6 +57,9 @@ router.get("/office/morning", async (req, res) => {
       userId,
       locale,
       confessionOverride,
+      // Coerced to Rite II while RITE_I_ENABLED is false, so this is inert
+      // end to end no matter what a client sends — see lib/officeRite.ts.
+      parseRite(req.query["rite"]),
     );
 
     return res.json({
@@ -167,7 +171,7 @@ router.get("/office/evening", async (req, res) => {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
     const locale = resolveLocale(req.query.locale);
     const confessionOverride = req.query.confession === undefined ? undefined : req.query.confession === "1";
-    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId, locale, confessionOverride);
+    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId, locale, confessionOverride, parseRite(req.query["rite"]));
 
     return res.json({
       slides,

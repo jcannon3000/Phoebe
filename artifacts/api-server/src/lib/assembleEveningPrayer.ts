@@ -22,6 +22,7 @@ import {
   splitCanticleIntoChunks,
 } from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
+import { riteKeyCandidates, type Rite } from "./officeRite";
 import { buildIntercessionSlides } from "./assembleIntercessions";
 import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
@@ -215,6 +216,8 @@ export async function assembleEveningPrayer(
   userId: number,
   locale: Locale = "en",
   confessionOverride?: boolean,
+  /** Rite I / Rite II. Inert until content exists — see lib/officeRite.ts. */
+  rite: Rite = "II",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -278,6 +281,17 @@ export async function assembleEveningPrayer(
   // a SPANISH_OVERRIDES entry, return the Spanish constant; otherwise
   // fall through to the existing English EP_BCP_TEXTS lookup.
   function localized(key: string): string {
+    // RITE first — same precedence and same fallback as Morning Prayer's own
+    // localized(); see lib/officeRite.ts. EP resolves from the embedded
+    // EP_BCP_TEXTS rather than the DB, so a Rite I variant is seeded there as
+    // `<key>_rite1`. (EP has no server cache, so unlike MP there is no
+    // cache-key collision to guard against here.)
+    if (rite === "I") {
+      for (const candidate of riteKeyCandidates(key, rite)) {
+        const hit = EP_BCP_TEXTS[candidate]?.content;
+        if (hit) return hit;
+      }
+    }
     if (locale !== "es") return getText(key);
     const esKey = SPANISH_OVERRIDES[key];
     if (esKey) return pick(locale, PRAYERS[esKey]);
