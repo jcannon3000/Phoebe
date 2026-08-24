@@ -960,7 +960,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     setVeniteForm(form);
     setVeniteHandingOff(true);
     veniteLeftAtRef.current = Date.now();
-    openExternal(veniteOfficeUrl(officeSide, new Date(), form));
+    const opened = openExternal(veniteOfficeUrl(officeSide, new Date(), form));
+    /**
+     * Reported: "there is an issue with a pop-up blocker on web and then it
+     * just goes to a green screen." On web, a blocked window.open() returns
+     * null — openExternal now surfaces that. Without this check the deck
+     * committed to "we've handed off" (the blank backdrop above) regardless,
+     * and had no way to recover: nothing ever stole focus, so the
+     * visibilitychange listener that would normally notice "they're back"
+     * never fires either. Reveal the deck again instead of leaving it stuck.
+     */
+    if (!opened) {
+      veniteLeftAtRef.current = null;
+      setVeniteHandingOff(false);
+    }
   };
 
   // Coming back from Venite. Native fires phoebe:browserfinished when the

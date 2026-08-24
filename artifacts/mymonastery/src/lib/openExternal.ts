@@ -46,18 +46,34 @@ type PhoebeNative = {
  */
 type OpenOpts = { reader?: boolean };
 
-export function openExternal(url: string, opts?: OpenOpts): void {
-  if (!url) return;
+/**
+ * Returns whether the hand-off actually happened — true for native (the
+ * plugin call always "succeeds" as far as the caller can tell; there's no
+ * popup-blocker concept in a native browser), and on web, whether
+ * `window.open` actually returned a window rather than null.
+ *
+ * Reported: "there is an issue with a pop-up blocker on web and then it just
+ * goes to a green screen." A caller (bcp-daily-office.tsx's Venite hand-off)
+ * was treating the CALL as the hand-off — it set its "gone to the browser,
+ * show nothing" state unconditionally, with no way to notice a blocked
+ * popup and no signal to recover on (the page never lost focus, since no
+ * new tab actually opened, so the visibilitychange-based "they're back"
+ * listener never fires either). A blocked popup left that screen stuck
+ * forever. Checking the return value is what lets a caller fall back
+ * instead of hanging.
+ */
+export function openExternal(url: string, opts?: OpenOpts): boolean {
+  if (!url) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
   if (native?.openInAppBrowser) {
     void native.openInAppBrowser(url, { lightChrome: !!opts?.reader });
-    return;
+    return true;
   }
   // Web fallback. noopener for security; noreferrer to keep the
   // outbound URL out of the destination's referrer logs. (Reader mode is a
   // native SFSafari affordance — a plain web tab can't be forced into it.)
-  window.open(url, "_blank", "noopener,noreferrer");
+  return !!window.open(url, "_blank", "noopener,noreferrer");
 }
 
 // Open a reflection / newsletter, and mark it read only once the user CLOSES
@@ -114,8 +130,8 @@ export function openExternalThenMarkRead(
 export function openOfficeReading(
   url: string,
   ctx: { officeTitle: string; slideLabel: string; sectionLabel: string },
-): void {
-  if (!url) return;
+): boolean {
+  if (!url) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
   if (native?.openInAppBrowser) {
     void native.openInAppBrowser(url, {
@@ -124,9 +140,11 @@ export function openOfficeReading(
       slideLabel: ctx.slideLabel,
       sectionLabel: ctx.sectionLabel,
     });
-    return;
+    return true;
   }
-  window.open(url, "_blank", "noopener,noreferrer");
+  // See openExternal's own note on why the return value matters — same
+  // "popup blocked → don't act like the hand-off happened" reasoning.
+  return !!window.open(url, "_blank", "noopener,noreferrer");
 }
 
 // Warm a URL in the native in-app browser's background so a later openExternal
