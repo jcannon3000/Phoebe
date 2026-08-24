@@ -253,6 +253,11 @@ type RulePreset = {
    *  on (the named rules); the time ladder pins ONE sit ("5 minutes of
    *  silence" means five, not five per side). */
   silenceSide?: "morning" | "evening";
+  /** Which contemplative practice the sit IS. Omitted = the silent sit.
+   *  "cobreathe" is the practice the owner renamed "Creation Prayer" — the
+   *  creation OFFICE (PrayChoice "creation") is flag-off and degrades to a
+   *  normal office, so a preset must never reach for it by that name. */
+  contemplationStyle?: "silent" | "cobreathe";
   reflections: ReflectionSource[];
 };
 // Ordered by ascending commitment (least → most time), so a beginner reads down
@@ -282,6 +287,14 @@ const RULE_PRESETS: RulePreset[] = [
   { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"],
     title: "The Daily Office", blurb: "Morning and Evening Prayer in full, from the Book of Common Prayer.",
     rows: [{ emoji: "🌅", label: "Morning Prayer" }, { emoji: "🌆", label: "Evening Prayer" }, { emoji: "📖", label: "Forward Day by Day" }] },
+  // VTS CULTIVATE — Virginia Theological Seminary's rule (owner). The breath
+  // morning and evening + the Dean's word. "Creation Prayer" here is the BREATH
+  // (contemplationStyle "cobreathe"), which is what that name now means; pray
+  // "none" because the breath IS the prayer, the same shape "centering" uses.
+  { id: "vts-cultivate", emoji: "🦩", sides: { morning: true, evening: true }, pray: "none",
+    silence: true, goalMin: 5, contemplationStyle: "cobreathe", reflections: ["vts"],
+    title: "VTS Cultivate", blurb: "Virginia Theological Seminary's rhythm — breathing with creation at both ends of the day, and the Dean's word between them.",
+    rows: [{ emoji: "🌅", label: "Creation Prayer in the morning" }, { emoji: "🌆", label: "Creation Prayer in the evening" }, { emoji: "🦩", label: "The VTS Dean's Commentary" }] },
 ];
 
 // ── The TIME LADDER — the automatic transmission's dial (owner, 2026-07-03).
@@ -1564,7 +1577,11 @@ export default function WayOfLoveRuleFlow({
     setSides(preset.sides);
     setPrayBySide({ morning: preset.pray, evening: preset.evening ?? preset.pray });
     setCommunityWithOffice({ morning: false, evening: false });
-    setContemplationStyle("silent");
+    // chooseContemplationStyle, NOT the raw setter: the style's localStorage
+    // write ("phoebe:contemplation-style") lives in the chooser, and the home
+    // card + "Begin" read it from there. Set state alone and VTS Cultivate
+    // adopts a breath rule whose card still says Contemplation.
+    chooseContemplationStyle(preset.contemplationStyle ?? "silent");
     setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, compline: false });
     // A starter rule's silence applies to whichever sides it turns on.
     setContemplationBySide({
