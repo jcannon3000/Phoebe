@@ -1835,6 +1835,24 @@ export async function migrate() {
       SELECT 'The Flamingo', 'Virginia Theological Seminary', 38.8210, -77.0930, 161, '🦩', '["bundled:flamingos"]'::jsonb
       WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'The Flamingo')
     `);
+    /**
+     * Say out loud whether the place actually exists after that.
+     *
+     * run() deliberately swallows statement errors — right for a migration
+     * that must not wedge a boot on one bad ALTER, wrong for a seed whose
+     * whole job is to put a row there. A failed INSERT looked identical to a
+     * successful one, and the only symptom was "the flamingo is not showing
+     * up" with nothing in the logs to point at. One cheap SELECT turns that
+     * into an answer.
+     */
+    try {
+      const check = await client.query(`SELECT COUNT(*)::int AS n FROM breath_places WHERE name = 'The Flamingo'`);
+      const n = (check as { rows?: Array<{ n?: number }> }).rows?.[0]?.n ?? 0;
+      if (n > 0) logger.info({ n }, "[migrate] breath_places: The Flamingo present");
+      else logger.warn({}, "[migrate] breath_places: The Flamingo MISSING after seed — the INSERT failed (see the warning above it)");
+    } catch (err) {
+      logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[migrate] breath_places: could not verify the seed");
+    }
     // Where a breath was kept, and whether the device confirmed it. Both
     // nullable/defaulted so every existing row stays valid — breathing
     // anywhere is still the practice; a place is an option, never a

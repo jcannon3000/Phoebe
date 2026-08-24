@@ -183,7 +183,7 @@ export default function ExamenPage() {
           type="button"
           onClick={() => {
             if (step > 0 && step < 6) setStep((s) => s - 1);
-            else setLocation("/offices");
+            else setLocation("/bcp/daily-office");
           }}
           style={{
             color: "rgba(143,175,150,0.8)",
@@ -200,7 +200,7 @@ export default function ExamenPage() {
         {step > 0 && step < 6 && (
           <button
             type="button"
-            onClick={() => setLocation("/offices")}
+            onClick={() => setLocation("/bcp/daily-office")}
             aria-label={t("examen.exit", { defaultValue: "Exit" })}
             className="flex items-center justify-center rounded-full"
             style={{

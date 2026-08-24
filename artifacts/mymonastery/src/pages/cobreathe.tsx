@@ -312,11 +312,17 @@ export default function CobreathePage() {
    * an optional detour off the opening screen, and everyone who never taps it
    * (which will be most people, most days) shouldn't pay a request for it.
    */
-  const { data: placesData, isLoading: placesLoading } = useQuery<{ places: BreathPlace[] }>({
+  const { data: placesData, isLoading: placesLoading, isError: placesError } = useQuery<{ places: BreathPlace[] }>({
     queryKey: ["/api/breath/places", day],
     queryFn: () => apiRequest("GET", `/api/breath/places?day=${day}`),
-    enabled: mode === "location",
-    staleTime: 60_000,
+    // PRELOADED, not fetched on arrival. Owner: "there is only going to be
+    // two so it shouldn't need to load, just be preloaded." The list is a
+    // handful of rows; warming it as soon as the intro is on screen means the
+    // location slide paints its choices on the first frame instead of showing
+    // a spinner for a payload this small. Still not fetched for someone who
+    // never opens Co-Breathe at all.
+    enabled: mode === "intro" || mode === "location" || mode === "placeStats",
+    staleTime: 5 * 60_000,
   });
   const places = placesData?.places ?? [];
   const [verifying, setVerifying] = useState(false);
@@ -582,7 +588,16 @@ export default function CobreathePage() {
                     {t("common.loading", { defaultValue: "Loading…" })}
                   </p>
                 )}
-                {!placesLoading && places.length === 0 && (
+                {/* An ERROR is not an empty list, and saying "no places have
+                    been set up yet" when the request actually failed sends
+                    someone looking for a problem that isn't there — which is
+                    exactly what it did when the places couldn't be reached. */}
+                {!placesLoading && placesError && (
+                  <p style={{ color: "rgba(229,160,160,0.9)", fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.5 }}>
+                    {t("cobreathe.location_error", { defaultValue: "Couldn't reach the places just now. You can still breathe — the practice is the same." })}
+                  </p>
+                )}
+                {!placesLoading && !placesError && places.length === 0 && (
                   <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.5 }}>
                     {t("cobreathe.location_none", { defaultValue: "No places have been set up yet. You can breathe anywhere — the practice is the same." })}
                   </p>

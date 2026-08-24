@@ -27,7 +27,7 @@ export default function MenuPracticesPage() {
         items: [
           // Daily Offices leads the list — also reachable from the BCP page
           // (menu.tsx → /menu/bcp), but Practices gets its own entry point too.
-          { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/offices") },
+          { emoji: "📖", label: "Daily Offices", sub: "Morning Prayer, Evening Prayer, Compline", onClick: () => go("/bcp/daily-office") },
           // Quick link straight to Forward Movement's daily-readings page (the
           // day's appointed psalm + lessons) — NOT Forward Day by Day (owner
           // correction: this was wired to FDD_TODAY_URL at first, but Daily

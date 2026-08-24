@@ -338,7 +338,6 @@ const PrivacyPage = lazy(() => import("./pages/privacy"));
 const TermsPage = lazy(() => import("./pages/terms"));
 const InvitationsPage = lazy(() => import("./pages/invitations"));
 const BcpPage = lazy(() => import("./pages/bcp"));
-const OfficesPage = lazy(() => import("./pages/offices"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const VtsReadingPage = lazy(() => import("./pages/vts-reading"));
 const GuidedPrayerPage = lazy(() => import("./pages/guided-prayer"));
@@ -1002,7 +1001,16 @@ function Router() {
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/invitations" component={InvitationsPage} />
-      <Route path="/offices" component={OfficesPage} />
+      {/* Owner: the Daily Prayer chooser (the /bcp/daily-office landing, with
+          Time of day · Practice · How) "should be the only page where you
+          would choose the daily prayer — not the one with the list."
+          /offices was a second, parallel picker of the same thing: four cards,
+          one per office. Two surfaces answering one question drift, and this
+          one had no way to express "the full office OR the short devotion"
+          without doubling its card count again. Redirected rather than
+          deleted, so an existing bookmark or a link in an old push still
+          arrives somewhere correct. */}
+      <Route path="/offices">{() => <RedirectTo to="/bcp/daily-office" />}</Route>
       <Route path="/examen" component={ExamenPage} />
       <Route path="/vts-reading" component={VtsReadingPage} />
       <Route path="/guided-prayer" component={GuidedPrayerPage} />

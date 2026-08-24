@@ -2853,7 +2853,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 className="title-glow-breathe"
                 style={{
                   fontFamily: SPACE_GROTESK,
-                  fontSize: TITLE_LG,
+                  // A shade smaller than TITLE_LG on this slide only: it is the
+                  // one title card that also carries a blurb AND the setting
+                  // rows AND Begin, so it has the least room to spend.
+                  fontSize: "clamp(34px, 7vw, 44px)",
                   fontWeight: 700,
                   letterSpacing: "-0.02em",
                   color: WARM_TEXT,
@@ -2871,8 +2874,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               {currentSlide.content && !(resolvedMode === "morning" || resolvedMode === "evening" || resolvedMode === "compline") && (
                 <p
                   style={{
-                    fontSize: 17,
-                    lineHeight: 1.7,
+                    // Owner: "make sure this is fitting, maybe make the
+                    // description smaller." On the Devotion intro the blurb is
+                    // four full lines, and at 17px/1.7 it pushed Begin down
+                    // behind the fixed bottom nav pill — the primary action on
+                    // the slide, unreachable. Smaller type and a tighter leading
+                    // buy back roughly two lines' worth of height.
+                    fontSize: 15,
+                    lineHeight: 1.55,
                     fontFamily: SPACE_GROTESK,
                     color: "rgba(var(--ot-mist, 200,212,192),0.85)",
                     margin: 0,
