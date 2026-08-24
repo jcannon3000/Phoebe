@@ -1816,6 +1816,25 @@ export async function migrate() {
     await run(client, `ALTER TABLE breath_places ADD COLUMN IF NOT EXISTS photo_urls JSONB NOT NULL DEFAULT '[]'::jsonb`);
     // The glyph in the centre of the breathing rings. NULL keeps the globe.
     await run(client, `ALTER TABLE breath_places ADD COLUMN IF NOT EXISTS center_emoji TEXT`);
+
+    /**
+     * The first designated place — The Flamingo, at Virginia Theological
+     * Seminary. Seeded rather than left to the admin UI so it exists the
+     * moment this deploys, and because its photo library ships INSIDE the app
+     * (bundled:flamingos → src/assets/breath-places/flamingos) and therefore
+     * can't be typed as a URL.
+     *
+     * Keyed on the name so re-running migrate() never duplicates it, and
+     * deliberately NOT an upsert: once this row exists, an admin editing it
+     * (moving it, changing its radius, retiring it) must not be overwritten on
+     * the next boot. The seed's job is to bring it into being, not to own it.
+     */
+    await run(client, `
+      INSERT INTO breath_places (name, subtitle, lat, lng, radius_meters, center_emoji, photo_urls)
+      -- 161m ≈ 0.1 miles (owner: "let anyone within .1 miles check in").
+      SELECT 'The Flamingo', 'Virginia Theological Seminary', 38.8210, -77.0930, 161, '🦩', '["bundled:flamingos"]'::jsonb
+      WHERE NOT EXISTS (SELECT 1 FROM breath_places WHERE name = 'The Flamingo')
+    `);
     // Where a breath was kept, and whether the device confirmed it. Both
     // nullable/defaulted so every existing row stays valid — breathing
     // anywhere is still the practice; a place is an option, never a

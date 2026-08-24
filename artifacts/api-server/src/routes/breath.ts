@@ -203,7 +203,12 @@ function parsePhotoUrls(raw: unknown): string[] | null {
     if (typeof item !== "string") continue;
     const url = item.trim();
     if (url.length === 0 || url.length > 500) continue;
-    if (!/^https:\/\//i.test(url)) continue;
+    // `bundled:<set>` names a photo set that SHIPS with the app (see the
+    // client's lib/breathPlacePhotos). Allowed alongside https because a place
+    // Phoebe ships would otherwise have to fetch its own bundled images over
+    // the network. Anything else — http, data:, javascript: — is dropped.
+    const isBundled = /^bundled:[a-z0-9._-]{1,40}$/i.test(url);
+    if (!isBundled && !/^https:\/\//i.test(url)) continue;
     out.push(url);
     // A backdrop rotation, not an album. The breath cycles through these
     // while someone is breathing; past a couple of dozen nobody sees the

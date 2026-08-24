@@ -19,6 +19,7 @@ import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { verifyAtPlace, type BreathPlace } from "@/lib/breathPlaces";
+import { resolvePlacePhotos } from "@/lib/breathPlacePhotos";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation, getSideLevel } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
@@ -187,8 +188,8 @@ export default function CobreathePage() {
   const introBgPhoto = useMemo(() => {
     // A chosen place brings its own imagery to the intro slides too, so the
     // screens leading into the breath already look like where you are.
-    const lib = place?.photoUrls;
-    if (lib && lib.length > 0) return lib[Math.floor(Math.random() * lib.length)]!;
+    const lib = resolvePlacePhotos(place?.photoUrls);
+    if (lib.length > 0) return lib[Math.floor(Math.random() * lib.length)]!;
     // Wide landscape backdrop on the web; the bundled Co-Breathe photo on native.
     return pickWideBackground()
       ?? (COBREATHE_PHOTOS.length > 0 ? COBREATHE_PHOTOS[Math.floor(Math.random() * COBREATHE_PHOTOS.length)]! : null);
@@ -218,10 +219,13 @@ export default function CobreathePage() {
    * The photos this breath actually rests on — the place's own library when
    * one is chosen, the bundled landscapes otherwise.
    */
-  const breathPhotos = useMemo(
-    () => (place?.photoUrls && place.photoUrls.length > 0 ? place.photoUrls : BREATH_PHOTOS),
-    [place],
-  );
+  const breathPhotos = useMemo(() => {
+    // Expand any `bundled:<set>` sentinel into its real asset URLs first —
+    // a place that ships with the app carries its photos on disk, not over
+    // the network. See lib/breathPlacePhotos.
+    const own = resolvePlacePhotos(place?.photoUrls);
+    return own.length > 0 ? own : BREATH_PHOTOS;
+  }, [place]);
   /**
    * The fingerprint MUST be derived from the photos in use, not from the
    * bundled set.
