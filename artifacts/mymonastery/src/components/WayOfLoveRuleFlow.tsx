@@ -23,6 +23,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { RhythmWhyIntro } from "@/components/RhythmWhyIntro";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { FROST, FROST_BLUR } from "@/lib/frost";
+import { Spinner } from "@/components/ui/spinner";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -1086,12 +1087,18 @@ export default function WayOfLoveRuleFlow({
   // describes it — so "edit part" shows the same words the other flow does.
   useEffect(() => {
     if (guest || prescribe || pilot) { setEditLoaded(true); return; }
+    // This fetch GATES what renders, so it gets a deadline: a request that never
+    // settles would hold the loading splash forever. On timeout we fall through
+    // to the scratch path with no rows, which is the same place a failed request
+    // lands.
+    const bail = setTimeout(() => setEditLoaded(true), 6000);
     apiRequest("GET", "/api/routine-interview/current")
       .then((r: any) => {
         setEditRows(Array.isArray(r?.settings) ? r.settings : []);
       })
       .catch(() => { /* no routine to edit — the scratch path is the fallback */ })
-      .finally(() => setEditLoaded(true));
+      .finally(() => { clearTimeout(bail); setEditLoaded(true); });
+    return () => clearTimeout(bail);
   }, [guest, prescribe, pilot]);
 
   useEffect(() => {
@@ -1868,7 +1875,13 @@ export default function WayOfLoveRuleFlow({
     // Hide the eyebrow when it just restates the title (e.g. "EVENING" over
     // "Evening", "ADD TO YOUR DAY" over "Add to your day") — otherwise the
     // step header reads the same word twice.
-    const showEyebrow = eyebrow.trim().toLowerCase() !== title.trim().toLowerCase();
+    // …and hide it when it just restates the FIXED line printed above it. The
+    // fork slide passes wol_rule.walk as its eyebrow, which is the very string
+    // this header already prints unconditionally — comparing only against the
+    // title let "YOUR DAILY RHYTHM OF PRAYER" render twice, one above the other.
+    const walkLine = t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" });
+    const showEyebrow = eyebrow.trim().toLowerCase() !== title.trim().toLowerCase()
+      && eyebrow.trim().toLowerCase() !== walkLine.trim().toLowerCase();
     return (
       <>
         <div style={{ height: 3, background: CARD_B, borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
@@ -2038,6 +2051,22 @@ export default function WayOfLoveRuleFlow({
   // moment the entry slide stopped rendering, silently dropping "edit part of
   // it" for every returning user.
   const entrySettled = entryChoiceMade || !showEntryChoice;
+  // Until this settles we don't yet know whether the fork ("What would you like
+  // to do?") or the step machine owns the screen — and the step machine's first
+  // slide is the intro, so the intro FLASHED for the length of the request
+  // before the fork replaced it. Hold a quiet splash for that window instead.
+  // Never `return null` here: a blank screen is the worse failure, and the
+  // fetch above now carries a deadline so this can't become permanent.
+  if (entrySettled && !guest && !prescribe && !pilot && !editLoaded) {
+    return shell(
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, minHeight: "50vh" }}>
+        <Spinner className="size-7" style={{ color: SAGE }} />
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, letterSpacing: "0.4px" }}>
+          {t("wol_rule.loading_rule", { defaultValue: "Finding your rhythm…" })}
+        </p>
+      </div>,
+    );
+  }
   if (entrySettled && canEditParts && manualMode === "pick") {
     return shell(
       <>

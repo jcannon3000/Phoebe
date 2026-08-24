@@ -1853,13 +1853,13 @@ export async function migrate() {
     } catch (err) {
       logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[migrate] breath_places: could not verify the seed");
     }
-    // Where a breath was kept, and whether the device confirmed it. Both
-    // nullable/defaulted so every existing row stays valid — breathing
-    // anywhere is still the practice; a place is an option, never a
-    // requirement.
-    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_id INTEGER REFERENCES breath_places(id) ON DELETE SET NULL`);
-    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_verified BOOLEAN NOT NULL DEFAULT FALSE`);
-    await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_place_day_idx ON breath_sessions (place_id, day)`);
+    // NOTE: the breath_sessions place columns are NOT added here. This block
+    // runs ~1700 lines BEFORE `CREATE TABLE breath_sessions`, so on any boot
+    // where that table does not yet exist the ALTERs fail against a missing
+    // table — and run() swallows the error. The table is then created without
+    // place_id, and every /breath/places query (which selects bs.place_id)
+    // 500s, which reads in the app as "Couldn't reach the places just now".
+    // They now live directly after the CREATE. Search: breath_sessions_place_day_idx.
 
     // What each person's daily silence goal WAS on a given day, so raising the
     // goal can't retroactively un-keep days they actually kept. Written lazily
@@ -3627,6 +3627,28 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_sessions_user_day_uk ON breath_sessions (user_id, day)`);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_day_idx ON breath_sessions (day)`);
+    // Where a breath was kept, and whether the device confirmed it. Both
+    // nullable/defaulted so every existing row stays valid — breathing
+    // anywhere is still the practice; a place is an option, never a
+    // requirement. MUST stay after the CREATE above (see the note where these
+    // used to live, up with the breath_places block).
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_id INTEGER REFERENCES breath_places(id) ON DELETE SET NULL`);
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_verified BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_place_day_idx ON breath_sessions (place_id, day)`);
+    // Say plainly whether the columns the places endpoint depends on are
+    // actually there — run() is silent on failure, and a missing column here
+    // is invisible until the app shows an error instead of a list of places.
+    try {
+      const cols = await client.query(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_name = 'breath_sessions' AND column_name IN ('place_id','place_verified')`,
+      );
+      const have = cols.rows.map((r: { column_name: string }) => r.column_name).sort();
+      if (have.length === 2) logger.info({ have }, "[migrate] breath_sessions: place columns present");
+      else logger.warn({ have }, "[migrate] breath_sessions: place columns MISSING — /breath/places will 500");
+    } catch (err) {
+      logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[migrate] breath_sessions: could not verify place columns");
+    }
 
     // ── listening_entries (Audio Divina log — account-wide) ─────────────────
     // Append log of "sacred listening" sittings (what + how), one row per log.
