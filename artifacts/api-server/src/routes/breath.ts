@@ -231,6 +231,70 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
 });
 
 /**
+ * GET /breath/places/:id/stats?day=YYYY-MM-DD — one place's story: today,
+ * this month, and all time.
+ *
+ * Owner: "how many breaths and people have breathed there today, this month,
+ * and all time."
+ *
+ * BREATHS vs PEOPLE. breath_sessions is unique on (user, day), so for a SINGLE
+ * day those two numbers are necessarily identical — today's "breaths" and
+ * today's "people" are the same count by construction. The distinction only
+ * becomes real over a span: thirty breaths from three faithful regulars is a
+ * very different place from thirty people who each came once. So today is
+ * returned as one number and the two spans carry both.
+ *
+ * `day` is the CALLER'S local day — the same TEXT local-day convention
+ * breath_sessions uses throughout, so the server never guesses a timezone. The
+ * month is derived from its YYYY-MM prefix rather than from server time, which
+ * would put someone near a month boundary in the wrong month.
+ */
+router.get("/breath/places/:id/stats", async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const id = Number(req.params["id"]);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "bad_request" }); return; }
+  const day = String(req.query["day"] ?? "");
+  if (!isValidYmd(day)) { res.status(400).json({ error: "bad_request" }); return; }
+  const monthPrefix = `${day.slice(0, 7)}-%`;
+
+  try {
+    const [place] = await db
+      .select({ id: breathPlacesTable.id, name: breathPlacesTable.name, subtitle: breathPlacesTable.subtitle })
+      .from(breathPlacesTable)
+      .where(eq(breathPlacesTable.id, id))
+      .limit(1);
+    if (!place) { res.status(404).json({ error: "not_found" }); return; }
+
+    // One pass over this place's rows — three spans, computed with FILTER
+    // rather than three round trips.
+    const rows = await db.execute<{
+      today: number; month_breaths: number; month_people: number;
+      all_breaths: number; all_people: number;
+    }>(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE day = ${day})::int                        AS today,
+        COUNT(*) FILTER (WHERE day LIKE ${monthPrefix})::int             AS month_breaths,
+        COUNT(DISTINCT user_id) FILTER (WHERE day LIKE ${monthPrefix})::int AS month_people,
+        COUNT(*)::int                                                    AS all_breaths,
+        COUNT(DISTINCT user_id)::int                                     AS all_people
+      FROM breath_sessions
+      WHERE place_id = ${id}
+    `);
+    const r = rows.rows?.[0];
+    res.json({
+      place,
+      today: r?.today ?? 0,
+      month: { breaths: r?.month_breaths ?? 0, people: r?.month_people ?? 0 },
+      allTime: { breaths: r?.all_breaths ?? 0, people: r?.all_people ?? 0 },
+    });
+  } catch (err) {
+    console.error("[/breath/places/:id/stats GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+/**
  * POST /breath/places — create a designated place. SUPER ADMINS ONLY (owner:
  * "only admins can make them"), because every one of these is a claim that a
  * real public place exists at real coordinates, and a bad row sends people

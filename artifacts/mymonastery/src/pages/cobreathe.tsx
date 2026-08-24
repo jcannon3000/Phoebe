@@ -148,7 +148,7 @@ export default function CobreathePage() {
   // The Laurel Kearns "Prayer of Con-Spiring" slideshow is removed (owner) —
   // landing on /cobreathe goes straight to the "before you begin" screen for
   // everyone (a ?start=1 quick-launch still jumps into the breath).
-  const [mode, setMode] = useState<"intro" | "location" | "howto" | "breathing" | "done">(() =>
+  const [mode, setMode] = useState<"intro" | "location" | "placeStats" | "howto" | "breathing" | "done">(() =>
     // A ?start=1 quick-launch jumps in — but a FIRST-time breather still gets the
     // one-time "how it works" intro first.
     wantsStart() ? (cobreatheHowtoSeen() ? "breathing" : "howto") : "intro",
@@ -301,6 +301,10 @@ export default function CobreathePage() {
   const pickPlace = useCallback(async (p: BreathPlace) => {
     setPlace(p);
     setPlaceVerified(false);
+    // Straight to the place's own slide — what you just joined is the
+    // interesting thing, and waiting on the GPS check to show it would make
+    // the tap feel unresponsive indoors, which is where chapels are.
+    setMode("placeStats");
     setVerifying(true);
     try {
       setPlaceVerified(await verifyAtPlace(p));
@@ -308,6 +312,25 @@ export default function CobreathePage() {
       setVerifying(false);
     }
   }, []);
+
+  /**
+   * The chosen place's story — today, this month, all time.
+   *
+   * Keyed by day as well as id so it re-fetches across a midnight rollover
+   * rather than serving yesterday's "today". Only runs on the slide that
+   * shows it.
+   */
+  const { data: placeStats, isLoading: statsLoading } = useQuery<{
+    place: { id: number; name: string; subtitle: string | null };
+    today: number;
+    month: { breaths: number; people: number };
+    allTime: { breaths: number; people: number };
+  }>({
+    queryKey: ["/api/breath/places/stats", place?.id, day],
+    queryFn: () => apiRequest("GET", `/api/breath/places/${place?.id}/stats?day=${day}`),
+    enabled: mode === "placeStats" && !!place?.id,
+    staleTime: 60_000,
+  });
 
   const record = useMutation({
     mutationFn: (seconds: number) =>
@@ -589,6 +612,108 @@ export default function CobreathePage() {
                   style={{ marginTop: 10, background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
                 >
                   {t("common.done", { defaultValue: "Done" })}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  /**
+   * The place's own slide — what you just joined.
+   *
+   * Owner: "how many breaths and people have breathed there today, this month,
+   * and all time."
+   *
+   * Today is ONE number, not two: breath_sessions is unique on (user, day), so
+   * a single day's breaths and people are the same count by construction, and
+   * printing them as two figures would imply a distinction that cannot exist.
+   * Over a span the distinction is real and worth showing — thirty breaths
+   * from three regulars is a different place from thirty people who each came
+   * once — so the two spans carry both.
+   */
+  if (mode === "placeStats") {
+    const st = placeStats;
+    const row = (label: string, primary: string, secondary?: string) => (
+      <div
+        className="w-full rounded-2xl py-3.5 px-4"
+        style={{
+          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+          border: "1px solid rgba(168,197,160,0.25)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12,
+        }}
+      >
+        <span style={{ color: "rgba(200,212,192,0.78)", fontFamily: SPACE_GROTESK, fontSize: 14 }}>{label}</span>
+        <span style={{ textAlign: "right" }}>
+          <span style={{ display: "block", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700 }}>{primary}</span>
+          {secondary && (
+            <span style={{ display: "block", color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 12.5, marginTop: 1 }}>{secondary}</span>
+          )}
+        </span>
+      </div>
+    );
+    return (
+      <Layout bgPhoto={introBgPhoto}>
+        <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+          <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
+            <div className="flex flex-col items-center text-center pt-8">
+              <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+                {verifying
+                  ? t("cobreathe.place_checking", { defaultValue: "Checking you're here…" })
+                  : placeVerified
+                    ? t("cobreathe.place_here", { defaultValue: "You're here" })
+                    : t("cobreathe.place_chosen", { defaultValue: "Breathing with" })}
+              </p>
+              <h1 style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(30px, 8vw, 44px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 8 }}>
+                {place?.name ?? ""}
+              </h1>
+              {place?.subtitle && (
+                <p style={{ color: "rgba(200,212,192,0.72)", fontFamily: SPACE_GROTESK, fontSize: 14.5, marginBottom: 20 }}>{place.subtitle}</p>
+              )}
+
+              <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440, marginTop: 14 }}>
+                {statsLoading && !st && (
+                  <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14 }}>
+                    {t("common.loading", { defaultValue: "Loading…" })}
+                  </p>
+                )}
+                {st && (
+                  <>
+                    {/* One number: see the note above on why today can't have two. */}
+                    {row(
+                      t("cobreathe.stat_today", { defaultValue: "Today" }),
+                      st.today === 1
+                        ? t("cobreathe.stat_one_breath", { defaultValue: "1 breath" })
+                        : t("cobreathe.stat_n_breaths", { count: st.today, defaultValue: `${st.today} breaths` }),
+                    )}
+                    {row(
+                      t("cobreathe.stat_month", { defaultValue: "This month" }),
+                      t("cobreathe.stat_n_breaths", { count: st.month.breaths, defaultValue: `${st.month.breaths} breaths` }),
+                      t("cobreathe.stat_n_people", { count: st.month.people, defaultValue: `${st.month.people} ${st.month.people === 1 ? "person" : "people"}` }),
+                    )}
+                    {row(
+                      t("cobreathe.stat_all_time", { defaultValue: "All time" }),
+                      t("cobreathe.stat_n_breaths", { count: st.allTime.breaths, defaultValue: `${st.allTime.breaths} breaths` }),
+                      t("cobreathe.stat_n_people", { count: st.allTime.people, defaultValue: `${st.allTime.people} ${st.allTime.people === 1 ? "person" : "people"}` }),
+                    )}
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setMode("intro")}
+                  className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  style={{ marginTop: 12, background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
+                >
+                  {t("common.done", { defaultValue: "Done" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("location")}
+                  style={{ background: "none", border: "none", color: "rgba(200,212,192,0.65)", fontFamily: SPACE_GROTESK, fontSize: 13.5, cursor: "pointer", padding: "8px 0" }}
+                >
+                  {t("cobreathe.place_change", { defaultValue: "Choose another place" })}
                 </button>
               </div>
             </div>
