@@ -121,6 +121,26 @@ router.get("/breath/today", async (req: Request, res: Response): Promise<void> =
   }
 });
 
+/**
+ * The built-in places, server-side — the same handful the client bundles (see
+ * mymonastery/src/lib/breathPlaces.ts BUILT_IN_PLACES). Keep the two in step;
+ * the slug is the contract between them.
+ */
+const BUILT_IN_PLACE_ROWS: Record<string, {
+  name: string; subtitle: string; lat: number; lng: number;
+  radiusMeters: number; centerEmoji: string; photoUrls: string[];
+}> = {
+  flamingo: {
+    name: "The Flamingo",
+    subtitle: "Virginia Theological Seminary",
+    lat: 38.8210,
+    lng: -77.0930,
+    radiusMeters: 161,
+    centerEmoji: "\u{1F9A9}",
+    photoUrls: ["bundled:flamingos"],
+  },
+};
+
 router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
@@ -148,7 +168,17 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
    */
   const placeIdRaw = Number(req.body?.placeId);
   const placeId = Number.isInteger(placeIdRaw) && placeIdRaw > 0 ? placeIdRaw : null;
-  const placeVerified = placeId !== null && req.body?.placeVerified === true;
+  /**
+   * The built-in places identify themselves by SLUG, because the client no
+   * longer waits on a list to learn their row ids — the options are wired into
+   * the bundle. Resolving the slug here (and seeding the row if it is somehow
+   * absent) is what makes the feature independent of whether the migration's
+   * seed ever landed: a breath at The Flamingo records as a breath at The
+   * Flamingo either way, instead of silently dropping its attribution.
+   */
+  const placeSlugRaw = typeof req.body?.placeSlug === "string" ? req.body.placeSlug.trim() : "";
+  const placeSlug = /^[a-z0-9-]{1,64}$/.test(placeSlugRaw) ? placeSlugRaw : null;
+  const placeVerified = (placeId !== null || placeSlug !== null) && req.body?.placeVerified === true;
 
   try {
     // A place must exist and be active — otherwise drop the attribution
@@ -161,6 +191,32 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
         .where(and(eq(breathPlacesTable.id, placeId), eq(breathPlacesTable.active, true)))
         .limit(1);
       resolvedPlaceId = place?.id ?? null;
+    }
+    if (resolvedPlaceId === null && placeSlug !== null) {
+      const known = BUILT_IN_PLACE_ROWS[placeSlug];
+      if (known) {
+        const [existing] = await db
+          .select({ id: breathPlacesTable.id })
+          .from(breathPlacesTable)
+          .where(and(eq(breathPlacesTable.name, known.name), eq(breathPlacesTable.active, true)))
+          .limit(1);
+        if (existing) resolvedPlaceId = existing.id;
+        else {
+          const [created] = await db
+            .insert(breathPlacesTable)
+            .values({
+              name: known.name,
+              subtitle: known.subtitle,
+              lat: known.lat,
+              lng: known.lng,
+              radiusMeters: known.radiusMeters,
+              centerEmoji: known.centerEmoji,
+              photoUrls: known.photoUrls,
+            })
+            .returning({ id: breathPlacesTable.id });
+          resolvedPlaceId = created?.id ?? null;
+        }
+      }
     }
     // Idempotent — one breath per local day; a second sit the same day keeps
     // the first row (and its created_at) rather than duplicating. The PLACE,

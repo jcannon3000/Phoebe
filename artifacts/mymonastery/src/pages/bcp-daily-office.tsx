@@ -12,7 +12,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { usePrayerRequestsEnabled } from "@/hooks/usePrayerRequests";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
-import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExternal } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead, openOfficeReading, preloadExternal, hasNativeBrowser } from "@/lib/openExternal";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
@@ -972,7 +972,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
    */
   // Seeded from veniteDirect so even the FIRST frame is the plain field — the
   // hand-off starts in an effect, which runs after that frame has painted.
-  const [veniteHandingOff, setVeniteHandingOff] = useState(veniteDirect);
+  // …and the same on the FIRST frame of a direct hand-off: on web there is no
+  // browser sliding up over this, so seeding the veil just means the reader's
+  // own tab sits blank behind the new one.
+  const [veniteHandingOff, setVeniteHandingOff] = useState(veniteDirect && hasNativeBrowser());
   const [veniteForm, setVeniteForm] = useState<"office" | "devotion">("office");
 
 
@@ -982,7 +985,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // an EVENING hand-off opened the morning podcast.
     try { sessionStorage.setItem("phoebe:venite-side", officeSide); } catch { /* private mode */ }
     setVeniteForm(form);
-    setVeniteHandingOff(true);
+    /**
+     * The hand-off veil is an iOS thing only.
+     *
+     * Owner: "there should be no splash on web when an external tab opens,
+     * that's only for iOS." On native the in-app browser slides up OVER this
+     * screen, so blanking the deck to the plain field is what makes the two
+     * read as one continuous surface. On the web a new TAB opens and this page
+     * stays exactly where it is, in its own tab — so the veil isn't a
+     * transition, it's just the office replaced by a blank green screen that
+     * the reader comes back to and has to get out of.
+     */
+    const nativeHandoff = hasNativeBrowser();
+    if (nativeHandoff) setVeniteHandingOff(true);
     veniteLeftAtRef.current = Date.now();
     const opened = openExternal(veniteOfficeUrl(officeSide, new Date(), form));
     /**
@@ -2004,12 +2019,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the moment the reader actually asks for it, exactly mirroring what
     // tapping Next on this slide would otherwise have done.
     if (lessonReadUrl) {
-      openOfficeReading(lessonReadUrl, {
+      const opened = openOfficeReading(lessonReadUrl, {
         officeTitle,
         slideLabel: `${slideIdx + 1} of ${slides.length}`,
         sectionLabel,
       });
-      return;
+      /**
+       * Only NATIVE holds the deck still. There the browser's own bottom bar
+       * steps the office on the way out (phoebe:office-next-slide), so
+       * returning here would be stepping it twice.
+       *
+       * On web that bar cannot exist — no listener ever fires — so returning
+       * left the office parked on the lesson slide with no way forward but
+       * tapping Next a second time. Reported as scripture readings "not
+       * marking it as done": an office that can't pass its lesson slide can
+       * never reach the end, and completion is the end of the deck. Fall
+       * through to the ordinary advance instead. Same if the hand-off didn't
+       * happen at all — a deck that goes nowhere is the worse failure.
+       */
+      if (hasNativeBrowser() && opened) return;
     }
     // Tapping "Next" on the intercessions portal should mean "take me
     // into the slideshow now" — not "skip past it". Without this

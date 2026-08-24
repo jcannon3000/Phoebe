@@ -22,6 +22,46 @@
  * immediately.
  */
 
+/**
+ * The places themselves, in the client.
+ *
+ * Owner: "don't have it be loading, just have the list not even preloaded, but
+ * like it's the customizer UI with the options wired in." There are two of
+ * these, ever. A handful of fixed coordinates is not data worth a round trip —
+ * fetching it bought a spinner, an empty state, an error state, and a slide
+ * that could fail to offer any options at all, in exchange for nothing the
+ * bundle couldn't already say. So the CHOICES are wired in, exactly like the
+ * customizer's option rows, and the server is asked only for the live counts,
+ * which fold in if and when they arrive.
+ *
+ * `slug` is the stable identity across client and server — the DB row's own id
+ * is incidental, and asking for it first is what made this a loading screen.
+ */
+export type BuiltInPlace = {
+  slug: string;
+  name: string;
+  subtitle: string | null;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  centerEmoji: string;
+  /** Which bundled photo folder backs this place. See lib/breathPlacePhotos. */
+  photoSet: string;
+};
+export const BUILT_IN_PLACES: BuiltInPlace[] = [
+  {
+    slug: "flamingo",
+    name: "The Flamingo",
+    subtitle: "Virginia Theological Seminary",
+    lat: 38.8210,
+    lng: -77.0930,
+    // Owner: "let anyone within .1 miles check in." 0.1 mi ≈ 161 m.
+    radiusMeters: 161,
+    centerEmoji: "🦩",
+    photoSet: "flamingos",
+  },
+];
+
 /** Metres between two points on the earth (haversine, mean earth radius). */
 export function metersBetween(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371008.8; // IUGG mean earth radius
@@ -36,6 +76,9 @@ export function metersBetween(aLat: number, aLng: number, bLat: number, bLng: nu
 
 export type BreathPlace = {
   id: number;
+  /** Set for the built-in options; the server resolves it when the row's own
+   *  id isn't known yet. See BUILT_IN_PLACES. */
+  slug?: string;
   name: string;
   subtitle: string | null;
   lat: number;

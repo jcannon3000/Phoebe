@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { openExternal } from "@/lib/openExternal";
 import { useAuth } from "@/hooks/useAuth";
 import { Sprout } from "lucide-react";
 import clsx from "clsx";
@@ -165,7 +166,7 @@ function BcpPracticeView({
           <div className="border-t border-[#E8E4D8]/10 pt-4">
             <p className="text-[#E8E4D8]/40 text-xs mb-3">{t("moment_post.or_pray_online")}</p>
             <button
-              onClick={() => window.open(bcpUrl, "_blank", "noopener,noreferrer")}
+              onClick={() => openExternal(bcpUrl)}
               className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
               style={{ background: accentColor, color: bgColor }}>
               {t("moment_post.open_office", { office: officeName })} →

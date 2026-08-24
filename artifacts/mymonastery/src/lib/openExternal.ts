@@ -62,6 +62,39 @@ type OpenOpts = { reader?: boolean };
  * forever. Checking the return value is what lets a caller fall back
  * instead of hanging.
  */
+/**
+ * Open a URL in a new TAB on the web, and say truthfully whether it opened.
+ *
+ * Reported: "there's still an issue with opening things like scripture reading
+ * and stuff on web… possibly because it's trying to do it as a pop up and not
+ * a new tab." Exactly right, and the third argument was doing both kinds of
+ * damage:
+ *
+ *   window.open(url, "_blank", "noopener,noreferrer")
+ *
+ *   1. ANY windowFeatures string switches browsers from tab semantics to
+ *      POPUP-WINDOW semantics. It stopped being a new tab, and popup blockers
+ *      treat a popup far more harshly than a tab.
+ *   2. When `noopener` is in that string, window.open is SPECIFIED to return
+ *      null — on success. So `!!window.open(...)` was false every single time
+ *      on web, and every caller that checks the hand-off (the Venite flow
+ *      falls back on a blocked popup) was told the open had failed even when
+ *      a window did appear.
+ *
+ * Omitting the features string restores tab semantics AND gives us back a real
+ * window handle to test. Severing `opener` afterwards keeps the security
+ * property the string was there for (reverse tabnabbing) without paying for it
+ * in either bug. The referrer is no longer suppressed — an anchor with
+ * rel="noreferrer" is the only way to do that, and it cannot report whether
+ * the tab opened, which is the thing callers depend on.
+ */
+function openWebTab(url: string): boolean {
+  const w = window.open(url, "_blank");
+  if (!w) return false;
+  try { w.opener = null; } catch { /* cross-origin already severed it */ }
+  return true;
+}
+
 export function openExternal(url: string, opts?: OpenOpts): boolean {
   if (!url) return false;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
@@ -73,7 +106,7 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
   // Web fallback. noopener for security; noreferrer to keep the
   // outbound URL out of the destination's referrer logs. (Reader mode is a
   // native SFSafari affordance — a plain web tab can't be forced into it.)
-  return !!window.open(url, "_blank", "noopener,noreferrer");
+  return openWebTab(url);
 }
 
 // Open a reflection / newsletter, and mark it read only once the user CLOSES
@@ -100,7 +133,7 @@ export function openExternalThenMarkRead(
     window.addEventListener("phoebe:browserfinished", onDone);
     return;
   }
-  window.open(url, "_blank", "noopener,noreferrer");
+  openWebTab(url);
   markRead();
 }
 
@@ -127,6 +160,20 @@ export function openExternalThenMarkRead(
  * third-party origin tab isn't possible — falls back to the plain external
  * open, same as any other outbound link.
  */
+/**
+ * Is there a native in-app browser to hand off to?
+ *
+ * Callers need this because the native and web hand-offs have different
+ * AFTERMATHS, not just different mechanics. Native keeps the office mounted
+ * underneath and steps it from the browser's own bottom bar
+ * (phoebe:office-next-slide); on the web that bar cannot exist, so nothing
+ * ever steps the deck and it parks on the lesson slide forever.
+ */
+export function hasNativeBrowser(): boolean {
+  const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
+  return !!native?.openInAppBrowser;
+}
+
 export function openOfficeReading(
   url: string,
   ctx: { officeTitle: string; slideLabel: string; sectionLabel: string },
@@ -144,7 +191,7 @@ export function openOfficeReading(
   }
   // See openExternal's own note on why the return value matters — same
   // "popup blocked → don't act like the hand-off happened" reasoning.
-  return !!window.open(url, "_blank", "noopener,noreferrer");
+  return openWebTab(url);
 }
 
 // Warm a URL in the native in-app browser's background so a later openExternal

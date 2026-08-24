@@ -18,8 +18,8 @@ import { computeFingerprint } from "@/lib/cobreatheOrder";
 import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { verifyAtPlace, type BreathPlace, type PlaceVerification } from "@/lib/breathPlaces";
-import { resolvePlacePhotos } from "@/lib/breathPlacePhotos";
+import { verifyAtPlace, BUILT_IN_PLACES, type BreathPlace, type PlaceVerification } from "@/lib/breathPlaces";
+import { resolvePlacePhotos, BUNDLED_SET_PREFIX } from "@/lib/breathPlacePhotos";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation, getSideLevel } from "@/lib/officePrefs";
 import { addGuestSilenceMinutes } from "@/lib/guestSilenceLog";
@@ -317,7 +317,7 @@ export default function CobreathePage() {
    * an optional detour off the opening screen, and everyone who never taps it
    * (which will be most people, most days) shouldn't pay a request for it.
    */
-  const { data: placesData, isLoading: placesLoading, isError: placesError } = useQuery<{ places: BreathPlace[] }>({
+  const { data: placesData } = useQuery<{ places: BreathPlace[] }>({
     queryKey: ["/api/breath/places", day],
     queryFn: () => apiRequest("GET", `/api/breath/places?day=${day}`),
     // PRELOADED, not fetched on arrival. Owner: "there is only going to be
@@ -329,7 +329,34 @@ export default function CobreathePage() {
     enabled: mode === "intro" || mode === "location" || mode === "placeStats",
     staleTime: 5 * 60_000,
   });
-  const places = placesData?.places ?? [];
+  /**
+   * The options are the built-in list — always present, never awaited. The
+   * server's rows only ever ADD to them: a real row id (so a breath can be
+   * recorded against it) and today's count. Matching on name because the slug
+   * is the client's identity and the row's is its primary key; the seed writes
+   * exactly these names.
+   *
+   * The consequence that matters: this slide can no longer fail to offer a
+   * choice. There is nothing to load, so there is no loading, empty, or error
+   * state left to show.
+   */
+  const places: BreathPlace[] = BUILT_IN_PLACES.map((b) => {
+    const row = placesData?.places?.find((r) => r.name === b.name);
+    return {
+      id: row?.id ?? -1,
+      slug: b.slug,
+      name: b.name,
+      subtitle: b.subtitle,
+      lat: b.lat,
+      lng: b.lng,
+      radiusMeters: b.radiusMeters,
+      photoUrls: row?.photoUrls?.length ? row.photoUrls : [`${BUNDLED_SET_PREFIX}${b.photoSet}`],
+      centerEmoji: row?.centerEmoji ?? b.centerEmoji,
+      breathsToday: row?.breathsToday ?? 0,
+      verifiedToday: row?.verifiedToday ?? 0,
+      active: true,
+    };
+  });
   const [verifying, setVerifying] = useState(false);
 
   /**
@@ -373,7 +400,9 @@ export default function CobreathePage() {
   }>({
     queryKey: ["/api/breath/places/stats", place?.id, day],
     queryFn: () => apiRequest("GET", `/api/breath/places/${place?.id}/stats?day=${day}`),
-    enabled: mode === "placeStats" && !!place?.id,
+    // id -1 means "built-in option the server hasn't got a row for yet" — a
+    // real id is the only thing worth asking stats about.
+    enabled: mode === "placeStats" && !!place && place.id > 0,
     staleTime: 60_000,
   });
 
@@ -384,7 +413,12 @@ export default function CobreathePage() {
         seconds,
         // Only the place's id and a boolean — never coordinates. See
         // lib/breathPlaces for why that distinction carries the whole design.
-        placeId: place?.id ?? null,
+        // Never send the synthetic id: the column is a real FK.
+        placeId: place && place.id > 0 ? place.id : null,
+        // …but the slug always goes, so the server can resolve (or create) the
+        // row even when the seed never ran — which is exactly the state that
+        // made this whole slide fail.
+        placeSlug: place?.slug ?? null,
         placeVerified,
       }),
     onSuccess: (resp) => {
@@ -591,25 +625,10 @@ export default function CobreathePage() {
               </p>
 
               <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440 }}>
-                {placesLoading && (
-                  <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14 }}>
-                    {t("common.loading", { defaultValue: "Loading…" })}
-                  </p>
-                )}
-                {/* An ERROR is not an empty list, and saying "no places have
-                    been set up yet" when the request actually failed sends
-                    someone looking for a problem that isn't there — which is
-                    exactly what it did when the places couldn't be reached. */}
-                {!placesLoading && placesError && (
-                  <p style={{ color: "rgba(229,160,160,0.9)", fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.5 }}>
-                    {t("cobreathe.location_error", { defaultValue: "Couldn't reach the places just now. You can still breathe — the practice is the same." })}
-                  </p>
-                )}
-                {!placesLoading && !placesError && places.length === 0 && (
-                  <p style={{ color: "rgba(200,212,192,0.7)", fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.5 }}>
-                    {t("cobreathe.location_none", { defaultValue: "No places have been set up yet. You can breathe anywhere — the practice is the same." })}
-                  </p>
-                )}
+                {/* No loading row: the options are in the bundle. The counts
+                    are the only thing the server owns here, and a count that
+                    hasn't arrived reads as "Be the first here today", which is
+                    a true and welcoming thing to say while it's in flight. */}
                 {places.map((p) => {
                   const on = place?.id === p.id;
                   return (
