@@ -271,7 +271,19 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive } = useRhythmState();
+  // When a side's contemplative practice IS the breath, that side's practice is
+  // Creation Prayer — not a silent sit AND a breath. The daily cards already
+  // collapse the two (the standalone Co-Breathe card is suppressed); this row
+  // list did not, so the same rule showed 🕯️ Contemplation and 🌍 Creation
+  // Prayer as two separate weekly rows. Worse, the Contemplation row reads the
+  // day's contemplative MINUTES against the goal, which a breath session of a
+  // dozen breaths never reaches — so it sat permanently empty beside a row that
+  // filled correctly. Collapse to the Creation Prayer row, and only when that
+  // row is actually rendering (an older layout with the card hidden keeps the
+  // silent row rather than losing both).
+  const creationPerSide = contemplationStyle === "cobreathe" && (morningContemplationActive || eveningContemplationActive);
+  const creationRowCovers = creationPerSide && cobreatheActive;
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
@@ -304,7 +316,7 @@ export function WeeklyGridCard() {
     // Reflection rides right after Morning Prayer — it's the second beat of the
     // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
-    ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
+    ...(silenceActive && !creationRowCovers ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
     ...(cobreatheActive ? [{ id: "cobreathe", emoji: "🌍", label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.cobreathe }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
     ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),

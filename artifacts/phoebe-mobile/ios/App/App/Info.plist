@@ -65,6 +65,14 @@
 	<string>Phoebe uses your camera so you can take a profile photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Phoebe uses your photos so you can choose a profile picture.</string>
+	<!-- Breath places (The Flamingo &c.): WHEN-IN-USE only, and only at the
+	     moment you tap a place to pray there. Without this key iOS never even
+	     shows the prompt — getCurrentPosition fails immediately and every
+	     breath records as unverified, which is exactly what it did. The
+	     coordinates are compared to the place on-device and DISCARDED; the
+	     server is told only which place you chose and a single true/false. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Phoebe checks your location only when you choose to pray at a place like The Flamingo, to count your breaths as prayed there. Your location is checked on your device and never stored or shared.</string>
 
 	<!-- Spotify in-app playback (Listening / audio divina): lets the app detect
 	     and app-remote to the installed Spotify app via the Spotify iOS SDK.

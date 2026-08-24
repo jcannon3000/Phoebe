@@ -52,6 +52,16 @@ export type BreathPlace = {
 };
 
 /**
+ * Why a place check came out the way it did. "denied" and "unavailable" are
+ * about the DEVICE (permission off, or a WKWebView with no geolocation at
+ * all); only "too-far" is a statement about where the person is standing.
+ */
+export type PlaceVerification = {
+  verified: boolean;
+  reason: "at-place" | "too-far" | "denied" | "unavailable" | "timeout";
+};
+
+/**
  * "Is this device actually at that place?"
  *
  * Resolves FALSE for every unhappy path — permission denied, no fix, timeout,
@@ -64,17 +74,19 @@ export type BreathPlace = {
 export function verifyAtPlace(
   place: Pick<BreathPlace, "lat" | "lng" | "radiusMeters">,
   opts?: { timeoutMs?: number },
-): Promise<boolean> {
+): Promise<PlaceVerification> {
   const timeout = opts?.timeoutMs ?? 8000;
   return new Promise((resolve) => {
     const geo = typeof navigator !== "undefined" ? navigator.geolocation : undefined;
-    if (!geo) { resolve(false); return; }
+    if (!geo) { resolve({ verified: false, reason: "unavailable" }); return; }
     let settled = false;
-    const done = (v: boolean) => { if (!settled) { settled = true; resolve(v); } };
+    const done = (v: boolean, reason: PlaceVerification["reason"]) => {
+      if (!settled) { settled = true; resolve({ verified: v, reason }); }
+    };
     // Our own timer as well as the API's: a WKWebView that never surfaces the
     // permission prompt leaves the callback pending forever, and a breath
     // must not hang waiting on it.
-    const timer = setTimeout(() => done(false), timeout + 1000);
+    const timer = setTimeout(() => done(false, "timeout"), timeout + 1000);
     try {
       geo.getCurrentPosition(
         (pos) => {
@@ -86,11 +98,20 @@ export function verifyAtPlace(
           // place exists for. Capped so a wildly imprecise fix (a cell-tower
           // triangulation off by kilometres) can't verify anything anywhere.
           const slack = Math.min(pos.coords.accuracy ?? 0, 250);
-          done(d <= place.radiusMeters + slack);
+          const near = d <= place.radiusMeters + slack;
+          done(near, near ? "at-place" : "too-far");
         },
-        () => { clearTimeout(timer); done(false); },
+        (err) => {
+          clearTimeout(timer);
+          // 1 PERMISSION_DENIED, 2 POSITION_UNAVAILABLE, 3 TIMEOUT. Telling
+          // these apart is the difference between "you're not there" and
+          // "Phoebe was never allowed to look" — the second is not the
+          // person's fault and must not be reported as the first.
+          const code = (err as GeolocationPositionError | undefined)?.code;
+          done(false, code === 1 ? "denied" : code === 3 ? "timeout" : "unavailable");
+        },
         { enableHighAccuracy: true, timeout, maximumAge: 60_000 },
       );
-    } catch { clearTimeout(timer); done(false); }
+    } catch { clearTimeout(timer); done(false, "unavailable"); }
   });
 }

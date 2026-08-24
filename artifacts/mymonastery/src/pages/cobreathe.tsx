@@ -18,7 +18,7 @@ import { computeFingerprint } from "@/lib/cobreatheOrder";
 import { pickWideBackground, WIDE_PHOTOS } from "@/lib/wideBackgrounds";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
-import { verifyAtPlace, type BreathPlace } from "@/lib/breathPlaces";
+import { verifyAtPlace, type BreathPlace, type PlaceVerification } from "@/lib/breathPlaces";
 import { resolvePlacePhotos } from "@/lib/breathPlacePhotos";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { getSideContemplation, getSideLevel } from "@/lib/officePrefs";
@@ -166,6 +166,11 @@ export default function CobreathePage() {
   // (see the location slide), never re-checked, and false is a normal state —
   // see lib/breathPlaces.
   const [placeVerified, setPlaceVerified] = useState(false);
+  // WHY the check failed, so the slide can tell the truth. "Phoebe couldn't
+  // confirm you're here" reads as "you're not there" when the real cause is
+  // that location was never allowed — which, before the Info.plist usage
+  // description existed, was every single attempt on iOS.
+  const [placeReason, setPlaceReason] = useState<PlaceVerification["reason"] | null>(null);
 
   // Breath count — 12 by default, adjustable on this screen. Reads/writes
   // phoebe:cobreathe-length so the customizer's Creation Prayer "How many
@@ -338,13 +343,16 @@ export default function CobreathePage() {
   const pickPlace = useCallback(async (p: BreathPlace) => {
     setPlace(p);
     setPlaceVerified(false);
+    setPlaceReason(null);
     // Straight to the place's own slide — what you just joined is the
     // interesting thing, and waiting on the GPS check to show it would make
     // the tap feel unresponsive indoors, which is where chapels are.
     setMode("placeStats");
     setVerifying(true);
     try {
-      setPlaceVerified(await verifyAtPlace(p));
+      const v = await verifyAtPlace(p);
+      setPlaceVerified(v.verified);
+      setPlaceReason(v.reason);
     } finally {
       setVerifying(false);
     }
@@ -716,6 +724,13 @@ export default function CobreathePage() {
               </h1>
               {place?.subtitle && (
                 <p style={{ color: "rgba(200,212,192,0.72)", fontFamily: SPACE_GROTESK, fontSize: 14.5, marginBottom: 20 }}>{place.subtitle}</p>
+              )}
+              {!verifying && !placeVerified && (placeReason === "denied" || placeReason === "unavailable") && (
+                <p style={{ color: "rgba(200,212,192,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, lineHeight: 1.5, maxWidth: 330, marginBottom: 18 }}>
+                  {placeReason === "denied"
+                    ? t("cobreathe.place_denied", { defaultValue: "Location is off for Phoebe, so this breath won't be counted as prayed here. Turn it on in Settings › Privacy › Location Services. You can pray either way." })
+                    : t("cobreathe.place_unavailable", { defaultValue: "Phoebe couldn't read your location, so this breath won't be counted as prayed here. You can pray either way." })}
+                </p>
               )}
 
               <div className="w-full flex flex-col gap-2" style={{ maxWidth: 440, marginTop: 14 }}>

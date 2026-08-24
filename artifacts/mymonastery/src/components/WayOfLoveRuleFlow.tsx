@@ -292,7 +292,11 @@ const RULE_PRESETS: RulePreset[] = [
   // (contemplationStyle "cobreathe"), which is what that name now means; pray
   // "none" because the breath IS the prayer, the same shape "centering" uses.
   { id: "vts-cultivate", emoji: "🦩", sides: { morning: true, evening: true }, pray: "none",
-    silence: true, goalMin: 5, contemplationStyle: "cobreathe", reflections: ["vts"],
+    // goalMin 0 on purpose: `silence: true` is what puts the practice on both
+    // sides, while goalMin writes a daily contemplative-MINUTES goal. The breath
+    // is counted in breaths (a dozen of them, a minute or two), so a 5-minute
+    // goal would be one this rule can never meet — an unfillable dot.
+    silence: true, goalMin: 0, contemplationStyle: "cobreathe", reflections: ["vts"],
     title: "VTS Cultivate", blurb: "Virginia Theological Seminary's rhythm — breathing with creation at both ends of the day, and the Dean's word between them.",
     rows: [{ emoji: "🌅", label: "Creation Prayer in the morning" }, { emoji: "🌆", label: "Creation Prayer in the evening" }, { emoji: "🦩", label: "The VTS Dean's Commentary" }] },
 ];
