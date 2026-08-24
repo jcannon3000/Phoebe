@@ -50,6 +50,7 @@ export * from "./prayer_sessions";
 export * from "./routine_snapshots";
 export * from "./contemplation_goal_history";
 export * from "./breath_sessions";
+export * from "./breath_places";
 export * from "./listening_entries";
 export * from "./lectio_log_entries";
 export * from "./practice_log_entries";

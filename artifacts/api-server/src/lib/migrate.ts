@@ -1792,6 +1792,33 @@ export async function migrate() {
     // The only read pattern: this user's snapshots, newest first.
     await run(client, `CREATE INDEX IF NOT EXISTS routine_snapshots_user_created_idx ON routine_snapshots (user_id, created_at)`);
 
+    // Designated places to breathe — admin-authored, a short curated list.
+    // lat/lng belong to the PLACE (a fixed public spot an admin typed in),
+    // never to a person: the device compares its own position against these
+    // on-device and sends only a boolean. See schema/breath_places.ts for why
+    // that distinction is what lets this exist at all.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS breath_places (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        subtitle TEXT,
+        lat DOUBLE PRECISION NOT NULL,
+        lng DOUBLE PRECISION NOT NULL,
+        radius_meters INTEGER NOT NULL DEFAULT 150,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS breath_places_active_idx ON breath_places (active, name)`);
+    // Where a breath was kept, and whether the device confirmed it. Both
+    // nullable/defaulted so every existing row stays valid — breathing
+    // anywhere is still the practice; a place is an option, never a
+    // requirement.
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_id INTEGER REFERENCES breath_places(id) ON DELETE SET NULL`);
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_verified BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_place_day_idx ON breath_sessions (place_id, day)`);
+
     // What each person's daily silence goal WAS on a given day, so raising the
     // goal can't retroactively un-keep days they actually kept. Written lazily
     // when the practice week is computed.
