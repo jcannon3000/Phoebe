@@ -1909,9 +1909,25 @@ export default function WayOfLoveRuleFlow({
   // to do it through the questionnaire." Only the interview and the manual path
   // are offered there; "go back to a past routine" is about the ADMIN's own
   // history, which has nothing to do with the person they're building for.
+  /**
+   * Owner: "combine the first two slides of the customizer, just put the past
+   * routine option on the bottom of the second slide."
+   *
+   * The entry slide asked "how would you like to build it?" — a real question
+   * while the interview was an option. With the interview hidden
+   * (ROUTINE_INTERVIEW_ENTRY_HIDDEN) its only remaining rows were "I'll set it
+   * up myself", which is just Continue by another name, and "go back to a past
+   * routine", which has moved to the bottom of the intro slide. A slide whose
+   * only real content lives somewhere else is a tap for nothing.
+   *
+   * So it survives ONLY where the interview genuinely is on offer — prescribe
+   * mode, or a super admin with the flag flipped back on. Everyone else opens
+   * straight into the intro.
+   */
+  const interviewOnOffer = isSuperAdmin && !ROUTINE_INTERVIEW_ENTRY_HIDDEN;
   const showEntryChoice = prescribe
     ? isSuperAdmin && !guest && !pilot
-    : (isSuperAdmin || hasRoutineHistory) && !guest && !pilot;
+    : interviewOnOffer && !guest && !pilot;
   // "Ask me" is the stored default (owner), but it's only offered to super
   // admins — so for everyone else it resolves to the manual path rather than
   // leaving no row selected and a Continue that walks into a page they can't
@@ -1975,7 +1991,13 @@ export default function WayOfLoveRuleFlow({
   };
 
   // The manual path's own first question.
-  if (entryChoiceMade && canEditParts && manualMode === "pick") {
+  // "The entry question is behind us" — either they answered it, or (now that
+  // the entry slide is gone for everyone but the interview path) it was never
+  // put. Without this the scratch/edit fork below became unreachable the
+  // moment the entry slide stopped rendering, silently dropping "edit part of
+  // it" for every returning user.
+  const entrySettled = entryChoiceMade || !showEntryChoice;
+  if (entrySettled && canEditParts && manualMode === "pick") {
     return shell(
       <>
         {stepHeader(
@@ -2004,13 +2026,31 @@ export default function WayOfLoveRuleFlow({
             () => setManualMode("scratch"),
           )}
         </div>
+        {/* Owner: "combine the first two slides … just put the past routine
+            option on the bottom of the second slide." It came off the entry
+            slide, which is gone. Underneath the two real forks rather than
+            beside them: going back to an old rhythm is the exception, not a
+            third equal way to build one. */}
+        {canRevert && (
+          <button
+            type="button"
+            onClick={() => setLocation("/routine-history")}
+            style={{
+              alignSelf: "center", background: "none", border: "none", color: SAGE_DIM,
+              fontSize: 13.5, fontFamily: FONT, textDecoration: "underline",
+              cursor: "pointer", marginTop: 18, padding: "6px 10px",
+            }}
+          >
+            {`↩️ ${t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" })}`}
+          </button>
+        )}
       </>,
     );
   }
 
   // "Edit part of it" — the routine as a list, each row with a gear and an ✕,
   // the same shape the questionnaire's review uses (owner).
-  if (entryChoiceMade && canEditParts && manualMode === "edit") {
+  if (entrySettled && canEditParts && manualMode === "edit") {
     const circle: React.CSSProperties = {
       width: 30, height: 30, flexShrink: 0, borderRadius: 999,
       display: "flex", alignItems: "center", justifyContent: "center",
