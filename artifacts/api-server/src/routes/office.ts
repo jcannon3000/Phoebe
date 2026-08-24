@@ -9,6 +9,7 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
+import { CANTICLE_CATALOG, INVITATORY_CATALOG, buildCanticleRun, buildInvitatoryRun } from "../lib/officeSwap";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCreationDevotion } from "../lib/assembleCreationDevotion";
@@ -436,6 +437,45 @@ router.get("/devotion/:kind", async (req, res) => {
   } catch (err) {
     console.error(`Devotion assembly failed (${kind}):`, err);
     return res.status(500).json({ error: "Failed to assemble devotion" });
+  }
+});
+
+/**
+ * GET /office/swap-options — the picker lists for swapping a canticle or the
+ * invitatory mid-office. Static catalogues (no DB), so the sheet can render
+ * instantly when the reader taps the pill.
+ */
+router.get("/office/swap-options", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  return res.json({ canticles: CANTICLE_CATALOG, invitatories: INVITATORY_CATALOG });
+});
+
+/**
+ * GET /office/swap?kind=canticle|invitatory&key=<key> — the replacement
+ * slides for one swap, built by the SAME chunking the assemblers use so a
+ * swapped canticle is indistinguishable from an appointed one. The client
+ * splices them over the run it's replacing; see lib/officeSwap.ts.
+ *
+ * Public and read-only — it returns canonical BCP text, nothing per-user.
+ */
+router.get("/office/swap", async (req, res) => {
+  const kind = String(req.query["kind"] ?? "");
+  const key = String(req.query["key"] ?? "");
+  // A slide-id prefix that cannot collide with the deck's own ids (which are
+  // plain counters) no matter how many swaps happen in one sitting.
+  const idPrefix = `swap-${kind}-${key}-${Date.now().toString(36)}`;
+  try {
+    const slides = kind === "canticle"
+      ? await buildCanticleRun(key, idPrefix)
+      : kind === "invitatory"
+        ? await buildInvitatoryRun(key, idPrefix)
+        : null;
+    if (!slides) { res.status(404).json({ error: "unknown_swap" }); return; }
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.json({ slides });
+  } catch (err) {
+    console.error("[office/swap] failed:", err);
+    return res.status(500).json({ error: "swap_failed" });
   }
 });
 

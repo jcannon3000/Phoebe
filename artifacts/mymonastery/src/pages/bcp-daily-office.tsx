@@ -698,6 +698,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // that slide instead of just showing a page number. Owner: "another bar
   // under that that says skip ahead... it would go to that slide."
   const [skipAheadOpen, setSkipAheadOpen] = useState(false);
+  /**
+   * Swapping the canticle (or the invitatory) mid-office.
+   *
+   * Owner: "on the canticle title page, there could be a pill that says
+   * choose different canticle … they click one, come back to that title slide
+   * with the title changed, and the next slide is the different canticle."
+   *
+   * The deck needed no rebuilding for this: every canticle slide already
+   * carries metadata.canticleKey and every invitatory slide carries
+   * metadata.invitatory, both runs are contiguous, so a swap is a splice —
+   * the same move this file already makes for the prayer-list slide, the
+   * prompts slide, the salutation and the confession invitation.
+   *
+   * Session-only by design. It changes what you pray TODAY, from this slide,
+   * and doesn't rewrite the rule or the cached office — the same scope Venite
+   * gives the equivalent control.
+   */
+  const [swapOpen, setSwapOpen] = useState<null | "canticle" | "invitatory">(null);
+  const [swapping, setSwapping] = useState(false);
+  // Which canticle the reader is swapping AWAY from, captured when the sheet
+  // opens. Read during the splice, by which point currentSlide could already
+  // be pointing at something else.
+  const swapFromKeyRef = useRef<string>("");
   // The held-breath veil's photo fades in once it has actually decoded. Without
   // this the veil paints its flat background first and the photo POPS in a frame
   // or two later — the flash on opening the office (worst on Water, whose photos
@@ -1800,6 +1823,33 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const atStart = slideIdx === 0;
   const atEnd = slideIdx === slides.length - 1;
   const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
+
+  /** The "choose a different …" pill under a canticle / invitatory title. */
+  const swapPill = (kind: "canticle" | "invitatory", fromKey: unknown, label: string) => {
+    // Pascha Nostrum isn't offered (it's Eastertide's appointed substitution,
+    // not a choice) — and with nothing to switch to, the pill would be a
+    // control that does nothing.
+    if (kind === "invitatory" && fromKey !== "venite" && fromKey !== "jubilate") return null;
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          swapFromKeyRef.current = typeof fromKey === "string" ? fromKey : "";
+          setSwapOpen(kind);
+        }}
+        style={{
+          marginTop: 4, padding: "9px 18px", borderRadius: 999,
+          background: "rgba(var(--ot-green, 46,107,64),0.18)",
+          border: "1px solid rgba(var(--ot-green, 46,107,64),0.45)",
+          color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
   const refLabel = officeDay?.feastName ?? officeDay?.weekdayLabel ?? officeDay?.sundayLabel ?? "";
 
   // Title/poster slides (office threshold, psalm/canticle/lesson titles,
@@ -2633,6 +2683,79 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         }
         onSkipAhead={slides.length > 0 ? () => setSkipAheadOpen(true) : undefined}
       />
+      <SwapSheet
+        open={swapOpen}
+        busy={swapping}
+        onClose={() => setSwapOpen(null)}
+        currentKey={
+          swapOpen === "canticle"
+            ? String((currentSlide?.metadata as { canticleKey?: unknown } | undefined)?.canticleKey ?? "")
+            : String((currentSlide?.metadata as { invitPsalmKey?: unknown } | undefined)?.invitPsalmKey ?? "")
+        }
+        onPick={async (key) => {
+          const kind = swapOpen;
+          if (!kind) return;
+          setSwapping(true);
+          try {
+            const res = await apiRequest("GET", `/api/office/swap?kind=${kind}&key=${encodeURIComponent(key)}`) as { slides?: Slide[] } | null;
+            const fresh = res?.slides;
+            if (!fresh || fresh.length === 0) return;
+            setSlides((prev) => {
+              /**
+               * A CANTICLE is one contiguous run — pushCanticle emits its
+               * title and body back to back, and every slide carries the same
+               * canticleKey, so replacing [first…last] with that key swaps
+               * exactly this canticle and leaves the office's OTHER canticle
+               * alone.
+               */
+              if (kind === "canticle") {
+                const from = swapFromKeyRef.current;
+                const mine = (sl: Slide) => (sl.metadata as { canticleKey?: unknown } | undefined)?.canticleKey === from;
+                const start = prev.findIndex(mine);
+                if (start < 0) return prev;
+                let end = start;
+                while (end + 1 < prev.length && mine(prev[end + 1]!)) end += 1;
+                setSlideIdx(start);
+                return [...prev.slice(0, start), ...fresh, ...prev.slice(end + 1)];
+              }
+              /**
+               * The INVITATORY is NOT one run. Its slides come out as
+               *   psalm_title → antiphon → invitatory_psalm ×N → psalm_gloria → antiphon
+               * so the title and the verses are separated by the antiphon.
+               * Splicing "the contiguous run" would stop at that antiphon and
+               * replace the title only, leaving yesterday's verses under a new
+               * name — the worst possible outcome.
+               *
+               * Two targeted splices instead, which is also exactly the scope
+               * asked for: the title card and the verse chunks change, the
+               * antiphon and Gloria are left untouched (owner; and BCP p. 80
+               * gives Venite and Jubilate the same antiphon and Gloria, so
+               * there is nothing to change about them).
+               */
+              const [freshTitle, ...freshChunks] = fresh;
+              if (!freshTitle) return prev;
+              const isInvit = (sl: Slide) => (sl.metadata as { invitatory?: unknown } | undefined)?.invitatory === true;
+              const titleIdx = prev.findIndex((sl) => isInvit(sl) && sl.type === "psalm_title");
+              const firstChunk = prev.findIndex((sl) => isInvit(sl) && sl.type === "invitatory_psalm");
+              if (titleIdx < 0 || firstChunk < 0) return prev;
+              let lastChunk = firstChunk;
+              while (
+                lastChunk + 1 < prev.length &&
+                isInvit(prev[lastChunk + 1]!) && prev[lastChunk + 1]!.type === "invitatory_psalm"
+              ) lastChunk += 1;
+              // Verses first, then the title — replacing the LATER range first
+              // keeps the earlier index valid. (Doing it the other way round
+              // shifts firstChunk/lastChunk by the length delta.)
+              const withChunks = [...prev.slice(0, firstChunk), ...freshChunks, ...prev.slice(lastChunk + 1)];
+              const next = [...withChunks.slice(0, titleIdx), freshTitle, ...withChunks.slice(titleIdx + 1)];
+              setSlideIdx(titleIdx);
+              return next;
+            });
+            setSwapOpen(null);
+          } catch { /* leave the sheet open; nothing was changed */ }
+          finally { setSwapping(false); }
+        }}
+      />
       <SkipAheadSheet
         open={skipAheadOpen}
         onClose={() => setSkipAheadOpen(false)}
@@ -3120,6 +3243,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       From the Daily Office Lectionary
                     </p>
                   )}
+                  {/* Owner: "we want it possible for the invitatory too."
+                      Only on the INVITATORY title (BCP p. 80 offers "Venite
+                      or Jubilate" as a real choice) — never on an appointed
+                      psalm, which the lectionary fixes for the day. */}
+                  {isInvitatory && swapPill("invitatory", (currentSlide.metadata as { invitPsalmKey?: unknown } | undefined)?.invitPsalmKey, "Choose a different invitatory")}
                 </div>
               );
             })()
@@ -3187,6 +3315,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       {currentSlide.title.replace(/^Canticle\s+\d+\s*[—-]\s*/i, "")}
                     </p>
                   )}
+                  {/* Owner: "a pill that says choose different canticle."
+                      BCP's own canticle table offers alternatives on most
+                      days ("4 or 16", "1 or 12"), and the fuller list is a
+                      standing permission — so this isn't overriding the
+                      lectionary, it's surfacing a choice the book already
+                      grants. */}
+                  {swapPill("canticle", (currentSlide.metadata as { canticleKey?: unknown } | undefined)?.canticleKey, "Choose a different canticle")}
                 </div>
               );
             })()
@@ -4724,6 +4859,95 @@ function buildBookSections(slides: Slide[]): BookSection[] {
 // list the physical-book guide shows) rather than a second parallel
 // implementation, but each row jumps the live slideshow to that slide
 // (via the section's slide id) instead of just naming a page number.
+/**
+ * The canticle / invitatory picker — deliberately the same drop-down-from-
+ * the-top sheet as Skip Ahead (owner: "a dropdown with all the options in a
+ * similar UI to the skip ahead"), so the office has ONE shape for "pick from
+ * a list", not two that look almost alike.
+ */
+type SwapOption = { key: string; label: string; latin: string; ref: string };
+
+function SwapSheet({
+  open, busy, onClose, onPick, currentKey,
+}: {
+  open: null | "canticle" | "invitatory";
+  busy: boolean;
+  onClose: () => void;
+  onPick: (key: string) => void;
+  currentKey: string;
+}) {
+  const { data } = useQuery<{ canticles: SwapOption[]; invitatories: SwapOption[] }>({
+    queryKey: ["/api/office/swap-options"],
+    queryFn: () => apiRequest("GET", "/api/office/swap-options"),
+    staleTime: 24 * 60 * 60_000,
+  });
+  const options = open === "canticle" ? (data?.canticles ?? []) : open === "invitatory" ? (data?.invitatories ?? []) : [];
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="swap-sheet"
+          className="fixed inset-0"
+          style={{ zIndex: 80, background: "rgba(4,12,7,0.6)" }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+        >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{ y: "-100%" }} animate={{ y: 0 }} exit={{ y: "-100%" }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-b-3xl px-5 pb-6"
+            style={{
+              background: "#0c1f13",
+              borderBottom: "1px solid rgba(46,107,64,0.4)",
+              paddingTop: "max(1.25rem, var(--safe-top))",
+              maxWidth: 560, margin: "0 auto",
+              maxHeight: "85dvh", display: "flex", flexDirection: "column",
+            }}
+          >
+            <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
+              <p style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>
+                {open === "canticle" ? "Choose a canticle" : "Choose an invitatory"}
+              </p>
+              <button type="button" onClick={onClose} aria-label="Close"
+                style={{ width: 28, height: 28, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(46,107,64,0.25)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, opacity: busy ? 0.5 : 1 }}>
+              {options.map((o) => {
+                const isCurrent = o.key === currentKey;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => { if (!isCurrent) onPick(o.key); else onClose(); }}
+                    style={{
+                      textAlign: "left", padding: "12px 14px", borderRadius: 14,
+                      background: isCurrent ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.10)",
+                      border: `1px solid ${isCurrent ? "rgba(140,195,160,0.5)" : BORDER}`,
+                      cursor: busy ? "wait" : "pointer",
+                    }}
+                  >
+                    <p style={{ margin: 0, color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600 }}>
+                      {o.latin}{isCurrent ? "  ·  today's" : ""}
+                    </p>
+                    <p style={{ margin: "2px 0 0", color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 12.5 }}>
+                      {o.label} · {o.ref}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 function SkipAheadSheet({
   open, onClose, slides, onJump,
 }: { open: boolean; onClose: () => void; slides: Slide[]; onJump: (key: string) => void }) {
