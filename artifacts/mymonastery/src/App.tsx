@@ -404,6 +404,7 @@ const PilotHomePage = lazy(() => import("./pages/pilot-home"));
 const PilotBuildPage = lazy(() => import("./pages/pilot-build"));
 const CustomizePage = lazy(() => import("./pages/customize"));
 const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
+const AdminBreathPlacesPage = lazy(() => import("./pages/admin-breath-places"));
 const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
@@ -973,6 +974,7 @@ function Router() {
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
       <Route path="/admin/ministries" component={AdminMinistriesPage} />
+      <Route path="/admin/breath-places" component={AdminBreathPlacesPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />

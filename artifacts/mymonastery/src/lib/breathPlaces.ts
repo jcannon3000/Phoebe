@@ -41,6 +41,10 @@ export type BreathPlace = {
   lat: number;
   lng: number;
   radiusMeters: number;
+  /** This place's own backdrop photos (https URLs). Empty = use the bundled set. */
+  photoUrls: string[];
+  /** Glyph for the centre of the breathing rings. Null = the default globe. */
+  centerEmoji: string | null;
   breathsToday: number;
   verifiedToday: number;
 };

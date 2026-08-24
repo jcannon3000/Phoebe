@@ -48,9 +48,8 @@ const COBREATHE_PHOTOS = [...COBREATHE_TOP_PHOTOS];
 // bundled, so keep the bundled library.
 const BREATH_PHOTOS: string[] = (!isNativeShell() && WIDE_PHOTOS.length > 0) ? WIDE_PHOTOS : COBREATHE_PHOTOS;
 
-// Fingerprint of the bundled photo set — two clients only sync if it matches,
-// so a build/version drift (different photos) safely falls back to solo order.
-const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
+// (The photo-set fingerprint is derived per-render from the photos actually in
+// use — see breathFingerprint — because a chosen place swaps the library.)
 
 function wantsStart(): boolean {
   // ?start=1 — the standalone Co-Breathe card. ?begin=1 — the per-side Creation
@@ -186,10 +185,14 @@ export default function CobreathePage() {
   // once and faded up under a dark wash. Matches the prayer-intro slides so the
   // whole Co-Breathe flow rests on the same landscape imagery.
   const introBgPhoto = useMemo(() => {
+    // A chosen place brings its own imagery to the intro slides too, so the
+    // screens leading into the breath already look like where you are.
+    const lib = place?.photoUrls;
+    if (lib && lib.length > 0) return lib[Math.floor(Math.random() * lib.length)]!;
     // Wide landscape backdrop on the web; the bundled Co-Breathe photo on native.
     return pickWideBackground()
       ?? (COBREATHE_PHOTOS.length > 0 ? COBREATHE_PHOTOS[Math.floor(Math.random() * COBREATHE_PHOTOS.length)]! : null);
-  }, []);
+  }, [place]);
   // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
   // location. Kept as a const false so the synchronized (global, location-free)
   // breath stays solo.
@@ -211,8 +214,32 @@ export default function CobreathePage() {
   // Location features removed — Co-Breathe shares NO location / presence /
   // coords. It's the global synchronized breath only (everyone who keeps the
   // practice on a given day shares one count); nothing geographic.
+  /**
+   * The photos this breath actually rests on — the place's own library when
+   * one is chosen, the bundled landscapes otherwise.
+   */
+  const breathPhotos = useMemo(
+    () => (place?.photoUrls && place.photoUrls.length > 0 ? place.photoUrls : BREATH_PHOTOS),
+    [place],
+  );
+  /**
+   * The fingerprint MUST be derived from the photos in use, not from the
+   * bundled set.
+   *
+   * Two clients only sync when their fingerprints match, precisely so that a
+   * photo-set difference falls back to solo ordering instead of showing two
+   * people different images at the same index. Passing the bundled constant
+   * while rendering a place's library would defeat exactly that: someone at
+   * St. Mark's and someone at home would match, sync, and see different
+   * pictures on the same breath.
+   *
+   * Derived this way it does the right thing on its own — two people at the
+   * same place share a library, so they match and breathe together on the same
+   * image; anyone elsewhere doesn't, and orders their own.
+   */
+  const breathFingerprint = useMemo(() => computeFingerprint(breathPhotos), [breathPhotos]);
   const breathSync = useCobreatheSync(user, gardenUserIds, {
-    fingerprint: COBREATHE_FINGERPRINT,
+    fingerprint: breathFingerprint,
     active: mode === "breathing",
   });
 
@@ -728,7 +755,7 @@ export default function CobreathePage() {
     return (
       <CobreatheHowToIntro
         onDone={() => { markCobreatheHowtoSeen(); setMode("breathing"); }}
-        photos={BREATH_PHOTOS}
+        photos={breathPhotos}
       />
     );
   }
@@ -754,7 +781,8 @@ export default function CobreathePage() {
           onTutorial={() => setMode("howto")}
           onReachTarget={handleReachTarget}
           onEnd={handleEnd}
-          photos={BREATH_PHOTOS}
+          photos={breathPhotos}
+          centerGlyph={place?.centerEmoji ?? null}
           followSeed={breathSync.leader?.masterSeed}
           followStartEpochMs={breathSync.leader?.startEpochMs}
           onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}

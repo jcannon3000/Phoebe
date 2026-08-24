@@ -227,6 +227,12 @@ export default function AdminToolsPage() {
                   onClick={() => setLocation("/admin/ministries")}
                 />
                 <LinkRow
+                  emoji="📍"
+                  label="Places to Breathe"
+                  description="Designated spots people can choose when they breathe"
+                  onClick={() => setLocation("/admin/breath-places")}
+                />
+                <LinkRow
                   emoji="🌵"
                   label="CAC Demo (beta)"
                   description="Daily meditation + podcast courses — demo home screen"

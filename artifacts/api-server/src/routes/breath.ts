@@ -186,6 +186,52 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
 });
 
 /**
+ * Validate a place's photo library — a short list of https URLs.
+ *
+ * https ONLY, and not merely for tidiness: these load inside the app's
+ * WebView, so an http URL is mixed content that a secure page will refuse to
+ * render, leaving a place silently pictureless with no error anywhere. Better
+ * to reject it at the point an admin types it.
+ *
+ * Returns null when the input isn't a usable list at all, so a caller can tell
+ * "leave it alone" from "set it to empty".
+ */
+function parsePhotoUrls(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const url = item.trim();
+    if (url.length === 0 || url.length > 500) continue;
+    if (!/^https:\/\//i.test(url)) continue;
+    out.push(url);
+    // A backdrop rotation, not an album. The breath cycles through these
+    // while someone is breathing; past a couple of dozen nobody sees the
+    // rest, and every one is a network fetch on a surface that must not
+    // stutter.
+    if (out.length >= 24) break;
+  }
+  return out;
+}
+
+/**
+ * The glyph for the centre of the breathing rings, or null for the default
+ * globe rotation.
+ *
+ * Capped at a few UTF-16 units rather than one: a single emoji is routinely
+ * several (a surrogate pair, plus a variation selector or a ZWJ sequence),
+ * so a length-1 check would reject most of the emoji anyone would actually
+ * pick. Kept short enough that nobody can put a sentence in the middle of
+ * the rings.
+ */
+function parseCenterEmoji(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim();
+  if (v.length === 0 || v.length > 8) return null;
+  return v;
+}
+
+/**
  * GET /breath/places?day=YYYY-MM-DD — the designated places, each with how
  * many people have breathed there today.
  *
@@ -208,6 +254,10 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
         lat: breathPlacesTable.lat,
         lng: breathPlacesTable.lng,
         radiusMeters: breathPlacesTable.radiusMeters,
+        // The place's own backdrop library — the client prefers these over the
+        // bundled landscapes once a place is chosen.
+        photoUrls: breathPlacesTable.photoUrls,
+        centerEmoji: breathPlacesTable.centerEmoji,
         // Everyone who chose this place today, and the subset whose device
         // confirmed it. Both are shown: the first is who is holding this
         // place in prayer, the second who is standing in it.
@@ -317,6 +367,8 @@ router.post("/breath/places", perUserRateLimit("breath_place_create", { max: 20,
   if (!Number.isFinite(lat) || lat < -90 || lat > 90) { res.status(400).json({ error: "bad_lat" }); return; }
   if (!Number.isFinite(lng) || lng < -180 || lng > 180) { res.status(400).json({ error: "bad_lng" }); return; }
   const radiusMeters = Number.isFinite(radiusRaw) ? Math.max(25, Math.min(5000, Math.round(radiusRaw))) : 150;
+  const photoUrls = parsePhotoUrls(req.body?.photoUrls) ?? [];
+  const centerEmoji = parseCenterEmoji(req.body?.centerEmoji);
 
   try {
     const [row] = await db
@@ -324,7 +376,7 @@ router.post("/breath/places", perUserRateLimit("breath_place_create", { max: 20,
       .values({
         name,
         subtitle: subtitleRaw.length > 0 ? subtitleRaw.slice(0, 120) : null,
-        lat, lng, radiusMeters,
+        lat, lng, radiusMeters, photoUrls, centerEmoji,
         createdByUserId: userId,
       })
       .returning({ id: breathPlacesTable.id });
@@ -368,6 +420,15 @@ router.patch("/breath/places/:id", async (req: Request, res: Response): Promise<
     if (!Number.isFinite(v)) { res.status(400).json({ error: "bad_radius" }); return; }
     patch["radiusMeters"] = Math.max(25, Math.min(5000, Math.round(v)));
   }
+  if (req.body?.photoUrls !== undefined) {
+    // Whole-list replace — an admin edits this set as a set. A null parse
+    // means the body wasn't a list at all, which is a mistake worth reporting
+    // rather than silently blanking someone's library.
+    const parsed = parsePhotoUrls(req.body.photoUrls);
+    if (parsed === null) { res.status(400).json({ error: "bad_photos" }); return; }
+    patch["photoUrls"] = parsed;
+  }
+  if (req.body?.centerEmoji !== undefined) patch["centerEmoji"] = parseCenterEmoji(req.body.centerEmoji);
   // Retire rather than delete — the breaths kept there are real history, and
   // ON DELETE SET NULL would silently detach them from the place they happened.
   if (typeof req.body?.active === "boolean") patch["active"] = req.body.active;

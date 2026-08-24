@@ -162,6 +162,7 @@ export function CobreatheBreath({
   todayCount,
   backgroundImage,
   photos,
+  centerGlyph,
   prayerTexts,
   coffeePhotos,
   topic = "planet",
@@ -197,6 +198,8 @@ export function CobreatheBreath({
   // set is shuffled once per session and rotated through, one photo per breath.
   // No captions: the images speak for themselves.
   photos?: string[];
+  /** Overrides the centre globe (a place's own glyph). Falsy keeps the rotation. */
+  centerGlyph?: string | null;
   // BETA "Pray the breath": instead of photos, the top half shows ONE of the
   // user's own prayer requests at a time (just the text, as a quiet title),
   // rotating one per breath and breathing in/out with the lungs. When provided
@@ -798,7 +801,10 @@ export function CobreatheBreath({
   useEffect(() => { setBreathFaces(coFacesRef.current); }, [breathNum]);
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
   // The session globe (held for the whole sit).
-  const globe = sessionGlobeRef.current ?? GLOBES[0];
+  // A place's own glyph wins over the globe rotation when one is set — see
+  // breath_places.center_emoji. Falls back to the rotation, so the practice
+  // still breathes for the whole earth everywhere else.
+  const globe = centerGlyph || sessionGlobeRef.current || GLOBES[0];
   // The opening sentence — a Season of Creation Scripture line that ROTATES
   // DAILY (day-of-year), same as the closing collect, so the open and close
   // move together each day. The scripture ref sits in the author slot.

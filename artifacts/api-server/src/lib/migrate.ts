@@ -1811,6 +1811,11 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_places_active_idx ON breath_places (active, name)`);
+    // A place's own backdrop photos — https URLs, since the app's bundled photo
+    // libraries are glob'd at build time and can't serve a runtime-created place.
+    await run(client, `ALTER TABLE breath_places ADD COLUMN IF NOT EXISTS photo_urls JSONB NOT NULL DEFAULT '[]'::jsonb`);
+    // The glyph in the centre of the breathing rings. NULL keeps the globe.
+    await run(client, `ALTER TABLE breath_places ADD COLUMN IF NOT EXISTS center_emoji TEXT`);
     // Where a breath was kept, and whether the device confirmed it. Both
     // nullable/defaulted so every existing row stays valid — breathing
     // anywhere is still the practice; a place is an option, never a

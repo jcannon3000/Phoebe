@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, doublePrecision, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, doublePrecision, boolean, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 /**
@@ -49,6 +49,34 @@ export const breathPlacesTable = pgTable(
      * is a far worse failure than counting someone in the car park.
      */
     radiusMeters: integer("radius_meters").notNull().default(150),
+    /**
+     * This place's own backdrop photos — the imagery the breath rests on when
+     * someone is breathing HERE, instead of the generic bundled landscapes.
+     *
+     * Owner: "a separate file library for a location."
+     *
+     * URLs, not files. The app's existing photo libraries are import.meta.glob'd
+     * from bundled assets at BUILD time, which cannot serve a place an admin
+     * creates at runtime — there is nothing to glob. So a place's library is a
+     * short list of https URLs an admin supplies, and the client falls back to
+     * the bundled library whenever a place has none.
+     *
+     * A JSONB array rather than its own table: this is a small curated set that
+     * an admin replaces wholesale when they change it, so a row-per-photo table
+     * would buy ordering and per-row edits nobody asked for at the cost of a
+     * join and a second CRUD surface.
+     */
+    photoUrls: jsonb("photo_urls").$type<string[]>().notNull().default([]),
+    /**
+     * The glyph at the centre of the breathing rings while someone breathes
+     * here — a bell for a chapel, a tree for a garden.
+     *
+     * Owner: "the emoji in the centre of the circles [should be] customizable
+     * as well." Null keeps the globe rotation the practice ships with
+     * (🌍/🌎/🌏), which is the right default: Co-Breathe is a prayer for the
+     * whole earth, and a place is a vantage on it, not a replacement for it.
+     */
+    centerEmoji: text("center_emoji"),
     /** Soft delete — a retired place keeps its history and stops being offered. */
     active: boolean("active").notNull().default(true),
     /** Which admin created it (audit trail; admins-only creation). */
