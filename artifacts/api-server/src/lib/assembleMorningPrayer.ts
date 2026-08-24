@@ -7,6 +7,7 @@
  */
 
 import { eq, inArray } from "drizzle-orm";
+import { OFFICE_CACHE_SCHEMA_VERSION, cachedSchemaVersion, stampSchemaVersion } from "./officeCacheVersion";
 import {
   db,
   bcpTextsTable,
@@ -477,30 +478,34 @@ export async function assembleMorningPrayer(
   if (cached.length > 0) {
     const row = cached[0];
     const cachedSlides = row.slidesJson as Slide[];
-    // Splice the per-user intercessions slide in BEFORE general
-    // thanksgiving — the cached slides don't include it (caching it
-    // would cross-contaminate users with each other's prayer lists).
-    const withIntercessions = await injectIntercessions(cachedSlides, userId, cacheDate);
-    // Per-user: hide the Confession + Absolution unless the user opted in.
-    const slides = await applyConfessionPref(withIntercessions, userId, confessionOverride);
-    // Derive officeDay fresh from the date instead of fishing fields
-    // out of slide[0]'s metadata. The cached opening slide is gone now
-    // (the office begins with the Opening Sentence), so the metadata
-    // carrier is gone too — but `getOfficeDay(date)` is deterministic
-    // and cheap, so we just recompute on every cache hit and trust it.
-    const liturgicalDay = getOfficeDay(date);
-    const officeDay: OfficeDayInfo = {
-      season: liturgicalDay.season,
-      liturgicalYear: liturgicalDay.liturgicalYear,
-      sundayLabel: liturgicalDay.sundayLabel,
-      weekdayLabel: liturgicalDay.weekdayLabel,
-      properNumber: liturgicalDay.properNumber,
-      feastName: liturgicalDay.feastName,
-      isMajorFeast: liturgicalDay.isMajorFeast,
-      useAlleluia: liturgicalDay.useAlleluia,
-      totalSlides: slides.length,
-    };
-    return { slides, officeDay, fromCache: true };
+    // A row whose STRUCTURE predates the current schema — fall through to a
+    // fresh assembly instead of serving it. See officeCacheVersion.ts.
+    if (cachedSchemaVersion(cachedSlides) === OFFICE_CACHE_SCHEMA_VERSION) {
+      // Splice the per-user intercessions slide in BEFORE general
+      // thanksgiving — the cached slides don't include it (caching it
+      // would cross-contaminate users with each other's prayer lists).
+      const withIntercessions = await injectIntercessions(cachedSlides, userId, cacheDate);
+      // Per-user: hide the Confession + Absolution unless the user opted in.
+      const slides = await applyConfessionPref(withIntercessions, userId, confessionOverride);
+      // Derive officeDay fresh from the date instead of fishing fields
+      // out of slide[0]'s metadata. The cached opening slide is gone now
+      // (the office begins with the Opening Sentence), so the metadata
+      // carrier is gone too — but `getOfficeDay(date)` is deterministic
+      // and cheap, so we just recompute on every cache hit and trust it.
+      const liturgicalDay = getOfficeDay(date);
+      const officeDay: OfficeDayInfo = {
+        season: liturgicalDay.season,
+        liturgicalYear: liturgicalDay.liturgicalYear,
+        sundayLabel: liturgicalDay.sundayLabel,
+        weekdayLabel: liturgicalDay.weekdayLabel,
+        properNumber: liturgicalDay.properNumber,
+        feastName: liturgicalDay.feastName,
+        isMajorFeast: liturgicalDay.isMajorFeast,
+        useAlleluia: liturgicalDay.useAlleluia,
+        totalSlides: slides.length,
+      };
+      return { slides, officeDay, fromCache: true };
+    }
   }
 
   // 2. Assemble
@@ -1114,10 +1119,24 @@ export async function assembleMorningPrayer(
           liturgicalSeason: liturgicalDay.season,
           properNumber: liturgicalDay.properNumber,
           feastName: liturgicalDay.feastName,
-          slidesJson: slides as unknown as Record<string, unknown>[],
+          slidesJson: stampSchemaVersion(slides) as unknown as Record<string, unknown>[],
           assembledByUserId: userId,
         })
-        .onConflictDoNothing();
+        // A stale-schema row falls through to here on every request until
+        // ONE of them wins this race and overwrites it with the current
+        // shape — onConflictDoUpdate, not onConflictDoNothing, so that
+        // actually happens instead of leaving the old row in place forever.
+        .onConflictDoUpdate({
+          target: morningPrayerCacheTable.cacheDate,
+          set: {
+            slidesJson: stampSchemaVersion(slides) as unknown as Record<string, unknown>[],
+            liturgicalYear: liturgicalDay.liturgicalYear,
+            liturgicalSeason: liturgicalDay.season,
+            properNumber: liturgicalDay.properNumber,
+            feastName: liturgicalDay.feastName,
+            assembledByUserId: userId,
+          },
+        });
     } catch (err) {
       console.error("Failed to cache morning prayer:", err);
     }

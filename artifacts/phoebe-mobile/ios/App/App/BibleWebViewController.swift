@@ -390,13 +390,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // item, so while their styles differed the two could not have matched
         // whatever colour was set. Both are plain now, and applyChrome tints
         // each of them explicitly.
-        // officeChrome uses "← Back" (the office's own top-left control).
-        // Owner tried an X-circle for articles, then: "let's revert the
-        // newsletters' top bar back to the Done and no Reader." Plain "Done"
-        // for both an article and a plain office/Venite open.
+        // Owner: "the bottom bar left button on the scripture page should
+        // still say Back — it's the TOP LEFT button that should say Next
+        // instead of Back." The bottom pill's left button reverts to Back
+        // below (buildOfficeNavPill); this top-left one — which used to just
+        // dismiss — now advances too, so there are two ways to move forward
+        // (top-left, bottom-right) and one to step back (bottom-left).
         if officeChrome {
-            let backItem = UIBarButtonItem(title: "← Back", style: .plain, target: self, action: #selector(close))
-            backItem.accessibilityLabel = "Back to the office"
+            let backItem = UIBarButtonItem(title: "Next →", style: .plain, target: self, action: #selector(officeNavNext))
+            backItem.accessibilityLabel = "Next"
             self.doneItem = backItem
             navigationItem.leftBarButtonItem = backItem
         } else {
@@ -739,17 +741,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         host.addSubview(blur)
         officeNavPill = blur
 
-        // Owner: "on the Bible reader, have Back say Next and have it
-        // progress to the next slide, the canticle." Both pill buttons now
-        // read "Next →" and both advance — kept as two buttons (not
-        // collapsed to one) since that's the literal shape asked for; the
-        // property/selector names below still say "Back" because renaming
-        // them everywhere is unrelated churn, not because either still goes
-        // backward.
+        // Owner: "the bottom bar left button should still say Back" —
+        // reverted to its original label and action; see the top-left button
+        // above for where "Next" actually landed.
         let back = UIButton(type: .system)
-        back.setTitle("Next →", for: .normal)
+        back.setTitle("Back", for: .normal)
         back.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
-        back.addTarget(self, action: #selector(officeNavNext), for: .touchUpInside)
+        back.addTarget(self, action: #selector(officeNavBack), for: .touchUpInside)
         back.layer.cornerRadius = 14
         back.layer.borderWidth = 1
         back.contentEdgeInsets = UIEdgeInsets(top: 7, left: 14, bottom: 7, right: 14)
