@@ -244,6 +244,11 @@ type RulePreset = {
    *  Evening Devotion). Omitted = same as `pray`. */
   evening?: PrayChoice;
   silence: boolean; goalMin: number;
+  /** Display copy — present on the NAMED rules (which a person picks off a
+   *  list and must be able to read before adopting), absent on the time
+   *  ladder's inline presets (whose rows live on the TimeStep instead). */
+  title?: string; blurb?: string;
+  rows?: Array<{ emoji: string; label: string }>;
   /** Which side carries the silent sit. Omitted = every side the preset turns
    *  on (the named rules); the time ladder pins ONE sit ("5 minutes of
    *  silence" means five, not five per side). */
@@ -256,19 +261,27 @@ type RulePreset = {
 // prayer-book Anglicanism.
 const RULE_PRESETS: RulePreset[] = [
   // A GENTLE START — the smallest rule: one short morning prayer. For beginning.
-  { id: "morning-anchor", emoji: "🌅", sides: { morning: true, evening: false }, pray: "devotion", silence: false, goalMin: 0, reflections: ["fdd"] },
+  { id: "morning-anchor", emoji: "🌅", sides: { morning: true, evening: false }, pray: "devotion", silence: false, goalMin: 0, reflections: ["fdd"],
+    title: "A Gentle Start", blurb: "The smallest rule that is still a rule: one short prayer to open the day.",
+    rows: [{ emoji: "🌅", label: "A short morning devotion" }, { emoji: "📖", label: "Forward Day by Day" }] },
   // THE PSALMS — the shape a brand-new user already has on their home (Morning +
   // Evening Psalms + Forward Day by Day + a 5-minute silence). Keep in sync with
   // the new-user defaults: getSideLevel→"psalms", the FDD reflection fallback,
   // and the 5-minute starter goal in useRhythmState — so Customize opens
   // reflecting what's on the home, not a different rule.
-  { id: "psalms-daily",   emoji: "📜", sides: { morning: true, evening: true },  pray: "psalms",   silence: true,  goalMin: 5,  reflections: ["fdd"] },
+  { id: "psalms-daily",   emoji: "📜", sides: { morning: true, evening: true },  pray: "psalms",   silence: true,  goalMin: 5,  reflections: ["fdd"],
+    title: "The Psalms", blurb: "The Benedictine shape — the psalter morning and evening, with a few minutes of silence.",
+    rows: [{ emoji: "🌅", label: "The morning Psalms" }, { emoji: "🌆", label: "The evening Psalms" }, { emoji: "📖", label: "Forward Day by Day" }, { emoji: "🕯️", label: "5 minutes of silence" }] },
   // CENTERING PRAYER — two daily sits of silence in the school of Thomas Keating,
   // with the Center for Action & Contemplation's daily meditation. Contemplation
   // IS the prayer (pray "none" + silence), so it's the sit alone — no office.
-  { id: "centering",      emoji: "🕯️", sides: { morning: true, evening: true },  pray: "none", silence: true, goalMin: 15, reflections: ["cac"] },
+  { id: "centering",      emoji: "🕯️", sides: { morning: true, evening: true },  pray: "none", silence: true, goalMin: 15, reflections: ["cac"],
+    title: "Centering Prayer", blurb: "Two daily sits in the school of Thomas Keating. The silence is the prayer.",
+    rows: [{ emoji: "🕯️", label: "15 minutes of silence, morning and evening" }, { emoji: "📖", label: "The CAC's Daily Meditation" }] },
   // THE DAILY OFFICE — full Morning & Evening Prayer from the Book of Common Prayer.
-  { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"] },
+  { id: "offices",        emoji: "📖", sides: { morning: true, evening: true },  pray: "offices",  silence: false, goalMin: 0, reflections: ["fdd"],
+    title: "The Daily Office", blurb: "Morning and Evening Prayer in full, from the Book of Common Prayer.",
+    rows: [{ emoji: "🌅", label: "Morning Prayer" }, { emoji: "🌆", label: "Evening Prayer" }, { emoji: "📖", label: "Forward Day by Day" }] },
 ];
 
 // ── The TIME LADDER — the automatic transmission's dial (owner, 2026-07-03).
@@ -576,7 +589,11 @@ export default function WayOfLoveRuleFlow({
    * change becomes an accidental rewrite — the same reason the questionnaire
    * grew an adjust mode. Only shown when there IS a routine to edit.
    */
-  const [manualMode, setManualMode] = useState<"pick" | "scratch" | "edit">("pick");
+  const [manualMode, setManualMode] = useState<"pick" | "scratch" | "edit" | "preset">("pick");
+  // A named rule the person has TAPPED but not yet confirmed. Adopting replaces
+  // an existing rhythm wholesale (the ?adopt= path refuses to do that silently —
+  // it once wiped people's offices), so the picker always asks first.
+  const [presetPending, setPresetPending] = useState<string | null>(null);
   const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
   const [editLoaded, setEditLoaded] = useState(false);
   const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
@@ -1786,6 +1803,9 @@ export default function WayOfLoveRuleFlow({
     // the customizer." From the FIRST step that used to be true by definition —
     // but there are now slides in front of it (the entry chooser, and the
     // scratch-or-edit fork), so leaving the app entirely skips right past them.
+    // Back out of the preset CONFIRM to the preset LIST first — one tap should
+    // undo one tap, not drop you two slides back at the fork.
+    if (canEditParts && manualMode === "preset" && presetPending) { setPresetPending(null); return; }
     if (canEditParts && manualMode !== "pick") { setManualMode("pick"); return; }
     if (entryChoiceMade && showEntryChoice) { setEntryChoiceMade(false); return; }
     onBack();
@@ -2025,6 +2045,12 @@ export default function WayOfLoveRuleFlow({
             t("wol_rule.manual_scratch_sub", { defaultValue: "Go through every slide and set the whole rhythm again." }),
             () => setManualMode("scratch"),
           )}
+          {choiceRow(
+            false,
+            `\ud83d\udccb ${t("wol_rule.manual_preset", { defaultValue: "Start from a preset" })}`,
+            t("wol_rule.manual_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
+            () => { setPresetPending(null); setManualMode("preset"); },
+          )}
         </div>
         {/* Owner: "combine the first two slides … just put the past routine
             option on the bottom of the second slide." It came off the entry
@@ -2044,6 +2070,104 @@ export default function WayOfLoveRuleFlow({
             {`↩️ ${t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" })}`}
           </button>
         )}
+      </>,
+    );
+  }
+
+  // "Start from a preset" — the four named rules as a list you can READ before
+  // you take one (emoji, name, what it actually contains). Adopting replaces the
+  // whole rhythm, so a tap opens a confirm rather than committing outright.
+  if (entrySettled && canEditParts && manualMode === "preset") {
+    const pending = presetPending ? RULE_PRESETS.find((p) => p.id === presetPending) ?? null : null;
+    if (pending) {
+      return shell(
+        <>
+          {stepHeader(
+            t("wol_rule.preset_eyebrow", { defaultValue: "Start from a preset" }),
+            pending.title ?? "",
+          )}
+          <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 18px" }}>
+            {t("wol_rule.preset_confirm_body", {
+              defaultValue: "Adopting this replaces your current rhythm with the one below. Nothing you've already prayed is lost, and you can change any part of it afterwards.",
+            })}
+          </p>
+          <div style={{ ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "14px 16px" }}>
+            {(pending.rows ?? []).map((r) => (
+              <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0" }}>
+                <span style={{ fontSize: 17, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                <span style={{ color: CREAM, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.4 }}>{r.label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+            <button
+              type="button"
+              // Leave the fork as well as the confirm: commit() ends on
+              // setStep("done"), and THIS block returns above the step machine —
+              // stay in manualMode "preset" and the review screen can never
+              // render. "scratch" is the mode that falls through.
+              onClick={() => { setPresetPending(null); setManualMode("scratch"); adoptRule(pending); }}
+              style={{
+                background: "rgba(46,107,64,0.9)", border: "none", color: CREAM, borderRadius: 999,
+                padding: "13px 18px", fontSize: 15.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+              }}
+            >
+              {t("wol_rule.preset_adopt", { defaultValue: "Adopt this rhythm" })}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPresetPending(null)}
+              style={{
+                background: "none", border: "none", color: SAGE_DIM, fontSize: 13.5,
+                fontFamily: FONT, textDecoration: "underline", cursor: "pointer", padding: "6px 10px",
+              }}
+            >
+              {t("common.cancel", { defaultValue: "Cancel" })}
+            </button>
+          </div>
+        </>,
+      );
+    }
+    return shell(
+      <>
+        {stepHeader(
+          t("wol_rule.preset_eyebrow", { defaultValue: "Start from a preset" }),
+          t("wol_rule.preset_title", { defaultValue: "A rhythm someone has already shaped" }),
+        )}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.preset_body", {
+            defaultValue: "Each of these is a complete daily rule, drawn from a real school of prayer. Take one whole and tune it later.",
+          })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {RULE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => { try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* ignore */ } setPresetPending(preset.id); }}
+              style={{
+                ...FROST_BLUR,
+                background: CARD, border: `1px solid ${CARD_B}`, color: CREAM, borderRadius: 14,
+                padding: "14px 16px", textAlign: "left", cursor: "pointer", width: "100%",
+                transition: "background 0.15s, border-color 0.15s",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }} aria-hidden>{preset.emoji}</span>
+                <span style={{ color: CREAM, fontSize: 16.5, fontWeight: 700, fontFamily: FONT }}>{preset.title}</span>
+              </div>
+              <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.5, margin: "8px 0 0" }}>{preset.blurb}</p>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${CARD_B}` }}>
+                {(preset.rows ?? []).map((r) => (
+                  <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0" }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
+                    <span style={{ color: SAGE_DIM, fontSize: 13, fontFamily: FONT, lineHeight: 1.4 }}>{r.label}</span>
+                  </div>
+                ))}
+              </div>
+            </button>
+          ))}
+        </div>
       </>,
     );
   }
