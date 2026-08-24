@@ -1583,13 +1583,28 @@ export default function WayOfLoveRuleFlow({
   // The leaf backdrop is now owned by <Layout bgPhoto> (rule-of-life.tsx), so it
   // covers the WHOLE screen including behind the header. The shell stays
   // transparent and just lays out the content over it.
+  /**
+   * minWidth: 0 on every flex column in this chain — the fix for the reminder
+   * time bar overflowing the slide.
+   *
+   * A flex ITEM defaults to `min-width: auto`, meaning it refuses to shrink
+   * below its own min-content width. iOS gives `input[type=time]` a wide
+   * intrinsic width from its native control, and width/maxWidth:100% on the
+   * input (and on its wrapper — both already had them) can't help, because the
+   * floor is being set by an ANCESTOR that won't shrink. So the whole column
+   * grew past the slide and the bar rendered wider than the cards above it.
+   *
+   * Fixed here rather than on the time row because it's the shell every slide
+   * renders through: any future intrinsically-wide control — another native
+   * input, a long unbroken string — would have hit exactly the same wall.
+   */
   const shell = (children: ReactNode) => (
-    <div style={{ flex: 1, minHeight: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
-      <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
+    <div style={{ flex: 1, minHeight: 0, minWidth: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+      <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
         {/* Full width on mobile; on larger screens capped + centered at the SAME
             56rem the home uses (.dash-shell) so the customizer cards are exactly
             as wide as the home-screen cards, not a narrower column. */}
-        <div className="w-full md:max-w-[56rem] md:mx-auto" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div className="w-full md:max-w-[56rem] md:mx-auto" style={{ flex: 1, minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column" }}>
           {children}
         </div>
       </div>
@@ -2803,7 +2818,7 @@ export default function WayOfLoveRuleFlow({
             exclusive choice rows — on/off is a binary, and rendering it as two
             selectable cards (with the time wedged between them) made the time
             field look like it belonged to whichever row sat above it. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, maxWidth: "100%" }}>
           <button
             type="button"
             onClick={() => {
@@ -2880,7 +2895,14 @@ export default function WayOfLoveRuleFlow({
             keeps reading the anchor above. The side's own choice is filtered
             out — offering "Morning Devotion" to someone whose anchor already
             IS the devotion would just duplicate it. */}
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 18, minWidth: 0, maxWidth: "100%" }}>
+          {/* Owner: "the secondary practice needs an eyebrow." Every other
+              group on this slide is labelled ("Which reflection?", "Which
+              liturgy?"), so an unlabelled row read as a stray control rather
+              than an answer to a question. */}
+          <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+            {t("wol_rule.extra_eyebrow_label", { defaultValue: "Additional practice" })}
+          </p>
           {extraBySide[side] ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
               <span aria-hidden style={{ fontSize: 18 }}>{EXTRA_PRACTICE_EMOJI[extraBySide[side]!] ?? "🌿"}</span>

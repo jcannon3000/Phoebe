@@ -859,7 +859,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     queryKey: ["/api/vts/today-meta"],
     queryFn: () => apiRequest("GET", "/api/vts/today-meta"),
     staleTime: 60 * 60_000,
-    enabled: reflectionSource === "vts",
+    // Gated on a VTS CARD being rendered — not on VTS being the single
+    // "effective" reflection source. `reflections` is the SET the reader
+    // follows (one card each); reflectionSource is a precedence-resolved
+    // SINGLE source. Someone following CAC and VTS gets two cards while
+    // reflectionSource resolves to just one of them, so gating on it left
+    // the VTS card's own metadata unfetched — and the waiting-for-update
+    // state below silently dead — for exactly the readers who have more
+    // than one reflection.
+    enabled: reflections.some((r) => r.source === "vts"),
   });
   const vtsTitle = (vtsMeta?.title ?? "").trim();
   /**
@@ -874,7 +882,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * which could disagree with when VTS actually considers "today" to start.
    */
   const vtsWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
-  const vtsWaitingForUpdate = reflectionSource === "vts" && vtsWeekday && vtsMeta?.isToday === false;
+  const vtsWaitingForUpdate = reflections.some((r) => r.source === "vts") && vtsWeekday && vtsMeta?.isToday === false;
   // What you put on for today's Audio Divina — shown as the card's second line
   // once it's done (e.g. the album/track), in place of the generic "kept".
   const { data: listeningLogData } = useQuery<{ entries: Array<{ day: string; what: string }> }>({
