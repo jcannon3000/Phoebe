@@ -11,21 +11,16 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
-import { ContemplationTimer, CONTEMPLATION_PRESENCE_ENABLED, type ContemplationWhatsNext } from "@/components/ContemplationTimer";
+import { ContemplationTimer, CONTEMPLATION_PRESENCE_ENABLED } from "@/components/ContemplationTimer";
 import { PracticeIntro } from "@/components/PracticeIntro";
 import { hasSeenIntro, markIntroSeen } from "@/lib/practiceIntros";
-import { getSideMinutes, getReflectionSource, getSideContemplationExplicit } from "@/lib/officePrefs";
+import { getSideMinutes, getSideContemplationExplicit } from "@/lib/officePrefs";
 import { attributeContemplationSit } from "@/lib/contemplationSideDone";
 import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getGuestSilenceMinutesToday, GUEST_SILENCE_EVENT } from "@/lib/guestSilenceLog";
 import { SilenceLadderCard } from "@/components/SilenceLadderCard";
-import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
-import {
-  CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL,
-  markCacRead, markFddRead, markSsjeRead,
-  hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
-} from "@/lib/cacReadState";
+import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
@@ -64,18 +59,6 @@ const LEARN_RESOURCES: LearnResource[] = [
   // belongs alongside BCP Prayers / Psalter / Saints, not buried
   // behind the Contemplation > Learn tab. /api/cac/today on the
   // server still resolves the permalink; the drawer row links to it.)
-];
-
-// The daily reflections a sit can hand off into, in display order (FDD first —
-// the app default). Used for the ContemplationTimer's closing "what's next"
-// card, so a contemplation-heavy rhythm ends on the day's word.
-const WHATS_NEXT_REFLECTIONS: Array<{
-  key: "fdd" | "cac" | "ssje"; name: string; url: string;
-  isReadToday: () => boolean; markRead: () => void;
-}> = [
-  { key: "fdd", name: "Forward Day by Day", url: FDD_TODAY_URL, isReadToday: hasReadFddToday, markRead: markFddRead },
-  { key: "cac", name: "CAC Daily Meditation", url: CAC_TODAY_URL, isReadToday: hasReadCacToday, markRead: markCacRead },
-  { key: "ssje", name: "SSJE — Brother, Give Us a Word", url: SSJE_TODAY_URL, isReadToday: hasReadSsjeToday, markRead: markSsjeRead },
 ];
 
 // Contemplation home — reachable from the side menu. Shows the viewer's
@@ -541,23 +524,10 @@ export default function ContemplationPage() {
     attributeContemplationSit({ explicitSide, activeSides, kind: "silent" });
   };
 
-  const whatsNext: ContemplationWhatsNext | null = (() => {
-    const order = user?.homeLayout?.order ?? [];
-    const hidden = new Set(user?.homeLayout?.hidden ?? []);
-    const followed = WHATS_NEXT_REFLECTIONS.filter((r) => order.includes(r.key) && !hidden.has(r.key));
-    const list = followed.length > 0
-      ? followed
-      : WHATS_NEXT_REFLECTIONS.filter((r) => r.key === getReflectionSource());
-    const next = list.find((r) => !r.isReadToday());
-    if (!next) return null;
-    return {
-      emoji: "📖",
-      title: next.name,
-      sub: t("contemplation.whats_next_reflection_sub", { defaultValue: "Today's reflection" }),
-      cta: t("contemplation.whats_next_read", { defaultValue: "Read it" }),
-      onGo: () => openExternalThenMarkRead(next.url, next.markRead, { reader: true }),
-    };
-  })();
+  // The sit used to end on a "what's next → today's reflection" screen. Gone
+  // with every other closing what's-next slide (owner): a finished practice
+  // now lands on the home screen, where the card's completion animation plays
+  // and the Next list already says what's next.
   // Local midnight so the server can scope "today" to the user's
   // calendar day rather than UTC. Stable within a day; keyed into the
   // query so it refetches cleanly across a midnight rollover.
@@ -915,7 +885,6 @@ export default function ContemplationPage() {
         <ContemplationTimer
           open={timerOpen}
           startMinutes={startMinutes}
-          whatsNext={whatsNext}
           onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) { attributeSit(); setLocation("/dashboard"); } }}
         />
       </>
@@ -1211,7 +1180,6 @@ export default function ContemplationPage() {
       <ContemplationTimer
         open={timerOpen}
         startMinutes={startMinutes}
-        whatsNext={whatsNext}
         onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) attributeSit(); }}
       />
     </Layout>

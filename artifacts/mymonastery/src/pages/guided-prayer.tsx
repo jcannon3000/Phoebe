@@ -6,17 +6,10 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
-import {
-  markGuidedPrayerPrayed,
-  CAC_TODAY_URL, markCacRead, hasReadCacToday,
-  FDD_TODAY_URL, markFddRead, hasReadFddToday,
-  SSJE_TODAY_URL, markSsjeRead, hasReadSsjeToday,
-} from "@/lib/cacReadState";
-import { openExternalThenMarkRead } from "@/lib/openExternal";
+import { markGuidedPrayerPrayed } from "@/lib/cacReadState";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { WhatsNextCard } from "@/components/WhatsNextCard";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
@@ -166,22 +159,16 @@ export default function GuidedPrayerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  // What's next in the rhythm once this prayer is done — the same hand-off the
-  // contemplation sit offers at its close, so finishing PACT/the Examen leads
-  // on into the day's reading instead of dead-ending on "Done". Only the
-  // reflections the user actually follows (their home layout), and only one
-  // they haven't read yet; null when there's nothing left to point at.
-  const REFLECTIONS: Array<{ key: "fdd" | "cac" | "ssje"; name: string; url: string; isReadToday: () => boolean; markRead: () => void }> = [
-    { key: "fdd", name: "Forward Day by Day", url: FDD_TODAY_URL, isReadToday: hasReadFddToday, markRead: markFddRead },
-    { key: "cac", name: "CAC Daily Meditation", url: CAC_TODAY_URL, isReadToday: hasReadCacToday, markRead: markCacRead },
-    { key: "ssje", name: "SSJE — Brother, Give Us a Word", url: SSJE_TODAY_URL, isReadToday: hasReadSsjeToday, markRead: markSsjeRead },
-  ];
-  const whatsNext = (() => {
-    const order = user?.homeLayout?.order ?? [];
-    const hidden = new Set(user?.homeLayout?.hidden ?? []);
-    const followed = REFLECTIONS.filter((r) => order.includes(r.key) && !hidden.has(r.key));
-    return followed.find((r) => !r.isReadToday()) ?? null;
-  })();
+  // The "what's next" slide that used to close this prayer is GONE (owner):
+  // every slideshow now ends by landing on the home screen, where the card's
+  // completion animation plays and the Next list already names what's next —
+  // the same ending reading a newsletter has always had.
+  // The "what's next" slide is GONE (owner): every slideshow now ends by
+  // landing on the home screen, where the card's completion animation plays
+  // and the Next list already names what's next — the same ending reading a
+  // newsletter has always had. Held at null (rather than deleting the step
+  // arithmetic below) so the tail — prayer list, collect — keeps its shape;
+  // it simply compacts up into this slot.
 
   // The reader's own private prayer list, tacked on at the very end — the
   // same way the community intercessions fold into the BCP office. Skipped
@@ -210,25 +197,24 @@ export default function GuidedPrayerPage() {
 
   const isIntro = step === 0;
   const isClosing = step === MOVEMENTS.length + 1;
-  const whatsNextStep = MOVEMENTS.length + 2;
-  const prayerListStep = whatsNext ? whatsNextStep + 1 : whatsNextStep;
+  // The what's-next slide used to sit here, between the closing and the tail.
+  // With it gone the prayer list (and then the collect) follow the closing
+  // directly.
+  const prayerListStep = MOVEMENTS.length + 2;
   const collectStep = showPrayerList ? prayerListStep + 1 : prayerListStep;
-  const isWhatsNext = whatsNext != null && step === whatsNextStep;
   const isPrayerList = showPrayerList && step === prayerListStep;
   const isCollect = showCollect && step === collectStep;
-  const movement = !isIntro && !isClosing && !isWhatsNext && !isPrayerList && !isCollect ? MOVEMENTS[step - 1] : null;
+  const movement = !isIntro && !isClosing && !isPrayerList && !isCollect ? MOVEMENTS[step - 1] : null;
 
   const isLastMovement = movement != null && movement.n === MOVEMENTS.length;
-  const hasTail = whatsNext != null || showPrayerList || showCollect;
+  const hasTail = showPrayerList || showCollect;
   // One primary action per slide, in the office's bottom control band.
   const primary = isIntro
     ? { label: t("guided_prayer.begin"), onClick: () => setStep(1) }
     : isClosing
       ? (hasTail
-          ? { label: whatsNext ? t("guided_prayer.whats_next", { defaultValue: "What's next" }) : t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
+          ? { label: t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
           : { label: t("common.done"), onClick: () => setLocation("/dashboard") })
-      : isWhatsNext
-        ? { label: t("guided_prayer.read_it", { defaultValue: "Read it" }), onClick: () => { if (whatsNext) openExternalThenMarkRead(whatsNext.url, whatsNext.markRead, { reader: true }); } }
       : isPrayerList
         ? (showCollect
             ? { label: t("guided_prayer.continue"), onClick: () => setStep((s) => (s + 1) as typeof step) }
@@ -388,37 +374,6 @@ export default function GuidedPrayerPage() {
               <p style={{ color: "rgba(240,237,230,0.94)", margin: 0, fontFamily: SERIF, fontStyle: "italic", fontSize: "clamp(19px, 4.8vw, 24px)", lineHeight: 1.6 }}>
                 {t("guided_prayer.closing_body")}
               </p>
-            </motion.div>
-          )}
-          {isWhatsNext && whatsNext && (
-            <motion.div
-              key="whats-next"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="w-full flex flex-col items-center"
-              style={{ maxWidth: 480, textAlign: "center" }}
-            >
-              {/* Same "Up next" card + Done pill the office slideshow's own close
-                  uses (prayer-mode.tsx's PrayerCompletedSlide) — every practice
-                  hands off to what's next the same way, not its own bespoke look. */}
-              <WhatsNextCard
-                emoji="📖"
-                eyebrow={t("guided_prayer.whats_next", { defaultValue: "What's next" })}
-                title={whatsNext.name}
-                blurb={t("guided_prayer.whats_next_sub", { defaultValue: "Today's reflection" })}
-                cta={t("guided_prayer.read_it", { defaultValue: "Read it" })}
-                onGo={() => openExternalThenMarkRead(whatsNext.url, whatsNext.markRead, { reader: true })}
-              />
-              <button
-                type="button"
-                onClick={() => ((showPrayerList || showCollect) ? setStep((s) => (s + 1) as typeof step) : setLocation("/dashboard"))}
-                className="mt-7 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "var(--oh-cta, #2D5E3F)", color: WARM, cursor: "pointer", fontFamily: FONT }}
-              >
-                {(showPrayerList || showCollect) ? t("guided_prayer.continue") : t("guided_prayer.back_home", { defaultValue: "Back to home" })}
-              </button>
             </motion.div>
           )}
           {isPrayerList && (
