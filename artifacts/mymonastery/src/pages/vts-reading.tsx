@@ -101,9 +101,24 @@ export default function VtsReadingPage() {
     } catch { /* ignore */ }
   };
 
+  /**
+   * The streak slide's numbers. Counted in PUBLISHING DAYS, not calendar days —
+   * the Dean's Commentary comes out on weekdays, so a reader who never misses
+   * would otherwise watch their streak reset every Saturday.
+   */
+  const localToday = (() => { try { return new Date().toLocaleDateString("en-CA"); } catch { return ""; } })();
+  const { data: streak } = useQuery<{ current: number; totalDays: number }>({
+    queryKey: ["/api/me/reflection-streak", "vts", localToday],
+    queryFn: () => apiRequest("GET", `/api/me/reflection-streak?source=vts&today=${encodeURIComponent(localToday)}`),
+    enabled: !!localToday,
+    staleTime: 5 * 60_000,
+  });
+
   const paragraphs = data?.paragraphs ?? [];
-  const total = paragraphs.length;
+  // The reading, then one closing slide that says how long they've kept it.
+  const total = paragraphs.length + (paragraphs.length > 0 ? 1 : 0);
   const isTitle = step === 0;
+  const isStreak = paragraphs.length > 0 && step === total;
   const paraIndex = step - 1;
 
   // Same condition as isTitle, by definition (there's only one slide before
@@ -269,6 +284,35 @@ export default function VtsReadingPage() {
                 {data.date}
               </p>
             )}
+          </div>
+        ) : isStreak ? (
+          <div
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              justifyContent: "center", textAlign: "center", gap: 14, maxWidth: 460, margin: "0 auto",
+            }}
+          >
+            <p style={{ color: FAINT_GREEN, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+              🦩 Kept
+            </p>
+            <p
+              className="title-glow-breathe"
+              style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontWeight: 700, fontSize: "clamp(52px, 12vw, 92px)", lineHeight: 1, letterSpacing: "-0.03em", margin: 0 }}
+            >
+              {streak?.current ?? 0}
+            </p>
+            <p style={{ color: WARM_TEXT, fontSize: 17, fontFamily: SPACE_GROTESK, margin: 0 }}>
+              {(streak?.current ?? 0) === 1
+                ? "day of the Dean’s Commentary"
+                : "days of the Dean’s Commentary, in a row"}
+            </p>
+            {/* Weekends are stepped over, not counted as misses — say so, or a
+                reader who reads every weekday will think the number is wrong. */}
+            <p style={{ color: FAINT_GREEN, fontSize: 13, lineHeight: 1.6, fontFamily: SPACE_GROTESK, margin: "2px 0 0" }}>
+              {(streak?.totalDays ?? 0) > 0
+                ? `${streak?.totalDays} day${(streak?.totalDays ?? 0) === 1 ? "" : "s"} read in all. It comes out on weekdays, so weekends don’t break the streak.`
+                : "It comes out on weekdays, so weekends don’t break the streak."}
+            </p>
           </div>
         ) : (
           <p style={{ color: WARM_TEXT, fontSize: 19, lineHeight: 1.75, fontFamily: SPACE_GROTESK, whiteSpace: "pre-line", margin: 0, textAlign: "left" }}>
