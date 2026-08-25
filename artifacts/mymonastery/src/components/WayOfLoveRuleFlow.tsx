@@ -1684,8 +1684,8 @@ export default function WayOfLoveRuleFlow({
     setCommunityWithOffice({ morning: false, evening: false });
     // chooseContemplationStyle, NOT the raw setter: the style's localStorage
     // write ("phoebe:contemplation-style") lives in the chooser, and the home
-    // card + "Begin" read it from there. Set state alone and VTS Cultivate
-    // adopts a breath rule whose card still says Contemplation.
+    // card + "Begin" read it from there. Set state alone and a breath rule
+    // (VTS) adopts a practice whose card still says Contemplation.
     chooseContemplationStyle(preset.contemplationStyle ?? "silent");
     setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, visio: false, compline: false });
     // A starter rule's silence applies to whichever sides it turns on.
