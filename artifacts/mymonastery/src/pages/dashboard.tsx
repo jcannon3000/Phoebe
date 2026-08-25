@@ -6530,7 +6530,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
   // nothing until you've subscribed to a prayer feed, so leaving it visible just
   // means a subscribed feed shows up on home automatically (no customizer trip).
-  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "compline", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "ssje", "vts", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the

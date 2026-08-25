@@ -54,6 +54,10 @@ export default function MenuPracticesPage() {
           ...(CREATION_PRAYER_ENABLED && !isGuest ? [
             { emoji: "🌍", label: "Prayers for the Climate", sub: "Collects, prayers & words on creation", onClick: () => go("/creation-prayers") },
           ] : []),
+          // Visio Divina — the looking sibling of Audio Divina, beside it.
+          ...(!isGuest ? [
+            { emoji: "🖼️", label: "Visio Divina", sub: "Pray with the day's image, slowly", onClick: () => go("/visio") },
+          ] : []),
           // Audio Divina sits at the BOTTOM of Practices (owner).
           ...(!isGuest ? [
             { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },

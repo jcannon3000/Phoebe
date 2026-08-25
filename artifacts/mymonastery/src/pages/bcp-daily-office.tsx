@@ -3548,7 +3548,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     return (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); openExternal(vcs.url); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Same hand-off the Bible reading uses — the office's
+                          // own chrome and the snapshot veil, so stepping out to
+                          // a commentary feels like part of the office rather
+                          // than being thrown into a browser.
+                          openOfficeReading(vcs.url, {
+                            officeTitle,
+                            slideLabel: `${slideIdx + 1} of ${slides.length}`,
+                            sectionLabel,
+                          });
+                        }}
                         style={{
                           background: "none", border: "none", color: FAINT_GREEN,
                           fontFamily: SPACE_GROTESK, fontSize: 12.5, textDecoration: "underline",

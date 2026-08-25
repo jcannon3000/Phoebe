@@ -118,7 +118,7 @@ const HOME_LAYOUT_VERSION = 2;
 // requests (pinned) → community prayers (office) →
 // Forward Day by Day. Everything else is hidden but addable.
 const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "fdd", "contemplation", "listening", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "cac", "ssje", "vts", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "listening", "reading", "walk", "cobreathe", "compline", "examen", "visio", "cac", "ssje", "vts", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
