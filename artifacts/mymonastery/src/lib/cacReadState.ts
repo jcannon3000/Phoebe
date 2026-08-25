@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
-import { getSideLevel } from "@/lib/officePrefs";
+import { getSideLevel, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 
@@ -337,6 +337,52 @@ const vtsTrackerFor = (side: "morning" | "evening") => (side === "evening" ? vts
 export function hasPrayedVtsToday(side: "morning" | "evening" = "morning"): boolean { return vtsTrackerFor(side).hasReadToday(); }
 export function markVtsPrayed(side: "morning" | "evening" = "morning"): void { vtsTrackerFor(side).markRead(); clearReminderIfAnchor(side, "fdd"); }
 
+/**
+ * Reading a newsletter ONCE should satisfy it once, wherever it appears.
+ *
+ * A source can be BOTH a side's anchor (level "fdd", named after the source by
+ * sideOfficeTitle — so a CAC anchor's card reads "CAC Daily Meditation") and a
+ * reflection card in the home layout. Picking Reflection as the morning anchor
+ * in the customizer produces exactly that pairing by default, because the
+ * side's reflection is set from the same newsletter list the card comes from.
+ *
+ * The two are tracked by DIFFERENT flags — hasReadCacToday() for the card,
+ * hasPrayedCacToday(side) for the anchor — so the reader saw two cards with
+ * the identical title and reading it cleared only one of them. Crossing the
+ * credit here, at the two write points, keeps every reader of those flags
+ * (cards, dots, weekly rows, the widget, the bell) consistent without anyone
+ * having to know about the pairing.
+ */
+function sidesAnchoredTo(source: "cac" | "fdd" | "ssje" | "vts"): Array<"morning" | "evening"> {
+  const out: Array<"morning" | "evening"> = [];
+  for (const side of ["morning", "evening"] as const) {
+    try {
+      if (getSideLevel(side) !== "fdd") continue;
+      if ((getSideReflectionExplicit(side) ?? "fdd") === source) out.push(side);
+    } catch { /* storage unavailable — no cross-credit, never a throw */ }
+  }
+  return out;
+}
+
+/** The global "read it today" tracker for a source — the reflection CARD's flag. */
+function readTrackerFor(source: "cac" | "fdd" | "ssje" | "vts") {
+  return source === "cac" ? cacTracker : source === "ssje" ? ssjeTracker : source === "vts" ? vtsTracker : fddTracker;
+}
+
+/**
+ * Mark a source read, and credit any side whose ANCHOR is that source.
+ * Called from every mark*Read below rather than from the cards, so a read
+ * from anywhere counts everywhere.
+ */
+function creditAnchorsFor(source: "cac" | "fdd" | "ssje" | "vts"): void {
+  for (const side of sidesAnchoredTo(source)) {
+    if (source === "cac") markCacPrayed(side);
+    else if (source === "ssje") markSsjePrayed(side);
+    else if (source === "vts") markVtsPrayed(side);
+    else markFddPrayed(side);
+  }
+}
+
 /** Which per-side tracker owns a given reflection source's anchor credit. */
 export function hasPrayedReflectionToday(source: "cac" | "fdd" | "ssje" | "vts", side: "morning" | "evening" = "morning"): boolean {
   if (source === "cac") return hasPrayedCacToday(side);
@@ -345,6 +391,11 @@ export function hasPrayedReflectionToday(source: "cac" | "fdd" | "ssje" | "vts",
   return hasPrayedFddToday(side);
 }
 export function markReflectionPrayed(source: "cac" | "fdd" | "ssje" | "vts", side: "morning" | "evening" = "morning"): void {
+  // …and the card's own flag, so the anchor and the reflection card can't
+  // disagree about a newsletter that was read once. Writing the tracker
+  // directly (not mark*Read) keeps this one hop — mark*Read credits anchors,
+  // which is the direction we're already coming from.
+  try { readTrackerFor(source).markRead(); } catch { /* non-fatal */ }
   if (source === "cac") { markCacPrayed(side); return; }
   if (source === "ssje") { markSsjePrayed(side); return; }
   if (source === "vts") { markVtsPrayed(side); return; }
@@ -400,7 +451,7 @@ export const CAC_TODAY_URL = "https://withphoebe.app/api/cac/today";
 export const CAC_READ_EVENT = cacTracker.eventName;
 export function getCacReadDay(): string | null { return cacTracker.getLastReadDay(); }
 export function hasReadCacToday(): boolean { return cacTracker.hasReadToday(); }
-export function markCacRead(): void { cacTracker.markRead(); }
+export function markCacRead(): void { cacTracker.markRead(); creditAnchorsFor("cac"); }
 
 // ── Return-to-reflection redirect (shared by all three sources) ──
 // When a daily reflection is opened from a surface that should send the reader
@@ -438,7 +489,7 @@ export const VTS_TODAY_URL = "https://withphoebe.app/api/vts/today";
 export const VTS_READ_EVENT = vtsTracker.eventName;
 export function getVtsReadDay(): string | null { return vtsTracker.getLastReadDay(); }
 export function hasReadVtsToday(): boolean { return vtsTracker.hasReadToday(); }
-export function markVtsRead(): void { vtsTracker.markRead(); }
+export function markVtsRead(): void { vtsTracker.markRead(); creditAnchorsFor("vts"); }
 // VTS only publishes Dean's Commentary on weekdays — Saturday/Sunday there's
 // nothing new (the server just keeps serving Friday's post). Rather than
 // show a stale "today's reading" that isn't actually today's, the card and
@@ -458,7 +509,7 @@ export const FDD_TODAY_URL = "https://prayer.forwardmovement.org/fdd";
 export const FDD_READ_EVENT = fddTracker.eventName;
 export function getFddReadDay(): string | null { return fddTracker.getLastReadDay(); }
 export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
-export function markFddRead(): void { fddTracker.markRead(); }
+export function markFddRead(): void { fddTracker.markRead(); creditAnchorsFor("fdd"); }
 // Opened from the home card → mark read + (when flagged) stash the return path
 // so coming back from the browser lands on the FDD journey page (/reflect/fdd
 // — read-aloud + sit), matching CAC's return to its companion page. Was the
@@ -483,7 +534,7 @@ export const SSJE_TODAY_URL = "https://www.ssje.org/word/";
 export const SSJE_READ_EVENT = ssjeTracker.eventName;
 export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
 export function hasReadSsjeToday(): boolean { return ssjeTracker.hasReadToday(); }
-export function markSsjeRead(): void { ssjeTracker.markRead(); }
+export function markSsjeRead(): void { ssjeTracker.markRead(); creditAnchorsFor("ssje"); }
 // Opened from the home card → mark read + (when flagged) stash the return path
 // so coming back from the browser lands on the in-app reflection reader.
 export function recordSsjeOpened(opts?: { flagReturn?: boolean }): void {
