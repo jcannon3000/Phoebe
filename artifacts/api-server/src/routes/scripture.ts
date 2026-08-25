@@ -12,7 +12,7 @@
 // cache below is just to keep repeat opens off the origin.
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { lookupLessonVerses } from "../lib/scriptureService";
+import { lookupLessonVerses, translationName } from "../lib/scriptureService";
 
 const router: IRouter = Router();
 
@@ -33,15 +33,18 @@ router.get("/scripture/passage", (req: Request, res: Response): void => {
   // the reader to open their own bible, exactly as the office slides do.
   if (!verses?.length) {
     res.setHeader("Cache-Control", "public, max-age=86400");
-    res.json({ reference: ref, verses: [], text: null });
+    res.json({ reference: ref, verses: [], text: null, translation: translationName() });
     return;
   }
 
   res.setHeader("Cache-Control", "public, max-age=86400");
+  // The slide names its translation — it's public-domain scripture, and a
+  // reader is entitled to know which words they're reading.
   res.json({
     reference: ref,
     verses,
     text: verses.map((v) => v.text.trim()).join(" "),
+    translation: translationName(),
   });
 });
 

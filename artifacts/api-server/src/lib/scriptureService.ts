@@ -340,6 +340,17 @@ function lookupPassage(reference: string): string {
   return extractText(parsed.bookName, parsed.ranges);
 }
 
+/**
+ * The translation these lessons come from, for surfaces that name it.
+ *
+ * Read from the data file rather than hard-coded, because the header above
+ * promises that swapping translations is a one-line data-path change — a
+ * literal "WEB" somewhere else would quietly outlive the swap.
+ */
+export function translationName(): string {
+  return bible.translation;
+}
+
 export interface LessonVerse {
   chapter: number;
   verse: number;

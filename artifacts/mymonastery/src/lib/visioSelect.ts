@@ -20,7 +20,6 @@
  *     empty screen — see the blank-screen rule this repo keeps.
  */
 import { ACT_CATALOGUE, type CatalogueArtwork } from "./visioCatalogue";
-import { type VisioSeen } from "./visioHistory";
 
 const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
 
@@ -114,19 +113,24 @@ export function matchScore(artRefs: string[], lessons: string[]): number {
   return best;
 }
 
-/** Stable small hash of the date, so ties break the same way for everyone. */
-function dayHash(ymd: string): number {
-  let h = 0;
-  for (let i = 0; i < ymd.length; i++) h = (h * 31 + ymd.charCodeAt(i)) | 0;
-  return Math.abs(h);
+/**
+ * Days since the epoch — the ordinal of the date itself.
+ *
+ * A COUNTER, not a hash, and that difference is the whole design. Consecutive
+ * days give consecutive indices, so when the lectionary appoints the same
+ * reading several days running (Holy Week) the practice walks through the
+ * paintings that match it instead of landing on the same one twice. A hash
+ * would scatter, and scattering collides.
+ */
+function dayOrdinal(ymd: string): number {
+  const d = Math.floor(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000);
+  return Number.isFinite(d) ? d : 0;
 }
 
 /** The plain rotation — no readings needed, and the floor under everything. */
 export function rotationForDay(ymd: string): CatalogueArtwork {
-  const days = Math.floor(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000);
   const n = ACT_CATALOGUE.length;
-  const i = Number.isFinite(days) ? ((days % n) + n) % n : 0;
-  return ACT_CATALOGUE[i]!;
+  return ACT_CATALOGUE[((dayOrdinal(ymd) % n) + n) % n]!;
 }
 
 export type Chosen = {
@@ -140,54 +144,36 @@ export type Chosen = {
 /**
  * Today's artwork.
  *
+ * ── A PURE FUNCTION OF THE DAY, and it has to be ──
+ *
+ * Owner: "we want everyone to be viewing the same image who's practicing it."
+ * So nothing device-local may enter this decision. An earlier version
+ * subtracted the reader's own history to avoid repeats, which quietly made the
+ * image PERSONAL — two people praying the same morning would have been looking
+ * at different paintings, and the practice stops being something a community
+ * does together. History is now only a record, read on the closing slide.
+ *
+ * Same date + same appointed lessons ⇒ same painting, for everyone, all day.
+ * "The same all day" needs no pinning any more: there is no state to drift.
+ *
+ * Different each day comes from the ordinal above rather than from memory: it
+ * steps one place each day, through the matches when the lectionary gives
+ * some, and through the whole 233 when it doesn't.
+ *
  * `lessons` may be empty (offline, still loading, or a day with no appointed
- * lesson) — the rotation covers that case.
- *
- * `history` is what makes it ONE PICTURE PER DAY (owner: "just that there is a
- * different one for each day"). Two halves, and both are needed:
- *
- *   · Today's own entry PINS the choice, so re-opening the practice later the
- *     same day returns the same painting rather than choosing a fresh one
- *     mid-prayer. A new image per OPEN would be the wrong thing entirely.
- *   · Everything older is SUBTRACTED, so tomorrow lands somewhere new. Holy
- *     Week is the case that needs it: the same Passion reading runs for days
- *     and matches the same few paintings, so without this you would look at
- *     the same Caravaggio three mornings running.
- *
- * Subtraction never starves the choice: if every match has been seen, the
- * filter is dropped rather than returning nothing.
+ * lesson) — the rotation covers that, and is equally shared.
  */
-export function chooseArtwork(ymd: string, lessons: string[], history: VisioSeen[] = []): Chosen {
-  const pinned = history.find((h) => h.ymd === ymd);
-  if (pinned) {
-    const art = BY_ID.get(pinned.id);
-    if (art) {
-      const ref = lessons.length
-        ? art.refs.find((r) => matchScore([r], lessons) >= 2) ?? art.refs[0] ?? ""
-        : art.refs[0] ?? "";
-      return { art, ref, followsToday: lessons.length ? matchScore(art.refs, lessons) >= 2 : false };
-    }
-  }
-  const seen = new Set(history.map((h) => h.id));
-  /** Prefer the unseen; fall back to the whole set rather than to nothing. */
-  const fresh = <T extends { art: CatalogueArtwork }>(xs: T[]): T[] => {
-    const unseen = xs.filter((x) => !seen.has(x.art.id));
-    return unseen.length ? unseen : xs;
-  };
-
+export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   const scored = lessons.length
     ? ACT_CATALOGUE.map((art) => ({ art, score: matchScore(art.refs, lessons) })).filter((x) => x.score > 0)
     : [];
   if (!scored.length) {
-    const pool = fresh(ACT_CATALOGUE.map((art) => ({ art })));
-    const art = pool[dayHash(ymd) % pool.length]!.art;
+    const art = rotationForDay(ymd);
     return { art, ref: art.refs[0] ?? "", followsToday: false };
   }
   const top = Math.max(...scored.map((x) => x.score));
-  const best = fresh(scored.filter((x) => x.score === top));
-  // Several works may depict the same reading — Passiontide especially. Pick
-  // deterministically among them so the day has one image, not a shuffle.
-  const art = best[dayHash(ymd) % best.length]!.art;
+  const best = scored.filter((x) => x.score === top);
+  const art = best[((dayOrdinal(ymd) % best.length) + best.length) % best.length]!.art;
   // Show the artwork's own reference that today's reading actually matched,
   // rather than whichever ACT happened to list first.
   const ref = art.refs.find((r) => matchScore([r], lessons) === top) ?? art.refs[0] ?? "";

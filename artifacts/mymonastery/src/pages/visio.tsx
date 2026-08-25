@@ -57,15 +57,51 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 /**
  * The two questions, in the owner's words and in his order.
  *
- * Fixed, not a rotating pool: they are a sequence, not a variety pack. The
- * first only asks you to NOTICE — no interpreting, no meaning yet, just what
- * your eye keeps returning to. The second asks what that noticing might be
- * for. Asking the second one first turns the practice into a quiz.
+ * Fixed, not a rotating pool: they are a sequence, not a variety pack.
+ *
+ * The first is said BEFORE the picture appears — "as you view the following
+ * picture" — so it's an instruction for your eyes, given while there's still
+ * nothing to look at. It only asks you to NOTICE: no interpreting, no meaning
+ * yet, just what your eye keeps returning to.
+ *
+ * The second comes after the passage, and asks what that noticing might be
+ * for. Asking it first would turn the practice into a quiz.
  */
 const QUESTIONS = [
-  "Notice anything that is sticking out to you in the picture, and hold that.",
-  "Consider what God may be speaking to you through the image.",
+  "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.",
+  "Consider what God might be speaking to you through the image in this moment.",
 ];
+
+/**
+ * The exhibition page rather than the commentary anchor inside it.
+ *
+ * VCS essays live at /{exhibition}/{commentary}, and that deep form drops the
+ * reader partway down a long page — owner: "it's opening at the bottom of the
+ * page, it's not opening to where the art is." The exhibition root leads with
+ * the artwork, which is what someone arriving from a looking practice wants to
+ * see first; the commentary is a scroll away rather than a scroll back.
+ */
+function exhibitionUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length > 1) return `${u.origin}/${parts[0]}`;
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * "WEB: World English Bible (public domain)" → "WEB".
+ *
+ * The data file names itself in full, which is right for the data and far too
+ * long for a letter-spaced eyebrow beside the reference.
+ */
+function shortTranslation(name: string): string {
+  const abbrev = name.split(":")[0]?.trim();
+  return abbrev && abbrev.length <= 12 ? abbrev : name.split("(")[0]!.trim();
+}
 
 /** "1050-1100" is a range, and a range takes an en dash. */
 function tidyDate(d: string): string {
@@ -127,17 +163,17 @@ export default function VisioPage() {
     if (settled.current) return;
     if (isFetched) {
       settled.current = true;
-      setChosen(chooseArtwork(today, (readings?.lessons ?? []).filter(Boolean), history));
+      setChosen(chooseArtwork(today, (readings?.lessons ?? []).filter(Boolean)));
       return;
     }
     // …and a hard cap, so a hanging request can't hold the practice shut.
     const timer = setTimeout(() => {
       if (settled.current) return;
       settled.current = true;
-      setChosen(chooseArtwork(today, [], history));
+      setChosen(chooseArtwork(today, []));
     }, READINGS_CAP_MS);
     return () => clearTimeout(timer);
-  }, [isFetched, readings, today, history]);
+  }, [isFetched, readings, today]);
 
   /** Whichever artwork the deck is actually showing — today's, or one the
    *  reader tapped back into from the closing gallery. */
@@ -149,17 +185,18 @@ export default function VisioPage() {
   // Null text is normal (the deuterocanon isn't carried) — the slide then
   // shows the reference alone, exactly as the office's lesson slides do.
   const ref = override ? (override.refs[0] ?? "") : (chosen?.ref ?? "");
-  const { data: passage } = useQuery<{ text: string | null }>({
+  const { data: passage } = useQuery<{ text: string | null; translation: string | null }>({
     queryKey: ["/api/scripture/passage", ref],
     enabled: !!ref,
     queryFn: async () => {
       try {
-        const r = await apiRequest<{ text?: string | null } | undefined>(
+        const r = await apiRequest<{ text?: string | null; translation?: string | null } | undefined>(
           "GET", `/api/scripture/passage?ref=${encodeURIComponent(ref)}`,
         );
-        return { text: (r && typeof r === "object" ? r.text : null) ?? null };
+        const ok = r && typeof r === "object";
+        return { text: (ok ? r.text : null) ?? null, translation: (ok ? r.translation : null) ?? null };
       } catch {
-        return { text: null };
+        return { text: null, translation: null };
       }
     },
     staleTime: Infinity,
@@ -190,18 +227,20 @@ export default function VisioPage() {
     try { recordVisioSeen(chosen.art.id, today); } catch { /* non-fatal */ }
   }, [chosen, today]);
 
-  /** The recent ones to offer at the close, today's excluded. */
-  const recent = useMemo(
-    () =>
-      history
-        .filter((h) => h.id !== active?.art.id)
-        .map((h) => artworkById(h.id))
-        .filter((a): a is NonNullable<typeof a> => !!a)
-        // Five, not six: at 62px with 8px gaps six wrap to 5+1 on a 375px
-        // screen and leave an orphan on its own row. Five is one clean strip.
-        .slice(0, 5),
-    [history, active?.art.id],
-  );
+  /**
+   * The completion cards: what you just looked at, then what you looked at
+   * before it. Owner: "cards, like history that shows a thumbnail of the image
+   * and the name of the image."
+   */
+  const cards = useMemo(() => {
+    const seen = history
+      .map((h) => artworkById(h.id))
+      .filter((a): a is NonNullable<typeof a> => !!a);
+    const list = active ? [active.art, ...seen.filter((a) => a.id !== active.art.id)] : seen;
+    // Five fits the slide without it becoming a scrolling archive; this is a
+    // closing beat, not a library.
+    return list.slice(0, 5);
+  }, [history, active]);
 
   /**
    * The view model, from whichever source is actually usable.
@@ -243,17 +282,26 @@ export default function VisioPage() {
       : null;
 
   /**
-   * The eight beats.
+   * Six beats (owner's order).
    *
-   * 0 invitation · 1 the image · 2 the passage · 3 the image AGAIN ·
-   * 4 the first question · 5 the second · 6 the reflection · 7 the close.
+   * 0 the first prompt · 1 the picture · 2 the gospel · 3 the second prompt ·
+   * 4 the reflection · 5 the completion.
+   *
+   * The first prompt comes BEFORE the picture on purpose — it tells you what
+   * to do with your eyes while you still have nothing to look at. Then you
+   * see it, then you read the passage it depicts, and only then are you asked
+   * what it might be saying.
+   *
+   * There is no second look at the picture after the reflection: owner cut it
+   * twice ("another page with the picture after the reflection that is not
+   * needed", "then it shows the picture again, which is not needed").
    */
-  const [step, setStep] = useState(0);
-  const TOTAL = 8;
-  const INVITE = 0, IMAGE = 1, PASSAGE = 2, AGAIN = 3, Q1 = 4, Q2 = 5, REFLECT = 6, CLOSE = 7;
-  // The reflection beat is about a page that isn't ours, so the painting steps
-  // aside for it; everywhere else after the invitation it stays in view.
-  const showsImage = step >= IMAGE && step !== REFLECT;
+  const PROMPT_1 = 0, PICTURE = 1, GOSPEL = 2, PROMPT_2 = 3, REFLECT = 4, DONE = 5;
+  const [step, setStep] = useState(PROMPT_1);
+  const TOTAL = 6;
+  // The picture carries the two beats built around looking at it, and rides
+  // small alongside the gospel. The prompts and the reflection stand alone.
+  const showsImage = step === PICTURE || step === GOSPEL;
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
@@ -272,8 +320,7 @@ export default function VisioPage() {
    * one with a floating bottom pill whose Back/Next dismiss it and step the
    * screen underneath. That screen is US here, so without these listeners its
    * Next would do nothing and the reader would be stranded on a web page with
-   * a button that appears broken. Same contract bcp-daily-office.tsx keeps for
-   * its lesson hand-off.
+   * a button that appears broken. Same contract bcp-daily-office.tsx keeps.
    */
   useEffect(() => {
     const onNext = () => setStep((s) => Math.min(TOTAL - 1, s + 1));
@@ -289,27 +336,44 @@ export default function VisioPage() {
   // Warm the essay while they're still looking, so the reflection opens
   // instantly rather than on a white page. No-op on web.
   useEffect(() => {
-    if (view?.essayUrl) preloadExternal(view.essayUrl);
+    if (view?.essayUrl) preloadExternal(exhibitionUrl(view.essayUrl));
   }, [view?.essayUrl]);
 
   const openReflection = () => {
     if (!view?.essayUrl) return;
-    openOfficeReading(view.essayUrl, {
+    openOfficeReading(exhibitionUrl(view.essayUrl), {
       officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
       slideLabel: t("visio.reflection", { defaultValue: "Reflection" }),
-      sectionLabel: view.title,
+      // Deliberately NOT the artwork's title. Owner: "the bottom bar doesn't
+      // need the full title... it makes the bottom bar too long when you're on
+      // the web viewer." Some of these run to eighty characters.
+      sectionLabel: "",
     });
   };
 
-  /** Jump back into a picture from the closing gallery. */
+  /** Jump back into a picture from the completion cards. */
   const reopen = (id: number) => {
     setOverrideId(id);
     setLoadedSrc(null);
-    setStep(IMAGE);
+    setStep(PICTURE);
   };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, isolation: "isolate", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <style>{`
+        @keyframes visio-breathe { 0%,100% { opacity: .5 } 50% { opacity: .85 } }
+        /* The prompts glow. They're the only things on their slides, and the
+           glow is what makes them read as spoken TO you rather than printed. */
+        @keyframes visio-glow {
+          0%,100% { text-shadow: 0 0 16px rgba(240,237,230,0.30), 0 0 46px rgba(143,175,150,0.20) }
+          50%     { text-shadow: 0 0 26px rgba(240,237,230,0.46), 0 0 70px rgba(143,175,150,0.32) }
+        }
+        .visio-prompt { animation: visio-glow 5200ms ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .visio-prompt { animation: none; text-shadow: 0 0 22px rgba(240,237,230,0.38), 0 0 60px rgba(143,175,150,0.26); }
+        }
+      `}</style>
+
       {/* Header — Back / title / close, matching the office's reader chrome. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "calc(env(safe-area-inset-top) + 12px) 16px 8px", gap: 10 }}>
         <button
@@ -336,41 +400,64 @@ export default function VisioPage() {
       <div
         style={{
           flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center",
-          // The passage beat fills from the top so the image can hold a fixed
+          // The gospel beat fills from the top so the image can hold a fixed
           // band and the text scroll under it; every other beat is centred.
-          justifyContent: step === PASSAGE ? "flex-start" : "center",
-          padding: "0 20px", gap: 14,
-          overflowY: step === PASSAGE ? "hidden" : "auto",
+          justifyContent: step === GOSPEL ? "flex-start" : "center",
+          padding: "0 20px", gap: 16,
+          overflowY: step === GOSPEL ? "hidden" : "auto",
         }}
       >
-        {/* The painting. Full height when it's the whole point (beats 1 and 3),
-            a small band when it's accompanying something else. */}
+        {/* The painting, lit from behind by itself.
+            Owner: "have it be on a blurred background and there's a drop
+            shadow." A blown-up, blurred copy sits underneath and bleeds past
+            the frame, so a small image on a dark screen sits in its own light
+            instead of floating on black. aria-hidden — it's the same picture,
+            and a screen reader should hear about it once. */}
         {showsImage && view && (
-          <img
-            src={view.img}
-            alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
-            decoding="async"
-            // Both paths: the event for a fresh fetch, the ref for one the
-            // browser already had.
-            ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(el.currentSrc || el.src); }}
-            onLoad={(e) => setLoadedSrc(e.currentTarget.currentSrc || e.currentTarget.src)}
-            onError={() => setImageFailed(true)}
-            style={{
-              flex: "0 0 auto",
-              maxWidth: "100%",
-              maxHeight: step === IMAGE || step === AGAIN ? "64vh" : step === PASSAGE ? "22vh" : step === CLOSE ? "30vh" : "38vh",
-              objectFit: "contain", borderRadius: 10, boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
-              // Fades in rather than snapping: these load over the network, and
-              // a hard pop is the wrong first movement for a looking practice.
-              opacity: loadedSrc === view.img ? 1 : 0,
-              transition: "opacity 420ms ease-out",
-            }}
-          />
+          <div style={{ position: "relative", flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", maxWidth: "100%" }}>
+            <img
+              aria-hidden
+              src={view.img}
+              alt=""
+              style={{
+                position: "absolute", inset: 0, width: "100%", height: "100%",
+                objectFit: "cover", borderRadius: 24,
+                // Tuned down from blur(42)/scale(1.32)/0.5: a LIGHT artwork —
+                // a Blake engraving on cream paper — threw enough glow past
+                // the frame to wash out the title sitting under it. Enough
+                // bleed to light the frame, not enough to fog the caption.
+                filter: "blur(46px) saturate(1.3)", transform: "scale(1.18)",
+                opacity: loadedSrc === view.img ? 0.4 : 0,
+                transition: "opacity 620ms ease-out",
+                pointerEvents: "none",
+              }}
+            />
+            <img
+              src={view.img}
+              alt={`${view.title}${view.artist ? ` — ${view.artist}` : ""}`}
+              decoding="async"
+              // Both paths: the event for a fresh fetch, the ref for one the
+              // browser already had.
+              ref={(el) => { if (el?.complete && el.naturalWidth > 0) setLoadedSrc(el.currentSrc || el.src); }}
+              onLoad={(e) => setLoadedSrc(e.currentTarget.currentSrc || e.currentTarget.src)}
+              onError={() => setImageFailed(true)}
+              style={{
+                position: "relative",
+                maxWidth: "100%",
+                maxHeight: step === PICTURE ? "62vh" : "22vh",
+                objectFit: "contain", borderRadius: 10,
+                boxShadow: "0 26px 74px rgba(0,0,0,0.66), 0 4px 14px rgba(0,0,0,0.45)",
+                // Fades in rather than snapping: these load over the network,
+                // and a hard pop is the wrong first movement here.
+                opacity: loadedSrc === view.img ? 1 : 0,
+                transition: "opacity 420ms ease-out",
+              }}
+            />
+          </div>
         )}
 
         {/* Resolving. A soft empty frame rather than a spinner: the practice
-            opens on stillness, and this is usually gone within a beat — the
-            invitation alone normally covers the wait. */}
+            opens on stillness, and the first prompt normally covers the wait. */}
         {showsImage && !view && (
           <div
             aria-hidden
@@ -381,27 +468,19 @@ export default function VisioPage() {
             }}
           />
         )}
-        <style>{`@keyframes visio-breathe { 0%,100% { opacity: .5 } 50% { opacity: .85 } }`}</style>
 
-        {/* The invitation (owner). It comes BEFORE the painting on purpose:
-            said afterwards it would be a caption, and the looking would already
-            be over. Said first it sets what the next beats are for. It also
-            buys the readings lookup its moment, so the artwork is usually
-            already chosen by the time they tap through. */}
-        {step === INVITE && (
-          <div style={{ textAlign: "center", maxWidth: 480 }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-              {t("visio.intro_eyebrow", { defaultValue: "Before you look" })}
-            </p>
-            <p style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, margin: "14px 0 0" }}>
-              {t("visio.intro_line", {
-                defaultValue: "As you look at the picture that follows, consider what God may be speaking to you through the image.",
-              })}
-            </p>
-          </div>
+        {(step === PROMPT_1 || step === PROMPT_2) && (
+          <p
+            className="visio-prompt"
+            style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
+          >
+            {step === PROMPT_1
+              ? t("visio.prompt_notice", { defaultValue: QUESTIONS[0]! })
+              : t("visio.prompt_speaking", { defaultValue: QUESTIONS[1]! })}
+          </p>
         )}
 
-        {step === IMAGE && view && (
+        {step === PICTURE && view && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>
@@ -417,10 +496,15 @@ export default function VisioPage() {
           </div>
         )}
 
-        {step === PASSAGE && view && (
+        {step === GOSPEL && view && (
           // Its own scroll box, so the text moves and the image doesn't.
           <div style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: 560, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 8px" }}>{view.scriptureRef}</p>
+            {/* Reference AND translation (owner). It's public-domain
+                scripture, and a reader is entitled to know whose words. */}
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 8px" }}>
+              {view.scriptureRef}
+              {passage?.translation ? ` · ${shortTranslation(passage.translation)}` : ""}
+            </p>
             {view.scripture ? (
               <p style={{ color: WARM, fontFamily: SERIF, fontSize: 18, lineHeight: 1.7, margin: 0 }}>{view.scripture}</p>
             ) : (
@@ -434,22 +518,6 @@ export default function VisioPage() {
                 the lesson ended up hidden behind the Continue button. */}
             <div aria-hidden style={{ height: 28 }} />
           </div>
-        )}
-
-        {/* The return. Nothing on it but the picture — you have read the
-            passage now, and this is the same image seen differently. */}
-        {step === AGAIN && view && (
-          <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-            {t("visio.look_again", { defaultValue: "Look again" })}
-          </p>
-        )}
-
-        {(step === Q1 || step === Q2) && view && (
-          <p style={{ color: WARM, fontFamily: SERIF, fontSize: 20, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}>
-            {step === Q1
-              ? t("visio.question_notice", { defaultValue: QUESTIONS[0]! })
-              : t("visio.question_speaking", { defaultValue: QUESTIONS[1]! })}
-          </p>
         )}
 
         {/* The reflection. The essay is VCS's, and their images are licensed
@@ -466,9 +534,7 @@ export default function VisioPage() {
             {view?.essayUrl ? (
               <>
                 <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", lineHeight: 1.6, margin: "14px 0 22px" }}>
-                  {t("visio.reflection_line", {
-                    defaultValue: "A short reflection on this image, written for it.",
-                  })}
+                  {t("visio.reflection_line", { defaultValue: "A short reflection on this image, written for it." })}
                 </p>
                 <button
                   type="button"
@@ -486,38 +552,52 @@ export default function VisioPage() {
           </div>
         )}
 
-        {/* The close. Not a "well done" screen (owner) — the picture once more,
-            and the ones before it. Attribution rides here because ACT asks for
-            it and the CC-licensed works REQUIRE it; the licence was verified
-            per artwork when the catalogue was built, so it can be stated. */}
-        {step === CLOSE && view && (
-          <div style={{ textAlign: "center", maxWidth: 520, width: "100%" }}>
-            {recent.length > 0 && (
-              <>
-                <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "4px 0 10px" }}>
-                  {t("visio.recent", { defaultValue: "Recently" })}
-                </p>
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 16 }}>
-                  {recent.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => reopen(a.id)}
-                      title={a.title}
-                      aria-label={a.title}
-                      style={{ userSelect: "none", WebkitTapHighlightColor: "transparent", width: 62, height: 62, padding: 0, borderRadius: 8, overflow: "hidden", border: `1px solid ${BORDER}`, background: "none", cursor: "pointer" }}
-                    >
-                      <img src={a.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11.5, lineHeight: 1.55, margin: 0 }}>
-              {view.attribution}
-              {view.where ? ` ${view.where}.` : ""}
-              {view.licence ? ` ${view.licence}.` : ""}
+        {/* The completion slide. Frosted cards (owner) — thumbnail and name —
+            for what's been looked at lately, tappable to go back in. The
+            attribution lives here too, because ACT asks for it and the
+            CC-licensed works REQUIRE it. */}
+        {step === DONE && (
+          <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px", textAlign: "center" }}>
+              {t("visio.close_eyebrow", { defaultValue: "Visio Divina complete" })}
             </p>
+            {cards.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => reopen(a.id)}
+                style={{
+                  userSelect: "none", WebkitTapHighlightColor: "transparent",
+                  display: "flex", alignItems: "center", gap: 12, width: "100%",
+                  padding: 10, borderRadius: 14, cursor: "pointer", textAlign: "left",
+                  // Frosted (owner).
+                  background: "rgba(240,237,230,0.06)",
+                  backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                  border: `1px solid ${BORDER}`,
+                }}
+              >
+                <img
+                  src={a.img}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flex: "0 0 auto", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+                />
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15.5, fontStyle: "italic", lineHeight: 1.3 }}>{a.title}</span>
+                  <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
+                    {[a.artist, tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+            ))}
+            {view && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "6px 0 0", textAlign: "center" }}>
+                {view.attribution}
+                {view.where ? ` ${view.where}.` : ""}
+                {view.licence ? ` ${view.licence}.` : ""}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -528,7 +608,7 @@ export default function VisioPage() {
           onClick={next}
           style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
         >
-          {step === INVITE
+          {step === PROMPT_1
             ? t("common.begin", { defaultValue: "Begin" })
             : t("common.continue", { defaultValue: "Continue" })}
         </button>

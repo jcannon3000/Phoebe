@@ -22,7 +22,11 @@ const router: IRouter = Router();
 // "gratitude" and "examen" are the optional daily practices a user can add
 // from the Customize flow — completing one earns an extra Daily-progress
 // checkmark (see lib/practiceCompletion.ts on the client + useRhythmState).
-const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list"]);
+// NOTE: this set is the GATE. A practice the client can log but this doesn't
+// name gets a 400, which the client surfaces as "Couldn't save that" — that is
+// exactly what shipping Visio Divina without "visio" here did, on every single
+// completion. Adding a practice on the client means adding it here too.
+const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list", "visio"]);
 /**
  * A user's OWN practice, as `custom:<anchorId>`.
  *
