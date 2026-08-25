@@ -1912,6 +1912,8 @@ export default function WayOfLoveRuleFlow({
    * practice's slides.
    */
   const stepBelongsToRow = (st: Step, rowId: string): boolean => {
+    if (rowId === "extra:morning") return st === "morning-extra" || st === "morning-extra-config";
+    if (rowId === "extra:evening") return st === "evening-extra" || st === "evening-extra-config";
     if (rowId === "side:morning") return st.startsWith("morning-");
     if (rowId === "side:evening") return st.startsWith("evening-");
     if (rowId === "contemplation") return st === "contemplation-goal" || st === "contemplative";
@@ -2133,6 +2135,9 @@ export default function WayOfLoveRuleFlow({
 
   /** Where the gear on each row goes — the step that actually owns it. */
   const stepForRow = (id: string): Step | null => {
+    // A side's SECOND practice opens its own step, not the anchor's.
+    if (id === "extra:morning") return "morning-extra";
+    if (id === "extra:evening") return "evening-extra";
     if (id === "side:morning") return "morning-way";
     if (id === "side:evening") return "evening-way";
     if (id === "contemplation") return "contemplation-goal";
@@ -2146,6 +2151,11 @@ export default function WayOfLoveRuleFlow({
    *  other edit — on Continue — so it can still be backed out of. */
   const clearEditRow = (id: string) => {
     touchedRef.current = true;
+    if (id === "extra:morning" || id === "extra:evening") {
+      const side: OfficeSide = id === "extra:morning" ? "morning" : "evening";
+      setExtraBySide((p) => ({ ...p, [side]: "" }));
+      return;
+    }
     if (id === "side:morning" || id === "side:evening") {
       const side: OfficeSide = id === "side:morning" ? "morning" : "evening";
       choosePrayBySide(side, "none");

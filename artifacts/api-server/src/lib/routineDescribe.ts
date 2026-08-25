@@ -163,12 +163,43 @@ export function describeSpec(spec: {
 
     if (rc[`phoebe:office:contemplation:${side}`] === "1") {
       const mins = rc[`phoebe:office:minutes:${side}`];
+      /**
+       * Name it after the practice it actually IS.
+       *
+       * A side's contemplative practice is either the silent sit or the breath,
+       * and phoebe:contemplation-style says which. This row always said
+       * "Contemplation" with a candle, so a reader whose practice is Creation
+       * Prayer opened Edit and could not find it — the one thing they keep
+       * morning and evening was listed under a name they had never chosen.
+       */
+      const isBreath = rc["phoebe:contemplation-style"] === "cobreathe";
       rows.push({
         id: "contemplation",
-        emoji: "🕯️",
-        label: `${cap} Contemplation`,
-        sub: [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
+        emoji: isBreath ? "🌍" : "🕯️",
+        label: isBreath ? `${cap} Creation Prayer` : `${cap} Contemplation`,
+        sub: isBreath
+          ? ["Breathing with creation", logMethodLabel(rc)].join(" · ")
+          : [mins ? `${mins} min` : "A silent sit", logMethodLabel(rc)].join(" · "),
         section: "contemplation",
+      });
+    }
+
+    /**
+     * …and the side's SECOND practice, which had no row at all.
+     *
+     * Owner: "we want all practices you may have to show." An additional
+     * practice is a real office on that side — it has its own home card, its
+     * own dot and its own weekly row — but Edit listed only the anchor, so the
+     * one place you go to change your rule was the one place it didn't exist.
+     */
+    const extra = rc[`phoebe:office:extra:${side}`];
+    if (extra && LEVEL_LABEL[extra]) {
+      rows.push({
+        id: `extra:${side}`,
+        emoji: "🌿",
+        label: `${cap} ${LEVEL_LABEL[extra]}`,
+        sub: "Alongside your main practice",
+        section: side,
       });
     }
   }

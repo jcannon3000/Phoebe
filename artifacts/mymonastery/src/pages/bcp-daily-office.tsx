@@ -1834,7 +1834,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // — /prayer-mode is auth-only, so hide the intercessions card.
         showIntercessions={!onComplete}
         alreadyDoneToday={readOfficeProgress(resolvedMode).kind === "done"}
-        onClose={() => setBookOpen(false)}
+        /**
+         * "Enter Digital Slideshow" is a FORMAT CHANGE, not a peek.
+         *
+         * It used to only reveal the deck underneath, leaving the side's stored
+         * How on "Physical BCP" — so the before-you-begin screen still said
+         * Physical BCP, and Begin took you back to the page guide next time.
+         * Owner: "if I go to enter digital slideshow, the format should be
+         * digital when I start." Persist the choice the tap actually made.
+         */
+        onClose={() => { setSideEntry(officeSide, "read"); setBookOpen(false); }}
         onPrayIntercessions={prayBookIntercessions}
         onMarkPrayed={markPrayedFromBook}
       />
@@ -4982,6 +4991,18 @@ function buildBookSections(slides: Slide[]): BookSection[] {
  */
 type SwapOption = { key: string; label: string; latin: string; ref: string };
 
+/**
+ * "Canticle 8" from the key `canticle_8` (or `canticle_8_rite1`).
+ *
+ * The number is how the prayer book indexes these and how people ask for them,
+ * but it lived only inside the key. Returns "" for the invitatories, which are
+ * named (Venite, Jubilate) and carry no canticle number.
+ */
+function canticleNumberLabel(key: string): string {
+  const m = /^canticle_(\d+)/.exec(key);
+  return m ? `Canticle ${m[1]}` : "";
+}
+
 function SwapSheet({
   open, busy, onClose, onPick, currentKey,
 }: {
@@ -5046,11 +5067,16 @@ function SwapSheet({
                       cursor: busy ? "wait" : "pointer",
                     }}
                   >
+                    {/* Owner: "these should list the canticle number" and "the
+                        english name first, not the latin." People look for a
+                        canticle by its number and know it by its English name;
+                        the Latin incipit is how the book labels it, so it keeps
+                        its place — just not the headline. */}
                     <p style={{ margin: 0, color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600 }}>
-                      {o.latin}{isCurrent ? "  ·  today's" : ""}
+                      {o.label}{isCurrent ? "  ·  today's" : ""}
                     </p>
                     <p style={{ margin: "2px 0 0", color: FAINT_GREEN, fontFamily: SPACE_GROTESK, fontSize: 12.5 }}>
-                      {o.label} · {o.ref}
+                      {[canticleNumberLabel(o.key), o.latin, o.ref].filter(Boolean).join(" · ")}
                     </p>
                   </button>
                 );
