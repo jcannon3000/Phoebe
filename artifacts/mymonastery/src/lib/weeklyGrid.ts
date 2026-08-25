@@ -116,10 +116,36 @@ export function computeWeeklyGrid(params: {
   const learned = learnFromReflection || learnFromMorning || learnFromEvening;
   const prayed = rhythm.doneCount > 0;
 
+  /**
+   * A side whose whole practice IS its contemplation.
+   *
+   * Reported on the VTS rule: the home said "Creation Prayer — kept today" and
+   * the Anchor-practices card agreed, while the Evening row in this very grid
+   * showed today's dot hollow. Same screen, two answers.
+   *
+   * Creation-Prayer-as-the-evening is stored as that SIDE's contemplation with
+   * no office level, so `eveningDone` — which reads the office flags — is
+   * false all day and the row could never fill. turn-learn-pray.tsx already
+   * handles exactly this (see its note on the same rule); this grid was never
+   * brought along, and its own contemplativeActive comment claims to mirror
+   * that file. Now it does.
+   *
+   * The row also takes that practice's NAME and emoji, so a rule whose evening
+   * is Creation Prayer stops showing a moon.
+   */
+  const morningIsContemplation = rhythm.morningContemplationActive && !rhythm.morningActive;
+  const eveningIsContemplation = rhythm.eveningContemplationActive && !rhythm.eveningActive;
+  const creationStyle = rhythm.contemplationStyle === "cobreathe";
+  // History for such a side: the practice-week has no per-side contemplation
+  // column, so read the flag for the practice it actually is.
+  const sideContemplationOn = (d: PracticeWeekDay) => (creationStyle ? d.cobreathe : d.contemplation);
+
   // The Morning/Evening rows mean "did you keep this side" — either practice
   // on that side counts, same as the day-level predicate above.
-  const morningPracticeOn = (d: PracticeWeekDay) => d.morning || !!d.morningExtra;
-  const eveningPracticeOn = (d: PracticeWeekDay) => d.evening || !!d.eveningExtra;
+  const morningPracticeOn = (d: PracticeWeekDay) =>
+    morningIsContemplation ? sideContemplationOn(d) : (d.morning || !!d.morningExtra);
+  const eveningPracticeOn = (d: PracticeWeekDay) =>
+    eveningIsContemplation ? sideContemplationOn(d) : (d.evening || !!d.eveningExtra);
   /**
    * WHATEVER their contemplative practice is, it counts here.
    *
@@ -142,8 +168,12 @@ export function computeWeeklyGrid(params: {
   const contemplativePracticeOn = (d: PracticeWeekDay) =>
     d.contemplation || d.cobreathe || d.walk || d.listening || d.examen || !!d.visio
     || (!namedContemplativeActive && prayedOnCustom(d.ymd));
-  const morningPractice = rhythm.morningDone || rhythm.morningExtraDone;
-  const eveningPractice = rhythm.eveningDone || rhythm.eveningExtraDone;
+  const morningPractice = morningIsContemplation
+    ? rhythm.morningContemplationDone
+    : (rhythm.morningDone || rhythm.morningExtraDone);
+  const eveningPractice = eveningIsContemplation
+    ? rhythm.eveningContemplationDone
+    : (rhythm.eveningDone || rhythm.eveningExtraDone);
   /**
    * Silence is kept when the DAY'S RULE is met, not when any sit happened.
    *
@@ -222,9 +252,9 @@ export function computeWeeklyGrid(params: {
       : null;
 
   const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
-    { emoji: "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
+    { emoji: morningIsContemplation && creationStyle ? "🌍" : "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
     ...(middleRow ? [middleRow] : []),
-    { emoji: "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
+    { emoji: eveningIsContemplation && creationStyle ? "🌍" : "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
     { emoji: "📖", label: "Learn", done: learned, historyFor: learnedOn },
