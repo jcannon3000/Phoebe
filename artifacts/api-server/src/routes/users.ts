@@ -946,7 +946,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [meTz] = await db
-      .select({ timezone: usersTable.timezone })
+      .select({ timezone: usersTable.timezone, ruleConfig: usersTable.ruleConfig })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     const tz = meTz?.timezone || "UTC";
@@ -968,13 +968,14 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       // partial sit the rest of the app treats as unprayed. Compline stays its
       // OWN side for the same reason it does there: folding it into 'evening'
       // would rank Evening Prayer off a Compline-only night.
-      db.execute<{ side: string; at: string }>(sql`
+      db.execute<{ side: string; surface: string; at: string }>(sql`
         SELECT
           CASE
             WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
             WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
             WHEN surface = 'compline' THEN 'compline'
           END AS side,
+          surface,
           MIN(ended_at) AS at
         FROM prayer_sessions
         WHERE user_id = ${sessionUserId}
@@ -984,7 +985,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
             OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
           )
           AND (ended_at AT TIME ZONE ${tz})::date = ${yesterdayYmd}::date
-        GROUP BY 1
+        GROUP BY 1, surface
       `),
       // The "Contemplation" (silence) anytime card — earliest sit yesterday.
       // Only the SIDELESS sits: a per-side sit belongs to its own card below,
@@ -1022,9 +1023,12 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
         LIMIT 1
       `),
       // Audio Divina / Reading / Podcasts / Contemplative Walk.
+      // …and the Examen + Prayer List, which have cards like any other practice
+      // and were simply missing from this filter, so they could never rank.
       db.execute<{ section: string; at: string }>(sql`
         SELECT section, MIN(created_at) AS at FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('listening', 'reading', 'podcasts', 'walk')
+        WHERE user_id = ${sessionUserId}
+          AND section IN ('listening', 'reading', 'podcasts', 'walk', 'examen', 'prayer-list')
           AND local_date = ${yesterdayYmd}
         GROUP BY section
       `),
@@ -1034,10 +1038,32 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
     // is the whole mechanism, and a key that doesn't match simply ranks
     // Infinity and sorts last, silently.
     const entries: Array<{ key: string; at: string }> = [];
-    // 'morning' | 'evening' | 'compline' are already the card keys verbatim.
+    /**
+     * 'morning' | 'evening' | 'compline' are already the card keys verbatim —
+     * EXCEPT when a side carries a second practice. A devotion prayed alongside
+     * a full office is its own card (key `extra-<side>`), and folding its
+     * timestamp into the side's rank meant that card had no entry at all: it
+     * ranked Infinity and sorted last every day, no matter when it was
+     * actually prayed. Same test the weekly grid uses — a devotion surface on a
+     * side whose anchor is the office belongs to the extra, not the anchor.
+     */
+    const rcValues = ((meTz?.ruleConfig as { values?: Record<string, string> } | null)?.values) ?? {};
+    const DEVOTION_SURFACE: Record<string, string> = {
+      morning: "morning-devotion",
+      evening: "early-evening-devotion",
+    };
+    const earliest = new Map<string, string>();
+    const note = (key: string, at: string) => {
+      const prev = earliest.get(key);
+      if (!prev || new Date(at).getTime() < new Date(prev).getTime()) earliest.set(key, at);
+    };
     for (const r of officeRows.rows) {
-      if (r.at && r.side) entries.push({ key: r.side, at: r.at });
+      if (!r.at || !r.side) continue;
+      const isExtra = r.surface === DEVOTION_SURFACE[r.side]
+        && rcValues[`phoebe:office:level:${r.side}`] === "office";
+      note(isExtra ? `extra-${r.side}` : r.side, r.at);
     }
+    for (const [key, at] of earliest) entries.push({ key, at });
     if (contRows.rows[0]?.at) entries.push({ key: "silence", at: contRows.rows[0].at });
     if (breathRows.rows[0]?.at) entries.push({ key: "cobreathe", at: breathRows.rows[0].at });
     for (const r of sideContRows.rows) {
@@ -1047,7 +1073,10 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       if (r.at && r.source) entries.push({ key: `reflect-${r.source}`, at: r.at });
     }
     for (const r of pcRows.rows) {
-      if (r.at) entries.push({ key: r.section, at: r.at });
+      // The card key is "prayer-list-card"; the stored section is
+      // "prayer-list". Pushing the section verbatim ranked a key that no card
+      // has, which the map lookup ignores in silence.
+      if (r.at) entries.push({ key: r.section === "prayer-list" ? "prayer-list-card" : r.section, at: r.at });
     }
     entries.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
     res.json({ order: entries.map((e) => e.key) });
