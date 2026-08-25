@@ -401,6 +401,24 @@ function removeDoneDay(id: string, ymd: string): void {
 // synchronous and works offline — and this is a best-effort mirror on top:
 // every write is fire-and-forget, and a failed one just leaves the day local
 // until the next sync-down reconciles.
+//
+// TWO PATHS, deliberately — read this before adding a third:
+//   • TODAY's done/skip stamp already rides the routine SNAPSHOT
+//     (CustomAnchorSnapshot.log, merged by mergeLogEntry, later-stamp-wins).
+//     That predates this and still handles today.
+//   • The 21-day HISTORY (DONE_HIST_PREFIX, what the weekly grid draws) was in
+//     no snapshot at all, and is what this adds.
+// History goes to practice_completion rather than into the snapshot's blob
+// because it wants to be QUERIED server-side — one row per practice per day is
+// what a widget payload (or any future digest) can read, which a JSON blob on
+// the user row is not.
+//
+// KNOWN LIMIT: the sync-down is a union, so an UNMARK doesn't propagate across
+// devices. The DELETE reaches the server, but a device that already merged that
+// day keeps it locally — nothing here removes a day it can already see. Making
+// absence authoritative would need to distinguish "the server never had it"
+// from "this device hasn't pushed it yet", or an offline device would lose
+// genuine local marks on the next sync.
 const customSection = (id: string) => `custom:${id}`;
 /** Sunday that begins this local day's week — the shape the table wants. */
 function weekStartOf(ymd: string): string {
@@ -430,9 +448,11 @@ function pushCustomDone(id: string, ymd: string, done: boolean): void {
  */
 export async function syncCustomDoneFromServer(): Promise<void> {
   try {
+    // Matches writeDoneHist's own 21-day retention — fetching 28 merged a week
+    // that the very next prune threw away.
     const since = (() => {
       const d = new Date();
-      d.setDate(d.getDate() - 28);
+      d.setDate(d.getDate() - 21);
       return d.toLocaleDateString("en-CA");
     })();
     const res = await apiRequest<{ completions?: Array<{ section: string; localDate: string }> }>(
