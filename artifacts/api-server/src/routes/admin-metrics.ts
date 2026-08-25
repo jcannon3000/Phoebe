@@ -249,7 +249,27 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opens_today,
         (SELECT COUNT(*) FROM app_opens
            WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opens_week,
-        (SELECT COUNT(*) FROM app_opens)::int AS opens_total
+        (SELECT COUNT(*) FROM app_opens)::int AS opens_total,
+
+        -- ── Dean's Commentary (VTS) readership ──────────────────────────────
+        -- reflection_reads is one row per (user, source, local day), so a
+        -- DISTINCT user_id is "how many people read it" and a plain COUNT(*) is
+        -- "how many readings". Both are worth having: the first is reach, the
+        -- second is whether the same people come back.
+        --
+        -- ymd is the reader's OWN local date, written by the client, so it is
+        -- compared to the day strings directly — no timezone conversion, and no
+        -- dependence on users.timezone being right.
+        (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
+           WHERE source = 'vts' AND ymd = $1)::int AS deans_readers_today,
+        (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
+           WHERE source = 'vts' AND ymd >= $2)::int AS deans_readers_week,
+        (SELECT COUNT(DISTINCT user_id) FROM reflection_reads
+           WHERE source = 'vts')::int AS deans_readers_total,
+        (SELECT COUNT(*) FROM reflection_reads
+           WHERE source = 'vts' AND ymd >= $2)::int AS deans_reads_week,
+        (SELECT COUNT(*) FROM reflection_reads
+           WHERE source = 'vts')::int AS deans_reads_total
     `, [todayStr, weekStartStr, tz]);
 
     const row = q.rows[0] ?? {};
@@ -273,6 +293,12 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       contemplationExamenToday: Number(row.contemplation_examen_today ?? 0),
       contemplationExamenThisWeek: Number(row.contemplation_examen_week ?? 0),
       contemplationExamenTotal: Number(row.contemplation_examen_total ?? 0),
+
+      deansReadersToday: Number(row.deans_readers_today ?? 0),
+      deansReadersThisWeek: Number(row.deans_readers_week ?? 0),
+      deansReadersTotal: Number(row.deans_readers_total ?? 0),
+      deansReadsThisWeek: Number(row.deans_reads_week ?? 0),
+      deansReadsTotal: Number(row.deans_reads_total ?? 0),
 
       prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
       prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),

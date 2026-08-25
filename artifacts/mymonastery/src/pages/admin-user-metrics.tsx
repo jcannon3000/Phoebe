@@ -42,6 +42,11 @@ type AppMetrics = {
   contemplationExamenThisWeek: number;
   contemplationExamenTotal: number;
 
+  deansReadersToday: number;
+  deansReadersThisWeek: number;
+  deansReadersTotal: number;
+  deansReadsThisWeek: number;
+  deansReadsTotal: number;
   prayerRequestsToday: number;
   prayerRequestsThisWeek: number;
   prayerRequestsTotal: number;
@@ -213,6 +218,24 @@ export default function AdminAppMetricsPage() {
               caption={t("admin_user_metrics.caption_contemplation_examen")}
             >
               <TileRow today={data.contemplationExamenToday} week={data.contemplationExamenThisWeek} allTime={data.contemplationExamenTotal} />
+            </Section>
+
+            {/* Dean's Commentary readership. Two rows on purpose: PEOPLE is
+                reach, READINGS is whether the same people come back. One row of
+                "reads" alone would flatter a handful of daily readers into
+                looking like a congregation. */}
+            <Section
+              eyebrow={t("admin_user_metrics.section_deans", { defaultValue: "🦩 Dean's Commentary — readers" })}
+              caption={t("admin_user_metrics.caption_deans", { defaultValue: "How many PEOPLE opened the Dean's Commentary. One per reader per day." })}
+            >
+              <TileRow today={data.deansReadersToday} week={data.deansReadersThisWeek} allTime={data.deansReadersTotal} />
+            </Section>
+
+            <Section
+              eyebrow={t("admin_user_metrics.section_deans_reads", { defaultValue: "🦩 Dean's Commentary — days read" })}
+              caption={t("admin_user_metrics.caption_deans_reads", { defaultValue: "Reader-days: one per person per day they opened it. Divide by the readers above for how many days each reader averages. Today's figure is the same number by definition." })}
+            >
+              <TileRow today={data.deansReadersToday} week={data.deansReadsThisWeek} allTime={data.deansReadsTotal} />
             </Section>
 
             <Section
