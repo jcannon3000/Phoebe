@@ -777,7 +777,12 @@ const GUEST_ALLOWED_EXACT = new Set<string>([
   // Practices that need no account to pray — the Examen and the Simple Guided
   // Prayer (PACT) sit alongside /contemplation and /cobreathe here. Signing in
   // only adds the server-side session log.
-  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/reflect/fdd", "/customize",
+  // /visio belongs here too: it needs no account (the artwork and the passage
+  // are public, and completion is a local flag plus an optional session log),
+  // and this gate is not guests-only — useGuestMode is true for any signed-in
+  // non-beta account, so leaving it out bounced the practice to the dashboard
+  // for nearly everyone who could see the card.
+  "/psalms", "/contemplation", "/contemplation-log", "/examen", "/guided-prayer", "/visio", "/reflect/fdd", "/customize",
   // The Morning/Evening Prayer + Compline picker — reached from the new
   // "Daily Offices" row in Practices (a guest-visible menu), so the target
   // must be guest-allowed too or the tap just bounces back to the dashboard.

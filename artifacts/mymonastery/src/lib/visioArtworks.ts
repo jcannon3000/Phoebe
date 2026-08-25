@@ -27,6 +27,7 @@
  * version doesn't have to re-gather it.
  */
 import rublevTrinity from "@/assets/visio/rublev-trinity.jpg";
+import friedrichSeaOfFog from "@/assets/visio/friedrich-sea-of-fog.jpg";
 
 export type Artwork = {
   id: string;
@@ -67,6 +68,35 @@ export const VISIO_ARTWORKS: Artwork[] = [
     actUrl: "https://act.library.vanderbilt.edu/artworks/58465",
     essayUrl: "https://thevcs.org/hospitality-abraham",
     days: ["Trinity Sunday (A, B, C)", "Proper 6 (A)", "Proper 11 (C)"],
+  },
+  // Owner sent act.library.vanderbilt.edu/artworks/58620. Same licensing shape
+  // as the Rublev and so safe on the same reasoning: Friedrich died in 1840,
+  // the painting is c. 1817, and ACT's copyright source is the Wikimedia file
+  // page — an original unambiguously in the public domain, and a flat
+  // reproduction of it carries no new copyright of its own.
+  //
+  // ACT titles it "Hiker Above the Sea of Fog"; it is universally known as
+  // "Wanderer above the Sea of Fog", so that is what the slide says. The
+  // attribution below is ACT's own wording, unaltered.
+  //
+  // Psalm 19 in the 1979 BCP psalter (public domain) rather than a modern
+  // translation — the psalm the reader would pray at the office anyway.
+  {
+    id: "friedrich-sea-of-fog",
+    title: "Wanderer above the Sea of Fog",
+    artist: "Caspar David Friedrich",
+    date: "c. 1817",
+    where: "Hamburger Kunsthalle, Hamburg",
+    image: friedrichSeaOfFog,
+    scriptureRef: "Psalm 19:1\u20134",
+    scripture:
+      "The heavens declare the glory of God, and the firmament shows his handiwork. One day tells its tale to another, and one night imparts knowledge to another. Although they have no words or language, and their voices are not heard, their sound has gone out into all lands, and their message to the ends of the world.",
+    prompt: "You cannot see his face \u2014 only what he sees. Stand where he is standing, and let the view speak first.",
+    attribution:
+      "Friedrich, Caspar David, 1774-1840. Hiker Above the Sea of Fog, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons.",
+    actUrl: "https://act.library.vanderbilt.edu/artworks/58620",
+    essayUrl: "https://thevcs.org/heavens-are-telling/contemplating-gods-creation",
+    days: ["Lent 3 (B)"],
   },
 ];
 
