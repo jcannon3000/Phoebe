@@ -284,6 +284,14 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      *  is already "one button and nothing else". */
     var backChrome = false
 
+    /** Set the moment the reader pans the page — see scrollToDeepLinkedWork.
+     *  Sticky, deliberately: checking `isDragging` only at the instant a retry
+     *  fires misses somebody who scrolled and came to rest between two of
+     *  them, and being yanked back to the top mid-read is the very complaint
+     *  that scroll exists to answer. */
+    private var readerMovedPage = false
+    @objc private func noteReaderMovedPage() { readerMovedPage = true }
+
     private let preloadedWebView: WKWebView?
 
     init(url: URL, preloadedWebView: WKWebView? = nil) {
@@ -478,6 +486,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // one. Either way we own it, so we drive the nav delegate + load.
         webView = preloadedWebView ?? BibleWebViewController.makeWebView()
         webView.navigationDelegate = self
+        // Any pan on the page marks it as the reader's — see readerMovedPage.
+        webView.scrollView.panGestureRecognizer.addTarget(self, action: #selector(noteReaderMovedPage))
         // Owner: "we want all forward pages to open in light mode." The VC
         // itself forces .dark above (so prefers-color-scheme reads dark for
         // most sites, matching the app), but forwardmovement.org's own pages
@@ -967,16 +977,16 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         })()
         """
         func attempt(_ remaining: Int, delay: TimeInterval) {
+            // Never move a page the reader has taken hold of — checked before
+            // the scroll, not only before the next retry.
+            guard !readerMovedPage else { return }
             webView.evaluateJavaScript(js) { [weak self] value, _ in
                 guard let self, remaining > 0 else { return }
                 let found = (value as? Bool) ?? false
                 // Not there yet (the site renders works progressively), or there
                 // but about to move as the images above it finish loading. Try
-                // again — unless the reader has taken hold of the page, in which
-                // case where they are is the right place to be.
+                // again.
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    guard !self.webView.scrollView.isDragging,
-                          !self.webView.scrollView.isDecelerating else { return }
                     attempt(remaining - 1, delay: found ? 0.7 : 0.4)
                 }
             }

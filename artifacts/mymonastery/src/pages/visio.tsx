@@ -231,7 +231,6 @@ export default function VisioPage() {
         scriptureRef: bundled.scriptureRef,
         attribution: bundled.attribution,
         licence: "Public domain",
-        essayUrl: bundled.essayUrl ?? null,
         followsToday: false,
       }
     : active
@@ -244,7 +243,6 @@ export default function VisioPage() {
           scriptureRef: active.ref,
           attribution: active.art.attribution,
           licence: active.art.licence,
-          essayUrl: active.art.essay,
           followsToday: active.followsToday,
         }
       : null;
@@ -570,7 +568,12 @@ export default function VisioPage() {
         >
           {step === PROMPT_1
             ? t("common.begin", { defaultValue: "Begin" })
-            : t("common.continue", { defaultValue: "Continue" })}
+            // Audit: the closing slide's button doesn't continue anything — it
+            // marks the practice kept and leaves. Saying "Continue" there
+            // described the one tap in this deck that isn't one.
+            : step === DONE
+              ? t("common.done", { defaultValue: "Done" })
+              : t("common.continue", { defaultValue: "Continue" })}
         </button>
         <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.12em" }}>{step + 1} / {TOTAL}</span>
       </div>
