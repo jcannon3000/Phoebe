@@ -3,7 +3,7 @@
  *
  * The sibling of Audio Divina: there, sacred listening; here, sacred looking.
  *
- * Six beats: prompt · picture · reflection · prompt · picture · completion.
+ * Six beats: title+prompt · picture · prompt · picture · contemplation · completion.
  *
  * Look first, with only an instruction for your eyes. Then read what somebody
  * who has looked at this for a living has to say about it. Then be asked what
@@ -45,7 +45,6 @@ import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
 import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
 import { apiRequest } from "@/lib/queryClient";
-import { openOfficeReading, preloadExternal } from "@/lib/openExternal";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { pickWideBackground } from "@/lib/wideBackgrounds";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
@@ -250,14 +249,20 @@ export default function VisioPage() {
       : null;
 
   /**
-   * Six beats (owner's order): prompt · picture · reflection · prompt ·
-   * picture · completion.
+   * Six beats (owner's order): title+prompt · picture · prompt · picture ·
+   * contemplation · completion.
    *
-   * Look first, with only an instruction for your eyes. Then read what
-   * somebody who has looked at this for a living has to say about it. Then be
-   * asked what God might be saying to YOU through it — a question that lands
-   * differently once the commentary has opened the picture up. Then look
-   * again, holding all of it. The second look is the point of the sequence —
+   * Look first, with only an instruction for your eyes. Then be asked what God
+   * might be saying to YOU through it, and look again, holding that. The
+   * second look is the point of the sequence —
+   *
+   * NO REFLECTION BEAT. VCS's commentary used to sit between the two looks —
+   * first as a slide, then briefly as an office-style hand-off into the
+   * in-app browser. Owner: "let's just take the reflection out of the
+   * sequence." So this is looking and prayer, with nobody else's reading of
+   * the picture in between. The essay URLs stay in the catalogue (the OFFICE
+   * still links VCS commentary on its own lesson slides) — they are simply
+   * not part of this practice any more.
    * and it is not the end. Owner: after the image again, sit with it. The
    * closing beat before the completion cards asks for contemplation and for
    * whatever surfaced to be prayed, so the practice ends in prayer rather
@@ -267,9 +272,9 @@ export default function VisioPage() {
    * depicts is still NAMED — it's the eyebrow over the title on both picture
    * beats — but its text isn't printed here. The office is where you read.
    */
-  const PROMPT_1 = 0, PICTURE_1 = 1, REFLECT = 2, PROMPT_2 = 3, PICTURE_2 = 4, CONTEMPLATE = 5, DONE = 6;
+  const PROMPT_1 = 0, PICTURE_1 = 1, PROMPT_2 = 2, PICTURE_2 = 3, CONTEMPLATE = 4, DONE = 5;
   const [step, setStep] = useState(PROMPT_1);
-  const TOTAL = 7;
+  const TOTAL = 6;
   const showsImage = step === PICTURE_1 || step === PICTURE_2;
 
   const atEnd = step >= TOTAL - 1;
@@ -281,49 +286,6 @@ export default function VisioPage() {
     goHome();
   };
   const prev = () => { if (step > 0) setStep((s) => s - 1); };
-
-  /**
-   * The in-app browser's own bottom bar drives the deck.
-   *
-   * openOfficeReading presents the office flavour of the native browser — the
-   * one with a floating bottom pill whose Back/Next dismiss it and step the
-   * screen underneath. That screen is US here, so without these listeners its
-   * Next would do nothing and the reader would be stranded on a web page with
-   * a button that appears broken. Same contract bcp-daily-office.tsx keeps.
-   */
-  useEffect(() => {
-    const onNext = () => setStep((s) => Math.min(TOTAL - 1, s + 1));
-    const onPrev = () => setStep((s) => Math.max(0, s - 1));
-    window.addEventListener("phoebe:office-next-slide", onNext);
-    window.addEventListener("phoebe:office-prev-slide", onPrev);
-    return () => {
-      window.removeEventListener("phoebe:office-next-slide", onNext);
-      window.removeEventListener("phoebe:office-prev-slide", onPrev);
-    };
-  }, []);
-
-  // Warm the essay while they're still looking, so the reflection opens
-  // instantly rather than on a white page. No-op on web.
-  useEffect(() => {
-    if (view?.essayUrl) preloadExternal(view.essayUrl);
-  }, [view?.essayUrl]);
-
-  const openReflection = () => {
-    if (!view?.essayUrl) return;
-    openOfficeReading(view.essayUrl, {
-      // Owner: the browser's top bar says "Reflection" — that IS what the page
-      // is, and naming the practice there said nothing the reader didn't
-      // already know. The bottom pill's own label goes empty for the same
-      // reason: with the title above saying it, repeating it in the pill was
-      // the same word twice on one screen. The pill is Back / Next now.
-      officeTitle: t("visio.reflection", { defaultValue: "Reflection" }),
-      slideLabel: "",
-      // Deliberately NOT the artwork's title. Owner: "the bottom bar doesn't
-      // need the full title... it makes the bottom bar too long when you're on
-      // the web viewer." Some of these run to eighty characters.
-      sectionLabel: "",
-    });
-  };
 
   /** Jump back into a picture from the completion cards. */
   const reopen = (id: number) => {
@@ -451,18 +413,8 @@ export default function VisioPage() {
           />
         )}
 
-        {(step === PROMPT_1 || step === PROMPT_2) && (
-          <p
-            className="visio-prompt"
-            style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
-          >
-            {step === PROMPT_1
-              ? t("visio.prompt_notice", { defaultValue: QUESTIONS[0]! })
-              : t("visio.prompt_speaking", { defaultValue: QUESTIONS[1]! })}
-          </p>
-        )}
-
-        {/* The picture's identity, on both looking beats — a museum label.
+        {/* The picture's identity — a museum label, on the TITLE slide and on
+            both looking beats.
             Owner: "the title slide should say the title of the picture, and
             the eyebrow should be the date." So the WORK'S date leads (1886–94,
             not today), the title carries the line, and the artist and the
@@ -470,10 +422,14 @@ export default function VisioPage() {
 
             The scripture reference used to be the eyebrow (an earlier ask) and
             it hasn't been dropped, only moved down a line — it's what makes
-            this a lectionary practice rather than a gallery, and "Today's
-            reading" is still marked. Still ONE eyebrow: two stacked eyebrows
-            was a thing this app got told off for once already. */}
-        {showsImage && view && (
+            this a lectionary practice rather than a gallery. Still ONE
+            eyebrow: two stacked eyebrows was a thing this app got told off for
+            once already.
+
+            On the FIRST slide it sits ABOVE the prompt (owner: "put the title
+            of the image on the first slide") — you are told what you are about
+            to look at, then what to look for. */}
+        {(showsImage || step === PROMPT_1) && view && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 8px" }}>
               {tidyDate(view.date)}
@@ -490,42 +446,15 @@ export default function VisioPage() {
           </div>
         )}
 
-        {/* The reflection. The essay is VCS's, and their images are licensed
-            from agencies, so it is LINKED and never reproduced (same reasoning
-            as lib/vcsExhibitions.ts). openOfficeReading hands it to the native
-            in-app browser in the office's own flavour — swipe-back, the top bar
-            and the floating bottom pill — so it reads like the lesson hand-off
-            rather than like leaving the app.
-
-            The URL is used EXACTLY as ACT recorded it in the artwork's notes.
-            A previous pass trimmed these to the exhibition root, on the theory
-            that the deep form landed mid-page; owner checked and the notes
-            link "goes directly to the start of the relevant reflection". The
-            trim also discarded the `?first=` parameter that 88 of them carry
-            to select which artwork the exhibition opens on. Don't trim it. */}
-        {/* Owner: "just like the gospel, it should be a button that says open
-            reflection." So it IS the gospel's pill — same shape, same weight,
-            same wording pattern as the office's "Read Gospel →" — and the
-            slide is that button and nothing else. The eyebrow and the sentence
-            introducing the reflection are gone: a button labelled "Open
-            reflection" doesn't need a paragraph explaining that a reflection
-            can be opened. */}
-        {step === REFLECT && (
-          <div style={{ textAlign: "center", maxWidth: 480 }}>
-            {view?.essayUrl ? (
-              <button
-                type="button"
-                onClick={openReflection}
-                style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: WARM, borderRadius: 999, padding: "10px 18px", fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
-              >
-                {t("visio.read_reflection", { defaultValue: "Open reflection →" })}
-              </button>
-            ) : (
-              <p style={{ color: "rgba(240,237,230,0.72)", fontFamily: SERIF, fontSize: 18, fontStyle: "italic", lineHeight: 1.6, margin: "14px 0 0" }}>
-                {t("visio.reflection_none", { defaultValue: "Sit with what you noticed a little longer." })}
-              </p>
-            )}
-          </div>
+        {(step === PROMPT_1 || step === PROMPT_2) && (
+          <p
+            className="visio-prompt"
+            style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
+          >
+            {step === PROMPT_1
+              ? t("visio.prompt_notice", { defaultValue: QUESTIONS[0]! })
+              : t("visio.prompt_speaking", { defaultValue: QUESTIONS[1]! })}
+          </p>
         )}
 
         {/* Sit with it, then pray it. Owner's own words, near enough verbatim:

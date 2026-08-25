@@ -137,7 +137,17 @@ export type Chosen = {
   art: CatalogueArtwork;
   /** The artwork's passage closest to today's readings — the one to show. */
   ref: string;
-  /** True when the image was chosen BECAUSE of today's lessons. */
+  /**
+   * True when the image genuinely depicts what is APPOINTED today — the same
+   * chapter or the same verses (matchScore >= 2), not merely the same book.
+   *
+   * Reported: a picture labelled "Today's reading" that wasn't. A book-level
+   * match scores 1, and the label was shown for any score above zero — so an
+   * artwork tagged "Psalm 22" claimed to be today's reading on any day the
+   * office appointed ANY psalm, which is most of them. The score still picks
+   * the image (a book-level match beats blind rotation); it just no longer
+   * makes a claim about the lectionary it can't support.
+   */
   followsToday: boolean;
 };
 
@@ -177,5 +187,5 @@ export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
   // Show the artwork's own reference that today's reading actually matched,
   // rather than whichever ACT happened to list first.
   const ref = art.refs.find((r) => matchScore([r], lessons) === top) ?? art.refs[0] ?? "";
-  return { art, ref, followsToday: true };
+  return { art, ref, followsToday: top >= 2 };
 }
