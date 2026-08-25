@@ -611,12 +611,12 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
   // Get the organizer's info
   const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
 
-  // Get all circle members from the ritual's own participant list + organizer.
-  // (Previously read a separate invite_tokens table — removed along with the
-  // RSVP/scheduling-poll feature it existed to support. ritual.participants is
-  // the same name/email roster and stays in sync as the owner adds/removes
-  // people via /rituals/:id/invite and /rituals/:id/participants/:email.)
-  const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
+  // Circle members = the organizer, full stop. There is no attendee roster on
+  // a gathering any more: migrate.ts DROPS rituals.participants, so this read
+  // was `undefined ?? []` on every call — it degraded quietly rather than
+  // throwing (unlike the SQL sites), but it has been empty since the column
+  // went.
+  const participants: Array<{ name: string; email: string }> = [];
 
   // Build member list: organizer + all invitees
   const members: Array<{ email: string; name: string }> = [
@@ -4388,17 +4388,11 @@ router.get("/connections", async (req, res): Promise<void> => {
       }
     }
 
-    // Members from ALL traditions (owned by user OR where user is a participant)
-    const allRituals = await db.select({ participants: ritualsTable.participants })
-      .from(ritualsTable)
-      .where(sql`owner_id = ${sessionUserId} OR participants @> ${JSON.stringify([{ email: user.email }])}::jsonb`);
-
-    for (const r of allRituals) {
-      const parts = (r.participants as Array<{ name: string; email: string }>) ?? [];
-      for (const p of parts) {
-        if (p.email) addConnection(p.email, p.name ?? p.email, 0);
-      }
-    }
+    // (Removed: gathering members used to be folded in here from each
+    // gathering's participants roster. migrate.ts DROPS rituals.participants —
+    // a gathering is a posted announcement now, not something with an attendee
+    // list — so both the SELECT and the WHERE named a column that no longer
+    // exists, and this made GET /connections throw at the database.)
 
     // Past connections from deleted practices (cached before deletion)
     const cached = await db.select({
@@ -4571,11 +4565,10 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
 
     // ─── Tradition/ritual calendar cleanup ──────────────────────────────────
     // Find meetups with calendar event IDs whose rituals no longer exist
-    const allMeetups = await db.select({
-      id: meetupsTable.id,
-      ritualId: meetupsTable.ritualId,
-      googleCalendarEventId: meetupsTable.googleCalendarEventId,
-    }).from(meetupsTable);
+    // meetups.google_calendar_event_id is DROPPED by migrate.ts (calendar
+    // invites went with the RSVP/scheduling feature), so there are no stored
+    // event ids left to clean up. Selecting it threw at the database.
+    const allMeetups: Array<{ id: number; ritualId: number; googleCalendarEventId: string | null }> = [];
 
     const existingRitualIds = new Set(
       (await db.select({ id: ritualsTable.id }).from(ritualsTable)).map(r => r.id)
@@ -4591,9 +4584,8 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
       // just clear the stale DB reference. The orphan event itself
       // will sit on the original organizer's calendar until they
       // remove it manually or its recurrence ends.
-      await db.update(meetupsTable)
-        .set({ googleCalendarEventId: null })
-        .where(eq(meetupsTable.id, meetup.id));
+      // (No-op: the column this cleared is dropped — see the select above.)
+      void meetup;
     }
 
     // Also clean up existing meetups for active rituals — try with the session user's credentials

@@ -11,12 +11,14 @@ type Participant = { name: string; email: string };
 async function getUserRituals(userId: number) {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) return { user: null, rituals: [] as (typeof ritualsTable.$inferSelect)[] };
-  const rituals = await db.select().from(ritualsTable).where(
-    or(
-      eq(ritualsTable.ownerId, userId),
-      sql`${ritualsTable.participants} @> ${JSON.stringify([{ email: user.email }])}::jsonb`
-    )
-  );
+  // Owner's own gatherings only. This used to be "owned by me OR I'm in the
+  // participants roster", but migrate.ts DROPS rituals.participants — a
+  // gathering is a posted announcement now, not something with an attendee
+  // list — so that predicate was live SQL against a column that no longer
+  // exists, and every /api/people request 500'd on it. React Query's default
+  // hid it: the callers (prayer-mode, cobreathe, prayer-request-new) fell back
+  // to an empty list, so it degraded quietly instead of surfacing.
+  const rituals = await db.select().from(ritualsTable).where(eq(ritualsTable.ownerId, userId));
   return { user, rituals };
 }
 
@@ -155,25 +157,11 @@ router.get("/people", async (req, res): Promise<void> => {
     `after-veto=${map.size}`,
   );
 
-  // Traditions (ritual circles) CONTRIBUTE CONTEXT ONLY — we no
-  // longer add people to the garden via traditions, but if a person
-  // is already in the garden (via groups or letters) we still want
-  // their sharedRitualIds populated so the card can show
-  // "🤝🏽 <tradition name>" as context.
-  for (const ritual of rituals) {
-    const participants = (ritual.participants as Participant[]) ?? [];
-    for (const p of participants) {
-      if (!p.email || p.email === ownerEmail) continue;
-      const emailLower = p.email.toLowerCase();
-      const entry = map.get(emailLower);
-      if (!entry) continue;
-      entry.sharedCircleCount++;
-      entry.sharedRitualIds.push(ritual.id);
-      if (ritual.createdAt < entry.firstCircleDate) {
-        entry.firstCircleDate = ritual.createdAt;
-      }
-    }
-  }
+  // (Removed: gatherings used to CONTRIBUTE CONTEXT to a garden card — the
+  // "🤝🏽 <tradition name>" line — by walking each gathering's participant
+  // roster. rituals.participants is dropped (see getUserRituals), so that loop
+  // read an undefined column and did nothing on every pass. sharedCircleCount
+  // and sharedRitualIds simply stay at their zero values now.)
 
   // Batch-fetch avatarUrl + user id for all garden members. The id
   // is surfaced in the response so the client can call user-id-
@@ -492,10 +480,12 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   const { user: owner, rituals: allRituals } = await getUserRituals(ownerId);
   const ownerEmail = owner?.email ?? "";
 
-  const sharedRituals = allRituals.filter(r => {
-    const participants = (r.participants as Participant[]) ?? [];
-    return participants.some(p => p.email === email);
-  });
+  // A gathering no longer has an attendee list (rituals.participants is
+  // dropped — see getUserRituals), so there is no longer any such thing as a
+  // gathering the two of you SHARE. Structurally empty; kept as a named value
+  // because the 404 gate and the response shape below both still read it.
+  const sharedRituals: typeof allRituals = [];
+  void allRituals;
 
   // Find shared practices (moments) where both owner and person are members
   const ownerTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
@@ -623,11 +613,10 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   }
 
   // Resolve display name
+  // (A gathering's participant roster used to supply the display name here;
+  // the column is dropped, so the moment-token lookup below is the only
+  // source now.)
   let personName = email;
-  for (const ritual of sharedRituals) {
-    const match = (ritual.participants as Participant[]).find(p => p.email === email);
-    if (match?.name) { personName = match.name; break; }
-  }
   if (personName === email && ownerMomentIds.length > 0) {
     const nameRow = await db.select({ name: momentUserTokensTable.name })
       .from(momentUserTokensTable)
@@ -660,7 +649,10 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         frequency: ritual.frequency,
         dayPreference: ritual.dayPreference,
         intention: ritual.intention,
-        participants: (ritual.participants as Participant[]),
+        // Always empty — rituals.participants is dropped. Kept in the shape so
+        // an older client reading `ritual.participants` gets [] rather than
+        // undefined.
+        participants: [] as Participant[],
         ownerId: ritual.ownerId,
         createdAt: ritual.createdAt.toISOString(),
         streak,
