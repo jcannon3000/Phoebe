@@ -90,7 +90,27 @@ export default function WelcomePublicPage() {
       // session cookie) so push tokens + reminders + prefs sync work — the UX
       // stays login-free. Fire-and-forget; on success /me refetches.
       void ensureAnonymousUser().then((created) => {
-        if (created) qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        if (created) {
+          /**
+           * Invalidate EVERYTHING, not just /api/auth/me.
+           *
+           * Observed on a real first visit: the dashboard mounts the instant
+           * this fires, so ~8 of its queries race the anonymous POST and come
+           * back 401 — practice-week, office-history-week, yesterday-order,
+           * prayer-days, office-prefs among them. The query client's `retry`
+           * deliberately does NOT retry a 4xx (see App.tsx), and refetching
+           * only /api/auth/me leaves the rest parked in an error state with no
+           * data for the whole first session. The home still paints, from
+           * local defaults, so it LOOKS right while the weekly grid, the office
+           * history and the card ordering are all simply missing until the next
+           * app open.
+           *
+           * Nothing worth keeping is cached this early — we have just this
+           * moment acquired a session — so the blunt invalidation is the
+           * correct one.
+           */
+          qc.invalidateQueries();
+        }
       });
       // NO first-open welcome splash, NO first-open customizer (owner,
       // 2026-07-08 — reversed the brief /customize-first experiment): every
