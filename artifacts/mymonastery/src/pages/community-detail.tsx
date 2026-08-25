@@ -69,6 +69,108 @@ type Intention = {
   createdAt: string;
 };
 
+
+// ─── This community's public prayers ────────────────────────────────────────
+// Owner: "add the public prayers of the community — like the prayer list page,
+// but just for this community." Reads the same feed the community's prayer
+// surfaces already use (/groups/:slug/prayer-requests), which is scoped to the
+// group server-side, so nothing outside this community can appear here.
+type GroupPrayer = {
+  id: number;
+  body: string;
+  isAnonymous?: boolean | null;
+  createdByName?: string | null;
+  ownerDisplayName?: string | null;
+  createdAt?: string | null;
+};
+function CommunityPrayersSection({ slug }: { slug: string }) {
+  const { t } = useTranslation();
+  const { data, isLoading } = useQuery<{ requests: GroupPrayer[] }>({
+    queryKey: [`/api/groups/${slug}/prayer-requests`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
+    staleTime: 60_000,
+  });
+  const prayers = data?.requests ?? [];
+  // Nothing yet is not an error and not worth a heading — an empty section on
+  // a young community reads as something broken.
+  if (isLoading || prayers.length === 0) return null;
+  const nameFor = (p: GroupPrayer) =>
+    p.isAnonymous ? t("community_detail.prayer_anon", { defaultValue: "Someone" })
+      : (p.ownerDisplayName || p.createdByName || t("community_detail.prayer_anon", { defaultValue: "Someone" }));
+  return (
+    <div className="flex flex-col" style={{ gap: 10 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", fontFamily: FONT, margin: 0 }}>
+        {t("community_detail.prayers_heading", { defaultValue: "🕊️ What we're praying for" })}
+      </p>
+      {prayers.map((p) => (
+        <div
+          key={p.id}
+          style={{ background: "rgba(9,26,16,0.297)", border: "1px solid rgba(46,107,64,0.38)", borderRadius: 16, padding: "14px 16px" }}
+        >
+          <p style={{ color: "#F0EDE6", fontFamily: FONT, fontSize: 15, lineHeight: 1.5, margin: 0, whiteSpace: "pre-line" }}>{p.body}</p>
+          <p style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 12.5, margin: "6px 0 0" }}>{nameFor(p)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Events ─────────────────────────────────────────────────────────────────
+// Owner: "then have an events section with cards." A community's gatherings,
+// soonest first — the server already sorts them that way and computes
+// nextMeetupDate, so this only has to render it.
+type GroupEvent = {
+  id: number;
+  name: string;
+  description?: string | null;
+  location?: string | null;
+  meetingUrl?: string | null;
+  nextMeetupDate?: string | null;
+};
+function CommunityEventsSection({ slug }: { slug: string }) {
+  const { t } = useTranslation();
+  const [, setLoc] = useLocation();
+  const { data, isLoading } = useQuery<{ gatherings: GroupEvent[] }>({
+    queryKey: [`/api/groups/${slug}/gatherings`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
+    staleTime: 60_000,
+  });
+  const events = data?.gatherings ?? [];
+  if (isLoading || events.length === 0) return null;
+  const whenLabel = (iso?: string | null) => {
+    if (!iso) return t("community_detail.event_no_date", { defaultValue: "No date set" });
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    } catch { return ""; }
+  };
+  return (
+    <div className="flex flex-col" style={{ gap: 10 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", fontFamily: FONT, margin: 0 }}>
+        {t("community_detail.events_heading", { defaultValue: "📅 Events" })}
+      </p>
+      {events.map((ev) => (
+        <button
+          key={ev.id}
+          type="button"
+          onClick={() => setLoc(`/ritual/${ev.id}`)}
+          className="w-full text-left transition-opacity hover:opacity-90"
+          style={{ background: "rgba(9,26,16,0.297)", border: "1px solid rgba(46,107,64,0.38)", borderRadius: 16, padding: "14px 16px", cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <span style={{ flex: 1, minWidth: 0, color: "#F0EDE6", fontFamily: FONT, fontSize: 16, fontWeight: 700 }}>{ev.name}</span>
+            <span style={{ flexShrink: 0, color: "rgba(168,197,160,0.9)", fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>{whenLabel(ev.nextMeetupDate)}</span>
+          </div>
+          {(ev.location || ev.description) && (
+            <p style={{ color: "rgba(143,175,150,0.72)", fontFamily: FONT, fontSize: 13, lineHeight: 1.45, margin: "6px 0 0" }}>
+              {ev.location || ev.description}
+            </p>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Service schedule (e.g. Sunday Services) ────────────────────────────────
 // One per group. Rendered inside the Gatherings tab: members see a list of
 // service times, admins can edit them.
@@ -1502,6 +1604,8 @@ export default function CommunityDetailPage() {
             content lives on the home screen). */}
         {activeTab === "hub" ? (
           <div className="mb-5 flex flex-col" style={{ gap: 22 }}>
+            <CommunityPrayersSection slug={slug} />
+            <CommunityEventsSection slug={slug} />
             <div className="flex flex-col" style={{ gap: 10 }}>
               {([
                 // A community is a followed feed — FOLLOWERS (the anonymous
