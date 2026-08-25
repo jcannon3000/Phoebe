@@ -91,9 +91,12 @@ function CommunityPrayersSection({ slug }: { slug: string }) {
     staleTime: 60_000,
   });
   const prayers = data?.requests ?? [];
-  // Nothing yet is not an error and not worth a heading — an empty section on
-  // a young community reads as something broken.
-  if (isLoading || prayers.length === 0) return null;
+  // Hidden only while LOADING. It used to hide when empty too, which meant a
+  // community with no prayers yet showed no section at all — indistinguishable
+  // from the feature not being there, and the first thing the owner asked was
+  // "where are the prayers?". An empty section that names itself is findable;
+  // a hidden one is not.
+  if (isLoading) return null;
   const nameFor = (p: GroupPrayer) =>
     p.isAnonymous ? t("community_detail.prayer_anon", { defaultValue: "Someone" })
       : (p.ownerDisplayName || p.createdByName || t("community_detail.prayer_anon", { defaultValue: "Someone" }));
@@ -102,6 +105,11 @@ function CommunityPrayersSection({ slug }: { slug: string }) {
       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", fontFamily: FONT, margin: 0 }}>
         {t("community_detail.prayers_heading", { defaultValue: "🕊️ What we're praying for" })}
       </p>
+      {prayers.length === 0 && (
+        <p style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 13.5, lineHeight: 1.5, margin: 0, padding: "10px 2px" }}>
+          {t("community_detail.prayers_empty", { defaultValue: "No prayers shared here yet. When someone in this community shares one, it appears here for everyone to pray." })}
+        </p>
+      )}
       {prayers.map((p) => (
         <div
           key={p.id}
@@ -136,7 +144,7 @@ function CommunityEventsSection({ slug }: { slug: string }) {
     staleTime: 60_000,
   });
   const events = data?.gatherings ?? [];
-  if (isLoading || events.length === 0) return null;
+  if (isLoading) return null;
   const whenLabel = (iso?: string | null) => {
     if (!iso) return t("community_detail.event_no_date", { defaultValue: "No date set" });
     try {
@@ -148,6 +156,11 @@ function CommunityEventsSection({ slug }: { slug: string }) {
       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", fontFamily: FONT, margin: 0 }}>
         {t("community_detail.events_heading", { defaultValue: "📅 Events" })}
       </p>
+      {events.length === 0 && (
+        <p style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 13.5, lineHeight: 1.5, margin: 0, padding: "10px 2px" }}>
+          {t("community_detail.events_empty", { defaultValue: "Nothing on the calendar yet." })}
+        </p>
+      )}
       {events.map((ev) => (
         <button
           key={ev.id}
@@ -1278,24 +1291,10 @@ export default function CommunityDetailPage() {
               ))}
             </div>
           </div>
-        ) : isAdmin ? (
-          <button
-            onClick={() => setLocation(`/communities/${slug}/settings`)}
-            className="w-full mb-5 rounded-2xl px-4 py-3.5 text-left"
-            style={{
-              background: "rgba(46,107,64,0.08)",
-              border: "1px dashed rgba(46,107,64,0.34)",
-              cursor: "pointer",
-            }}
-          >
-            <p className="text-sm" style={{ color: "#F0EDE6" }}>
-              {t("community_detail.add_first_intention", { defaultValue: "Add what this community is praying for" })}
-            </p>
-            <p className="text-xs mt-1" style={{ color: "rgba(200,212,192,0.7)" }}>
-              {t("community_detail.add_first_intention_sub", { defaultValue: "It leads this page and joins everyone's prayers." })}
-            </p>
-          </button>
         ) : null}
+        {/* The dashed "Add what this community is praying for" prompt is gone
+            (owner). It led the page with an empty admin to-do rather than with
+            the community, and adding one still lives in Community settings. */}
 
         {/* BETA — the leader's aggregate weekly pulse (never names, floored
             under 4 members) and the community SEASON (the rule kept together
