@@ -188,10 +188,12 @@ const main = async () => {
  * their host serves only full-size JPEGs (there is no IIIF derivative
  * endpoint). So the image is fetched when the practice opens.
  *
- * \`refs\` are the passages ACT tags the work to; \`days\` are its lectionary
- * days ("Year B Lent 3rd Sunday"), which is what lets the image follow the day
- * rather than being a gallery on shuffle. \`essay\` is a short commentary at
- * thevcs.org — LINKED, never reproduced.
+ * \`refs\` are the passages ACT tags the work to, and they are what lets the
+ * image follow the day: visioSelect crosses them against the office's appointed
+ * lessons. \`days\` are ACT's own lectionary labels ("Year B Lent 3rd Sunday"),
+ * kept as a cross-check but not used for selection — they're free text, and the
+ * passage match is exact. \`essay\` is a short commentary at thevcs.org —
+ * LINKED, never reproduced.
  */
 
 export type CatalogueArtwork = {

@@ -466,12 +466,21 @@ export default function VisioPage() {
         )}
 
         {/* Resolving. A soft empty frame rather than a spinner: the practice
-            opens on stillness, and the first prompt normally covers the wait. */}
-        {showsImage && !view && (
+            opens on stillness, and the first prompt normally covers the wait.
+            
+            Covers the SCRIPTURE beat as well as the picture ones. It reads
+            from `view` too, and it was gated on showsImage alone — so tapping
+            Begin inside the readings lookup's 1.5s cap landed on a completely
+            empty middle. That's the blank-screen class this repo keeps a rule
+            about; a beat that needs the choice must show something while it
+            resolves. Shaped like what's coming: a page of text, or a frame. */}
+        {!view && (showsImage || step === SCRIPTURE) && (
           <div
             aria-hidden
             style={{
-              width: "min(100%, 320px)", height: "46vh", borderRadius: 10,
+              width: step === SCRIPTURE ? "min(100%, 560px)" : "min(100%, 320px)",
+              height: step === SCRIPTURE ? "34vh" : "46vh",
+              borderRadius: 10,
               border: `1px solid ${BORDER}`, background: "rgba(46,107,64,0.07)",
               animation: "visio-breathe 2600ms ease-in-out infinite",
             }}
