@@ -38,6 +38,7 @@ import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { markOfficeBookComplete } from "@/lib/officeManualLog";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { vcsLinkForReference } from "@/lib/vcsExhibitions";
 import { canPrayOnVenite, veniteOfficeUrl } from "@/lib/venite";
 import { PointedLine } from "@/components/PointedLine";
 
@@ -3532,6 +3533,32 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                       </div>
                     </div>
                   )}
+                  {/**
+                   * Art and commentary on this book, at the Visual Commentary on
+                   * Scripture. A LINK, never embedded: their images are licensed
+                   * from picture agencies and the commentary is the authors'
+                   * own. Book-level because their per-book pages are the only
+                   * regular URLs they publish — see lib/vcsExhibitions for why
+                   * we don't build a passage-level map. Absent, quietly, for the
+                   * books they don't cover.
+                   */}
+                  {(() => {
+                    const vcs = vcsLinkForReference(reference);
+                    if (!vcs) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openExternal(vcs.url); }}
+                        style={{
+                          background: "none", border: "none", color: FAINT_GREEN,
+                          fontFamily: SPACE_GROTESK, fontSize: 12.5, textDecoration: "underline",
+                          cursor: "pointer", padding: "8px 10px", marginTop: 2,
+                        }}
+                      >
+                        {`🖼️ Art & commentary on ${vcs.book}`}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })()
