@@ -596,7 +596,21 @@ export function anchorModesFor(side: OfficeSide): string[] {
   // itself prayed the moment the extra was.
   if (getSideExtra(side)) {
     const own = extraOfficeMode(side, level ?? "ask");
-    return [own ?? devotionMode];
+    /**
+     * When the anchor has no office mode of its OWN — a custom practice
+     * ("Chapel"), a contemplative sit, FDD-as-prayer — it still has to occupy
+     * one of the side's two completion slots so the extra can have the other.
+     * It takes the SIDE slot, not the devotion one.
+     *
+     * Which slot it takes is not arbitrary. Reported: with Chapel as the
+     * morning anchor, "I tried to add devotion as the secondary and it didn't
+     * let me add devotion or anything other than the office." The devotion slot
+     * is shared by devotion, psalms, the readings AND Simple Guided Prayer, so
+     * a custom anchor sitting there ruled out four of the five office-shaped
+     * practices at once and left only the full Office. Sitting on the side slot
+     * costs exactly one option instead of four.
+     */
+    return [own ?? side];
   }
   // Compline as the side's own anchor completes as "compline", nothing else.
   if (level === "compline") return ["compline"];

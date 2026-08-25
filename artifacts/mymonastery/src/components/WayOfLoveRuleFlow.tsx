@@ -3240,9 +3240,11 @@ export default function WayOfLoveRuleFlow({
     // home can't tell from the anchor's — it would tick itself the moment the
     // anchor was prayed. (commitExtraPractices degrades gracefully if one gets
     // through; this is so nobody is offered the bad pairing in the first place.)
-    const anchorMode = anchorLevel === "office"
-      ? side
-      : (levelOfficeMode(side, anchorLevel) ?? (side === "morning" ? "morning-devotion" : "early-evening-devotion"));
+    // MUST mirror officePrefs.anchorModesFor's own fallback, or the menu and
+    // the completion logic disagree about which slot the anchor occupies. An
+    // anchor with no office mode of its own (custom, contemplative, FDD) takes
+    // the SIDE slot — see the note there on why not the devotion one.
+    const anchorMode = levelOfficeMode(side, anchorLevel) ?? side;
     const options = EXTRA_PRACTICES
       .filter((e) => !e.side || e.side === side)
       .filter((e) => e.excludes !== anchorLevel)
