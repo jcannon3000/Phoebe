@@ -20,6 +20,14 @@
  *     empty screen — see the blank-screen rule this repo keeps.
  */
 import { ACT_CATALOGUE, type CatalogueArtwork } from "./visioCatalogue";
+import { type VisioSeen } from "./visioHistory";
+
+const BY_ID = new Map(ACT_CATALOGUE.map((a) => [a.id, a]));
+
+/** One specific artwork, for re-opening something from the history gallery. */
+export function artworkById(id: number): CatalogueArtwork | null {
+  return BY_ID.get(id) ?? null;
+}
 
 /** One contiguous stretch of a reference. `end` is Infinity for "to the end". */
 export type Span = { chapter: number; start: number; end: number };
@@ -130,19 +138,50 @@ export type Chosen = {
 };
 
 /**
- * Today's artwork. `lessons` may be empty (offline, still loading, or a day
- * with no appointed lesson) — the rotation covers that case.
+ * Today's artwork.
+ *
+ * `lessons` may be empty (offline, still loading, or a day with no appointed
+ * lesson) — the rotation covers that case.
+ *
+ * `history` does two things. Today's own entry PINS the choice, so re-opening
+ * the practice later the same day returns the same painting instead of
+ * choosing a fresh one mid-day. Everything older is SUBTRACTED, because the
+ * owner wants this to arrive like a newsletter — different every time. Holy
+ * Week is the case that needs it: the same Passion reading runs for days and
+ * matches the same few paintings, so without this you would look at the same
+ * Caravaggio three mornings running.
+ *
+ * Subtraction never starves the choice: if every match has been seen, the
+ * filter is dropped rather than returning nothing.
  */
-export function chooseArtwork(ymd: string, lessons: string[]): Chosen {
+export function chooseArtwork(ymd: string, lessons: string[], history: VisioSeen[] = []): Chosen {
+  const pinned = history.find((h) => h.ymd === ymd);
+  if (pinned) {
+    const art = BY_ID.get(pinned.id);
+    if (art) {
+      const ref = lessons.length
+        ? art.refs.find((r) => matchScore([r], lessons) >= 2) ?? art.refs[0] ?? ""
+        : art.refs[0] ?? "";
+      return { art, ref, followsToday: lessons.length ? matchScore(art.refs, lessons) >= 2 : false };
+    }
+  }
+  const seen = new Set(history.map((h) => h.id));
+  /** Prefer the unseen; fall back to the whole set rather than to nothing. */
+  const fresh = <T extends { art: CatalogueArtwork }>(xs: T[]): T[] => {
+    const unseen = xs.filter((x) => !seen.has(x.art.id));
+    return unseen.length ? unseen : xs;
+  };
+
   const scored = lessons.length
     ? ACT_CATALOGUE.map((art) => ({ art, score: matchScore(art.refs, lessons) })).filter((x) => x.score > 0)
     : [];
   if (!scored.length) {
-    const art = rotationForDay(ymd);
+    const pool = fresh(ACT_CATALOGUE.map((art) => ({ art })));
+    const art = pool[dayHash(ymd) % pool.length]!.art;
     return { art, ref: art.refs[0] ?? "", followsToday: false };
   }
   const top = Math.max(...scored.map((x) => x.score));
-  const best = scored.filter((x) => x.score === top);
+  const best = fresh(scored.filter((x) => x.score === top));
   // Several works may depict the same reading — Passiontide especially. Pick
   // deterministically among them so the day has one image, not a shuffle.
   const art = best[dayHash(ymd) % best.length]!.art;

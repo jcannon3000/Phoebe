@@ -40,7 +40,15 @@ export type Artwork = {
   /** The passage to read against it. */
   scriptureRef: string;
   scripture: string;
-  /** One question, for the looking. Not a study guide. */
+  /**
+   * One question, for the looking.
+   *
+   * NO LONGER RENDERED: the deck now asks the owner's two fixed questions
+   * (visio.tsx's QUESTIONS) for every artwork, because they're a sequence —
+   * notice first, then ask what the noticing is for — rather than a per-image
+   * caption. Kept because these two are hand-written and worth not losing if
+   * per-artwork prompts come back.
+   */
   prompt: string;
   /** ACT's requested citation, reproduced verbatim on the closing slide. */
   attribution: string;
