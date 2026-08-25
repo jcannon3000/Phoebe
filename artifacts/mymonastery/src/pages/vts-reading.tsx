@@ -26,6 +26,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { markVtsRead, markReflectionPrayed } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 import { SPLASH_PHOTO, LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { resolvePlacePhotos, BUNDLED_SET_PREFIX } from "@/lib/breathPlacePhotos";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 
 // Same tokens bcp-daily-office.tsx uses (var()-backed so Office display
@@ -68,12 +69,20 @@ export default function VtsReadingPage() {
   const veilPhoto = useMemo(() => SPLASH_PHOTO || splashForestPath, []);
   const [veilPhotoReady, setVeilPhotoReady] = useState(false);
 
-  // The reading itself sits on a leaf backdrop too, matching Simple Guided
-  // Prayer / Contemplation / the office's own reader pages, instead of the
-  // plain animated wash — owner: "the dean commentary should have leaf
-  // backgrounds." Picked once per mount, same held-still (not drifting)
-  // treatment those pages use.
-  const backdropPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  /**
+   * FLAMINGOS behind the Dean's Commentary (owner, superseding the earlier ask
+   * for leaf backgrounds — the flamingo is this publication's own mark: it's
+   * the card's emoji, the notification's title, and the bird at VTS).
+   *
+   * Reuses the bundled set that backs The Flamingo breath place rather than a
+   * second copy of the same photographs. Falls back to a leaf if that set is
+   * ever empty, so the page can't end up on a flat green field.
+   */
+  const backdropPhoto = useMemo(() => {
+    const flamingos = resolvePlacePhotos([`${BUNDLED_SET_PREFIX}flamingos`]);
+    const pool = flamingos.length > 0 ? flamingos : LEAF_PHOTOS;
+    return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)]! : null;
+  }, []);
 
   const close = () => setLocation("/");
 

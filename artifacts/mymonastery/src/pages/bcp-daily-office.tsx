@@ -1843,7 +1843,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
          * Owner: "if I go to enter digital slideshow, the format should be
          * digital when I start." Persist the choice the tap actually made.
          */
-        onClose={() => { setSideEntry(officeSide, "read"); setBookOpen(false); }}
+        onClose={() => setBookOpen(false)}
+        onEnterSlideshow={() => { setSideEntry(officeSide, "read"); setBookOpen(false); }}
         onPrayIntercessions={prayBookIntercessions}
         onMarkPrayed={markPrayedFromBook}
       />
@@ -5178,11 +5179,15 @@ function PhysicalBookGuide(props: {
   showIntercessions: boolean;
   alreadyDoneToday: boolean;
   onClose: () => void;
+  /** Leaving the guide FOR the slideshow — a deliberate format change, unlike
+   *  Back, which is just exiting. Kept separate because both used to call
+   *  onClose, so hanging the format write on that changed it on Back too. */
+  onEnterSlideshow?: () => void;
   onPrayIntercessions: () => void;
   onMarkPrayed: () => void;
 }) {
   const display = useOfficeDisplay();
-  const { slides, officeTitle, mode, dayLabel, intercessionCount, playerDocked, showIntercessions, alreadyDoneToday, onClose, onPrayIntercessions, onMarkPrayed } = props;
+  const { slides, officeTitle, mode, dayLabel, intercessionCount, playerDocked, showIntercessions, alreadyDoneToday, onClose, onEnterSlideshow, onPrayIntercessions, onMarkPrayed } = props;
   // Keep the screen awake while reading the page-number guide — you pray
   // from the open book with the phone set down, so it must not sleep.
   useKeepAwake(true);
@@ -5336,7 +5341,7 @@ function PhysicalBookGuide(props: {
               as exiting, not "switch view." */}
           <button
             type="button"
-            onClick={onClose}
+            onClick={onEnterSlideshow ?? onClose}
             className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{
               background: "rgba(var(--ot-green, 46,107,64),0.16)", border: "1px solid rgba(var(--ot-fern, 168,197,160),0.35)",
