@@ -3482,9 +3482,25 @@ export default function PrayerModePage() {
   useEffect(() => {
     if (phase === "closing" && fadeHomeNoNewsletter && !fadedHomeRef.current) {
       fadedHomeRef.current = true;
-      // Straight home — the send-off slide is gone (see shouldBless). The
-      // home screen's own completion animation is the ending now.
-      reallyExit();
+      /**
+       * Straight home — the send-off slide is gone (see shouldBless) — but by
+       * way of handleDone, NOT reallyExit.
+       *
+       * Reported, with a screen recording: walking the Prayer List start to
+       * finish never completed it. This is why. The two closing paths split
+       * here on fadeHomeNoNewsletter, and a standalone walk (no office, no
+       * reflection gate) takes THIS one — which only faded out and navigated.
+       * All the finishing work lives in handleDone: the prayer-list credit,
+       * and the per-intercession check-ins that record you actually prayed
+       * them. So a plain prayer-list walk logged nothing at all, and no fix to
+       * the credit rules inside handleDone could matter, because handleDone
+       * was never reached.
+       *
+       * skipBless keeps the visual identical (handleDone's tail is the same
+       * fade + navigate reallyExit did). skipReminderClear keeps it from
+       * sweeping an office reminder this walk didn't earn.
+       */
+      void handleDone({ skipBless: true, skipReminderClear: !isOfficeClose });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, fadeHomeNoNewsletter]);
@@ -3863,7 +3879,7 @@ export default function PrayerModePage() {
     setLocation(finishHref);
   };
 
-  const handleDone = async (opts?: { skipBless?: boolean }) => {
+  const handleDone = async (opts?: { skipBless?: boolean; skipReminderClear?: boolean }) => {
     // Walking the slideshow IS the practice. Owner: "if they go through the
     // slideshow, let's just have it slideshow completion, not how many they
     // have left — they might even skip them, but if they go through it, let's
@@ -3962,7 +3978,10 @@ export default function PrayerModePage() {
     // when morning prayer is the intercession list, completing it here is
     // "completed morning prayer," so that reminder shouldn't linger. Native
     // shell removes any delivered push whose thread-id matches; no-op on web.
-    clearOfficeReminderNotifications();
+    // …but not when this walk wasn't an office close. Reached from the plain
+    // fade-home path (a standalone prayer-list walk), sweeping the lock screen
+    // would remove the reminder for an office the reader hasn't prayed.
+    if (!opts?.skipReminderClear) clearOfficeReminderNotifications();
 
     // Fade out then navigate. The CTA flow now reads: dashboard card →
     // slideshow (/prayer-mode) → home (/dashboard). The closing slide
