@@ -39,6 +39,7 @@ export function CobreatheSummary({
   companions = [],
   placeName,
   placeBreathsToday,
+  placePeople = [],
 }: {
   // How many breaths the user actually took this sit (open-ended — can exceed
   // the 12-breath target). Defaults to the target for callers that don't track it.
@@ -55,6 +56,10 @@ export function CobreatheSummary({
    *  SHOW you the place's numbers — otherwise the choice tells you nothing. */
   placeName?: string | null;
   placeBreathsToday?: number;
+  /** Who breathed at this place today. Owner: "this is where we should be
+   *  seeing the table of who breathed at the flamingo" — here, on the closing
+   *  screen, not on the slide before the breath. */
+  placePeople?: Array<{ userId: number; name: string; avatarUrl: string | null }>;
   onContinue: () => void;
   continueLabel?: string;
   continueDisabled?: boolean;
@@ -184,6 +189,30 @@ export function CobreatheSummary({
             {/* The place's own tally. Being told the number is the point of
                 having chosen somewhere — "one" reads as being the first, which
                 is a real and good thing to be told, so it isn't hidden. */}
+            {/* Who else was here today. Listed by name because that is the
+                point of praying somewhere in particular — the count alone
+                says a place was used, the names say you were among people.
+                Anonymous device users are counted in the tally above but have
+                no name to list. */}
+            {placeName && placePeople.length > 0 && (
+              <div style={{ width: "100%", maxWidth: 340, margin: "0 0 22px" }}>
+                <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
+                  {t("cobreathe.place_people_heading", { place: placeName, defaultValue: `At ${placeName} today` })}
+                </p>
+                {placePeople.map((p) => (
+                  <div key={p.userId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0" }}>
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt="" style={{ width: 26, height: 26, borderRadius: 999, objectFit: "cover", flexShrink: 0 }} />
+                    ) : (
+                      <span style={{ width: 26, height: 26, borderRadius: 999, flexShrink: 0, background: "rgba(143,175,150,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: WARM, fontFamily: SPACE_GROTESK }}>
+                        {p.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14.5, textAlign: "left" }}>{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {placeName && typeof placeBreathsToday === "number" && (
               <p className="text-[12.5px] mb-6" style={{ color: "rgba(200,212,192,0.85)", fontFamily: SPACE_GROTESK }}>
                 {placeBreathsToday <= 1

@@ -441,14 +441,43 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
         COUNT(*)::int                                                    AS all_breaths,
         COUNT(DISTINCT user_id)::int                                     AS all_people
       FROM breath_sessions
-      WHERE place_id = ${id}
+      WHERE place_id = ${place.id}
     `);
     const r = rows.rows?.[0];
+
+    /**
+     * WHO breathed here today — only when explicitly asked for (?people=1).
+     *
+     * The completion screen names them; the screen BEFORE the breath does not
+     * (owner: "not beforehand"), so this is opt-in rather than riding along on
+     * every stats read. Anonymous device users have no name to show and are
+     * counted but not listed.
+     */
+    const wantPeople = req.query["people"] === "1";
+    let people: Array<{ userId: number; name: string; avatarUrl: string | null }> = [];
+    if (wantPeople) {
+      const pr = await db.execute<{ user_id: number; name: string | null; avatar_url: string | null }>(sql`
+        SELECT DISTINCT u.id AS user_id, u.name, u.avatar_url
+        FROM breath_sessions bs
+        JOIN users u ON u.id = bs.user_id
+        WHERE bs.place_id = ${place.id} AND bs.day = ${day}
+          AND u.name IS NOT NULL AND btrim(u.name) <> ''
+        ORDER BY u.name
+        LIMIT 60
+      `);
+      people = pr.rows.map((x) => ({
+        userId: Number(x.user_id),
+        name: String(x.name),
+        avatarUrl: x.avatar_url ?? null,
+      }));
+    }
+
     res.json({
       place,
       today: r?.today ?? 0,
       month: { breaths: r?.month_breaths ?? 0, people: r?.month_people ?? 0 },
       allTime: { breaths: r?.all_breaths ?? 0, people: r?.all_people ?? 0 },
+      ...(wantPeople ? { people } : {}),
     });
   } catch (err) {
     console.error("[/breath/places/:id/stats GET] failed:", err);

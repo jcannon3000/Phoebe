@@ -394,6 +394,7 @@ export default function CobreathePage() {
    */
   const { data: placeStats, isLoading: statsLoading } = useQuery<{
     place: { id: number; name: string; subtitle: string | null };
+    people?: Array<{ userId: number; name: string; avatarUrl: string | null }>;
     today: number;
     month: { breaths: number; people: number };
     allTime: { breaths: number; people: number };
@@ -401,8 +402,10 @@ export default function CobreathePage() {
     // Ask by row id when there IS one, otherwise by the built-in slug — a
     // place nobody has breathed at yet has no row, and "how many today" still
     // has a true answer (zero). Keyed on whichever we asked with.
-    queryKey: ["/api/breath/places/stats", place && place.id > 0 ? place.id : place?.slug, day],
-    queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}`),
+    queryKey: ["/api/breath/places/stats", place && place.id > 0 ? place.id : place?.slug, day, mode === "done" ? "people" : "counts"],
+    // people=1 only on the DONE screen — the slide before the breath shows the
+    // place's numbers, not its roster (owner: "not beforehand").
+    queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}${mode === "done" ? "&people=1" : ""}`),
     // Also through the breath and the summary: the summary reports the place's
     // tally, and a query disabled by then would have nothing to report.
     enabled: (mode === "placeStats" || mode === "breathing" || mode === "done")
@@ -913,6 +916,7 @@ export default function CobreathePage() {
         others={othersDone}
         placeName={place?.name ?? null}
         placeBreathsToday={placeStats?.today}
+        placePeople={placeStats?.people}
         companions={summaryFaces}
         onContinue={() => setLocation("/")}
       />
