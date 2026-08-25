@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clearDailyCompletionFlags } from "@/lib/completionReset";
@@ -10,6 +10,7 @@ import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { CommunityRuleCard } from "@/components/CommunityRuleCard";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { TermsBody } from "./terms";
 import { PrivacyBody } from "./privacy";
 
@@ -40,6 +41,13 @@ export default function CommunityJoinPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  // A still leaf photo behind the invite, picked once per mount — same
+  // backdrop the rest of the app's standalone pages use, so an invite link
+  // doesn't land on a flat green field.
+  const leafPhoto = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
 
   // Public invite lookup — no auth required. Shows the group name to a
   // brand-new visitor and lets us pre-fill the email for the signup form.
@@ -91,6 +99,21 @@ export default function CommunityJoinPage() {
 
   // Auto-join for already-authenticated users.
   const [autoJoinStatus, setAutoJoinStatus] = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
+  // Why the join failed, straight from the server. Without this every failure
+  // read "Something went wrong" — a rate-limited retry, a follow-cap 409 and a
+  // genuine 500 were indistinguishable, on the one screen where knowing which
+  // it is actually matters.
+  const [joinError, setJoinError] = useState("");
+  // POST /api/auth/register ALREADY joins the group (it takes groupSlug +
+  // groupInviteToken and inserts the membership itself, returning
+  // joinedGroupSlug). Registering then made `user` truthy, which fired the
+  // auto-join effect below for a membership the server had just created —
+  // a redundant request racing the navigation to /onboarding, burning a slot
+  // against this endpoint's 20/hour rate limit, and able to fail the whole
+  // signup onto "Couldn't join" even though the account and membership were
+  // both fine. Set the moment register reports it joined, so we don't ask
+  // twice.
+  const serverJoinedRef = useRef(false);
   const joinMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/groups/${slug}/join`, { token }),
     onSuccess: async (data: any) => {
@@ -104,11 +127,14 @@ export default function CommunityJoinPage() {
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setAutoJoinStatus(data.alreadyJoined ? "already" : "success");
     },
-    onError: () => setAutoJoinStatus("error"),
+    onError: (err: unknown) => {
+      setJoinError(err instanceof Error ? err.message : "");
+      setAutoJoinStatus("error");
+    },
   });
 
   useEffect(() => {
-    if (!authLoading && joinableUser && slug && token && autoJoinStatus === "idle") {
+    if (!authLoading && joinableUser && slug && token && autoJoinStatus === "idle" && !serverJoinedRef.current) {
       setAutoJoinStatus("loading");
       joinMutation.mutate();
     }
@@ -210,6 +236,10 @@ export default function CommunityJoinPage() {
       });
       const data = await res.json();
       if (data.ok) {
+        // The server joined the group as part of registering (see
+        // serverJoinedRef) — don't let the auto-join effect fire a second,
+        // redundant request behind this navigation.
+        if (data.joinedGroupSlug) serverJoinedRef.current = true;
         clearDailyCompletionFlags();
         // Server already linked the new user to the group_members row.
         // Route through the full product onboarding (profile pic, BCP
@@ -327,9 +357,20 @@ export default function CommunityJoinPage() {
               <h1 className="text-xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {t("community_join.couldnt_join")}
               </h1>
+              {/* The server's own reason when it gave one ("Too many join
+                  attempts…", "You're already following N communities…") —
+                  those are actionable in a way "Something went wrong" never
+                  was. Falls back to the generic line otherwise. */}
               <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                {t("community_join.something_wrong")}
+                {joinError || t("community_join.something_wrong")}
               </p>
+              <button
+                onClick={() => { setJoinError(""); setAutoJoinStatus("idle"); }}
+                className="px-6 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                {t("common.try_again", { defaultValue: "Try again" })}
+              </button>
             </>
           )}
         </div>
@@ -359,13 +400,38 @@ export default function CommunityJoinPage() {
     // with the viewport edge (or below it) when the on-screen
     // keyboard is up.
     <div
-      className="flex flex-col"
+      className="flex flex-col relative"
       style={{
         background: "#091A10",
         fontFamily: "'Space Grotesk', sans-serif",
         minHeight: "100dvh",
+        // Page backdrop pattern: an isolated stacking context so the leaf
+        // photo + wash below can sit at z-index -1 behind everything without
+        // escaping the page. NEVER position:fixed — that flashes on iOS.
+        isolation: "isolate",
       }}
     >
+      {leafPhoto && (
+        <>
+          <img
+            src={leafPhoto}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ zIndex: -2 }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              zIndex: -1,
+              background: "linear-gradient(180deg, rgba(8,18,12,0.72) 0%, rgba(8,18,12,0.62) 45%, rgba(8,18,12,0.86) 100%)",
+              backdropFilter: "blur(2px)",
+              WebkitBackdropFilter: "blur(2px)",
+            }}
+          />
+        </>
+      )}
       <header className="px-6 py-6 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
           Phoebe
@@ -384,18 +450,28 @@ export default function CommunityJoinPage() {
             className="text-center mb-8"
           >
             <div className="text-5xl mb-4">{invite.group.emoji ?? "🏘️"}</div>
+            {/* This is a GROUP invite, so it's joining a group — not
+                following a feed (owner). */}
             <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-              You've been invited to follow
+              You've been invited to join
             </p>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
               {invite.group.name}
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
               {alreadyHasAccount
-                ? "Sign in to your Phoebe account to follow along."
+                ? "Sign in to your Phoebe account to join the group."
                 : isCommunityWide
-                  ? "Create a Phoebe account to follow — or sign in if you already have one."
-                  : "Create your Phoebe account to follow the community."}
+                  ? "Create a Phoebe account to join — or sign in if you already have one."
+                  : "Create your Phoebe account to join the group."}
+            </p>
+            {/* Say plainly what joining means for what you share, before the
+                form rather than after (owner) — prayer requests are the one
+                thing a member posts that other members can see. */}
+            <p className="text-sm leading-relaxed mt-3" style={{ color: "rgba(143,175,150,0.75)" }}>
+              As a member, any prayer request you share with the group is
+              visible to everyone else in it, so they can pray for you — and
+              you'll see theirs. Anything you keep private stays private.
             </p>
           </motion.div>
 
