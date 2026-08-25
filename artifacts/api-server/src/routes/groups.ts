@@ -1550,16 +1550,18 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
 //      the link and land here. We INSERT a fresh group_members row for them.
 //   2. Per-member token (legacy) — pre-invited user redeems their token and
 //      we UPDATE the existing pending row.
-// Rate limit: a leaked invite link is the main abuse vector here. 20 joins
-// per hour per (slug + IP) lets a legit admin share a link in a room of ~20
-// people without friction, while throttling a scraped-link flood enough that
-// the admin has time to rotate the token. We key on slug+IP rather than slug
-// alone so that a single noisy IP can't deny access to the whole community.
+// Rate limit: a leaked invite link is the main abuse vector here. 50 joins
+// per hour per (slug + IP) lets an admin share a link with a whole room on
+// one wifi network without the tail of it getting blocked (at 20, the 21st
+// person in the room was refused), while still throttling a scraped-link
+// flood enough that the admin has time to rotate the token. We key on
+// slug+IP rather than slug alone so that a single noisy IP can't deny
+// access to the whole community.
 router.post(
   "/groups/:slug/join",
   rateLimit({
     name: "groups_join",
-    max: 20,
+    max: 50,
     windowMs: 60 * 60 * 1000,
     keyFn: (req) => `${req.params.slug ?? "_"}::${getClientIp(req)}`,
     message: "Too many join attempts for this community. Please try again shortly.",
