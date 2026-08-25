@@ -376,6 +376,31 @@ const TIME_LADDER: TimeStep[] = [
 // morning AND evening).
 const TIME_LADDER_DEFAULT = 5;
 
+/**
+ * Quarter-hour reminder times, labelled the way a person says them.
+ *
+ * `current` is included even when it isn't on the quarter-hour grid — an
+ * existing 07:05 reminder must not be silently rounded to 07:00 just because
+ * the control changed shape.
+ */
+function reminderTimeOptions(current: string): Array<{ value: string; label: string }> {
+  const out: Array<{ value: string; label: string }> = [];
+  for (let mins = 0; mins < 24 * 60; mins += 15) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    out.push({ value, label: `${hour12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}` });
+  }
+  if (/^\d{2}:\d{2}$/.test(current) && !out.some((o) => o.value === current)) {
+    const [ch, cm] = current.split(":").map((n) => parseInt(n, 10));
+    const hour12 = ch % 12 === 0 ? 12 : ch % 12;
+    out.push({ value: current, label: `${hour12}:${String(cm).padStart(2, "0")} ${ch < 12 ? "AM" : "PM"}` });
+    out.sort((a, b) => a.value.localeCompare(b.value));
+  }
+  return out;
+}
+
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…90
 
@@ -3172,7 +3197,7 @@ export default function WayOfLoveRuleFlow({
                         <option key={f} value={f}>{formEmoji(f)} {formLabel(f)}</option>
                       ))}
                     </select>
-                    <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>\u25BE</span>
+                    <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
                   </>
                 );
               })()}
@@ -3344,29 +3369,37 @@ export default function WayOfLoveRuleFlow({
             // Width constraints on the WRAPPER as well — see the twin of this
             // row in routine-interview.tsx.
             <div style={{ position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}>
-              <input
-                type="time"
+              {/**
+                * A real dropdown, not <input type="time"> (owner: "the time is
+                * not a dropdown"). Every other control on this slide is a
+                * select, and the native time input behaved differently on every
+                * platform — it was also the thing that overflowed the slide on
+                * iOS, which gives it an intrinsic width from its own control
+                * that ignores width:100%. A select can't half-type a value
+                * either, so the partial-HH:MM guard this used to need is gone.
+                *
+                * Quarter-hours across the day, plus the current value if it
+                * happens to sit off that grid, so an existing reminder is never
+                * silently moved.
+                */}
+              <select
                 value={timeBySide[side]}
                 onChange={(e) => {
                   touchedRef.current = true;
                   const v = e.target.value;
                   setTimeBySide((tv) => {
                     const next = { ...tv, [side]: v };
-                    // Only persist a complete HH:MM — a half-typed time would
-                    // otherwise write the DEFAULT_REMINDER_TIME fallback.
-                    if (/^\d{2}:\d{2}$/.test(v)) saveReminderNow(reminderOnBySide, next);
+                    saveReminderNow(reminderOnBySide, next);
                     return next;
                   });
                 }}
                 aria-label={t("wol_rule.reminder_time", { defaultValue: "Reminder time" })}
-                // Full length again (owner) — it lines up with the dropdowns
-                // above it, which is what "too wide" actually meant: it was
-                // overflowing the slide, not merely long. maxWidth/minWidth are
-                // what stop the overflow; iOS gives input[type=time] an
-                // intrinsic width from its native control that ignores
-                // width:100%.
-                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
-              />
+                style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+              >
+                {reminderTimeOptions(timeBySide[side]).map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
               {/* The picker affordance, matching the dropdowns above it. */}
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
