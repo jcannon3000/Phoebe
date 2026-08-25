@@ -948,7 +948,30 @@ export function useRhythmState(): RhythmState {
   // Declared here, above the anchor clause that reads it. It used to sit ~90
   // lines further down, which made that read a use-before-declaration —
   // evaluated during render, so it would throw rather than merely misbehave.
-  const prayerListDone = prayerListActive && (practiceLocal.prayerList || serverDone("prayer-list"));
+  /**
+   * WHETHER IT WAS KEPT — not whether the module is visible.
+   *
+   * Reported: "the prayer list is not counting as done, I have gone through it
+   * several times… it needs to log", and "this was working yesterday."
+   *
+   * This used to AND in prayerListActive, which is purely a home-layout
+   * visibility flag (`!hidden.has("prayer-list")`). The card, though, renders
+   * off intentionsTotalCount > 0 — having prayers waiting, regardless of the
+   * layout. So the moment "prayer-list" landed in `hidden`, the card went on
+   * showing and prayerListDone was pinned false forever: walking the whole
+   * slideshow, marking the practice, syncing the server, none of it could move
+   * a value that was ANDed against a hidden flag.
+   *
+   * And it lands in `hidden` easily — adoptRule sets extras.prayerList = false,
+   * so commit() pushes "prayer-list" into offKeys. Adopting ANY preset today
+   * silently made this card uncompletable, which is exactly the regression:
+   * it worked yesterday, before the routine was re-committed.
+   *
+   * Doneness and visibility are now separate questions, and each consumer
+   * pairs this with its own activity test (see the dot below, which uses the
+   * same intentionsTotalCount gate the card does).
+   */
+  const prayerListDone = practiceLocal.prayerList || serverDone("prayer-list");
   // Same signal the card and the pill use — walking the slideshow, not a tally.
   // This clause (the prayer list satisfying a side's anchor) was the last place
   // still counting items, so a complete walk that skipped two prayers filled
@@ -1237,7 +1260,10 @@ export function useRhythmState(): RhythmState {
     // totalAnchors carried a practice with no card and no dot, doneCount
     // stopped one short forever, and "the day is kept" could never fire. The
     // card and the pill dot already gate on this; the count now agrees.
-    ...(prayerListActive && intentionsTotalCount > 0 ? [prayerListDone] : []),
+    // Matches the CARD's own gate (prayerListActiveCard = intentionsTotalCount
+    // > 0) so the pill can't count a different number of practices than the
+    // home shows. Guests, whose intentions query never runs, stay excluded.
+    ...(intentionsTotalCount > 0 ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
