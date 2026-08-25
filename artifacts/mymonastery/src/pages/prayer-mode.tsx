@@ -3932,7 +3932,18 @@ export default function PrayerModePage() {
         !!s.momentToken &&
         !loggedIntercessionsRef.current.has(s.momentToken),
     );
-    await Promise.allSettled(
+    /**
+     * Fire them all, but don't hold the ENDING hostage to the network.
+     *
+     * The map below starts every request immediately; the await only decides
+     * how long we stand still before fading out. Unbounded, a slow connection
+     * parked the reader on the closing slide until every check-in settled —
+     * up to the 12s request timeout, each — which is a long time to sit after
+     * saying amen. Now a healthy network still lands before we move (so the
+     * home shows fresh counts), and a bad one doesn't make the prayer feel
+     * broken. The requests carry on either way; allSettled never rejects.
+     */
+    const logging = Promise.allSettled(
       toLog.map((s) =>
         s.myUserToken
           ? apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
@@ -3941,6 +3952,7 @@ export default function PrayerModePage() {
           : apiRequest("POST", `/api/moment/${s.momentToken}/amen`, {}),
       ),
     );
+    await Promise.race([logging, new Promise((r) => setTimeout(r, 1500))]);
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
     // Feed-scoped intercessions (queue=feed walk) back the dashboard
     // FeedPrayerCard — refresh that query so it flips to "Completed"
