@@ -150,7 +150,18 @@ export default function VtsReadingPage() {
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: veilPhotoReady ? 1 : 0, transition: "opacity 700ms ease-out" }}
         />
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(var(--ot-wash2, 8,18,12),0.62) 0%, rgba(var(--ot-wash2, 8,18,12),0.5) 45%, rgba(var(--ot-wash2, 8,18,12),0.78) 100%)" }} />
-        <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }} />
+        {/* A bigger ring with the flamingo at rest in the middle (owner) —
+            VTS's own mark, so the wait is branded rather than generic. Only
+            the RING spins: the emoji sits in a separate, un-animated layer,
+            because spinning it would read as a tumbling bird. */}
+        <div style={{ position: "relative", width: 76, height: 76, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div
+            aria-hidden
+            className="animate-spin"
+            style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "3px solid rgba(var(--ot-sage, 143,175,150),0.25)", borderTopColor: "rgba(var(--ot-sage, 143,175,150),0.8)" }}
+          />
+          <span aria-hidden style={{ fontSize: 30, lineHeight: 1 }}>🦩</span>
+        </div>
       </div>
     );
   }

@@ -697,8 +697,26 @@ function playBreathCompleteHaptic() {
   void playSmoothSwell({ durationMs: 1300, peak: 1.0, sharpness: 0.3 }, fireSmoothSwell);
 }
 
+/**
+ * Settings → Haptics, off. Read here rather than at each dispatch: eleven
+ * different surfaces fire `phoebe:haptic` (the cascade, the breath, the
+ * office close, every button…), and gating them one by one would leave the
+ * next new one buzzing through a preference the person had turned off. This
+ * listener is the single place every one of them arrives.
+ *
+ * Device-local, same shape as the other Home-display prefs — the web app and
+ * this shell share the WebView's localStorage, so settings.tsx writes the key
+ * and this reads it. Read per EVENT, not once at wiring time, so toggling it
+ * takes effect immediately without a relaunch.
+ */
+const HAPTICS_OFF_KEY = "phoebe:haptics-off";
+function hapticsDisabled(): boolean {
+  try { return localStorage.getItem(HAPTICS_OFF_KEY) === "1"; } catch { return false; }
+}
+
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
+    if (hapticsDisabled()) return;
     const detail = (e as CustomEvent).detail as { style?: string; peak?: number; durationMs?: number } | undefined;
     const s = detail?.style ?? "light";
     try {

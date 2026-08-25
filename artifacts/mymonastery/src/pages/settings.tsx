@@ -1065,6 +1065,10 @@ function readTlpModeDefaultOn(): boolean {
 // The "Done" section on home (kept cards, below Next) — preset ON; read by
 // dashboard.tsx via the same key/helpers as the toggles above.
 export const HIDE_DONE_KEY = "phoebe:hide-home-done";
+// Read by native-shell.ts's `phoebe:haptic` listener — the one place every
+// haptic in the app arrives. Stored "off" rather than "on" so the absent key
+// means haptics work, which is the shipped default.
+export const HAPTICS_OFF_KEY = "phoebe:haptics-off";
 
 // ── Muted people ─────────────────────────────────────────────────────────
 // The read side (filtering a muter's garden + push fan-out) lives in
@@ -1170,6 +1174,14 @@ function HomeDisplaySettings() {
   // Preset ON (readLsBool defaults false/"not hidden" when the key has
   // never been written), matching "on, but you can turn them off".
   const [doneHidden, setDoneHidden] = useState<boolean>(() => readLsBool(HIDE_DONE_KEY));
+  const [hapticsOff, setHapticsOff] = useState<boolean>(() => readLsBool(HAPTICS_OFF_KEY));
+  const hapticsOn = !hapticsOff;
+  const toggleHaptics = () => {
+    const nextOff = hapticsOn;
+    setHapticsOff(nextOff);
+    writeLsBool(HAPTICS_OFF_KEY, nextOff);
+    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
+  };
   const doneShown = !doneHidden;
   const toggleDone = () => {
     const nextHidden = doneShown;
@@ -1303,6 +1315,40 @@ function HomeDisplaySettings() {
           >
             <div
               className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${doneShown ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+      </SettingsCard>
+
+      <div className="mb-8" />
+
+      {/* Haptics — its own section: it isn't a display setting, and it's the
+          kind of thing people go looking for by name. The switch is read by
+          native-shell's single `phoebe:haptic` listener (HAPTICS_OFF_KEY),
+          which is where all eleven dispatching surfaces arrive — so this
+          silences the cascade, the breath, the office close and every button
+          at once, and stays right for whatever fires one next. */}
+      <SectionHeader label="Haptics" />
+
+      <SettingsCard>
+        <button
+          onClick={toggleHaptics}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Haptics
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              The gentle taps and swells when a practice is kept. Turn them off for a silent app.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${hapticsOn ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${hapticsOn ? "left-[21px]" : "left-[3px]"}`}
               style={{ background: "#F0EDE6" }}
             />
           </div>

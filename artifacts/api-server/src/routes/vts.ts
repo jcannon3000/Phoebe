@@ -285,11 +285,49 @@ function extractParagraphs(html: string): ExtractResult {
   return { paragraphs, dateLine };
 }
 
-type TextCacheEntry = { title: string; url: string; paragraphs: string[]; date: string | null; fetchedAt: number };
+type TextCacheEntry = {
+  title: string; url: string; paragraphs: string[]; date: string | null; fetchedAt: number;
+  /** The tz-local day stamp this entry was resolved on. */
+  day: string;
+  /** Was the resolved article actually published TODAY (feed pubDate)? */
+  isToday: boolean;
+};
 let textCached: TextCacheEntry | null = null;
+// One in-flight background feed refresh at a time, so a burst of readers on
+// the fast path can't fan out into a pile of concurrent vts.edu polls.
+let bgRefresh: Promise<unknown> | null = null;
 
 async function resolveTodayText(): Promise<TextCacheEntry> {
-  const { url, title } = await resolveToday();
+  /**
+   * FAST PATH — the whole point of this function's caching.
+   *
+   * resolveTodayText used to `await resolveToday()` unconditionally, and
+   * resolveToday only holds the feed for 30 minutes (CACHE_TTL_MS, which
+   * exists so a newly-published piece is noticed). So every read more than
+   * half an hour after the last one paid a blocking fetch of vts.edu's
+   * SITE-WIDE RSS feed — press releases and all — plus a regex pass over it,
+   * against a 5s timeout, even though the article body it was about to return
+   * was already cached in this process. Owner: it shouldn't be slow unless
+   * it's the first read of the day. It is now: once today's commentary is
+   * cached, we serve it immediately and poll the feed in the BACKGROUND, so
+   * a new post is still picked up for the next reader without this one
+   * waiting on it.
+   *
+   * Gated on `isToday`: if the cached piece is NOT today's — a weekend, or
+   * before the day's commentary has gone up — the fast path is skipped
+   * entirely, so we keep checking rather than serving a stale piece all day.
+   */
+  const stamp = todayStamp();
+  if (textCached && textCached.day === stamp && textCached.isToday && textCached.paragraphs.length > 0) {
+    if (!bgRefresh) {
+      bgRefresh = resolveToday()
+        .catch(() => { /* best effort — the cached entry is still good */ })
+        .finally(() => { bgRefresh = null; });
+    }
+    return textCached;
+  }
+
+  const { url, title, isToday } = await resolveToday();
   // Unlike resolveToday()'s 30-minute feed-poll TTL (needed to notice a new
   // post going live), the scraped ARTICLE BODY for a given url never
   // changes once published — so once any user loads it, it's cached (in
@@ -299,6 +337,10 @@ async function resolveTodayText(): Promise<TextCacheEntry> {
   // (and wasted risk — a transient fetch failure would flip a perfectly
   // good cached reader to the empty-paragraphs fallback for no reason).
   if (textCached && textCached.url === url) {
+    // Same article, but re-stamp it: a cache entry made yesterday (or before
+    // today's piece went up) becomes eligible for the fast path above the
+    // moment the feed confirms it IS today's.
+    textCached = { ...textCached, day: stamp, isToday };
     return textCached;
   }
   const controller = new AbortController();
@@ -310,16 +352,16 @@ async function resolveTodayText(): Promise<TextCacheEntry> {
     });
     if (!res.ok) {
       logger.warn({ status: res.status, url }, "[vts] article fetch non-ok");
-      return { title, url, paragraphs: [], date: null, fetchedAt: Date.now() };
+      return { title, url, paragraphs: [], date: null, fetchedAt: Date.now(), day: stamp, isToday };
     }
     const html = await res.text();
     const { paragraphs, dateLine } = extractParagraphs(html);
-    const entry: TextCacheEntry = { title, url, paragraphs, date: dateLine, fetchedAt: Date.now() };
+    const entry: TextCacheEntry = { title, url, paragraphs, date: dateLine, fetchedAt: Date.now(), day: stamp, isToday };
     textCached = entry;
     return entry;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err), url }, "[vts] article fetch failed");
-    return { title, url, paragraphs: [], date: null, fetchedAt: Date.now() };
+    return { title, url, paragraphs: [], date: null, fetchedAt: Date.now(), day: stamp, isToday };
   } finally {
     clearTimeout(timeout);
   }
