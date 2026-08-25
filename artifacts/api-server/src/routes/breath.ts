@@ -387,8 +387,21 @@ router.get("/breath/places", async (req: Request, res: Response): Promise<void> 
 router.get("/breath/places/:id/stats", async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
-  const id = Number(req.params["id"]);
-  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "bad_request" }); return; }
+  /**
+   * The path param is a row id OR a built-in SLUG.
+   *
+   * Reported: "there is nothing in the location that shows me how many breaths
+   * have been taken there that day." The client's place list is now wired into
+   * the bundle, so a built-in place exists for the reader before any DB row
+   * does — and it carries no id to ask about. Accepting the slug means the
+   * place's own story is answerable from the first tap, and reads as a real
+   * zero ("be the first here today") rather than as nothing at all.
+   */
+  const raw = String(req.params["id"] ?? "");
+  const id = Number(raw);
+  const byId = Number.isInteger(id) && id > 0;
+  const known = byId ? null : BUILT_IN_PLACE_ROWS[raw];
+  if (!byId && !known) { res.status(400).json({ error: "bad_request" }); return; }
   const day = String(req.query["day"] ?? "");
   if (!isValidYmd(day)) { res.status(400).json({ error: "bad_request" }); return; }
   const monthPrefix = `${day.slice(0, 7)}-%`;
@@ -397,8 +410,19 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
     const [place] = await db
       .select({ id: breathPlacesTable.id, name: breathPlacesTable.name, subtitle: breathPlacesTable.subtitle })
       .from(breathPlacesTable)
-      .where(eq(breathPlacesTable.id, id))
+      .where(byId ? eq(breathPlacesTable.id, id) : eq(breathPlacesTable.name, known!.name))
       .limit(1);
+    // A built-in place nobody has breathed at yet has no row. That's a real
+    // answer — zeros — not an error, and certainly not an empty slide.
+    if (!place && known) {
+      res.json({
+        place: { id: -1, name: known.name, subtitle: known.subtitle },
+        today: { breaths: 0, people: 0, verified: 0 },
+        month: { breaths: 0, people: 0 },
+        allTime: { breaths: 0, people: 0 },
+      });
+      return;
+    }
     if (!place) { res.status(404).json({ error: "not_found" }); return; }
 
     // One pass over this place's rows — three spans, computed with FILTER

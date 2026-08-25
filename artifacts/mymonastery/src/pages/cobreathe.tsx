@@ -398,11 +398,12 @@ export default function CobreathePage() {
     month: { breaths: number; people: number };
     allTime: { breaths: number; people: number };
   }>({
-    queryKey: ["/api/breath/places/stats", place?.id, day],
-    queryFn: () => apiRequest("GET", `/api/breath/places/${place?.id}/stats?day=${day}`),
-    // id -1 means "built-in option the server hasn't got a row for yet" — a
-    // real id is the only thing worth asking stats about.
-    enabled: mode === "placeStats" && !!place && place.id > 0,
+    // Ask by row id when there IS one, otherwise by the built-in slug — a
+    // place nobody has breathed at yet has no row, and "how many today" still
+    // has a true answer (zero). Keyed on whichever we asked with.
+    queryKey: ["/api/breath/places/stats", place && place.id > 0 ? place.id : place?.slug, day],
+    queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}`),
+    enabled: mode === "placeStats" && !!place && (place.id > 0 || !!place.slug),
     staleTime: 60_000,
   });
 
