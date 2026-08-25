@@ -1845,6 +1845,9 @@ export default function WayOfLoveRuleFlow({
   };
   const extraNeedsConfig = (side: OfficeSide): boolean => extraConfigKindFor(side) !== null;
 
+  /** Is the silent sit part of this rhythm? Drives whether the Silence page
+   *  (minutes + log method) is asked at all — see buildSteps. */
+  const wantsSilence = goalMin > 0 || contemplationBySide.morning || contemplationBySide.evening;
   const buildSteps = (sidesArg: Record<OfficeSide, boolean>): Step[] => guest
     // GUEST (public no-login): when → per-side way + ONE merged config slide
     // (the BCP form + medium + reminder all live on side-config — no separate
@@ -1888,15 +1891,24 @@ export default function WayOfLoveRuleFlow({
     // FDD medium choice — asked AFTER the reflection/prayer is picked, so it
     // covers FDD-as-reflection too (applies wherever FDD is used: both sides).
     ...(needsFddMode ? (["fdd-mode"] as Step[]) : []),
-    // Silence (the daily-minutes goal, i.e. the silent sit).
-    "contemplation-goal",
-    // "Add an additional practice" — Audio Divina, Contemplative Walk, the
-    // Examen, and (when neither side already carries it as their primary
-    // prayer) Creation Prayer. No time-of-day detail step after this one
-    // anymore — each is just available all day, not slotted to a part of
-    // the day. The "Add to your day" extras step (Reading, Podcasts, Prayer
-    // List) is still reachable from the Practices page instead, not here.
+    /**
+     * CHOOSE the contemplative practice first, THEN configure it.
+     *
+     * Owner: "first say choose contemplative practice, and have that slide with
+     * contemplative prayer at the top. Then if they chose contemplative prayer,
+     * it would go to the [silence] slide."
+     *
+     * Silence asks for a daily minutes goal and how it's logged — questions
+     * that only make sense for the silent sit. Asking them BEFORE the practice
+     * was chosen meant someone whose practice is a Contemplative Walk was set a
+     * silence goal they never asked for, and it is that goal the weekly
+     * Contemplative row measures against. Making the page conditional is also
+     * what settles the weekly card: the row means "did you keep your
+     * contemplative practice", and minutes only enter for the practice that was
+     * actually asked about them.
+     */
     "contemplative",
+    ...(wantsSilence ? (["contemplation-goal"] as Step[]) : []),
     "custom",
     // The weekly Way of Love rhythm (Commune / Go / Bless / Rest) closes the
     // flow — restored per owner (2026-07-09): a rule of life turns weekly too.
@@ -2625,11 +2637,30 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Add an additional practice" }))}
+        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Choose a contemplative practice" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
-          {t("wol_rule.contemplative_body", { defaultValue: "Beyond silence, choose any other contemplative practices for your day — each becomes its own card." })}
+          {t("wol_rule.contemplative_body", { defaultValue: "Choose the contemplative practices for your day — each becomes its own card." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* First, and the one that leads to the Silence page. Turning it on
+              seeds a goal so that page has something to open on; turning it off
+              clears the goal AND both per-side sits, so the page it would have
+              configured stops being asked. */}
+          {choiceRow(
+            wantsSilence,
+            `🕯️ ${t("wol_rule.cp_silence", { defaultValue: "Contemplative Prayer" })}`,
+            t("wol_rule.cp_silence_sub", { defaultValue: "Time set aside for silence." }),
+            () => {
+              touchedRef.current = true;
+              if (wantsSilence) {
+                chooseGoal("0");
+                setContemplationBySide({ morning: false, evening: false });
+              } else {
+                chooseGoal("20");
+                chooseSilenceMode("fixed");
+              }
+            },
+          )}
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
@@ -2641,7 +2672,10 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Silence — the daily-minutes goal (the silent sit), chosen FIRST ───────
+  // ── Silence — the daily-minutes goal (the silent sit). Reached ONLY when
+  //    Contemplative Prayer was chosen on the step before it, so its two
+  //    questions (how long, how logged) are always about a practice the reader
+  //    has actually taken up.
   if (step === "contemplation-goal") {
     return shell(
       <>
