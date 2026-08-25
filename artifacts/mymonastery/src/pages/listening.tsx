@@ -43,6 +43,16 @@ const glassField = {
   color: WARM,
   fontFamily: SPACE_GROTESK,
 } as const;
+// The ambient backdrop's bloom + wash. Both are anchored in PIXELS from the
+// top of the page content (see the backdrop in the render): the layer spans the
+// whole scrollable height, so percentage stops would make the bloom depend on
+// how many records happen to be in the log. 0–260px is the hero; the colour is
+// gone by ~860px, well above the shelf.
+const BLOOM_MASK =
+  "linear-gradient(180deg, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 300px, rgba(0,0,0,0.4) 580px, rgba(0,0,0,0) 860px)";
+const WASH =
+  "linear-gradient(180deg, rgba(10,26,16,0.55) 0px, rgba(10,26,16,0.46) 220px, rgba(10,26,16,0.72) 520px, rgba(10,26,16,0.95) 760px, rgba(10,26,16,1) 900px)";
+
 // A frosted-glass surface for the log rows (over the leaf backdrop).
 const glassRow = {
   background: "rgba(9,26,16, 0.58)",
@@ -219,30 +229,61 @@ export default function ListeningPage() {
   return (
     <RiseSheet>
       {() => (
-        <div className="w-full">
-          {/* Ambient backdrop: the hero's own cover art, blurred and dimmed, so
-              the page takes its colour from whatever you put on. Absolute +
-              z-index -1 inside the sheet's isolated stacking context — never
-              position:fixed (that flashes on iOS). */}
+        <div className="w-full" style={{ position: "relative" }}>
+          {/* Ambient backdrop: the hero's own cover art, blurred, so the page
+              takes its colour from whatever you put on.
+              
+              TWO things this has to get right:
+              
+              1. HEIGHT. RiseSheet's own element is the SCROLL container, so an
+                 `inset: 0` layer there is only viewport-tall and scrolls away
+                 with the content — which left a hard horizontal seam partway
+                 down the page, raw sheet colour below it. This layer is
+                 anchored to a wrapper that's as tall as the CONTENT instead
+                 (see the relative div below), with generous bleed past both
+                 ends, so there's no edge to see at any scroll position.
+              2. FULL BLEED. The content column is padded and max-width 576px;
+                 the backdrop shouldn't be. 100vw + a centring translate takes
+                 it edge to edge without a horizontal scrollbar.
+              
+              Still absolute, never position:fixed — that flashes on iOS. */}
           {heroEntry?.artworkUrl && (
             <>
               <motion.div
                 aria-hidden
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                transition={{ duration: 0.9, ease: "easeOut" }}
+                animate={{ opacity: 0.62 }}
+                transition={{ duration: 1.1, ease: "easeOut" }}
                 style={{
-                  position: "absolute", inset: 0, zIndex: -1,
+                  position: "absolute", top: -220, bottom: -260, left: "50%",
+                  width: "100vw", transform: "translateX(-50%) scale(1.18)",
+                  zIndex: -1,
                   backgroundImage: `url(${heroEntry.artworkUrl})`,
-                  backgroundSize: "cover", backgroundPosition: "center",
-                  filter: "blur(48px) saturate(1.15)", transform: "scale(1.25)",
+                  backgroundSize: "cover", backgroundPosition: "center top",
+                  filter: "blur(64px) saturate(1.5)",
+                  // The colour BLOOMS behind the hero and falls away before the
+                  // log — a flat wall of blurred artwork the whole way down
+                  // read as grey mud rather than as the record's own colour.
+                  // PIXEL stops, not percentages: this layer is as tall as the
+                  // CONTENT now, so a percentage would stretch the bloom on a
+                  // long log and squash it on a short one. The bloom belongs a
+                  // fixed distance behind the hero either way.
+                  maskImage: BLOOM_MASK,
+                  WebkitMaskImage: BLOOM_MASK,
                 }}
               />
+              {/* Wash: light enough at the top to let the bloom through,
+                  settling to the sheet's own green so the log sits on a clean
+                  ground rather than on tinted haze. */}
               <div
                 aria-hidden
                 style={{
-                  position: "absolute", inset: 0, zIndex: -1,
-                  background: "linear-gradient(180deg, rgba(10,26,16,0.68) 0%, rgba(10,26,16,0.82) 55%, rgba(10,26,16,0.94) 100%)",
+                  position: "absolute", top: -220, bottom: -260, left: "50%",
+                  width: "100vw", transform: "translateX(-50%)", zIndex: -1,
+                  // Same reasoning as the mask — px stops, settling to solid
+                  // sheet green well before the log so the covers sit on a
+                  // clean ground however long the page runs.
+                  background: WASH,
                 }}
               />
             </>
