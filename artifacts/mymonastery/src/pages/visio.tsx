@@ -73,7 +73,11 @@ const SERIF = "Georgia, 'Times New Roman', serif";
  */
 const QUESTIONS = [
   "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.",
-  "Consider what God might be speaking to you through the image in this moment.",
+  // Owner: "the next slide should be, as you return to the image..." — this
+  // beat comes AFTER the reflection, and the reader is being sent back to the
+  // same picture with what they've just read. The prompt says so rather than
+  // reading like the first question asked twice.
+  "As you return to the image, consider what God might be speaking to you through it in this moment.",
 ];
 
 /** "1050-1100" is a range, and a range takes an en dash. */
@@ -253,15 +257,19 @@ export default function VisioPage() {
    * somebody who has looked at this for a living has to say about it. Then be
    * asked what God might be saying to YOU through it — a question that lands
    * differently once the commentary has opened the picture up. Then look
-   * again, holding all of it. The second look is the point of the sequence.
+   * again, holding all of it. The second look is the point of the sequence —
+   * and it is not the end. Owner: after the image again, sit with it. The
+   * closing beat before the completion cards asks for contemplation and for
+   * whatever surfaced to be prayed, so the practice ends in prayer rather
+   * than in a list of thumbnails.
    *
    * NO SCRIPTURE SLIDE. It has been cut twice now; the passage the artwork
    * depicts is still NAMED — it's the eyebrow over the title on both picture
    * beats — but its text isn't printed here. The office is where you read.
    */
-  const PROMPT_1 = 0, PICTURE_1 = 1, REFLECT = 2, PROMPT_2 = 3, PICTURE_2 = 4, DONE = 5;
+  const PROMPT_1 = 0, PICTURE_1 = 1, REFLECT = 2, PROMPT_2 = 3, PICTURE_2 = 4, CONTEMPLATE = 5, DONE = 6;
   const [step, setStep] = useState(PROMPT_1);
-  const TOTAL = 6;
+  const TOTAL = 7;
   const showsImage = step === PICTURE_1 || step === PICTURE_2;
 
   const atEnd = step >= TOTAL - 1;
@@ -303,8 +311,13 @@ export default function VisioPage() {
   const openReflection = () => {
     if (!view?.essayUrl) return;
     openOfficeReading(view.essayUrl, {
-      officeTitle: t("visio.title", { defaultValue: "Visio Divina" }),
-      slideLabel: t("visio.reflection", { defaultValue: "Reflection" }),
+      // Owner: the browser's top bar says "Reflection" — that IS what the page
+      // is, and naming the practice there said nothing the reader didn't
+      // already know. The bottom pill's own label goes empty for the same
+      // reason: with the title above saying it, repeating it in the pill was
+      // the same word twice on one screen. The pill is Back / Next now.
+      officeTitle: t("visio.reflection", { defaultValue: "Reflection" }),
+      slideLabel: "",
       // Deliberately NOT the artwork's title. Owner: "the bottom bar doesn't
       // need the full title... it makes the bottom bar too long when you're on
       // the web viewer." Some of these run to eighty characters.
@@ -449,20 +462,30 @@ export default function VisioPage() {
           </p>
         )}
 
-        {/* The picture's identity, on both looking beats.
-            Owner: "title (name of picture, and scripture reference eyebrow)."
-            ONE eyebrow, carrying both facts — the passage it depicts, and
-            whether that's what the lectionary appointed today. Two stacked
-            eyebrows was a thing this app got told off for once already. */}
+        {/* The picture's identity, on both looking beats — a museum label.
+            Owner: "the title slide should say the title of the picture, and
+            the eyebrow should be the date." So the WORK'S date leads (1886–94,
+            not today), the title carries the line, and the artist and the
+            passage sit under it.
+
+            The scripture reference used to be the eyebrow (an earlier ask) and
+            it hasn't been dropped, only moved down a line — it's what makes
+            this a lectionary practice rather than a gallery, and "Today's
+            reading" is still marked. Still ONE eyebrow: two stacked eyebrows
+            was a thing this app got told off for once already. */}
         {showsImage && view && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 8px" }}>
-              {view.scriptureRef}
-              {view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}
+              {tidyDate(view.date)}
             </p>
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>
-              {[view.artist, tidyDate(view.date)].filter(Boolean).join(" · ")}
+              {[
+                view.artist,
+                view.scriptureRef
+                  ? `${view.scriptureRef}${view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}`
+                  : "",
+              ].filter(Boolean).join(" · ")}
             </p>
           </div>
         )}
@@ -480,30 +503,44 @@ export default function VisioPage() {
             link "goes directly to the start of the relevant reflection". The
             trim also discarded the `?first=` parameter that 88 of them carry
             to select which artwork the exhibition opens on. Don't trim it. */}
+        {/* Owner: "just like the gospel, it should be a button that says open
+            reflection." So it IS the gospel's pill — same shape, same weight,
+            same wording pattern as the office's "Read Gospel →" — and the
+            slide is that button and nothing else. The eyebrow and the sentence
+            introducing the reflection are gone: a button labelled "Open
+            reflection" doesn't need a paragraph explaining that a reflection
+            can be opened. */}
         {step === REFLECT && (
           <div style={{ textAlign: "center", maxWidth: 480 }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-              {t("visio.reflection", { defaultValue: "Reflection" })}
-            </p>
             {view?.essayUrl ? (
-              <>
-                <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", lineHeight: 1.6, margin: "14px 0 22px" }}>
-                  {t("visio.reflection_line", { defaultValue: "A short reflection on this image, written for it." })}
-                </p>
-                <button
-                  type="button"
-                  onClick={openReflection}
-                  style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", background: "rgba(46,107,64,0.35)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "12px 22px", fontSize: 15, fontFamily: FONT, cursor: "pointer" }}
-                >
-                  {t("visio.read_reflection", { defaultValue: "Read the reflection →" })}
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={openReflection}
+                style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: WARM, borderRadius: 999, padding: "10px 18px", fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+              >
+                {t("visio.read_reflection", { defaultValue: "Open reflection →" })}
+              </button>
             ) : (
               <p style={{ color: "rgba(240,237,230,0.72)", fontFamily: SERIF, fontSize: 18, fontStyle: "italic", lineHeight: 1.6, margin: "14px 0 0" }}>
                 {t("visio.reflection_none", { defaultValue: "Sit with what you noticed a little longer." })}
               </p>
             )}
           </div>
+        )}
+
+        {/* Sit with it, then pray it. Owner's own words, near enough verbatim:
+            "take a moment in contemplation in what God may be putting on your
+            heart through the image, and lift what arises in prayer." Set like
+            the two prompts — same serif, same italic, same measure — because
+            it is the same kind of thing: an instruction for the reader's
+            attention, not a caption. */}
+        {step === CONTEMPLATE && (
+          <p
+            className="visio-prompt"
+            style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
+          >
+            {t("visio.prompt_contemplate", { defaultValue: "Take a moment in contemplation on what God may be putting on your heart through the image, and lift what arises in prayer." })}
+          </p>
         )}
 
         {/* The completion slide. Frosted cards (owner) — thumbnail and name —

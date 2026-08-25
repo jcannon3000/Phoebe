@@ -611,7 +611,15 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // existed, in which case didFinish has already been and gone and would
         // never fire again — the veil would sit until the ceiling. Reveal on
         // the floor instead.
-        if !webView.isLoading { hideVeil() }
+        if !webView.isLoading {
+            hideVeil()
+            // …and the two things didFinish would have done. A warmed view has
+            // ALREADY finished, so that delegate call is never coming — which
+            // is why a preloaded page (Visio Divina preloads its essay) opened
+            // with the caller's starting chrome, white, over a dark article.
+            syncChromeToPage()
+            scrollToDeepLinkedWork()
+        }
         // The ceiling. A page that never reports finishing must not hold the
         // veil forever.
         DispatchQueue.main.asyncAfter(deadline: .now() + veilMaxSeconds) { [weak self] in
@@ -752,7 +760,21 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
         let label = UILabel()
         label.font = .systemFont(ofSize: 10, weight: .semibold)
-        label.text = [officeSlideLabel, officeSectionLabel].compactMap { $0 }.joined(separator: " · ").uppercased()
+        // `filter`, not just compactMap: callers pass "" for "no section"
+        // (Visio Divina deliberately does — the artwork titles run to eighty
+        // characters), and an empty string is not nil, so the pill read
+        // "REFLECTION · " with a separator pointing at nothing.
+        let pillText = [officeSlideLabel, officeSectionLabel]
+            .compactMap { $0 }
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .joined(separator: " · ")
+            .uppercased()
+        label.text = pillText
+        // Hidden, not merely empty: an empty UILabel still takes its share of
+        // the stack's spacing, so a pill with nothing to say came out wider
+        // than Back+Next with a gap floating between them. A hidden arranged
+        // subview leaves the layout entirely.
+        label.isHidden = pillText.isEmpty
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         officeNavLabel = label
 
@@ -898,6 +920,60 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
      * actually hit is nearly always transparent, and its container is the thing
      * with the colour.
      */
+    /**
+     * Open a VCS commentary ON THE PICTURE.
+     *
+     * thevcs.org stacks every work of an exhibition on ONE long page and
+     * deep-links each one as /<exhibition>/<work-slug>, where the slug is an
+     * <article id>. Left to itself the site parks the reader inside that
+     * article at the COMMENTARY — past the painting — which for Visio Divina
+     * is the one place it must not open: the practice is looking at the
+     * picture, and the reflection is what you read after.
+     *
+     * So: scroll that article's own top into view. Not "scroll to top" — the
+     * page begins with the site masthead and the exhibition's own preamble,
+     * and a work halfway down an exhibition would land nowhere near itself.
+     *
+     * Host-gated. Every other reading this browser opens (Bible.com, oremus,
+     * Forward Movement, CAC, SSJE) is a single article that opens where it
+     * should already.
+     */
+    private func scrollToDeepLinkedWork() {
+        guard let url = webView.url,
+              let host = url.host?.lowercased(),
+              host == "thevcs.org" || host.hasSuffix(".thevcs.org"),
+              let slug = url.path.split(separator: "/").last.map(String.init),
+              !slug.isEmpty,
+              let slugLiteral = String(data: (try? JSONSerialization.data(withJSONObject: [slug], options: [])) ?? Data(), encoding: .utf8)
+        else { return }
+        // ["the-slug"] → "the-slug", already escaped for JS by JSONSerialization.
+        let quoted = slugLiteral.dropFirst().dropLast()
+        let js = """
+        (function () {
+          var el = document.getElementById(\(quoted));
+          if (!el) return false;
+          window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.pageYOffset));
+          return true;
+        })()
+        """
+        func attempt(_ remaining: Int, delay: TimeInterval) {
+            webView.evaluateJavaScript(js) { [weak self] value, _ in
+                guard let self, remaining > 0 else { return }
+                let found = (value as? Bool) ?? false
+                // Not there yet (the site renders works progressively), or there
+                // but about to move as the images above it finish loading. Try
+                // again — unless the reader has taken hold of the page, in which
+                // case where they are is the right place to be.
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    guard !self.webView.scrollView.isDragging,
+                          !self.webView.scrollView.isDecelerating else { return }
+                    attempt(remaining - 1, delay: found ? 0.7 : 0.4)
+                }
+            }
+        }
+        attempt(3, delay: 0.35)
+    }
+
     private func syncChromeToPage() {
         let probe = """
         (function () {
@@ -981,6 +1057,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
             self?.syncChromeToPage()
         }
+        scrollToDeepLinkedWork()
         hideVeil()
     }
 
