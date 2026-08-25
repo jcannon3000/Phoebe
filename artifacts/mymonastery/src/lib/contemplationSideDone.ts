@@ -97,6 +97,43 @@ const EVENING_OPENS_HOUR = EVENING_OPEN_HOUR;
 // report: "I did a 20 minute contemplation and it counted as my morning
 // Creation Prayer." The other side is still the fallback, so a lone active
 // side (or an already-kept preferred side) still receives the sit.
+/**
+ * The KIND of contemplation the rhythm is configured for.
+ *
+ * `phoebe:contemplation-style` is a single global value, so every side that
+ * carries a contemplation carries THAT practice: silence, or the Creation
+ * Prayer breath. Nothing per-side to read.
+ */
+function configuredKind(): ContemplationKind {
+  try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; }
+  catch { return "silent"; }
+}
+
+/**
+ * Does an automatic attribution of `kind` belong to a side at all?
+ *
+ * Reported: with Creation Prayer as the evening anchor, finishing a SILENT sit
+ * played the completion animation on the Creation Prayer card. The standalone
+ * contemplation-goal card opens /contemplation with no ?side=, so the sit fell
+ * into the order-based fallback below and claimed the evening side — whose
+ * practice is the breath. The day-flag's kind kept the CARD from reading as
+ * done, but markContemplationSideDone had already stamped
+ * markRecentCompletion("contemplation-<side>"), and that key belongs to the
+ * side's card whichever practice it renders as. So the wrong practice
+ * celebrated.
+ *
+ * A sit only auto-claims a side when the side's own practice IS that sit. A
+ * silent sit under a breath rhythm (the VTS shape: Creation Prayer in the
+ * evening plus a daily silence goal) belongs to the standalone goal card, and
+ * to no side at all.
+ *
+ * An EXPLICIT ?side= still wins — that's a deliberate launch from that side's
+ * own card, and the card only offers the practice it actually is.
+ */
+function kindMatchesRhythm(kind: ContemplationKind): boolean {
+  return kind === configuredKind();
+}
+
 function sideOrderByClock(now: Date = new Date()): ContemplationSide[] {
   return now.getHours() >= EVENING_OPENS_HOUR
     ? ["evening", "morning"]
@@ -122,7 +159,10 @@ export function attributeContemplationSit(opts: {
     markContemplationSideDone(explicitSide, kind);
     return;
   }
-  // Order-based fallback: first still-undone active side, clock-aware.
+  // Order-based fallback: first still-undone active side, clock-aware — but
+  // only when this sit IS the practice those sides carry (see
+  // kindMatchesRhythm). Otherwise it belongs to no side.
+  if (!kindMatchesRhythm(kind)) return;
   const order = sideOrderByClock();
   const undone = order.find((s) => activeSides[s] && !hasContemplationSideDoneToday(s, kind));
   const anyActive = order.find((s) => activeSides[s]);
@@ -147,6 +187,10 @@ export function resolveContemplationSideForSit(kind: ContemplationKind = "silent
     morning: anyExplicit ? mSet === true : true,
     evening: anyExplicit ? eSet === true : true,
   };
+  // Same rule as attributeContemplationSit: a sit that isn't the practice
+  // these sides carry resolves to NO side, so the timer doesn't stamp a
+  // contemplationSide the completion path would then decline to honour.
+  if (!kindMatchesRhythm(kind)) return null;
   const order = sideOrderByClock();
   return order.find((s) => active[s] && !hasContemplationSideDoneToday(s, kind))
     ?? order.find((s) => active[s])
