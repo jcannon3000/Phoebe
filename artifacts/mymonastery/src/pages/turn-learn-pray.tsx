@@ -286,6 +286,26 @@ export default function TurnLearnPrayPage() {
                       onClick={s.onClick}
                     />
                   </div>
+                  {/* Owner: "you can edit each of those practices individually,
+                      and you don't have to go through the whole slideshow…
+                      you can just edit one, and then it saves and goes back."
+                      Opens the customizer straight onto THIS practice's slide;
+                      Save writes it and returns here. The row ids are the
+                      customizer's own (stepForRow). */}
+                  <button
+                    type="button"
+                    onClick={() => setLocation(
+                      `/rule-of-life?edit=${encodeURIComponent(
+                        e.slot === "morning" ? "side:morning"
+                          : e.slot === "evening" ? "side:evening"
+                            : "contemplation",
+                      )}&return=/turn-learn-pray`,
+                    )}
+                    className="mt-2.5 inline-flex items-center gap-1.5 text-[13px] transition-opacity hover:opacity-80"
+                    style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, cursor: "pointer", padding: "4px 2px" }}
+                  >
+                    ⚙︎ {t("wol_rule.edit_this_practice", { defaultValue: "Change this practice" })}
+                  </button>
                 </div>
               </div>
             );

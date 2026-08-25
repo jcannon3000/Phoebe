@@ -622,6 +622,10 @@ export default function WayOfLoveRuleFlow({
    * returns to the list instead of advancing.
    */
   const [singleEditRow, setSingleEditRow] = useState<string | null>(null);
+  /** Set when a single-practice edit was DEEP-LINKED from another screen
+   *  (?edit=<rowId>&return=<path>). Saving returns there rather than to the
+   *  customizer's own list, so the reader lands back where they started. */
+  const [singleEditReturnTo, setSingleEditReturnTo] = useState<string | null>(null);
   const [editRows, setEditRows] = useState<Array<{ id: string; emoji: string; label: string; sub: string }>>([]);
   const [editLoaded, setEditLoaded] = useState(false);
   const [deletingEditRow, setDeletingEditRow] = useState<{ id: string; label: string } | null>(null);
@@ -1095,6 +1099,35 @@ export default function WayOfLoveRuleFlow({
    */
   // What they already keep, described the same way the questionnaire's review
   // describes it — so "edit part" shows the same words the other flow does.
+  /**
+   * ?edit=<rowId>&return=<path> — open ONE practice for editing, from outside.
+   *
+   * The practices page lists what someone keeps; the obvious next thought is
+   * changing one, and making them re-enter the customizer and find it again is
+   * the long way round. Runs once, before anything is rendered, so the reader
+   * lands directly on that practice's own slide.
+   */
+  const deepEditRef = useRef(false);
+  useEffect(() => {
+    if (deepEditRef.current) return;
+    deepEditRef.current = true;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rowId = params.get("edit");
+      if (!rowId) return;
+      const st = stepForRow(rowId);
+      if (!st) return;
+      const ret = params.get("return");
+      // Same-origin PATH only — never an absolute URL, so this can't be used to
+      // bounce someone off-site after saving.
+      if (ret && /^\/[A-Za-z0-9\-_/]*$/.test(ret)) setSingleEditReturnTo(ret);
+      setSingleEditRow(rowId);
+      setManualMode("scratch");
+      setStep(st);
+    } catch { /* no search params — nothing to open */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Re-read "what they already keep" — called on mount, and again after a
    *  single-practice edit so the row shows its new value straight away. */
   const reloadEditRows = async (): Promise<void> => {
@@ -1835,27 +1868,68 @@ export default function WayOfLoveRuleFlow({
     // stop existing (or skip one that's about to appear).
     const next = buildSteps(nextSides);
     const i = next.indexOf(side === "morning" ? "morning-way" : "evening-way");
-    if (i >= 0 && i < next.length - 1) setStep(next[i + 1]);
+    const after = i >= 0 && i < next.length - 1 ? next[i + 1] : null;
+    // Editing this practice alone: follow its own remaining slides, then save.
+    // Without this, toggling a side off here walked on into the rest of the
+    // flow — the exact thing a single-practice edit exists to avoid.
+    if (singleEditRow) {
+      if (after && stepBelongsToRow(after, singleEditRow)) { setStep(after); return; }
+      finishSingleEdit();
+      return;
+    }
+    if (after) setStep(after);
   };
   /** Finish a single-practice edit: write the rule, refresh the row, go back to
    *  the list. commit() ends on setStep("done"), but the edit list renders off
    *  manualMode and is checked before the step machine, so this lands there. */
   const finishSingleEdit = () => {
     commit();
+    const ret = singleEditReturnTo;
     setSingleEditRow(null);
+    setSingleEditReturnTo(null);
+    if (ret) { setLocation(ret); return; }
     setManualMode("edit");
     void reloadEditRows();
   };
+  /**
+   * Does this step still belong to the practice being edited alone?
+   *
+   * A practice isn't always one slide — a side can have a way slide, a config
+   * slide, a "create your own" name. Editing one practice should walk THOSE and
+   * stop, rather than either saving half-configured or spilling into the next
+   * practice's slides.
+   */
+  const stepBelongsToRow = (st: Step, rowId: string): boolean => {
+    if (rowId === "side:morning") return st.startsWith("morning-");
+    if (rowId === "side:evening") return st.startsWith("evening-");
+    if (rowId === "contemplation") return st === "contemplation-goal" || st === "contemplative";
+    if (rowId.startsWith("slot:")) return st === "contemplative";
+    if (rowId.startsWith("card:")) return st === "learn";
+    if (rowId.startsWith("custom:")) return st === "custom";
+    return false;
+  };
   const goNext = () => {
-    if (singleEditRow) { finishSingleEdit(); return; }
     const i = orderedSteps.indexOf(step);
-    if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]);
+    const next = i >= 0 && i < orderedSteps.length - 1 ? orderedSteps[i + 1] : null;
+    if (singleEditRow) {
+      if (next && stepBelongsToRow(next, singleEditRow)) { setStep(next); return; }
+      finishSingleEdit();
+      return;
+    }
+    if (next) setStep(next);
   };
   const goPrev = () => {
     // One practice, one slide: Back returns to the list rather than reversing
     // into a flow the reader never entered. Nothing is written — Continue is
     // what saves.
-    if (singleEditRow) { setSingleEditRow(null); setManualMode("edit"); return; }
+    if (singleEditRow) {
+      const ret = singleEditReturnTo;
+      setSingleEditRow(null);
+      setSingleEditReturnTo(null);
+      if (ret) { setLocation(ret); return; }
+      setManualMode("edit");
+      return;
+    }
     const i = orderedSteps.indexOf(step);
     if (i > 0) { setStep(orderedSteps[i - 1]); return; }
     // Reported: "the back goes to the home screen and not the previous thing in
@@ -1934,8 +2008,15 @@ export default function WayOfLoveRuleFlow({
   // step). Tapping the right side of the screen also goes back (see shell).
   const ctaButton = (rawLabel: string, onClick: () => void) => {
     // Editing one practice, this button is the end of the road — call it Save,
-    // not Continue, because there is nothing after it to continue to.
-    const label = singleEditRow ? t("common.save", { defaultValue: "Save" }) : rawLabel;
+    // not Continue, because there is nothing after it to continue to. Only on
+    // the practice's LAST slide, though: a practice can span two or three, and
+    // a Save that actually continues is a lie about what the tap does.
+    const nextInFlow = (() => {
+      const i = orderedSteps.indexOf(step);
+      return i >= 0 && i < orderedSteps.length - 1 ? orderedSteps[i + 1] : null;
+    })();
+    const savesNow = !!singleEditRow && !(nextInFlow && stepBelongsToRow(nextInFlow, singleEditRow));
+    const label = savesNow ? t("common.save", { defaultValue: "Save" }) : rawLabel;
     return (
     // marginTop:auto pins Continue (+ Back) to the BOTTOM of the flow's flex
     // column, so it sits in the same spot on every slide instead of riding up and
