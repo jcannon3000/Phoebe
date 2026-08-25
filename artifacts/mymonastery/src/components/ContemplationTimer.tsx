@@ -10,7 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { isDeviceLocalGuest } from "@/lib/guestFlag";
 import { getGuestSilenceGoalMin } from "@/lib/guestSeed";
 import { addGuestSilenceMinutes, getGuestSilenceMinutesToday } from "@/lib/guestSilenceLog";
-import { resolveContemplationSideForSit } from "@/lib/contemplationSideDone";
+import { resolveContemplationSideForSit, attributeContemplationSit } from "@/lib/contemplationSideDone";
+import { getSideContemplation } from "@/lib/officePrefs";
 import { enqueueSession } from "@/lib/sessionOutbox";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
@@ -474,6 +475,27 @@ export function ContemplationTimer({
       // against silent-kind day-flags.
       contemplationSide: resolveContemplationSideForSit("silent") ?? undefined,
     };
+    /**
+     * Stamp the LOCAL per-side completion here, not in the caller.
+     *
+     * This timer has three mounts — /contemplation, the office's contemplative
+     * pause, and prayer-mode's — and only /contemplation attributed the sit, in
+     * its own onClose. So a ten-minute sit begun from inside Morning Prayer
+     * wrote no day-flag, played no completion moment and swept no reminder; the
+     * card only moved when /me/contemplation-sides-today happened to refetch,
+     * and never at all for a guest, whose copy of that query is disabled.
+     *
+     * Doing it where the sit is known to have completed means no caller has to
+     * remember. It's idempotent — a day-flag write — so /contemplation's own
+     * attributeSit() calling it again is harmless.
+     */
+    try {
+      attributeContemplationSit({
+        explicitSide: resolveContemplationSideForSit("silent"),
+        activeSides: { morning: getSideContemplation("morning"), evening: getSideContemplation("evening") },
+        kind: "silent",
+      });
+    } catch { /* non-fatal — the server row above still carries the side */ }
     apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", sessionBody)
       .then((data) => {
         if (data?.id) setRecordedSessionId(data.id);

@@ -3852,6 +3852,21 @@ export default function PrayerModePage() {
   // user lands on a fresh dashboard rather than stale cached data),
   // then routes home.
   const handleExit = () => {
+    /**
+     * On the prompts slide, X means FINISH — not abandon.
+     *
+     * goToClosing() is only reached after the last prayer, so by the time
+     * "anything else to lift up?" is on screen the walk is done. But every
+     * write lives at or after phase === "closing": the streak row, the
+     * prayer-list credit, the check-in backstop, the completed stamp. The X is
+     * rendered at the page root for all phases, so tapping it here instead of
+     * Continue silently threw the whole walk away — the reported bug, one tap
+     * earlier than where I first found it.
+     *
+     * Routing through the normal close is also the same EXIT for the reader:
+     * that path fades straight home. They just keep what they prayed.
+     */
+    if (phase === "prompts") { setPhase("closing"); return; }
     try {
       if (index > 0 && index < displaySlides.length) {
         localStorage.setItem(progressStorageKey, JSON.stringify({
