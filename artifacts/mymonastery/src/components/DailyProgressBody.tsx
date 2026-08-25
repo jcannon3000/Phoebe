@@ -290,7 +290,14 @@ export function WeeklyGridCard() {
   type Day = { ymd: string; morning: boolean; evening: boolean; morningExtra: boolean; eveningExtra: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
-    queryFn: () => apiRequest("GET", "/api/me/practice-week"),
+    // ?tz= is not decoration: the route uses it to compute which local days the
+    // week covers AND to backfill users.timezone. This call put tz in the KEY
+    // only and never on the URL, so the server fell back to whatever timezone
+    // was stored at signup — for a stale one, "today" rolls over at the wrong
+    // hour and completions land on the wrong day. Worse, widgetSync queries the
+    // same key WITH ?tz=, so whichever registered first decided whether the
+    // timezone was sent at all.
+    queryFn: () => apiRequest("GET", `/api/me/practice-week?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
   // Re-render when a custom practice is kept/edited so its weekly row updates live

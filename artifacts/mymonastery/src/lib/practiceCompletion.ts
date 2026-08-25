@@ -82,6 +82,18 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
   post().catch(() => {
     setTimeout(() => {
       post().catch((err) => {
+        /**
+         * A 401 is not a sync failure — it's a signed-out guest, who has no
+         * account to sync TO. The public no-login version is live, and its
+         * cards call this like any other; alarming someone that their prayer
+         * "failed to sync" when there was never anywhere to send it is both
+         * untrue and unactionable. The local flag has already credited them,
+         * which is the whole rhythm for a guest. Every sibling writer
+         * (cacReadState's session posts, the office log) swallows this case
+         * silently; only this one spoke up.
+         */
+        const msg = String((err as { message?: unknown } | null)?.message ?? "");
+        if (/\b401\b|Unauthorized|Not authenticated/i.test(msg)) return;
         console.error(`[practiceCompletion] sync failed for "${section}" after retry:`, err);
         // Visible, not just logged — nobody's going to open dev tools to
         // notice a cross-device sync silently failed. A toast (wired up by
@@ -118,6 +130,10 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
   del().catch(() => {
     setTimeout(() => {
       del().catch((err) => {
+        // Same as the mark path above: a signed-out guest has no server row to
+        // delete, so a 401 here is expected, not a failure to report.
+        const msg = String((err as { message?: unknown } | null)?.message ?? "");
+        if (/\b401\b|Unauthorized|Not authenticated/i.test(msg)) return;
         console.error(`[practiceCompletion] un-sync failed for "${section}" after retry:`, err);
         try {
           window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section } }));
