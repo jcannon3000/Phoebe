@@ -760,7 +760,14 @@ export function useRhythmState(): RhythmState {
     staleTime: 30_000,
     enabled: !guest,
   });
-  const othersActiveRequests = (communityRequestsData ?? []).filter(
+  // Array.isArray, not `?? []` — the nullish guard only covers undefined. When
+  // the API answers 500 (or an older server falls through to the SPA shell),
+  // apiRequest hands back a non-array body, .filter throws, and because this
+  // hook feeds the whole home screen the app lands in the error boundary:
+  // "Something interrupted us" instead of a rhythm. Same shape as the other
+  // list guards below, which read through an object property and so already
+  // land on undefined rather than on a string.
+  const othersActiveRequests = (Array.isArray(communityRequestsData) ? communityRequestsData : []).filter(
     (r) => !r.isAnswered && !r.needsRenewal && !r.isOwnRequest,
   );
   // VTS is practices-only — excluded from the prayer list everywhere else
