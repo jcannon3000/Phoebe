@@ -4,7 +4,7 @@ import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 import { getSideLevel } from "@/lib/officePrefs";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 import { markRecentCompletion } from "@/lib/recentCompletion";
-import { PRACTICE_SYNC_FAILED_EVENT } from "@/lib/practiceCompletion";
+import { enqueueSession } from "@/lib/sessionOutbox";
 
 // Manual "I prayed it" logging for the offices — for people praying Morning
 // or Evening Prayer straight from their physical Book of Common Prayer rather
@@ -193,15 +193,13 @@ export function markOfficeBookComplete(
     startedAt: now.toISOString(),
     endedAt: now.toISOString(),
   };
-  const post = () => apiRequest("POST", "/api/prayer-sessions", payload);
-  post().catch(() => {
-    setTimeout(() => {
-      post().catch((err) => {
-        console.error(`[officeManualLog] sync failed for "${surface}" after retry:`, err);
-        try {
-          window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section: surface } }));
-        } catch { /* non-fatal */ }
-      });
-    }, 3000);
+  // On failure this goes to the DURABLE OUTBOX rather than a timed retry.
+  // usePrayerSession already does exactly this for the office's own session
+  // row, and for the same reason its comment gives: this payload carries
+  // `completed`, which is the ONLY thing that credits office history — losing
+  // it loses the whole office. A one-shot retry dies with the tab; the outbox
+  // survives a kill and flushes on app-start, on reconnect, and on app-active.
+  void apiRequest("POST", "/api/prayer-sessions", payload).catch(() => {
+    enqueueSession(payload);
   });
 }
