@@ -202,6 +202,10 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
           .limit(1);
         if (existing) resolvedPlaceId = existing.id;
         else {
+          // onConflictDoNothing + re-select: two breaths arriving together
+          // would otherwise both see no row and both insert. The unique index
+          // on name (see migrate) makes the loser a no-op rather than a
+          // duplicate place with the counts split between them.
           const [created] = await db
             .insert(breathPlacesTable)
             .values({
@@ -213,8 +217,17 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
               centerEmoji: known.centerEmoji,
               photoUrls: known.photoUrls,
             })
+            .onConflictDoNothing({ target: breathPlacesTable.name })
             .returning({ id: breathPlacesTable.id });
-          resolvedPlaceId = created?.id ?? null;
+          if (created?.id) resolvedPlaceId = created.id;
+          else {
+            const [raced] = await db
+              .select({ id: breathPlacesTable.id })
+              .from(breathPlacesTable)
+              .where(eq(breathPlacesTable.name, known.name))
+              .limit(1);
+            resolvedPlaceId = raced?.id ?? null;
+          }
         }
       }
     }

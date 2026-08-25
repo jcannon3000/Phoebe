@@ -1811,6 +1811,24 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_places_active_idx ON breath_places (active, name)`);
+    // A place's NAME is its identity across client and server: the built-in
+    // list is matched by name, and POST /breath/today seeds a missing row by
+    // name. Without a unique constraint two concurrent breaths could both find
+    // nothing and both insert, splitting one place's counts across two rows.
+    // Deduplicate first (keep the lowest id, re-point any sessions) so the
+    // index can be created on an existing database.
+    await run(client, `
+      UPDATE breath_sessions bs SET place_id = keep.min_id
+      FROM (SELECT name, MIN(id) AS min_id FROM breath_places GROUP BY name) keep
+      JOIN breath_places dup ON dup.name = keep.name AND dup.id <> keep.min_id
+      WHERE bs.place_id = dup.id
+    `);
+    await run(client, `
+      DELETE FROM breath_places a
+      USING breath_places b
+      WHERE a.name = b.name AND a.id > b.id
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_places_name_uk ON breath_places (name)`);
     // A place's own backdrop photos — https URLs, since the app's bundled photo
     // libraries are glob'd at build time and can't serve a runtime-created place.
     await run(client, `ALTER TABLE breath_places ADD COLUMN IF NOT EXISTS photo_urls JSONB NOT NULL DEFAULT '[]'::jsonb`);
