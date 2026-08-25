@@ -196,8 +196,12 @@ export default function TurnLearnPrayPage() {
     markStarted();
   };
 
-  if (isLoading) return null;
-  if (!user) { setLocation("/"); return null; }
+  // A bare `return null` on a route-level gate is the documented blank-screen
+  // bug class: null is indistinguishable from a crashed app, and if the auth
+  // query ever hangs it's permanent rather than slow. Paint the app's ground
+  // instead, the same shape App.tsx's RouteFallback uses.
+  if (isLoading) return <div style={{ minHeight: "100vh", background: "#091A10" }} aria-hidden />;
+  if (!user) { setLocation("/"); return <div style={{ minHeight: "100vh", background: "#091A10" }} aria-hidden />; }
 
   return (
     // Page backdrop delegated to Layout's own bgPhoto/bgOpacity — this page
