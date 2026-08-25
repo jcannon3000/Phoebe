@@ -28,7 +28,7 @@ import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, WEEKDAYS, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
@@ -260,6 +260,15 @@ type RulePreset = {
    *  normal office, so a preset must never reach for it by that name. */
   contemplationStyle?: "silent" | "cobreathe";
   reflections: ReflectionSource[];
+  /** Names for sides whose `pray` is "ownPractice" (e.g. VTS's "Chapel"). */
+  customNames?: Partial<Record<OfficeSide, string>>;
+  /**
+   * Standing practices of the rule's own that aren't one of the named ones —
+   * written as CUSTOM ANCHORS, the app's existing shape for "a practice only
+   * you keep": its own card, its own dot, kept with a tap. `days` scopes it to
+   * weekdays (see customAnchors.anchorOnDay).
+   */
+  customAnchors?: Array<{ title: string; emoji: string; slot: CustomSlot; days?: number[] }>;
 };
 // Ordered by ascending commitment (least → most time), so a beginner reads down
 // from the gentlest rule. Each maps to real schools of prayer: the catechumen's
@@ -300,6 +309,32 @@ const RULE_PRESETS: RulePreset[] = [
     silence: true, goalMin: 0, contemplationStyle: "cobreathe", reflections: ["vts"],
     title: "VTS Cultivate", blurb: "Virginia Theological Seminary's rhythm — breathing with creation at both ends of the day, and the Dean's word between them.",
     rows: [{ emoji: "🌅", label: "Creation Prayer in the morning" }, { emoji: "🌆", label: "Creation Prayer in the evening" }, { emoji: "🦩", label: "The VTS Dean's Commentary" }] },
+  // VTS — the seminary's own day (owner). Chapel opens it, Creation Prayer
+  // closes it, the Dean's word and a ten-minute sit sit between, and the
+  // community meal is kept on the days the community actually eats together.
+  //
+  // The evening side is the BREATH (silence + silenceSide "evening" +
+  // contemplationStyle "cobreathe"), while goalMin 10 raises the separate
+  // all-day contemplation card — useRhythmState's silenceGoalCardActive
+  // explicitly allows that pairing (`creationPerSide && contemplationGoalMin >
+  // 0`), and that card opens the SILENT timer, so the ten minutes are a real
+  // sit rather than breaths. This is why goalMin is safe here where VTS
+  // Cultivate had to leave it at 0: that rule had no second contemplative
+  // anchor to hold the minutes.
+  { id: "vts", emoji: "🦩", sides: { morning: true, evening: true },
+    pray: "ownPractice", evening: "none",
+    customNames: { morning: "Chapel" },
+    silence: true, silenceSide: "evening", contemplationStyle: "cobreathe", goalMin: 10,
+    reflections: ["vts"],
+    customAnchors: [{ title: "Community Meal", emoji: "🍽️", slot: "midday", days: WEEKDAYS }],
+    title: "VTS", blurb: "The seminary's day — Chapel in the morning, the Dean's word, ten minutes of silence, and Creation Prayer at its close.",
+    rows: [
+      { emoji: "⛪", label: "Chapel in the morning" },
+      { emoji: "🦩", label: "The VTS Dean's Commentary" },
+      { emoji: "🕯️", label: "10 minutes of contemplative prayer" },
+      { emoji: "🌍", label: "Creation Prayer in the evening" },
+      { emoji: "🍽️", label: "Community Meal, weekdays" },
+    ] },
 ];
 
 // ── The TIME LADDER — the automatic transmission's dial (owner, 2026-07-03).
@@ -1777,6 +1812,26 @@ export default function WayOfLoveRuleFlow({
     });
     setNewsletters(preset.reflections);
     setExtras({ examen: false, listening: false, reading: false, podcasts: false, prayerList: false });
+    // A side whose practice is the person's own needs its NAME, or the rule
+    // adopts an anchor called "Morning Practice".
+    if (preset.customNames) {
+      setCustomNameBySide((prev) => ({
+        morning: preset.customNames?.morning ?? prev.morning,
+        evening: preset.customNames?.evening ?? prev.evening,
+      }));
+    }
+    // The rule's own standing practices. Idempotent by title so re-adopting
+    // (or adopting after having made the same practice by hand) doesn't stack
+    // duplicates.
+    if (preset.customAnchors?.length) {
+      const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
+      for (const c of preset.customAnchors) {
+        const key = c.title.trim().toLowerCase();
+        if (existing.has(key)) continue;
+        addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days);
+        existing.add(key);
+      }
+    }
     try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* ignore */ }
     setAdoptId(preset.id);
   };
@@ -2876,10 +2931,16 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {/* Simple Guided Prayer leads the list (owner). On EVENING the row
               functions as the Examen — subtitle, label, and selected-level all
-              follow the Examen (labeled "Simple Prayerful Reflection" rather
-              than "Simple Guided Prayer", since PACT itself is a morning shape)
-              — matching the same morning-PACT/evening-Examen pairing already
-              shipped in the light /customize picker. */}
+              follow the Examen — matching the same morning-PACT/evening-Examen
+              pairing already shipped in the light /customize picker.
+
+              Owner: call it THE EXAMEN, here and on the card. It was labelled
+              "Simple Prayerful Reflection" to sit alongside "Simple Guided
+              Prayer", but that named the row after its morning twin's shape
+              rather than after the practice, so the thing you chose and the
+              card you got called themselves different names. The card has
+              always read "The Examen" (explicitLevelTitle); this is the side
+              that was wrong. */}
           {(() => {
             const isEveningExamen = side === "evening";
             const selected = isEveningExamen ? prayBySide[side] === "examen" : prayBySide[side] === "guidedPrayer";
@@ -2887,7 +2948,7 @@ export default function WayOfLoveRuleFlow({
               ? t("wol_rule.pray_examen_sub", { defaultValue: "Review the day with God." })
               : t("wol_rule.pray_guided_prayer_sub", { defaultValue: "Three Minutes to Start Your Day" });
             const label = isEveningExamen
-              ? t("wol_rule.pray_prayerful_reflection_label", { defaultValue: "Simple Prayerful Reflection" })
+              ? t("rhythm.card_examen", { defaultValue: "The Examen" })
               : t("wol_rule.pray_guided_prayer_label", { defaultValue: "Simple Guided Prayer" });
             return choiceRow(
               selected,

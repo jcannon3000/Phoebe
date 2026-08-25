@@ -130,7 +130,26 @@ export type CustomAnchor = {
   slot: CustomSlot;
   // Present only for reading rituals; absent for plain check-off practices.
   reading?: ReadingConfig;
+  /**
+   * Which weekdays this practice is kept on, as JS day numbers (0 = Sunday …
+   * 6 = Saturday). ABSENT means every day — the shape every anchor had before
+   * this existed, so nothing already saved changes meaning.
+   *
+   * For practices that genuinely aren't daily: a community meal on weekdays, a
+   * Saturday walk. On an off day the card doesn't appear and the weekly grid
+   * shows no gap to feel bad about, rather than a dot you could never fill.
+   */
+  days?: number[];
 };
+
+/** Mon–Fri, the common case (a weekday practice). */
+export const WEEKDAYS = [1, 2, 3, 4, 5];
+
+/** Is this anchor kept on `date`'s weekday? No `days` = every day. */
+export function anchorOnDay(a: { days?: number[] }, date: Date = new Date()): boolean {
+  if (!a.days || a.days.length === 0) return true;
+  return a.days.includes(date.getDay());
+}
 
 /** Singular/plural label for a reading unit ("3 chapters", "1 page", "20 min"). */
 export function readingUnitLabel(unit: ReadingUnit, n: number): string {
@@ -177,12 +196,19 @@ export function getCustomAnchors(): CustomAnchor[] {
           r && READING_UNITS.includes(r.unit as ReadingUnit)
             ? { unit: r.unit as ReadingUnit, goal: typeof r.goal === "number" && r.goal > 0 ? r.goal : undefined }
             : undefined;
+        // Day numbers only, deduped and sorted; anything else is dropped so a
+        // malformed value can't hide a practice forever.
+        const rawDays = (a as { days?: unknown }).days;
+        const days = Array.isArray(rawDays)
+          ? [...new Set(rawDays.filter((d): d is number => typeof d === "number" && d >= 0 && d <= 6))].sort()
+          : undefined;
         return {
           id: a.id,
           title: a.title,
           emoji: a.emoji,
           slot: CUSTOM_SLOTS.includes(a.slot as CustomSlot) ? (a.slot as CustomSlot) : "afternoon",
           ...(reading ? { reading } : {}),
+          ...(days && days.length > 0 && days.length < 7 ? { days } : {}),
         };
       });
   } catch {
@@ -199,6 +225,8 @@ export function addCustomAnchor(
   emoji: string,
   slot: CustomSlot = "afternoon",
   reading?: ReadingConfig,
+  /** Weekdays this is kept on (0–6). Omit for every day. */
+  days?: number[],
 ): void {
   const t = title.trim();
   if (!t) return;
@@ -216,6 +244,9 @@ export function addCustomAnchor(
     emoji: (emoji.trim() || (clean ? "📖" : "✅")).slice(0, 8),
     slot,
     ...(clean ? { reading: clean } : {}),
+    ...(days && days.length > 0 && days.length < 7
+      ? { days: [...new Set(days.filter((d) => d >= 0 && d <= 6))].sort() }
+      : {}),
   });
   saveDefs(list);
 }

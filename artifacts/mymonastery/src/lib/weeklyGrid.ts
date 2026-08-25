@@ -7,7 +7,7 @@
 // that was written in two places instead of one — extracted here so there's
 // only one place left to get it right.
 import { getSideLevel } from "@/lib/officePrefs";
-import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
+import { getCustomAnchors, getCustomDoneDays, anchorOnDay } from "@/lib/customAnchors";
 import type { RhythmState } from "@/hooks/useRhythmState";
 
 // Carries every field GET /api/me/practice-week actually returns (see
@@ -91,8 +91,15 @@ export function computeWeeklyGrid(params: {
   const morningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("morning") ?? "");
   const eveningIsScripture = SCRIPTURE_LEVELS.has(getSideLevel("evening") ?? "");
   const learnedOn = (d: PracticeWeekDay) => d.reflection || (morningIsScripture && d.morning) || (eveningIsScripture && d.evening);
-  const customAnchorIds = getCustomAnchors().map((a) => a.id);
-  const prayedOnCustom = (ymd: string) => customAnchorIds.some((id) => getCustomDoneDays(id).has(ymd));
+  // Weekday-scoped anchors only count toward a day they're actually kept on —
+  // otherwise a weekdays-only practice would be asked for on Saturday and leave
+  // a dot that could never fill.
+  const customAnchorsForGrid = getCustomAnchors();
+  const customAnchorIds = customAnchorsForGrid.map((a) => a.id);
+  const prayedOnCustom = (ymd: string) => {
+    const d = new Date(`${ymd}T12:00:00`);
+    return customAnchorsForGrid.some((a) => anchorOnDay(a, d) && getCustomDoneDays(a.id).has(ymd));
+  };
   const prayedOn = (d: PracticeWeekDay) =>
     d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe
     // A day kept ONLY as a side's second practice is still a day you prayed.
