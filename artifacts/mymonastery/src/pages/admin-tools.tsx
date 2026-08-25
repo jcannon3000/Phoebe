@@ -192,6 +192,18 @@ export default function AdminToolsPage() {
                   description="Design a rule of life anyone can join via link"
                   onClick={() => setLocation("/prescribe")}
                 />
+                {/* The routine interview — describe a practice in your own
+                    words and Phoebe programs it. Its entry row inside the
+                    customizer is switched off for everyone
+                    (ROUTINE_INTERVIEW_ENTRY_HIDDEN in WayOfLoveRuleFlow), so
+                    without a door here the page was only reachable by typing
+                    the URL. Owner: put it in the admin tools. */}
+                <LinkRow
+                  emoji="💬"
+                  label="Routine interview"
+                  description="Describe a practice in words; Phoebe builds the routine to match"
+                  onClick={() => setLocation("/routine-interview")}
+                />
                 {/* "Phoebe Parish" row removed — the parish system was deleted
                     (094181c0) and /admin/parishes 404s. Its capabilities live on
                     the community now (directory listing, standing intercessions,
