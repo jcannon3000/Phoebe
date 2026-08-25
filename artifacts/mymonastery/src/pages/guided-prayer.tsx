@@ -318,10 +318,13 @@ export default function GuidedPrayerPage() {
               style={{ maxWidth: 480, textAlign: "center" }}
             >
               <p style={{ color: EYEBROW, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 16 }}>
-                {t("guided_prayer.eyebrow")}
+                {isExamen ? t("guided_prayer.examen_eyebrow", { defaultValue: "Review the day with God" }) : t("guided_prayer.eyebrow")}
               </p>
               <h1 style={{ color: WARM, fontFamily: FONT, fontWeight: 700, fontSize: "clamp(22px, 5.6vw, 32px)", lineHeight: 1.2, letterSpacing: "-0.01em", marginBottom: 16 }}>
-                {t("guided_prayer.title")}
+                {/* This page serves BOTH shapes. Titling it from the page
+                    rather than from the practice meant someone who chose the
+                    Examen opened a screen headed "Simple Guided Prayer". */}
+                {isExamen ? t("rhythm.card_examen", { defaultValue: "The Examen" }) : t("guided_prayer.title")}
               </h1>
               <p style={{ color: "rgba(240,237,230,0.86)", margin: 0, fontFamily: FONT, fontSize: "clamp(15.5px, 4.2vw, 18px)", lineHeight: 1.55 }}>
                 {t("guided_prayer.intro_body")}
