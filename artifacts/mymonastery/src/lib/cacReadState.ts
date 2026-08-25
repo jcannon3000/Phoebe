@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { getSideLevel, getSideReflectionExplicit } from "@/lib/officePrefs";
 import { markRecentCompletion } from "@/lib/recentCompletion";
+import { undoOfficeToday } from "@/lib/officeManualLog";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
 
 // Does this side's rhythm actually prescribe `level`? Psalms and PACT credit a
@@ -236,10 +237,24 @@ const customPrayerTrackerEvening = makeDailyReadTracker("phoebe:custom-prayer:ev
 const customPrayerTrackerFor = (side: "morning" | "evening") => (side === "evening" ? customPrayerTrackerEvening : customPrayerTrackerMorning);
 export function hasPrayedCustomToday(side: "morning" | "evening" = "morning"): boolean { return customPrayerTrackerFor(side).hasReadToday(); }
 export function markCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).markRead(); clearReminderIfAnchor(side, "custom"); }
-// Tapping an already-done "Create your own" card should un-mark it (a real
-// toggle), not silently re-stamp the same day — see the home-card wiring in
-// dashboard.tsx / DailyProgressBody.tsx.
-export function unmarkCustomPrayed(side: "morning" | "evening" = "morning"): void { customPrayerTrackerFor(side).unmarkRead(); }
+/**
+ * Un-mark a "Create your own" side practice.
+ *
+ * Clearing the local stamp is not enough. markCustomPrayed ALSO posts a
+ * prayer_session (syncCustomPrayerSession above), and a side's done-state is
+ * the local flag OR the server's office history for today — so dropping only
+ * the local half left the server still saying "kept", the card snapped
+ * straight back to done, and the practice could not be un-logged at all.
+ *
+ * So it takes the same route every other level's undo takes: undoOfficeToday
+ * writes a per-side TOMBSTONE that masks the server signal for the rest of the
+ * day. (Custom levels get no `onUnlog` ✓-affordance precisely because tapping
+ * the card is meant to be the toggle — which made this the ONLY way back.)
+ */
+export function unmarkCustomPrayed(side: "morning" | "evening" = "morning"): void {
+  customPrayerTrackerFor(side).unmarkRead();
+  undoOfficeToday(side);
+}
 
 // Forward Day by Day USED AS a side's prayer — the office slot, not the
 // reflection card. Same shape as Psalms / Simple Guided Prayer above and for the
