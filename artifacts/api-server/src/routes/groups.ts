@@ -4346,7 +4346,11 @@ router.get("/groups/:slug/rule", async (req, res): Promise<void> => {
   if (!row) { res.json({ rule: null, isAdmin: isAdminRole(result.member.role) }); return; }
   res.json({
     // `token` powers the printable QR invite sign (/sign/:token) for admins.
-    rule: { label: row.label, spec: row.spec, adoptCount: row.acceptCount, token: row.token },
+    // `id` lets a client tell one rule from the next: the home's rule prompt
+    // is "offered once per (group, rule)", so a community REPLACING its rule
+    // (which mints a new prescribed_routines row) is offered afresh rather
+    // than silently suppressed by the old one's stamp.
+    rule: { id: ruleId, label: row.label, spec: row.spec, adoptCount: row.acceptCount, token: row.token },
     isAdmin: isAdminRole(result.member.role),
   });
 });

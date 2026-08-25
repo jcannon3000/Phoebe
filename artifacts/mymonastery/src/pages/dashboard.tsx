@@ -20,6 +20,7 @@ import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgress
 import { HomeLearnSection } from "@/components/HomeLearnSection";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { WayOfLoveTurnLearnPray } from "@/components/WayOfLoveTurnLearnPray";
+import { GroupRulePrompt } from "@/components/GroupRulePrompt";
 import { apiRequest } from "@/lib/queryClient";
 import { useActivePrayerIntentions } from "@/hooks/usePrayerIntentions";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -7242,6 +7243,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   return (
     <Layout bgPhoto={homeBgPhoto} blueShade={homeTheme === "water"}>
+      {/* Offers a community's rule of life to someone who joined by any route
+          OTHER than the invite link (the directory, an accepted request, an
+          admin adding them) — or whose community adopted a rule after they
+          joined. Self-hiding: renders nothing unless there's an unoffered
+          rule. */}
+      <GroupRulePrompt />
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {
