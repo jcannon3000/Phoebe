@@ -86,6 +86,17 @@ function tidyDate(d: string): string {
   return d.replace(/(\d)\s*-\s*(\d)/g, "$1\u2013$2");
 }
 
+/**
+ * "Lippi, Filippino, -1504" → "Lippi, Filippino, d. 1504".
+ *
+ * ACT records an unknown birth year as a bare leading dash, which renders as
+ * a dangling minus sign under the painting — it reads like a typo rather than
+ * like "died 1504". Ranges that HAVE both years are left to tidyDate.
+ */
+function tidyArtist(a: string): string {
+  return tidyDate(a.replace(/(^|[,\s])-\s*(\d{3,4})/g, "$1d. $2"));
+}
+
 /** How long we'll wait on today's readings before praying without them. */
 const READINGS_CAP_MS = 1500;
 
@@ -323,7 +334,11 @@ export default function VisioPage() {
   const onTapNavigate = (e: React.MouseEvent) => {
     if (!gestureNav) return;
     // A tap that lands on a control belongs to the control.
-    if ((e.target as HTMLElement | null)?.closest("button, a, input, textarea, select, label")) return;
+    // `[role="button"]` too, not just <button>: the closing slide's cards are
+    // role="button" divs. That slide is exempt from paging today, so this
+    // changes nothing now — it removes the trap for whoever enables gestures
+    // on a slide with card surfaces later and finds every tap doing two things.
+    if ((e.target as HTMLElement | null)?.closest('button, a, input, textarea, select, label, [role="button"]')) return;
     if (e.clientX < window.innerWidth / 2) prev(); else next();
   };
 
@@ -497,7 +512,7 @@ export default function VisioPage() {
             </h1>
             <div>
               {view.artist && (
-                <p style={{ color: "rgba(200,212,192,0.75)", fontFamily: FONT, fontSize: 15, margin: 0, lineHeight: 1.5 }}>{view.artist}</p>
+                <p style={{ color: "rgba(200,212,192,0.75)", fontFamily: FONT, fontSize: 15, margin: 0, lineHeight: 1.5 }}>{tidyArtist(view.artist)}</p>
               )}
               {view.scriptureRef && (
                 <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13.5, margin: "5px 0 0", lineHeight: 1.5 }}>
@@ -513,7 +528,7 @@ export default function VisioPage() {
           <div style={{ textAlign: "center" }}>
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
             {view.artist && (
-              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{view.artist}</p>
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{tidyArtist(view.artist)}</p>
             )}
             {view.scriptureRef && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>
