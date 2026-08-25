@@ -10,10 +10,12 @@ import {
   getSideLevel, setSideLevel, setSideEntry,
   getSideContemplation, setSideContemplation, setSideMinutes,
   getReflectionSource, setReflectionSource, setSideReflection,
-  setPsalmCycle, OFFICE_PREFS_EVENT,
+  setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT,
   type ReflectionSource,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
+import { RULE_PRESETS, type RulePreset } from "@/lib/rulePresets";
+import { addCustomAnchor, getCustomAnchors } from "@/lib/customAnchors";
 import { pushRoutineConfig } from "@/lib/routineSync";
 import { clearSpuriousGuestHomeLayout, readCachedHomeLayout, saveHomeLayout, cacheHomeLayoutLocalOnly, HOME_LAYOUT_VERSION, type HomeLayout } from "@/lib/homeLayoutCache";
 
@@ -187,6 +189,74 @@ export default function CustomizePage() {
     if (user) pushRoutineConfig();
   };
 
+  /**
+   * Adopt a named starter rule from THIS editor.
+   *
+   * Owner: presets should be available in the light customizer too. It can't
+   * hand off to the full builder's preset picker — that needs an account, and
+   * this page exists precisely for sessions that don't have one — so it writes
+   * the rule straight to the same device-local prefs every other control here
+   * writes. The RULE ITSELF is shared (lib/rulePresets), so a preset can't
+   * mean one thing in this editor and another in the full one.
+   */
+  const applyPreset = (preset: RulePreset) => {
+    // PrayChoice → the office LEVEL this page's prefs speak in.
+    const levelFor = (c: RulePreset["pray"]): string =>
+      c === "offices" ? "office"
+      : c === "guidedPrayer" ? "guided-prayer"
+      : c === "ownPractice" ? "custom"
+      : c === "none" || c === "contemplation" || c === "community" ? "ask"
+      : c; // devotion / psalms / readings / fdd / examen / compline map straight through
+
+    const eveningChoice = preset.evening ?? preset.pray;
+    setSideLevel("morning", levelFor(preset.pray) as Parameters<typeof setSideLevel>[1]);
+    setSideLevel("evening", levelFor(eveningChoice) as Parameters<typeof setSideLevel>[1]);
+    setSideEntry("morning", preset.pray === "offices" ? "venite" : "read");
+    setSideEntry("evening", eveningChoice === "offices" ? "venite" : "read");
+    if (preset.pray === "psalms" || eveningChoice === "psalms") setPsalmCycle("office");
+
+    // A side named by the rule ("Chapel") — without this an ownPractice side
+    // adopts an anchor called "Morning Practice".
+    if (preset.customNames?.morning) setSideCustomName("morning", preset.customNames.morning);
+    if (preset.customNames?.evening) setSideCustomName("evening", preset.customNames.evening);
+
+    // The contemplative practice, on whichever sides the rule turns on. Same
+    // rule adoptRule uses: silenceSide pins it to ONE side when set.
+    const contemplationOn = {
+      morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
+      evening: preset.silence && preset.sides.evening && preset.silenceSide !== "morning",
+    };
+    setSideContemplation("morning", contemplationOn.morning);
+    setSideContemplation("evening", contemplationOn.evening);
+    try { localStorage.setItem("phoebe:contemplation-style", preset.contemplationStyle ?? "silent"); } catch { /* ignore */ }
+
+    // The daily contemplative-minutes goal. Not split across sides here: a
+    // rule's goalMin is already the DAY's total (that split only belongs to
+    // this page's own Contemplative Prayer pick, which sets no goal of its
+    // own), and splitting a rule's would halve what it promised.
+    writeSilenceGoal(preset.silence ? preset.goalMin : 0);
+
+    const refl = preset.reflections[0] ?? "none";
+    setNewsletter(refl);
+    setReflectionSource(refl);
+    setSideReflection("morning", refl);
+    setSideReflection("evening", refl);
+
+    // The rule's own standing practices, idempotent by title.
+    if (preset.customAnchors?.length) {
+      const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
+      for (const c of preset.customAnchors) {
+        if (existing.has(c.title.trim().toLowerCase())) continue;
+        addCustomAnchor(c.title, c.emoji, c.slot, undefined, c.days);
+        existing.add(c.title.trim().toLowerCase());
+      }
+    }
+
+    setDailyPrayer(currentDailyPrayer());
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+    if (user) pushRoutineConfig();
+  };
+
   const applyNewsletter = (id: ReflectionSource) => {
     setNewsletter(id);
     setReflectionSource(id);
@@ -297,6 +367,38 @@ export default function CustomizePage() {
         <p style={{ fontSize: 15, lineHeight: 1.6, fontFamily: FONT, color: "rgba(200,212,192,0.85)", margin: "0 0 24px", textAlign: "center", maxWidth: 420 }}>
           A few quick choices — adjustable anytime, right here.
         </p>
+
+        {/* Start from a whole rule, rather than assembling one row at a time
+            (owner). Same named rules the full builder offers, from the same
+            list — applied straight to this device's prefs, since the full
+            preset picker is behind an account and this editor exists for
+            sessions that don't have one. Collapsed by default: the three
+            dropdowns stay the page's centre of gravity. */}
+        <details style={{ width: "100%", maxWidth: 420, marginBottom: 16 }}>
+          <summary style={{ cursor: "pointer", listStyle: "none", color: SAGE, fontFamily: FONT, fontSize: 14, padding: "12px 14px", borderRadius: 12, background: "rgba(9,26,16,0.42)", border: "1px solid rgba(200,212,192,0.18)", textAlign: "center" }}>
+            Start from a preset rhythm
+          </summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {RULE_PRESETS.filter((p) => p.title).map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => {
+                  if (!window.confirm(`Adopt "${preset.title}"? This replaces your current rhythm.`)) return;
+                  applyPreset(preset);
+                }}
+                style={{ textAlign: "left", cursor: "pointer", borderRadius: 12, padding: "12px 14px", background: "rgba(9,26,16,0.42)", border: "1px solid rgba(200,212,192,0.18)", color: WARM, fontFamily: FONT }}
+              >
+                <span style={{ display: "block", fontSize: 15, fontWeight: 700 }}>
+                  <span aria-hidden>{preset.emoji}</span> {preset.title}
+                </span>
+                {preset.blurb && (
+                  <span style={{ display: "block", fontSize: 12.5, color: SOFT_GREEN, marginTop: 3, lineHeight: 1.4 }}>{preset.blurb}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </details>
 
         <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 10 }}>
           {ownPracticeLocked
