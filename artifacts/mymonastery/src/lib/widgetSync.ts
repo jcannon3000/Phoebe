@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { getSideLevel, getSideCustomName, getSideReflectionExplicit } from "@/lib/officePrefs";
+import { getSideLevel, getSideCustomName, getSideReflectionExplicit, extraPracticeTitle } from "@/lib/officePrefs";
 import { getPracticeSlot, SLOT_RANK, isSlotPast, type CustomSlot } from "@/lib/customAnchors";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { computeWeeklyGrid, type PracticeWeekDay } from "@/lib/weeklyGrid";
@@ -153,6 +153,9 @@ export function useWidgetSync(): void {
 
     // Office title, matching DailyProgressBody.officeTitle (Psalms / Devotion /
     // Prayer / Pray together, per the side's level + the effective prayer kind).
+    // The widget's strings are plain English (they cross into Swift, not i18n),
+    // so shared title helpers get a t() that just resolves their defaultValue.
+    const tPass = (_k: string, o?: Record<string, unknown>): string => String(o?.["defaultValue"] ?? "");
     const officeTitle = (side: "Morning" | "Evening"): string => {
       const lvl = getSideLevel(side.toLowerCase() as "morning" | "evening");
       if (lvl === "psalms") return `${side} Psalms`;
@@ -208,6 +211,14 @@ export function useWidgetSync(): void {
     // the base order below is preserved.
     const items: NextItem[] = [
       { active: r.morningActive && !r.novenaReplacesMorning, done: r.morningDone, slot: "morning", title: officeTitle("Morning"), eyebrow: officeEyebrow("Morning"), subtitle: officeSubtitle(true), cta: "Begin prayer", kind: "office", isPrimary: true },
+      /**
+       * A side's SECOND practice. It has a card on the home and a dot in the
+       * pill, so leaving it out here made the widget count fewer anchors than
+       * the home showed — and meant "next" could never be the practice you
+       * were actually next to pray. Not isPrimary: within the slot the anchor
+       * still leads.
+       */
+      { active: !!r.morningExtraLevel, done: r.morningExtraDone, slot: "morning", title: r.morningExtraLevel ? extraPracticeTitle("Morning", r.morningExtraLevel, tPass) : "", eyebrow: "Also this morning", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
       // A novena in "replace" mode takes over its slot's item entirely — same
       // gate as the rawCards/dotDefs replace-mode entries — so it's primary too.
       { active: !!(r.novenaReplacesMorning && r.novenaActive), done: r.novenaDone, slot: "morning", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
@@ -251,6 +262,7 @@ export function useWidgetSync(): void {
       { active: !!(r.novenaActive && !r.novenaReplacesMorning && !r.novenaReplacesEvening), done: r.novenaDone, slot: "anytime", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office" },
       { active: r.eveningContemplationActive, done: r.eveningContemplationDone, slot: "evening", title: "Evening Contemplation", eyebrow: "Contemplative Prayer", subtitle: "Loving God in silence", cta: "Begin", kind: "office" },
       { active: r.eveningActive && !r.novenaReplacesEvening, done: r.eveningDone, slot: "evening", title: officeTitle("Evening"), eyebrow: officeEyebrow("Evening"), subtitle: officeSubtitle(false), cta: "Begin prayer", kind: "office", isPrimary: true },
+      { active: !!r.eveningExtraLevel, done: r.eveningExtraDone, slot: "evening", title: r.eveningExtraLevel ? extraPracticeTitle("Evening", r.eveningExtraLevel, tPass) : "", eyebrow: "Also this evening", subtitle: "Alongside your main practice", cta: "Begin", kind: "office" },
       { active: !!(r.novenaReplacesEvening && r.novenaActive), done: r.novenaDone, slot: "evening", title: r.novena?.title ?? "Novena", eyebrow: "Novena", subtitle: r.novena ? `Day ${r.novena.currentDay} of ${r.novena.dayCount}` : "", cta: "Begin", kind: "office", isPrimary: true },
       ...r.customAnchors.filter((a) => !a.skipped).map((a) => ({
         active: true, done: !!a.done, slot: a.slot,
