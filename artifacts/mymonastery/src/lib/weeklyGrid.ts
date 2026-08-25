@@ -14,6 +14,9 @@ import type { RhythmState } from "@/hooks/useRhythmState";
 // api-server/src/routes/users.ts).
 export type PracticeWeekDay = {
   ymd: string; morning: boolean; evening: boolean; compline: boolean;
+  // A side's SECOND practice, reported separately because the anchor's own
+  // flag deliberately excludes it (see countsForAnchor in the route).
+  morningExtra?: boolean; eveningExtra?: boolean;
   contemplation: boolean; reflection: boolean; examen: boolean; cobreathe: boolean;
   listening: boolean; reading: boolean; podcasts: boolean; walk: boolean; prayerList: boolean;
   // Not folded into `reflection` (which is deliberately fdd/ssje/cac only)
@@ -91,6 +94,11 @@ export function computeWeeklyGrid(params: {
   const prayedOnCustom = (ymd: string) => customAnchorIds.some((id) => getCustomDoneDays(id).has(ymd));
   const prayedOn = (d: PracticeWeekDay) =>
     d.morning || d.evening || d.compline || d.contemplation || d.examen || d.cobreathe
+    // A day kept ONLY as a side's second practice is still a day you prayed.
+    // The anchor's flag excludes it on purpose, so without these a person who
+    // prayed their additional practice and nothing else read as having prayed
+    // nothing at all.
+    || !!d.morningExtra || !!d.eveningExtra
     || d.listening || d.reading || d.podcasts || d.walk || d.prayerList
     || prayedOnCustom(d.ymd);
 
@@ -100,11 +108,13 @@ export function computeWeeklyGrid(params: {
   const learned = learnFromReflection || learnFromMorning || learnFromEvening;
   const prayed = rhythm.doneCount > 0;
 
-  const morningPracticeOn = (d: PracticeWeekDay) => d.morning;
-  const eveningPracticeOn = (d: PracticeWeekDay) => d.evening;
+  // The Morning/Evening rows mean "did you keep this side" — either practice
+  // on that side counts, same as the day-level predicate above.
+  const morningPracticeOn = (d: PracticeWeekDay) => d.morning || !!d.morningExtra;
+  const eveningPracticeOn = (d: PracticeWeekDay) => d.evening || !!d.eveningExtra;
   const contemplativePracticeOn = (d: PracticeWeekDay) => d.contemplation || d.cobreathe;
-  const morningPractice = rhythm.morningDone;
-  const eveningPractice = rhythm.eveningDone;
+  const morningPractice = rhythm.morningDone || rhythm.morningExtraDone;
+  const eveningPractice = rhythm.eveningDone || rhythm.eveningExtraDone;
   /**
    * Silence is kept when the DAY'S RULE is met, not when any sit happened.
    *
