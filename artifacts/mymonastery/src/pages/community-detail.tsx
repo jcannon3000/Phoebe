@@ -143,8 +143,25 @@ function CommunityEventsSection({ slug }: { slug: string }) {
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
     staleTime: 60_000,
   });
+  /**
+   * The SERVICE SCHEDULE belongs here too.
+   *
+   * Reported: "services are not showing." They were — behind the Services
+   * tile — but this section read only /gatherings, which is one-off gatherings.
+   * For a parish the standing Sunday schedule IS the calendar, so a church with
+   * two Sunday services and no gatherings saw "Nothing on the calendar yet"
+   * next to a Services tab listing both. Same endpoint the Services tab uses,
+   * so the two can't disagree.
+   */
+  const { data: schedData, isLoading: schedLoading } = useQuery<{ schedule: ServiceScheduleRecord | null }>({
+    queryKey: ["/api/groups", slug, "service-schedule"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
+    staleTime: 60_000,
+  });
+  const schedule = schedData?.schedule ?? null;
   const events = data?.gatherings ?? [];
-  if (isLoading) return null;
+  if (isLoading || schedLoading) return null;
+  const dayName = dowNames(t).find((d) => d.value === schedule?.dayOfWeek)?.label ?? "";
   const whenLabel = (iso?: string | null) => {
     if (!iso) return t("community_detail.event_no_date", { defaultValue: "No date set" });
     try {
@@ -156,7 +173,27 @@ function CommunityEventsSection({ slug }: { slug: string }) {
       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(143,175,150,0.6)", fontFamily: FONT, margin: 0 }}>
         {t("community_detail.events_heading", { defaultValue: "📅 Events" })}
       </p>
-      {events.length === 0 && (
+      {schedule && (schedule.times?.length ?? 0) > 0 && (
+        <div style={{ background: "rgba(9,26,16,0.297)", border: "1px solid rgba(46,107,64,0.38)", borderRadius: 16, padding: "14px 16px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <span style={{ flex: 1, minWidth: 0, color: "#F0EDE6", fontFamily: FONT, fontSize: 16, fontWeight: 700 }}>
+              {schedule.name}
+            </span>
+            <span style={{ flexShrink: 0, color: "rgba(168,197,160,0.9)", fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>
+              {dayName}
+            </span>
+          </div>
+          {schedule.times.map((tm, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, marginTop: 6 }}>
+              <span style={{ color: "#F0EDE6", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, minWidth: 78 }}>{tm.time}</span>
+              <span style={{ color: "rgba(143,175,150,0.8)", fontFamily: FONT, fontSize: 13.5 }}>
+                {tm.label}{tm.location || schedule.location ? ` · ${tm.location || schedule.location}` : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {events.length === 0 && !schedule && (
         <p style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, fontSize: 13.5, lineHeight: 1.5, margin: 0, padding: "10px 2px" }}>
           {t("community_detail.events_empty", { defaultValue: "Nothing on the calendar yet." })}
         </p>
