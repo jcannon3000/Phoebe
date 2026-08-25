@@ -1016,6 +1016,38 @@ export default function WayOfLoveRuleFlow({
     touchedRef.current = true;
     setContemplationBySide((p) => ({ ...p, [side]: !p[side] }));
   };
+  // WHICH contemplative practice a side keeps. "Contemplative Practice" is a
+  // family, not one thing — so, exactly like the Book of Common Prayer row and
+  // its "which liturgy?" dropdown, choosing it asks which one on the config
+  // slide (owner). null = this side isn't a contemplative practice at all.
+  //
+  // Kept as its own state rather than derived: picking Walk or Audio Divina
+  // turns OFF the per-side silent-sit flag (one contemplative practice per
+  // side), and deriving the dropdown's visibility from that flag would make
+  // the dropdown vanish the moment you used it.
+  const CONTEMPLATIVE_FORMS = ["prayer", "creation", "walk", "audio", "examen", "compline"] as const;
+  type ContemplativeForm = (typeof CONTEMPLATIVE_FORMS)[number];
+  // Compline IS the night office and the Examen is a review of the day behind
+  // you — neither belongs in a morning list (owner). Same rule the BCP
+  // dropdown already applies to Compline.
+  const formsForSide = (s: OfficeSide): readonly ContemplativeForm[] =>
+    s === "morning" ? CONTEMPLATIVE_FORMS.filter((f) => f !== "compline" && f !== "examen") : CONTEMPLATIVE_FORMS;
+  const [contemplativeForm, setContemplativeForm] = useState<Record<OfficeSide, ContemplativeForm | null>>(() => {
+    // Only the two per-side forms survive a reload — walk/audio/examen/compline
+    // are standing all-day practices with no per-side storage, so a side set to
+    // one of those re-opens showing Contemplative Prayer. Honest default: it's
+    // the first entry, and their standing practice is still on either way.
+    const seed = (s: OfficeSide): ContemplativeForm | null => {
+      const on = getSideContemplationExplicit(s) ?? (getSideLevel(s) === "reflect-sit");
+      if (!on) return null;
+      let style = "silent";
+      try { style = localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { /* ignore */ }
+      return style === "cobreathe" ? "creation" : "prayer";
+    };
+    return { morning: seed("morning"), evening: seed("evening") };
+  });
+  /** Is this side set to a contemplative practice at all? */
+  const contemplativeOnSide = (s: OfficeSide) => contemplativeForm[s] !== null;
   // Contemplative-Prayer silence sizing: a FIXED daily amount (the dropdown), or
   // the guided "grow my silence" ladder — start at 5 min, +5 every kept week up
   // to 30. Seeded from the saved ladder state (re-seeded in the hydration effect
@@ -1654,9 +1686,18 @@ export default function WayOfLoveRuleFlow({
     chooseContemplationStyle(preset.contemplationStyle ?? "silent");
     setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, compline: false });
     // A starter rule's silence applies to whichever sides it turns on.
-    setContemplationBySide({
+    const presetContemplation = {
       morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
       evening: preset.silence && preset.sides.evening && preset.silenceSide !== "morning",
+    };
+    setContemplationBySide(presetContemplation);
+    // Keep the "which contemplative practice" pick in step with the preset —
+    // otherwise a stale form from before adopting it would leave the config
+    // slide's dropdown disagreeing with what the preset actually turned on.
+    const presetForm: ContemplativeForm | null = preset.contemplationStyle === "cobreathe" ? "creation" : "prayer";
+    setContemplativeForm({
+      morning: presetContemplation.morning ? presetForm : null,
+      evening: presetContemplation.evening ? presetForm : null,
     });
     // Starter rules carry a fixed minutes goal — adopt the fixed sizing, not the ladder.
     setSilenceMode("fixed");
@@ -2776,18 +2817,29 @@ export default function WayOfLoveRuleFlow({
               two sits) and this side's length to 10 — the "two sessions split
               the goal" default; both are adjustable on the next slides. */}
           {choiceRow(
-            contemplationBySide[side] && contemplationStyle === "silent",
+            // Selected whenever this side keeps ANY contemplative practice —
+            // not just the silent sit. Keying on the silent-sit flag meant
+            // picking Walk from the dropdown un-selected the row that led you
+            // there.
+            contemplativeOnSide(side),
             `🕯️ ${t("wol_rule.cp_contemplation", { defaultValue: "Contemplative Practice" })}`,
             t("wol_rule.cp_contemplation_sub", { defaultValue: "Silence, or another contemplative practice like a walk." }),
             () => {
-              const on = contemplationBySide[side] && contemplationStyle === "silent";
               // Reported: "I can't unclick contemplative." Turning it off is
-              // the only way to say "no silent sit on this side", and without
-              // it the row was a one-way door.
-              if (on) { touchedRef.current = true; toggleContemplationSide(side); return; }
+              // the only way to say "no contemplative practice on this side",
+              // and without it the row was a one-way door.
+              if (contemplativeOnSide(side)) {
+                touchedRef.current = true;
+                setContemplativeForm((p) => ({ ...p, [side]: null }));
+                if (contemplationBySide[side]) toggleContemplationSide(side);
+                return;
+              }
               touchedRef.current = true;
               if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               choosePrayBySide(side, "none");
+              // Defaults to Contemplative Prayer — the first entry in the
+              // dropdown on the next slide, where they can change it.
+              setContemplativeForm((p) => ({ ...p, [side]: "prayer" }));
               if (!contemplationBySide[side]) toggleContemplationSide(side);
               chooseContemplationStyle("silent");
               chooseSideMinutes(side, 10);
@@ -3057,6 +3109,70 @@ export default function WayOfLoveRuleFlow({
                       ))}
                     </select>
                     <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+                  </>
+                );
+              })()}
+            </div>
+          </>
+        )}
+        {/* WHICH contemplative practice — the same shape as the BCP row's
+            "which liturgy?" dropdown above (owner: "just like if they chose
+            book of common prayer, they should first be a drop down of which
+            practice"). Contemplative Prayer leads; Compline and the Examen
+            are evening-only. */}
+        {contemplativeOnSide(side) && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.contemplative_form_label", { defaultValue: "Which practice?" })}
+            </p>
+            <div style={{ position: "relative", marginBottom: 22 }}>
+              {(() => {
+                const forms = formsForSide(side);
+                const formLabel = (f: ContemplativeForm): string =>
+                  f === "prayer" ? t("wol_rule.cf_prayer", { defaultValue: "Contemplative Prayer" })
+                  : f === "creation" ? t("wol_rule.cf_creation", { defaultValue: "Creation Prayer" })
+                  : f === "walk" ? t("wol_rule.cf_walk", { defaultValue: "Contemplative Walk" })
+                  : f === "audio" ? t("wol_rule.cf_audio", { defaultValue: "Audio Divina" })
+                  : f === "examen" ? t("wol_rule.cf_examen", { defaultValue: "The Examen" })
+                  : t("wol_rule.cf_compline", { defaultValue: "Compline" });
+                const formEmoji = (f: ContemplativeForm): string =>
+                  f === "prayer" ? "\uD83D\uDD6F\uFE0F" : f === "creation" ? "\uD83C\uDF0D" : f === "walk" ? "\uD83D\uDEB6"
+                  : f === "audio" ? "\uD83C\uDFB5" : f === "examen" ? "\uD83C\uDF17" : "\uD83C\uDF19";
+                const current = contemplativeForm[side] ?? forms[0]!;
+                // One contemplative practice per side: the two per-side forms
+                // (the silent sit / Creation Prayer breath) ride
+                // contemplationBySide + the style flag; the rest are standing
+                // all-day practices, so choosing one turns the per-side sit
+                // OFF and that practice ON.
+                const choose = (f: ContemplativeForm) => {
+                  touchedRef.current = true;
+                  setContemplativeForm((p) => ({ ...p, [side]: f }));
+                  const perSide = f === "prayer" || f === "creation";
+                  if (perSide) {
+                    if (!contemplationBySide[side]) toggleContemplationSide(side);
+                    chooseContemplationStyle(f === "creation" ? "cobreathe" : "silent");
+                    if (f === "prayer") {
+                      chooseSideMinutes(side, 10);
+                      if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
+                    }
+                  } else {
+                    if (contemplationBySide[side]) toggleContemplationSide(side);
+                    setContemplative((c) => ({ ...c, [f]: true }));
+                  }
+                };
+                return (
+                  <>
+                    <select
+                      value={current}
+                      onChange={(e) => choose(e.target.value as ContemplativeForm)}
+                      aria-label={t("wol_rule.contemplative_form_label", { defaultValue: "Which practice?" })}
+                      style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                    >
+                      {forms.map((f) => (
+                        <option key={f} value={f}>{formEmoji(f)} {formLabel(f)}</option>
+                      ))}
+                    </select>
+                    <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>\u25BE</span>
                   </>
                 );
               })()}
