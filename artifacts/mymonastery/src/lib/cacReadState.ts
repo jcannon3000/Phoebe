@@ -489,7 +489,23 @@ export const VTS_TODAY_URL = "https://withphoebe.app/api/vts/today";
 export const VTS_READ_EVENT = vtsTracker.eventName;
 export function getVtsReadDay(): string | null { return vtsTracker.getLastReadDay(); }
 export function hasReadVtsToday(): boolean { return vtsTracker.hasReadToday(); }
-export function markVtsRead(): void { vtsTracker.markRead(); creditAnchorsFor("vts"); }
+/**
+ * Mark today's Dean's Commentary read.
+ *
+ * NO-OP ON A WEEKEND. VTS publishes weekdays only, and /api/vts/today keeps
+ * serving Friday's post through Saturday and Sunday — so reading it on a
+ * weekend is re-reading Friday's piece, not a new day's. Stamping the weekend
+ * as its own "day read" counted one commentary twice, which is how the streak
+ * slide could report more days read than the publication had actually
+ * published (11 read against 10 possible publishing days). The streak itself
+ * already walks publishing days only; this keeps the underlying rows honest
+ * too, rather than fixing it at the display layer.
+ */
+export function markVtsRead(): void {
+  if (!isVtsPublishingDay()) return;
+  vtsTracker.markRead();
+  creditAnchorsFor("vts");
+}
 // VTS only publishes Dean's Commentary on weekdays — Saturday/Sunday there's
 // nothing new (the server just keeps serving Friday's post). Rather than
 // show a stale "today's reading" that isn't actually today's, the card and
