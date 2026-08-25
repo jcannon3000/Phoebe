@@ -33,9 +33,9 @@
  * A hallucinated practice name doesn't corrupt a routine; it gets dropped.
  */
 import { Router, type IRouter } from "express";
-import { sanitizeSpec, applyRoutineSpecToUser, captureRoutineSpec, HOME_MODULE_KEYS } from "../lib/routineSpec";
+import { sanitizeSpec, applyRoutineSpecToUser, captureRoutineSpec, readCustomAnchorDefs, HOME_MODULE_KEYS } from "../lib/routineSpec";
 import { perUserRateLimit } from "../lib/rate-limit";
-import { describeSpec, SLOT_LABEL, type SpecRow, type SpecSection } from "../lib/routineDescribe";
+import { describeSpec, SLOT_LABEL, type SpecRow, type SpecSection, type CustomAnchorDef } from "../lib/routineDescribe";
 import { saveRoutineSnapshot } from "./routine-snapshots";
 
 const router: IRouter = Router();
@@ -1149,7 +1149,9 @@ router.get("/routine-interview/current", async (req, res): Promise<void> => {
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const spec = await captureRoutineSpec(userId);
-    res.json({ settings: spec ? describeSpec(spec) : [] });
+    // Standing practices ride their own column, not the spec — see describeSpec.
+    const defs = await readCustomAnchorDefs(userId) as CustomAnchorDef[];
+    res.json({ settings: spec ? describeSpec(spec, defs) : [] });
   } catch (err) {
     console.error("[routine-interview] current failed:", err);
     // An empty list just means "no routine to adjust" \u2014 the client falls back

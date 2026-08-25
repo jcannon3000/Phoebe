@@ -128,18 +128,31 @@ export type SpecRow = {
   section: SpecSection;
 };
 
+/** A person's own standing practices (users.custom_anchors → defs). */
+export type CustomAnchorDef = { id?: unknown; title?: unknown; emoji?: unknown; slot?: unknown; days?: unknown };
+
 export function describeSpec(spec: {
   officePrefs: { morning: string; evening: string; morningTime: string | null; eveningTime: string | null; contemplationGoalMinutes: number };
   homeLayout: { order: string[]; hidden: string[] };
   ruleConfig: Record<string, string>;
-}): SpecRow[] {
+}, customAnchors?: CustomAnchorDef[]): SpecRow[] {
   const rc = spec.ruleConfig;
   const rows: SpecRow[] = [];
 
   for (const side of ["morning", "evening"] as const) {
     const cap = side === "morning" ? "Morning" : "Evening";
     const level = rc[`phoebe:office:level:${side}`];
-    if (!level || level === "ask") continue; // a side with nothing set gets no row
+    // NOT `continue` when a side has no office level.
+    //
+    // Reported against the VTS rule, whose evening is Creation Prayer and
+    // nothing else: Edit showed no evening row AND no contemplation row, so
+    // the two practices that rule is built around were missing from the one
+    // screen that lists your rule. A side's contemplative practice and its
+    // second practice are stored independently of its office level — a side
+    // can keep either with no office at all — but both were described inside
+    // this guard, so an office-less side reported as nothing whatsoever.
+    // Only the ANCHOR row depends on the level now.
+    const hasAnchor = !!level && level !== "ask";
 
     // Owner: "have it show the card for the practice and the medium on the
     // second line. But then as a separate UI ... have it ask if they would like
@@ -150,16 +163,26 @@ export function describeSpec(spec: {
     // made a setting they hadn't chosen look like something they'd told us, and
     // left no way to change it without rejecting the whole read-back. It gets
     // its own control on the slide instead.
-    const entry = rc[`phoebe:office:entry:${side}`];
-    const medium = entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")
-      ? ENTRY_LABEL[entry] : "";
-    rows.push({
-      id: `side:${side}`,
-      emoji: side === "morning" ? "🌅" : "🌙",
-      label: LEVEL_LABEL[level] ? `${cap} ${LEVEL_LABEL[level]}` : `${cap} Prayer`,
-      sub: medium || (side === "morning" ? "Each morning" : "Each evening"),
-      section: side,
-    });
+    if (hasAnchor) {
+      const entry = rc[`phoebe:office:entry:${side}`];
+      const medium = entry && ENTRY_LABEL[entry] && (level === "office" || level === "devotion")
+        ? ENTRY_LABEL[entry] : "";
+      // A side set to "Create your own" HAS a name — the customizer asks for
+      // it, presets carry it (VTS's morning is Chapel), and the home card and
+      // every dot use it. Only this list didn't, so the rule you built read
+      // back as the generic "Morning Practice" and looked like it had lost
+      // the name you gave it.
+      const ownName = level === "custom" ? (rc[`phoebe:office:custom-name:${side}`] ?? "").trim() : "";
+      rows.push({
+        id: `side:${side}`,
+        emoji: side === "morning" ? "🌅" : "🌙",
+        label: ownName || (LEVEL_LABEL[level!] ? `${cap} ${LEVEL_LABEL[level!]}` : `${cap} Prayer`),
+        sub: ownName
+          ? (side === "morning" ? "Each morning" : "Each evening")
+          : (medium || (side === "morning" ? "Each morning" : "Each evening")),
+        section: side,
+      });
+    }
 
     if (rc[`phoebe:office:contemplation:${side}`] === "1") {
       const mins = rc[`phoebe:office:minutes:${side}`];
@@ -174,7 +197,11 @@ export function describeSpec(spec: {
        */
       const isBreath = rc["phoebe:contemplation-style"] === "cobreathe";
       rows.push({
-        id: "contemplation",
+        // Per-SIDE id. Both sides used the bare "contemplation", so a rule
+        // that keeps a sit morning and evening rendered two list rows sharing
+        // one React key — and deleting one could take the other's place with
+        // it. It also let the ✕ only ever mean "clear both sides".
+        id: `contemplation:${side}`,
         emoji: isBreath ? "🌍" : "🕯️",
         label: isBreath ? `${cap} Creation Prayer` : `${cap} Contemplation`,
         sub: isBreath
@@ -256,7 +283,48 @@ export function describeSpec(spec: {
     const sub = ALWAYS_ANYTIME.has(key) ? SLOT_LABEL["anytime"]! : SLOT_LABEL[v];
     rows.push({ id: `slot:${key}`, emoji: PRACTICE_EMOJI[key] ?? "✨", label: name, sub, section });
   }
+
+  /**
+   * The person's OWN standing practices — VTS's Community Meal, and anything
+   * built with "Create your own".
+   *
+   * Reported: a rule with a weekday Community Meal listed it nowhere in Edit.
+   * These live in users.custom_anchors, a column captureRoutineSpec never
+   * reads, so every rule that had one described itself as missing a practice
+   * the home was showing a card for. Passed in separately rather than folded
+   * into the spec: the spec is also the PRESCRIBED-routine wire format, and
+   * putting anchors in it would quietly change what a shared rule installs.
+   */
+  for (const a of customAnchors ?? []) {
+    const title = typeof a?.title === "string" ? a.title.trim() : "";
+    if (!title) continue;
+    const slot = typeof a?.slot === "string" && SLOT_LABEL[a.slot] ? a.slot : "anytime";
+    const days = Array.isArray(a?.days)
+      ? (a.days as unknown[]).filter((d): d is number => typeof d === "number" && d >= 0 && d <= 6)
+      : [];
+    // A weekday-only practice that reads back as plain "at midday" describes a
+    // rule the app does not keep — the days are half of what was chosen.
+    const when = days.length > 0 && days.length < 7
+      ? `${SLOT_LABEL[slot]} · ${describeDays(days)}`
+      : SLOT_LABEL[slot]!;
+    rows.push({
+      id: `custom:${typeof a?.id === "string" ? a.id : title.toLowerCase()}`,
+      emoji: typeof a?.emoji === "string" && a.emoji ? a.emoji : "✨",
+      label: title,
+      sub: when,
+      section: "practices",
+    });
+  }
   return rows;
+}
+
+/** "weekdays" / "weekends" / "Mon, Wed, Fri" — mirrors the client's helper. */
+function describeDays(days: number[]): string {
+  const set = [...new Set(days)].sort();
+  if (set.length === 5 && set.every((d) => d >= 1 && d <= 5)) return "weekdays";
+  if (set.length === 2 && set.includes(0) && set.includes(6)) return "weekends";
+  const NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return set.map((d) => NAMES[d]).join(", ");
 }
 
 /** Home-layout keys the model asked for that aren't real cards. */

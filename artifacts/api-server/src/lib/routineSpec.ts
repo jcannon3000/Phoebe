@@ -155,6 +155,21 @@ export async function applyRoutineSpecToUser(userId: number, spec: PrescribedRou
  * Returns null for a user with no usable routine (no layout) rather than
  * storing an empty snapshot that would wipe a rhythm if it were ever restored.
  */
+/**
+ * A person's own standing practices (users.custom_anchors → defs).
+ *
+ * Deliberately NOT part of PrescribedRoutineSpec: that type is the wire
+ * format a shared/prescribed rule installs, and adding anchors to it would
+ * change what adopting someone else's rule does to your own practices. This
+ * is read alongside it, for DESCRIBING a rule (see describeSpec).
+ */
+export async function readCustomAnchorDefs(userId: number): Promise<Array<Record<string, unknown>>> {
+  const [row] = await db.select({ customAnchors: usersTable.customAnchors })
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const defs = (row?.customAnchors as { defs?: unknown } | null)?.defs;
+  return Array.isArray(defs) ? (defs as Array<Record<string, unknown>>) : [];
+}
+
 export async function captureRoutineSpec(userId: number): Promise<PrescribedRoutineSpec | null> {
   const [u] = await db
     .select({

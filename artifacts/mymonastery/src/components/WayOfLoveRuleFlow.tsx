@@ -2245,7 +2245,7 @@ export default function WayOfLoveRuleFlow({
     if (id === "extra:evening") return "evening-extra";
     if (id === "side:morning") return "morning-way";
     if (id === "side:evening") return "evening-way";
-    if (id === "contemplation") return "contemplation-goal";
+    if (id === "contemplation" || id.startsWith("contemplation:")) return "contemplation-goal";
     if (id.startsWith("slot:")) return "contemplative";
     if (id.startsWith("card:")) return "learn";
     if (id.startsWith("custom:")) return "custom";
@@ -2265,6 +2265,11 @@ export default function WayOfLoveRuleFlow({
       const side: OfficeSide = id === "side:morning" ? "morning" : "evening";
       choosePrayBySide(side, "none");
       setContemplationBySide((p) => ({ ...p, [side]: false }));
+    } else if (id.startsWith("contemplation:")) {
+      // One SIDE's contemplative practice — not the whole day's silence.
+      const side: OfficeSide = id.endsWith(":morning") ? "morning" : "evening";
+      setContemplationBySide((p) => ({ ...p, [side]: false }));
+      setContemplativeForm((p) => ({ ...p, [side]: null }));
     } else if (id === "contemplation") {
       setContemplationBySide({ morning: false, evening: false });
       chooseGoal("0");
@@ -2283,6 +2288,12 @@ export default function WayOfLoveRuleFlow({
       try { localStorage.removeItem(`phoebe:slot:${key}`); } catch { /* private mode */ }
     } else if (id.startsWith("card:")) {
       setNewsletters((prev) => prev.filter((n) => n !== id.slice("card:".length)));
+    } else if (id.startsWith("custom:")) {
+      // One of their OWN standing practices. Now that these are listed here
+      // (they weren't before), the ✕ has to actually take it off — dropping
+      // the row alone would put it back on the next visit, since the list is
+      // re-read from the server each time.
+      removeCustomAnchor(id.slice("custom:".length));
     }
     setEditRows((prev) => prev.filter((r) => r.id !== id));
     setDeletingEditRow(null);
