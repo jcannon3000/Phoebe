@@ -379,8 +379,77 @@ function writeDoneHist(id: string, days: string[]): void {
   try { localStorage.setItem(DONE_HIST_PREFIX + id, JSON.stringify(Array.from(new Set(days)).sort().slice(-21))); }
   catch { /* non-fatal */ }
 }
-function addDoneDay(id: string, ymd: string): void { writeDoneHist(id, [...readDoneHist(id), ymd]); }
-function removeDoneDay(id: string, ymd: string): void { writeDoneHist(id, readDoneHist(id).filter((d) => d !== ymd)); }
+function addDoneDay(id: string, ymd: string): void {
+  writeDoneHist(id, [...readDoneHist(id), ymd]);
+  pushCustomDone(id, ymd, true);
+}
+function removeDoneDay(id: string, ymd: string): void {
+  writeDoneHist(id, readDoneHist(id).filter((d) => d !== ymd));
+  pushCustomDone(id, ymd, false);
+}
+
+// ── Server mirror ────────────────────────────────────────────────────────────
+//
+// Keeping a custom practice used to live ONLY on the device. The anchor
+// DEFINITIONS synced (users.custom_anchors), but the days you kept them never
+// left the phone — so clearing a cache, or signing in somewhere else, silently
+// lost that history, and nothing server-side could see it (the widget payload,
+// for one, is built from these).
+//
+// They ride practice_completion now, as `custom:<id>`, alongside every other
+// practice. Local storage stays the source of truth for RENDERING — it's
+// synchronous and works offline — and this is a best-effort mirror on top:
+// every write is fire-and-forget, and a failed one just leaves the day local
+// until the next sync-down reconciles.
+const customSection = (id: string) => `custom:${id}`;
+/** Sunday that begins this local day's week — the shape the table wants. */
+function weekStartOf(ymd: string): string {
+  const d = new Date(`${ymd}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return ymd;
+  d.setDate(d.getDate() - d.getDay());
+  return d.toLocaleDateString("en-CA");
+}
+function pushCustomDone(id: string, ymd: string, done: boolean): void {
+  // The server's own id rule (CUSTOM_SECTION in routes/practice-completion).
+  // A locally-generated id should always pass; skip rather than send a 400.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return;
+  const body = done
+    ? { section: customSection(id), localDate: ymd, weekStart: weekStartOf(ymd) }
+    : { section: customSection(id), localDate: ymd };
+  void apiRequest(done ? "POST" : "DELETE", "/api/practice-completion", body)
+    .catch(() => { /* best effort — the day is already kept locally */ });
+}
+
+/**
+ * Merge the account's custom-practice history down into this device.
+ *
+ * UNION, never replace: a day kept on this device that hasn't reached the
+ * server yet (offline, or a push that failed) must survive the sync rather
+ * than being erased by a server list that doesn't know about it. An unmark
+ * propagates through pushCustomDone's DELETE, not through absence here.
+ */
+export async function syncCustomDoneFromServer(): Promise<void> {
+  try {
+    const since = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 28);
+      return d.toLocaleDateString("en-CA");
+    })();
+    const res = await apiRequest<{ completions?: Array<{ section: string; localDate: string }> }>(
+      "GET", `/api/practice-completion?since=${encodeURIComponent(since)}`,
+    );
+    const byId = new Map<string, string[]>();
+    for (const c of res?.completions ?? []) {
+      if (!c?.section?.startsWith("custom:")) continue;
+      const id = c.section.slice("custom:".length);
+      if (!id || !c.localDate) continue;
+      byId.set(id, [...(byId.get(id) ?? []), c.localDate]);
+    }
+    if (byId.size === 0) return;
+    for (const [id, days] of byId) writeDoneHist(id, [...readDoneHist(id), ...days]);
+    window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+  } catch { /* best effort */ }
+}
 
 /** The set of recent local days this custom practice was kept — including today
  *  if it's currently marked done. Powers the weekly progress grid's custom rows. */
@@ -469,10 +538,16 @@ export function logReadingToday(id: string, amount: number): void {
       localStorage.setItem(READ_TODAY_PREFIX + id, `${todayISO()}|${amt}`);
       localStorage.setItem(DONE_PREFIX + id, todayISO());
       localStorage.removeItem(SKIP_PREFIX + id);
+      // …and into the weekly HISTORY. Without this a reading ritual read as
+      // kept today (getCustomDoneDays adds today from DONE_PREFIX) and then
+      // disappeared from the grid tomorrow, because the day was never
+      // recorded. It's also what carries the day to the server now.
+      addDoneDay(id, todayISO());
     } else {
       // Logging zero clears today's check entirely.
       localStorage.removeItem(READ_TODAY_PREFIX + id);
       localStorage.removeItem(DONE_PREFIX + id);
+      removeDoneDay(id, todayISO());
     }
     localStorage.setItem(READ_TOTAL_PREFIX + id, String(nextTotal));
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));

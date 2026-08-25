@@ -35,7 +35,7 @@ import { WidgetSync } from "@/lib/widgetSync";
 import { OfficeOfflinePrefetch } from "@/lib/officePrefetch";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
-import { syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
+import { syncCustomDoneFromServer, syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
 import { syncRoutineFromServer, pushRoutineConfig, type RoutineConfig } from "@/lib/routineSync";
 import { flushHomeLayout } from "@/lib/homeLayoutCache";
 import { OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
@@ -134,6 +134,11 @@ function CustomAnchorServerSync() {
     if (lastSyncedRef.current === key) return;
     lastSyncedRef.current = key;
     syncCustomAnchorsFromServer(snap as unknown as CustomAnchorSnapshot | null);
+    // …and the DAYS those practices were kept. The definitions have always
+    // synced; the completions were device-local only, so a cleared cache or a
+    // second device lost the history silently. Best-effort and additive — a
+    // day kept here that hasn't reached the server yet survives the merge.
+    void syncCustomDoneFromServer();
     // Routine settings (office levels, slots, etc.) — same migrate-up-or-adopt
     // sync, so the rhythm matches phone ↔ web (lib/routineSync). Pass the user id
     // so a user SWITCH (logout→login / guest→account) adopts this account's saved

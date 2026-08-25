@@ -23,6 +23,24 @@ const router: IRouter = Router();
 // from the Customize flow — completing one earns an extra Daily-progress
 // checkmark (see lib/practiceCompletion.ts on the client + useRhythmState).
 const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "examen", "listening", "reading", "podcasts", "walk", "prayer-list"]);
+/**
+ * A user's OWN practice, as `custom:<anchorId>`.
+ *
+ * Custom-anchor completions were device-local only — the anchor DEFINITIONS
+ * synced (users.custom_anchors) but the days you kept them never left the
+ * phone, so clearing a cache or moving to a new device silently lost them, and
+ * nothing server-side could see them. They ride this table now, alongside every
+ * other practice, rather than earning a table of their own: the shape is
+ * identical (one row per user per practice per local day) and the unique index
+ * already makes a repeat tap idempotent.
+ *
+ * The id half is opaque to the server — it's the client's own anchor id — so
+ * it's bounded and character-restricted rather than enumerated.
+ */
+const CUSTOM_SECTION = /^custom:[A-Za-z0-9_-]{1,64}$/;
+function isValidSection(s: string): boolean {
+  return SECTIONS.has(s) || CUSTOM_SECTION.test(s);
+}
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function uid(req: Request): number | null {
@@ -60,7 +78,7 @@ router.post("/practice-completion", async (req: Request, res: Response): Promise
   const section = String(req.body?.section ?? "");
   const localDate = String(req.body?.localDate ?? "");
   const weekStart = String(req.body?.weekStart ?? "");
-  if (!SECTIONS.has(section) || !YMD.test(localDate) || !YMD.test(weekStart)) {
+  if (!isValidSection(section) || !YMD.test(localDate) || !YMD.test(weekStart)) {
     res.status(400).json({ error: "bad_request" });
     return;
   }
@@ -81,7 +99,7 @@ router.delete("/practice-completion", async (req: Request, res: Response): Promi
 
   const section = String(req.body?.section ?? "");
   const localDate = String(req.body?.localDate ?? "");
-  if (!SECTIONS.has(section) || !YMD.test(localDate)) {
+  if (!isValidSection(section) || !YMD.test(localDate)) {
     res.status(400).json({ error: "bad_request" });
     return;
   }
