@@ -213,19 +213,38 @@ type ExtraPractice = {
   excludes: string;
   side?: OfficeSide;
   maps: ExtraMapping;
+  /**
+   * Which top-level row this sits under.
+   *
+   * Owner: the additional-practice slide "should first give the top level
+   * options, that lead to the detail pages, as if it was doing the full
+   * anchor, not just a list of all the other options." So the same shape the
+   * anchor uses — a short list of kinds, then the particular one — instead of
+   * twelve rows that mix "Morning Office" with "Audio Divina".
+   */
+  group: ExtraGroupId;
 };
+type ExtraGroupId = "office" | "guided" | "examen" | "contemplative" | "newsletter";
+/** The top level, in the anchor step's own order. */
+const EXTRA_GROUPS: Array<{ id: ExtraGroupId; emoji: string; title: string; sub: string }> = [
+  { id: "office", emoji: "📖", title: "From the prayer book", sub: "The office, a devotion, the psalms or the readings." },
+  { id: "guided", emoji: "🙌", title: "Simple Guided Prayer", sub: "Three minutes to start your day." },
+  { id: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God." },
+  { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, or Creation Prayer." },
+  { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, or VTS." },
+];
 const EXTRA_PRACTICES: ExtraPractice[] = [
-  { title: (c) => `${c} Office`, emoji: "📖", sub: "The full Daily Office.", excludes: "office", maps: { kind: "level", level: "office" } },
-  { title: (c) => `${c} Devotion`, emoji: "📖", sub: "A short devotion.", excludes: "devotion", maps: { kind: "level", level: "devotion" } },
-  { title: (c) => `${c} Psalms`, emoji: "📜", sub: "The day's appointed psalms.", excludes: "psalms", maps: { kind: "level", level: "psalms" } },
-  { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings", maps: { kind: "level", level: "readings" } },
-  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Three minutes to start your day.", excludes: "guided-prayer", side: "morning", maps: { kind: "level", level: "guided-prayer" } },
-  { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen", maps: { kind: "practice", key: "examen" } },
+  { title: (c) => `${c} Office`, emoji: "📖", sub: "The full Daily Office.", excludes: "office", maps: { kind: "level", level: "office" } , group: "office" },
+  { title: (c) => `${c} Devotion`, emoji: "📖", sub: "A short devotion.", excludes: "devotion", maps: { kind: "level", level: "devotion" } , group: "office" },
+  { title: (c) => `${c} Psalms`, emoji: "📜", sub: "The day's appointed psalms.", excludes: "psalms", maps: { kind: "level", level: "psalms" } , group: "office" },
+  { title: (c) => `${c} Scripture Reading`, emoji: "📰", sub: "The day's appointed readings.", excludes: "readings", maps: { kind: "level", level: "readings" } , group: "office" },
+  { title: () => "Simple Guided Prayer", emoji: "🙌", sub: "Three minutes to start your day.", excludes: "guided-prayer", side: "morning", maps: { kind: "level", level: "guided-prayer" } , group: "guided" },
+  { title: () => "The Examen", emoji: "🌗", sub: "Review the day with God.", excludes: "examen", maps: { kind: "practice", key: "examen" } , group: "examen" },
   // Not excluded by any anchor level: which newsletter is chosen on the next
   // slide, so the row can't clash with the anchor until that's known (the
   // sub-picker drops Forward when Forward IS the anchor).
-  { title: () => "Reflection Newsletter", emoji: "📖", sub: "Forward, SSJE, CAC, or VTS.", excludes: "__none__", maps: { kind: "newsletter" } },
-  { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening", maps: { kind: "practice", key: "compline" } },
+  { title: () => "Reflection Newsletter", emoji: "📖", sub: "Forward, SSJE, CAC, or VTS.", excludes: "__none__", maps: { kind: "newsletter" } , group: "newsletter" },
+  { title: () => "Compline", emoji: "🌙", sub: "The night office.", excludes: "compline", side: "evening", maps: { kind: "practice", key: "compline" } , group: "office" },
   // Owner: "the contemplative one should have a description that reflects
   // that it could be a practice like Contemplative Walk and not just
   // silence." Sitting in stillness is still the mechanism this row turns on
@@ -233,10 +252,10 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // as if silence were the only legitimate form of contemplative prayer
   // when "Contemplative Walk" is right there as a sibling option in this
   // same menu.
-  { title: () => "Contemplative Practice", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
-  { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } },
-  { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } },
-  { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } },
+  { title: () => "Contemplative Practice", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } , group: "contemplative" },
+  { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } , group: "contemplative" },
+  { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } , group: "contemplative" },
+  { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
 /** The extra chosen for a side, as its catalogue entry. */
@@ -282,6 +301,9 @@ type Step =
   // The "add an additional practice" slide — the same picker as the side's
   // first slide, minus whatever is already its anchor.
   | "morning-extra" | "evening-extra"
+  // …the WHICH-ONE slide, when the kind they picked has more than one (the
+  // prayer-book row, the contemplative row) — the anchor's own two-level shape.
+  | "morning-extra-pick" | "evening-extra-pick"
   // …and its own details slide, when the practice they picked has details.
   | "morning-extra-config" | "evening-extra-config"
   | "contemplative" | "contemplation-goal"
@@ -745,6 +767,9 @@ export default function WayOfLoveRuleFlow({
   // The name of a side's own "Create your own" practice — only meaningful
   // once that side picks "ownPractice"; seeded from the saved per-side name
   // so re-opening Customize shows what was typed before.
+  /** Which top-level kind the extra picker is showing, per side. */
+  const [extraGroupBySide, setExtraGroupBySide] = useState<Record<OfficeSide, ExtraGroupId | null>>({ morning: null, evening: null });
+
   /** Saturday / Sunday alternatives per side (officePrefs day rules). */
   const [weekendBySide, setWeekendBySide] = useState<WeekendBySide>(() => ({
     morning: readWeekend("morning", prayFromLevel),
@@ -1951,7 +1976,35 @@ export default function WayOfLoveRuleFlow({
     if (entry.maps.level === "office" || entry.maps.level === "devotion") return "medium";
     return null;
   };
+  /**
+   * The practices this side could still add — everything the anchor doesn't
+   * already occupy. Lifted out of the render because the step list needs it
+   * too (to know whether a kind has more than one option worth a slide).
+   */
+  const extraOptionsFor = (side: OfficeSide): ExtraPractice[] => {
+    const anchorLevel =
+      prayBySide[side] === "offices" ? PRAY_LEVEL[BCP_FORM_TO_PRAY[bcpForm[side]] ?? "offices"]
+        : PRAY_LEVEL[prayBySide[side]];
+    // MUST mirror officePrefs.anchorModesFor's own fallback — see the note there.
+    const anchorMode = levelOfficeMode(side, anchorLevel) ?? side;
+    return EXTRA_PRACTICES
+      .filter((e) => !e.side || e.side === side)
+      .filter((e) => e.excludes !== anchorLevel)
+      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);
+  };
+
   const extraNeedsConfig = (side: OfficeSide): boolean => extraConfigKindFor(side) !== null;
+  /**
+   * Does the chosen KIND still need a which-one slide?
+   *
+   * Only when its group holds more than one practice this side can actually
+   * take — "Simple Guided Prayer" is a group of one, so asking which one would
+   * be a slide with a single row on it.
+   */
+  const extraGroupNeedsPick = (side: OfficeSide): boolean => {
+    const g = extraGroupBySide[side];
+    return !!g && extraOptionsFor(side).filter((e) => e.group === g).length > 1;
+  };
 
   /** Is the silent sit part of this rhythm? Drives whether the Silence page
    *  (minutes + log method) is asked at all — see buildSteps. */
@@ -1990,9 +2043,9 @@ export default function WayOfLoveRuleFlow({
     : [
     "intro",
     "morning-way",
-    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
+    ...(sidesArg.morning ? ([...(prayBySide.morning === "ownPractice" ? ["morning-custom"] : []), "morning-config", ...(extraWantedBySide.morning ? ["morning-extra"] : []), ...(extraGroupNeedsPick("morning") ? ["morning-extra-pick"] : []), ...(extraNeedsConfig("morning") ? ["morning-extra-config"] : [])] as Step[]) : []),
     "evening-way",
-    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : []), ...(extraNeedsConfig("evening") ? ["evening-extra-config"] : [])] as Step[]) : []),
+    ...(sidesArg.evening ? ([...(prayBySide.evening === "ownPractice" ? ["evening-custom"] : []), "evening-config", ...(extraWantedBySide.evening ? ["evening-extra"] : []), ...(extraGroupNeedsPick("evening") ? ["evening-extra-pick"] : []), ...(extraNeedsConfig("evening") ? ["evening-extra-config"] : [])] as Step[]) : []),
     // Reflection (the daily word) is chosen BEFORE contemplation now — you pick
     // what you'll read/listen to, then how you'll sit with it.
     "learn",
@@ -2098,8 +2151,8 @@ export default function WayOfLoveRuleFlow({
    * practice's slides.
    */
   const stepBelongsToRow = (st: Step, rowId: string): boolean => {
-    if (rowId === "extra:morning") return st === "morning-extra" || st === "morning-extra-config";
-    if (rowId === "extra:evening") return st === "evening-extra" || st === "evening-extra-config";
+    if (rowId === "extra:morning") return st === "morning-extra" || st === "morning-extra-pick" || st === "morning-extra-config";
+    if (rowId === "extra:evening") return st === "evening-extra" || st === "evening-extra-pick" || st === "evening-extra-config";
     if (rowId === "side:morning") return st.startsWith("morning-");
     if (rowId === "side:evening") return st.startsWith("evening-");
     if (rowId === "contemplation") return st === "contemplation-goal" || st === "contemplative";
@@ -3226,29 +3279,53 @@ export default function WayOfLoveRuleFlow({
   // picker slide but has a different top description, same options — except
   // they just couldn't choose morning office again, but they could choose
   // morning devotion."
+  /**
+   * Choosing one particular extra practice. Shared by the which-one slide and
+   * by the top-level rows whose kind holds only one option, so both routes
+   * behave identically — the toggle-off, the real practice being switched on,
+   * and the newsletter's withdraw-on-clear.
+   */
+  const chooseExtra = (side: OfficeSide, e: ExtraPractice, cap: string) => {
+    const title = e.title(cap);
+    touchedRef.current = true;
+    // Tapping the chosen one clears it — the same toggle the anchor rows use,
+    // so "actually, nothing else" costs one tap.
+    const turningOff = extraBySide[side] === title;
+    setExtraBySide((p) => ({ ...p, [side]: turningOff ? null : title }));
+    // …and turn the real practice on (or back off). Everything in this menu
+    // except the office forms is a standing practice with its own card; the
+    // picker used to only remember the NAME, which is how a chosen Audio
+    // Divina became a checkbox called "Audio Divina" sitting next to the real
+    // one.
+    const on = !turningOff;
+    if (e.maps.kind === "practice") {
+      const key = e.maps.key;
+      setContemplative((p) => ({ ...p, [key]: on }));
+    } else if (e.maps.kind === "contemplation") {
+      setContemplationBySide((p) => ({ ...p, [side]: on }));
+    } else if (e.maps.kind === "newsletter") {
+      // Nothing to add yet — WHICH newsletter is the next slide's question.
+      // Turning the row back off has to withdraw whatever that slide already
+      // picked, or an abandoned choice would stay on the home as a card
+      // nobody asked for.
+      if (!on) {
+        const picked = extraNewsletterBySide[side];
+        if (picked) setNewsletters((p) => p.filter((x) => x !== picked));
+        setExtraNewsletterBySide((p) => ({ ...p, [side]: null }));
+      }
+    }
+  };
+
+  // TOP LEVEL — the kinds, not the twelve particulars (owner). Same shape as
+  // the anchor's own first slide: pick a kind, then its detail slide.
   if (step === "morning-extra" || step === "evening-extra") {
     const side: OfficeSide = step === "morning-extra" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
-    // What the anchor already is. When the BCP row is the anchor, the liturgy
-    // dropdown on the previous slide is what decides WHICH BCP liturgy — so
-    // that's the one to rule out, not the whole Book of Common Prayer.
-    const anchorLevel =
-      prayBySide[side] === "offices" ? PRAY_LEVEL[BCP_FORM_TO_PRAY[bcpForm[side]] ?? "offices"]
-        : PRAY_LEVEL[prayBySide[side]];
-    // The anchor's own completion flag, so a second office-form that writes the
-    // SAME one can be kept off the menu. Offering it would promise a card the
-    // home can't tell from the anchor's — it would tick itself the moment the
-    // anchor was prayed. (commitExtraPractices degrades gracefully if one gets
-    // through; this is so nobody is offered the bad pairing in the first place.)
-    // MUST mirror officePrefs.anchorModesFor's own fallback, or the menu and
-    // the completion logic disagree about which slot the anchor occupies. An
-    // anchor with no office mode of its own (custom, contemplative, FDD) takes
-    // the SIDE slot — see the note there on why not the devotion one.
-    const anchorMode = levelOfficeMode(side, anchorLevel) ?? side;
-    const options = EXTRA_PRACTICES
-      .filter((e) => !e.side || e.side === side)
-      .filter((e) => e.excludes !== anchorLevel)
-      .filter((e) => e.maps.kind !== "level" || levelOfficeMode(side, e.maps.level) !== anchorMode);
+    const options = extraOptionsFor(side);
+    const chosen = extraEntryFor(extraBySide[side], cap);
+    // A kind with nothing left in it (its only practice IS the anchor) isn't
+    // offered — an empty detail slide is worse than one fewer row.
+    const groups = EXTRA_GROUPS.filter((g) => options.some((e) => e.group === g.id));
     return shell(
       <>
         {backRow(goPrev)}
@@ -3260,42 +3337,53 @@ export default function WayOfLoveRuleFlow({
           })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {options.map((e) => {
-            const title = e.title(cap);
+          {groups.map((g) => {
+            const members = options.filter((e) => e.group === g.id);
+            const single = members.length === 1 ? members[0]! : null;
+            const isChosen = !!chosen && chosen.group === g.id;
+            // A chosen kind names what was actually picked, so the top level
+            // still says "Morning Psalms" rather than only "From the prayer
+            // book" once you've been into it. A kind of ONE already carries
+            // that name as its title, so it keeps its description instead of
+            // repeating itself underneath.
+            const sub = isChosen && chosen && !single ? chosen.title(cap) : (single ? single.sub : g.sub);
             return choiceRow(
-              extraBySide[side] === title,
-              `${e.emoji} ${title}`,
-              e.sub,
+              isChosen,
+              `${g.emoji} ${single ? single.title(cap) : g.title}`,
+              sub,
               () => {
+                if (single) { chooseExtra(side, single, cap); setExtraGroupBySide((p) => ({ ...p, [side]: isChosen ? null : g.id })); return; }
+                // More than one — open its slide, the way the anchor does.
                 touchedRef.current = true;
-                // Tapping the chosen one clears it — the same toggle the
-                // anchor rows use, so "actually, nothing else" costs one tap.
-                const turningOff = extraBySide[side] === title;
-                setExtraBySide((p) => ({ ...p, [side]: turningOff ? null : title }));
-                // …and turn the real practice on (or back off). Everything in
-                // this menu except the office forms is a standing practice with
-                // its own card; the picker used to only remember the NAME, which
-                // is how a chosen Audio Divina became a checkbox called "Audio
-                // Divina" sitting next to the real one.
-                const on = !turningOff;
-                if (e.maps.kind === "practice") {
-                  const key = e.maps.key;
-                  setContemplative((p) => ({ ...p, [key]: on }));
-                } else if (e.maps.kind === "contemplation") {
-                  setContemplationBySide((p) => ({ ...p, [side]: on }));
-                } else if (e.maps.kind === "newsletter") {
-                  // Nothing to add yet — WHICH newsletter is the next slide's
-                  // question. Turning the row back off has to withdraw
-                  // whatever that slide already picked, or an abandoned
-                  // choice would stay on the home as a card nobody asked for.
-                  if (!on) {
-                    const picked = extraNewsletterBySide[side];
-                    if (picked) setNewsletters((p) => p.filter((x) => x !== picked));
-                    setExtraNewsletterBySide((p) => ({ ...p, [side]: null }));
-                  }
-                }
+                setExtraGroupBySide((p) => ({ ...p, [side]: g.id }));
+                setStep(side === "morning" ? "morning-extra-pick" : "evening-extra-pick");
               },
             );
+          })}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // WHICH ONE — the detail slide for a kind that holds several.
+  if (step === "morning-extra-pick" || step === "evening-extra-pick") {
+    const side: OfficeSide = step === "morning-extra-pick" ? "morning" : "evening";
+    const cap = side === "morning" ? "Morning" : "Evening";
+    const g = extraGroupBySide[side];
+    const group = EXTRA_GROUPS.find((x) => x.id === g);
+    const members = extraOptionsFor(side).filter((e) => e.group === g);
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(cap, group?.title ?? cap)}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.extra_pick_body", { defaultValue: "Which one would you like to keep?" })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {members.map((e) => {
+            const title = e.title(cap);
+            return choiceRow(extraBySide[side] === title, `${e.emoji} ${title}`, e.sub, () => chooseExtra(side, e, cap));
           })}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
