@@ -1239,9 +1239,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       ...(getSideLevel("morning") === "custom" && !anchorPracticeFor(getSideCustomName("morning"))?.href
         ? { onClick: () => (morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) } : {}),
       // Owner: "make sure I can click the check mark on the offices to undo
-      // them." A custom level already toggles through onClick above; every
-      // other level was a one-way stamp until midnight.
-      ...(getSideLevel("morning") === "custom" ? {} : { onUnlog: () => undoOfficeToday("morning") }),
+      // them" — and then: the same for a custom practice.
+      //
+      // A custom level was excluded here because tapping the CARD already
+      // toggles it. But that's the one affordance nobody finds: every other
+      // practice on this screen is undone by tapping its ✓, so a named
+      // practice was the only kind whose check did nothing. It gets the same
+      // ✓ now, routed through unmarkCustomPrayed (which also tombstones the
+      // server's session — see cacReadState) rather than undoOfficeToday.
+      // The card-body toggle stays: it was asked for, and it still works.
+      onUnlog: getSideLevel("morning") === "custom"
+        ? () => unmarkCustomPrayed("morning")
+        : () => undoOfficeToday("morning"),
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: (morningDone || !cycleFor("morning")) ? undefined : [morningBlurb, ...officeCycle],
@@ -1285,7 +1294,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         : "/begin-prayer?side=evening",
       ...(getSideLevel("evening") === "custom" && !anchorPracticeFor(getSideCustomName("evening"))?.href
         ? { onClick: () => (eveningDone ? unmarkCustomPrayed("evening") : markCustomPrayed("evening")) } : {}),
-      ...(getSideLevel("evening") === "custom" ? {} : { onUnlog: () => undoOfficeToday("evening") }),
+      // Same as morning above — a named evening practice's ✓ undoes it too.
+      onUnlog: getSideLevel("evening") === "custom"
+        ? () => unmarkCustomPrayed("evening")
+        : () => undoOfficeToday("evening"),
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).
