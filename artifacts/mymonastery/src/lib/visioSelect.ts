@@ -143,13 +143,16 @@ export type Chosen = {
  * `lessons` may be empty (offline, still loading, or a day with no appointed
  * lesson) — the rotation covers that case.
  *
- * `history` does two things. Today's own entry PINS the choice, so re-opening
- * the practice later the same day returns the same painting instead of
- * choosing a fresh one mid-day. Everything older is SUBTRACTED, because the
- * owner wants this to arrive like a newsletter — different every time. Holy
- * Week is the case that needs it: the same Passion reading runs for days and
- * matches the same few paintings, so without this you would look at the same
- * Caravaggio three mornings running.
+ * `history` is what makes it ONE PICTURE PER DAY (owner: "just that there is a
+ * different one for each day"). Two halves, and both are needed:
+ *
+ *   · Today's own entry PINS the choice, so re-opening the practice later the
+ *     same day returns the same painting rather than choosing a fresh one
+ *     mid-prayer. A new image per OPEN would be the wrong thing entirely.
+ *   · Everything older is SUBTRACTED, so tomorrow lands somewhere new. Holy
+ *     Week is the case that needs it: the same Passion reading runs for days
+ *     and matches the same few paintings, so without this you would look at
+ *     the same Caravaggio three mornings running.
  *
  * Subtraction never starves the choice: if every match has been seen, the
  * filter is dropped rather than returning nothing.

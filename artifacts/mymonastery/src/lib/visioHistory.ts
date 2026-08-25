@@ -8,14 +8,18 @@
  *     pictures they looked at recently, and they can click into them, kinda
  *     like the audio divina.")
  *
- *  2. It keeps the practice FRESH. Owner: "make sure that it's gonna be
- *     different every time, like, it's a newsletter." Lectionary matching
- *     alone can't promise that — Holy Week appoints the same Passion narrative
- *     several days running, and the same handful of paintings match it — so
- *     visioSelect subtracts what's already here before it chooses. With 233
- *     works and a 60-deep memory, a daily reader goes two months without a
- *     repeat, and longer than that in practice because the lectionary keeps
- *     moving them around the collection.
+ *  2. It gives the practice ONE PICTURE PER DAY. Owner: "just that there is a
+ *     different one for each day" — a new image each morning, and the SAME
+ *     image all day, so re-opening at lunchtime shows what you had at
+ *     breakfast rather than reshuffling mid-prayer.
+ *
+ *     Both halves come from here. Today's entry pins today; everything older
+ *     is subtracted so tomorrow lands somewhere new. Lectionary matching alone
+ *     can't do the second part — Holy Week appoints the same Passion narrative
+ *     several days running, and the same handful of paintings match it. With
+ *     233 works and a 60-deep memory a daily reader goes two months without a
+ *     repeat, and longer in practice because the lectionary keeps moving them
+ *     around the collection.
  *
  * Device-local on purpose: it's a reading history, not a record of prayer, and
  * the practice is guest-allowed — there's no account to hang it on.
