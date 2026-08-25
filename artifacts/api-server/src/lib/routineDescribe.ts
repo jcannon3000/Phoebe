@@ -60,7 +60,7 @@ export const SLOT_LABEL: Record<string, string> = {
   evening: "in the evening", anytime: "any time of day",
 };
 const PRACTICE_LABEL: Record<string, string> = {
-  cobreathe: "Creation Prayer", listening: "Audio Divina",
+  cobreathe: "Creation Prayer", listening: "Audio Divina", visio: "Visio Divina",
   // Card titles, so no articles: "a Contemplative Walk" reads fine inside a
   // sentence and wrong as the name at the top of a card.
   walk: "Contemplative Walk", reading: "Reading", examen: "The Examen",

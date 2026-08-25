@@ -19,6 +19,7 @@ export type PracticeWeekDay = {
   morningExtra?: boolean; eveningExtra?: boolean;
   contemplation: boolean; reflection: boolean; examen: boolean; cobreathe: boolean;
   listening: boolean; reading: boolean; podcasts: boolean; walk: boolean; prayerList: boolean;
+  visio?: boolean;
   // Not folded into `reflection` (which is deliberately fdd/ssje/cac only)
   // so Dean's Commentary can be reported on specifically.
   vts: boolean;
@@ -99,7 +100,7 @@ export function computeWeeklyGrid(params: {
     // prayed their additional practice and nothing else read as having prayed
     // nothing at all.
     || !!d.morningExtra || !!d.eveningExtra
-    || d.listening || d.reading || d.podcasts || d.walk || d.prayerList
+    || d.listening || d.reading || d.podcasts || d.walk || d.prayerList || !!d.visio
     || prayedOnCustom(d.ymd);
 
   const learnFromReflection = rhythm.reflections.some((r) => r.done);
@@ -130,9 +131,9 @@ export function computeWeeklyGrid(params: {
    * row that fills, and nobody else's is polluted.
    */
   const namedContemplativeActive = rhythm.silenceActive || rhythm.cobreatheStandaloneActive
-    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive;
+    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive || rhythm.visioActive;
   const contemplativePracticeOn = (d: PracticeWeekDay) =>
-    d.contemplation || d.cobreathe || d.walk || d.listening || d.examen
+    d.contemplation || d.cobreathe || d.walk || d.listening || d.examen || !!d.visio
     || (!namedContemplativeActive && prayedOnCustom(d.ymd));
   const morningPractice = rhythm.morningDone || rhythm.morningExtraDone;
   const eveningPractice = rhythm.eveningDone || rhythm.eveningExtraDone;
@@ -151,7 +152,7 @@ export function computeWeeklyGrid(params: {
    * use it rather than a second, looser copy of the same idea.
    */
   const contemplativePractice = rhythm.silenceDone || rhythm.cobreatheDone
-    || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone
+    || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone || rhythm.visioDone
     || (!namedContemplativeActive && customAnchorIds.some((id) => getCustomDoneDays(id).has(todayYmd)));
   // Today — some minutes logged, but short of the daily goal, read from the
   // LIVE rhythm state (more current than the practice-week snapshot, which

@@ -403,6 +403,10 @@ function reminderTimeOptions(current: string): Array<{ value: string; label: str
 
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 17 }, (_, i) => (i + 2) * 5); // 10…90
+// One SIT's length, per side. Deliberately its own list, not GOAL_OPTIONS: that
+// is the DAILY total across however many sits a person keeps, and conflating
+// the two is exactly how a daily goal used to get mistaken for a per-side sit.
+const SIT_LENGTHS = [2, 5, 10, 15, 20, 25, 30, 45, 60];
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
@@ -950,6 +954,7 @@ export default function WayOfLoveRuleFlow({
       audio: homeCardOn(user.homeLayout, "listening"),
       examen: examenSeed,
       walk: homeCardOn(user.homeLayout, "walk"),
+      visio: homeCardOn(user.homeLayout, "visio"),
       compline: homeCardOn(user.homeLayout, "compline"),
     });
     // Per-side Contemplative Prayer — re-seed once the home layout lands.
@@ -971,15 +976,17 @@ export default function WayOfLoveRuleFlow({
   // ── Contemplative practices (the multi-select step) ────────────────────────
   // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
   // Divina, the Examen. The latter three slot into the day at a chosen time.
-  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; compline: boolean }>(() => ({
+  const [contemplative, setContemplative] = useState<{ cobreathe: boolean; audio: boolean; examen: boolean; walk: boolean; visio: boolean; compline: boolean }>(() => ({
     // The Examen is an add-on, seeded from the saved level + the examen home card.
     cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (getSideContemplation("morning") || getSideContemplation("evening") || getSideLevel("morning") === "reflect-sit" || getSideLevel("evening") === "reflect-sit")),
     audio: homeCardOn(user?.homeLayout, "listening"),
     examen: homeCardOn(user?.homeLayout, "examen") || getSideLevel("morning") === "examen" || getSideLevel("evening") === "examen",
     walk: homeCardOn(user?.homeLayout, "walk"),
+    // Visio Divina — praying with an artwork. Same shape as its siblings.
+    visio: homeCardOn(user?.homeLayout, "visio"),
     compline: homeCardOn(user?.homeLayout, "compline"),
   }));
-  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "compline") => {
+  const toggleContemplative = (k: "cobreathe" | "audio" | "examen" | "walk" | "visio" | "compline") => {
     touchedRef.current = true;
     setContemplative((c) => ({ ...c, [k]: !c[k] }));
   };
@@ -1424,6 +1431,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
+      ...(contemplative.visio ? ["visio"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
@@ -1434,6 +1442,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
+      ...(contemplative.visio ? [] : ["visio"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
@@ -1666,6 +1675,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.walk ? ["walk"] : []),
+      ...(contemplative.visio ? ["visio"] : []),
       ...(wantCobreathe ? ["cobreathe"] : []),
     ];
     const offKeys = [
@@ -1676,6 +1686,7 @@ export default function WayOfLoveRuleFlow({
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.walk ? [] : ["walk"]),
+      ...(contemplative.visio ? [] : ["visio"]),
       ...(wantCobreathe ? [] : ["cobreathe"]),
     ];
     const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
@@ -1740,7 +1751,7 @@ export default function WayOfLoveRuleFlow({
     // card + "Begin" read it from there. Set state alone and VTS Cultivate
     // adopts a breath rule whose card still says Contemplation.
     chooseContemplationStyle(preset.contemplationStyle ?? "silent");
-    setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, compline: false });
+    setContemplative({ cobreathe: false, audio: false, examen: false, walk: false, visio: false, compline: false });
     // A starter rule's silence applies to whichever sides it turns on.
     const presetContemplation = {
       morning: preset.silence && preset.sides.morning && preset.silenceSide !== "evening",
@@ -2697,11 +2708,18 @@ export default function WayOfLoveRuleFlow({
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
+          {choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
           {/* Last, because it's the answer when none of the named ones is. */}
           {choiceRow(
             customPracticeOn,
-            `✍️ ${t("wol_rule.cp_custom", { defaultValue: "Something of your own" })}`,
-            t("wol_rule.cp_custom_sub", { defaultValue: "A practice you keep that isn't listed here." }),
+            // Its OWN key. This row and the per-side "Create your own" anchor
+            // row below both landed on wol_rule.cp_custom from two different
+            // sessions — harmless only while the key is absent from en.ts and
+            // each call site falls back to its own defaultValue. The moment it
+            // were translated, two unrelated features would render the same
+            // label.
+            `✍️ ${t("wol_rule.cp_own_practice", { defaultValue: "Something of your own" })}`,
+            t("wol_rule.cp_own_practice_sub", { defaultValue: "A practice you keep that isn't listed here." }),
             () => { touchedRef.current = true; setCustomPracticeOn((v) => !v); },
           )}
           {customPracticeOn && (
@@ -3284,6 +3302,75 @@ export default function WayOfLoveRuleFlow({
                   </>
                 );
               })()}
+            </div>
+          </>
+        )}
+
+        {/* Contemplative Prayer needs two more answers, and they are two
+            DIFFERENT questions (owner): how long this side's sit is, and
+            whether it's kept with a timer or just marked done.
+
+            HOW LONG is per SIDE — never inferred from the daily goal. That
+            inference (a 90-minute goal quietly becoming two 45-minute sits, or
+            a goal implying a sit on a side that never asked for one) has been
+            removed from this file twice before; the length lives here, on the
+            side that owns it, and the daily goal stays its own separate thing
+            on the Silence slide.
+
+            Only for the silent sit: Creation Prayer counts in breaths (its own
+            control below), and a walk or Audio Divina has no length to set. */}
+        {contemplativeForm[side] === "prayer" && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.sit_length_label", { defaultValue: "How long?" })}
+            </p>
+            <div style={{ position: "relative", marginBottom: 22 }}>
+              <select
+                value={String(minutesBySide[side])}
+                onChange={(e) => chooseSideMinutes(side, parseInt(e.target.value, 10) || 10)}
+                aria-label={t("wol_rule.sit_length_label", { defaultValue: "How long?" })}
+                style={{ ...FROST_BLUR, width: "100%", boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+              >
+                {/* Keep a previously-saved non-standard length selectable. */}
+                {!SIT_LENGTHS.includes(minutesBySide[side]) && (
+                  <option value={String(minutesBySide[side])}>{t("wol_rule.n_min", { count: minutesBySide[side], defaultValue: `${minutesBySide[side]} min` })}</option>
+                )}
+                {SIT_LENGTHS.map((m) => (
+                  <option key={m} value={String(m)}>{t("wol_rule.n_min", { count: m, defaultValue: `${m} min` })}</option>
+                ))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            </div>
+
+            {/* The second, separate question: how it's kept. Same two options
+                the Silence slide offers — this is that one setting, surfaced
+                where the practice is actually being set up, so it can be
+                answered without waiting for a later slide. */}
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.log_method_label", { defaultValue: "Log method" })}
+            </p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+              {([
+                { id: "timer" as const, emoji: "⏱️", label: t("wol_rule.log_method_timer", { defaultValue: "Timer" }) },
+                { id: "manual" as const, emoji: "✅", label: t("wol_rule.log_method_manual", { defaultValue: "Manual log" }) },
+              ]).map((o) => {
+                const on = logMethod === o.id;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => chooseLogMethod(o.id)}
+                    style={{
+                      flex: 1, borderRadius: 12, padding: "12px 10px", cursor: "pointer",
+                      background: on ? CARD_ACTIVE : CARD,
+                      border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                      color: on ? CREAM : SAGE, fontFamily: FONT, fontSize: 14, fontWeight: 600,
+                    }}
+                  >
+                    <span aria-hidden>{o.emoji}</span> {o.label}
+                  </button>
+                );
+              })}
             </div>
           </>
         )}

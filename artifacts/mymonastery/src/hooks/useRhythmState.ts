@@ -196,6 +196,8 @@ export type RhythmState = {
   readingActive: boolean;
   podcastsActive: boolean;
   walkActive: boolean;
+  /** Visio Divina — praying with an artwork. */
+  visioActive: boolean;
   /** Compline (the night office) as an opt-in add-on card — only ever true
    *  from 7pm local on, since it's the office for the end of the day. */
   complineActive: boolean;
@@ -206,6 +208,7 @@ export type RhythmState = {
   readingDone: boolean;
   podcastsDone: boolean;
   walkDone: boolean;
+  visioDone: boolean;
   complineDone: boolean;
   cobreatheDone: boolean;
   prayerListDone: boolean;
@@ -423,6 +426,7 @@ export function useRhythmState(): RhythmState {
     podcasts: hasPracticeDoneToday("podcasts"),
     walk: hasPracticeDoneToday("walk"),
     walkSkipped: hasPracticeSkippedToday("walk"),
+    visio: hasPracticeDoneToday("visio"),
     prayerList: hasPracticeDoneToday("prayer-list"),
   }));
   useEffect(() => {
@@ -433,6 +437,7 @@ export function useRhythmState(): RhythmState {
       podcasts: hasPracticeDoneToday("podcasts"),
       walk: hasPracticeDoneToday("walk"),
       walkSkipped: hasPracticeSkippedToday("walk"),
+      visio: hasPracticeDoneToday("visio"),
       prayerList: hasPracticeDoneToday("prayer-list"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
@@ -651,6 +656,9 @@ export function useRhythmState(): RhythmState {
   // treats it as "should this show today", so folding the skip in here
   // (rather than threading a separate flag through each) keeps them in sync.
   const walkActive = homeCardActive(hl, "walk") && !practiceLocal.walkSkipped;
+  // Visio Divina — praying with an artwork. Same shape as the other standing
+  // practices: on when its home card is, kept by finishing the deck.
+  const visioActive = homeCardActive(hl, "visio");
   // Compline — the night office, offered as a contemplative add-on card.
   // complineActive means "the user has this in their rhythm" (mirrors every
   // other *Active flag — never time-gated, so the card is reliably present
@@ -688,7 +696,7 @@ export function useRhythmState(): RhythmState {
   // invisible for every current user, treat it as active unless explicitly
   // hidden — the customizer can still turn it off from here.
   const prayerListActive = !(new Set(hl?.hidden ?? []).has("prayer-list"));
-  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || complineActive || prayerListActive;
+  const anyExtraActive = examenActive || listeningActive || readingActive || podcastsActive || walkActive || visioActive || complineActive || prayerListActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -1038,6 +1046,7 @@ export function useRhythmState(): RhythmState {
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
+  const visioDone = visioActive && (practiceLocal.visio || serverDone("visio"));
   // Compline is an OFFICE, so its done-state comes from the office flags (the
   // office viewer's local stamp) — not the practice_completion table the
   // logging-first practices use.
@@ -1256,6 +1265,7 @@ export function useRhythmState(): RhythmState {
     ...(readingActive ? [readingDone] : []),
     ...(podcastsActive ? [podcastsDone] : []),
     ...(walkActive ? [walkDone] : []),
+    ...(visioActive ? [visioDone] : []),
     ...(complineActive ? [complineDone] : []),
     // Only an anchor when there IS a list. The layout check alone counted it
     // for everyone — including guests, whose intentions query never runs — so
@@ -1329,6 +1339,7 @@ export function useRhythmState(): RhythmState {
     readingActive,
     podcastsActive,
     walkActive,
+    visioActive,
     complineActive,
     cobreatheActive,
     prayerListActive,
@@ -1337,6 +1348,7 @@ export function useRhythmState(): RhythmState {
     readingDone,
     podcastsDone,
     walkDone,
+    visioDone,
     complineDone,
     cobreatheDone,
     prayerListDone,

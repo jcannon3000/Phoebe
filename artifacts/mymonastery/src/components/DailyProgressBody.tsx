@@ -271,7 +271,7 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel, intentionsTotalCount } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel, intentionsTotalCount, visioActive } = useRhythmState();
   // When a side's contemplative practice IS the breath, that side's practice is
   // Creation Prayer — not a silent sit AND a breath. The daily cards already
   // collapse the two (the standalone Co-Breathe card is suppressed); this row
@@ -287,7 +287,7 @@ export function WeeklyGridCard() {
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; morningExtra: boolean; eveningExtra: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean; vts: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; morningExtra: boolean; eveningExtra: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean; vts: boolean; visio: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     // ?tz= is not decoration: the route uses it to compute which local days the
@@ -337,6 +337,7 @@ export function WeeklyGridCard() {
     ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),
     ...(podcastsActive ? [{ id: "podcasts", emoji: "🎙️", label: t("rhythm.row_podcasts", { defaultValue: "Podcasts" }), rgb: "150,120,150", doneFor: (d: Day) => !!d.podcasts }] : []),
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
+    ...(visioActive ? [{ id: "visio", emoji: "🖼️", label: t("rhythm.row_visio", { defaultValue: "Visio Divina" }), rgb: "150,130,170", doneFor: (d: Day) => !!d.visio }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.evening }] : []),
     ...(eveningExtraLevel ? [{ id: "evening-extra", emoji: "🌿", label: extraPracticeTitle("Evening", eveningExtraLevel, t), rgb: "96,140,110", doneFor: (d: Day) => !!d.eveningExtra }] : []),
     // Same gate the CARD and the dot use (intentionsTotalCount > 0), not the
@@ -843,7 +844,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     const stop = window.setTimeout(() => setCelebrating(false), 5000);
     return () => { window.clearTimeout(release); window.clearTimeout(stop); };
   }, [celebrateKey]);
-  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, eveningDone, eveningActive, morningActive, silenceActive, morningContemplationActive, eveningContemplationActive, morningContemplationDone, eveningContemplationDone, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, contemplationStyle, contemplationLogMethod, examenActive, listeningActive, readingActive, podcastsActive, walkActive, cobreatheActive, visioActive, examenDone, listeningDone, readingDone, podcastsDone, walkDone, visioDone, cobreatheDone, customAnchors, novenaActive, novenaDone, novenaReplacesMorning, novenaReplacesEvening, novena, complineActive, complineDone, prayerListDone, intentionsTotalCount, intentionsPrayedCount, morningExtraLevel, eveningExtraLevel, morningExtraDone, eveningExtraDone } = useRhythmState();
   // On the common (fast, cached) path `ready` flips true well under a beat, so
   // we stay silent rather than flash a skeleton nobody needed. But the
   // rhythm queries this waits on carry NO offline/timeout fallback for a
@@ -1065,6 +1066,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     href: "/cobreathe",
     title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
     blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
+  /**
+   * Visio Divina — praying with an artwork. A walked deck like the office, so
+   * completion is finishing it, not a tap; the page marks it on the last slide.
+   */
+  const visioCard = {
+    key: "visio", emoji: "🖼️", rgb: "150,130,170", done: visioDone, href: "/visio",
+    onUnlog: () => unmarkPracticeDoneToday("visio"),
+    title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }),
+    blurb: visioDone ? kept : t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const listeningCard = {
@@ -1409,6 +1421,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(cobreatheActive && !(creationStyle && (morningContemplationActive || eveningContemplationActive)) ? [{ ...cobreatheCard, slot: cobreatheSlot }] : []),
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
+    ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
     // Prayer List rides at whichever slot the viewer picked (see
     // lib/prayerListSlot.ts) on /intentions, or "anytime" if they never set
     // one — the card still shows either way, only its POSITION changes.

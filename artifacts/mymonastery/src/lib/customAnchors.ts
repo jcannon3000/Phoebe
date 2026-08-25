@@ -85,8 +85,10 @@ export function slotOpensLabel(slot: CustomSlot): string | null {
 // Built-in practices that the customizer places at a chosen time of day
 // (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot.
 // Sensible defaults if the user never picks one.
-export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading";
+export type SlottedPractice = "cobreathe" | "listening" | "examen" | "walk" | "reading" | "visio";
 const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
+  // Visio Divina is looked at whenever there's light and quiet — not pinned.
+  visio: "anytime",
   cobreathe: "morning",
   listening: "midday",
   examen: "evening",

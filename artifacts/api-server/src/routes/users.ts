@@ -754,7 +754,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('examen', 'listening', 'reading', 'podcasts', 'walk', 'prayer-list', 'visio') AND local_date >= ${oldestYmd}
       `),
       // Co-Breathe sits live in breath_sessions (one row per local day), not
       // practice_completion, so they need their own pull to fill the grid row.
@@ -921,6 +921,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const podcasts = new Set<string>();
     const walk = new Set<string>();
     const prayerList = new Set<string>();
+    const visio = new Set<string>();
     for (const r of pcRows.rows) {
       if (r.section === "examen") examen.add(r.local_date);
       if (r.section === "listening") listening.add(r.local_date);
@@ -928,6 +929,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "podcasts") podcasts.add(r.local_date);
       if (r.section === "walk") walk.add(r.local_date);
       if (r.section === "prayer-list") prayerList.add(r.local_date);
+      if (r.section === "visio") visio.add(r.local_date);
     }
     const cobreathe = new Set<string>();
     for (const r of breathRows.rows) cobreathe.add(r.day);
@@ -952,6 +954,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       walk: walk.has(ymd),
       cobreathe: cobreathe.has(ymd),
       prayerList: prayerList.has(ymd),
+      visio: visio.has(ymd),
       vts: vts.has(ymd),
     }));
     res.json({ days });
@@ -1058,7 +1061,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       db.execute<{ section: string; at: string }>(sql`
         SELECT section, MIN(created_at) AS at FROM practice_completion
         WHERE user_id = ${sessionUserId}
-          AND section IN ('listening', 'reading', 'podcasts', 'walk', 'examen', 'prayer-list')
+          AND section IN ('listening', 'reading', 'podcasts', 'walk', 'examen', 'prayer-list', 'visio')
           AND local_date = ${yesterdayYmd}
         GROUP BY section
       `),
