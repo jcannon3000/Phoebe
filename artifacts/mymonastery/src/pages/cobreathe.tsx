@@ -403,7 +403,10 @@ export default function CobreathePage() {
     // has a true answer (zero). Keyed on whichever we asked with.
     queryKey: ["/api/breath/places/stats", place && place.id > 0 ? place.id : place?.slug, day],
     queryFn: () => apiRequest("GET", `/api/breath/places/${place && place.id > 0 ? place.id : encodeURIComponent(place?.slug ?? "")}/stats?day=${day}`),
-    enabled: mode === "placeStats" && !!place && (place.id > 0 || !!place.slug),
+    // Also through the breath and the summary: the summary reports the place's
+    // tally, and a query disabled by then would have nothing to report.
+    enabled: (mode === "placeStats" || mode === "breathing" || mode === "done")
+      && !!place && (place.id > 0 || !!place.slug),
     staleTime: 60_000,
   });
 
@@ -425,6 +428,17 @@ export default function CobreathePage() {
     onSuccess: (resp) => {
       setDoneState(resp);
       queryClient.invalidateQueries({ queryKey: ["/api/breath/today", day] });
+      /**
+       * …and the PLACE's numbers, which is the whole point of choosing one.
+       *
+       * Owner: "make sure I'm getting location numbers if I did location." The
+       * places list carries today's count per place and is cached for five
+       * minutes; the stats slide carries today / this month / all time. Neither
+       * was invalidated here, so the breath you just prayed was missing from
+       * both — you'd stand at the place, breathe, and be told nobody had.
+       */
+      queryClient.invalidateQueries({ queryKey: ["/api/breath/places"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/breath/places/stats"] });
     },
   });
 
@@ -888,6 +902,8 @@ export default function CobreathePage() {
         breathsTaken={breathsTaken}
         weekBreaths={weekBreaths}
         others={othersDone}
+        placeName={place?.name ?? null}
+        placeBreathsToday={placeStats?.today}
         companions={summaryFaces}
         onContinue={() => setLocation("/")}
       />

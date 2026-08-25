@@ -1045,7 +1045,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // time of day chosen in the customizer's contemplative step (getPracticeSlot),
   // the same way custom anchors do.
   const cobreatheCard = {
-    key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone, href: "/cobreathe?start=1",
+    key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone,
+    // Lands on the intro, NOT straight in: that screen carries Enter location.
+    href: "/cobreathe",
     title: t("rhythm.card_cobreathe", { defaultValue: "Creation Prayer" }),
     blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Breathing together with God's creation" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
@@ -1317,7 +1319,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // Creation Prayer → the breath for this side; silent + timer → the sit
       // timer at THIS SIDE's length (?sit=N), skipping the length picker;
       // silent + manual → no navigation, just marks the sit done.
-      href: creationStyle || contemplationLogMethod === "timer" ? (creationStyle ? "/cobreathe?begin=1&side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`) : "",
+      href: creationStyle || contemplationLogMethod === "timer" ? (creationStyle ? "/cobreathe?side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`) : "",
       ...(!creationStyle && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("morning", "silent") } : {}),
       title: creationStyle ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
       blurb: creationStyle ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning")),
@@ -1329,7 +1331,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }] : []),
     ...(eveningContemplationActive ? [{
       key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: creationStyle ? "🌍" : "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
-      href: creationStyle || contemplationLogMethod === "timer" ? (creationStyle ? "/cobreathe?begin=1&side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`) : "",
+      href: creationStyle || contemplationLogMethod === "timer" ? (creationStyle ? "/cobreathe?side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`) : "",
       ...(!creationStyle && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("evening", "silent") } : {}),
       title: creationStyle ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
       blurb: creationStyle ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening")),

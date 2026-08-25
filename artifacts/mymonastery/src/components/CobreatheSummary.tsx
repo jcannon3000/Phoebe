@@ -37,6 +37,8 @@ export function CobreatheSummary({
   fadeIn = false,
   onEntered,
   companions = [],
+  placeName,
+  placeBreathsToday,
 }: {
   // How many breaths the user actually took this sit (open-ended — can exceed
   // the 12-breath target). Defaults to the target for callers that don't track it.
@@ -48,6 +50,11 @@ export function CobreatheSummary({
   // Garden-mates you breathed WITH — those who breathed today plus anyone caught
   // breathing live alongside you this sit. Rendered as faces + first names.
   companions?: Array<{ userId: number; name: string | null; avatarUrl: string | null }>;
+  /** The designated place this breath was prayed at, and how many breaths have
+   *  been kept there today (this one included). Owner: choosing a place has to
+   *  SHOW you the place's numbers — otherwise the choice tells you nothing. */
+  placeName?: string | null;
+  placeBreathsToday?: number;
   onContinue: () => void;
   continueLabel?: string;
   continueDisabled?: boolean;
@@ -173,6 +180,17 @@ export function CobreatheSummary({
             <p className="text-[12px] mb-6" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
               {weekBreaths} {t("cobreathe.breaths_this_week", { defaultValue: "breaths this week" })}
             </p>
+
+            {/* The place's own tally. Being told the number is the point of
+                having chosen somewhere — "one" reads as being the first, which
+                is a real and good thing to be told, so it isn't hidden. */}
+            {placeName && typeof placeBreathsToday === "number" && (
+              <p className="text-[12.5px] mb-6" style={{ color: "rgba(200,212,192,0.85)", fontFamily: SPACE_GROTESK }}>
+                {placeBreathsToday <= 1
+                  ? t("cobreathe.place_first_today", { place: placeName, defaultValue: `The first breath at ${placeName} today` })
+                  : t("cobreathe.place_breaths_today", { count: placeBreathsToday, place: placeName, defaultValue: `${placeBreathsToday} breaths at ${placeName} today` })}
+              </p>
+            )}
 
             {/* Who you breathed with — the garden-mates you breathed with. */}
             {(

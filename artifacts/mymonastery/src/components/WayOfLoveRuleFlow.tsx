@@ -1424,12 +1424,24 @@ export default function WayOfLoveRuleFlow({
           setSideExtra(side, entry.maps.level);
           continue;
         }
-        // Indistinguishable from the anchor — fall through to a logged anchor.
+        /**
+         * Indistinguishable from the anchor — the two would share one
+         * completion flag, so this side can't carry both.
+         *
+         * Owner: "make sure that a secondary practice doesn't get flattened
+         * into a custom practice… one that is just a manual log instead of
+         * going into the actual experience." It used to become a custom
+         * anchor, whose card has no href at all (see customCard) — tapping it
+         * opens a Log popup rather than the practice. So a real second office
+         * quietly turned into a checkbox wearing its name.
+         *
+         * The extra PICKER already refuses to offer a colliding practice, so
+         * this is only reachable by changing the ANCHOR afterwards into the
+         * thing the extra already was — at which point the side genuinely does
+         * keep that practice once, as its anchor. Dropping the duplicate is
+         * honest; minting a fake one is not.
+         */
         setSideExtra(side, null);
-        if (!existing.has(title.trim().toLowerCase())) {
-          addCustomAnchor(title, EXTRA_PRACTICE_EMOJI[title] ?? "🌿", side as CustomSlot);
-          existing.add(title.trim().toLowerCase());
-        }
         continue;
       }
       // Everything else is a real standing practice; its own toggle carries it.

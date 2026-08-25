@@ -2261,7 +2261,7 @@ export function ContemplationHomeCard({ side = "morning", hero = false }: { side
     ? (bothSides ? (side === "morning" ? "Morning Creation Prayer" : "Evening Creation Prayer") : "Creation Prayer")
     : (side === "morning" ? "Morning Contemplation" : "Evening Contemplation");
   const emoji = isCreation ? "🌍" : "🕯️";
-  const href = isCreation ? `/cobreathe?begin=1&side=${side}` : `/contemplation?begin=1&side=${side}`;
+  const href = isCreation ? `/cobreathe?side=${side}` : `/contemplation?begin=1&side=${side}`;
   const compactHref = isCreation ? `/cobreathe?side=${side}` : `/contemplation?side=${side}`;
 
   // Evening stays a quiet "later" card until its slot opens at 5 PM — mirrors

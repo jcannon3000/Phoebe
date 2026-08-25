@@ -417,7 +417,10 @@ router.get("/breath/places/:id/stats", async (req: Request, res: Response): Prom
     if (!place && known) {
       res.json({
         place: { id: -1, name: known.name, subtitle: known.subtitle },
-        today: { breaths: 0, people: 0, verified: 0 },
+        // Same SHAPE as the real path below (today is a plain count) — an
+        // object here would have broken the client on exactly the path this
+        // fallback exists to serve.
+        today: 0,
         month: { breaths: 0, people: 0 },
         allTime: { breaths: 0, people: 0 },
       });

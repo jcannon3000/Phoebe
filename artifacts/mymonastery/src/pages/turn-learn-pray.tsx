@@ -148,7 +148,7 @@ export default function TurnLearnPrayPage() {
       title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       emoji: creationStyle ? "🌍" : "🕯️",
       done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone || rhythm.cobreatheDone,
-      href: creationStyle ? "/cobreathe?start=1" : "/contemplation",
+      href: creationStyle ? "/cobreathe" : "/contemplation",
     },
     evening: {
       title: sideOfficeTitle("Evening", rhythm.prayerKind, t),
