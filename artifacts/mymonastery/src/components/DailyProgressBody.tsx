@@ -360,7 +360,13 @@ export function WeeklyGridCard() {
     // history (it fills in going forward; no backfill before this shipped).
     ...getCustomAnchors().map((a, i) => {
       const doneSet = getCustomDoneDays(a.id);
-      return { id: `custom-${a.id}`, emoji: a.emoji || "🌿", label: a.title, rgb: CUSTOM_PALETTE[i % CUSTOM_PALETTE.length], doneFor: (d: Day) => doneSet.has(d.ymd) };
+      return {
+        id: `custom-${a.id}`, emoji: a.emoji || "🌿", label: a.title, rgb: CUSTOM_PALETTE[i % CUSTOM_PALETTE.length],
+        // A weekday-scoped practice reads as kept on the days it isn't asked
+        // for, rather than showing a row of hollow weekend dots for something
+        // that was never due.
+        doneFor: (d: Day) => !anchorOnDay(a, new Date(`${d.ymd}T12:00:00`)) || doneSet.has(d.ymd),
+      };
     }),
   ];
 

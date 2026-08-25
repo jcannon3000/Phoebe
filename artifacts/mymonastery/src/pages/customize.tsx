@@ -10,7 +10,7 @@ import {
   getSideLevel, setSideLevel, setSideEntry,
   getSideContemplation, setSideContemplation, setSideMinutes,
   getReflectionSource, setReflectionSource, setSideReflection,
-  setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT,
+  setPsalmCycle, setSideCustomName, OFFICE_PREFS_EVENT, OFFICE_LEVELS_SET, type OfficeLevel,
   type ReflectionSource,
 } from "@/lib/officePrefs";
 import { getGuestSilenceGoalMin, setGuestSilenceGoalMin } from "@/lib/guestSeed";
@@ -208,9 +208,17 @@ export default function CustomizePage() {
       : c === "none" || c === "contemplation" || c === "community" ? "ask"
       : c; // devotion / psalms / readings / fdd / examen / compline map straight through
 
+    // Validated, not cast: every PrayChoice happens to map to a real
+    // OfficeLevel today, but a cast would write garbage silently the first
+    // time one didn't. Anything unrecognised falls back to "ask" (no anchor),
+    // which is recoverable, rather than a level nothing can read.
+    const safeLevel = (c: RulePreset["pray"]): OfficeLevel => {
+      const l = levelFor(c);
+      return (OFFICE_LEVELS_SET.has(l) ? l : "ask") as OfficeLevel;
+    };
     const eveningChoice = preset.evening ?? preset.pray;
-    setSideLevel("morning", levelFor(preset.pray) as Parameters<typeof setSideLevel>[1]);
-    setSideLevel("evening", levelFor(eveningChoice) as Parameters<typeof setSideLevel>[1]);
+    setSideLevel("morning", safeLevel(preset.pray));
+    setSideLevel("evening", safeLevel(eveningChoice));
     setSideEntry("morning", preset.pray === "offices" ? "venite" : "read");
     setSideEntry("evening", eveningChoice === "offices" ? "venite" : "read");
     if (preset.pray === "psalms" || eveningChoice === "psalms") setPsalmCycle("office");
@@ -402,7 +410,19 @@ export default function CustomizePage() {
 
         <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 10 }}>
           {ownPracticeLocked
-            ? staticRow("Daily Prayer", "Your own practice")
+            ? (
+              <>
+                {staticRow("Daily Prayer", "Your own practice")}
+                {/* Adopting a preset whose morning is the person's OWN practice
+                    (VTS's Chapel) lands here too, now that presets are offered
+                    on this page — and this row can't edit a named practice, so
+                    without a way out a guest could be stuck with it. Adopting
+                    another preset above is that way out. */}
+                <p style={{ color: SOFT_GREEN, fontSize: 12.5, fontFamily: FONT, margin: "-2px 4px 0", lineHeight: 1.45 }}>
+                  Named in your rhythm. To change it, adopt a preset above — or customize more fully below.
+                </p>
+              </>
+            )
             : row("Daily Prayer", dailyPrayer, [
                 { value: "guided-prayer", label: "Simple Guided Prayer" },
                 { value: "psalms", label: "Psalms" },

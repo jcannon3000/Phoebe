@@ -13,7 +13,7 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
-import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
+import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
 import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
@@ -1280,8 +1280,12 @@ export function useRhythmState(): RhythmState {
     // home shows. Guests, whose intentions query never runs, stay excluded.
     ...(intentionsTotalCount > 0 ? [prayerListDone] : []),
     ...(examenActive ? [examenDone] : []),
-    // "Not today" customs drop out entirely — no dot, not counted.
-    ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
+    // "Not today" customs drop out entirely — no dot, not counted. Same for a
+    // custom scoped to weekdays on a day it isn't kept (anchorOnDay): it draws
+    // NO card on that day, so counting it here would add a dot that can never
+    // fill and hold `allHabitsDone` false all Saturday — the day could never
+    // read as complete.
+    ...customAnchors.filter((a) => !a.skipped && anchorOnDay(a)).map((a) => a.done),
   ];
   const allFlags = [...coreFlags, ...extraFlags];
   const totalAnchors = allFlags.length;
