@@ -490,6 +490,39 @@ export function setSideExtra(side: OfficeSide, v: OfficeLevel | null): void {
  * (the Examen, Audio Divina, a walk) keeps its own practice flag and never
  * reaches here.
  */
+/**
+ * The completion modes that belong to a side's ANCHOR.
+ *
+ * Lives here, not in useRhythmState, because two things need the same answer and
+ * had drifted: what counts a side as prayed, and what an UNDO should clear.
+ * officeManualLog's static SIDE_MODES said morning is ["morning",
+ * "morning-devotion"] and evening is ["evening", "early-evening-devotion"] —
+ * which is wrong in both directions. It missed "compline" (reachable: Compline
+ * is offered as an evening anchor), so undoing such an evening cleared nothing
+ * and the card would not un-tick; and it always cleared the devotion mode, so
+ * undoing the ANCHOR also wiped a second practice's flag as collateral.
+ */
+export function anchorModesFor(side: OfficeSide): string[] {
+  const devotionMode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  // The devotion MODE is shared by most non-office practices — psalms, Simple
+  // Guided Prayer, the readings, FDD-as-prayer and a custom practice all write
+  // that flag. Accepting only the office flag for those levels made their
+  // anchors permanently un-kept. The exclusion is narrow: when the anchor is the
+  // FULL OFFICE, a devotion prayed alongside it is an extra, not the office.
+  const level = getSideLevel(side);
+  if (level === "office") return [side];
+  // …but when this side also carries a SECOND practice, the wide net is exactly
+  // wrong: the extra writes one of these very flags, so the anchor would report
+  // itself prayed the moment the extra was.
+  if (getSideExtra(side)) {
+    const own = extraOfficeMode(side, level ?? "ask");
+    return [own ?? devotionMode];
+  }
+  // Compline as the side's own anchor completes as "compline", nothing else.
+  if (level === "compline") return ["compline"];
+  return [side, devotionMode];
+}
+
 export function extraOfficeMode(side: OfficeSide, level: OfficeLevel): string | null {
   if (level === "office") return side;
   if (level === "compline") return "compline";

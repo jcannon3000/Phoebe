@@ -14,9 +14,9 @@ import {
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
-import { OFFICE_DONE_EVENT, isOfficeUndoneToday } from "@/lib/officeManualLog";
+import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
+import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -82,25 +82,6 @@ function localDay(): string {
  * devotion IS the anchor, and not otherwise. The additional practice keeps its
  * own card and its own completion.
  */
-function anchorModesFor(side: "morning" | "evening"): string[] {
-  const devotionMode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
-  // The devotion MODE is shared by most non-office practices — psalms, Simple
-  // Guided Prayer, the readings, FDD-as-prayer and a custom practice all write
-  // that flag, and the shipped default rule uses two of them. Accepting only
-  // the office flag for those levels made their anchors permanently un-kept.
-  // The exclusion is narrow: when the anchor is the FULL OFFICE, a devotion
-  // prayed alongside it is an extra practice, not the office.
-  if (getSideLevel(side) === "office") return [side];
-  // …but when this side also carries a SECOND practice, the wide net is exactly
-  // wrong: the extra's completion writes one of these very flags, so the anchor
-  // would report itself prayed the moment the extra was. With two practices on
-  // one side each has to ask for only the mode it actually runs as.
-  if (getSideExtra(side)) {
-    const own = extraOfficeMode(side, getSideLevel(side) ?? "ask");
-    return [own ?? devotionMode];
-  }
-  return [side, devotionMode];
-}
 
 /**
  * The completion flags a side's SECOND practice writes.
@@ -1233,8 +1214,23 @@ export function useRhythmState(): RhythmState {
   // use-before-declaration evaluated during render — a throw, not a misread.
   const morningExtraLevel = extraModesFor("morning").length > 0 ? getSideExtra("morning") : null;
   const eveningExtraLevel = extraModesFor("evening").length > 0 ? getSideExtra("evening") : null;
-  const morningExtraDone = officeLocal.morningExtra || extraSurfaceHit("morning");
-  const eveningExtraDone = officeLocal.eveningExtra || extraSurfaceHit("evening");
+  /**
+   * …and honour an undo of THIS practice specifically.
+   *
+   * The extra's ✓ passes onlyMode, which deliberately sets no SIDE tombstone —
+   * masking the side would un-do the anchor too. But with no tombstone at all,
+   * clearing the local flag left extraSurfaceHit reading the untouched server
+   * row, so the card un-ticked and then lit straight back up on the next
+   * refetch. undoOfficeToday now stamps a mode-scoped tombstone; this reads it.
+   */
+  const extraModeUndone = (side: "morning" | "evening"): boolean => {
+    const modes = extraModesFor(side);
+    return modes.length > 0 && modes.every((m) => isOfficeModeUndoneToday(m));
+  };
+  const morningExtraDone = officeLocal.morningExtra
+    || (!extraModeUndone("morning") && extraSurfaceHit("morning"));
+  const eveningExtraDone = officeLocal.eveningExtra
+    || (!extraModeUndone("evening") && extraSurfaceHit("evening"));
   const coreFlags = [
     ...(morningActive ? [morningDone] : []),
     // A side's SECOND practice has its own card, so it needs its own dot. It

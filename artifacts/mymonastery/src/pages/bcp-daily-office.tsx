@@ -2113,19 +2113,31 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // phoebe:office-{prev,next}-slide listeners below, for the same reason:
   // those are bound once too, and a captured next()/prev() from the FIRST
   // render would replay against a slideIdx that's since moved on.
-  keyNavRef.current = { next, prev, nextPastLessonReading, blocked: displayOpen };
+  /**
+   * Any sheet over the deck blocks paging — not just the ⚙ Display sheet.
+   *
+   * The guards below all tested `displayOpen` alone, and OfficeDisplaySheet's
+   * Skip Ahead row explicitly closes itself before opening Skip Ahead, so every
+   * guard was OFF while that sheet was up. Clicks were contained (both sheets
+   * stopPropagation), but TOUCH events were not: a horizontal flick across the
+   * Skip Ahead list on the office's last slide reached the swipe handler,
+   * advanced past the end, and STAMPED THE OFFICE COMPLETE — navigating away
+   * out from under the open sheet.
+   */
+  const sheetOpen = displayOpen || skipAheadOpen || swapOpen !== null;
+  keyNavRef.current = { next, prev, nextPastLessonReading, blocked: sheetOpen };
 
   // Swipe left → next, swipe right → prev. We check that horizontal
   // movement dominates vertical so we don't hijack scroll gestures on
   // long-body slides (psalms, lessons, canticles). Threshold of 50px
   // filters out small palm tremors.
   function handleSwipeTouchStart(e: React.TouchEvent) {
-    if (displayOpen) return; // an overlay sheet is open — don't page the office
+    if (sheetOpen) return; // an overlay sheet is open — don't page the office
     swipeTouchStartXRef.current = e.touches[0].clientX;
     swipeTouchStartYRef.current = e.touches[0].clientY;
   }
   function handleSwipeTouchEnd(e: React.TouchEvent) {
-    if (displayOpen) { swipeTouchStartXRef.current = null; swipeTouchStartYRef.current = null; return; }
+    if (sheetOpen) { swipeTouchStartXRef.current = null; swipeTouchStartYRef.current = null; return; }
     if (swipeTouchStartXRef.current === null || swipeTouchStartYRef.current === null) return;
     const dx = e.changedTouches[0].clientX - swipeTouchStartXRef.current;
     const dy = e.changedTouches[0].clientY - swipeTouchStartYRef.current;
@@ -2146,7 +2158,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // link, the Back/Next nav, inline word fields) are left alone so
   // the control's own handler runs instead of paging.
   function handleTapNavigate(e: React.MouseEvent) {
-    if (displayOpen) return; // an overlay sheet is open — a tap dismisses it, not paging
+    if (sheetOpen) return; // an overlay sheet is open — a tap dismisses it, not paging
     // The contemplative pause is a chooser — a stray background tap shouldn't
     // page past it (forward) or out of it (back); the person picks breathe or
     // silence, or uses the footer Back/Next deliberately.
@@ -2297,12 +2309,41 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // a national-cathedral prayer-session (what that page does on the way out).
   const goToWatch = () => {
     if (isNativeShell()) {
+      /**
+       * Credit on the way BACK, at the real duration — not on the way out at 60s.
+       *
+       * Every server read of this surface gates on duration, not `completed`:
+       * `surface = 'national-cathedral' AND duration_seconds >= 180`, in office
+       * history, the weekly grid, yesterday's order and the office streak. So a
+       * 60-second row was stored and then filtered out of all of them — the
+       * office could never count, on any device, however long it was prayed.
+       * It also fired the instant Watch was tapped, before a word was heard.
+       *
+       * The web branch below already does this properly (/ncmp/watch measures
+       * 180 real seconds). This mirrors it: time the in-app browser, and on
+       * close credit the office the same way every other finish does — flag,
+       * completion moment, reminder swept.
+       */
+      const openedAt = Date.now();
+      const onWatchDone = () => {
+        window.removeEventListener("phoebe:browserfinished", onWatchDone);
+        const durationSeconds = Math.round((Date.now() - openedAt) / 1000);
+        if (durationSeconds < 180) return; // the server's own bar for this surface
+        const endedAt = new Date();
+        try {
+          if (viewerUser) {
+            localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+            markRecentCompletion(completedCardKey);
+          }
+        } catch { /* private mode — non-fatal */ }
+        if (!isSecondPracticeRun) clearOfficeReminderNotifications();
+        void apiRequest("POST", "/api/prayer-sessions", {
+          surface: "national-cathedral", durationSeconds, completed: true,
+          startedAt: new Date(openedAt).toISOString(), endedAt: endedAt.toISOString(),
+        }).catch(() => { /* best-effort — the local flag already credited it */ });
+      };
+      window.addEventListener("phoebe:browserfinished", onWatchDone);
       openExternal("https://www.youtube.com/@WashingtonNationalCathedral/live");
-      const now = new Date();
-      void apiRequest("POST", "/api/prayer-sessions", {
-        surface: "national-cathedral", durationSeconds: 60, completed: true,
-        startedAt: now.toISOString(), endedAt: now.toISOString(),
-      }).catch(() => { /* best-effort credit */ });
     } else {
       setViewerLocation("/ncmp/watch");
     }

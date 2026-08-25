@@ -1,7 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
-import { getSideLevel } from "@/lib/officePrefs";
+import { getSideLevel, anchorModesFor } from "@/lib/officePrefs";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { enqueueSession } from "@/lib/sessionOutbox";
@@ -49,11 +49,19 @@ function flagKey(mode: string): string {
 // the office again, any surface writes the flag, and the card completes again
 // on the spot.
 const UNDO_PREFIX = "phoebe:office-undone:";
-const SIDE_MODES: Record<OfficeUndoSide, string[]> = {
-  morning: ["morning", "morning-devotion"],
-  evening: ["evening", "early-evening-devotion"],
-  compline: ["compline"],
-};
+/**
+ * A per-MODE tombstone, for undoing ONE practice on a side that carries two.
+ *
+ * The side tombstone below can't be used for that — it would mask the other
+ * practice's server completion too, which is exactly what onlyMode exists to
+ * avoid. But without any tombstone the single-practice undo cleared one
+ * localStorage key and nothing else, so extraSurfaceHit read the untouched
+ * server row on the next refetch and the card lit straight back up.
+ */
+const UNDO_MODE_PREFIX = "phoebe:office-undone-mode:";
+export function isOfficeModeUndoneToday(mode: string): boolean {
+  try { return localStorage.getItem(UNDO_MODE_PREFIX + mode) === todayKey(); } catch { return false; }
+}
 export type OfficeUndoSide = "morning" | "evening" | "compline";
 
 export function isOfficeUndoneToday(side: OfficeUndoSide): boolean {
@@ -77,7 +85,13 @@ export function isOfficeUndoneToday(side: OfficeUndoSide): boolean {
  */
 export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
   try {
-    const modes = onlyMode ? [onlyMode] : SIDE_MODES[side];
+    // The side's real anchor modes — derived, not a static map. See
+    // anchorModesFor: the old list missed Compline-as-the-evening-anchor (so
+    // that undo cleared nothing) and always included the devotion mode (so it
+    // wiped a second practice's flag as collateral).
+    const modes = onlyMode
+      ? [onlyMode]
+      : side === "compline" ? ["compline"] : anchorModesFor(side);
     for (const mode of modes) {
       localStorage.removeItem(`phoebe:office-completed:${mode}:${todayKey()}`);
     }
@@ -86,6 +100,9 @@ export function undoOfficeToday(side: OfficeUndoSide, onlyMode?: string): void {
     // single-practice undo would otherwise silently mask the OTHER practice's
     // server completion too, which is the very thing onlyMode exists to avoid.
     if (!onlyMode) localStorage.setItem(UNDO_PREFIX + side, todayKey());
+    // …and a mode-scoped one when undoing a single practice, so its own server
+    // row stops counting for the rest of the day without touching the other's.
+    else localStorage.setItem(UNDO_MODE_PREFIX + onlyMode, todayKey());
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
   } catch { /* private mode / quota — non-fatal */ }
 }
@@ -156,6 +173,7 @@ export function markOfficeBookComplete(
     localStorage.setItem(flagKey(mode), "1");
     // A deliberate re-log outranks an earlier undo today.
     localStorage.removeItem(UNDO_PREFIX + side);
+    localStorage.removeItem(UNDO_MODE_PREFIX + mode);
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
     if (!wasAlreadyLogged) markRecentCompletion(cardKey);
   } catch { /* private mode / quota — non-fatal */ }
