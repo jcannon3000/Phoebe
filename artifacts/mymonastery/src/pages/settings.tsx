@@ -1058,10 +1058,6 @@ function readTlpHiddenDefaultOn(): boolean {
 // Morning/Contemplative/Evening; only an explicit "0" (the user toggled it
 // off) reads as Turn/Learn/Pray. Read by WayOfLoveTurnLearnPray.tsx via the
 // same key/helpers as the toggles above.
-export const TLP_MODE_KEY = "phoebe:tlp-row-mode";
-function readTlpModeDefaultOn(): boolean {
-  try { return localStorage.getItem(TLP_MODE_KEY) !== "0"; } catch { return true; }
-}
 // The "Done" section on home (kept cards, below Next) — preset ON; read by
 // dashboard.tsx via the same key/helpers as the toggles above.
 export const HIDE_DONE_KEY = "phoebe:hide-home-done";
@@ -1160,17 +1156,6 @@ function HomeDisplaySettings() {
     if (user) pushRoutineConfig();
   };
 
-  // true = "Morning / Contemplative / Evening Practice" row labels;
-  // false (default) = "Turn / Learn / Pray". Same three rows, same dots,
-  // same history — just which framework labels them.
-  const [practiceMode, setPracticeMode] = useState<boolean>(readTlpModeDefaultOn);
-  const togglePracticeMode = () => {
-    const next = !practiceMode;
-    setPracticeMode(next);
-    writeLsBool(TLP_MODE_KEY, next);
-    try { window.dispatchEvent(new Event("phoebe:prefs-changed")); } catch { /* web no-op */ }
-  };
-
   // Preset ON (readLsBool defaults false/"not hidden" when the key has
   // never been written), matching "on, but you can turn them off".
   const [doneHidden, setDoneHidden] = useState<boolean>(() => readLsBool(HIDE_DONE_KEY));
@@ -1219,61 +1204,6 @@ function HomeDisplaySettings() {
 
         <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
 
-        <button
-          onClick={toggleTlp}
-          className="w-full flex items-center justify-between"
-        >
-          <div className="text-left">
-            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-              Weekly Progress
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-              The status card under your daily routine on home.
-            </p>
-          </div>
-          <div
-            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${tlpShown ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
-          >
-            <div
-              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${tlpShown ? "left-[21px]" : "left-[3px]"}`}
-              style={{ background: "#F0EDE6" }}
-            />
-          </div>
-        </button>
-
-        {tlpShown && (
-          <>
-            <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
-            <button
-              onClick={togglePracticeMode}
-              className="w-full flex items-center justify-between"
-            >
-              <div className="text-left">
-                <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-                  Morning · Contemplative · Evening
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                  Label those same three rows by time of day instead of Turn · Learn · Pray.
-                </p>
-              </div>
-              <div
-                className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${practiceMode ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
-              >
-                <div
-                  className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${practiceMode ? "left-[21px]" : "left-[3px]"}`}
-                  style={{ background: "#F0EDE6" }}
-                />
-              </div>
-            </button>
-          </>
-        )}
-
-        <div className="h-px my-3" style={{ background: "rgba(200,212,192,0.15)" }} />
-
-        {/* Owner: "make sure that the weekly card slide is taken out, and just
-            have it on by default and have that on the settings page." The
-            customizer step is gone; this is where it lives now. The state for
-            it already existed here — it just had no row to render it. */}
         <button
           onClick={toggleTlp}
           className="w-full flex items-center justify-between"

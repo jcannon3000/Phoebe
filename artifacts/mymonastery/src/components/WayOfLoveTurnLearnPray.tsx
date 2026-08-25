@@ -59,26 +59,14 @@ function useHiddenPref(): boolean {
   return hidden;
 }
 
-// Row-labeling mode: true (default) = Morning/Contemplative/Evening
-// Practice; false = Turn/Learn/Pray (the Way of Love framework) — same
-// three rows, same dots, same history, just which lens labels them. Stored
-// under the key settings.tsx writes (TLP_MODE_KEY there); unset or "1"
-// reads as the default (Morning/Contemplative/Evening), only an explicit
-// "0" (the user toggled it off in Settings) reads as Turn/Learn/Pray.
-const MODE_KEY = "phoebe:tlp-row-mode";
-
-function readPracticeMode(): boolean {
-  try { return localStorage.getItem(MODE_KEY) !== "0"; } catch { return true; }
-}
-
+// Row labels: Morning / Contemplative / Evening Practice. This was briefly a
+// Settings toggle offering Turn/Learn/Pray as the alternative lens on the same
+// three rows — same dots, same history, different names — and the owner took
+// the toggle back out: one framework, no choice to make. Kept as a hook rather
+// than folded away because every consumer already calls it, and the T/L/P
+// branch downstream is a one-line flip from here if the lens ever changes.
 export function usePracticeModePref(): boolean {
-  const [mode, setMode] = useState(readPracticeMode);
-  useEffect(() => {
-    const onChange = () => setMode(readPracticeMode());
-    window.addEventListener("phoebe:prefs-changed", onChange);
-    return () => window.removeEventListener("phoebe:prefs-changed", onChange);
-  }, []);
-  return mode;
+  return true;
 }
 
 function localDay(): string {

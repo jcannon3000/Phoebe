@@ -128,13 +128,7 @@ export function useWidgetSync(): void {
     queryFn: () => apiRequest("GET", `/api/me/practice-week?tz=${encodeURIComponent(weekTz)}`),
     enabled, staleTime: 60_000,
   });
-  // Same key WayOfLoveTurnLearnPray / settings.tsx read/write
-  // (TLP_MODE_KEY) — kept as a literal here rather than importing from
-  // pages/settings.tsx, matching how HIDE_TLP_KEY is already duplicated as
-  // a literal between settings.tsx and the component instead of shared.
-  // Defaults ON (Morning/Contemplative/Evening) — only an explicit "0" (the
-  // user toggled it off in Settings) reads as Turn/Learn/Pray.
-  const practiceMode = (() => { try { return localStorage.getItem("phoebe:tlp-row-mode") !== "0"; } catch { return true; } })();
+  const practiceMode = true; // Morning/Contemplative/Evening — see usePracticeModePref.
 
   // Stable signatures for the array-valued rhythm state, so the push effect
   // re-runs only when the reflections / custom anchors actually change (their
