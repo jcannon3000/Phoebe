@@ -266,6 +266,28 @@ export default function TurnLearnPrayPage() {
                       {s.emoji}
                     </span>
                     <p className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>{e.title}</p>
+                    {/* Owner: a pill in the top-right white space rather than a
+                        line under the card. The row title is short, so the
+                        space beside it is doing nothing — and putting the
+                        control level with the heading names what it changes. */}
+                    <button
+                      type="button"
+                      onClick={() => setLocation(
+                        `/rule-of-life?edit=${encodeURIComponent(
+                          e.slot === "morning" ? "side:morning"
+                            : e.slot === "evening" ? "side:evening"
+                              : "contemplation",
+                        )}&return=/turn-learn-pray`,
+                      )}
+                      className="ml-auto flex-shrink-0 rounded-full text-[12.5px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+                      style={{
+                        background: "rgba(110,180,130,0.16)",
+                        border: "1px solid rgba(110,180,130,0.38)",
+                        color: WARM, fontFamily: FONT, padding: "5px 12px", cursor: "pointer",
+                      }}
+                    >
+                      {t("wol_rule.edit_this_practice", { defaultValue: "Change" })}
+                    </button>
                   </div>
                   <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
                     {e.blurb}
@@ -286,26 +308,6 @@ export default function TurnLearnPrayPage() {
                       onClick={s.onClick}
                     />
                   </div>
-                  {/* Owner: "you can edit each of those practices individually,
-                      and you don't have to go through the whole slideshow…
-                      you can just edit one, and then it saves and goes back."
-                      Opens the customizer straight onto THIS practice's slide;
-                      Save writes it and returns here. The row ids are the
-                      customizer's own (stepForRow). */}
-                  <button
-                    type="button"
-                    onClick={() => setLocation(
-                      `/rule-of-life?edit=${encodeURIComponent(
-                        e.slot === "morning" ? "side:morning"
-                          : e.slot === "evening" ? "side:evening"
-                            : "contemplation",
-                      )}&return=/turn-learn-pray`,
-                    )}
-                    className="mt-2.5 inline-flex items-center gap-1.5 text-[13px] transition-opacity hover:opacity-80"
-                    style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, cursor: "pointer", padding: "4px 2px" }}
-                  >
-                    ⚙︎ {t("wol_rule.edit_this_practice", { defaultValue: "Change this practice" })}
-                  </button>
                 </div>
               </div>
             );
