@@ -298,6 +298,7 @@ function homeCardActive(
 
 export function useRhythmState(): RhythmState {
   const day = localDay();
+  const tzName = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { user, isLoading: authLoading } = useAuth();
   // Feed-gated reflections (VTS) — see the selectedReflections filter below.
   const entitlements = useEntitlements();
@@ -599,8 +600,13 @@ export function useRhythmState(): RhythmState {
     // YESTERDAY's array — whose last row is yesterday — and Morning/Evening read
     // "Prayed" on a fresh day. `day` is recomputed from the wall clock every
     // render, so the key changes the moment the date rolls over.
-    queryKey: ["/api/me/office-history-week", day],
-    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
+    queryKey: ["/api/me/office-history-week", day, tzName],
+    // ?tz= is load-bearing here. The route buckets the week by the user's local
+    // day, and todayOffice is `lastOfficeDay.ymd === day` — so a stale stored
+    // timezone shifts the server's whole week and that guard fails, dropping the
+    // cross-device office signal to nothing every evening for anyone west of
+    // UTC. Sending it also backfills users.timezone (see resolveUserTz).
+    queryFn: () => apiRequest("GET", `/api/me/office-history-week?tz=${encodeURIComponent(tzName)}`),
     staleTime: 30_000,
     enabled: !guest,
   });

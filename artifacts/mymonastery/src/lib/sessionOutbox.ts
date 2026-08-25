@@ -14,7 +14,7 @@
 // It is a safety net for the failure path, NOT a general offline sync layer —
 // callers keep their normal POST and only enqueue when that POST fails, so the
 // success path is completely unchanged.
-import { apiRequest } from "./queryClient";
+import { apiRequest, ApiError } from "./queryClient";
 
 const KEY = "phoebe:session-outbox";
 /** Bound the queue so a long offline stretch can't fill localStorage. Oldest
@@ -69,10 +69,19 @@ export async function flushSessions(): Promise<void> {
       try {
         await apiRequest("POST", "/api/prayer-sessions", entry.body);
       } catch (err) {
-        // Keep it only if this looks retryable. apiRequest surfaces HTTP errors
-        // with the status in the message; anything 4xx is a permanent reject.
-        const msg = err instanceof Error ? err.message : String(err);
-        const permanent = /\b4\d\d\b/.test(msg);
+        /**
+         * Keep it only if this looks retryable — read the STATUS.
+         *
+         * This used to regex the message for a 3-digit number, but
+         * ApiError.message is the response BODY's `error` field, and nothing in
+         * this endpoint's failure vocabulary ("Unauthorized",
+         * "not_authenticated", "Invalid input") contains digits at all. So
+         * `permanent` was never true and a hard reject survived forever: a
+         * signed-out guest's every office and sit queued and then replayed on
+         * every app start, every reconnect and every foreground, up to the
+         * 50-entry cap. Silent, but a standing request storm.
+         */
+        const permanent = err instanceof ApiError && err.status >= 400 && err.status < 500;
         if (!permanent) survivors.push(entry);
       }
     }

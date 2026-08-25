@@ -2764,7 +2764,13 @@ router.post("/groups/:slug/intentions", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const result = await requireMember(req.params.slug, user.id);
+  // requireAdmin, not requireMember. The comment below has always said this
+  // is an admin action, but requireMember admits any tier — and `follower`
+  // is the DEFAULT role every accepted join grants. The only UI is the
+  // admin-only settings page, so this was enforced on the client alone: a
+  // follower could POST directly and their text would land in the
+  // intentions list every visitor to the community sees.
+  const result = await requireAdmin(req.params.slug, user.id);
   if (!result) { res.status(404).json({ error: "Group not found" }); return; }
   // No circle gate — any group's admin can add an intention (owner: the
   // opt-in checkbox is gone; intentions are what a community is praying for).

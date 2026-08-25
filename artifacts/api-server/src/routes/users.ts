@@ -453,7 +453,10 @@ router.get("/me/silence-ladder", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [u] = await db.select({ timezone: usersTable.timezone, silenceLadder: usersTable.silenceLadder }).from(usersTable).where(eq(usersTable.id, sessionUserId));
-    const tz = u?.timezone || "UTC";
+    // This GET evaluates the ladder and WRITES contemplationGoalMinutes, so a
+    // wrong timezone doesn't merely misreport — it scores real days as misses
+    // and can ease a faithful user's rung back down.
+    const tz = await resolveUserTz(req, sessionUserId, u?.timezone);
     const state = (u?.silenceLadder as LadderState | null) ?? null;
     if (!state || !state.enabled) { res.json({ enabled: false }); return; }
     const todayYmd = ladderYmd(tz, new Date());
@@ -517,6 +520,29 @@ router.put("/me/silence-ladder", async (req, res): Promise<void> => {
 // slide so it reflects sessions logged on any device, not just the
 // localStorage flags from this browser. Day strings are user-tz
 // YYYY-MM-DD; today sits at index 6 (last).
+/**
+ * The user's timezone for THIS request, preferring what the client just sent.
+ *
+ * users.timezone had exactly ONE writer in the entire codebase: a side effect of
+ * GET /me/practice-week. Every other tz-dependent route read the stored value
+ * and fell back to "UTC", so until someone happened to load a surface that calls
+ * practice-week, their local day was wrong everywhere else. For anyone west of
+ * UTC that silently pushes each evening office into tomorrow.
+ */
+async function resolveUserTz(req: { query?: unknown }, userId: number, storedTz: string | null | undefined): Promise<string> {
+  const q = (req.query ?? {}) as Record<string, unknown>;
+  const raw = typeof q["tz"] === "string" ? (q["tz"] as string) : null;
+  const valid = (() => {
+    if (!raw) return false;
+    try { new Intl.DateTimeFormat("en-CA", { timeZone: raw }); return true; } catch { return false; }
+  })();
+  if (valid && raw !== storedTz) {
+    db.update(usersTable).set({ timezone: raw }).where(eq(usersTable.id, userId))
+      .catch((err) => console.error("[resolveUserTz] timezone backfill failed:", err));
+  }
+  return (valid ? raw : null) || storedTz || "UTC";
+}
+
 router.get("/me/office-history-week", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -525,7 +551,7 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
       .select({ timezone: usersTable.timezone })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
-    const tz = meTz?.timezone || "UTC";
+    const tz = await resolveUserTz(req, sessionUserId, meTz?.timezone);
     // One row per (day, side). The CASE collapses the four surfaces
     // into "morning" or "evening"; DISTINCT folds duplicate sessions
     // for the same side on the same day into one.
@@ -686,8 +712,8 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
         SELECT DISTINCT
           to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
           CASE
-            WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral') THEN 'morning'
-            WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
+            WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
+            WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
             -- Its own side, never folded into 'evening' — see office-history-week.
             WHEN surface = 'compline' THEN 'compline'
           END AS side,
@@ -697,6 +723,10 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
           AND (
             (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion', 'compline') AND completed = TRUE)
             OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+            -- office-history-week and yesterday-order already count the audio
+            -- offices; practice-week did not, so the card read "Prayed today"
+            -- beside an empty dot in the weekly grid.
+            OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
           )
           AND ended_at >= NOW() - INTERVAL '8 days'
       `),
@@ -949,7 +979,7 @@ router.get("/me/yesterday-order", async (req, res): Promise<void> => {
       .select({ timezone: usersTable.timezone, ruleConfig: usersTable.ruleConfig })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
-    const tz = meTz?.timezone || "UTC";
+    const tz = await resolveUserTz(req, sessionUserId, meTz?.timezone);
     const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
     const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
     const yDate = new Date(Date.UTC(ty, tm - 1, td));

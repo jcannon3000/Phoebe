@@ -369,6 +369,10 @@ export function useWidgetSync(): void {
     // widget kept showing it as next-up until some unrelated refresh.
     r.readingActive, r.readingDone, r.podcastsActive, r.podcastsDone,
     r.examenActive, r.examenDone,
+    // The second practice — read at the items above, so the effect has to wake
+    // when it changes. Without these the widget kept showing it undone (and as
+    // next-up) until an unrelated refetch happened to push a new state.
+    r.morningExtraLevel, r.morningExtraDone, r.eveningExtraLevel, r.eveningExtraDone,
     r.novenaActive, r.novenaDone, r.novena?.currentDay, r.novena?.title, r.novenaReplacesMorning, r.novenaReplacesEvening,
     customSig, r.prayerKind, r.streak, r.contemplationMin, r.contemplationGoalMin,
     prayedWithQ.data, coPrayersQ.data, prayerReqsQ.data, cacMetaQ.data,

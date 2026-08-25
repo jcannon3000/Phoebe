@@ -271,7 +271,7 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, readingActive, podcastsActive, walkActive, examenActive, cobreatheActive, prayerListActive, complineActive, contemplationStyle, morningContemplationActive, eveningContemplationActive, morningExtraLevel, eveningExtraLevel, intentionsTotalCount } = useRhythmState();
   // When a side's contemplative practice IS the breath, that side's practice is
   // Creation Prayer — not a silent sit AND a breath. The daily cards already
   // collapse the two (the standalone Co-Breathe card is suppressed); this row
@@ -287,7 +287,7 @@ export function WeeklyGridCard() {
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; morningExtra: boolean; eveningExtra: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; morningExtra: boolean; eveningExtra: boolean; compline: boolean; contemplation: boolean; reflection: boolean; listening: boolean; examen: boolean; reading: boolean; podcasts: boolean; walk: boolean; cobreathe: boolean; prayerList: boolean; vts: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     // ?tz= is not decoration: the route uses it to compute which local days the
@@ -326,7 +326,11 @@ export function WeeklyGridCard() {
     ...(morningExtraLevel ? [{ id: "morning-extra", emoji: "🌿", label: extraPracticeTitle("Morning", morningExtraLevel, t), rgb: "96,140,110", doneFor: (d: Day) => !!d.morningExtra }] : []),
     // Reflection rides right after Morning Prayer — it's the second beat of the
     // day — and stays ahead of Contemplation, matching the card order below.
-    ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
+    // `reflection` is fdd/ssje/cac only — VTS is reported in its own field so
+    // the Dean's Commentary can be spoken about specifically. Reading it has
+    // to fill this row too, or someone who follows ONLY VTS gets a card that
+    // flips to kept beside a row that is empty all week.
+    ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection || !!d.vts }] : []),
     ...(silenceActive && !creationRowCovers ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
     ...(cobreatheActive ? [{ id: "cobreathe", emoji: "🌍", label: t("rhythm.row_cobreathe", { defaultValue: "Creation Prayer" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.cobreathe }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
@@ -335,11 +339,22 @@ export function WeeklyGridCard() {
     ...(walkActive ? [{ id: "walk", emoji: "🚶", label: t("rhythm.row_walk", { defaultValue: "Contemplative Walk" }), rgb: "120,160,120", doneFor: (d: Day) => !!d.walk }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "46,107,64", doneFor: (d: Day) => !!d.evening }] : []),
     ...(eveningExtraLevel ? [{ id: "evening-extra", emoji: "🌿", label: extraPracticeTitle("Evening", eveningExtraLevel, t), rgb: "96,140,110", doneFor: (d: Day) => !!d.eveningExtra }] : []),
-    ...(prayerListActive ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
+    // Same gate the CARD and the dot use (intentionsTotalCount > 0), not the
+    // layout-visibility flag. prayerListActive is true by default for
+    // everyone, so this drew a row of seven permanently empty dots for
+    // anyone with no prayers — guaranteed for guests, whose intentions
+    // query never runs. And a user who turned the list OFF but has prayers
+    // got a card and a dot with no row, so the grid described a smaller
+    // rule than the pill.
+    ...(intentionsTotalCount > 0 ? [{ id: "prayer-list", emoji: "🕊️", label: t("rhythm.row_prayer_list", { defaultValue: "My Prayer List" }), rgb: "96,140,180", doneFor: (d: Day) => !!d.prayerList }] : []),
     // Compline closes the day — its own row, reading its own server flag
     // (never d.evening; the two offices are tracked separately end to end).
     ...(complineActive ? [{ id: "compline", emoji: "🌙", label: t("rhythm.row_compline", { defaultValue: "Compline" }), rgb: "90,100,140", doneFor: (d: Day) => !!d.compline }] : []),
-    ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
+    // Suppressed when a side's own anchor IS the Examen — the same guard the
+    // card and the widget item already use. Without it that side's row and
+    // the Examen row both fill from one act, and the pill counts a
+    // practice the home shows no card for.
+    ...(examenActive && getSideLevel("morning") !== "examen" && getSideLevel("evening") !== "examen" ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
     // The user's own custom anchors — one row each, filled from local per-day
     // history (it fills in going forward; no backfill before this shipped).
     ...getCustomAnchors().map((a, i) => {

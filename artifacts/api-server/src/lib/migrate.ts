@@ -2943,7 +2943,20 @@ export async function migrate() {
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.
-    await run(client, `
+    /**
+     * runOnce, NOT every boot.
+     *
+     * Unsubscribing DELETES the row (routes/prayer-feeds.ts), so
+     * ON CONFLICT DO NOTHING protects nothing — there is no row left to
+     * conflict with. And climate_enrolled is only ever set true; nothing clears
+     * it. So this "backfill" re-subscribed anyone who had deliberately
+     * unfollowed the Climate feed, on every single deploy: their intercessions
+     * reappear in the prayer list and the office slideshow, they unfollow
+     * again, and the next deploy undoes it. From the user's side that is
+     * unfixable and unexplained. A backfill should run once; this is a policy
+     * being re-imposed.
+     */
+    await runOnce(client, "backfill_climate_feed_subscriptions", `
       INSERT INTO prayer_feed_subscriptions (feed_id, user_id)
       SELECT pf.id, u.id
       FROM users u

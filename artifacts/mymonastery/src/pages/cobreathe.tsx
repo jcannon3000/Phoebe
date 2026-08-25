@@ -411,8 +411,16 @@ export default function CobreathePage() {
   });
 
   const record = useMutation({
-    mutationFn: (seconds: number) =>
-      apiRequest<BreathState & { ok: boolean }>("POST", "/api/breath/today", {
+    mutationFn: async (seconds: number) => {
+      /**
+       * A signed-out guest has no account to record against. /breath/today 401s,
+       * and `record.isError` then paints a full-screen "Your breath didn't save"
+       * — with a Try again that can never succeed — in place of the summary.
+       * The breath IS kept: logSit's own guest branch a hundred lines below was
+       * taught about guests and this one, in the same file, was not.
+       */
+      if (isDeviceLocalGuest(user)) return { ok: true, count: 1 } as unknown as BreathState & { ok: boolean };
+      return apiRequest<BreathState & { ok: boolean }>("POST", "/api/breath/today", {
         day,
         seconds,
         // Only the place's id and a boolean — never coordinates. See
@@ -424,7 +432,8 @@ export default function CobreathePage() {
         // made this whole slide fail.
         placeSlug: place?.slug ?? null,
         placeVerified,
-      }),
+      });
+    },
     onSuccess: (resp) => {
       setDoneState(resp);
       queryClient.invalidateQueries({ queryKey: ["/api/breath/today", day] });

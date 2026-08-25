@@ -516,11 +516,14 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
+        // 4xx → definitive failure, don't loop. Read the STATUS: ApiError's
+        // message is the response BODY, so routes answering `not_authenticated`
+        // matched none of the old patterns and a signed-out guest retried every
+        // doomed request three times with backoff.
+        if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
         const msg = String((error as { message?: unknown } | null)?.message ?? "");
-        // 4xx → definitive failure, don't loop. Also bail on auth
-        // redirects where the browser already handled the session.
         if (/\b4\d\d\b/.test(msg)) return false;
-        if (/Unauthorized|Forbidden|Not authenticated/i.test(msg)) return false;
+        if (/Unauthorized|Forbidden|Not authenticated|not_authenticated/i.test(msg)) return false;
         return failureCount < 3;
       },
       retryDelay: (attempt) =>

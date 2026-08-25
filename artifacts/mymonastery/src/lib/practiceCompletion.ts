@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 
@@ -92,8 +92,11 @@ export function markPracticeDoneToday(section: OptionalPractice): void {
          * (cacReadState's session posts, the office log) swallows this case
          * silently; only this one spoke up.
          */
-        const msg = String((err as { message?: unknown } | null)?.message ?? "");
-        if (/\b401\b|Unauthorized|Not authenticated/i.test(msg)) return;
+        // Read the STATUS, not the message. ApiError.message is the response
+        // BODY's `error` field, and this route answers `not_authenticated` —
+        // which "Not authenticated" (space, not underscore) never matched, so
+        // the guard was inert and guests still got the toast.
+        if (err instanceof ApiError && err.status === 401) return;
         console.error(`[practiceCompletion] sync failed for "${section}" after retry:`, err);
         // Visible, not just logged — nobody's going to open dev tools to
         // notice a cross-device sync silently failed. A toast (wired up by
@@ -132,8 +135,7 @@ export function unmarkPracticeDoneToday(section: OptionalPractice): void {
       del().catch((err) => {
         // Same as the mark path above: a signed-out guest has no server row to
         // delete, so a 401 here is expected, not a failure to report.
-        const msg = String((err as { message?: unknown } | null)?.message ?? "");
-        if (/\b401\b|Unauthorized|Not authenticated/i.test(msg)) return;
+        if (err instanceof ApiError && err.status === 401) return;
         console.error(`[practiceCompletion] un-sync failed for "${section}" after retry:`, err);
         try {
           window.dispatchEvent(new CustomEvent(PRACTICE_SYNC_FAILED_EVENT, { detail: { section } }));
