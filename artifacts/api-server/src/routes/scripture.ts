@@ -1,5 +1,12 @@
 // Passage lookup by reference — "Luke 10:38-42" → the verses.
 //
+// NO CALLER RIGHT NOW. Visio Divina's scripture slide was its only consumer,
+// and that slide has been cut. Kept rather than deleted because it has already
+// been removed and restored once this week as the practice's shape moved, and
+// because it's a small, public, cache-headed read over public-domain text with
+// nothing behind it to protect. Delete it freely if it's still unused later —
+// nothing imports it but routes/index.ts.
+//
 // The office already renders lessons from the bundled World English Bible
 // (public domain, zero external calls — see lib/scriptureService.ts), but it
 // only ever does so for readings the lectionary handed it. Visio Divina needs

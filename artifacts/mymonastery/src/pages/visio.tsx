@@ -3,15 +3,17 @@
  *
  * The sibling of Audio Divina: there, sacred listening; here, sacred looking.
  *
- * Six beats: prompt · picture · prompt · picture · reflection · completion.
- * Each prompt is followed by the looking it asks for — the first tells your
- * eyes what to do while there is still nothing to look at; the second asks
- * what that noticing might be for, and you look again holding the question.
- * The alternation is the practice.
+ * Six beats: prompt · picture · reflection · prompt · picture · completion.
+ *
+ * Look first, with only an instruction for your eyes. Then read what somebody
+ * who has looked at this for a living has to say about it. Then be asked what
+ * God might be saying to YOU through it — a question that lands differently
+ * once the commentary has opened the picture up. Then look again, holding all
+ * of it. That second look is what the sequence is built to earn.
  *
  * There is no scripture slide. The passage the artwork depicts is named — it
- * is the eyebrow over the title — but not printed: reading a lesson here
- * competed with the looking, and the office is where you read.
+ * is the eyebrow over the title — but not printed: the office is where you
+ * read, and a lesson here competed with the looking.
  *
  * ── Where the art comes from ──
  *
@@ -73,17 +75,6 @@ const QUESTIONS = [
   "As you view the following picture, notice anything that is sticking out to you, or grabs your attention.",
   "Consider what God might be speaking to you through the image in this moment.",
 ];
-
-/**
- * "WEB: World English Bible (public domain)" → "WEB".
- *
- * The data file names itself in full, which is right for the data and far too
- * long for a letter-spaced eyebrow beside the reference.
- */
-function shortTranslation(name: string): string {
-  const abbrev = name.split(":")[0]?.trim();
-  return abbrev && abbrev.length <= 12 ? abbrev : name.split("(")[0]!.trim();
-}
 
 /** "1050-1100" is a range, and a range takes an en dash. */
 function tidyDate(d: string): string {
@@ -163,35 +154,6 @@ export default function VisioPage() {
     ? { art: override, ref: override.refs[0] ?? "", followsToday: false }
     : chosen;
 
-  /**
-   * The passage, from the bundled World English Bible on the server.
-   *
-   * WEB and not the RSV that thevcs.org shows beside its commentary: the RSV
-   * is under copyright to the National Council of Churches and licensed, not
-   * public domain, so it can't be reproduced here however convenient their
-   * viewer makes it look. WEB is genuinely public domain, which is why it can
-   * be printed in full. Null text is normal (the deuterocanon isn't carried) —
-   * the slide then shows the reference alone, exactly as the office does.
-   */
-  const ref = override ? (override.refs[0] ?? "") : (chosen?.ref ?? "");
-  const { data: passage } = useQuery<{ text: string | null; translation: string | null }>({
-    queryKey: ["/api/scripture/passage", ref],
-    enabled: !!ref,
-    queryFn: async () => {
-      try {
-        const r = await apiRequest<{ text?: string | null; translation?: string | null } | undefined>(
-          "GET", `/api/scripture/passage?ref=${encodeURIComponent(ref)}`,
-        );
-        const ok = r && typeof r === "object";
-        return { text: (ok ? r.text : null) ?? null, translation: (ok ? r.translation : null) ?? null };
-      } catch {
-        return { text: null, translation: null };
-      }
-    },
-    staleTime: Infinity,
-    retry: false,
-  });
-
   // An unreachable image (offline, or their host having a bad day) falls back
   // to a work bundled in the binary, so the practice still happens.
   const [imageFailed, setImageFailed] = useState(false);
@@ -263,7 +225,6 @@ export default function VisioPage() {
         where: bundled.where,
         img: bundled.image,
         scriptureRef: bundled.scriptureRef,
-        scripture: bundled.scripture,
         attribution: bundled.attribution,
         licence: "Public domain",
         essayUrl: bundled.essayUrl ?? null,
@@ -277,7 +238,6 @@ export default function VisioPage() {
           where: active.art.where ?? "",
           img: active.art.img,
           scriptureRef: active.ref,
-          scripture: passage?.text ?? null,
           attribution: active.art.attribution,
           licence: active.art.licence,
           essayUrl: active.art.essay,
@@ -286,25 +246,22 @@ export default function VisioPage() {
       : null;
 
   /**
-   * Seven beats (owner's order): prompt · scripture · picture · prompt ·
-   * picture · reflection · completion.
+   * Six beats (owner's order): prompt · picture · reflection · prompt ·
+   * picture · completion.
    *
-   * You are told what to do with your eyes; you read the passage the artwork
-   * depicts; THEN you see it. The reading comes first so the picture arrives
-   * into something — which is also why the picture isn't on screen during it.
-   * Then the second prompt asks what the noticing might be for, and you look
-   * again holding the question. The alternation is the practice.
+   * Look first, with only an instruction for your eyes. Then read what
+   * somebody who has looked at this for a living has to say about it. Then be
+   * asked what God might be saying to YOU through it — a question that lands
+   * differently once the commentary has opened the picture up. Then look
+   * again, holding all of it. The second look is the point of the sequence.
    *
-   * The scripture slide was cut and then asked back for once the owner saw
-   * thevcs.org show the passage beside its commentary — "put it before the
-   * first image". The reference stays as the eyebrow over the title on both
-   * picture beats regardless.
+   * NO SCRIPTURE SLIDE. It has been cut twice now; the passage the artwork
+   * depicts is still NAMED — it's the eyebrow over the title on both picture
+   * beats — but its text isn't printed here. The office is where you read.
    */
-  const PROMPT_1 = 0, SCRIPTURE = 1, PICTURE_1 = 2, PROMPT_2 = 3, PICTURE_2 = 4, REFLECT = 5, DONE = 6;
+  const PROMPT_1 = 0, PICTURE_1 = 1, REFLECT = 2, PROMPT_2 = 3, PICTURE_2 = 4, DONE = 5;
   const [step, setStep] = useState(PROMPT_1);
-  const TOTAL = 7;
-  // NOT on the scripture beat: that one comes BEFORE the picture is ever seen,
-  // and showing it there would spend the reveal early.
+  const TOTAL = 6;
   const showsImage = step === PICTURE_1 || step === PICTURE_2;
 
   const atEnd = step >= TOTAL - 1;
@@ -427,9 +384,9 @@ export default function VisioPage() {
           flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center",
           // The gospel beat fills from the top so the image can hold a fixed
           // band and the text scroll under it; every other beat is centred.
-          justifyContent: step === SCRIPTURE ? "flex-start" : "center",
+          justifyContent: "center",
           padding: "0 20px", gap: 16,
-          overflowY: step === SCRIPTURE ? "hidden" : "auto",
+          overflowY: "auto",
         }}
       >
         {/* The painting, lit from behind by itself.
@@ -467,20 +424,14 @@ export default function VisioPage() {
 
         {/* Resolving. A soft empty frame rather than a spinner: the practice
             opens on stillness, and the first prompt normally covers the wait.
-            
-            Covers the SCRIPTURE beat as well as the picture ones. It reads
-            from `view` too, and it was gated on showsImage alone — so tapping
-            Begin inside the readings lookup's 1.5s cap landed on a completely
-            empty middle. That's the blank-screen class this repo keeps a rule
-            about; a beat that needs the choice must show something while it
-            resolves. Shaped like what's coming: a page of text, or a frame. */}
-        {!view && (showsImage || step === SCRIPTURE) && (
+            Every beat that reads from `view` must show SOMETHING while the
+            choice settles — a beat that renders nothing is the blank-screen
+            class this repo keeps a rule about. */}
+        {!view && showsImage && (
           <div
             aria-hidden
             style={{
-              width: step === SCRIPTURE ? "min(100%, 560px)" : "min(100%, 320px)",
-              height: step === SCRIPTURE ? "34vh" : "46vh",
-              borderRadius: 10,
+              width: "min(100%, 320px)", height: "46vh", borderRadius: 10,
               border: `1px solid ${BORDER}`, background: "rgba(46,107,64,0.07)",
               animation: "visio-breathe 2600ms ease-in-out infinite",
             }}
@@ -496,27 +447,6 @@ export default function VisioPage() {
               ? t("visio.prompt_notice", { defaultValue: QUESTIONS[0]! })
               : t("visio.prompt_speaking", { defaultValue: QUESTIONS[1]! })}
           </p>
-        )}
-
-        {/* The passage, read before the picture is seen. Its own scroll box
-            with a bottom SPACER — not padding, which iOS WebKit drops on a
-            flex scroll container, hiding the last line behind the button. */}
-        {step === SCRIPTURE && view && (
-          <div style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: 560, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 8px" }}>
-              {view.scriptureRef}
-              {passage?.translation ? ` · ${shortTranslation(passage.translation)}` : ""}
-            </p>
-            {view.scripture ? (
-              <p style={{ color: WARM, fontFamily: SERIF, fontSize: 18, lineHeight: 1.7, margin: 0 }}>{view.scripture}</p>
-            ) : (
-              // Same graceful shape the office uses for a book we don't carry.
-              <p style={{ color: "rgba(240,237,230,0.72)", fontFamily: SERIF, fontSize: 17, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
-                {t("visio.open_your_bible", { defaultValue: "Open your bible to this passage, and read it slowly." })}
-              </p>
-            )}
-            <div aria-hidden style={{ height: 28 }} />
-          </div>
         )}
 
         {/* The picture's identity, on both looking beats.
