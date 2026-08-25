@@ -40,6 +40,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { openExternal } from "@/lib/openExternal";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
@@ -481,36 +482,75 @@ export default function VisioPage() {
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px", textAlign: "center" }}>
               {t("visio.close_eyebrow", { defaultValue: "Visio Divina complete" })}
             </p>
-            {cards.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => reopen(a.id)}
-                style={{
-                  userSelect: "none", WebkitTapHighlightColor: "transparent",
-                  display: "flex", alignItems: "center", gap: 12, width: "100%",
-                  padding: 10, borderRadius: 14, cursor: "pointer", textAlign: "left",
-                  // Frosted (owner).
-                  background: "rgba(240,237,230,0.06)",
-                  backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                  border: `1px solid ${BORDER}`,
-                }}
-              >
-                <img
-                  src={a.img}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flex: "0 0 auto", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
-                />
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15.5, fontStyle: "italic", lineHeight: 1.3 }}>{a.title}</span>
-                  <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
-                    {[a.artist, tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
+            {cards.map((a) => {
+              /**
+               * "Read reflection" belongs to TODAY'S card only (owner).
+               *
+               * The commentary left the practice itself — looking and prayer,
+               * with nobody else's reading of the picture in between — but the
+               * closing slide is after all of that, which is exactly where
+               * somebody else's reading is welcome. On the day's own card, so
+               * it reads as more about THIS picture rather than a stray link.
+               *
+               * Deliberately openExternal, NOT openOfficeReading: the office
+               * flavour carries a Back/Next pill that steps the deck it was
+               * opened from, and this deck is over — its Next would have
+               * nothing to move to and would sit there looking broken.
+               */
+              const isToday = !!active && a.id === active.art.id && !!a.essay;
+              return (
+                <div
+                  key={a.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => reopen(a.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); reopen(a.id); } }}
+                  style={{
+                    userSelect: "none", WebkitTapHighlightColor: "transparent",
+                    display: "flex", alignItems: "center", gap: 12, width: "100%",
+                    padding: 10, borderRadius: 14, cursor: "pointer", textAlign: "left",
+                    // Frosted (owner).
+                    background: "rgba(240,237,230,0.06)",
+                    backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                    border: `1px solid ${BORDER}`,
+                  }}
+                >
+                  <img
+                    src={a.img}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flex: "0 0 auto", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+                  />
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15.5, fontStyle: "italic", lineHeight: 1.3 }}>{a.title}</span>
+                    <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
+                      {[a.artist, tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
+                    </span>
                   </span>
-                </span>
-              </button>
-            ))}
+                  {isToday && (
+                    <button
+                      type="button"
+                      // The card underneath reopens the picture; without this
+                      // the pill would do both at once.
+                      // reader: the article chrome — one button, no Options,
+                      // no title. back: that button says "Back", because this
+                      // is a page you step into and out of, not a reading you
+                      // finish. Nothing else on the bar; the page IS the UI.
+                      onClick={(e) => { e.stopPropagation(); openExternal(a.essay, { reader: true, back: true }); }}
+                      style={{
+                        flex: "0 0 auto", userSelect: "none", WebkitTapHighlightColor: "transparent",
+                        background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
+                        color: WARM, borderRadius: 999, padding: "8px 12px",
+                        fontSize: 12, fontWeight: 600, fontFamily: FONT, cursor: "pointer", lineHeight: 1.2,
+                      }}
+                    >
+                      {t("visio.read_reflection", { defaultValue: "Read reflection" })}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
             {view && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "6px 0 0", textAlign: "center" }}>
                 {view.attribution}

@@ -279,6 +279,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // When present() hands us a web view that was already loading in the
     // background (preloaded from the home screen), we adopt it instead of
     // creating + loading a fresh one — so the page is on screen instantly.
+    /** One top-left button reading "Back" instead of "Done" — see the JS side's
+     *  OpenOpts.back. Only consulted on the article (lightChrome) path, which
+     *  is already "one button and nothing else". */
+    var backChrome = false
+
     private let preloadedWebView: WKWebView?
 
     init(url: URL, preloadedWebView: WKWebView? = nil) {
@@ -397,8 +402,13 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         if officeChrome {
             navigationItem.leftBarButtonItem = nil
         } else {
-            let doneItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(close))
-            doneItem.accessibilityLabel = "Done"
+            // "Done" finishes a reading; "Back" leaves a page you stepped
+            // sideways into. Visio Divina's closing card offers the commentary
+            // that way — calling that "Done" would claim a completion the tap
+            // never was.
+            let leftTitle = backChrome ? "Back" : "Done"
+            let doneItem = UIBarButtonItem(title: leftTitle, style: .plain, target: self, action: #selector(close))
+            doneItem.accessibilityLabel = leftTitle
             self.doneItem = doneItem
             navigationItem.leftBarButtonItem = doneItem
         }
@@ -1284,6 +1294,7 @@ final class BibleBrowser: NSObject {
         onChangeFormat: (() -> Void)? = nil,
         onListen: (() -> Void)? = nil,
         isArticle: Bool = false,
+        backChrome: Bool = false,
         officeChrome: Bool = false,
         officeTitle: String? = nil,
         officeSlideLabel: String? = nil,
@@ -1300,6 +1311,7 @@ final class BibleBrowser: NSObject {
         // light), so it gets the article-flavoured starting posture — no dark
         // flash before the page paints — on top of its own button set below.
         vc.isArticle = isArticle || officeChrome
+        vc.backChrome = backChrome
         vc.officeChrome = officeChrome
         vc.officeTitleText = officeTitle
         vc.officeSlideLabel = officeSlideLabel

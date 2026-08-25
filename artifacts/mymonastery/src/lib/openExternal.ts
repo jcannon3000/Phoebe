@@ -16,6 +16,7 @@ type PhoebeNative = {
     url: string,
     opts?: {
       lightChrome?: boolean;
+      backChrome?: boolean;
       officeChrome?: boolean;
       officeTitle?: string;
       slideLabel?: string;
@@ -44,7 +45,19 @@ type PhoebeNative = {
  * which way to start so a cream article doesn't open behind a black bar for a
  * beat. Owner: "for the newsletters default to a white top bar."
  */
-type OpenOpts = { reader?: boolean };
+type OpenOpts = {
+  reader?: boolean;
+  /**
+   * Label the one top-left button "Back" instead of "Done".
+   *
+   * "Done" is right for a newsletter you finish reading (owner asked for that
+   * pill by name). It is wrong for a page you stepped sideways into and will
+   * step out of — Visio Divina's closing card offers the commentary, and
+   * "Done" there would claim you had completed something. Same chrome
+   * otherwise: one button, top left, and nothing else.
+   */
+  back?: boolean;
+};
 
 /**
  * Returns whether the hand-off actually happened — true for native (the
@@ -100,7 +113,7 @@ export function openExternal(url: string, opts?: OpenOpts): boolean {
   const native = (window as unknown as { PhoebeNative?: PhoebeNative })
     .PhoebeNative;
   if (native?.openInAppBrowser) {
-    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader });
+    void native.openInAppBrowser(url, { lightChrome: !!opts?.reader, backChrome: !!opts?.back });
     return true;
   }
   // Web fallback. noopener for security; noreferrer to keep the

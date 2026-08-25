@@ -133,6 +133,9 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
         // online" pill on a lesson)? See officeChrome's own doc comment on
         // BibleWebViewController for the full shape of what this turns on.
         let officeChrome = call.getBool("officeChrome") ?? false
+        // One top-left button reading "Back" rather than "Done" — see
+        // openExternal's OpenOpts. Only meaningful alongside lightChrome.
+        let backChrome = call.getBool("backChrome") ?? false
         let officeTitle = call.getString("officeTitle")
         let officeSlideLabel = call.getString("slideLabel")
         let officeSectionLabel = call.getString("sectionLabel")
@@ -209,6 +212,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                         onChangeFormat: onChangeFormat,
                         onListen: onListen,
                         isArticle: isArticle,
+                        backChrome: backChrome,
                         officeChrome: officeChrome,
                         officeTitle: officeTitle,
                         officeSlideLabel: officeSlideLabel,
@@ -231,6 +235,7 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewContro
                 onChangeFormat: onChangeFormat,
                 onListen: onListen,
                 isArticle: isArticle,
+                backChrome: backChrome,
                 officeChrome: officeChrome,
                 officeTitle: officeTitle,
                 officeSlideLabel: officeSlideLabel,
