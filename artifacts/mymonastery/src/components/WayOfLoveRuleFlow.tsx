@@ -1032,6 +1032,24 @@ export default function WayOfLoveRuleFlow({
     evening: !!getSideExtra("evening"),
   }));
 
+  /**
+   * A contemplative practice the person names themselves.
+   *
+   * Owner: "there should be a custom option for contemplative practice." None
+   * of the named rows can express "the thing I actually do" — a sit on the
+   * porch, lectio, the rosary — and the customizer had no way to say it. On
+   * Continue this becomes a CUSTOM ANCHOR, which is the app's existing shape
+   * for a practice only you keep: its own card, dot and weekly row, kept with
+   * a tap.
+   *
+   * NOT hydrated from existing anchors on re-open: there is no way to tell
+   * which of a person's custom anchors came from THIS row rather than from
+   * "Create your own" elsewhere, and claiming one would let re-opening the flow
+   * silently re-adopt a practice they had removed. Re-opening shows an empty
+   * box; the anchor they already made is untouched on the home.
+   */
+  const [customPracticeOn, setCustomPracticeOn] = useState(false);
+  const [customPracticeName, setCustomPracticeName] = useState("");
   const [contemplationBySide, setContemplationBySide] = useState<Record<OfficeSide, boolean>>(() => ({
     morning: getSideContemplationExplicit("morning") ?? (getSideLevel("morning") === "reflect-sit"),
     evening: getSideContemplationExplicit("evening") ?? (getSideLevel("evening") === "reflect-sit"),
@@ -1508,6 +1526,19 @@ export default function WayOfLoveRuleFlow({
 
   const commit = () => {
     commitExtraPractices();
+    /**
+     * The named-your-own contemplative practice becomes a CUSTOM ANCHOR — the
+     * app's existing shape for "a practice only you keep". "anytime" matches
+     * the other standing contemplative practices (walk, sacred listening),
+     * which are available all day rather than pinned to a part of it.
+     */
+    if (customPracticeOn) {
+      const title = customPracticeName.trim();
+      if (title) {
+        const already = getCustomAnchors().some((a) => a.title.trim().toLowerCase() === title.toLowerCase());
+        if (!already) addCustomAnchor(title, "🌿", "anytime");
+      }
+    }
     // Prescribe mode: capture the routine and hand it back, writing NOTHING to
     // the (admin) user's own account. The prescribe page takes it from here.
     if (prescribe && onPrescribe) { onPrescribe(buildPrescribeSpec()); return; }
@@ -2666,6 +2697,24 @@ export default function WayOfLoveRuleFlow({
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
+          {/* Last, because it's the answer when none of the named ones is. */}
+          {choiceRow(
+            customPracticeOn,
+            `✍️ ${t("wol_rule.cp_custom", { defaultValue: "Something of your own" })}`,
+            t("wol_rule.cp_custom_sub", { defaultValue: "A practice you keep that isn't listed here." }),
+            () => { touchedRef.current = true; setCustomPracticeOn((v) => !v); },
+          )}
+          {customPracticeOn && (
+            <input
+              type="text"
+              value={customPracticeName}
+              onChange={(e) => { touchedRef.current = true; setCustomPracticeName(e.target.value); }}
+              placeholder={t("wol_rule.cp_custom_placeholder", { defaultValue: "What do you call it?" })}
+              aria-label={t("wol_rule.cp_custom_label", { defaultValue: "Name your practice" })}
+              maxLength={60}
+              style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none" }}
+            />
+          )}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
