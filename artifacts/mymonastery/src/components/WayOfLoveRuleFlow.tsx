@@ -62,6 +62,9 @@ import {
   type ContemplationLogMethod,
   type PsalmCycle,
   type ReflectionSource,
+  getSideDayRules,
+  setSideDayRules,
+  type SideDayRule,
   type OfficeSide,
   type DefaultOfficeEntry,
   setSideExtra,
@@ -93,6 +96,56 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // stamps the home layout with this version so it persists past a global reset.
 const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
+
+/**
+ * Saturday / Sunday alternatives.
+ *
+ * Owner, of the seminary's rule: "the chapel custom practice should just be on
+ * the weekdays; for the Saturday we want it to be morning prayer, and on
+ * Sunday be worship" — then, "build this into the customizer where they can
+ * adjust the practices to have Saturday and Sunday alternatives."
+ *
+ * The weekend is where a rule of life actually bends: the office you keep
+ * before work isn't the one you keep on a Saturday, and Sunday is usually
+ * church rather than anything done alone. Only Sat/Sun are offered here on
+ * purpose — a full seven-day scheduler is a different, heavier tool, and this
+ * covers the shape nearly everyone actually needs.
+ *
+ * Stored as officePrefs day rules, which getSideLevel resolves for TODAY, so
+ * the home card, its title, begin-prayer's routing and the doneness clauses
+ * all follow without knowing the schedule exists.
+ */
+function weekendOptions(side: OfficeSide): Array<{ value: PrayChoice; label: string }> {
+  const cap = side === "morning" ? "Morning" : "Evening";
+  return [
+    { value: "offices", label: `${cap} Prayer` },
+    { value: "guidedPrayer", label: "Simple Guided Prayer" },
+    { value: "psalms", label: "Praying the Psalms" },
+    { value: "readings", label: "Daily Scripture Readings" },
+    { value: "contemplation", label: "Contemplative Prayer" },
+    ...(side === "evening"
+      ? ([{ value: "examen", label: "The Examen" }, { value: "compline", label: "Compline" }] as Array<{ value: PrayChoice; label: string }>)
+      : []),
+    { value: "ownPractice", label: "Something of your own" },
+    { value: "none", label: "Nothing this day" },
+  ];
+}
+
+/** One weekend day's alternative — null means "same as the rest of the week". */
+type WeekendAlt = { choice: PrayChoice; name: string } | null;
+type WeekendBySide = Record<OfficeSide, { sat: WeekendAlt; sun: WeekendAlt }>;
+
+/** Read the stored day rules back into the picker's shape. */
+function readWeekend(side: OfficeSide, prayFrom: (l: string | null | undefined) => PrayChoice | null): { sat: WeekendAlt; sun: WeekendAlt } {
+  const rules = getSideDayRules(side);
+  const at = (d: number): WeekendAlt => {
+    const r = rules.find((x) => x.days.includes(d));
+    if (!r) return null;
+    const choice = prayFrom(r.level);
+    return choice ? { choice, name: r.customName ?? "" } : null;
+  };
+  return { sat: at(6), sun: at(0) };
+}
 
 // The OFFICE ANCHOR a side commits to. Contemplative Prayer and the Examen are
 // NOT anchors — they're independent add-on cards (silence goal / examen home
@@ -692,6 +745,36 @@ export default function WayOfLoveRuleFlow({
   // The name of a side's own "Create your own" practice — only meaningful
   // once that side picks "ownPractice"; seeded from the saved per-side name
   // so re-opening Customize shows what was typed before.
+  /** Saturday / Sunday alternatives per side (officePrefs day rules). */
+  const [weekendBySide, setWeekendBySide] = useState<WeekendBySide>(() => ({
+    morning: readWeekend("morning", prayFromLevel),
+    evening: readWeekend("evening", prayFromLevel),
+  }));
+  const setWeekend = (side: OfficeSide, day: "sat" | "sun", alt: WeekendAlt) => {
+    touchedRef.current = true;
+    setWeekendBySide((p) => ({ ...p, [side]: { ...p[side], [day]: alt } }));
+  };
+  /**
+   * The picker's state as officePrefs day rules.
+   *
+   * A rule whose practice is the person's OWN carries its name with it —
+   * without that, Sunday's Worship would inherit the weekday custom name and
+   * the card would read "Chapel" on a Sunday.
+   */
+  const weekendRulesFor = (side: OfficeSide): SideDayRule[] => {
+    const wk = weekendBySide[side];
+    const rules: SideDayRule[] = [];
+    for (const [day, alt] of [[6, wk.sat], [0, wk.sun]] as Array<[number, WeekendAlt]>) {
+      if (!alt) continue;
+      rules.push({
+        days: [day],
+        level: PRAY_LEVEL[alt.choice],
+        ...(alt.choice === "ownPractice" ? { customName: alt.name.trim() || "Worship" } : {}),
+      });
+    }
+    return rules;
+  };
+
   const [customNameBySide, setCustomNameBySide] = useState<Record<OfficeSide, string>>(() => ({
     morning: getSideCustomName("morning"),
     evening: getSideCustomName("evening"),
@@ -1319,10 +1402,15 @@ export default function WayOfLoveRuleFlow({
         // Sit length is per side (config picker), NOT the daily goal.
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
         if (prayBySide[side] === "ownPractice") setSideCustomName(side, customNameBySide[side].trim());
+        // Saturday / Sunday alternatives (see weekendRulesFor).
+        setSideDayRules(side, weekendRulesFor(side));
       } else {
         setSideLevel(side, "ask");
         persistCommunityWithOffice(side, false);
         setSideContemplation(side, false);
+        // A side that's off keeps no weekend schedule behind it, or turning
+        // it back on would resurrect a Saturday practice nobody re-chose.
+        setSideDayRules(side, []);
       }
     }
     setReflectionSource(primary);
@@ -1509,12 +1597,17 @@ export default function WayOfLoveRuleFlow({
         // 90-minute goal must not put a 90-minute sit on each card (owner).
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
         if (prayBySide[side] === "ownPractice") setSideCustomName(side, customNameBySide[side].trim());
+        // Saturday / Sunday alternatives (see weekendRulesFor).
+        setSideDayRules(side, weekendRulesFor(side));
       } else {
         // Not part of their chosen rhythm — clear the level so it isn't a
         // programmed office for that side.
         setSideLevel(side, "ask");
         persistCommunityWithOffice(side, false);
         setSideContemplation(side, false);
+        // A side that's off keeps no weekend schedule behind it, or turning
+        // it back on would resurrect a Saturday practice nobody re-chose.
+        setSideDayRules(side, []);
       }
     }
     setReflectionSource(primary);
@@ -1724,6 +1817,23 @@ export default function WayOfLoveRuleFlow({
     // The rule's own standing practices. Idempotent by title so re-adopting
     // (or adopting after having made the same practice by hand) doesn't stack
     // duplicates.
+    // Saturday / Sunday alternatives the preset ships with. Loaded into the
+    // picker's state so the weekend rows open pre-filled and the reader can
+    // see (and change) what they just adopted, rather than having it applied
+    // invisibly at commit.
+    setWeekendBySide((prev) => {
+      const next = { ...prev };
+      for (const side of SIDES) {
+        const rules = preset.dayRules?.[side];
+        if (!rules) { next[side] = { sat: null, sun: null }; continue; }
+        const at = (d: number): WeekendAlt => {
+          const r = rules.find((x) => x.days.includes(d));
+          return r ? { choice: r.pray, name: r.name ?? "" } : null;
+        };
+        next[side] = { sat: at(6), sun: at(0) };
+      }
+      return next;
+    });
     if (preset.customAnchors?.length) {
       const existing = new Set(getCustomAnchors().map((a) => a.title.trim().toLowerCase()));
       for (const c of preset.customAnchors) {
@@ -2993,6 +3103,56 @@ export default function WayOfLoveRuleFlow({
             },
           )}
         </div>
+
+        {/* Saturday / Sunday alternatives (owner). Only shown once this side
+            HAS a practice — offering "different on Saturday" for a side you
+            haven't chosen anything for is a question about nothing. */}
+        {prayBySide[side] !== "none" && (
+          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+              {t("wol_rule.weekend_intro", {
+                defaultValue: "Keep something different at the weekend? Leave these alone if the same practice runs all week.",
+              })}
+            </p>
+            {(["sat", "sun"] as const).map((day) => {
+              const alt = weekendBySide[side][day];
+              const label = day === "sat"
+                ? t("wol_rule.saturdays", { defaultValue: "Saturdays" })
+                : t("wol_rule.sundays", { defaultValue: "Sundays" });
+              return (
+                <div key={day} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{ color: CREAM, fontFamily: FONT, fontSize: 14, fontWeight: 500 }}>{label}</label>
+                  <select
+                    value={alt ? alt.choice : ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setWeekend(side, day, v === "" ? null : { choice: v as PrayChoice, name: alt?.name ?? "" });
+                    }}
+                    aria-label={label}
+                    style={{ ...FROST_BLUR, width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                  >
+                    <option value="">{t("wol_rule.weekend_same", { defaultValue: "Same as the rest of the week" })}</option>
+                    {weekendOptions(side).map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {/* Its own name, the way the weekday custom practice has one —
+                      "Worship", "Eucharist", whatever they actually keep. */}
+                  {alt?.choice === "ownPractice" && (
+                    <input
+                      type="text"
+                      value={alt.name}
+                      onChange={(e) => setWeekend(side, day, { choice: "ownPractice", name: e.target.value })}
+                      placeholder={t("wol_rule.weekend_name_ph", { defaultValue: "Worship" })}
+                      aria-label={t("wol_rule.weekend_name_label", { defaultValue: "Name this practice" })}
+                      style={{ ...FROST_BLUR, width: "100%", boxSizing: "border-box" as const, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none" }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => wayContinue(side))}
       </>,
     );

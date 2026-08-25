@@ -300,9 +300,85 @@ const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercession
 /** The same list as a set, for validating a level that arrived from a URL. */
 export const OFFICE_LEVELS_SET: ReadonlySet<string> = new Set<string>(OFFICE_LEVELS);
 
+/**
+ * A DIFFERENT practice on certain days of the week.
+ *
+ * Owner, of the seminary's rule: "the chapel custom practice should just be on
+ * the weekdays; for the Saturday we want it to be morning prayer, and on
+ * Sunday be worship." A rule of life isn't always the same seven days running,
+ * and until now a side had exactly one level for every day of the week.
+ *
+ * A rule matches when today's weekday is in its `days`. The first match wins;
+ * anything unmatched falls through to the side's base level, so "Chapel on
+ * weekdays" needs no rule of its own — it's simply what Saturday and Sunday
+ * are excused from.
+ *
+ * Resolved INSIDE getSideLevel deliberately. That one getter is what the home
+ * card, its title, begin-prayer's routing, the doneness clauses and the weekly
+ * grid all read, so putting the day logic here means every one of those
+ * follows the schedule without knowing it exists. Callers that want the RULE
+ * rather than TODAY (the customizer, "which sides did they turn on") use
+ * getSideBaseLevel / getExplicitSideLevel instead.
+ */
+export type SideDayRule = { days: number[]; level: OfficeLevel; customName?: string };
+
+function dayRulesKey(side: OfficeSide): string {
+  return `phoebe:office:level-days:${side}`;
+}
+
+export function getSideDayRules(side: OfficeSide): SideDayRule[] {
+  try {
+    const raw = localStorage.getItem(dayRulesKey(side));
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Read defensively — a malformed row must not throw on every render, and a
+    // level this build doesn't know would resolve to a card that can't be kept.
+    return parsed.filter((r): r is SideDayRule =>
+      !!r && typeof r === "object" &&
+      Array.isArray((r as SideDayRule).days) &&
+      (r as SideDayRule).days.every((n) => typeof n === "number" && n >= 0 && n <= 6) &&
+      typeof (r as SideDayRule).level === "string" &&
+      (OFFICE_LEVELS as string[]).includes((r as SideDayRule).level));
+  } catch {
+    return [];
+  }
+}
+
+export function setSideDayRules(side: OfficeSide, rules: SideDayRule[]): void {
+  try {
+    if (rules.length === 0) localStorage.removeItem(dayRulesKey(side));
+    else localStorage.setItem(dayRulesKey(side), JSON.stringify(rules));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+/** Today's rule for this side, if any. */
+function sideRuleForDay(side: OfficeSide, date: Date = new Date()): SideDayRule | null {
+  const d = date.getDay();
+  return getSideDayRules(side).find((r) => r.days.includes(d)) ?? null;
+}
+
+/**
+ * The side's level IGNORING any day rules — the standing shape of the rule.
+ * Use this in the customizer and anywhere describing the rule as a whole;
+ * getSideLevel answers for TODAY.
+ */
+export function getSideBaseLevel(side: OfficeSide): OfficeLevel | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:level:${side}`);
+    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
+  } catch { /* private mode */ }
+  if (side === "morning") return "guided-prayer";
+  if (side === "evening") return "readings";
+  return null;
+}
+
 // Depth/level per side. null = no per-side override → callers use the
 // server-side global defaultPrayerLevel (begin-prayer already reads it).
 export function getSideLevel(side: OfficeSide): OfficeLevel | null {
+  const today = sideRuleForDay(side);
+  if (today) return coerceRetiredLevel(today.level);
   try {
     const raw = localStorage.getItem(`phoebe:office:level:${side}`);
     if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return coerceRetiredLevel(raw as OfficeLevel);
@@ -439,6 +515,10 @@ export function setSideReflection(side: OfficeSide, v: ReflectionSource): void {
 // the morning/evening way-step). Only meaningful when getSideLevel(side) ===
 // "custom"; otherwise stale/unset.
 export function getSideCustomName(side: OfficeSide): string {
+  // A day rule that names its own practice wins for today — otherwise Sunday's
+  // Worship would inherit the weekday name and the card would say "Chapel".
+  const today = sideRuleForDay(side);
+  if (today?.customName) return today.customName;
   try {
     return localStorage.getItem(`phoebe:office:custom-name:${side}`) ?? "";
   } catch { return ""; }

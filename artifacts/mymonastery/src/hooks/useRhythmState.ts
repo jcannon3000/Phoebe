@@ -13,6 +13,7 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getPrayerListSlot } from "@/lib/prayerListSlot";
+import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
@@ -280,7 +281,23 @@ function homeCardActive(
   if (!homeLayout) return false;
   const order = homeLayout.order ?? [];
   const hidden = new Set(homeLayout.hidden ?? []);
-  return order.includes(key) && !hidden.has(key);
+  if (!order.includes(key) || hidden.has(key)) return false;
+  /**
+   * Days of the week (owner: "all routine cards can be specified as to what
+   * days of the week"). Folded in HERE, at the one helper every optional
+   * practice's *Active flag reads, so the card and its dot can never disagree
+   * — that is this repo's completion-signal invariant, and the reason a
+   * separate filter over the card list would have been the wrong fix.
+   *
+   * It matters concretely: a practice with a dot but no card holds
+   * `allHabitsDone` false all day, so the day can never read as complete. The
+   * comment on the customAnchors filter further down says the same thing about
+   * anchorOnDay; this is that rule for every other practice.
+   *
+   * Unscoped practices are kept every day, so this is inert for anyone who
+   * hasn't scheduled anything.
+   */
+  return practiceOnDay(key);
 }
 
 export function useRhythmState(): RhythmState {

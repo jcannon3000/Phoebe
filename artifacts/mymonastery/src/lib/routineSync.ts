@@ -29,6 +29,11 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:reflection:morning", "phoebe:office:reflection:evening",
   // Name of a side's own "Create your own" custom practice (level "custom").
   "phoebe:office:custom-name:morning", "phoebe:office:custom-name:evening",
+  // A DIFFERENT practice on certain weekdays (officePrefs.getSideDayRules) —
+  // e.g. Chapel Mon–Fri, Morning Prayer on Saturday, Worship on Sunday.
+  "phoebe:office:level-days:morning", "phoebe:office:level-days:evening",
+  // Which weekdays each non-office practice card is kept on (practiceDays.ts).
+  "phoebe:practice-days",
   // A SECOND practice on the side, alongside its anchor (getSideExtra).
   "phoebe:office:extra:morning", "phoebe:office:extra:evening",
   // Prayer List + BCP merge (community intercessions prayed within the office).

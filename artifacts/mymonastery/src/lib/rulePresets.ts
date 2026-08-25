@@ -48,6 +48,14 @@ export type RulePreset = {
    * weekdays (see customAnchors.anchorOnDay).
    */
   customAnchors?: Array<{ title: string; emoji: string; slot: CustomSlot; days?: number[] }>;
+  /**
+   * A DIFFERENT practice on given weekdays — the seminary keeps Chapel Monday
+   * to Friday, Morning Prayer on Saturday and worship on Sunday. Written as
+   * officePrefs day rules, which getSideLevel resolves for today; anything
+   * unlisted falls through to the side's own `pray`, so "Chapel on weekdays"
+   * needs no rule of its own — it's what Saturday and Sunday are excused from.
+   */
+  dayRules?: Partial<Record<OfficeSideKey, Array<{ days: number[]; pray: PrayChoice; name?: string }>>>;
 };
 
 // The order is the owner's, not a formula: A Gentle Start leads because it's
@@ -100,9 +108,22 @@ export const RULE_PRESETS: RulePreset[] = [
     silence: true, silenceSide: "evening", contemplationStyle: "cobreathe", goalMin: 10,
     reflections: ["vts"],
     customAnchors: [{ title: "Community Meal", emoji: "🍽️", slot: "midday", days: WEEKDAYS }],
-    title: "VTS Chapel & Commentary", blurb: "The seminary's day — Chapel in the morning, the Dean's word, ten minutes of silence, and Creation Prayer at its close.",
+    // Chapel is a WEEKDAY thing (owner). It needs no rule of its own — these
+    // two excuse the weekend from it: Saturday keeps Morning Prayer, and
+    // Sunday is worship, which is a thing you go to rather than a thing the
+    // app leads, so it's a practice of your own that you keep with a tap.
+    // Rename it "Eucharist" here if that's the truer word for the Sunday.
+    dayRules: {
+      morning: [
+        { days: [6], pray: "offices" },
+        { days: [0], pray: "ownPractice", name: "Worship" },
+      ],
+    },
+    title: "VTS Chapel & Commentary", blurb: "The seminary's day — Chapel on weekdays, Morning Prayer on Saturday, worship on Sunday, the Dean's word, ten minutes of silence, and Creation Prayer at its close.",
     rows: [
-      { emoji: "⛪", label: "Chapel in the morning" },
+      { emoji: "⛪", label: "Chapel on weekdays" },
+      { emoji: "📖", label: "Morning Prayer on Saturdays" },
+      { emoji: "🕊️", label: "Worship on Sundays" },
       { emoji: "🦩", label: "The VTS Dean's Commentary" },
       { emoji: "🕯️", label: "10 minutes of contemplative prayer" },
       { emoji: "🌍", label: "Creation Prayer in the evening" },
