@@ -180,7 +180,7 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   // as if silence were the only legitimate form of contemplative prayer
   // when "Contemplative Walk" is right there as a sibling option in this
   // same menu.
-  { title: () => "Contemplative Prayer", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
+  { title: () => "Contemplative Practice", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } },
   { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } },
   { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } },
@@ -2074,6 +2074,35 @@ export default function WayOfLoveRuleFlow({
     </button>
   );
 
+  // A MENU row, not a choice row (owner). Some slides aren't a set of answers
+  // you pick between — they're a fork where tapping takes you somewhere. A
+  // radio circle on those is a lie twice over: nothing is selected, and
+  // nothing ever will be, because the tap navigates. This reads like the rest
+  // of the app's menus instead: emoji, label, sub, and a chevron saying "this
+  // goes somewhere". Same card treatment as MenuHub.
+  const menuRow = (emoji: string, label: string, sub: string, onClick: () => void) => (
+    <button
+      key={label}
+      type="button"
+      onClick={onClick}
+      style={{
+        ...FROST_BLUR,
+        background: CARD,
+        border: `1px solid ${CARD_B}`,
+        color: CREAM, borderRadius: 16, padding: "16px 18px", textAlign: "left",
+        display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
+        transition: "background 0.15s, border-color 0.15s",
+      }}
+    >
+      <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 16, fontWeight: 700, fontFamily: FONT }}>{label}</span>
+        <span style={{ display: "block", color: SAGE, fontSize: 13, fontFamily: FONT, marginTop: 3, lineHeight: 1.35 }}>{sub}</span>
+      </span>
+      <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
+    </button>
+  );
+
   // ── The "technology of holding" prelude — shown once before the first author
   // reaches the preset picker (all hooks above have already run). ────────────
   // ── Manual, or let it ask? (super admins) ─────────────────────────────────
@@ -2218,47 +2247,38 @@ export default function WayOfLoveRuleFlow({
             defaultValue: "Change one part of what you already keep, or build the whole rhythm again from the beginning.",
           })}
         </p>
+        {/* A MENU, not a checklist (owner): every row here navigates the
+            moment it's tapped, so none of them is ever a "selected" state. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(
-            // Neither is pre-selected: this slide is a fork, and tapping a row
-            // takes it immediately, so a highlighted default would be a lie
-            // about where you already are.
-            false,
-            `✏️ ${t("wol_rule.manual_edit", { defaultValue: "Edit part of it" })}`,
+          {menuRow(
+            "\u270F\uFE0F",
+            t("wol_rule.manual_edit", { defaultValue: "Edit part of it" }),
             t("wol_rule.manual_edit_sub", { defaultValue: "Pick the one thing you want to change. Everything else stays as it is." }),
             () => setManualMode("edit"),
           )}
-          {choiceRow(
-            false,
-            `🌱 ${t("wol_rule.manual_scratch", { defaultValue: "Start from scratch" })}`,
+          {menuRow(
+            "\uD83C\uDF31",
+            t("wol_rule.manual_scratch", { defaultValue: "Start from scratch" }),
             t("wol_rule.manual_scratch_sub", { defaultValue: "Go through every slide and set the whole rhythm again." }),
             () => setManualMode("scratch"),
           )}
-          {choiceRow(
-            false,
-            `\ud83d\udccb ${t("wol_rule.manual_preset", { defaultValue: "Start from a preset" })}`,
+          {menuRow(
+            "\uD83D\uDCCB",
+            t("wol_rule.manual_preset", { defaultValue: "Start from a preset" }),
             t("wol_rule.manual_preset_sub", { defaultValue: "Adopt a complete rhythm that's already been shaped. You can change any part of it after." }),
             () => { setPresetPending(null); setManualMode("preset"); },
           )}
+          {/* Owner: "combine the first two slides \u2026 just put the past routine
+              option on the bottom of the second slide" \u2014 and now a full card
+              like the rest, not an underlined link. Still last: going back to an
+              old rhythm is the exception, not a fourth equal way to build one. */}
+          {canRevert && menuRow(
+            "\u21A9\uFE0F",
+            t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" }),
+            t("wol_rule.entry_revert_sub", { defaultValue: "Return to a rhythm you kept before, exactly as it was." }),
+            () => setLocation("/routine-history"),
+          )}
         </div>
-        {/* Owner: "combine the first two slides … just put the past routine
-            option on the bottom of the second slide." It came off the entry
-            slide, which is gone. Underneath the two real forks rather than
-            beside them: going back to an old rhythm is the exception, not a
-            third equal way to build one. */}
-        {canRevert && (
-          <button
-            type="button"
-            onClick={() => setLocation("/routine-history")}
-            style={{
-              alignSelf: "center", background: "none", border: "none", color: SAGE_DIM,
-              fontSize: 13.5, fontFamily: FONT, textDecoration: "underline",
-              cursor: "pointer", marginTop: 18, padding: "6px 10px",
-            }}
-          >
-            {`↩️ ${t("wol_rule.entry_revert", { defaultValue: "Go back to a past routine" })}`}
-          </button>
-        )}
       </>,
     );
   }
@@ -2757,8 +2777,8 @@ export default function WayOfLoveRuleFlow({
               the goal" default; both are adjustable on the next slides. */}
           {choiceRow(
             contemplationBySide[side] && contemplationStyle === "silent",
-            `🕯️ ${t("wol_rule.cp_contemplation", { defaultValue: "Contemplative Prayer" })}`,
-            t("wol_rule.cp_contemplation_sub", { defaultValue: "A silent sit — loving God in silence." }),
+            `🕯️ ${t("wol_rule.cp_contemplation", { defaultValue: "Contemplative Practice" })}`,
+            t("wol_rule.cp_contemplation_sub", { defaultValue: "Silence, or another contemplative practice like a walk." }),
             () => {
               const on = contemplationBySide[side] && contemplationStyle === "silent";
               // Reported: "I can't unclick contemplative." Turning it off is
@@ -2774,27 +2794,8 @@ export default function WayOfLoveRuleFlow({
               if (goalMin === 0) { chooseGoal("20"); chooseSilenceMode("fixed"); }
             },
           )}
-          {/* Create your own — name a practice of your own and it BECOMES this
-              side's prayer (replaces the office, same as the choices above).
-              A plain per-side anchor: no contemplation slot, no session page —
-              the home card is just a tap-to-mark-done for whatever they name
-              it, chosen on its own slide right after (morning/evening-custom)
-              rather than an inline field here — full-flow/pilot only, like the
-              BCP-form detail slide above. */}
-          {!guest && choiceRow(
-            prayBySide[side] === "ownPractice",
-            `✨ ${t("wol_rule.cp_custom", { defaultValue: "Create your own" })}`,
-            t("wol_rule.cp_custom_sub", { defaultValue: "Name a practice of your own." }),
-            () => {
-              if (prayBySide[side] === "ownPractice") { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
-              touchedRef.current = true;
-              if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
-              if (contemplationBySide[side]) toggleContemplationSide(side);
-              choosePrayBySide(side, "ownPractice");
-            },
-          )}
           {/* A reflection as the morning prayer itself — morning only, above
-              "Create your own" at the bottom of the list. Owner: "where it
+              Create your own (owner). Owner: "where it
               says Forward Day by Day as a morning option, let's have that
               say Reflection." Choosing it also follows it as a daily
               reflection (see the "learn" step below), so it shows checked
@@ -2819,6 +2820,25 @@ export default function WayOfLoveRuleFlow({
               if (contemplationBySide[side]) toggleContemplationSide(side);
               choosePrayBySide(side, "fdd");
               setNewsletters((prev) => (prev.includes("fdd") ? prev : [...prev, "fdd"]));
+            },
+          )}
+          {/* Create your own — name a practice of your own and it BECOMES this
+              side's prayer (replaces the office, same as the choices above).
+              A plain per-side anchor: no contemplation slot, no session page —
+              the home card is just a tap-to-mark-done for whatever they name
+              it, chosen on its own slide right after (morning/evening-custom)
+              rather than an inline field here — full-flow/pilot only, like the
+              BCP-form detail slide above. */}
+          {!guest && choiceRow(
+            prayBySide[side] === "ownPractice",
+            `✨ ${t("wol_rule.cp_custom", { defaultValue: "Create your own" })}`,
+            t("wol_rule.cp_custom_sub", { defaultValue: "Name a practice of your own." }),
+            () => {
+              if (prayBySide[side] === "ownPractice") { touchedRef.current = true; choosePrayBySide(side, "none"); return; }
+              touchedRef.current = true;
+              if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
+              if (contemplationBySide[side]) toggleContemplationSide(side);
+              choosePrayBySide(side, "ownPractice");
             },
           )}
         </div>
