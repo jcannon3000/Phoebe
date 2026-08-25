@@ -129,8 +129,15 @@ export default function TurnLearnPrayPage() {
   const creationStyle = rhythm.contemplationStyle === "cobreathe";
   // Which slots the viewer actually has turned on — a row with nothing kept
   // in it isn't a live status, so it's dropped rather than shown empty.
+  /**
+   * Any contemplative practice makes this slot live and keeps it — not just the
+   * silent sit and the breath. A Contemplative Walk, Audio Divina or the Examen
+   * left this row absent, or present and unkeepable, for the people whose whole
+   * contemplative life is one of those. Mirrors lib/weeklyGrid.
+   */
   const contemplativeActive = rhythm.morningContemplationActive || rhythm.eveningContemplationActive
-    || rhythm.silenceGoalCardActive || rhythm.cobreatheActive;
+    || rhythm.silenceGoalCardActive || rhythm.cobreatheActive
+    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive;
   const slotActive: Record<"morning" | "contemplative" | "evening", boolean> = {
     morning: rhythm.morningActive,
     contemplative: contemplativeActive,
@@ -147,7 +154,8 @@ export default function TurnLearnPrayPage() {
     contemplative: {
       title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       emoji: creationStyle ? "🌍" : "🕯️",
-      done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone || rhythm.cobreatheDone,
+      done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone
+        || rhythm.cobreatheDone || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone,
       href: creationStyle ? "/cobreathe" : "/contemplation",
     },
     evening: {

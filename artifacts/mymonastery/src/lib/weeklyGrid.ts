@@ -112,7 +112,28 @@ export function computeWeeklyGrid(params: {
   // on that side counts, same as the day-level predicate above.
   const morningPracticeOn = (d: PracticeWeekDay) => d.morning || !!d.morningExtra;
   const eveningPracticeOn = (d: PracticeWeekDay) => d.evening || !!d.eveningExtra;
-  const contemplativePracticeOn = (d: PracticeWeekDay) => d.contemplation || d.cobreathe;
+  /**
+   * WHATEVER their contemplative practice is, it counts here.
+   *
+   * Owner: "if they have something other than timed silence, whatever their
+   * practice is, it needs to count on the weekly card." This row used to read
+   * only the silent sit and the breath, so someone whose practice is a
+   * Contemplative Walk, Audio Divina, the Examen, or one they named themselves
+   * had a Contemplative row that could never fill — and, worse, never appeared
+   * at all (see contemplativeActive below, which gated on the same two).
+   *
+   * Custom anchors count ONLY when nothing named is active. Nothing
+   * distinguishes a custom anchor made as a contemplative practice from one
+   * made for anything else, so folding them in unconditionally would let an
+   * unrelated custom practice fill a silence-keeper's contemplative row. This
+   * way the person whose ONLY contemplative practice is their own still gets a
+   * row that fills, and nobody else's is polluted.
+   */
+  const namedContemplativeActive = rhythm.silenceActive || rhythm.cobreatheStandaloneActive
+    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive;
+  const contemplativePracticeOn = (d: PracticeWeekDay) =>
+    d.contemplation || d.cobreathe || d.walk || d.listening || d.examen
+    || (!namedContemplativeActive && prayedOnCustom(d.ymd));
   const morningPractice = rhythm.morningDone || rhythm.morningExtraDone;
   const eveningPractice = rhythm.eveningDone || rhythm.eveningExtraDone;
   /**
@@ -129,7 +150,9 @@ export function computeWeeklyGrid(params: {
    * goal is met by MINUTES, per-side cards are met by keeping the sides — so
    * use it rather than a second, looser copy of the same idea.
    */
-  const contemplativePractice = rhythm.silenceDone || rhythm.cobreatheDone;
+  const contemplativePractice = rhythm.silenceDone || rhythm.cobreatheDone
+    || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone
+    || (!namedContemplativeActive && customAnchorIds.some((id) => getCustomDoneDays(id).has(todayYmd)));
   // Today — some minutes logged, but short of the daily goal, read from the
   // LIVE rhythm state (more current than the practice-week snapshot, which
   // can lag a just-finished sit by a few seconds). Never true once
@@ -164,7 +187,9 @@ export function computeWeeklyGrid(params: {
    * Both surfaces get this for free — the home card and the iOS widget both
    * render from this function, which is the whole reason it exists.
    */
-  const contemplativeActive = rhythm.silenceActive || rhythm.cobreatheStandaloneActive;
+  // …and the row APPEARS for any of them. Gating on silence-or-breath alone is
+  // what hid a walker's practice from this card entirely.
+  const contemplativeActive = namedContemplativeActive || customAnchorIds.length > 0;
   const newsletterActive = rhythm.reflections.length > 0;
   const middleIsNewsletter = !contemplativeActive && newsletterActive;
   // `d.reflection` is deliberately fdd/ssje/cac only, with Dean's Commentary
