@@ -633,6 +633,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // here — devotion mode swaps short call-and-response slides to a
   // centered, label-less layout that feels like personal prayer
   // rather than a corporate liturgy.
+  /**
+   * Is the office currently open THIS SIDE'S SECOND practice rather than its
+   * anchor? The devotion mode is shared, so it's the extra exactly when the
+   * side's own level is the full office. Used to keep a second practice from
+   * clearing the anchor's lock-screen reminder — same test the server's
+   * bellSender makes before deciding the side has been prayed.
+   */
+  const isSecondPracticeRun = (
+    resolvedMode === (officeSide === "morning" ? "morning-devotion" : "early-evening-devotion")
+    && getSideLevel(officeSide) === "office"
+  );
   const isDevotion =
     resolvedMode === "morning-devotion" ||
     resolvedMode === "early-evening-devotion" ||
@@ -1783,7 +1794,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   markRecentCompletion(resolvedMode.startsWith("evening") || resolvedMode === "compline" || resolvedMode === "early-evening-devotion" || resolvedMode === "creation-evening" ? "evening" : "morning"); }
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
-    clearOfficeReminderNotifications();
+    if (!isSecondPracticeRun) clearOfficeReminderNotifications();
     if (onComplete) { onComplete(); return; }
     if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
     // Same warm-cache handoff as amen()/handleEnd — closingOnly=1 can't
@@ -1965,7 +1976,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // slide). The Amen path clears these too; covering both
     // means completing the office always sweeps the reminder
     // off the lock screen.
-    clearOfficeReminderNotifications();
+    if (!isSecondPracticeRun) clearOfficeReminderNotifications();
     // Public /pray page: hand off to its own sign-up close.
     if (onComplete) { onComplete(); return; }
     if (parishOnly) {
@@ -2233,7 +2244,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // only cleared "bell", so a parish-office reminder kept sitting on
     // the lock screen for the rest of the day even after the user had
     // prayed the office — exactly the bug just reported.
-    clearOfficeReminderNotifications();
+    if (!isSecondPracticeRun) clearOfficeReminderNotifications();
     if (amenPromise) await amenPromise;
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just

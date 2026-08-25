@@ -612,6 +612,24 @@ function sideReflectionFromRuleConfig(ruleConfig: unknown, side: "morning" | "ev
   } catch { return null; }
 }
 
+/**
+ * Does this session prove the SIDE'S ANCHOR was prayed?
+ *
+ * The devotion surface is shared: it's what a side's SECOND practice logs when
+ * the anchor is the full office. The reminder queries accepted it as proof the
+ * side had been prayed, so praying your additional practice at 7am silently
+ * cancelled the bell for the office you had NOT prayed — the one case where
+ * the reminder matters most.
+ *
+ * Same test countsForAnchor makes in /me/practice-week and /me/yesterday-order;
+ * the bell was the last place still folding the two together.
+ */
+function sessionCountsForAnchor(level: string | null, side: "morning" | "evening", surface: string | null): boolean {
+  const devotion = side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  if (surface !== devotion) return true;
+  return level !== "office";
+}
+
 /** The name a side's "Create your own" practice was given — synced the same
  *  way the level itself is (phoebe:office:custom-name:<side>, in
  *  ROUTINE_KEYS). Only meaningful when the level IS "custom". */
@@ -778,7 +796,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
         const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
         if (opts.forceNow || isAtOrJustAfterMinute(tz, targetTime, tickNow)) {
           const morningSessions = await db
-            .select({ endedAt: prayerSessionsTable.endedAt })
+            .select({ endedAt: prayerSessionsTable.endedAt, surface: prayerSessionsTable.surface })
             .from(prayerSessionsTable)
             .where(
               and(
@@ -787,8 +805,11 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
                 gte(prayerSessionsTable.endedAt, sinceUtc),
               ),
             );
+          const anchorLevel_morning = sideLevelFromRuleConfig(r.ruleConfig, "morning");
           const prayedMorningToday = morningSessions.some(s => {
             if (!s.endedAt) return false;
+            // A second practice on this side is not the anchor — see sessionCountsForAnchor.
+            if (!sessionCountsForAnchor(anchorLevel_morning, "morning", s.surface)) return false;
             return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
           });
           if (!prayedMorningToday) {
@@ -835,7 +856,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
         }
         if (eveningInWindow) {
           const eveningSessions = await db
-            .select({ endedAt: prayerSessionsTable.endedAt })
+            .select({ endedAt: prayerSessionsTable.endedAt, surface: prayerSessionsTable.surface })
             .from(prayerSessionsTable)
             .where(
               and(
@@ -844,8 +865,11 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
                 gte(prayerSessionsTable.endedAt, sinceUtc),
               ),
             );
+          const anchorLevel_evening = sideLevelFromRuleConfig(r.ruleConfig, "evening");
           const prayedEveningToday = eveningSessions.some(s => {
             if (!s.endedAt) return false;
+            // A second practice on this side is not the anchor — see sessionCountsForAnchor.
+            if (!sessionCountsForAnchor(anchorLevel_evening, "evening", s.surface)) return false;
             return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
           });
           if (!prayedEveningToday) {
@@ -946,15 +970,18 @@ export async function runParishOfficeEveningFollowUpSender(opts: { forceNow?: bo
         const sinceUtc = new Date(`${today}T00:00:00Z`);
         sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
         const eveningSessions = await db
-          .select({ endedAt: prayerSessionsTable.endedAt })
+          .select({ endedAt: prayerSessionsTable.endedAt, surface: prayerSessionsTable.surface })
           .from(prayerSessionsTable)
           .where(and(
             eq(prayerSessionsTable.userId, r.userId),
             inArray(prayerSessionsTable.surface, ["evening-prayer", "early-evening-devotion"]),
             gte(prayerSessionsTable.endedAt, sinceUtc),
           ));
+        const anchorLevel_evening = sideLevelFromRuleConfig(r.ruleConfig, "evening");
         const prayedEveningToday = eveningSessions.some(s => {
           if (!s.endedAt) return false;
+          // A second practice on this side is not the anchor — see sessionCountsForAnchor.
+          if (!sessionCountsForAnchor(anchorLevel_evening, "evening", s.surface)) return false;
           return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
         });
         if (prayedEveningToday) {
@@ -1033,15 +1060,18 @@ export async function runParishOfficeMorningFollowUpSender(opts: { forceNow?: bo
         const sinceUtc = new Date(`${today}T00:00:00Z`);
         sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
         const morningSessions = await db
-          .select({ endedAt: prayerSessionsTable.endedAt })
+          .select({ endedAt: prayerSessionsTable.endedAt, surface: prayerSessionsTable.surface })
           .from(prayerSessionsTable)
           .where(and(
             eq(prayerSessionsTable.userId, r.userId),
             inArray(prayerSessionsTable.surface, ["morning-prayer", "morning-devotion"]),
             gte(prayerSessionsTable.endedAt, sinceUtc),
           ));
+        const anchorLevel_morning = sideLevelFromRuleConfig(r.ruleConfig, "morning");
         const prayedMorningToday = morningSessions.some(s => {
           if (!s.endedAt) return false;
+          // A second practice on this side is not the anchor — see sessionCountsForAnchor.
+          if (!sessionCountsForAnchor(anchorLevel_morning, "morning", s.surface)) return false;
           return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
         });
         if (prayedMorningToday) {

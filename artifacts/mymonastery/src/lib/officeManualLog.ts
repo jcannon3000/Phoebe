@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
 import { swellHaptic } from "@/lib/swellHaptic";
 import { clearOfficeReminderNotifications } from "@/lib/officeReminders";
+import { getSideLevel } from "@/lib/officePrefs";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 import { markRecentCompletion } from "@/lib/recentCompletion";
 import { PRACTICE_SYNC_FAILED_EVENT } from "@/lib/practiceCompletion";
@@ -163,7 +164,18 @@ export function markOfficeBookComplete(
   // The office is done → clear any delivered reminder push so the morning/evening
   // prayer notification disappears. No-op on web; the native shell's
   // phoebe:clear-notifications handler removes matching delivered pushes.
-  clearOfficeReminderNotifications();
+  /**
+   * …but only when what was just prayed IS this side's anchor.
+   *
+   * The devotion mode is shared: it's what a side's SECOND practice runs as
+   * when the anchor is the full office. Clearing unconditionally meant praying
+   * your additional practice swept the lock-screen reminder for the office you
+   * had NOT prayed. Mirrors sessionCountsForAnchor in the server's bellSender,
+   * which was suppressing the same reminder for the same reason.
+   */
+  const devotionMode = side === "morning" ? "morning-devotion" : "early-evening-devotion";
+  const isSecondPractice = mode === devotionMode && getSideLevel(side) === "office";
+  if (!isSecondPractice) clearOfficeReminderNotifications();
   const now = new Date();
   // This POST is the ENTIRE cross-device record of the office. The local flag
   // above credits the logging device no matter what, so a dropped request was
