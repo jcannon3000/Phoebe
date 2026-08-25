@@ -3878,7 +3878,27 @@ export default function PrayerModePage() {
     // slides) even though not one of them is ever shown. Attesting to an office
     // was marking the prayer list prayed. The flag was already honoured for the
     // streak; it wasn't here.
-    if (!skipListCredit && displaySlides.some((sl) => sl.kind === "intercession" && sl.isPersonal)) {
+    /**
+     * Reported: "the prayer list is not counting as done, I have gone through
+     * it several times."
+     *
+     * The card is offered on a BROADER condition than it could be completed
+     * on. useRhythmState activates it (and counts its "3 prayers to pray
+     * through") from intentionsTotalCount = personal + COMMUNITY, while this
+     * gate demanded a personal slide. Anyone whose list is entirely community
+     * intercessions therefore had a card they could walk in full, every day,
+     * that could never once tick over. Not a flake — a permanent dead end.
+     *
+     * The owner's rule still holds where it was aimed: someone who HAS a
+     * personal list shouldn't have it ticked by a walk through other people's
+     * prayers. So the credit needs a personal slide when there is a personal
+     * list to speak of, and falls back to the community intercessions the card
+     * actually counted when there isn't.
+     */
+    const walkedPersonal = displaySlides.some((sl) => sl.kind === "intercession" && sl.isPersonal);
+    const hasPersonalList = (myIntentionsData?.intentions ?? []).some((it) => !it.answered);
+    const walkedCommunity = displaySlides.some((sl) => sl.kind === "intercession" && !sl.isPersonal);
+    if (!skipListCredit && (walkedPersonal || (!hasPersonalList && walkedCommunity))) {
       markPracticeDoneToday("prayer-list");
     }
     // Log a check-in for every intercession the user has just prayed
