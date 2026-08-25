@@ -286,7 +286,17 @@ export default function VisioPage() {
   const TITLE = 0, PROMPT_1 = 1, PICTURE_1 = 2, PROMPT_2 = 3, PICTURE_2 = 4, CONTEMPLATE = 5, DONE = 6;
   const [step, setStep] = useState(TITLE);
   const TOTAL = 7;
-  const showsImage = step === PICTURE_1 || step === PICTURE_2;
+  /**
+   * Which beats hold the picture.
+   *
+   * Owner: "you took out the third view of the image." The contemplation beat
+   * asks what God may be putting on your heart THROUGH THE IMAGE — with no
+   * image on the screen it was asking about something that wasn't there. It's
+   * the third look, and the longest one.
+   */
+  const showsImage = step === PICTURE_1 || step === PICTURE_2 || step === CONTEMPLATE;
+  /** The two beats that are ONLY the picture — where its label belongs. */
+  const isLookingBeat = step === PICTURE_1 || step === PICTURE_2;
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
@@ -422,6 +432,29 @@ export default function VisioPage() {
           overflowY: "auto",
         }}
       >
+        {/* Owner: "we also want each slide to fade into each other." A keyed
+            fade-IN, deliberately — NOT AnimatePresence mode="wait".
+            
+            mode="wait" holds the incoming beat until the outgoing one reports
+            its exit finished, and framer-motion drives that on
+            requestAnimationFrame. In a tab that isn't painting (backgrounded,
+            the app in the app-switcher) rAF is suspended, the exit never
+            completes, and the deck freezes on the old slide while the footer's
+            counter walks on — caught doing exactly that under test. A slide
+            that can get stuck is the blank-screen class this repo keeps a rule
+            about, and no crossfade is worth it. Remounting on `step` and
+            fading the new beat in has no such state to be stuck in.
+
+            The wrapper carries the container's own flex layout (column,
+            centred, gap 16) because it now sits between the container and its
+            children, and without it every beat's spacing would collapse. */}
+        <motion.div
+            key={step}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.34, ease: "easeOut" }}
+            style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
+          >
         {/* The painting, lit from behind by itself.
             Owner: "have it be on a blurred background and there's a drop
             shadow." A blown-up, blurred copy sits underneath and bleeds past
@@ -444,7 +477,10 @@ export default function VisioPage() {
             style={{
               flex: "0 0 auto",
               maxWidth: "100%",
-              maxHeight: "62vh",
+              // Smaller on the contemplation beat so the prompt sits under it
+            // rather than below the fold — the picture is what you're praying
+            // with there, not the whole screen.
+            maxHeight: step === CONTEMPLATE ? "38vh" : "62vh",
               objectFit: "contain", borderRadius: 10,
               boxShadow: "0 26px 74px rgba(0,0,0,0.66), 0 4px 14px rgba(0,0,0,0.45)",
               // Fades in rather than snapping: these load over the network,
@@ -524,7 +560,7 @@ export default function VisioPage() {
           </div>
         )}
 
-        {showsImage && view && (
+        {isLookingBeat && view && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
             {view.artist && (
@@ -617,7 +653,7 @@ export default function VisioPage() {
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15.5, fontStyle: "italic", lineHeight: 1.3 }}>{a.title}</span>
                     <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
-                      {[a.artist, tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
+                      {[tidyArtist(a.artist ?? ""), tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
                     </span>
                   </span>
                   {isToday && (
@@ -652,6 +688,7 @@ export default function VisioPage() {
             )}
           </div>
         )}
+          </motion.div>
       </div>
 
       <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
