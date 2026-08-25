@@ -138,27 +138,67 @@ export default function TurnLearnPrayPage() {
   const contemplativeActive = rhythm.morningContemplationActive || rhythm.eveningContemplationActive
     || rhythm.silenceGoalCardActive || rhythm.cobreatheActive
     || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive;
+  /**
+   * A side whose whole practice IS its contemplation.
+   *
+   * Reported on the VTS rule (Chapel in the morning, Creation Prayer in the
+   * evening, ten minutes of silence): the Evening card was missing entirely and
+   * the Contemplative card called itself Creation Prayer.
+   *
+   * Both come from the same place. Creation-Prayer-as-the-evening is stored as
+   * that SIDE's contemplation with no office level, so `eveningActive` (which
+   * reads the office level) was false — no Evening row — while the
+   * Contemplative row took its identity from the GLOBAL contemplationStyle,
+   * which that same evening breath had set to "cobreathe". So the evening
+   * practice was named in the middle row and nowhere in its own, and the
+   * rule's actual contemplation anchor — the silent ten minutes — went unnamed.
+   *
+   * A side's own practice belongs to that side's row. The Contemplative row is
+   * then whatever contemplation ISN'T already spoken for: the daily silence
+   * goal.
+   */
+  const morningIsContemplation = rhythm.morningContemplationActive && !rhythm.morningActive;
+  const eveningIsContemplation = rhythm.eveningContemplationActive && !rhythm.eveningActive;
+  // …so the middle row stops being the breath's home once a side has claimed it.
+  const contemplativeIsGoal = (morningIsContemplation || eveningIsContemplation) && rhythm.silenceGoalCardActive;
   const slotActive: Record<"morning" | "contemplative" | "evening", boolean> = {
-    morning: rhythm.morningActive,
+    morning: rhythm.morningActive || morningIsContemplation,
     contemplative: contemplativeActive,
-    evening: rhythm.eveningActive,
+    evening: rhythm.eveningActive || eveningIsContemplation,
   };
+  // The identity of a side that IS its contemplation, and of the middle row
+  // once a side has taken the breath.
+  const sideContemplation = (side: "morning" | "evening") => ({
+    title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+    emoji: creationStyle ? "🌍" : "🕯️",
+    done: side === "morning" ? rhythm.morningContemplationDone : rhythm.eveningContemplationDone,
+    href: creationStyle ? `/cobreathe?side=${side}` : `/contemplation?begin=1&side=${side}`,
+  });
   const slotStatus: Record<"morning" | "contemplative" | "evening", { title: string; emoji: string; done: boolean; href: string; onClick?: () => void }> = {
-    morning: {
+    morning: morningIsContemplation ? sideContemplation("morning") : {
       title: sideOfficeTitle("Morning", rhythm.prayerKind, t),
       emoji: "🌅",
       done: rhythm.morningDone,
       href: getSideLevel("morning") === "custom" ? "" : "/begin-prayer?side=morning",
       onClick: getSideLevel("morning") === "custom" ? () => (rhythm.morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) : undefined,
     },
-    contemplative: {
+    // Named for the SILENT sit once a side owns the breath — that goal card
+    // opens /contemplation regardless of style (see silenceGoalCardActive),
+    // so calling it Creation Prayer described the wrong practice AND the
+    // wrong destination.
+    contemplative: contemplativeIsGoal ? {
+      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      emoji: "🕯️",
+      done: rhythm.silenceGoalCardDone,
+      href: "/contemplation?begin=1",
+    } : {
       title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       emoji: creationStyle ? "🌍" : "🕯️",
       done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone
         || rhythm.cobreatheDone || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone,
       href: creationStyle ? "/cobreathe" : "/contemplation",
     },
-    evening: {
+    evening: eveningIsContemplation ? sideContemplation("evening") : {
       title: sideOfficeTitle("Evening", rhythm.prayerKind, t),
       emoji: "🌙",
       done: rhythm.eveningDone,

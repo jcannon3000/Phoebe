@@ -145,6 +145,15 @@ export type CustomAnchor = {
 /** Mon–Fri, the common case (a weekday practice). */
 export const WEEKDAYS = [1, 2, 3, 4, 5];
 
+/** "weekdays" / "weekends" / "Mon, Wed, Fri" — for describing a scoped anchor. */
+export function describeDays(days: number[]): string {
+  const set = [...new Set(days)].sort();
+  if (set.length === 5 && set.every((d) => d >= 1 && d <= 5)) return "weekdays";
+  if (set.length === 2 && set.includes(0) && set.includes(6)) return "weekends";
+  const NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return set.map((d) => NAMES[d]).join(", ");
+}
+
 /** Is this anchor kept on `date`'s weekday? No `days` = every day. */
 export function anchorOnDay(a: { days?: number[] }, date: Date = new Date()): boolean {
   if (!a.days || a.days.length === 0) return true;

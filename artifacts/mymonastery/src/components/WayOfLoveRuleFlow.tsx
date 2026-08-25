@@ -29,7 +29,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { RULE_PRESETS, type RulePreset, type PrayChoice } from "@/lib/rulePresets";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, describeDays, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import { pushRoutineConfig, collectRoutineValues } from "@/lib/routineSync";
 import { saveHomeLayout, cacheHomeLayoutLocalOnly } from "@/lib/homeLayoutCache";
 import { setGuestSilenceGoalMin, getGuestSilenceGoalMinRaw } from "@/lib/guestSeed";
@@ -4111,7 +4111,24 @@ export default function WayOfLoveRuleFlow({
     // SOLO silence goal — minutes set with no per-side contemplation: the home
     // shows the single "Silence" progress card, so the review names it too
     // (otherwise a saved goal looks like it didn't take).
-    ...((goalMin > 0 && !contemplationBySide.morning && !contemplationBySide.evening) ? [{
+    /**
+     * The daily silence goal, as its own row.
+     *
+     * It used to be suppressed whenever EITHER side carried a contemplation —
+     * on the assumption that the side's row already spoke for it. That's true
+     * when the side's practice is the silent sit, and false when it's the
+     * BREATH: useRhythmState's silenceGoalCardActive explicitly supports
+     * `creationPerSide && contemplationGoalMinutes > 0` and puts a real
+     * contemplation card on the home for it. So on the VTS rule (Creation
+     * Prayer in the evening plus ten minutes of silence) the home showed the
+     * silence card while this review said the practice didn't exist.
+     *
+     * Suppressed now only by a per-side SILENT sit — the one case that really
+     * is the same practice said twice.
+     */
+    ...((goalMin > 0
+      && !(contemplationBySide.morning && contemplationStyle === "silent")
+      && !(contemplationBySide.evening && contemplationStyle === "silent")) ? [{
       emoji: (silenceMode === "grow" ? "🌱" : "🕯️"),
       label: "Silence",
       sub: silenceMode === "grow" ? "Growing toward 30 min" : `${goalMin} min a day`,
@@ -4121,7 +4138,19 @@ export default function WayOfLoveRuleFlow({
     // all day (see the "contemplative" step for the "with your prayer"
     // exception, when Creation Prayer IS the side's primary sit style).
     ...(contemplative.compline ? [{ emoji: "🌙", label: "Compline", sub: "Available from 7pm", step: "contemplative" as Step }] : []),
-    ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Creation Prayer", sub: cobreatheIsSideStyle ? "With your prayer" : "Available all day", step: "contemplative" as Step }] : []),
+    /**
+     * The standing Creation Prayer add-on — but NOT when a side already lists
+     * it as that side's own practice.
+     *
+     * `contemplative.cobreathe` is inferred as on whenever the style is the
+     * breath and any side carries a contemplation (see its initializer), so a
+     * rule with Creation Prayer as its EVENING anchor listed the practice
+     * twice: once as "Evening Creation Prayer · 12 breaths" and again as
+     * "Creation Prayer · With your prayer". The side's row is the truthful
+     * one — it names when and how long — so the add-on row stands down.
+     */
+    ...((contemplative.cobreathe && !(cobreatheIsSideStyle && (contemplationBySide.morning || contemplationBySide.evening)))
+      ? [{ emoji: "🌍", label: "Creation Prayer", sub: "Available all day", step: "contemplative" as Step }] : []),
     ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: "Available all day", step: "contemplative" as Step }] : []),
     ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Available all day", step: "contemplative" as Step }] : []),
     ...(newsletters.length
@@ -4129,7 +4158,16 @@ export default function WayOfLoveRuleFlow({
       : []),
     ...(extras.prayerList ? [{ emoji: "🕊️", label: "My Prayer List", sub: "Pray through your own list", step: "extras" as Step }] : []),
     // The user's own custom practices — each tappable back into "Create your own".
-    ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),
+    // A weekday-scoped practice says so: "Midday" alone described Community
+    // Meal as an every-day practice, which is not what the rule set up.
+    ...customList.map((a) => ({
+      emoji: a.emoji || "🌿",
+      label: a.title,
+      sub: a.days && a.days.length > 0 && a.days.length < 7
+        ? `${SLOT_LABEL[a.slot]} · ${describeDays(a.days)}`
+        : SLOT_LABEL[a.slot],
+      step: "custom" as Step,
+    })),
     // Drop any row whose edit target is no longer in the flow (e.g. an existing
     // user's contemplative/extras cards under the limited customizer) — tapping
     // it would jump to an unreachable step and strand them. Their cards stay on
