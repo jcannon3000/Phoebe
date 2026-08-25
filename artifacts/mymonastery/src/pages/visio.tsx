@@ -41,6 +41,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { openExternal } from "@/lib/openExternal";
+import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
@@ -271,9 +272,9 @@ export default function VisioPage() {
    * depicts is still NAMED — it's the eyebrow over the title on both picture
    * beats — but its text isn't printed here. The office is where you read.
    */
-  const PROMPT_1 = 0, PICTURE_1 = 1, PROMPT_2 = 2, PICTURE_2 = 3, CONTEMPLATE = 4, DONE = 5;
-  const [step, setStep] = useState(PROMPT_1);
-  const TOTAL = 6;
+  const TITLE = 0, PROMPT_1 = 1, PICTURE_1 = 2, PROMPT_2 = 3, PICTURE_2 = 4, CONTEMPLATE = 5, DONE = 6;
+  const [step, setStep] = useState(TITLE);
+  const TOTAL = 7;
   const showsImage = step === PICTURE_1 || step === PICTURE_2;
 
   const atEnd = step >= TOTAL - 1;
@@ -285,6 +286,46 @@ export default function VisioPage() {
     goHome();
   };
   const prev = () => { if (step > 0) setStep((s) => s - 1); };
+
+  /**
+   * Tap and swipe, the same way the office deck pages.
+   *
+   * Owner: "we need tap and swipe navigation." Lifted from
+   * bcp-daily-office's handleTapNavigate / handleSwipeTouchEnd so the two
+   * decks answer a gesture identically — tap the left half to go back and the
+   * right half forward, swipe left for next and right for back.
+   *
+   * The CLOSING slide is exempt from both. Its cards are the content: a tap
+   * there is meant for a card, and a stray page forward would mark the
+   * practice kept and leave the screen — the one gesture in this deck you
+   * can't take back. The footer button still does it, deliberately.
+   */
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const gestureNav = step !== DONE;
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (!gestureNav) return;
+    touchStartX.current = e.touches[0]!.clientX;
+    touchStartY.current = e.touches[0]!.clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const x0 = touchStartX.current, y0 = touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    if (!gestureNav || x0 === null || y0 === null) return;
+    const dx = e.changedTouches[0]!.clientX - x0;
+    const dy = e.changedTouches[0]!.clientY - y0;
+    // Vertical-dominant is a scroll (the picture beats can overflow) — leave it.
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) < 50) return; // palm tremor
+    if (dx < 0) next(); else prev();
+  };
+  const onTapNavigate = (e: React.MouseEvent) => {
+    if (!gestureNav) return;
+    // A tap that lands on a control belongs to the control.
+    if ((e.target as HTMLElement | null)?.closest("button, a, input, textarea, select, label")) return;
+    if (e.clientX < window.innerWidth / 2) prev(); else next();
+  };
 
   /** Jump back into a picture from the completion cards. */
   const reopen = (id: number) => {
@@ -354,6 +395,9 @@ export default function VisioPage() {
       </div>
 
       <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onClick={onTapNavigate}
         style={{
           flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center",
           // The gospel beat fills from the top so the image can hold a fixed
@@ -412,36 +456,71 @@ export default function VisioPage() {
           />
         )}
 
-        {/* The picture's identity — a museum label, on the TITLE slide and on
-            both looking beats.
-            Owner: "the title slide should say the title of the picture, and
-            the eyebrow should be the date." So the WORK'S date leads (1886–94,
-            not today), the title carries the line, and the artist and the
-            passage sit under it.
+        {/* The picture's identity.
+            Owner: "the title of the image should be like how we do canticle
+            titles" — so on its own opening slide it is set the way the office
+            sets Canticle 8: Space Grotesk, bold, tight tracking, the same
+            breathing glow, with the artist and the passage quiet underneath.
+            Scaled down from the office's clamp(48px,9vw,56px): "Canticle 8" is
+            two words and a painting's title is often eight.
 
-            The scripture reference used to be the eyebrow (an earlier ask) and
-            it hasn't been dropped, only moved down a line — it's what makes
-            this a lectionary practice rather than a gallery. Still ONE
-            eyebrow: two stacked eyebrows was a thing this app got told off for
-            once already.
+            NO DATE EYEBROW (owner: "take the date above the name out"). The
+            artist line already carries the painter's dates, so the work's date
+            above the title was a second set of numbers doing nothing.
 
-            On the FIRST slide it sits ABOVE the prompt (owner: "put the title
-            of the image on the first slide") — you are told what you are about
-            to look at, then what to look for. */}
-        {(showsImage || step === PROMPT_1) && view && (
+            On the two looking beats the same facts stay, small — a museum
+            label under the picture rather than a headline over it. */}
+        {/* …and while the choice is still settling. The title slide is now the
+            FIRST thing this practice shows, and `view` is null for up to
+            READINGS_CAP_MS while today's lessons resolve — so without this the
+            practice opens on an empty screen, which is the blank-screen class
+            this repo keeps a rule about. Breathes like the picture frame
+            below rather than spinning. */}
+        {step === TITLE && !view && (
+          <div
+            aria-hidden
+            style={{
+              width: "min(100%, 300px)", height: 92, borderRadius: 10,
+              border: `1px solid ${BORDER}`, background: "rgba(46,107,64,0.07)",
+              animation: "visio-breathe 2600ms ease-in-out infinite",
+            }}
+          />
+        )}
+
+        {step === TITLE && view && (
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <h1
+              className="title-glow-breathe"
+              style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.08 }}
+            >
+              {view.title}
+            </h1>
+            <div>
+              {view.artist && (
+                <p style={{ color: "rgba(200,212,192,0.75)", fontFamily: FONT, fontSize: 15, margin: 0, lineHeight: 1.5 }}>{view.artist}</p>
+              )}
+              {view.scriptureRef && (
+                <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13.5, margin: "5px 0 0", lineHeight: 1.5 }}>
+                  {view.scriptureRef}
+                  {view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {showsImage && view && (
           <div style={{ textAlign: "center" }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 8px" }}>
-              {tidyDate(view.date)}
-            </p>
             <p style={{ color: WARM, fontFamily: SERIF, fontSize: 19, fontStyle: "italic", margin: 0 }}>{view.title}</p>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>
-              {[
-                view.artist,
-                view.scriptureRef
-                  ? `${view.scriptureRef}${view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}`
-                  : "",
-              ].filter(Boolean).join(" · ")}
-            </p>
+            {view.artist && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "6px 0 0" }}>{view.artist}</p>
+            )}
+            {view.scriptureRef && (
+              <p style={{ color: FAINT, fontFamily: FONT, fontSize: 13, margin: "3px 0 0" }}>
+                {view.scriptureRef}
+                {view.followsToday ? ` · ${t("visio.follows_today", { defaultValue: "Today's reading" })}` : ""}
+              </p>
+            )}
           </div>
         )}
 
@@ -564,9 +643,12 @@ export default function VisioPage() {
         <button
           type="button"
           onClick={next}
-          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+          // Frosted, like every other CTA in the app (lib/frost) — this one
+          // was a flat green panel sitting on a photo backdrop that every
+          // surface around it lets through.
+          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
         >
-          {step === PROMPT_1
+          {step === TITLE
             ? t("common.begin", { defaultValue: "Begin" })
             // Audit: the closing slide's button doesn't continue anything — it
             // marks the practice kept and leaves. Saying "Continue" there
