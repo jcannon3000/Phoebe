@@ -64,7 +64,20 @@ function todayLocalISO(): string {
 // second copy of the same logic.
 // `cardKey` is the home card this tracker completes — stamped on the day's
 // FIRST mark so the home can play that card's completion moment.
-function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (ymd: string) => void, cardKey?: string) {
+/** A stamp that looks like an ISO date, or null. Shared by both keys below. */
+function readStamp(key: string): string | null {
+  try {
+    const v = localStorage.getItem(key);
+    return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (ymd: string) => void | Promise<unknown>, cardKey?: string) {
+  // The day the SERVER has acknowledged, kept apart from the day the reader
+  // tapped — see markRead's note on why conflating them lost reads.
+  const syncedKey = `${storageKey}:synced`;
   return {
     /** "YYYY-MM-DD" of the last tap, or null. Returns null on storage errors. */
     getLastReadDay(): string | null {
@@ -86,24 +99,54 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
      *  the server so the read shows up on the user's other devices too. */
     markRead(): void {
       const ymd = todayLocalISO();
-      // Sync only on the day's FIRST mark. markRead can fire repeatedly for one
-      // practice — paging past the end of a deck re-runs finish(), and several
-      // surfaces mark on both completion and playback — and the psalms tracker's
-      // sync INSERTs a prayer_session, so an unguarded re-mark writes duplicate
-      // rows (observed: six POSTs from one sitting). The server already has the
-      // day stamped after the first call, so skipping is correct for the
-      // reflection trackers too, just less chatty.
-      const alreadySyncedToday = this.getLastReadDay() === ymd;
+      /**
+       * Sync only on the day's FIRST mark — but judged by whether the SERVER
+       * has it, not by whether the local stamp is set.
+       *
+       * Those are different, and conflating them lost reads. The guard used to
+       * be `getLastReadDay() === ymd`: the same key markRead is about to write.
+       * So any path that stamped the day locally without a successful POST —
+       * an offline read, a failed request (this call swallows its own errors),
+       * a surface that marks on open as well as on finish — permanently
+       * suppressed the sync for that day. The card said kept, and the server
+       * never heard.
+       *
+       * Reported on the Dean's Commentary: "my streak was at 10 yesterday, I
+       * did it again, and it's now at 10 again." The streak is computed
+       * server-side from these rows, so a read that never lands can't move it,
+       * however many times you read.
+       *
+       * Tracking the CONFIRMED day separately also makes the retry below
+       * possible: a read stamped locally but never acknowledged stays pending
+       * and is re-sent on the next app start or reconnect.
+       */
+      const alreadyConfirmed = readStamp(syncedKey) === ymd;
       try {
         localStorage.setItem(storageKey, ymd);
         window.dispatchEvent(new Event(eventName));
       } catch {
         /* private mode / quota — non-fatal */
       }
-      if (alreadySyncedToday) return;
+      if (alreadyConfirmed) return;
       if (cardKey) markRecentCompletion(cardKey);
-      // Fire-and-forget; an unauthenticated/offline call just no-ops.
-      try { syncRead(ymd); } catch { /* best effort */ }
+      void this.syncPending();
+    },
+    /**
+     * Send today's read if it hasn't been confirmed yet. Safe to call at any
+     * time — it no-ops unless there is a local read the server hasn't
+     * acknowledged. Called on every mark, and again on app start / reconnect.
+     */
+    async syncPending(): Promise<void> {
+      const ymd = todayLocalISO();
+      if (this.getLastReadDay() !== ymd) return;
+      if (readStamp(syncedKey) === ymd) return;
+      try {
+        await syncRead(ymd);
+        try { localStorage.setItem(syncedKey, ymd); } catch { /* non-fatal */ }
+      } catch {
+        // Offline, signed out, or a server hiccup — leave it pending so the
+        // next flush tries again rather than losing the day.
+      }
     },
     /** Clear today's mark (only if it's actually set today) + notify listeners
      *  — the undo half of markRead, for surfaces where re-tapping an
@@ -144,6 +187,26 @@ const vtsTracker = makeDailyReadTracker(
   (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "vts", ymd }).catch(() => { /* best effort */ }); },
   "reflect-vts",
 );
+
+/**
+ * Re-send any read the server hasn't acknowledged yet.
+ *
+ * Owner: "every time the user reads it should log that, so we can see what
+ * their streak is at." A read is stamped locally the instant it happens, but
+ * the POST that the STREAK is computed from can fail — offline, a dropped
+ * request, signed out at that moment — and markRead swallows its own errors.
+ * Without this, that day was simply never recorded and the streak sat still
+ * however many times the reader came back.
+ *
+ * Called on app start and whenever the device reconnects, alongside the
+ * prayer-session outbox flush. Each tracker no-ops unless it has a read from
+ * TODAY that hasn't been confirmed.
+ */
+export function retryPendingReflectionReads(): void {
+  for (const t of [cacTracker, fddTracker, ssjeTracker, vtsTracker]) {
+    void t.syncPending();
+  }
+}
 // Praying the Psalms — the done tracker for the psalms office form.
 // SIDE-SCOPED: morning and evening psalms are tracked separately, so praying the
 // morning psalms doesn't mark the evening side done (a user can have psalms on

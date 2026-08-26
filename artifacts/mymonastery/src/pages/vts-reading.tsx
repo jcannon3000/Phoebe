@@ -238,7 +238,11 @@ export default function VtsReadingPage() {
           // and scrolls if it runs long. Owner: "the vertical alignment of
           // the text on the slides is not matching the offices." The title
           // slide itself is one of those TITLE cards, so it centers too.
-          justifyContent: isTitle ? "center" : "flex-start",
+          // …and the STREAK slide is one of those title cards too (owner: "this
+          // should be centered in the middle of the page"). It's a big number
+          // and one line under it, not body text — top-aligned it sat in the
+          // upper third with two-thirds of the screen empty beneath.
+          justifyContent: isTitle || isStreak ? "center" : "flex-start",
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",

@@ -117,12 +117,28 @@ router.get("/me/reflection-streak", async (req: Request, res: Response): Promise
       return dow !== 0 && dow !== 6; // Sun, Sat
     };
 
+    /**
+     * Where the streak has to start from — and it must be CONTINUOUS (owner).
+     *
+     * Only two things may be stepped over on the way back:
+     *   · TODAY, when it hasn't been read yet. A day still in progress isn't a
+     *     missed day; at 8am you haven't broken anything.
+     *   · Days it doesn't publish. Nobody misses a Saturday edition.
+     *
+     * A publishing day that was NOT read ends the streak, full stop. This used
+     * to hunt back up to FOURTEEN days for the most recent read, which meant a
+     * streak survived two weeks of reading nothing and then reported itself as
+     * "current" — the number stayed put instead of falling to zero.
+     */
     let cursor = toDate(today);
-    // Anchor on the latest publishing day that was actually read, so today
-    // being unread (or a weekend) doesn't read as a broken streak.
-    let guard = 0;
-    while (guard++ < 14 && !(isPublishingDay(cursor) && read.has(toYmd(cursor)))) {
+    if (!(isPublishingDay(cursor) && read.has(toYmd(cursor)))) {
+      // Today is unread (or isn't a publishing day) — start from the day before.
       cursor.setUTCDate(cursor.getUTCDate() - 1);
+      // …then back over the weekend, if that's where we landed.
+      let guard = 0;
+      while (guard++ < 8 && !isPublishingDay(cursor)) {
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+      }
     }
     let current = 0;
     if (isPublishingDay(cursor) && read.has(toYmd(cursor))) {
@@ -135,6 +151,9 @@ router.get("/me/reflection-streak", async (req: Request, res: Response): Promise
         cursor.setUTCDate(cursor.getUTCDate() - 1);
       }
     }
+    // totalDays is what THIS READER has read (rows are per-user), never how
+    // many editions have been published — owner: "only count what the user
+    // read, not how many there have been in total."
     res.json({ source, current, totalDays: read.size });
   } catch (err) {
     console.error("[/me/reflection-streak GET] failed:", err);

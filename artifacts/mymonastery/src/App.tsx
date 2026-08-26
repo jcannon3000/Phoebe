@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from "@t
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
+import { retryPendingReflectionReads } from "@/lib/cacReadState";
 import { installSessionOutboxFlush } from "@/lib/sessionOutbox";
 import { ApiError, apiRequest } from "@/lib/queryClient";
 import { reportClientError } from "@/lib/reportClientError";
@@ -656,6 +657,14 @@ void hydrateIdbCache(queryClient);
 // Retry any prayer-session write that failed while offline. Flushes now, and
 // again whenever the device reconnects or the app comes back to the foreground.
 installSessionOutboxFlush();
+// A reflection read that never reached the server is the same class of loss
+// the outbox exists for — retry it on the same signals (start, reconnect,
+// app-active). The streak is computed from those rows server-side.
+retryPendingReflectionReads();
+try {
+  window.addEventListener("online", retryPendingReflectionReads);
+  window.addEventListener("phoebe:appactive", retryPendingReflectionReads);
+} catch { /* non-fatal */ }
 
 // Invalidate every React Query cache when the user taps an iOS push
 // notification. The native shell fires `phoebe:notification-tap` from
