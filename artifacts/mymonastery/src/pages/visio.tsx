@@ -344,8 +344,11 @@ export default function VisioPage() {
    * essay is known. Never the reverse.
    */
   const hasEssay = !!view?.essayUrl;
-  /** FIRST_LOOK is the picture itself only when there's no reflection to open. */
-  const showsImage = (step === FIRST_LOOK && !hasEssay) || step === PICTURE || step === CONTEMPLATE;
+  /** FIRST_LOOK is the picture — with or without a reflection to open. It used
+   *  to be a text slide when there WAS one, which put two slides of
+   *  instructions back to back and made the reader tap twice before seeing
+   *  anything. The reading is offered under the work instead. */
+  const showsImage = step === FIRST_LOOK || step === PICTURE || step === CONTEMPLATE;
 
   /**
    * SIT WITH IT — a 12-second hold before each beat will let you move on.
@@ -385,7 +388,7 @@ export default function VisioPage() {
     return () => window.clearTimeout(t);
   }, [step, holdsThisBeat]);
   /** The two beats that are ONLY the picture — where its label belongs. */
-  const isLookingBeat = (step === FIRST_LOOK && !hasEssay) || step === PICTURE;
+  const isLookingBeat = step === FIRST_LOOK || step === PICTURE;
 
   const atEnd = step >= TOTAL - 1;
   const goHome = () => setLocation("/dashboard");
@@ -815,24 +818,13 @@ export default function VisioPage() {
           </div>
         )}
 
-        {/* The first look, when there's a reflection to open — the beat whose
-            forward action hands off to it. Without an essay this branch doesn't
-            render at all and the picture takes the beat instead (showsImage).
-
-            Spare on purpose. The prompt before it has already said what's
-            coming and what to do; repeating that here would be the same
-            instruction twice with a tap in between. All this slide owes the
-            reader is what they're about to open. */}
-        {step === FIRST_LOOK && hasEssay && (
-          <div style={{ textAlign: "center", maxWidth: 480 }}>
-            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-              {t("visio.first_look_eyebrow", { defaultValue: "The picture" })}
-            </p>
-            <p className="title-glow-breathe" style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: "14px 0 0" }}>
-              {t("visio.first_look_line", { defaultValue: "The work, and a little about it. Stay as long as you like — you'll come back here." })}
-            </p>
-          </div>
-        )}
+        {/* (No text slide here any more. It said "The work, and a little about
+            it. Stay as long as you like — you'll come back here." directly
+            after the prompt that had just said "first you'll see the picture,
+            with a background behind the work" — owner: "this is repetitive of
+            the slide before it." The beat shows the PICTURE now, with the
+            reading offered under it, which is what the prompt promised and
+            what the eyebrow already called it.) */}
 
         {(step === PROMPT_1 || step === PROMPT_2) && (
           <p
@@ -1022,10 +1014,14 @@ export default function VisioPage() {
                 makes it read as arriving rather than appearing. */}
             {!holdReady
               ? null
-              // The Background beat's button opens the reading, so it says so —
-              // the office's lesson slide names its hand-off the same way.
+              // The button that opens the reading says the SAME thing wherever
+              // it appears. It said "Look and read" here and "Read reflection"
+              // on the closing card — one destination under two names, which
+              // is how a reader ends up unsure whether they're two different
+              // things (owner, comparing the two: "why is there
+              // inconsistency"). One phrase, one key.
               : backgroundOpens
-                ? t("visio.read_background", { defaultValue: "Look and read \u2192" })
+                ? `${t("visio.read_reflection", { defaultValue: "Read reflection" })} \u2192`
               : step === TITLE
                 ? t("common.begin", { defaultValue: "Begin" })
                 // Audit: the closing slide's button doesn't continue anything —
