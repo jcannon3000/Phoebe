@@ -297,6 +297,36 @@ export default function VisioPage() {
    * the third look, and the longest one.
    */
   const showsImage = step === PICTURE_1 || step === PICTURE_2 || step === CONTEMPLATE;
+
+  /**
+   * SIT WITH IT — a 12-second hold before each beat will let you move on.
+   *
+   * Owner: "just as we have an amen time on the prayer request, what if it has
+   * them sit with it each time for 12 seconds." Same reasoning prayer-mode's
+   * AmenButton was built on, and the same failure it fixes: tappers rip through
+   * a deck in a few seconds without pausing on anything. In a LOOKING practice
+   * that's the whole practice gone — the one thing you cannot do quickly is
+   * look slowly.
+   *
+   * The five beats of the practice proper hold. The opening invitation doesn't
+   * (there's nothing to sit with yet) and neither does the close (holding
+   * someone at the exit is friction, not attention).
+   */
+  const HOLD_MS = 12_000;
+  const holdsThisBeat = step === PROMPT_1 || step === PICTURE_1 || step === PROMPT_2
+    || step === PICTURE_2 || step === CONTEMPLATE;
+  const [holdReady, setHoldReady] = useState(false);
+  useEffect(() => {
+    if (!holdsThisBeat) { setHoldReady(true); return; }
+    setHoldReady(false);
+    const t = window.setTimeout(() => {
+      setHoldReady(true);
+      // The same soft "light" haptic the amen hold uses to mark the reveal —
+      // a different feel from the tap that follows it.
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
+    }, HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [step, holdsThisBeat]);
   /** The two beats that are ONLY the picture — where its label belongs. */
   const isLookingBeat = step === PICTURE_1 || step === PICTURE_2;
 
@@ -386,16 +416,17 @@ export default function VisioPage() {
       )}
       <style>{`
         @keyframes visio-breathe { 0%,100% { opacity: .5 } 50% { opacity: .85 } }
-        /* The prompts glow. They're the only things on their slides, and the
-           glow is what makes them read as spoken TO you rather than printed. */
-        @keyframes visio-glow {
-          0%,100% { text-shadow: 0 0 16px rgba(240,237,230,0.30), 0 0 46px rgba(143,175,150,0.20) }
-          50%     { text-shadow: 0 0 26px rgba(240,237,230,0.46), 0 0 70px rgba(143,175,150,0.32) }
-        }
-        .visio-prompt { animation: visio-glow 5200ms ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce) {
-          .visio-prompt { animation: none; text-shadow: 0 0 22px rgba(240,237,230,0.38), 0 0 60px rgba(143,175,150,0.26); }
-        }
+        /* The hold's own progress wash. Kept in sync with HOLD_MS above — if
+           one changes the other must, or the wash finishes before or after the
+           button actually enables. Restarts each beat: the element is keyed by
+           the step, so it remounts. (No backticks in here — this is inside a
+           template literal and one would end it.) */
+        @keyframes visio-hold-grow { from { width: 0%; } to { width: 100%; } }
+        .visio-hold-fill { width: 0%; animation: visio-hold-grow 12s linear forwards; }
+
+        /* (The bespoke prompt glow that used to live here is gone — the
+           prompts use .title-glow-breathe now, the same illuminated rise the
+           office's threshold slide uses.) */
       `}</style>
 
       {/* Header — Back / title / close, matching the office's reader chrome. */}
@@ -579,8 +610,8 @@ export default function VisioPage() {
 
         {(step === PROMPT_1 || step === PROMPT_2) && (
           <p
-            className="visio-prompt"
-            style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
+            className="title-glow-breathe"
+            style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
           >
             {step === PROMPT_1
               ? t("visio.prompt_notice", { defaultValue: QUESTIONS[0]! })
@@ -593,11 +624,18 @@ export default function VisioPage() {
             heart through the image, and lift what arises in prayer." Set like
             the two prompts — same serif, same italic, same measure — because
             it is the same kind of thing: an instruction for the reader's
-            attention, not a caption. */}
+            attention, not a caption.
+
+            Owner: the illuminated rise, upright, Space Grotesk. That's
+            .title-glow-breathe — the app's own treatment for a line meant to
+            arrive rather than sit there (the office's threshold slide uses it):
+            a 6px rise as it fades in, then a slow breathing glow. Reusing it
+            rather than the bespoke glow this page had means the prompts read as
+            the same kind of moment the office already has. */}
         {step === CONTEMPLATE && (
           <p
-            className="visio-prompt"
-            style={{ color: WARM, fontFamily: SERIF, fontSize: 21, fontStyle: "italic", lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
+            className="title-glow-breathe"
+            style={{ color: WARM, fontFamily: FONT, fontSize: 21, fontWeight: 500, lineHeight: 1.6, textAlign: "center", maxWidth: 480, margin: 0 }}
           >
             {t("visio.prompt_contemplate", { defaultValue: "Take a moment in contemplation on what God may be putting on your heart through the image, and lift what arises in prayer." })}
           </p>
@@ -696,20 +734,39 @@ export default function VisioPage() {
       <div style={{ padding: "10px 20px calc(env(safe-area-inset-bottom) + 18px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <button
           type="button"
-          onClick={next}
+          // Inert until the hold is up, rather than disabled: a `disabled`
+          // button is dropped from the accessibility tree and can't announce
+          // WHY it isn't working. This one stays focusable and says so.
+          onClick={() => { if (holdReady) next(); }}
+          aria-disabled={!holdReady}
+          aria-label={holdReady ? undefined : t("visio.hold_aria", { defaultValue: "Stay with this a moment longer" })}
           // Frosted, like every other CTA in the app (lib/frost) — this one
           // was a flat green panel sitting on a photo backdrop that every
           // surface around it lets through.
-          style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+          style={{ position: "relative", overflow: "hidden", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", width: "100%", maxWidth: 420, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", border: `1px solid ${BORDER}`, color: WARM, borderRadius: 999, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: holdReady ? "pointer" : "default", opacity: holdReady ? 1 : 0.72, transition: "opacity 420ms ease-out" }}
         >
-          {step === TITLE
-            ? t("common.begin", { defaultValue: "Begin" })
-            // Audit: the closing slide's button doesn't continue anything — it
-            // marks the practice kept and leaves. Saying "Continue" there
-            // described the one tap in this deck that isn't one.
-            : step === DONE
-              ? t("common.done", { defaultValue: "Done" })
-              : t("common.continue", { defaultValue: "Continue" })}
+          {/* The wash filling under the label while the hold runs — the same
+              language prayer-mode's amen hold uses, so "wait with this" looks
+              the same wherever the app asks for it. Keyed by the step so it
+              restarts on every beat. */}
+          {!holdReady && (
+            <span
+              key={step}
+              aria-hidden
+              className="visio-hold-fill"
+              style={{ position: "absolute", left: 0, top: 0, bottom: 0, background: "rgba(168,197,160,0.16)", pointerEvents: "none" }}
+            />
+          )}
+          <span style={{ position: "relative" }}>
+            {step === TITLE
+              ? t("common.begin", { defaultValue: "Begin" })
+              // Audit: the closing slide's button doesn't continue anything — it
+              // marks the practice kept and leaves. Saying "Continue" there
+              // described the one tap in this deck that isn't one.
+              : step === DONE
+                ? t("common.done", { defaultValue: "Done" })
+                : t("common.continue", { defaultValue: "Continue" })}
+          </span>
         </button>
         <span style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.12em" }}>{step + 1} / {TOTAL}</span>
       </div>

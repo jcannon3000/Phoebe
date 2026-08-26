@@ -1093,10 +1093,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     key: "visio", emoji: "🖼️", rgb: "150,130,170", done: visioDone, href: "/visio",
     onUnlog: () => unmarkPracticeDoneToday("visio"),
     title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }),
-    // The image's own name (owner), from the same computation the practice
-    // uses — falls back to the generic line only while the lookup is settling,
-    // so the card never names a different picture from the one it opens.
-    blurb: visioDone ? kept : (visioToday.chosen?.art.title ?? t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" })),
+    // The image's own name AND the passage it depicts (owner), from the same
+    // computation the practice uses — falls back to the generic line only while
+    // the lookup is settling, so the card never names a different picture from
+    // the one it opens. Same "title · reference" shape the picture beat's own
+    // eyebrow uses inside the practice.
+    blurb: visioDone
+      ? kept
+      : (visioToday.chosen
+        ? [visioToday.chosen.art.title, visioToday.chosen.ref].filter(Boolean).join(" · ")
+        : t("rhythm.blurb_visio", { defaultValue: "Pray with today's image" })),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const listeningCard = {
