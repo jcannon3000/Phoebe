@@ -1459,9 +1459,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // progress ("N of M min today") would otherwise be invisible everywhere.
     // Signed-in minutes come from the server's sit stats. Begin opens the timer
     // straight at the goal length; past goal it stays tappable to sit again.
-    ...(contemplationGoalMin > 0 && (
-      (creationStyle && (morningContemplationActive || eveningContemplationActive)) ||
-      (!morningContemplationActive && !eveningContemplationActive)
+    // MIRRORS useRhythmState.silenceGoalCardActive exactly (per-side SILENT
+    // sits suppress; every other kind coexists with the goal) — these two must
+    // agree or the dot/count disagree with the card.
+    ...(contemplationGoalMin > 0 && !(
+      (morningContemplationActive && morningContemplationKind === "silent") ||
+      (eveningContemplationActive && eveningContemplationKind === "silent")
     ) ? [{
       key: "silence", slot: "anytime" as CustomSlot, emoji: "🕯️", rgb: "62,124,122",
       done: contemplationMin >= contemplationGoalMin,

@@ -1259,7 +1259,18 @@ export function useRhythmState(): RhythmState {
     : ((morningContemplationActive || eveningContemplationActive)
       ? "silent"
       : (getContemplationStyleGlobal() === "creation" ? "cobreathe" : "silent"));
-  const silenceGoalCardActive = soloSilenceActive || (creationPerSide && contemplationGoalMin > 0);
+  /**
+   * Suppressed only by a per-side SILENT sit — the same rule the edit list,
+   * the review screen and the server's describeSpec now all share. The old
+   * gate special-cased CREATION and treated every other kind as silence, so
+   * the moment a side became Visio Divina (or a walk, or listening) the
+   * 60-minute goal lost its card: still named in the customizer's Silence
+   * row, invisible on the home, and the day completed without it. A visio
+   * side prays with an image; it doesn't keep the silence.
+   */
+  const silentPerSide = (morningContemplationActive && morningContemplationKind === "silent")
+    || (eveningContemplationActive && eveningContemplationKind === "silent");
+  const silenceGoalCardActive = contemplationGoalMin > 0 && !silentPerSide;
   // goal > 0 is load-bearing: with no goal this was `0 >= 0` — true from
   // midnight — and /turn-learn-pray's contemplative slot read "kept" before
   // the person had done anything, every day, for anyone without a minutes
