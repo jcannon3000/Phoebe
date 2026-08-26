@@ -23,7 +23,6 @@ import { markPracticeDoneToday, unmarkPracticeDoneToday, setPracticeNotToday, ty
 import { useVisioToday } from "@/hooks/useVisioToday";
 import { undoOfficeToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { markContemplationSideDone } from "@/lib/contemplationSideDone";
 import { readRecentCompletion, clearRecentCompletion } from "@/lib/recentCompletion";
 import { logCelebrationEvent } from "@/lib/celebrationDebugLog";
@@ -1491,13 +1490,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ...(listeningActive ? [{ ...listeningCard, slot: listeningSlot }] : []),
     ...(walkActive ? [{ ...walkCard, slot: walkSlot }] : []),
     ...(visioActive ? [{ ...visioCard, slot: getPracticeSlot("visio") }] : []),
-    // Prayer List rides at whichever slot the viewer picked (see
-    // lib/prayerListSlot.ts) on /intentions, or "anytime" if they never set
-    // one — the card still shows either way, only its POSITION changes.
-    // (The separate bottom-of-home PrayerListSection block was removed
-    // (owner) — this Next/Done routine card is the only home-screen
-    // surface left; full access lives at the header pill → /prayer-list.)
-    ...(prayerListActiveCard ? [{ ...prayerListCard, slot: (getPrayerListSlot() ?? "anytime") as CustomSlot }] : []),
+    // Prayer List is a standalone "anytime" practice — it left the
+    // morning/evening sides entirely (owner, 2026-08-26: "take your prayer
+    // list out of the morning and evening side"), so the card no longer moves
+    // with a slot pick. (The separate bottom-of-home PrayerListSection block
+    // was removed (owner) — this Next/Done routine card is the only
+    // home-screen surface left; full access lives at the header pill.)
+    ...(prayerListActiveCard ? [{ ...prayerListCard, slot: "anytime" as CustomSlot }] : []),
     // complineActive already folds in the after-7pm gate (useRhythmState.ts)
     // — fixed to "evening" since there's no earlier time it could ever show.
     ...(complineActive ? [{ ...complineCard, slot: "evening" as CustomSlot }] : []),

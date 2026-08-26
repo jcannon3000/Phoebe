@@ -12,7 +12,6 @@ import {
   hasPrayedCustomToday, CUSTOM_PRAYER_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, hasPracticeSkippedToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
-import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
@@ -988,15 +987,10 @@ export function useRhythmState(): RhythmState {
   // block runs first.
   const morningSatKept = contemplationSideDone.morning || sidesToday.morning;
   const eveningSatKept = contemplationSideDone.evening || sidesToday.evening;
-  // Prayer List: "satisfies a side regardless of that side's chosen level"
-  // driven by the user's own morning/evening slot pick (lib/prayerListSlot.ts) —
-  // owner: "if they prayed their community prayers but have not prayed
-  // their morning or evening, fill in the dot... based on where they
-  // prayed the prayer list."
-  const prayerListSlot = getPrayerListSlot();
-  // Declared here, above the anchor clause that reads it. It used to sit ~90
-  // lines further down, which made that read a use-before-declaration —
-  // evaluated during render, so it would throw rather than merely misbehave.
+  // (The Prayer List no longer satisfies a side — owner, 2026-08-26: "take
+  // your prayer list out of the morning and evening side." It's a standalone
+  // practice with its own card, dot and weekly row; the office anchors are
+  // kept by praying them.)
   /**
    * WHETHER IT WAS KEPT — not whether the module is visible.
    *
@@ -1021,12 +1015,6 @@ export function useRhythmState(): RhythmState {
    * same intentionsTotalCount gate the card does).
    */
   const prayerListDone = practiceLocal.prayerList || serverDone("prayer-list");
-  // Same signal the card and the pill use — walking the slideshow, not a tally.
-  // This clause (the prayer list satisfying a side's anchor) was the last place
-  // still counting items, so a complete walk that skipped two prayers filled
-  // the Prayer List card and its dot while leaving Morning un-kept: exactly the
-  // disagreement the card was moved off counting to remove.
-  const prayerListSlotDone = intentionsTotalCount > 0 && prayerListDone;
   /**
    * A side whose custom anchor names a real practice completes when THAT
    * practice is kept.
@@ -1055,8 +1043,7 @@ export function useRhythmState(): RhythmState {
     || (ml === "guided-prayer" && prayerRead.guidedPrayerMorning)
     || (ml === "custom" && (prayerRead.customMorning || anchorPracticeDone("morning")))
     || (ml === "examen" && examenKept)
-    || (ml === "reflect-sit" && morningSatKept)
-    || (prayerListSlot === "morning" && prayerListSlotDone)));
+    || (ml === "reflect-sit" && morningSatKept)));
   const eveningDone = officeLocal.evening || (!officeUndone.evening && (anchorSurfaceHit("evening")
     || (el === "fdd" && prayerRead.fddEvening) || (el === "readings" && prayerRead.readingsEvening)
     || (el === "psalms" && prayerRead.psalmsEvening)
@@ -1068,8 +1055,7 @@ export function useRhythmState(): RhythmState {
     // (see officeLocalDone's sides list): as a standalone add-on card,
     // praying Compline is its own act and must not tick Evening Prayer.
     || (el === "compline" && (officeLocal.compline || !!todayOffice?.compline))
-    || (el === "reflect-sit" && eveningSatKept)
-    || (prayerListSlot === "evening" && prayerListSlotDone)));
+    || (el === "reflect-sit" && eveningSatKept)));
 
   // Contemplation (was "Silence"): today's minutes = Phoebe in-app sits only
   // (a Cobreathe breath logs a contemplation sit, so it's already counted

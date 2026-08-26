@@ -6,7 +6,6 @@ import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { markIntentionPrayedToday } from "@/lib/intentionsPrayed";
-import { getPrayerListSlot, setPrayerListSlot, type PrayerListSlot } from "@/lib/prayerListSlot";
 import { BCP_PRAYERS } from "@/lib/bcp-prayers";
 
 // ── Personal prayer list ("intentions") ───────────────────────────────────
@@ -78,13 +77,6 @@ export default function IntentionsPage() {
   const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const todayYmd = useMemo(todayLocalISO, []);
-  // Owner: "make community list an option for morning and evening slots...
-  // if they prayed their community prayers but have not prayed their
-  // morning or evening, fill in the dot in the weekly based on where they
-  // prayed the prayer list." Neither = the list stays a standalone card,
-  // doesn't satisfy either side (the default).
-  const [prayerListSlot, setPrayerListSlotState] = useState<PrayerListSlot>(getPrayerListSlot);
-  const pickSlot = (slot: PrayerListSlot) => { setPrayerListSlotState(slot); setPrayerListSlot(slot); };
   const { data } = useQuery<{ intentions: Intention[] }>({
     queryKey: ["/api/prayer-intentions", todayYmd],
     queryFn: () => apiRequest("GET", `/api/prayer-intentions?ymd=${todayYmd}`) as Promise<{ intentions: Intention[] }>,

@@ -73,7 +73,6 @@ import {
   getSideContemplationKind,
 } from "@/lib/officePrefs";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { getPrayerListSlot, setPrayerListSlot, type PrayerListSlot } from "@/lib/prayerListSlot";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useKeyboardInputLift } from "@/hooks/useKeyboardInputLift";
 import { WEEKLY_PRACTICES, getEnabledWeekly, setEnabledWeekly, WEEKLY_PRACTICES_ENABLED, type WeeklyKind } from "@/lib/weeklyRhythm";
@@ -1151,10 +1150,6 @@ export default function WayOfLoveRuleFlow({
   // Which sides asked for the additional-practice slide. It's a real step in
   // the flow (see buildSteps) rather than an inline expansion — owner: "not
   // expand to a list, but advance to a second slide".
-  /** Which side (if any) praying the Prayer List keeps — see the row on the
-   *  anchor slide. Device-local, and read by useRhythmState's morningDone /
-   *  eveningDone, so it's a real way to pray a side rather than a label. */
-  const [prayerListSlot, setPrayerListSlotState] = useState<PrayerListSlot>(getPrayerListSlot);
   const [extraWantedBySide, setExtraWantedBySide] = useState<Record<OfficeSide, boolean>>(() => ({
     morning: !!getSideExtra("morning"),
     evening: !!getSideExtra("evening"),
@@ -1479,16 +1474,6 @@ export default function WayOfLoveRuleFlow({
     if (p !== "none") {
       setContemplativeForm((prev) => (prev[side] === null ? prev : { ...prev, [side]: null }));
       setContemplationBySide((prev) => (prev[side] ? { ...prev, [side]: false } : prev));
-      // …and the Prayer List, which is a THIRD piece of state this slide's rows
-      // read from (see the row's own note). Caught by testing: with the list
-      // chosen, tapping Simple Guided Prayer lit BOTH — the same two-rows-lit
-      // bug as the contemplative form, one state over. Every row on this slide
-      // must be cleared here, or the next one added will do it again.
-      setPrayerListSlotState((prev) => {
-        if (prev !== side) return prev;
-        setPrayerListSlot(null);
-        return null;
-      });
     }
   };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
@@ -3375,36 +3360,10 @@ export default function WayOfLoveRuleFlow({
               },
             );
           })()}
-          {/**
-            * THE PRAYER LIST as this side's anchor (owner: "I also want Prayer
-            * List to be able to be an anchor").
-            *
-            * The MECHANISM already existed — prayerListSlot decides which side
-            * praying your list satisfies, and useRhythmState has read it in
-            * morningDone/eveningDone all along — but the only place to set it
-            * was a control buried on the prayer-list page itself. It's a way to
-            * pray a side, so it belongs on the slide where you choose how to
-            * pray that side.
-            *
-            * It sets the SLOT rather than a level: praying the list is what
-            * keeps it, and that's already how the flag is read.
-            */}
-          {(() => {
-            const on = prayerListSlot === side;
-            return choiceRow(
-              on,
-              `🙏🏽 ${t("wol_rule.pray_list_label", { defaultValue: "Your Prayer List" })}`,
-              t("wol_rule.pray_list_sub", { defaultValue: "The people and things you're carrying — praying them keeps this side." }),
-              () => {
-                touchedRef.current = true;
-                if (on) { setPrayerListSlotState(null); setPrayerListSlot(null); return; }
-                if (contemplationBySide[side]) toggleContemplationSide(side);
-                choosePrayBySide(side, "none");
-                setPrayerListSlotState(side);
-                setPrayerListSlot(side);
-              },
-            );
-          })()}
+          {/* (The "Your Prayer List" row left this slide — owner, 2026-08-26:
+              "take your prayer list out of the morning and evening side." The
+              list is a standalone practice now; prayerListSlot is gone.) */}
+          
           {(() => {
             // Use the SHARED helper, not a hand-inlined copy of its condition.
             // This line used to re-list offices/devotion/psalms itself and so

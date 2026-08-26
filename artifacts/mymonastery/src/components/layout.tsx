@@ -14,7 +14,6 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { PHOEBE_GUEST_ENABLED } from "@/lib/guestFlag";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { getPrayerListSlot } from "@/lib/prayerListSlot";
 import { isFirstOpen } from "@/lib/firstOpen";
 import { FirstOpenOnboarding } from "@/components/FirstOpenOnboarding";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -705,9 +704,9 @@ function DailyProgressPill() {
   // out entirely, matching the cards + the reduced count.
   const cDots = (slot: string) =>
     customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
-  // The prayer-list dot, emitted in whichever slot the card sits in — same
-  // getPrayerListSlot the home uses, so dot order matches card order.
-  const prayerListSlot = getPrayerListSlot() ?? "anytime";
+  // The prayer-list dot — always "anytime", like the card: the list left the
+  // morning/evening sides (owner, 2026-08-26).
+  const prayerListSlot = "anytime";
   const plDot = (slot: string) =>
     intentionsTotalCount > 0 && prayerListSlot === slot
       // Same signal the card uses — walking the slideshow, not a per-prayer
