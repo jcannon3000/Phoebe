@@ -1150,6 +1150,23 @@ export default function WayOfLoveRuleFlow({
     };
     return { morning: seed("morning"), evening: seed("evening") };
   });
+  /** A practice that became a SIDE'S ANCHOR stops being a standing add-on —
+   *  its row disappears from the contemplative multi-select (see
+   *  anchoredAsForm), and this makes sure the flag behind that row goes with
+   *  it. Otherwise commit() would read a `true` nobody can see and give the
+   *  practice a second home card alongside the side's own. */
+  useEffect(() => {
+    const anchored = [contemplativeForm.morning, contemplativeForm.evening];
+    setContemplative((c) => {
+      const next = { ...c };
+      let changed = false;
+      for (const f of ["audio", "walk", "visio"] as const) {
+        if (anchored.includes(f) && next[f]) { next[f] = false; changed = true; }
+      }
+      return changed ? next : c;
+    });
+  }, [contemplativeForm.morning, contemplativeForm.evening]);
+
   /** Is this side set to a contemplative practice at all? */
   const contemplativeOnSide = (s: OfficeSide) => contemplativeForm[s] !== null;
   // Contemplative-Prayer silence sizing: a FIXED daily amount (the dropdown), or
@@ -2831,6 +2848,25 @@ export default function WayOfLoveRuleFlow({
     // their evening prayer — offering it again here as an "additional" extra
     // would be a confusing duplicate toggle for the same practice.
     const examenAlreadyPrimary = prayBySide.morning === "examen" || prayBySide.evening === "examen";
+    /**
+     * A practice already kept as a side's ANCHOR isn't an option here.
+     *
+     * Reported: "when I got to contemplative practice some of the things that
+     * were in my anchors were selected — if they are anchors or additional
+     * they should not be options." Compline, the Examen and Creation Prayer
+     * each had their own hand-written guard above; the Walk, Audio Divina and
+     * Visio Divina had none, and they became anchor-able the moment the
+     * contemplative slide started offering them. So a morning of Audio Divina
+     * showed up here as a standing add-on the reader never asked for.
+     *
+     * Forced OFF as well as hidden, in the effect below — a row you can't see
+     * must not still be carrying a `true` into commit(), which would put its
+     * card on the home a second time.
+     */
+    const anchorForms = new Set(
+      [contemplativeForm.morning, contemplativeForm.evening].filter(Boolean) as ContemplativeForm[],
+    );
+    const anchoredAsForm = (f: ContemplativeForm) => anchorForms.has(f);
     // Same reasoning again for Compline: it's offered on the evening "way"
     // step as a BCP anchor (after Office). Someone who chose it there already
     // prays Compline as their evening office — re-offering it here as an
@@ -2866,11 +2902,11 @@ export default function WayOfLoveRuleFlow({
             },
           )}
           {!complineAlreadyPrimary && choiceRow(contemplative.compline, `🌙 ${t("wol_rule.cp_compline", { defaultValue: "Compline" })}`, t("wol_rule.cp_compline_sub", { defaultValue: "The night office — available from 7pm." }), () => toggleContemplative("compline"))}
-          {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
+          {!anchoredAsForm("audio") && choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {!examenAlreadyPrimary && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
           {!creationAlreadyPrimary && choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Creation Prayer" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Breathing together with God's creation" }), () => toggleContemplative("cobreathe"))}
-          {choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
-          {choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
+          {!anchoredAsForm("walk") && choiceRow(contemplative.walk, `🚶 ${t("wol_rule.cp_walk", { defaultValue: "Contemplative Walk" })}`, t("wol_rule.cp_walk_sub", { defaultValue: "A walk as prayer." }), () => toggleContemplative("walk"))}
+          {!anchoredAsForm("visio") && choiceRow(contemplative.visio, `🖼️ ${t("wol_rule.cp_visio", { defaultValue: "Visio Divina" })}`, t("wol_rule.cp_visio_sub", { defaultValue: "Pray with an image — the day's artwork, slowly." }), () => toggleContemplative("visio"))}
           {/* Last, because it's the answer when none of the named ones is. */}
           {choiceRow(
             customPracticeOn,
@@ -3131,9 +3167,20 @@ export default function WayOfLoveRuleFlow({
               touchedRef.current = true;
               if (side === "evening" && prayBySide[side] === "examen") setContemplative((c) => ({ ...c, examen: false }));
               choosePrayBySide(side, "none");
-              // Defaults to Contemplative Prayer — the first entry in the
-              // dropdown on the next slide, where they can change it.
-              setContemplativeForm((p) => ({ ...p, [side]: "prayer" }));
+              /**
+               * KEEP a practice this side already has.
+               *
+               * Reported: "it put contemplative prayer into evening even
+               * though I had creation prayer as that, and it deleted creation
+               * prayer." This line forced "prayer" unconditionally, so merely
+               * TOUCHING the Contemplative Practice row — to look at it, to
+               * reach the slide behind it — retyped an evening of Creation
+               * Prayer as a silent sit, and the next Continue wrote that over
+               * the real one.
+               *
+               * "prayer" is only the default for a side that has nothing yet.
+               */
+              setContemplativeForm((p) => ({ ...p, [side]: p[side] ?? "prayer" }));
               if (!contemplationBySide[side]) toggleContemplationSide(side);
               chooseContemplationStyle("silent");
               chooseSideMinutes(side, 10);
