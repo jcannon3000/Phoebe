@@ -1,11 +1,23 @@
 /**
- * Set our community's RULE OF LIFE (leaders) — /communities/:slug/rule-of-life/set.
+ * Set this group's RULE OF LIFE (leaders) — /communities/:slug/rule-of-life/set.
  *
- * The community's shared daily rhythm: designed once by a leader, adoptable by
- * every member in one tap from the community page. Reuses the customizer in
- * "prescribe" mode (the design is CAPTURED, never written to the leader's own
- * account — same snapshot/restore as prescribing for one person), then a name,
- * then PUT — the rule replaces whatever rule came before it.
+ * The group's shared daily rhythm: designed once by a leader, then followed in
+ * one tap by anyone who reads the group page. Reached from Community settings.
+ *
+ * THE DESIGN IS NOT THE DESIGNER'S. The customizer runs in `prescribe` mode,
+ * which captures the spec and hands it back rather than committing it — and
+ * three things guard that, because the customizer writes as you go:
+ *   1. commit() returns before any PUT (the flow's own contract).
+ *   2. routine sync is SUSPENDED for the session, so the half-built design is
+ *      never pushed up as the leader's own rule_config.
+ *   3. their localStorage is snapshotted on entry and restored on the way out.
+ * A leader can design a rhythm they'd never keep themselves and walk away with
+ * their own morning untouched.
+ *
+ * PUT mints a NEW prescribed_routines row against this group and repoints the
+ * group at it — so it never joins the app-wide presets (those are group_id
+ * NULL and super-admin only), and anyone still holding an old rule's link
+ * keeps resolving to the rule they were given.
  */
 import { useEffect, useRef, useState } from "react";
 import { ROUTINE_KEYS } from "@/lib/routineSync";
@@ -13,7 +25,7 @@ import { useParams, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import WayOfLoveRuleFlow, { type RoutineSpec } from "@/components/WayOfLoveRuleFlow";
 import { apiRequest } from "@/lib/queryClient";
-import { pushRoutineConfig } from "@/lib/routineSync";
+import { pushRoutineConfig, setRoutineSyncSuspended } from "@/lib/routineSync";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -61,6 +73,10 @@ function restoreRoutine(snap: Record<string, string>): void {
     for (const k of toRemove) localStorage.removeItem(k);
     for (const [k, v] of Object.entries(snap)) localStorage.setItem(k, v);
   } catch { /* private mode */ }
+  // Designing is over: let this device sync again, and re-assert the OWN
+  // routine we just put back (harmless if the server never changed — which,
+  // with the suspension above, is the whole point).
+  setRoutineSyncSuspended(false);
   pushRoutineConfig();
 }
 
@@ -79,6 +95,16 @@ export default function CommunityRuleSetPage() {
 
   useEffect(() => {
     snapRef.current = snapshotRoutine();
+    /**
+     * Snapshot FIRST, then stop syncing.
+     *
+     * The customizer designs into the same localStorage keys this person's own
+     * rhythm lives in, and every setter fires the event App.tsx pushes on — so
+     * without this, designing for someone else streamed the half-built design
+     * up as the designer's OWN routine. The snapshot/restore around it only
+     * ever covered the device.
+     */
+    setRoutineSyncSuspended(true);
     return () => {
       if (!restoredRef.current && snapRef.current) { restoreRoutine(snapRef.current); restoredRef.current = true; }
     };
@@ -135,10 +161,10 @@ export default function CommunityRuleSetPage() {
             Rule ready 🕯️
           </p>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>
-            Name your community's rule
+            Name your group's rule
           </h1>
           <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, marginTop: 8 }}>
-            A short name members will see — "Our daily rhythm," "The Lent rule" — or leave it blank.
+            A short name people see before they follow it — "Our daily rhythm," "The Lent rule" — or leave it blank.
           </p>
         </div>
         <input
@@ -173,18 +199,18 @@ export default function CommunityRuleSetPage() {
           Rule set 🌿
         </p>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: WARM, fontFamily: FONT, lineHeight: 1.25 }}>
-          {label.trim() ? `“${label.trim()}” is your community's rule` : "Your community's rule is set"}
+          {label.trim() ? `“${label.trim()}” is your group's rule` : "Your group's rule is set"}
         </h1>
         <p style={{ fontSize: 14, color: SAGE, fontFamily: FONT, marginTop: 8 }}>
-          It now lives on your community page — every member can take it up in one tap, and the week you keep it
-          together shows up as "you prayed with…" on their home.
+          It now lives on your group page, where anyone reading can follow it in one tap. Your own rhythm is
+          exactly as you left it — designing this never touched it.
         </p>
       </div>
       <button
         type="button" onClick={() => setLocation(`/communities/${slug}`)}
         style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", borderRadius: 14, padding: "15px 20px", fontSize: 16, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}
       >
-        See it on the community page
+        See it on the group page
       </button>
     </div>
   );

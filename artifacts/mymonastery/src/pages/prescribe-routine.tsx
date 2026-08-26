@@ -20,7 +20,7 @@ import { Layout } from "@/components/layout";
 import { takePrescribedSpec } from "@/lib/prescribeHandoff";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
-import { pushRoutineConfig, ROUTINE_KEYS } from "@/lib/routineSync";
+import { pushRoutineConfig, setRoutineSyncSuspended, ROUTINE_KEYS } from "@/lib/routineSync";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -64,8 +64,12 @@ function restoreRoutine(snap: Record<string, string>): void {
     for (const k of toRemove) localStorage.removeItem(k);
     for (const [k, v] of Object.entries(snap)) localStorage.setItem(k, v);
   } catch { /* private mode */ }
-  // Push the admin's own (restored) routine back up so the server rule_config
-  // is also reverted from any debounced writes the customizer made while designing.
+  // Designing is over: let this device sync again, and re-assert the admin's
+  // OWN routine. The revert this comment used to promise was the only defence,
+  // and it could not run if the tab was closed mid-design — the push is now
+  // SUSPENDED for the whole session instead, so there is normally nothing on
+  // the server to revert.
+  setRoutineSyncSuspended(false);
   pushRoutineConfig();
 }
 
@@ -110,6 +114,16 @@ export default function PrescribeRoutinePage() {
   // Snapshot the admin's own routine on entry; restore on leave.
   useEffect(() => {
     snapRef.current = snapshotRoutine();
+    /**
+     * Snapshot FIRST, then stop syncing.
+     *
+     * The customizer designs into the same localStorage keys this person's own
+     * rhythm lives in, and every setter fires the event App.tsx pushes on — so
+     * without this, designing for someone else streamed the half-built design
+     * up as the designer's OWN routine. The snapshot/restore around it only
+     * ever covered the device.
+     */
+    setRoutineSyncSuspended(true);
     return () => {
       if (!restoredRef.current && snapRef.current) { restoreRoutine(snapRef.current); restoredRef.current = true; }
     };

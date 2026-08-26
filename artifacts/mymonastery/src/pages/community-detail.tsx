@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
+import { CommunityRuleCard } from "@/components/CommunityRuleCard";
 import { CommunitySeasonCard, CommunityPulseLine } from "@/components/CommunitySeasonCard";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -1332,6 +1333,30 @@ export default function CommunityDetailPage() {
         {/* The dashed "Add what this community is praying for" prompt is gone
             (owner). It led the page with an empty admin to-do rather than with
             the community, and adding one still lives in Community settings. */}
+
+        {/**
+          * THE GROUP'S RULE OF LIFE — the rhythm these people keep together.
+          *
+          * Owner: "when someone goes to the group, they can publicly see
+          * 'Follow <Group name> routine'."
+          *
+          * This card has existed since the community-rule work and was never
+          * rendered here — it only ever appeared on the join-welcome screen
+          * and as a one-time home offer, both of which you pass through once.
+          * So the rhythm a community keeps had no permanent home on the page
+          * that IS the community, and anyone who tapped past the welcome had
+          * no way back to it.
+          *
+          * Not beta-gated, unlike the pulse and season below it: this is the
+          * thing a follower came to see. It self-gates instead — no rule and
+          * no admin rights renders nothing at all, so a group that keeps no
+          * rhythm shows no empty promise of one, and leaders of such a group
+          * get the quiet doorway to set one.
+          *
+          * Above the pulse and the season because it's the standing rhythm and
+          * those are commentary on it.
+          */}
+        <CommunityRuleCard slug={slug!} />
 
         {/* BETA — the leader's aggregate weekly pulse (never names, floored
             under 4 members) and the community SEASON (the rule kept together

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Users, Plus, X, Trash2, UserPlus } from "lucide-react";
+import { ExternalLink, Users, Plus, X, Trash2, UserPlus, Flame } from "lucide-react";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -120,6 +120,19 @@ export default function CommunitySettingsPage() {
   const pendingForThis = groupData?.group
     ? pendingCounts?.byGroup[groupData.group.id] ?? 0
     : 0;
+
+  // The group's rule of life, so the settings row can say whether one is set
+  // and how many follow it — "Set" and "Replace" are different acts, and an
+  // admin should be able to tell which one they're about to do without
+  // opening the customizer to find out.
+  const { data: ruleData } = useQuery<{
+    rule: { label: string | null; adoptCount: number } | null;
+  }>({
+    queryKey: [`/api/groups/${slug}/rule`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/rule`),
+    enabled: !!user && !!slug,
+    staleTime: 30_000,
+  });
 
   const intentions: Intention[] = groupData?.intentions ?? [];
 
@@ -297,6 +310,44 @@ export default function CommunitySettingsPage() {
             )}
             <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
           </span>
+        </button>
+
+        {/**
+          * SET THE GROUP'S RULE OF LIFE.
+          *
+          * Owner: "for admins of groups, in their group settings, say 'set
+          * preset rule for group' — click it, and they go through the
+          * customizer creating a preset routine."
+          *
+          * The page it opens has existed for a while and had NO doorway: its
+          * only entry was on a clergy page removed with the parish system, so
+          * the whole feature was reachable only by typing the URL. Settings is
+          * where it belongs — it's a property of the group, set once by a
+          * leader, not something you do from the feed.
+          *
+          * Says which of the two acts it is. "Set" and "Replace" are different
+          * enough to warn about: replacing mints a new rule, and everyone who
+          * follows the old one keeps it until they take up the new one.
+          */}
+        <button
+          onClick={() => setLocation(`/communities/${slug}/rule-of-life/set`)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-6 transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <Flame size={15} style={{ color: "#A8C5A0", flexShrink: 0 }} />
+            <span className="min-w-0 text-left">
+              <span className="block text-sm font-medium" style={{ color: "#F0EDE6" }}>
+                {ruleData?.rule ? "Replace the rule of life" : "Set the rule of life"}
+              </span>
+              <span className="block text-[11.5px] mt-0.5 truncate" style={{ color: "rgba(200,212,192,0.55)" }}>
+                {ruleData?.rule
+                  ? `${ruleData.rule.label?.trim() || "One rhythm, kept together"}${ruleData.rule.adoptCount > 0 ? ` · ${ruleData.rule.adoptCount} following` : ""}`
+                  : "A daily rhythm anyone can follow from your group page"}
+              </span>
+            </span>
+          </span>
+          <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }}>→</span>
         </button>
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />

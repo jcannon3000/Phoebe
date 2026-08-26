@@ -2676,6 +2676,21 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_rule_adoption_pair ON parish_rule_adoptions (rule_id, user_id)`);
+    // The same, for a GROUP's rule of life. A group page is visible to every
+    // follower (and a public group is one tap from the directory), so its
+    // "N follow this rhythm" is read by people deciding whether to join them —
+    // a count inflated by one person re-tapping would be a lie told to
+    // strangers. The unique pair also lets the card seed "you already follow
+    // this" from the server instead of from local state that a reload forgets.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_rule_adoptions (
+        id SERIAL PRIMARY KEY,
+        rule_id INTEGER NOT NULL REFERENCES prescribed_routines(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_group_rule_adoption_pair ON group_rule_adoptions (rule_id, user_id)`);
     await run(client, `
       CREATE INDEX IF NOT EXISTS prescribed_routines_by_group
       ON prescribed_routines (group_id)

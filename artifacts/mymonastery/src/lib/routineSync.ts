@@ -187,9 +187,38 @@ function applyRoutineValues(values: Record<string, string>): void {
   if (changed) { try { window.dispatchEvent(new Event(ROUTINE_SYNCED_EVENT)); } catch { /* ignore */ } }
 }
 
+/**
+ * DESIGNING-FOR-SOMEONE-ELSE mode: stop pushing this device's routine up.
+ *
+ * The customizer in `prescribe` mode writes the design into the SAME
+ * localStorage keys the designer's own rhythm lives in, and the host pages
+ * snapshot those keys and restore them afterwards. That handles the device.
+ * It does not handle the SERVER: nearly every setter in the customizer fires
+ * OFFICE_PREFS_EVENT, App.tsx pushes on that event, and so a leader designing
+ * their group's rule of life was streaming the half-built design up as their
+ * OWN rule_config, one debounce at a time.
+ *
+ * The restore does end with a push of the original values, so the happy path
+ * healed itself. A closed tab, a killed app, or a phone that syncs in the
+ * window between did not — and what stayed on the server then synced DOWN to
+ * their other devices as the routine they'd never chosen.
+ *
+ * So the push is suspended for the duration instead of being undone after.
+ * Local writes still happen (the customizer has to read back what it wrote);
+ * only the server round-trip is held. The clock is deliberately NOT stamped
+ * either — bumping it would make this device win the next reconcile with
+ * values that were never the designer's.
+ */
+let syncSuspended = false;
+export function setRoutineSyncSuspended(on: boolean): void {
+  syncSuspended = on;
+  if (on) cancelPush();
+}
+
 // Debounced push of this device's routine to the server (bumps the LWW clock).
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 export function pushRoutineConfig(): void {
+  if (syncSuspended) return;
   const at = Date.now();
   setLocalUpdatedAt(at);
   if (pushTimer) clearTimeout(pushTimer);

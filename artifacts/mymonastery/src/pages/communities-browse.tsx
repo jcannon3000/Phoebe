@@ -30,6 +30,9 @@ interface PublicGroup {
   city: string | null;
   state: string | null;
   memberCount: number;
+  // Whether this community keeps a rule of life — WHETHER only, never what it
+  // is. The rhythm itself is read on the group's own page.
+  hasRule?: boolean;
   myStatus: "member" | "pending" | "none";
 }
 
@@ -324,8 +327,21 @@ export default function CommunitiesBrowsePage() {
                           {[g.city, g.state].filter(Boolean).join(", ")}
                         </p>
                       )}
-                      <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        {t("menu.members", { count: g.memberCount })}
+                      <p className="text-[11px] mt-1.5 flex items-center gap-1.5 flex-wrap" style={{ color: "rgba(143,175,150,0.55)" }}>
+                        <span>{t("menu.members", { count: g.memberCount })}</span>
+                        {/* The directory is where someone decides whether to
+                            follow people they've never heard of, and "they
+                            pray a shared rhythm" is among the most useful
+                            things to know at that moment — so it's visible
+                            BEFORE following, not only after. */}
+                        {g.hasRule && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                            style={{ background: "rgba(46,107,64,0.22)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.35)" }}
+                          >
+                            <span aria-hidden>🕯️</span> Keeps a rule of life
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex-shrink-0 self-center">

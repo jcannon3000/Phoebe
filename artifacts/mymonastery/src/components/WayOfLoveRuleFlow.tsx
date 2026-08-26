@@ -956,6 +956,24 @@ export default function WayOfLoveRuleFlow({
     // Guests have no office-prefs row to write to; their rhythm is local-only
     // until they have an account.
     if (!user || guest) return;
+    /**
+     * PRESCRIBE WRITES NOTHING TO THE DESIGNER'S OWN ACCOUNT.
+     *
+     * commit() honours that — it hands the spec to onPrescribe and returns
+     * before any PUT. This one didn't, because it deliberately persists on
+     * CHANGE rather than at the end (see the note above: a reminder set and
+     * then abandoned mid-flow used to be silently lost). So a leader designing
+     * their GROUP's rule of life, or a routine for one person, rewrote their
+     * OWN server office-prefs — morning/evening reminder level and times —
+     * the moment they touched a time picker.
+     *
+     * The pages that host this flow snapshot and restore the designer's
+     * localStorage, which is what made this hard to see: the device looked
+     * untouched while the server row had quietly changed, and the reminder
+     * push that actually fires reads the server. Nothing in the restore path
+     * could have caught it — office-prefs isn't rule_config.
+     */
+    if (prescribe) return;
     if (reminderSaveTimer.current) clearTimeout(reminderSaveTimer.current);
     reminderSaveTimer.current = setTimeout(() => {
       apiRequest("PUT", "/api/me/office-prefs", {

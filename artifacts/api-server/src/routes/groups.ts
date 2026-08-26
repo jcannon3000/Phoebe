@@ -27,6 +27,7 @@ import {
   groupWeeklyItemsTable,
   groupWeeklyCompletionsTable,
   prescribedRoutinesTable,
+  groupRuleAdoptionsTable,
   prayerSessionsTable,
   practiceCompletionTable,
   practiceLogEntriesTable,
@@ -3745,6 +3746,12 @@ router.get("/groups/public", async (req, res): Promise<void> => {
         city: groupsTable.city,
         state: groupsTable.state,
         createdAt: groupsTable.createdAt,
+        // Does this community keep a rule of life? The directory is where
+        // someone decides whether to follow a group they've never heard of,
+        // and "they pray a shared rhythm" is among the most useful things to
+        // know at that moment. Only WHETHER, never the rhythm itself — the
+        // rule is read on the group's own page.
+        ruleRoutineId: groupsTable.ruleRoutineId,
       })
       .from(groupsTable)
       .where(and(
@@ -3793,9 +3800,12 @@ router.get("/groups/public", async (req, res): Promise<void> => {
     const countByGroup = new Map(memberCounts.map(c => [c.groupId, Number(c.count) || 0]));
 
     res.json({
-      groups: rows.map(g => ({
+      groups: rows.map(({ ruleRoutineId, ...g }) => ({
         ...g,
         memberCount: countByGroup.get(g.id) ?? 0,
+        // A boolean, not the id: the directory says THAT a rhythm is kept
+        // here, and nothing about what it is.
+        hasRule: ruleRoutineId != null,
         myStatus: memberSet.has(g.id)
           ? "member"
           : pendingSet.has(g.id)
@@ -4343,15 +4353,29 @@ router.get("/groups/:slug/rule", async (req, res): Promise<void> => {
     acceptCount: prescribedRoutinesTable.acceptCount,
     token: prescribedRoutinesTable.token,
   }).from(prescribedRoutinesTable).where(eq(prescribedRoutinesTable.id, ruleId)).limit(1);
-  if (!row) { res.json({ rule: null, isAdmin: isAdminRole(result.member.role) }); return; }
+  if (!row) { res.json({ rule: null, isAdmin: isAdminRole(result.member.role), groupName: result.group.name }); return; }
+  // Has THIS viewer already taken it up? Seeded from the server rather than
+  // from client state, so "you follow this rhythm" survives a reload and a
+  // second device instead of reverting to an invitation they already accepted.
+  const [mine] = await db.select({ id: groupRuleAdoptionsTable.id })
+    .from(groupRuleAdoptionsTable)
+    .where(and(eq(groupRuleAdoptionsTable.ruleId, ruleId), eq(groupRuleAdoptionsTable.userId, user.id)))
+    .limit(1);
   res.json({
     // `token` powers the printable QR invite sign (/sign/:token) for admins.
     // `id` lets a client tell one rule from the next: the home's rule prompt
     // is "offered once per (group, rule)", so a community REPLACING its rule
     // (which mints a new prescribed_routines row) is offered afresh rather
     // than silently suppressed by the old one's stamp.
-    rule: { id: ruleId, label: row.label, spec: row.spec, adoptCount: row.acceptCount, token: row.token },
+    rule: {
+      id: ruleId, label: row.label, spec: row.spec, adoptCount: row.acceptCount, token: row.token,
+      viewerAdopted: !!mine,
+    },
     isAdmin: isAdminRole(result.member.role),
+    // The card names the group it belongs to — "Follow St Mary's routine"
+    // rather than "our rule", because a follower may be reading it on the page
+    // of a community they've only just found.
+    groupName: result.group.name,
   });
 });
 
@@ -4396,9 +4420,29 @@ router.post("/groups/:slug/rule/adopt", async (req, res): Promise<void> => {
   const spec = sanitizeSpec(row.spec);
   if (!spec) { res.status(422).json({ error: "Rule is no longer valid" }); return; }
   await applyRoutineSpecToUser(user.id, spec);
-  await db.update(prescribedRoutinesTable)
-    .set({ acceptCount: sql`${prescribedRoutinesTable.acceptCount} + 1` })
-    .where(eq(prescribedRoutinesTable.id, row.id));
+  /**
+   * The COUNT bumps once per person, not once per tap.
+   *
+   * It used to be a blind `+ 1` on every adopt, which an audit flagged and the
+   * parish path already fixed: re-tapping (or re-applying after changing your
+   * own rhythm, which is a perfectly reasonable thing to do) inflated it. That
+   * mattered less when the number was shown to members who knew each other.
+   * It matters now: this count sits on a group page that any follower reads
+   * while deciding whether to keep this rhythm with these people.
+   *
+   * Applying is still re-runnable — the spec is written to the user every
+   * time, so "take it up again" restores it after they've drifted. Only the
+   * tally is guarded, by the unique (rule, user) pair.
+   */
+  const inserted = await db.insert(groupRuleAdoptionsTable)
+    .values({ ruleId: row.id, userId: user.id })
+    .onConflictDoNothing()
+    .returning({ id: groupRuleAdoptionsTable.id });
+  if (inserted.length > 0) {
+    await db.update(prescribedRoutinesTable)
+      .set({ acceptCount: sql`${prescribedRoutinesTable.acceptCount} + 1` })
+      .where(eq(prescribedRoutinesTable.id, row.id));
+  }
   res.json({ ok: true, ruleConfig: spec.ruleConfig });
 });
 

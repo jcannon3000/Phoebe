@@ -29,8 +29,12 @@ type RuleSpec = {
   ruleConfig: Record<string, string>;
 };
 type RuleData = {
-  rule: { label: string | null; spec: RuleSpec; adoptCount: number; token: string | null } | null;
+  rule: {
+    label: string | null; spec: RuleSpec; adoptCount: number; token: string | null;
+    viewerAdopted?: boolean;
+  } | null;
   isAdmin: boolean;
+  groupName?: string;
 };
 
 const CARD_LABELS: Record<string, string> = {
@@ -74,23 +78,33 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [adopting, setAdopting] = useState(false);
-  const [adopted, setAdopted] = useState(false);
+  const [justAdopted, setJustAdopted] = useState(false);
   const [error, setError] = useState(false);
 
   const { data } = useQuery<RuleData>({
     queryKey: [`/api/groups/${slug}/rule`],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/rule`),
   });
+  /**
+   * Following is a fact about the ACCOUNT, not about this render.
+   *
+   * It used to be local state alone, so the button read "take up this rhythm"
+   * again after every reload and on every other device — inviting someone to
+   * accept what they had already accepted, and (before the adopt became
+   * idempotent) counting them twice for doing it. The server now answers it;
+   * the local flag only covers the moment between tapping and the refetch.
+   */
+  const following = !!data?.rule?.viewerAdopted || justAdopted;
 
   const adopt = async () => {
-    if (adopting || adopted) return;
+    if (adopting || following) return;
     setAdopting(true); setError(false);
     try {
       const res = await apiRequest("POST", `/api/groups/${slug}/rule/adopt`, {}) as { ruleConfig?: Record<string, string> };
       // Mirror the rule onto THIS device so the home reflects it immediately.
       adoptRoutineConfig(res?.ruleConfig);
       swellHaptic();
-      setAdopted(true);
+      setJustAdopted(true);
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
       qc.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
       qc.invalidateQueries({ queryKey: [`/api/groups/${slug}/rule`] });
@@ -131,6 +145,20 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
 
   const lines = summarize(data.rule.spec);
   const n = data.rule.adoptCount;
+  /**
+   * The group's own name in the invitation (owner: "they can publicly see
+   * 'Follow <Group name> routine'").
+   *
+   * "Our rule of life" only reads right to someone who already thinks of the
+   * group as ours. A group page is visible to every follower, and a public
+   * group is one tap from the directory — so the reader may be someone who
+   * found these people this minute. Naming them says whose rhythm it is.
+   * Falls back to the possessive-free phrasing when the server hasn't sent a
+   * name (an older client cache), rather than rendering "Follow 's routine".
+   */
+  const name = data.groupName?.trim() || "";
+  const possessive = name ? (/s$/i.test(name) ? `${name}'` : `${name}'s`) : "";
+  const followLabel = possessive ? `Follow ${possessive} routine` : "Follow this routine";
   return (
     <div className="relative flex rounded-xl overflow-hidden mb-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
       <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
@@ -138,7 +166,9 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
         <div className="flex items-start gap-3">
           <span className="text-2xl" aria-hidden>🕯️</span>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>Our rule of life</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.6)" }}>
+              {name ? `${possessive} rule of life` : "Our rule of life"}
+            </p>
             <p className="text-[14.5px] mt-1 font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
               {data.rule.label?.trim() || "One rhythm, kept together"}
             </p>
@@ -147,19 +177,23 @@ export function CommunityRuleCard({ slug }: { slug: string }) {
                 <p key={i} className="text-[12.5px] leading-snug" style={{ color: "#C8D4C0" }}>{l}</p>
               ))}
             </div>
+            {/* People, not taps. The count is one row per person now (the
+                unique (rule, user) pair on the server), so it can honestly say
+                how many are keeping this rhythm rather than how many times a
+                button was pressed. */}
             {n > 0 && (
               <p className="text-[12px] mt-1.5" style={{ color: "rgba(143,175,150,0.7)" }}>
-                Taken up {n} {n === 1 ? "time" : "times"}
+                {n === 1 ? "1 person follows this rhythm" : `${n} people follow this rhythm`}
               </p>
             )}
             {error && <p className="text-[12px] mt-1.5" style={{ color: "#C47A65" }}>Couldn't adopt the rule — try again.</p>}
             <div className="flex items-center gap-3 mt-2.5">
               <button
-                type="button" onClick={adopt} disabled={adopting || adopted}
+                type="button" onClick={adopt} disabled={adopting || following}
                 className="rounded-full px-4 py-1.5 text-[13px] font-semibold transition-opacity active:scale-[0.98] disabled:opacity-70"
-                style={{ background: adopted ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
+                style={{ background: following ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
               >
-                {adopted ? "This is your rhythm now ✓" : adopting ? "Taking it up…" : "Take up this rhythm"}
+                {following ? "Following this routine ✓" : adopting ? "Setting it up…" : followLabel}
               </button>
               {data.isAdmin && data.rule.token && (
                 <button type="button" onClick={() => setLocation(`/sign/${data.rule!.token}`)}
