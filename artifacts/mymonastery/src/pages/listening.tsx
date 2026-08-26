@@ -187,9 +187,20 @@ export default function ListeningPage() {
     setResults([]);
     setSearchFocused(false);
   }
+  /**
+   * Up to three emoji for what the listening FELT like — optional, and the
+   * wordless alternative to writing a sentence about it (owner, restored
+   * 2026-08-26 after a brief removal). Counted in GRAPHEMES: 🙏🏽 is four
+   * UTF-16 units and a family emoji is eleven, so a length check on `.length`
+   * would let one emoji fill the field or cut another in half.
+   */
+  const [felt, setFelt] = useState("");
+  const feltCount = (v: string) => (typeof Intl.Segmenter === "function"
+    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].length
+    : [...v].length);
   // Audio Divina is private — a personal listening log, no sharing with fellows.
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, shared: false }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, felt, shared: false }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
   const deleteMutation = useMutation({
@@ -219,7 +230,7 @@ export default function ListeningPage() {
     if (!what.trim()) return;
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false);
+    setQuery(""); setWhat(""); setArtworkUrl(""); setPicked(false); setFelt("");
     // Stay on the practice — the new listen becomes the hero right here,
     // rather than throwing you onto the full-log screen to see that it saved.
     setLogAnother(false);
@@ -638,12 +649,31 @@ export default function ListeningPage() {
                       );
                     })}
                   </div>
-                  {/* (The three-emoji "what did you feel?" field was here.
-                      Owner: "let's take the emojis out from both practices" —
-                      so Visio never gained one and this one goes. The stored
-                      `felt` column and the entry line that renders it stay put:
-                      they hold what people already recorded, and dropping the
-                      field shouldn't erase their past.) */}
+                  {/* Owner: "in addition to the song they chose, let them have
+                      an optional log where they can enter three emojis that
+                      represent what they felt." Taken out once and asked back
+                      2026-08-26 ("I want emojis back on audio divina and visio
+                      divina … put it back where it was, say optional").
+                      Optional and wordless — the alternative to writing a
+                      sentence, not a second thing to write. Three is the
+                      ceiling, counted in graphemes so a skin-toned 🙏🏽 or a
+                      family emoji counts as one. */}
+                  <p className="text-[10.5px] uppercase tracking-[0.18em] mt-5 mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    What did you feel? <span style={{ textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>— optional, up to three emoji</span>
+                  </p>
+                  <input
+                    value={felt}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      // Let them delete freely; only cap growth.
+                      if (feltCount(v) <= 3 || v.length < felt.length) setFelt(v);
+                    }}
+                    inputMode="text"
+                    placeholder="🕊️ 🌊 🙏🏽"
+                    aria-label="Up to three emoji for what you felt"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[22px] text-center outline-none"
+                    style={glassField}
+                  />
                 </div>
               )}
             </motion.div>

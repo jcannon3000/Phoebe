@@ -45,7 +45,7 @@ import { FROST_BLUR } from "@/lib/frost";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { artworkForDay } from "@/lib/visioArtworks";
 import { chooseArtwork, artworkById, type Chosen } from "@/lib/visioSelect";
-import { getVisioHistory, recordVisioSeen } from "@/lib/visioHistory";
+import { getVisioHistory, recordVisioSeen, recordVisioFelt } from "@/lib/visioHistory";
 import { VISIO_READINGS_SIDE } from "@/hooks/useVisioToday";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -148,6 +148,19 @@ export default function VisioPage() {
    * the deck shows THAT artwork instead of today's — a way back into a picture
    * they've been carrying, without disturbing which one today's is.
    */
+  /**
+   * Up to three emoji for what the looking FELT like — optional, wordless, and
+   * the same log Audio Divina keeps (owner: "I want emojis back on audio
+   * divina and visio divina … and Visio put it on the last line as well").
+   * Counted in GRAPHEMES: 🙏🏽 is four UTF-16 units and a family emoji eleven,
+   * so a check on `.length` would let one emoji fill the field or halve
+   * another. Seeded from what today already carries, so reopening the close
+   * shows what was written rather than an empty field.
+   */
+  const [felt, setFelt] = useState(() => getVisioHistory().find((v) => v.ymd === new Date().toLocaleDateString("en-CA"))?.felt ?? "");
+  const feltCount = (v: string) => (typeof Intl.Segmenter === "function"
+    ? [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v)].length
+    : [...v].length);
   const [overrideId, setOverrideId] = useState<number | null>(null);
   const override = overrideId != null ? artworkById(overrideId) : null;
 
@@ -239,6 +252,8 @@ export default function VisioPage() {
     // closing beat, not a library.
     return list.slice(0, 5);
   }, [history, active]);
+  /** What a given work's day was felt to be, from the device-local history. */
+  const feltFor = (artId: number): string => history.find((h) => h.id === artId)?.felt ?? "";
 
   /**
    * The view model, from whichever source is actually usable.
@@ -857,6 +872,7 @@ export default function VisioPage() {
             <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px", textAlign: "center" }}>
               {t("visio.close_eyebrow", { defaultValue: "Visio Divina complete" })}
             </p>
+            {/* (the emoji line sits after these cards — "on the last line") */}
             {cards.map((a) => {
               /**
                * "Read reflection" belongs to TODAY'S card only (owner).
@@ -916,6 +932,10 @@ export default function VisioPage() {
                     <span style={{ display: "block", color: WARM, fontFamily: SERIF, fontSize: 15.5, fontStyle: "italic", lineHeight: 1.3 }}>{a.title}</span>
                     <span style={{ display: "block", color: FAINT, fontFamily: FONT, fontSize: 11.5, marginTop: 3 }}>
                       {[tidyArtist(a.artist ?? ""), tidyDate(a.date ?? "")].filter(Boolean).join(" · ")}
+                      {/* What that day felt like, if they said — a colour on
+                          the line, not a fact of its own (as Audio Divina's
+                          entries do it). */}
+                      {feltFor(a.id) ? <span style={{ marginLeft: 6 }} aria-label="what you felt">{feltFor(a.id)}</span> : null}
                     </span>
                   </span>
                   {isToday && (
@@ -941,6 +961,38 @@ export default function VisioPage() {
                 </div>
               );
             })}
+            {/* THE LAST LINE (owner): the same optional three-emoji log Audio
+                Divina keeps, for what the looking felt like. Written straight
+                to the day's history entry as they type — the deck's Done tap
+                leaves for home, and a log you have to remember to save is a
+                log that gets lost. */}
+            <p style={{ color: FAINT, fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: "10px 0 6px", textAlign: "center" }}>
+              {t("visio.felt_label", { defaultValue: "What did you feel?" })}{" "}
+              <span style={{ textTransform: "none", letterSpacing: 0, opacity: 0.7 }}>
+                {t("visio.felt_hint", { defaultValue: "— optional, up to three emoji" })}
+              </span>
+            </p>
+            <input
+              value={felt}
+              onChange={(e) => {
+                const v = e.target.value;
+                // Deletion is never blocked; only growth is capped.
+                if (feltCount(v) <= 3 || v.length < felt.length) {
+                  setFelt(v);
+                  try { recordVisioFelt(today, v); } catch { /* non-fatal */ }
+                }
+              }}
+              inputMode="text"
+              placeholder="🕊️ 🌊 🙏🏽"
+              aria-label="Up to three emoji for what you felt"
+              style={{
+                width: "100%", boxSizing: "border-box", textAlign: "center", fontSize: 22,
+                padding: "12px 16px", borderRadius: 14, outline: "none",
+                background: "rgba(240,237,230,0.06)", color: WARM,
+                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                border: `1px solid ${BORDER}`, fontFamily: FONT,
+              }}
+            />
             {view && (
               <p style={{ color: FAINT, fontFamily: FONT, fontSize: 11, lineHeight: 1.55, margin: "6px 0 0", textAlign: "center" }}>
                 {view.attribution}

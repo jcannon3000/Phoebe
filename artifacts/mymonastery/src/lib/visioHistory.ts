@@ -26,7 +26,9 @@ const KEY = "phoebe:visio-history";
 /** Deep enough that a daily reader doesn't loop; short enough to stay small. */
 const CAP = 60;
 
-export type VisioSeen = { id: number; ymd: string };
+/** `felt` — up to three emoji for what the looking felt like, optional. The
+ *  same wordless log Audio Divina keeps; device-local, like the rest of this. */
+export type VisioSeen = { id: number; ymd: string; felt?: string };
 
 export function getVisioHistory(): VisioSeen[] {
   try {
@@ -41,6 +43,8 @@ export function getVisioHistory(): VisioSeen[] {
         !!v && typeof v === "object" &&
         typeof (v as VisioSeen).id === "number" &&
         typeof (v as VisioSeen).ymd === "string",
+    // `felt` is optional and was added later — entries written before it
+    // simply don't carry one, which is why it isn't part of the guard.
     );
   } catch {
     return [];
@@ -57,7 +61,25 @@ export function getVisioHistory(): VisioSeen[] {
  */
 export function recordVisioSeen(id: number, ymd: string): void {
   try {
-    const rest = getVisioHistory().filter((v) => v.ymd !== ymd && v.id !== id);
-    localStorage.setItem(KEY, JSON.stringify([{ id, ymd }, ...rest].slice(0, CAP)));
+    const prior = getVisioHistory();
+    // Keep anything already felt about this day's work: the record is written
+    // on arrival, the emoji is added at the close, and re-recording must not
+    // wipe it.
+    const kept = prior.find((v) => v.ymd === ymd && v.id === id)?.felt;
+    const rest = prior.filter((v) => v.ymd !== ymd && v.id !== id);
+    localStorage.setItem(KEY, JSON.stringify([{ id, ymd, ...(kept ? { felt: kept } : {}) }, ...rest].slice(0, CAP)));
   } catch { /* private mode, quota — the practice works without a memory */ }
+}
+
+/** Up to three emoji for what today's looking felt like. Written at the close
+ *  of the deck, onto the entry recordVisioSeen already made. */
+export function recordVisioFelt(ymd: string, felt: string): void {
+  try {
+    const all = getVisioHistory();
+    const i = all.findIndex((v) => v.ymd === ymd);
+    if (i < 0) return;
+    const next = [...all];
+    next[i] = felt ? { ...next[i]!, felt } : { id: next[i]!.id, ymd: next[i]!.ymd };
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch { /* non-fatal */ }
 }
