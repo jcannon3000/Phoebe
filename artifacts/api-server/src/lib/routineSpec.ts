@@ -26,8 +26,14 @@ const ALLOWED_PREFS = new Set(["none", "office", "devotion"]);
 // value class of bug as the home-layout allowlist. Keep in sync with
 // mymonastery/src/lib/officePrefs.ts's OFFICE_LEVELS.
 const ALLOWED_LEVELS = new Set([
+  // "readings" slipped through the last time this list was brought back in
+  // step — and it is the DEFAULT EVENING ANCHOR for every new user, so
+  // sanitizeSpec was folding it to "ask" and a prescribed routine, preset,
+  // creator season or snapshot round-trip silently dropped Daily Scripture
+  // Reading as the global anchor. Exactly the class this comment warns about.
   "ask", "devotion", "office", "intercessions", "reflect-sit",
-  "fdd", "psalms", "examen", "creation", "guided-prayer", "custom", "compline",
+  "fdd", "psalms", "readings", "examen", "creation", "guided-prayer",
+  "custom", "compline",
 ]);
 // A real clock time (00:00–23:59). The old /^\d{2}:\d{2}$/ accepted "99:99",
 // which sailed through to the reminder cron and silently disabled that side's

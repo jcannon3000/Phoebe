@@ -205,7 +205,7 @@ const COBREATHE_LENGTHS = [6, 12, 18, 24, 30, 36];
  */
 type ExtraMapping =
   | { kind: "level"; level: "office" | "devotion" | "psalms" | "readings" | "guided-prayer" }
-  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" }
+  | { kind: "practice"; key: "audio" | "walk" | "examen" | "cobreathe" | "compline" | "visio" }
   | { kind: "contemplation" }
   | { kind: "newsletter" };
 type ExtraPractice = {
@@ -233,7 +233,7 @@ const EXTRA_GROUPS: Array<{ id: ExtraGroupId; emoji: string; title: string; sub:
   { id: "office", emoji: "📖", title: "From the prayer book", sub: "The office, a devotion, the psalms or the readings." },
   { id: "guided", emoji: "🙌", title: "Simple Guided Prayer", sub: "Three minutes to start your day." },
   { id: "examen", emoji: "🌗", title: "The Examen", sub: "Review the day with God." },
-  { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, or Creation Prayer." },
+  { id: "contemplative", emoji: "🕯️", title: "A contemplative practice", sub: "Silence, a walk, sacred listening, Visio Divina, or Creation Prayer." },
   { id: "newsletter", emoji: "📰", title: "A reflection", sub: "Forward, SSJE, CAC, or VTS." },
 ];
 const EXTRA_PRACTICES: ExtraPractice[] = [
@@ -258,6 +258,10 @@ const EXTRA_PRACTICES: ExtraPractice[] = [
   { title: () => "Contemplative Practice", emoji: "🕯️", sub: "Silence, or another contemplative practice like a walk.", excludes: "reflect-sit", maps: { kind: "contemplation" } , group: "contemplative" },
   { title: () => "Audio Divina", emoji: "🎵", sub: "Sacred listening.", excludes: "__none__", maps: { kind: "practice", key: "audio" } , group: "contemplative" },
   { title: () => "Contemplative Walk", emoji: "🚶", sub: "A walk as prayer.", excludes: "__none__", maps: { kind: "practice", key: "walk" } , group: "contemplative" },
+  // Visio was the one contemplative practice you could take as a side's ANCHOR
+  // and as a STANDING practice but never as a side's SECOND one, while all
+  // three of its siblings could. anchoredAsForm already de-duplicates it.
+  { title: () => "Visio Divina", emoji: "🖼️", sub: "Pray with an image — the day's artwork.", excludes: "__none__", maps: { kind: "practice", key: "visio" } , group: "contemplative" },
   { title: () => "Creation Prayer", emoji: "🌍", sub: "Breathing with God's creation.", excludes: "__none__", maps: { kind: "practice", key: "cobreathe" } , group: "contemplative" },
 ];
 
@@ -1612,7 +1616,12 @@ export default function WayOfLoveRuleFlow({
     // onKeys/offKeys, and the template copy meant every saved layout carried
     // the key TWICE (order and hidden both) — found live in a committed layout.
     const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", ...offKeys, ...others];
-    const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
+    // "podcasts" is NOT hardcoded here either — see the note on `order` above.
+    // It was removed from order and left in hidden, and hidden GOVERNS: turning
+    // Podcasts on wrote the key into both lists, so homeCardActive answered
+    // false forever and the card, dot, weekly row and widget row never appeared
+    // however many times you ticked the box.
+    const hidden = ["ncmp", ...offKeys, ...others];
     // The captured rule-config is the DESIGNER's device snapshot — strip keys
     // that are personal state rather than routine structure. Without this,
     // everyone adopting the rule inherits the designer's own 30-day
@@ -1871,7 +1880,12 @@ export default function WayOfLoveRuleFlow({
     // the key TWICE (order and hidden both) — found live in a committed layout.
     const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", ...offKeys, ...others];
     // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
-    const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
+    // "podcasts" is NOT hardcoded here either — see the note on `order` above.
+    // It was removed from order and left in hidden, and hidden GOVERNS: turning
+    // Podcasts on wrote the key into both lists, so homeCardActive answered
+    // false forever and the card, dot, weekly row and widget row never appeared
+    // however many times you ticked the box.
+    const hidden = ["ncmp", ...offKeys, ...others];
     // Cache the layout locally + PUT through the durable helper, so finishing
     // the customizer and immediately leaving the app on iOS can't drop the
     // save (the in-flight PUT would otherwise die with the suspended WebView).

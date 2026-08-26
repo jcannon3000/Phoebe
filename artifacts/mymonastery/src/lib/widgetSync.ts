@@ -159,6 +159,10 @@ export function useWidgetSync(): void {
       if (lvl === "reflect-sit") return "Contemplation";
       if (lvl === "examen") return "The Examen";
       if (lvl === "guided-prayer") return "Guided Prayer";
+      // Compline had the same gap "readings" and "fdd" had below: a real side
+      // anchor missing from this hand-rewritten copy of explicitLevelTitle, so
+      // the home card said "Compline" and the widget said "Evening Prayer".
+      if (lvl === "compline") return "Compline";
       // Same gap the home card had: "readings" is a full side anchor but was
       // missing here, so the widget called it "Evening Devotion". Side-prefixed
       // to match sideOfficeTitle — the widget must never name a practice
@@ -191,8 +195,10 @@ export function useWidgetSync(): void {
       if (lvl === "examen") return "Review the day";
       if (lvl === "guided-prayer") return "Three Minutes to Start Your Day";
       if (lvl === "readings") return "Today's appointed readings";
+      if (lvl === "psalms") return "Today's appointed psalms";
       if (lvl === "custom") return "Your own practice";
       if (lvl === "fdd") return "Today's reflection";
+      // Compline IS the prayer book's night office, so the eyebrow stands.
       return "Book of Common Prayer";
     };
     const officeSubtitle = (isMorning: boolean): string =>

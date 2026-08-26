@@ -67,7 +67,13 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:cobreathe-length",
   // Practice time-of-day slots (customAnchors.ts).
   "phoebe:slot:cobreathe", "phoebe:slot:listening", "phoebe:slot:examen",
-  "phoebe:slot:walk", "phoebe:slot:reading",
+  // visio belongs with its siblings: it IS a SlottedPractice, getPracticeSlot
+  // honours its key (it's one of only two not short-circuited to "anytime"),
+  // and both the home card and the widget place it by that slot. Missing here
+  // it never synced, never reached rule_config — so describeSpec could emit no
+  // `slot:visio` row and the "Your rhythm" list had no way to show or delete
+  // Visio Divina — and "Reset routine to default" left the stale slot behind.
+  "phoebe:slot:walk", "phoebe:slot:reading", "phoebe:slot:visio",
   // The 30-day commitment's start date (lib/commitment.ts) — synced so
   // "Day N of 30" agrees across the user's devices instead of each device
   // starting its own trial.

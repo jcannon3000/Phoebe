@@ -33,6 +33,14 @@ const LEVEL_LABEL: Record<string, string> = {
   "reflect-sit": "Contemplation",
   compline: "Compline",
   custom: "Practice",
+  // Both are real OfficeLevels the customizer writes (PRAY_LEVEL maps to
+  // them). Missing here, an anchor row fell through to a generic
+  // "Morning Prayer" — and worse, the SECOND-practice row is guarded on
+  // `LEVEL_LABEL[extra]`, so a side whose additional practice was one of
+  // these got no row in Edit at all: a practice with a card and no way to
+  // change or remove it.
+  creation: "Creation Prayer",
+  intercessions: "Prayer with the community",
 };
 const NEWSLETTER_LABEL: Record<string, string> = {
   cac: "CAC Daily Meditation",
@@ -85,7 +93,9 @@ const PRACTICE_LABEL: Record<string, string> = {
 // oddly next to the same practice's real card elsewhere in the app — the globe
 // for Creation Prayer, the walker for a walk.
 const PRACTICE_EMOJI: Record<string, string> = {
+  // visio is in PRACTICE_LABEL; without it here the row fell back to ✨.
   cobreathe: "🌍", listening: "🎵", walk: "🚶", reading: "📖", examen: "🌗",
+  visio: "🖼️",
 };
 
 const ALWAYS_ANYTIME = new Set(["cobreathe", "listening", "examen", "walk"]);

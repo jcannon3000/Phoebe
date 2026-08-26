@@ -137,7 +137,12 @@ export default function TurnLearnPrayPage() {
    */
   const contemplativeActive = rhythm.morningContemplationActive || rhythm.eveningContemplationActive
     || rhythm.silenceGoalCardActive || rhythm.cobreatheActive
-    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive;
+    // visioActive belongs here — this list claims to mirror lib/weeklyGrid and
+    // weeklyGrid HAS it. Without it someone whose only contemplative practice
+    // is Visio Divina got no Contemplative row on this page while the weekly
+    // grid on the SAME screen showed one, and keeping Visio never marked the
+    // slot done. One computation, two answers.
+    || rhythm.walkActive || rhythm.listeningActive || rhythm.examenActive || rhythm.visioActive;
   /**
    * A side whose whole practice IS its contemplation.
    *
@@ -201,7 +206,7 @@ export default function TurnLearnPrayPage() {
       title: creationStyle ? t("rhythm.card_creation", { defaultValue: "Creation Prayer" }) : t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       emoji: creationStyle ? "🌍" : "🕯️",
       done: rhythm.morningContemplationDone || rhythm.eveningContemplationDone || rhythm.silenceGoalCardDone
-        || rhythm.cobreatheDone || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone,
+        || rhythm.cobreatheDone || rhythm.walkDone || rhythm.listeningDone || rhythm.examenDone || rhythm.visioDone,
       href: creationStyle ? "/cobreathe" : "/contemplation",
     },
     evening: eveningIsContemplation ? sideContemplation("evening") : {
