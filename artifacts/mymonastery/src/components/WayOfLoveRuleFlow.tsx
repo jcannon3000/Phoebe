@@ -798,10 +798,32 @@ export default function WayOfLoveRuleFlow({
   // Prayer + the Examen are NOT stored here — they're independent add-ons — so a
   // saved reflect-sit/examen level seeds "none" here and is picked up by the
   // contemplative state below. Each side reads only its OWN level.
-  const [prayBySide, setPrayBySide] = useState<Record<OfficeSide, PrayChoice>>(() => ({
-    morning: anchorFromLevel(getSideLevel("morning"), "morning"),
-    evening: anchorFromLevel(getSideLevel("evening"), "evening"),
-  }));
+  const [prayBySide, setPrayBySide] = useState<Record<OfficeSide, PrayChoice>>(() => {
+    /**
+     * A LEGACY side is not "Create your own", even though that's how it's stored.
+     *
+     * Walks, sacred listening and Visio Divina used to be written as an
+     * `ownPractice` side with the practice's NAME in the custom-name field.
+     * contemplativeForm's seed already recovers those back into the real
+     * practice — but it only fixed half the state. This seed still read the
+     * level as "custom" and set ownPractice, so buildSteps kept the
+     * "Create your own — what will you pray in the evening?" slide in the
+     * flow, pre-filled with "Visio Divina".
+     *
+     * Reported with screenshots: Contemplative Practice selected, Visio Divina
+     * selected under it, and then that slide anyway. Both halves have to
+     * recover or the rule is half one thing and half the other — the picker
+     * itself writes "none" for these, and so does this now.
+     */
+    const seed = (s: OfficeSide): PrayChoice => {
+      if (getSideLevel(s) === "custom") {
+        const named = anchorPracticeFor(getSideCustomName(s));
+        if (named?.key === "visio" || named?.key === "walk" || named?.key === "listening") return "none";
+      }
+      return anchorFromLevel(getSideLevel(s), s);
+    };
+    return { morning: seed("morning"), evening: seed("evening") };
+  });
   // Which BCP form the "With the Book of Common Prayer" option commits to
   // (Psalms / Devotion / Office). Seeded from the current per-side level so
   // re-opening Customize keeps the chosen form.
