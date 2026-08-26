@@ -390,7 +390,7 @@ export default function ListeningPage() {
                     Sacred listening
                   </h1>
                   <p className="text-[16px] leading-relaxed" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    Music held the way you'd hold a text — not for what it says, but for what it opens.
+                    Take time once a day to connect with God through music.
                   </p>
                 </div>
               )}
@@ -401,7 +401,7 @@ export default function ListeningPage() {
                   Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && (
                 <p className="title-glow-breathe text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-                  Listen once to a song that is meaningful to you, or meaningful in this moment. Take a moment to rest in the music, and listen to what might touch your heart as you do.
+                  Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
                 </p>
               )}
 
@@ -674,7 +674,7 @@ export default function ListeningPage() {
           ) : (
             <div className="mb-7 rounded-2xl px-4 py-4" style={glassRow}>
               <p className="text-[13.5px] leading-relaxed" style={{ color: "rgba(240,237,230,0.88)", fontFamily: SERIF, fontStyle: "italic" }}>
-                Take time once a day to sit with a meaningful piece of music. In its beauty, meditate on what touches your heart.
+                Take time once a day to connect with God through music. Sit with a piece that means something to you, and meditate on what it opens in you.
               </p>
               <p className="text-[12.5px] leading-relaxed mt-2.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
                 Keep a log of what you've listened to — on streaming or on a record.
@@ -825,7 +825,7 @@ export default function ListeningPage() {
                 About this practice
               </summary>
               <p className="text-[13.5px] leading-relaxed mt-3" style={{ color: "rgba(240,237,230,0.88)", fontFamily: SERIF, fontStyle: "italic" }}>
-                Take time once a day to sit with a meaningful piece of music. In its beauty, meditate on what touches your heart.
+                Take time once a day to connect with God through music. Sit with a piece that means something to you, and meditate on what it opens in you.
               </p>
               <p className="text-[12.5px] leading-relaxed mt-2.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
                 Keep a log of what you've listened to — on streaming or on a record.

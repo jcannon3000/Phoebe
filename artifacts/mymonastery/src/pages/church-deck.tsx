@@ -1622,7 +1622,7 @@ function ContemplativeMock() {
   const CARD_ACTIVE = "rgba(46,107,64,0.34)";
   const CARD_B_ACTIVE = "rgba(168,197,160,0.7)";
   const rows = [
-    { emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", on: true },
+    { emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", on: true },
     { emoji: "🌗", label: "The Examen", sub: "Review the day with God.", on: false },
     { emoji: "🌍", label: "Creation Prayer", sub: "Breathing with God's creation.", on: true },
     { emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", on: false },

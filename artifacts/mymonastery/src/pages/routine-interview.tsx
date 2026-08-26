@@ -95,7 +95,7 @@ const CONTEMPLATIVE_CHOICES: Array<{ key: string; emoji: string; label: string; 
   // "anytime" for cobreathe / listening / examen / walk, so any other value
   // would put a time on the review that the app never actually applies.
   { key: "walk", emoji: "🚶", label: "Contemplative Walk", sub: "A walk as prayer.", slot: "anytime" },
-  { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
+  { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", slot: "anytime" },
 ];
 // One list, not two. A dropdown that swaps its options when you toggle
 // "once / more than once" can strand the value you already picked; the toggle
@@ -154,7 +154,7 @@ const MEDIUM_OPTIONS: Array<{ value: string; label: string }> = [
 
 const EXTRAS: Array<{ key: string; emoji: string; label: string; sub: string; slot?: string }> = [
   { key: "compline", emoji: "🌙", label: "Compline", sub: "The night office — available from 7pm." },
-  { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Sacred listening.", slot: "anytime" },
+  { key: "listening", emoji: "🎵", label: "Audio Divina", sub: "Connecting with God through music.", slot: "anytime" },
   // "anytime", not "evening" — see the note on CONTEMPLATIVE_CHOICES.
   { key: "examen", emoji: "🌗", label: "The Examen", sub: "Review the day with God.", slot: "anytime" },
   { key: "cobreathe", emoji: "🌍", label: "Creation Prayer", sub: "Breathing together with God's creation.", slot: "anytime" },

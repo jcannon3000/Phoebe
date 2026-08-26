@@ -1109,7 +1109,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
     onUnlog: () => unmarkPracticeDoneToday("listening"),
     title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
-    blurb: listeningDone ? (listeningWhat || kept) : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
+    blurb: listeningDone ? (listeningWhat || kept) : t("rhythm.blurb_listening", { defaultValue: "Connecting with God through music" }),
     cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   };
   const examenCard = {
@@ -1226,7 +1226,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    */
   const NAMED_SIDE_PRACTICE: Record<string, { emoji: string; title: string; blurb: string; href: string }> = {
     walk: { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk kept as prayer" }), href: "" },
-    audio: { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), href: "/listening" },
+    audio: { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Connecting with God through music" }), href: "/listening" },
     visio: { emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), blurb: t("rhythm.blurb_visio", { defaultValue: "Pray with the day's image" }), href: "/visio" },
   };
   const namedSide = (side: "morning" | "evening") => NAMED_SIDE_PRACTICE[sideKind(side)] ?? null;
