@@ -1277,10 +1277,28 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       href: getSideLevel("morning") === "custom"
         ? (anchorPracticeFor(getSideCustomName("morning"))?.href ?? "")
         : "/begin-prayer?side=morning",
-      // Tapping again once done UN-marks it — a real toggle, not a one-way
-      // stamp (see unmarkCustomPrayed's comment for why this matters).
+      /**
+       * The card body MARKS. It never un-marks.
+       *
+       * Owner, of Chapel: "tapping the card should not automatically unlog it
+       * and then relog it — it should only be when you tap the check that a
+       * popup comes up."
+       *
+       * It used to be a straight toggle, from back when the ✓ on a named
+       * practice did nothing and the body was the only way back. The ✓ has
+       * carried an onUnlog since (just below), so the toggle stopped being
+       * the only door and started being a trap: the whole card is a large tap
+       * target, undoing a kept practice is destructive, and it happened on a
+       * stray tap with no confirmation — while the ✓ two inches away asks
+       * first. One gesture that silently undoes and one that confirms, for
+       * the same act.
+       *
+       * So the body only ever moves the practice INTO Done, which is what
+       * makes it safe to leave as a big target. Coming back out goes through
+       * the ✓ and its popup.
+       */
       ...(getSideLevel("morning") === "custom" && !anchorPracticeFor(getSideCustomName("morning"))?.href
-        ? { onClick: () => (morningDone ? unmarkCustomPrayed("morning") : markCustomPrayed("morning")) } : {}),
+        ? { onClick: () => { if (!morningDone) markCustomPrayed("morning"); } } : {}),
       // Owner: "make sure I can click the check mark on the offices to undo
       // them" — and then: the same for a custom practice.
       //
@@ -1290,7 +1308,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // practice was the only kind whose check did nothing. It gets the same
       // ✓ now, routed through unmarkCustomPrayed (which also tombstones the
       // server's session — see cacReadState) rather than undoOfficeToday.
-      // The card-body toggle stays: it was asked for, and it still works.
+      // This is now the ONLY way to un-mark a named practice — see the
+      // card-body note above for why the body stopped doing it too.
       onUnlog: getSideLevel("morning") === "custom"
         ? () => unmarkCustomPrayed("morning")
         : () => undoOfficeToday("morning"),
@@ -1335,8 +1354,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       href: getSideLevel("evening") === "custom"
         ? (anchorPracticeFor(getSideCustomName("evening"))?.href ?? "")
         : "/begin-prayer?side=evening",
+      // Marks only, never un-marks — see the morning card's note.
       ...(getSideLevel("evening") === "custom" && !anchorPracticeFor(getSideCustomName("evening"))?.href
-        ? { onClick: () => (eveningDone ? unmarkCustomPrayed("evening") : markCustomPrayed("evening")) } : {}),
+        ? { onClick: () => { if (!eveningDone) markCustomPrayed("evening"); } } : {}),
       // Same as morning above — a named evening practice's ✓ undoes it too.
       onUnlog: getSideLevel("evening") === "custom"
         ? () => unmarkCustomPrayed("evening")

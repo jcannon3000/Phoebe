@@ -325,8 +325,10 @@ export function markCustomPrayed(side: "morning" | "evening" = "morning"): void 
  *
  * So it takes the same route every other level's undo takes: undoOfficeToday
  * writes a per-side TOMBSTONE that masks the server signal for the rest of the
- * day. (Custom levels get no `onUnlog` ✓-affordance precisely because tapping
- * the card is meant to be the toggle — which made this the ONLY way back.)
+ * day. (Reached from the card's ✓ and its confirm popup. The card BODY used
+ * to call this too, as a toggle; owner asked for that to stop — an undo big
+ * enough to hit by accident, with no confirmation, next to a ✓ that asks
+ * first. See DailyProgressBody's card-body note.)
  */
 export function unmarkCustomPrayed(side: "morning" | "evening" = "morning"): void {
   customPrayerTrackerFor(side).unmarkRead();
