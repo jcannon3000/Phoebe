@@ -12,6 +12,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { WEEKLY_ROW_CHOICES, CUSTOM_ROW_PREFIX, getWeeklyRows, setWeeklyRows } from "@/lib/weeklyRows";
+import { getCustomAnchors } from "@/lib/customAnchors";
 import { WayOfLoveTurnLearnPray, usePracticeModePref } from "@/components/WayOfLoveTurnLearnPray";
 import { PracticeCard } from "@/components/DailyProgressBody";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
@@ -111,6 +113,91 @@ const MCE_EXPLANATIONS: Array<{ letter: string; title: string; blurb: string; sl
 interface ShowResponse {
   show?: { slug: string; title: string; artist: string; artwork: string | null };
   episodes?: PodcastEpisode[];
+}
+
+/**
+ * The weekly card's rows, chosen by the reader.
+ *
+ * Saved as a plain ordered list (lib/weeklyRows); absent means "choose for me",
+ * which is what everyone has until they touch this. Tapping a row adds it to
+ * the END of the list, so the order you switch them on is the order they draw
+ * — arranging is choosing, without a drag handle to build.
+ */
+function WeeklyRowsEditor() {
+  const [open, setOpen] = useState(false);
+  const [chosen, setChosen] = useState<string[] | null>(() => getWeeklyRows());
+  // Custom anchors get rows too — a practice you named yourself is exactly the
+  // kind of thing you'd want to watch across a week.
+  const anchors = useMemo(() => getCustomAnchors(), []);
+  const choices = useMemo(() => [
+    ...WEEKLY_ROW_CHOICES,
+    ...anchors.map((a) => ({ key: `${CUSTOM_ROW_PREFIX}${a.id}`, emoji: a.emoji || "✨", label: a.title, sub: "Your own practice." })),
+  ], [anchors]);
+
+  const apply = (next: string[] | null) => { setChosen(next); setWeeklyRows(next); };
+  const toggle = (key: string) => {
+    // First touch starts from what the card is ALREADY showing, so switching
+    // one practice on doesn't silently wipe the rows you were looking at.
+    const base = chosen ?? ["morning", "contemplative", "evening"];
+    apply(base.includes(key) ? base.filter((k) => k !== key) : [...base, key]);
+  };
+
+  return (
+    <div className="mt-6">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-[13px] font-semibold"
+        style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", padding: "6px 0", cursor: "pointer" }}
+      >
+        {open ? "Done choosing rows" : "Choose which rows show →"}
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 mt-2">
+          <p className="text-[13px] leading-relaxed" style={{ color: SAGE, fontFamily: FONT }}>
+            {chosen
+              ? "Tap to add or remove. They draw in the order you switch them on."
+              : "The card is choosing for you. Tap any row to take it over."}
+          </p>
+          {choices.map((c) => {
+            const on = chosen ? chosen.includes(c.key) : ["morning", "contemplative", "evening"].includes(c.key);
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => toggle(c.key)}
+                className="flex items-center gap-3 rounded-2xl text-left"
+                style={{
+                  padding: "11px 13px", cursor: "pointer",
+                  background: on ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.07)",
+                  border: `1px solid ${on ? "rgba(168,197,160,0.55)" : CARD_BORDER}`,
+                }}
+              >
+                <span aria-hidden style={{ fontSize: 18 }}>{c.emoji}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{c.label}</span>
+                  <span className="block text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>{c.sub}</span>
+                </span>
+                <span aria-hidden style={{ color: on ? "rgba(168,197,160,0.9)" : "rgba(143,175,150,0.35)", fontSize: 15 }}>
+                  {on ? "✓" : "+"}
+                </span>
+              </button>
+            );
+          })}
+          {chosen && (
+            <button
+              type="button"
+              onClick={() => apply(null)}
+              className="text-[13px] self-start"
+              style={{ color: SAGE, fontFamily: FONT, background: "none", border: "none", padding: "8px 0", cursor: "pointer", textDecoration: "underline" }}
+            >
+              Choose for me again
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function TurnLearnPrayPage() {
@@ -290,6 +377,15 @@ export default function TurnLearnPrayPage() {
               anything. Its own tap target still points here, which is a
               harmless no-op re-navigation on this page. */}
           <WayOfLoveTurnLearnPray />
+
+          {/* Choose the rows (owner). The card above picks three for you —
+              Morning, one auto-selected middle slot, Evening — and that middle
+              slot AGGREGATES: a walker, a listener and someone praying with an
+              image all land in one "Contemplative" row, so the week can't show
+              which of them you actually kept. This is where that choice becomes
+              yours. Left alone it stays automatic; nothing changes for anyone
+              who doesn't open it. */}
+          {practiceMode && <WeeklyRowsEditor />}
 
           {/* Second section — the three practice explanations, each with a
               "listen" CTA. */}

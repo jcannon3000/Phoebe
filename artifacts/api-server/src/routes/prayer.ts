@@ -2775,11 +2775,21 @@ router.put("/me/rule-config", async (req, res): Promise<void> => {
   const rawValues = (body && typeof body.values === "object" && body.values && !Array.isArray(body.values))
     ? (body.values as Record<string, unknown>) : null;
   if (!rawValues) { res.status(400).json({ error: "values must be an object" }); return; }
-  // Keep only sane string→string entries (cap count + lengths).
+  /**
+   * Keep only sane string→string entries (cap count + lengths).
+   *
+   * The count cap was 64 and ROUTINE_KEYS had reached 63 — one key from
+   * silently truncating people's rules. And it truncates in ROUTINE_KEYS
+   * order, so the loss would have been invisible: the keys that fell off the
+   * end are the ones nothing immediately reads, and no error is raised
+   * anywhere. The real guard against a runaway payload is the 32KB size check
+   * below, which is measured on the actual bytes; this is only here to stop an
+   * unbounded key count, so it can be generous.
+   */
   const values: Record<string, string> = {};
   let n = 0;
   for (const [k, v] of Object.entries(rawValues)) {
-    if (n >= 64) break;
+    if (n >= 300) break;
     if (typeof k === "string" && k.length <= 80 && typeof v === "string" && v.length <= 8000) { values[k] = v; n++; }
   }
   const clientAt = typeof body.updatedAt === "number" && Number.isFinite(body.updatedAt) ? body.updatedAt : Date.now();

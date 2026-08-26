@@ -7,7 +7,8 @@
 // that was written in two places instead of one — extracted here so there's
 // only one place left to get it right.
 import { getSideLevel } from "@/lib/officePrefs";
-import { getCustomAnchors, getCustomDoneDays } from "@/lib/customAnchors";
+import { getCustomAnchors, getCustomDoneDays, anchorOnDay } from "@/lib/customAnchors";
+import { getWeeklyRows } from "@/lib/weeklyRows";
 import type { RhythmState } from "@/hooks/useRhythmState";
 
 // Carries every field GET /api/me/practice-week actually returns (see
@@ -277,21 +278,70 @@ export function computeWeeklyGrid(params: {
    * single day. Silence wins the slot when they keep it, a newsletter takes it
    * when they don't, and when they keep neither the card is simply two rows.
    */
-  const middleRow = middleIsNewsletter
-    ? { emoji: "📖", label: "Reflection", done: learnFromReflection, historyFor: newsletterOn }
-    : contemplativeActive
-      ? { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor }
-      : null;
+  const middleIsContemplative = !middleIsNewsletter && contemplativeActive;
 
-  const raw: Array<{ emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean }> = practiceMode ? [
-    { emoji: morningIsContemplation && sideKind("morning") === "creation" ? "🌍" : "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn },
-    ...(middleRow ? [middleRow] : []),
-    { emoji: eveningIsContemplation && sideKind("evening") === "creation" ? "🌍" : "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn },
+  type Row = { emoji: string; label: string; done: boolean; historyFor: (d: PracticeWeekDay) => boolean; partialToday?: boolean; partialFor?: (d: PracticeWeekDay) => boolean };
+
+  const morningRow: Row = { emoji: morningIsContemplation && sideKind("morning") === "creation" ? "🌍" : "🌅", label: "Morning", done: morningPractice, historyFor: morningPracticeOn };
+  const eveningRow: Row = { emoji: eveningIsContemplation && sideKind("evening") === "creation" ? "🌍" : "🌙", label: "Evening", done: eveningPractice, historyFor: eveningPracticeOn };
+  const contemplativeRow: Row = { emoji: "🕯️", label: "Contemplative", done: contemplativePractice, historyFor: contemplativePracticeOn, partialToday: contemplativePartialToday, partialFor: contemplativePartialFor };
+  const reflectionRow: Row = { emoji: "📖", label: "Reflection", done: learnFromReflection, historyFor: newsletterOn };
+
+  /**
+   * Every row the card CAN draw, addressable by key.
+   *
+   * The automatic layout below still picks three of them for anyone who hasn't
+   * chosen; a saved selection (lib/weeklyRows) picks from this map instead. The
+   * single-practice rows exist only for that selection — the automatic layout
+   * has no slot for them, which is exactly the limitation being lifted: the
+   * aggregate Contemplative row can't tell a walker from a listener, and a
+   * reader who wants to watch ONE practice across the week had no way to.
+   */
+  const ROW_BY_KEY: Record<string, Row> = {
+    morning: morningRow,
+    evening: eveningRow,
+    contemplative: contemplativeRow,
+    reflection: reflectionRow,
+    cobreathe: { emoji: "🌍", label: "Creation Prayer", done: rhythm.cobreatheDone, historyFor: (d) => d.cobreathe },
+    walk: { emoji: "🚶", label: "Contemplative Walk", done: rhythm.walkDone, historyFor: (d) => d.walk },
+    listening: { emoji: "🎵", label: "Audio Divina", done: rhythm.listeningDone, historyFor: (d) => d.listening },
+    visio: { emoji: "🖼️", label: "Visio Divina", done: rhythm.visioDone, historyFor: (d) => !!d.visio },
+    examen: { emoji: "🌗", label: "The Examen", done: rhythm.examenDone, historyFor: (d) => d.examen },
+    compline: { emoji: "🌒", label: "Compline", done: rhythm.complineDone, historyFor: (d) => d.compline },
+    reading: { emoji: "📚", label: "Reading", done: rhythm.readingDone, historyFor: (d) => d.reading },
+    "prayer-list": { emoji: "🕊️", label: "Prayer List", done: rhythm.prayerListDone, historyFor: (d) => d.prayerList },
+  };
+  // A custom anchor gets a row of its own when asked for by key.
+  for (const a of customAnchorsForGrid) {
+    const done = getCustomDoneDays(a.id);
+    ROW_BY_KEY[`custom:${a.id}`] = {
+      emoji: a.emoji || "✨",
+      label: a.title,
+      done: done.has(todayYmd),
+      // An off day for a weekday-scoped anchor reads as KEPT, not as a gap —
+      // the same treatment the combined custom row already gives it.
+      historyFor: (d) => !anchorOnDay(a, new Date(`${d.ymd}T12:00:00`)) || done.has(d.ymd),
+    };
+  }
+
+  /**
+   * The reader's own rows, when they've chosen. An unknown key is skipped
+   * rather than drawn blank, so a practice removed from the app can't leave a
+   * permanently empty row behind in somebody's saved selection.
+   */
+  const chosenRowKeys = getWeeklyRows();
+  const chosenRows = chosenRowKeys?.map((k) => ROW_BY_KEY[k]).filter((r): r is Row => !!r) ?? null;
+
+  const automatic: Row[] = practiceMode ? [
+    morningRow,
+    ...(middleIsNewsletter ? [reflectionRow] : middleIsContemplative ? [contemplativeRow] : []),
+    eveningRow,
   ] : [
     { emoji: "🔄", label: "Turn", done: turned, historyFor: (d) => readTurnedOn(d.ymd) },
     { emoji: "📖", label: "Learn", done: learned, historyFor: learnedOn },
     { emoji: "🙏🏽", label: "Pray", done: prayed, historyFor: prayedOn },
   ];
+  const raw: Row[] = chosenRows ?? automatic;
 
   const lastIndex = windowDays.length - 1;
   const rows: WeeklyGridRow[] = raw.map((r) => ({

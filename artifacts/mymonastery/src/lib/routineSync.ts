@@ -34,6 +34,8 @@ export const ROUTINE_KEYS: string[] = [
   "phoebe:office:level-days:morning", "phoebe:office:level-days:evening",
   // Which weekdays each non-office practice card is kept on (practiceDays.ts).
   "phoebe:practice-days",
+  // Which rows the weekly card draws, when the reader has chosen (weeklyRows.ts).
+  "phoebe:weekly-rows",
   // A SECOND practice on the side, alongside its anchor (getSideExtra).
   "phoebe:office:extra:morning", "phoebe:office:extra:evening",
   // Prayer List + BCP merge (community intercessions prayed within the office).
