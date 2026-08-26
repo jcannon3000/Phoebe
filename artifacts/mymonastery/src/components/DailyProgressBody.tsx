@@ -1209,8 +1209,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
    * rule couldn't hold the breath on one side and silence on the other, which
    * is the whole thing being separated.
    */
-  const sideIsCreation = (side: "morning" | "evening") =>
-    (side === "morning" ? morningContemplationKind : eveningContemplationKind) === "creation";
+  const sideKind = (side: "morning" | "evening") =>
+    side === "morning" ? morningContemplationKind : eveningContemplationKind;
+  const sideIsCreation = (side: "morning" | "evening") => sideKind(side) === "creation";
+  /**
+   * A side whose practice is a walk, sacred listening or Visio Divina — the
+   * app's own practices, kept as this side's anchor rather than as standing
+   * all-day cards (owner: "it's not a custom practice/name in the first
+   * place"). Each names itself and opens its own page.
+   */
+  const NAMED_SIDE_PRACTICE: Record<string, { emoji: string; title: string; blurb: string; href: string }> = {
+    walk: { emoji: "🚶", title: t("rhythm.card_walk", { defaultValue: "Contemplative Walk" }), blurb: t("rhythm.blurb_walk", { defaultValue: "A walk kept as prayer" }), href: "" },
+    audio: { emoji: "🎵", title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }), blurb: t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }), href: "/listening" },
+    visio: { emoji: "🖼️", title: t("rhythm.card_visio", { defaultValue: "Visio Divina" }), blurb: t("rhythm.blurb_visio", { defaultValue: "Pray with the day's image" }), href: "/visio" },
+  };
+  const namedSide = (side: "morning" | "evening") => NAMED_SIDE_PRACTICE[sideKind(side)] ?? null;
   // Kept for the handful of places that genuinely have no side in hand.
   const creationStyle = contemplationStyle === "cobreathe";
   const creationBothSides = sideIsCreation("morning") && sideIsCreation("evening")
@@ -1385,14 +1398,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     // breath flow regardless. When on, the card marks itself done on tap
     // instead of opening the countdown timer.
     ...(morningContemplationActive ? [{
-      key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: sideIsCreation("morning") ? "🌍" : "🕯️", rgb: "62,124,122", done: morningContemplationDone,
+      key: "contemplation-morning", slot: "morning" as CustomSlot, emoji: namedSide("morning")?.emoji ?? (sideIsCreation("morning") ? "🌍" : "🕯️"), rgb: "62,124,122", done: morningContemplationDone,
       // Creation Prayer → the breath for this side; silent + timer → the sit
       // timer at THIS SIDE's length (?sit=N), skipping the length picker;
       // silent + manual → no navigation, just marks the sit done.
-      href: sideIsCreation("morning") || contemplationLogMethod === "timer" ? (sideIsCreation("morning") ? "/cobreathe?side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`) : "",
+      href: namedSide("morning") ? namedSide("morning")!.href
+        : sideIsCreation("morning") || contemplationLogMethod === "timer" ? (sideIsCreation("morning") ? "/cobreathe?side=morning" : `/contemplation?begin=1&side=morning&sit=${sideSitMin("morning")}`) : "",
       ...(!sideIsCreation("morning") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("morning", "silent") } : {}),
-      title: sideIsCreation("morning") ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" }),
-      blurb: sideIsCreation("morning") ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning")),
+      title: namedSide("morning")?.title ?? (sideIsCreation("morning") ? creationTitle("morning") : t("rhythm.card_morning_contemplation", { defaultValue: "Morning Contemplation" })),
+      blurb: namedSide("morning")?.blurb ?? (sideIsCreation("morning") ? creationBlurb(morningContemplationDone) : contemplationBlurbFor(morningContemplationDone, sideSitMin("morning"))),
       cta: !sideIsCreation("morning") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       // Creation Prayer, once done, just reads as kept (checked) like the other
       // rhythm cards — no "breathe again" repeat CTA. Silent contemplation keeps
@@ -1400,11 +1414,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       doneCta: sideIsCreation("morning") || contemplationLogMethod === "manual" ? undefined : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),
     ...(eveningContemplationActive ? [{
-      key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: sideIsCreation("evening") ? "🌍" : "🕯️", rgb: "62,124,122", done: eveningContemplationDone,
-      href: sideIsCreation("evening") || contemplationLogMethod === "timer" ? (sideIsCreation("evening") ? "/cobreathe?side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`) : "",
+      key: "contemplation-evening", slot: "evening" as CustomSlot, emoji: namedSide("evening")?.emoji ?? (sideIsCreation("evening") ? "🌍" : "🕯️"), rgb: "62,124,122", done: eveningContemplationDone,
+      href: namedSide("evening") ? namedSide("evening")!.href
+        : sideIsCreation("evening") || contemplationLogMethod === "timer" ? (sideIsCreation("evening") ? "/cobreathe?side=evening" : `/contemplation?begin=1&side=evening&sit=${sideSitMin("evening")}`) : "",
       ...(!sideIsCreation("evening") && contemplationLogMethod === "manual" ? { onClick: () => markContemplationSideDone("evening", "silent") } : {}),
-      title: sideIsCreation("evening") ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" }),
-      blurb: sideIsCreation("evening") ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening")),
+      title: namedSide("evening")?.title ?? (sideIsCreation("evening") ? creationTitle("evening") : t("rhythm.card_evening_contemplation", { defaultValue: "Evening Contemplation" })),
+      blurb: namedSide("evening")?.blurb ?? (sideIsCreation("evening") ? creationBlurb(eveningContemplationDone) : contemplationBlurbFor(eveningContemplationDone, sideSitMin("evening"))),
       cta: !sideIsCreation("evening") && contemplationLogMethod === "manual" ? t("rhythm.mark_done", { defaultValue: "Mark done" }) : t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       doneCta: sideIsCreation("evening") || contemplationLogMethod === "manual" ? undefined : t("rhythm.sit_again", { defaultValue: "Sit again" }),
     }] : []),

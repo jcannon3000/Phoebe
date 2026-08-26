@@ -42,6 +42,12 @@ const LEVEL_LABEL: Record<string, string> = {
   creation: "Creation Prayer",
   intercessions: "Prayer with the community",
 };
+/** Custom-anchor NAMES that are really one of the app's own practices —
+ *  mirrors mymonastery/src/lib/anchorPractices.ts BY_NAME. */
+const NAMED_ANCHOR_EMOJI: Record<string, string> = {
+  "audio divina": "🎵", "creation prayer": "🌍",
+  "contemplative walk": "🚶", "visio divina": "🖼️",
+};
 const NEWSLETTER_LABEL: Record<string, string> = {
   cac: "CAC Daily Meditation",
   fdd: "Forward Day by Day",
@@ -183,9 +189,14 @@ export function describeSpec(spec: {
       // back as the generic "Morning Practice" and looked like it had lost
       // the name you gave it.
       const ownName = level === "custom" ? (rc[`phoebe:office:custom-name:${side}`] ?? "").trim() : "";
+      // A custom side whose NAME is one of the app's real practices IS that
+      // practice (lib/anchorPractices matches on the name). Reported: "Visio
+      // Divina flattened" — it read back under the evening's moon like any
+      // hand-typed name, losing the practice's own mark.
+      const namedEmoji = NAMED_ANCHOR_EMOJI[ownName.toLowerCase()];
       rows.push({
         id: `side:${side}`,
-        emoji: side === "morning" ? "🌅" : "🌙",
+        emoji: namedEmoji ?? (side === "morning" ? "🌅" : "🌙"),
         label: ownName || (LEVEL_LABEL[level!] ? `${cap} ${LEVEL_LABEL[level!]}` : `${cap} Prayer`),
         sub: ownName
           ? (side === "morning" ? "Each morning" : "Each evening")

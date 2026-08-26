@@ -1183,6 +1183,9 @@ export default function WayOfLoveRuleFlow({
        * customizer found no contemplative form, fell through to "Create your
        * own", and the practice lost its identity on the way back in.
        */
+      // LEGACY: a side written before the kinds existed, as an ownPractice
+      // named after a real practice. Recovered so an existing rule re-opens
+      // as the practice it is rather than as "Create your own".
       if (getSideLevel(s) === "custom") {
         const named = anchorPracticeFor(getSideCustomName(s));
         if (named?.key === "visio") return "visio";
@@ -1191,10 +1194,16 @@ export default function WayOfLoveRuleFlow({
       }
       const on = getSideContemplationExplicit(s) ?? (getSideLevel(s) === "reflect-sit");
       if (!on) return null;
-      // PER SIDE — the global was the last-written side's kind, so a split rule
-      // re-opened with both sides claiming whichever was written last, and the
-      // next commit wrote that back over the real one.
-      return getSideContemplationKind(s) === "creation" ? "creation" : "prayer";
+      // The kind IS the form — per side, all five. (The global was the
+      // last-written side's kind, so a split rule re-opened with both sides
+      // claiming whichever was written last, and the next commit wrote that
+      // back over the real one.)
+      const kind = getSideContemplationKind(s);
+      return kind === "creation" ? "creation"
+        : kind === "walk" ? "walk"
+          : kind === "audio" ? "audio"
+            : kind === "visio" ? "visio"
+              : "prayer";
     };
     return { morning: seed("morning"), evening: seed("evening") };
   });
@@ -1540,7 +1549,10 @@ export default function WayOfLoveRuleFlow({
         // contemplative prayer") — the form the reader picked on this side's
         // own slide, not the global style flag they used to share.
         if (contemplationBySide[side]) {
-          setSideContemplationKind(side, contemplativeForm[side] === "creation" ? "creation" : "silent");
+          const f = contemplativeForm[side];
+          setSideContemplationKind(side,
+            f === "creation" ? "creation" : f === "walk" ? "walk"
+              : f === "audio" ? "audio" : f === "visio" ? "visio" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal.
         if (contemplationBySide[side]) setSideMinutes(side, minutesBySide[side]);
@@ -1748,7 +1760,10 @@ export default function WayOfLoveRuleFlow({
         // contemplative prayer") — the form the reader picked on this side's
         // own slide, not the global style flag they used to share.
         if (contemplationBySide[side]) {
-          setSideContemplationKind(side, contemplativeForm[side] === "creation" ? "creation" : "silent");
+          const f = contemplativeForm[side];
+          setSideContemplationKind(side,
+            f === "creation" ? "creation" : f === "walk" ? "walk"
+              : f === "audio" ? "audio" : f === "visio" ? "visio" : "silent");
         }
         // Sit length is per side (config picker), NOT the daily goal — a
         // 90-minute goal must not put a 90-minute sit on each card (owner).
@@ -3382,7 +3397,17 @@ export default function WayOfLoveRuleFlow({
               rather than an inline field here — full-flow/pilot only, like the
               BCP-form detail slide above. */}
           {!guest && choiceRow(
-            prayBySide[side] === "ownPractice",
+            /**
+             * ONLY when the practice is genuinely their own.
+             *
+             * A walk, sacred listening and Visio Divina are stored as an
+             * ownPractice side whose NAME resolves to a real practice — so
+             * choosing Visio lit BOTH this row and Contemplative Practice, and
+             * the anchor slide showed two selections when it is single-select.
+             * A named practice belongs to the Contemplative Practice row; this
+             * one is for a name only the person keeps.
+             */
+            prayBySide[side] === "ownPractice" && !anchorPracticeFor(customNameBySide[side]),
             `✨ ${t("wol_rule.cp_custom", { defaultValue: "Create your own" })}`,
             t("wol_rule.cp_custom_sub", { defaultValue: "Name a practice of your own." }),
             () => {
@@ -3664,30 +3689,27 @@ export default function WayOfLoveRuleFlow({
                   } else {
                     /**
                      * A walk, sacred listening or Visio Divina AS THIS SIDE'S
-                     * ANCHOR — not as a standing all-day card.
+                     * PRACTICE — stored as this side's CONTEMPLATION with its
+                     * own kind, exactly like the sit and the breath.
                      *
-                     * Reported: "I tried to make Visio Divina my evening
-                     * practice and it didn't work." It turned the side's
-                     * contemplation OFF and flipped a standing toggle ON, so
-                     * the side was left with no anchor at all and the practice
-                     * floated free of the evening.
-                     *
-                     * These three have a home as a side's anchor already: a
-                     * `custom` level whose NAME lib/anchorPractices matches
-                     * back to the real practice, so the card opens it and
-                     * completing it ticks this side.
-                     *
-                     * The form is restored AFTER choosePrayBySide, which clears
-                     * it — that clear is what keeps the anchor slide
-                     * single-select, and this is the one caller that means
-                     * both things at once.
+                     * Owner: "it's not a custom practice/name in the first
+                     * place... it's obviously not recognising Visio Divina as
+                     * an actual contemplative practice." It used to be written
+                     * as an `ownPractice` side with the practice's NAME typed
+                     * into the custom-name field — so the flow went on to ask
+                     * "Create your own: what will you pray in the evening?"
+                     * with "Visio Divina" pre-filled, a question nobody asked
+                     * and an answer nobody typed, and re-opening the routine
+                     * read it back as a practice of the reader's own making.
+                     * These are the app's own practices. They live in the
+                     * kind.
                      */
-                    if (contemplationBySide[side]) toggleContemplationSide(side);
-                    setContemplative((c) => (c[f] ? { ...c, [f]: false } : c));
-                    choosePrayBySide(side, "ownPractice");
-                    setCustomNameBySide((p2) => ({ ...p2, [side]: m.label }));
-                    setSideCustomName(side, m.label);
+                    choosePrayBySide(side, "none");
+                    if (!contemplationBySide[side]) toggleContemplationSide(side);
+                    setSideContemplationKind(side, f);
                     setContemplativeForm((p2) => ({ ...p2, [side]: f }));
+                    // …and NOT also a standing all-day card.
+                    setContemplative((c) => (c[f] ? { ...c, [f]: false } : c));
                   }
             });
           })}

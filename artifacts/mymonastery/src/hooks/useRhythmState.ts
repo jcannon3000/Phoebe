@@ -17,7 +17,7 @@ import { practiceOnDay } from "@/lib/practiceDays";
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, anchorOnDay, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig, type CustomAnchor } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT, isOfficeUndoneToday, isOfficeModeUndoneToday } from "@/lib/officeManualLog";
 import { anchorPracticeFor } from "@/lib/anchorPractices";
-import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal } from "@/lib/officePrefs";
+import { anchorModesFor, getSideLevel, getExplicitSideLevel, getSideContemplation, getSideContemplationExplicit, getSideCustomName, getSideReflectionExplicit, useEffectiveReflectionSource, getContemplationLogMethod, getSideExtra, extraOfficeMode, type OfficeLevel, OFFICE_PREFS_EVENT, getSideContemplationKind, getContemplationStyleGlobal, type ContemplationKind as SideContemplationKind } from "@/lib/officePrefs";
 import { hasContemplationSideDoneToday, CONTEMPLATION_SIDE_DONE_EVENT, type ContemplationKind } from "@/lib/contemplationSideDone";
 import { INTENTION_PRAYED_EVENT } from "@/lib/intentionsPrayed";
 
@@ -255,9 +255,10 @@ export type RhythmState = {
    *  routing in DailyProgressBody. */
   contemplationStyle: "silent" | "cobreathe";
   /** Which contemplative practice EACH side keeps — never infer this from
-   *  `contemplationStyle`, which is only the aggregate. */
-  morningContemplationKind: "silent" | "creation";
-  eveningContemplationKind: "silent" | "creation";
+   *  `contemplationStyle`, which is only the aggregate. All five kinds: the
+   *  silent sit, the breath, a walk, sacred listening, Visio Divina. */
+  morningContemplationKind: SideContemplationKind;
+  eveningContemplationKind: SideContemplationKind;
   contemplationLogMethod: "timer" | "manual";
   /** "Grow my silence" ladder state when enabled (else null) — the current rung
    *  drives contemplationGoalMin; daysToNext/nextLevel feed the card. */
@@ -1214,8 +1215,24 @@ export function useRhythmState(): RhythmState {
     : (!guest && getSideLevel("evening") === "reflect-sit");
   // Local day-flag OR the server's cross-device echo — a sit done on another
   // device (which POSTed its contemplationSide) reads done here too.
-  const morningContemplationDone = contemplationSideDone.morning || sidesToday.morning;
-  const eveningContemplationDone = contemplationSideDone.evening || sidesToday.evening;
+  /**
+   * A side whose practice is a WALK, SACRED LISTENING or VISIO DIVINA is kept
+   * when that practice is kept — those have their own done-flags and their own
+   * pages; they were never sit-shaped. (The sit and the breath keep the
+   * per-side day-flag + the cross-device echo above.)
+   */
+  const kindKept = (kind: SideContemplationKind): boolean | null =>
+    // The raw keeping, NOT the *Done flags — those are gated on *Active (the
+    // standing all-day card), and a side that keeps the practice as its own
+    // anchor deliberately has no standing card.
+    kind === "walk" ? (practiceLocal.walk || serverDone("walk"))
+      : kind === "audio" ? (practiceLocal.listening || serverDone("listening"))
+        : kind === "visio" ? (practiceLocal.visio || serverDone("visio"))
+          : null;
+  const morningContemplationDone = kindKept(morningContemplationKind)
+    ?? (contemplationSideDone.morning || sidesToday.morning);
+  const eveningContemplationDone = kindKept(eveningContemplationKind)
+    ?? (contemplationSideDone.evening || sidesToday.evening);
   // SOLO silence — a daily minutes goal with NO per-side contemplation card on
   // either side. The goal must still be visible somewhere, so it gets its own
   // single "Silence" card with a progress bar (DailyProgressBody) and exactly

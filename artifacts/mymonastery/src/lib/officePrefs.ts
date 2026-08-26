@@ -839,7 +839,20 @@ export function setSideContemplation(side: OfficeSide, v: boolean): void {
  * existing rule keeps meaning exactly what it meant before this key existed.
  * Both are ROUTINE_KEYS, so both sync.
  */
-export type ContemplationKind = "silent" | "creation";
+/**
+ * WHICH contemplative practice — all five of them, not two.
+ *
+ * Owner: "it's not a custom practice/name in the first place." Choosing a
+ * walk, sacred listening or Visio Divina as a side's practice used to be
+ * stored as an `ownPractice` side with the practice's name typed into the
+ * custom-name field — which meant the flow then asked "Create your own: what
+ * will you pray in the evening?" with "Visio Divina" pre-filled, a question
+ * the reader never asked for and an answer they never typed. These are the
+ * app's own practices; they belong in the KIND, beside silence and the breath,
+ * not disguised as something home-made.
+ */
+export type ContemplationKind = "silent" | "creation" | "walk" | "audio" | "visio";
+const CONTEMPLATION_KINDS: ContemplationKind[] = ["silent", "creation", "walk", "audio", "visio"];
 
 export function getContemplationStyleGlobal(): ContemplationKind {
   try {
@@ -851,7 +864,7 @@ export function getContemplationStyleGlobal(): ContemplationKind {
 export function getSideContemplationKindExplicit(side: OfficeSide): ContemplationKind | null {
   try {
     const raw = localStorage.getItem(`phoebe:office:contemplation-kind:${side}`);
-    if (raw === "silent" || raw === "creation") return raw;
+    if (raw && (CONTEMPLATION_KINDS as string[]).includes(raw)) return raw as ContemplationKind;
   } catch { /* private mode */ }
   return null;
 }
@@ -866,8 +879,11 @@ export function setSideContemplationKind(side: OfficeSide, kind: ContemplationKi
     // The global flag still drives surfaces that have no side to speak of —
     // /cobreathe's own entry point, the standalone breath card. Keep it in
     // step with the most recent per-side choice rather than letting it drift
-    // into meaning something no side agrees with.
-    localStorage.setItem("phoebe:contemplation-style", kind === "creation" ? "cobreathe" : "silent");
+    // into meaning something no side agrees with. Only the two SIT kinds have
+    // an opinion about it; a walk/listen/visio side leaves it alone.
+    if (kind === "creation" || kind === "silent") {
+      localStorage.setItem("phoebe:contemplation-style", kind === "creation" ? "cobreathe" : "silent");
+    }
     window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
   } catch { /* non-fatal */ }
 }

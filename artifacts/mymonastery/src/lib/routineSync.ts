@@ -74,6 +74,12 @@ export const ROUTINE_KEYS: string[] = [
   // `slot:visio` row and the "Your rhythm" list had no way to show or delete
   // Visio Divina — and "Reset routine to default" left the stale slot behind.
   "phoebe:slot:walk", "phoebe:slot:reading", "phoebe:slot:visio",
+  // Which side (if any) the Prayer List satisfies. Its own docblock calls this
+  // "whether the Prayer List satisfies morningDone/eveningDone" — completion
+  // structure, not a device preference — and it was in NO list: it never
+  // synced, it survived logout into the next person's session, and a leader
+  // designing a community rule never got theirs back.
+  "phoebe:prayer-list-slot",
   // The 30-day commitment's start date (lib/commitment.ts) — synced so
   // "Day N of 30" agrees across the user's devices instead of each device
   // starting its own trial.

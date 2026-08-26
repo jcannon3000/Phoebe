@@ -18,6 +18,7 @@
 // DailyProgressBody now — for guests it applies EVERY day, not just the seed
 // day.) See memory "project_public_no_login".
 
+import { ROUTINE_KEYS } from "@/lib/routineSync";
 import { setSideLevel, setReflectionSource, setSideReflection, getExplicitSideLevel, OFFICE_PREFS_EVENT } from "@/lib/officePrefs";
 import { clearSpuriousGuestHomeLayout } from "@/lib/homeLayoutCache";
 import { clearRoutineSyncClock } from "@/lib/routineSync";
@@ -212,9 +213,30 @@ export function resetDeviceRuleForLogout(): void {
                                   // otherwise user B inherits user A's Spotify tokens
                                   // on a shared device)
     ];
+    /**
+     * DERIVED from ROUTINE_KEYS, not hand-listed beside it.
+     *
+     * The hand-written set missed five of them — phoebe:practice-days,
+     * phoebe:cobreathe-length, phoebe:weekly-practices, phoebe:rest-window and
+     * phoebe:hide-turn-learn-pray — so the next guest on a shared device
+     * inherited the previous user's weekday scoping (cards vanishing on days
+     * they never chose), their sabbath window, their breath count and their
+     * weekly-card visibility. Worse, that guest's rule then carried a genuinely
+     * edited local clock and could migrate those values UP into a fresh
+     * account. The near-miss says it best: the prefix list has
+     * "phoebe:practice-done:" and the exact list wanted "phoebe:practice-days"
+     * — one character apart, and nothing to catch it.
+     *
+     * This function's own promise is "reset ALL device-local rule state", so
+     * ROUTINE_KEYS is exactly the right definition of "all".
+     */
     const EXACT = new Set([
-      "phoebe:fdd-mode", "phoebe:psalm-cycle", "phoebe:scripture-scope",
-      "phoebe:commitment-start", "phoebe:dp-pulse",
+      ...ROUTINE_KEYS,
+      "phoebe:scripture-scope", "phoebe:commitment-start", "phoebe:dp-pulse",
+      // Decides whether the Prayer List satisfies morningDone/eveningDone —
+      // completion-signal structure, not a device preference, and it was in no
+      // list at all (it doesn't sync either; see routineSync).
+      "phoebe:prayer-list-slot",
     ]);
     const toRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

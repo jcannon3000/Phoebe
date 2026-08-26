@@ -60,9 +60,16 @@ type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
 
 // The reflection card's headline name, by source — mirrors the home reflection cards.
 const REFLECTION_NAME: Record<string, string> = {
-  cac: "CAC Daily Reflection",
+  // Hand-copied from DailyProgressBody's PUBLICATION_NAME and drifted twice:
+  // `vts` was missing entirely (so a Dean's-Commentary reader's widget hero
+  // fell back to the generic "Today's reflection"), and `cac` said
+  // "Reflection" where every other surface — including this very file's own
+  // inline branch a hundred lines below — says "Meditation". The widget must
+  // never name a practice differently from the home card.
   fdd: "Forward Day by Day",
   ssje: "Brother, Give Us a Word",
+  cac: "CAC Daily Meditation",
+  vts: "VTS Dean's Commentary",
 };
 
 const HOME_URL = "https://withphoebe.app/";
