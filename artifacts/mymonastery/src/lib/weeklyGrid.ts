@@ -140,12 +140,35 @@ export function computeWeeklyGrid(params: {
   // column, so read the flag for the practice it actually is.
   const sideContemplationOn = (d: PracticeWeekDay) => (creationStyle ? d.cobreathe : d.contemplation);
 
-  // The Morning/Evening rows mean "did you keep this side" — either practice
-  // on that side counts, same as the day-level predicate above.
+  /**
+   * A PAST day's dot reports what you kept THAT DAY — it never re-judges your
+   * history against the rule you keep now.
+   *
+   * Owner, and this is the invariant: "the weekly practice dots should reflect
+   * if you completed what your anchor practice was on that day, NOT
+   * retroactively applying your routine to your past activity."
+   *
+   * The bug that broke it was a switch, not a union: whichever column of a
+   * past day's record got consulted was chosen by TODAY's rule. Move your
+   * morning to Creation Prayer and every earlier morning — Morning Prayer,
+   * kept, recorded — started reading its `cobreathe` flag instead of its
+   * `morning` flag, went false, and a week of kept mornings emptied out.
+   *
+   * So: ANY practice recorded on that side that day fills it. Every term here
+   * is something the person actually did, so this can only restore dots that
+   * were genuinely earned, never invent one. The row's NAME still follows today's rule
+   * (the rows are your rule; the dots are your history) — what it can no
+   * longer do is disqualify a day for not matching it.
+   *
+   * The limit worth knowing: the practice-week has no per-side contemplation
+   * column, so a sit can only be attributed to a side when today's rule says
+   * that side IS contemplation. A truer fix needs the server to record which
+   * anchor was in force on the day.
+   */
   const morningPracticeOn = (d: PracticeWeekDay) =>
-    morningIsContemplation ? sideContemplationOn(d) : (d.morning || !!d.morningExtra);
+    d.morning || !!d.morningExtra || (morningIsContemplation && sideContemplationOn(d));
   const eveningPracticeOn = (d: PracticeWeekDay) =>
-    eveningIsContemplation ? sideContemplationOn(d) : (d.evening || !!d.eveningExtra);
+    d.evening || !!d.eveningExtra || (eveningIsContemplation && sideContemplationOn(d));
   /**
    * WHATEVER their contemplative practice is, it counts here.
    *
