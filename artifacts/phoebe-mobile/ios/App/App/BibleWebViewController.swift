@@ -270,6 +270,158 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     })();
     """
 
+    /**
+     * PHOEBE'S OWN READER VIEW — oremus only, for now.
+     *
+     * Owner: "let's try our own version, on a similar background with Space
+     * Grotesk … we wanna get rid of those line breaks … but we wanna make sure
+     * that this is still copyright legal and that we're indicating that this is
+     * our reader view … we do want leaf backgrounds."
+     *
+     * WHAT THIS IS, LEGALLY, AND WHY THAT SHAPE WAS CHOSEN.
+     * It restyles the page THE READER IS ALREADY ON, in place, in their own
+     * browser. Nothing is copied, extracted, cached, re-hosted or sent
+     * anywhere: the HTML is oremus's, served by oremus, to a WebView the
+     * reader opened. That is a user-agent presentation choice — the same thing
+     * Safari's own Reader does, and the same thing a stylesheet or a font size
+     * setting does. It is NOT a reproduction, and it must never become one:
+     * if you are ever tempted to scrape this text into our own page, stop —
+     * the NRSV is licensed, not public domain, and that line is the whole
+     * reason this is CSS and not a fetch.
+     *
+     * Two things follow, and both are load-bearing:
+     *   1. The NRSV copyright notice (.copyright) is KEPT and styled to stay
+     *      readable. It is never in the hide list. If oremus renames that
+     *      block, this reader should show MORE, not less.
+     *   2. The page says whose reading it is: a footer names the oremus Bible
+     *      Browser as the source and this as Phoebe's reader view, with a link
+     *      to the page as oremus renders it.
+     *
+     * The line breaks: oremus emits empty <p> blocks (a comment-only paragraph
+     * per chapter/verse marker) and, in poetry, a <br> per half-line with
+     * &nbsp; indents. Both read as stray gaps in a gospel. They are collapsed
+     * here into ordinary prose paragraphs. Poetry is not the target — owner:
+     * "we don't use the psalms so don't worry about that" — but neutralising
+     * <br> costs nothing and keeps a canticle from looking broken.
+     *
+     * Injected at documentStart so the original never flashes, and gated on
+     * hostname INSIDE the script because a WKUserScript can't be host-scoped
+     * (and this config is shared with the background preloader).
+     */
+    private static let readerJS = """
+    (function () {
+      var h = (location.hostname || '').toLowerCase();
+      if (h !== 'bible.oremus.org' && h.slice(-11) !== '.oremus.org') return;
+
+      var ASSETS = 'https://withphoebe.app/reader/';
+      var css = [
+        '@font-face{font-family:"Space Grotesk";font-style:normal;font-weight:300 700;font-display:swap;',
+        'src:url("' + ASSETS + 'space-grotesk.woff2") format("woff2-variations");}',
+        'html{-webkit-text-size-adjust:100%;}',
+        /* The leaf, held under a heavy wash so scripture stays legible — the
+           same treatment the practice decks use. Fixed so it doesn't scroll. */
+        'body{margin:0!important;padding:0!important;background:#0A1A10!important;',
+        'color:#F0EDE6!important;font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        'body::before{content:"";position:fixed;inset:0;z-index:-2;background-image:url("' + ASSETS + 'leaf.jpg");',
+        'background-size:cover;background-position:center;opacity:0.22;}',
+        'body::after{content:"";position:fixed;inset:0;z-index:-1;',
+        'background:linear-gradient(180deg,rgba(10,26,16,0.88) 0%,rgba(10,26,16,0.94) 55%,rgba(10,26,16,0.97) 100%);}',
+        /* oremus's own furniture. .copyright is deliberately NOT here. */
+        '#dcheck,#h1screen,#overDiv,.quicklink,hr.quicklink,.visbuttons,.another,.credits,.adj,form{display:none!important;}',
+        /* The reading. */
+        '.bible,.bibletext{max-width:34rem;margin:0 auto!important;padding:0 22px!important;background:transparent!important;}',
+        /* font-family is repeated HERE, not just on body: oremus sets Verdana
+           on .bibletext itself, and an element's own rule beats an inherited
+           one however important the ancestor's is. Caught in testing — the
+           background and the tidy both landed while the type stayed Verdana. */
+        '.bible,.bibletext,.bibletext *{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        '.bibletext{font-size:19px!important;line-height:1.72!important;color:#F0EDE6!important;}',
+        '.bibletext p{margin:0 0 1.15em!important;}',
+        'h2.passageref,.copyright,.phoebe-reader-note{font-family:"Space Grotesk",ui-sans-serif,system-ui,sans-serif!important;}',
+        'h2.passageref{max-width:34rem;margin:0 auto!important;padding:26px 22px 6px!important;',
+        'font-size:13px!important;letter-spacing:.16em;text-transform:uppercase;color:rgba(200,212,192,0.75)!important;font-weight:600!important;}',
+        'h2.plus-S,h2.sectVis{max-width:34rem;margin:1.5em auto 0.5em!important;padding:0 22px!important;',
+        'font-size:15px!important;color:rgba(200,212,192,0.8)!important;font-weight:600!important;}',
+        /* Verse numbers recede; they are wayfinding, not the text. */
+        'sup.ww,sup.ii,span.cc,sup.vnumVis,span.vnumVis{color:rgba(143,175,150,0.72)!important;font-size:0.66em!important;font-weight:600!important;',
+        'padding-right:2px;text-decoration:none!important;}',
+        'span.cc{font-size:1.1em!important;}',
+        'a,a:visited{color:#A8C5A0!important;}',
+        'sup.fnote{color:rgba(143,175,150,0.5)!important;}',
+        '.sc{font-variant:small-caps;}',
+        /* KEPT, and legible: the NRSV notice. */
+        '.copyright{max-width:34rem;margin:2em auto 0!important;padding:16px 22px!important;',
+        'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.62)!important;',
+        'border-top:1px solid rgba(200,212,192,0.16);background:transparent!important;}',
+        '.phoebe-reader-note{max-width:34rem;margin:0 auto!important;padding:10px 22px 40px!important;',
+        'font-size:12px!important;line-height:1.6!important;color:rgba(200,212,192,0.45)!important;}',
+        '.phoebe-reader-note a{color:rgba(168,197,160,0.75)!important;text-decoration:underline;}',
+      ].join('');
+
+      function addStyle() {
+        if (document.getElementById('phoebe-reader')) return;
+        var st = document.createElement('style');
+        st.id = 'phoebe-reader';
+        st.textContent = css;
+        (document.head || document.documentElement).appendChild(st);
+      }
+      addStyle();
+      document.addEventListener('DOMContentLoaded', addStyle);
+
+      /** Collapse the stray gaps: comment-only <p>, <br> half-lines, nbsp indents. */
+      function tidy() {
+        var bt = document.querySelector('.bibletext');
+        if (!bt || bt.getAttribute('data-phoebe-tidied')) return;
+        var ps = bt.querySelectorAll('p');
+        for (var i = 0; i < ps.length; i++) {
+          if (ps[i].textContent.replace(/\\u00a0|\\s/g, '') === '' && !ps[i].querySelector('img')) {
+            ps[i].parentNode.removeChild(ps[i]);
+          }
+        }
+        var brs = bt.querySelectorAll('br');
+        for (var j = 0; j < brs.length; j++) {
+          brs[j].parentNode.replaceChild(document.createTextNode(' '), brs[j]);
+        }
+        // The poetry indents, now that the breaks they followed are gone.
+        var walker = document.createTreeWalker(bt, NodeFilter.SHOW_TEXT, null);
+        var n;
+        while ((n = walker.nextNode())) {
+          if (n.nodeValue.indexOf('\\u00a0') !== -1) {
+            n.nodeValue = n.nodeValue.replace(/\\u00a0+/g, ' ');
+          }
+        }
+        bt.setAttribute('data-phoebe-tidied', '1');
+      }
+
+      /** Whose reading this is — named, not implied. */
+      function credit() {
+        if (document.querySelector('.phoebe-reader-note')) return;
+        var cp = document.querySelector('.copyright');
+        if (!cp) return;
+        var note = document.createElement('div');
+        note.className = 'phoebe-reader-note';
+        var a = '<a href="' + location.href + '">the oremus Bible Browser</a>';
+        note.innerHTML = 'Shown in Phoebe\\u2019s reader view. The text is served by ' + a +
+          ', which renders the NRSV under the licence above; Phoebe only changes how it looks on this screen.';
+        cp.parentNode.insertBefore(note, cp.nextSibling);
+      }
+
+      function run() { addStyle(); tidy(); credit(); }
+      if (document.readyState !== 'loading') run();
+      document.addEventListener('DOMContentLoaded', run);
+      // oremus paints in one pass, but a late stylesheet or a re-render
+      // shouldn't undo the tidy — cheap re-checks, then stop.
+      var tries = 0;
+      var iv = setInterval(function () { run(); if (++tries > 6) clearInterval(iv); }, 350);
+    })();
+    """
+
+    private static let readerScript = WKUserScript(
+        source: readerJS,
+        injectionTime: .atDocumentStart,
+        forMainFrameOnly: true
+    )
+
     private static let cookieHideScript = WKUserScript(
         source: cookieHideJS,
         injectionTime: .atDocumentStart,
@@ -312,6 +464,8 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         config.websiteDataStore = WKWebsiteDataStore.default()   // persistent
         let content = WKUserContentController()
         content.addUserScript(cookieHideScript)
+        // Phoebe's reader view — self-gates on the oremus hostname (see readerJS).
+        content.addUserScript(readerScript)
         config.userContentController = content
         return config
     }

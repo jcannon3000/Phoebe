@@ -348,6 +348,24 @@ if (fs.existsSync(frontendDist)) {
   app.use("/assets", (_req, res) => {
     res.status(404).type("text").send("Not found");
   });
+  /**
+   * /reader — the two assets Phoebe's reader view injects into a THIRD-PARTY
+   * page (bible.oremus.org), so they need CORS or the browser refuses them.
+   *
+   * Images aren't CORS-restricted, but @font-face IS: without
+   * Access-Control-Allow-Origin the woff2 is fetched and then silently
+   * discarded, and the reading falls back to the system sans with no error
+   * anywhere. Long-cached and immutable — these two files are stable by
+   * definition (a new look means a new filename, not a new body).
+   *
+   * See BibleWebViewController.readerJS for what consumes them.
+   */
+  app.use("/reader", express.static(path.join(frontendDist, "reader"), {
+    maxAge: "1y",
+    immutable: true,
+    setHeaders: (res) => { res.setHeader("Access-Control-Allow-Origin", "*"); },
+  }));
+
   app.use(express.static(frontendDist, {
     maxAge: 0,
     // `maxAge: 0` emits `Cache-Control: public, max-age=0`, which Railway's
