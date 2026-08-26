@@ -2272,7 +2272,23 @@ export default function WayOfLoveRuleFlow({
   // Forward Day by Day asks a written/audio MEDIUM whenever it's chosen. FDD is
   // now always an add-on reflection (in `newsletters`), never a side office
   // anchor. The Psalms CYCLE is folded into each side's config slide.
-  const needsFddMode = newsletters.includes("fdd");
+  /**
+   * The written/audio step — shown whenever Forward Day by Day is in the
+   * rhythm AT ALL, as a followed reflection OR as a side's own prayer.
+   *
+   * It used to test `newsletters` alone, which happened to work only because
+   * the "Which reflection?" picker pushed the anchor's source into that list
+   * as a side effect — the same side effect that was handing people a
+   * duplicate daily FDD card. Removing it took the format step with it:
+   * "if I chose FDD it needs to have another slide where I chose the format."
+   *
+   * So ask the real question instead of relying on the side effect: is FDD
+   * anywhere in this rhythm?
+   */
+  const fddIsAnchorSource = (["morning", "evening"] as OfficeSide[]).some(
+    (s) => prayBySide[s] === "fdd" && (anchorReflectionBySide[s] ?? getSideReflectionExplicit(s) ?? "fdd") === "fdd",
+  );
+  const needsFddMode = newsletters.includes("fdd") || fddIsAnchorSource;
   // A side that picked "With the Book of Common Prayer" gets a dedicated slide
   // (morning-bcp / evening-bcp) to choose the form — Psalms / Devotion / Office.
   // Which pray-choices are "a BCP form", i.e. get the extra per-side bcp step.
@@ -2484,7 +2500,13 @@ export default function WayOfLoveRuleFlow({
     // Without this, toggling a side off here walked on into the rest of the
     // flow — the exact thing a single-practice edit exists to avoid.
     if (singleEditRow) {
-      if (after && stepBelongsToRow(after, singleEditRow)) { setStep(after); return; }
+      // Same forward scan as goNext, against the list this change PRODUCES —
+      // see nextStepForRow for why adjacency isn't enough.
+      const start = i >= 0 ? i : -1;
+      for (let j = start + 1; j < next.length; j++) {
+        const cand = next[j]!;
+        if (stepBelongsToRow(cand, singleEditRow)) { setStep(cand); return; }
+      }
       finishSingleEdit();
       return;
     }
@@ -2544,8 +2566,12 @@ export default function WayOfLoveRuleFlow({
   const stepBelongsToRow = (st: Step, rowId: string): boolean => {
     if (rowId === "extra:morning") return st === "morning-extra" || st === "morning-extra-pick" || st === "morning-extra-config";
     if (rowId === "extra:evening") return st === "evening-extra" || st === "evening-extra-pick" || st === "evening-extra-config";
-    if (rowId === "side:morning") return st.startsWith("morning-");
-    if (rowId === "side:evening") return st.startsWith("evening-");
+    // A side anchored on Forward Day by Day owns the format step as well —
+    // it's part of choosing that practice, not a separate one. Without this,
+    // editing the morning alone picked FDD and saved without ever asking how
+    // they take it (owner: "it didn't give me an option to choose the format").
+    if (rowId === "side:morning") return st.startsWith("morning-") || (st === "fdd-mode" && prayBySide.morning === "fdd");
+    if (rowId === "side:evening") return st.startsWith("evening-") || (st === "fdd-mode" && prayBySide.evening === "fdd");
     if (rowId === "contemplation") return st === "contemplation-goal" || st === "contemplative";
     // A side's contemplative practice is that side's ANCHOR, so editing it
     // walks the side's whole run of slides (way → which practice → config),
@@ -2561,11 +2587,33 @@ export default function WayOfLoveRuleFlow({
     if (rowId.startsWith("custom:")) return st === "custom";
     return false;
   };
+  /**
+   * Editing ONE practice: the next slide that still belongs to it.
+   *
+   * Not simply "the adjacent one" — a practice's slides are not always
+   * contiguous. A side anchored on Forward Day by Day owns the format step,
+   * and that step sits after BOTH sides and the reflections list, so an
+   * adjacency test found the evening's slide, decided the edit was over, and
+   * saved without ever asking how they take it. Scanning forward finds it.
+   *
+   * Everything else is unaffected: a side's own slides ARE contiguous, so for
+   * every other row this returns exactly what adjacency returned.
+   */
+  const nextStepForRow = (from: Step, rowId: string): Step | null => {
+    const i = orderedSteps.indexOf(from);
+    if (i < 0) return null;
+    for (let j = i + 1; j < orderedSteps.length; j++) {
+      const cand = orderedSteps[j]!;
+      if (stepBelongsToRow(cand, rowId)) return cand;
+    }
+    return null;
+  };
   const goNext = () => {
     const i = orderedSteps.indexOf(step);
     const next = i >= 0 && i < orderedSteps.length - 1 ? orderedSteps[i + 1] : null;
     if (singleEditRow) {
-      if (next && stepBelongsToRow(next, singleEditRow)) { setStep(next); return; }
+      const mine = nextStepForRow(step, singleEditRow);
+      if (mine) { setStep(mine); return; }
       finishSingleEdit();
       return;
     }
@@ -2676,11 +2724,11 @@ export default function WayOfLoveRuleFlow({
     // not Continue, because there is nothing after it to continue to. Only on
     // the practice's LAST slide, though: a practice can span two or three, and
     // a Save that actually continues is a lie about what the tap does.
-    const nextInFlow = (() => {
-      const i = orderedSteps.indexOf(step);
-      return i >= 0 && i < orderedSteps.length - 1 ? orderedSteps[i + 1] : null;
-    })();
-    const savesNow = !!singleEditRow && !(nextInFlow && stepBelongsToRow(nextInFlow, singleEditRow));
+    // Ask the SAME question goNext asks — the next slide still belonging to
+    // this practice, scanning forward rather than testing the adjacent one.
+    // With adjacency the config slide said "Save" and then walked on to the
+    // format step, which is a button lying about what it does.
+    const savesNow = !!singleEditRow && !nextStepForRow(step, singleEditRow);
     const label = savesNow ? t("common.save", { defaultValue: "Save" }) : rawLabel;
     return (
     /**
