@@ -150,7 +150,12 @@ export default function SeasonPage() {
   const leafBg = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0] : null;
   const wrap: React.CSSProperties = {
     position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column",
-    justifyContent: "center", alignItems: "stretch", gap: 16, padding: "28px 22px", maxWidth: 480, margin: "0 auto",
+    justifyContent: "center", alignItems: "stretch", gap: 16, /* Safe-area insets, not flat numbers: this is a full-height layer, so its
+           padding measures from the very top of the display — notch included —
+           and a flat value sits the panel under the status bar. Reported on the
+           community rule-of-life screen ("the UI is too high"); these are the
+           same declaration. Floored at the old values. */
+        padding: "calc(var(--safe-top, 0px) + 28px) 22px calc(env(safe-area-inset-bottom, 0px) + 28px)", maxWidth: 480, margin: "0 auto",
   };
   const card: React.CSSProperties = {
     background: "rgba(9,26,16,0.5)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",

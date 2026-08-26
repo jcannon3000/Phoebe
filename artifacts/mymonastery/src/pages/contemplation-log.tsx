@@ -93,7 +93,12 @@ export default function ContemplationLogPage() {
     <Layout>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
-        <div className="max-w-xl mx-auto w-full" style={{ padding: "8px 4px 60px" }}>
+        <div className="max-w-xl mx-auto w-full" style={{ /* Safe-area insets, not flat numbers: this is a full-height layer, so its
+           padding measures from the very top of the display — notch included —
+           and a flat value sits the panel under the status bar. Reported on the
+           community rule-of-life screen ("the UI is too high"); these are the
+           same declaration. Floored at the old values. */
+        padding: "calc(var(--safe-top, 0px) + 8px) 4px 60px" }}>
           <p style={{ color: SAGE, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600, fontFamily: SPACE_GROTESK, margin: "0 0 4px" }}>
             🕯️ Contemplation
           </p>

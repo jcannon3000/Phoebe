@@ -2786,6 +2786,20 @@ export default function WayOfLoveRuleFlow({
          * the one job it has — letting a card dissolve as it scrolls under.
          */
         background: "linear-gradient(to top, rgba(9,26,16,1) 0%, rgba(9,26,16,1) 66%, rgba(9,26,16,0.9) 80%, rgba(9,26,16,0.45) 91%, rgba(9,26,16,0) 100%)",
+        /**
+         * …and a solid skirt BELOW the box (owner: "below the CTA on the fade
+         * you could still see").
+         *
+         * A gradient can only paint inside its own border-box. Measured at the
+         * end of the scroll there was a ~20px strip under the container — the
+         * shell's own bottom padding — through which a card kept showing; I
+         * had measured that gap earlier and wrongly read "same at every scroll
+         * position" as "nothing shows". An offset, spread shadow in the same
+         * flat colour paints outside the box and closes it, whatever the exact
+         * cause of the strip. Downward only, so it never touches the fade at
+         * the top edge.
+         */
+        boxShadow: "0 24px 0 24px rgba(9,26,16,1)",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
       }}
     >

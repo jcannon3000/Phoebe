@@ -328,7 +328,9 @@ function CenteredFrame({ children }: { children: React.ReactNode }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px 20px",
+        /* Safe-area insets — a full-height centred layer measures from the top
+           of the display, notch included; a flat value sits it too high. */
+        padding: "calc(var(--safe-top, 0px) + 24px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px)",
       }}
     >
       {children}

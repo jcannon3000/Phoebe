@@ -198,7 +198,12 @@ export default function PrescribeRoutinePage() {
   // ── Name + share ─────────────────────────────────────────────────────────
   const wrap: React.CSSProperties = {
     minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center",
-    alignItems: "stretch", gap: 18, padding: "24px 22px", maxWidth: 460, margin: "0 auto",
+    alignItems: "stretch", gap: 18, /* Safe-area insets, not flat numbers: this is a full-height layer, so its
+           padding measures from the very top of the display — notch included —
+           and a flat value sits the panel under the status bar. Reported on the
+           community rule-of-life screen ("the UI is too high"); these are the
+           same declaration. Floored at the old values. */
+        padding: "calc(var(--safe-top, 0px) + 24px) 22px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxWidth: 460, margin: "0 auto",
   };
   const card: React.CSSProperties = {
     background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",

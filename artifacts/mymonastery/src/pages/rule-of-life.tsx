@@ -489,7 +489,12 @@ export default function RuleOfLifePage() {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
-        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", /* Safe-area insets, not flat numbers: this is a full-height layer, so its
+           padding measures from the very top of the display — notch included —
+           and a flat value sits the panel under the status bar. Reported on the
+           community rule-of-life screen ("the UI is too high"); these are the
+           same declaration. Floored at the old values. */
+        padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
             <Link href="/daily-practice">
               <button style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: 8 }}>
@@ -549,7 +554,7 @@ export default function RuleOfLifePage() {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
-        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
             <span style={{ fontSize: 14, fontFamily: SANS }}>{t("ruleOfLife.back", { defaultValue: "Back" })}</span>
@@ -619,7 +624,7 @@ export default function RuleOfLifePage() {
             <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(9,26,16, 0.605) 0%, rgba(9,26,16, 0.792) 50%, rgba(9,26,16, 0.935) 100%)" }} />
           </>
         )}
-        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: 4 }}>
@@ -772,7 +777,7 @@ export default function RuleOfLifePage() {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
-        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
             <span style={{ fontSize: 14, fontFamily: SANS }}>{t("ruleOfLife.back", { defaultValue: "Back" })}</span>
@@ -807,7 +812,7 @@ export default function RuleOfLifePage() {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
-        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
+        <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "calc(var(--safe-top, 0px) + 24px) 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
             <span style={{ fontSize: 14, fontFamily: SANS }}>{t("ruleOfLife.back", { defaultValue: "Back" })}</span>
@@ -910,7 +915,7 @@ export default function RuleOfLifePage() {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
-        <div style={{ position: "relative", zIndex: 1, padding: "24px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ position: "relative", zIndex: 1, padding: "calc(var(--safe-top, 0px) + 24px) 20px 60px", maxWidth: 560, margin: "0 auto" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
             <Link href="/daily-practice">
