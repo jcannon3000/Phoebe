@@ -268,9 +268,9 @@ export default function ListeningPage() {
    * picture practice ends too. Ending on the log made the last thing you did
    * data entry.
    */
-  const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4;
-  const DECK_TOTAL = 5;
-  const LAST = LIFT;
+  const INTRO = 0, LISTEN = 1, HOW = 2, LOG = 3, LIFT = 4, DONE = 5;
+  const DECK_TOTAL = 6;
+  const LAST = DONE;
 
   if (view === "deck") {
     const atLog = deckStep === LOG;
@@ -413,6 +413,63 @@ export default function ListeningPage() {
                 <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
                   Take a moment to lift to God what may be on your heart.
                 </p>
+              )}
+
+              {/**
+                * THE CLOSING SLIDE — a list of cards, like Visio Divina's.
+                *
+                * Owner: "the last slide of audio should look more like the
+                * visio, not the other audio with the big thumbnail — a list of
+                * cards." The log page opens on ONE big hero, which is the
+                * right shape for a page you visit to see what you're keeping
+                * and the wrong shape for the end of a practice: what closes a
+                * deck is the little gathering of what you've sat with, the
+                * newest one first. Same frosted row, same 52px thumbnail, same
+                * two lines the picture practice uses — so the two practices
+                * end the same way.
+                */}
+              {deckStep === DONE && (
+                <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 2px" }}>
+                    Audio Divina complete
+                  </p>
+                  {sortedEntries.slice(0, 5).map((e) => (
+                    <div
+                      key={e.id}
+                      style={{
+                        userSelect: "none", WebkitTapHighlightColor: "transparent",
+                        display: "flex", alignItems: "center", gap: 12, width: "100%",
+                        padding: 10, borderRadius: 14, textAlign: "left",
+                        background: "rgba(240,237,230,0.06)",
+                        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                        border: `1px solid ${DECK_BORDER}`,
+                      }}
+                    >
+                      {e.artworkUrl ? (
+                        <img src={e.artworkUrl} alt="" loading="lazy" decoding="async"
+                          style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flex: "0 0 auto", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }} />
+                      ) : (
+                        <span aria-hidden style={{ width: 52, height: 52, borderRadius: 8, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, background: "rgba(46,107,64,0.3)" }}>
+                          {MEDIUM_EMOJI[e.medium] ?? "🎧"}
+                        </span>
+                      )}
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: "block", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.5, lineHeight: 1.3 }}>
+                          {e.what?.trim() || (MEDIUM_EMOJI[e.medium] ?? "🎧")}
+                        </span>
+                        <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11.5, marginTop: 3 }}>
+                          {MEDIUM_EMOJI[e.medium] ?? "🎧"} {relDay(e.day)}
+                          {e.felt ? <span className="ml-1.5">{e.felt}</span> : null}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                  {sortedEntries.length === 0 && (
+                    <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.6, margin: "8px 0 0" }}>
+                      Your listening will gather here.
+                    </p>
+                  )}
+                </div>
               )}
 
               {atLog && (
