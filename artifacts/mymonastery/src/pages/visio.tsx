@@ -728,6 +728,31 @@ export default function VisioPage() {
 
         {step === TITLE && view && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            {/**
+              * A THUMBNAIL over the title (owner: "why don't we show a
+              * thumbnail of the image on the title page above the title").
+              *
+              * Small on purpose. The looking beats are where the picture is
+              * given its whole screen; here it's the size of a plate in a
+              * book — enough to know which painting you're about to sit with,
+              * not enough to have already looked at it.
+              *
+              * It also warms the fetch: by the time the next beat gives it
+              * 62vh, the browser has it, so the practice doesn't open on an
+              * empty frame.
+              */}
+            <img
+              src={view.img}
+              alt=""
+              aria-hidden
+              decoding="async"
+              className="prompt-rise"
+              style={{
+                width: 132, height: 132, objectFit: "cover", borderRadius: 10,
+                boxShadow: "0 18px 48px rgba(0,0,0,0.55), 0 3px 10px rgba(0,0,0,0.4)",
+                marginBottom: 4,
+              }}
+            />
             <h1
               className="prompt-rise"
               style={{ fontFamily: FONT, fontSize: "clamp(30px, 7vw, 40px)", fontWeight: 700, letterSpacing: "-0.02em", color: WARM, margin: 0, lineHeight: 1.08 }}

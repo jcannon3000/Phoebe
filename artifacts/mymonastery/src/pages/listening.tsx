@@ -392,9 +392,58 @@ export default function ListeningPage() {
                   rise: a 6px lift as they fade in, then a slow breathing glow.
                   Space Grotesk, upright, 21px, same measure. */}
               {deckStep === LISTEN && (
-                <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-                  Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
-                </p>
+                <div className="w-full flex flex-col items-center gap-5" style={{ maxWidth: 480 }}>
+                  <p className="prompt-rise text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 21, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
+                    Let a song come to mind that feels sacred to you in this moment. Listen to it once — rest in the music, and listen for what touches your heart as you do.
+                  </p>
+                  {/**
+                    * The last three, under the invitation (owner).
+                    *
+                    * "Let a song come to mind" is a real ask, and on the days
+                    * nothing comes the practice stalls at its second beat. What
+                    * you have already sat with is the most likely place for one
+                    * to come from — so it's shown, quietly, as a reminder
+                    * rather than a menu: these aren't tappable, because
+                    * choosing here would make it a picker and the point is
+                    * that the song comes to YOU.
+                    */}
+                  {sortedEntries.length > 0 && (
+                    <div className="w-full flex flex-col gap-2">
+                      <p className="text-center" style={{ color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+                        Lately
+                      </p>
+                      {sortedEntries.slice(0, 3).map((e) => (
+                        <div
+                          key={e.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 10, width: "100%",
+                            padding: 8, borderRadius: 12, textAlign: "left",
+                            background: "rgba(240,237,230,0.05)",
+                            backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                            border: `1px solid ${DECK_BORDER}`,
+                          }}
+                        >
+                          {e.artworkUrl ? (
+                            <img src={e.artworkUrl} alt="" loading="lazy" decoding="async"
+                              style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 7, flex: "0 0 auto" }} />
+                          ) : (
+                            <span aria-hidden style={{ width: 38, height: 38, borderRadius: 7, flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, background: "rgba(46,107,64,0.3)" }}>
+                              {MEDIUM_EMOJI[e.medium] ?? "🎧"}
+                            </span>
+                          )}
+                          <span style={{ minWidth: 0, flex: 1 }}>
+                            <span style={{ display: "block", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {e.what?.trim() || (MEDIUM_EMOJI[e.medium] ?? "🎧")}
+                            </span>
+                            <span style={{ display: "block", color: DECK_FAINT, fontFamily: SPACE_GROTESK, fontSize: 11, marginTop: 2 }}>
+                              {relDay(e.day)}{e.felt ? ` ${e.felt}` : ""}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Owner: a beat between choosing the song and logging it —
