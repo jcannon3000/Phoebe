@@ -11,7 +11,7 @@
  * is recorded per entry so the closing slide can name it. Records whose rights
  * could not be resolved were dropped rather than assumed.
  *
- * `img` points at ACT's own S3 host rather than a bundled asset: at 229
+ * `img` points at ACT's own S3 host rather than a bundled asset: at 580
  * artworks this collection is far too large to ship inside the app binary, and
  * their host serves only full-size JPEGs (there is no IIIF derivative
  * endpoint). So the image is fetched when the practice opens.
@@ -65,6 +65,554 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Van Dyck, Anthony, 1599-1641. Christ Crowned with Thorns, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 46137,
+  "title": "Angel Musicians (detail of Madonna altarpiece)",
+  "artist": "Mantegna, Andrea, 1431-1506",
+  "date": "1497",
+  "where": "Civic Museum of Art and Painting, Castle Sforzesco, Milan, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_013.jpg",
+  "refs": [
+   "Psalm 148"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46137",
+  "licence": "Public domain",
+  "attribution": "Mantegna, Andrea, 1431-1506. Angel Musicians (detail of Madonna altarpiece), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46203,
+  "title": "Paul Visits Peter in Prison",
+  "artist": "Lippi, Filippino, d. 1504",
+  "date": "1481",
+  "where": "Santa Maria del Carmine (Church : Florence, Italy), Florence, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Filippino_Lippi_003.jpg",
+  "refs": [
+   "Acts 12:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46203",
+  "licence": "Public domain",
+  "attribution": "Lippi, Filippino, d. 1504. Paul Visits Peter in Prison, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46217,
+  "title": "Covered Table",
+  "artist": "Faistauer, Anton, 1887-1930",
+  "date": "1916",
+  "where": "Sammlung Leopold, Vienna, Russia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_106.jpg",
+  "refs": [
+   "Joel 2:23-32",
+   "Corinthians I, 10:26"
+  ],
+  "days": [
+   "Year C Thanksgiving Day",
+   "Year A Thanksgiving Day",
+   "Year B Thanksgiving Day"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46217",
+  "licence": "Public domain",
+  "attribution": "Faistauer, Anton, 1887-1930. Covered Table, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46223,
+  "title": "Commutative Justice, detail from the Allegory of Good and Bad Government",
+  "artist": "Lorenzetti, Ambrogio, 1285-approximately 1348",
+  "date": "1338-1340",
+  "where": "Palazzo pubblico (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_037.jpg",
+  "refs": [
+   "Micah 3:5-12"
+  ],
+  "days": [
+   "Year A Proper 26th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46223",
+  "licence": "Public domain",
+  "attribution": "Lorenzetti, Ambrogio, 1285-approximately 1348. Commutative Justice, detail from the Allegory of Good and Bad Government, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46225,
+  "title": "Pax, or Peace, detail from the Allegory of Good and Bad Government",
+  "artist": "Lorenzetti, Ambrogio, 1285-approximately 1348",
+  "date": "1338-1340",
+  "where": "Palazzo pubblico (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_035.jpg",
+  "refs": [
+   "Psalm 122",
+   "Psalm 29"
+  ],
+  "days": [
+   "Year A Advent 1st Sunday",
+   "Year B Trinity Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46225",
+  "licence": "Public domain",
+  "attribution": "Lorenzetti, Ambrogio, 1285-approximately 1348. Pax, or Peace, detail from the Allegory of Good and Bad Government, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46228,
+  "title": "Normandy - Path on the Water",
+  "artist": "Sisley, Alfred, 1839-1899",
+  "date": "1894",
+  "where": "Musée des Beaux-Arts de Rouen, Rouen, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_041.jpg",
+  "refs": [
+   "Psalm 23"
+  ],
+  "days": [
+   "Year A Christmas 2nd Sunday",
+   "Year B Proper 11th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46228",
+  "licence": "Public domain",
+  "attribution": "Sisley, Alfred, 1839-1899. Normandy - Path on the Water, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46233,
+  "title": "The Jewish Bride (Esther)",
+  "artist": "Gelder, Aert de, 1645-1727",
+  "date": "1684",
+  "where": "Alte Pinakothek, Munich, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_088.jpg",
+  "refs": [
+   "Esther 2:8"
+  ],
+  "days": [
+   "Year B Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46233",
+  "licence": "Public domain",
+  "attribution": "Gelder, Aert de, 1645-1727. The Jewish Bride (Esther), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46239,
+  "title": "Washer Women",
+  "artist": "Arkhipov, Abram Efimovich, 1862-1930",
+  "date": "1901",
+  "where": "Gosudarstvennai︠a︡ Tretʹi︠a︡kovskai︠a︡ galerei︠a︡, Moscow, Russia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_095.jpg",
+  "refs": [
+   "Psalm 71:1-14"
+  ],
+  "days": [
+   "Year C Holy Tuesday",
+   "Year B Holy Wednesday",
+   "Year B Ash Wednesday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46239",
+  "licence": "Public domain",
+  "attribution": "Arkhipov, Abram Efimovich, 1862-1930. Washer Women, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46266,
+  "title": "Still Life",
+  "artist": "Kauw, Albrecht (1621-1681)",
+  "date": "1678",
+  "where": "Kunstmuseum Bern, Bern, Switzerland",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_047.jpg",
+  "refs": [
+   "Joel 2:23-32"
+  ],
+  "days": [
+   "Year C Easter 6th Sunday",
+   "Year B Thanksgiving Day",
+   "Year B Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46266",
+  "licence": "Public domain",
+  "attribution": "Kauw, Albrecht (1621-1681). Still Life, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46275,
+  "title": "Lion",
+  "artist": "Dürer, Albrecht, 1471-1528",
+  "date": "1494",
+  "where": "Hamburger Kunsthalle, Hamburg, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_051.jpg",
+  "refs": [
+   "Hosea 11:1-11",
+   "Amos 3:8",
+   "Revelation 5:5"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46275",
+  "licence": "Public domain",
+  "attribution": "Dürer, Albrecht, 1471-1528. Lion, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46323,
+  "title": "Job on the dunghill, and his wife pours water on his sores",
+  "artist": "Dürer, Albrecht, 1471-1528",
+  "date": "1500-1503",
+  "where": "Städel, Frankfurt, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_A_054.jpg",
+  "refs": [
+   "Job 2:7-13"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46323",
+  "licence": "Public domain",
+  "attribution": "Dürer, Albrecht, 1471-1528. Job on the dunghill, and his wife pours water on his sores, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46410,
+  "title": "Mother and Sister of the Artist",
+  "artist": "Morisot, Berthe, 1841-1895",
+  "date": "1869-1870",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_B_044.jpg",
+  "refs": [
+   "Ezekiel 16:44",
+   "Matthew 12:50",
+   "Mark 3:20-35"
+  ],
+  "days": [
+   "Year B Proper 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46410",
+  "licence": "Public domain",
+  "attribution": "Morisot, Berthe, 1841-1895. Mother and Sister of the Artist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46447,
+  "title": "Prophet Hosea",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Duccio_di_Buoninsegna_063.jpg",
+  "refs": [
+   "Hosea 1:2-10",
+   "Hosea 2:14-20",
+   "Hosea 5:15-6:6"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday",
+   "Year A Proper 5th Sunday",
+   "Year B Epiphany 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46447",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Prophet Hosea, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46477,
+  "title": "Paul, the Apostle",
+  "artist": "Crivelli, Carlo, 15th cent.",
+  "date": "1473",
+  "where": "Sant'Emidio, Ascoli, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Carlo_Crivelli_053.jpg",
+  "refs": [
+   "Philemon 1:1-21"
+  ],
+  "days": [
+   "Year C Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46477",
+  "licence": "Public domain",
+  "attribution": "Crivelli, Carlo, 15th cent.. Paul, the Apostle, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46517,
+  "title": "Jephtha's Return",
+  "artist": "Pellegrini, Giovanni Antonio, 1675-1741",
+  "date": "1700-1725",
+  "where": "Collection of Denis Mahon, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Giovanni_Antonio_Pellegrini_001.jpg",
+  "refs": [
+   "Judges 11:29-40"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46517",
+  "licence": "Public domain",
+  "attribution": "Pellegrini, Giovanni Antonio, 1675-1741. Jephtha's Return, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46582,
+  "title": "Concordance",
+  "artist": null,
+  "date": "11th century",
+  "where": "Bibliothèque nationale de France, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_B_031.jpg",
+  "refs": [
+   "Ezra 7:10"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46582",
+  "licence": "Public domain",
+  "attribution": "Concordance, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46586,
+  "title": "Regent receiving a falcon, surrounded by birds",
+  "artist": null,
+  "date": "1482",
+  "where": "Bibliotheque publique et universitaire, Ghent, Belgium",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_B_027.jpg",
+  "refs": [
+   "Genesis 1:20-23",
+   "Psalm 104:12",
+   "Isaiah 31:5"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46586",
+  "licence": "Public domain",
+  "attribution": "Regent receiving a falcon, surrounded by birds, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46588,
+  "title": "John Baptizing Jesus",
+  "artist": "Notke, Bernt, ca. 1440-1509",
+  "date": "1483",
+  "where": "Sankt-Annen-Museum, Lubeck, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_B_023.jpg",
+  "refs": [
+   "Mark 1:4-11",
+   "Matthew 3:13-17",
+   "Luke 3:15-17, 21-22"
+  ],
+  "days": [
+   "Year A Baptism of the Lord",
+   "Year B Baptism of the Lord",
+   "Year C Baptism of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46588",
+  "licence": "Public domain",
+  "attribution": "Notke, Bernt, ca. 1440-1509. John Baptizing Jesus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46589,
+  "title": "Cradle",
+  "artist": "Morisot, Berthe, 1841-1895",
+  "date": "1873",
+  "where": "Musee d'Orsay, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Yorck_B_024.jpg",
+  "refs": [
+   "Psalm 113",
+   "Psalm 139:1-6, 13-18"
+  ],
+  "days": [
+   "Year A Epiphany 8th Sunday",
+   "Year A Proper 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46589",
+  "licence": "Public domain",
+  "attribution": "Morisot, Berthe, 1841-1895. Cradle, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46621,
+  "title": "Job and his Wife",
+  "artist": "La Tour, Georges du Mesnil de, 1593-1652",
+  "date": "1625-1650",
+  "where": "Musee Departemental des Vosges, Epinal, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Georges_de_La_Tour_044.jpg",
+  "refs": [
+   "Job 2:7-13"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46621",
+  "licence": "Public domain",
+  "attribution": "La Tour, Georges du Mesnil de, 1593-1652. Job and his Wife, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46622,
+  "title": "Job and his Wife, detail",
+  "artist": "La Tour, Georges du Mesnil de, 1593-1652",
+  "date": "1625-1650",
+  "where": "Musee Departemental des Vosges, Epinal, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Georges_de_La_Tour_045.jpg",
+  "refs": [
+   "Job 2:7-13"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46622",
+  "licence": "Public domain",
+  "attribution": "La Tour, Georges du Mesnil de, 1593-1652. Job and his Wife, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46623,
+  "title": "Job and his Wife, detail",
+  "artist": "La Tour, Georges du Mesnil de, 1593-1652",
+  "date": "1625-1650",
+  "where": "Musee Departemental des Vosges, Epinal, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Georges_de_La_Tour_046.jpg",
+  "refs": [
+   "Job 2:7-13"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46623",
+  "licence": "Public domain",
+  "attribution": "La Tour, Georges du Mesnil de, 1593-1652. Job and his Wife, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46655,
+  "title": "Baptism of Christ",
+  "artist": "David, Gérard, approximately 1460-1523",
+  "date": "1502-1508",
+  "where": "Musee Communal, Bruge, Belgium",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gerard_David_004.jpg",
+  "refs": [
+   "Mark 1:4-11",
+   "Matthew 3:13-17",
+   "Luke 3:15-17, 21-22"
+  ],
+  "days": [
+   "Year A Baptism of the Lord",
+   "Year B Baptism of the Lord",
+   "Year C Baptism of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46655",
+  "licence": "Public domain",
+  "attribution": "David, Gérard, approximately 1460-1523. Baptism of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46672,
+  "title": "The Battle at Ebenezer",
+  "artist": "Bleker, Gerrit Claesz",
+  "date": "1640",
+  "where": "Szépművészeti Múzeum (Hungary), Budapest, Hungary",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gerrit_Claesz_Bleker_001.jpg",
+  "refs": [
+   "Samuel I, 1:4-20",
+   "Samuel I, 5:1"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46672",
+  "licence": "Public domain",
+  "attribution": "Bleker, Gerrit Claesz. The Battle at Ebenezer, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46673,
+  "title": "Elijah Feeding the Ravens",
+  "artist": "Coninxloo, Gillis van, 1544-1606",
+  "date": "ca. 1590",
+  "where": "Musées Royaux des Beaux Arts de Belgique, Brussels, Belgium",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gillis_van_Coninxloo_001.jpg",
+  "refs": [
+   "Kings I, 17:1-6"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46673",
+  "licence": "Public domain",
+  "attribution": "Coninxloo, Gillis van, 1544-1606. Elijah Feeding the Ravens, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46693,
+  "title": "Banks of the Seine, Vétheuil, 1880",
+  "artist": "Monet, Claude, 1840-1926",
+  "date": "1880",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Claude_Monet_001.jpg",
+  "refs": [
+   "Psalm 23"
+  ],
+  "days": [
+   "Year B Easter 4th Sunday",
+   "Year A Easter 4th Sunday",
+   "Year C Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46693",
+  "licence": "Public domain",
+  "attribution": "Monet, Claude, 1840-1926. Banks of the Seine, Vétheuil, 1880, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46701,
+  "title": "Thistlefinch",
+  "artist": "Fabritius, Carl Ferdinand, fl. 1664-1667",
+  "date": "1654",
+  "where": "Mauritshuis, The Hague, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Carel_Fabritius_002.jpg",
+  "refs": [
+   "Psalm 104:24-34, 35b"
+  ],
+  "days": [
+   "Year B Proper 24th Sunday",
+   "Year C Easter 5th Sunday",
+   "Year A Proper 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46701",
+  "licence": "Public domain",
+  "attribution": "Fabritius, Carl Ferdinand, fl. 1664-1667. Thistlefinch, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46703,
+  "title": "Woodland Landscape",
+  "artist": "Troyon, Constant, 1810-1865",
+  "date": "1860",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Constant_Troyon_003.jpg",
+  "refs": [
+   "Psalm 23"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46703",
+  "licence": "Public domain",
+  "attribution": "Troyon, Constant, 1810-1865. Woodland Landscape, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46722,
+  "title": "Ash Wednesday",
+  "artist": "Spitzweg, Karl, 1808-1885",
+  "date": "1855-1860",
+  "where": "Staatsgalerie Stuttgart, Stuttgart, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Carl_Spitzweg_003.jpg",
+  "refs": [
+   "Proverbs 10:23",
+   "Proverbs 11:29",
+   "Psalm 142:7"
+  ],
+  "days": [
+   "Year B Ash Wednesday",
+   "Year A Ash Wednesday",
+   "Year C Ash Wednesday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46722",
+  "licence": "Public domain",
+  "attribution": "Spitzweg, Karl, 1808-1885. Ash Wednesday, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 46764,
   "title": "Birth of Christ",
   "artist": "La Tour, Georges du Mesnil de, 1593-1652",
@@ -88,6 +636,44 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "La Tour, Georges du Mesnil de, 1593-1652. Birth of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 46770,
+  "title": "Baptism of Christ",
+  "artist": "Gentile, da Fabriano, ca. 1370-1427",
+  "date": "1425",
+  "where": "Uffizi Gallery, Florence, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gentile_da_Fabriano_076.jpg",
+  "refs": [
+   "Mark 1:4-11",
+   "Matthew 3:13-17",
+   "Luke 3:15-17, 21-22"
+  ],
+  "days": [
+   "Year A Baptism of the Lord",
+   "Year B Baptism of the Lord",
+   "Year C Baptism of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46770",
+  "licence": "Public domain",
+  "attribution": "Gentile, da Fabriano, ca. 1370-1427. Baptism of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 46805,
+  "title": "The Barges",
+  "artist": "Daubigny, Charles François, 1817-1878",
+  "date": "1865",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Charles_Francois_Daubigny_002.jpg",
+  "refs": [
+   "Psalm 23"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/46805",
+  "licence": "Public domain",
+  "attribution": "Daubigny, Charles François, 1817-1878. The Barges, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 46806,
   "title": "Woman at the Window",
   "artist": "Friedrich, Caspar David, 1774-1840",
@@ -109,6 +695,92 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Friedrich, Caspar David, 1774-1840. Woman at the Window, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 47014,
+  "title": "Embarkation of Paul to Ostia",
+  "artist": "Lorrain, Claude, 1600-1682",
+  "date": "1639-1640",
+  "where": "Museo del Prado, Madrid, Spain",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Claude_Lorrain_006.jpg",
+  "refs": [
+   "Acts 27"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47014",
+  "licence": "Public domain",
+  "attribution": "Lorrain, Claude, 1600-1682. Embarkation of Paul to Ostia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 47298,
+  "title": "Autumn Tree in the Wind",
+  "artist": "Schiele, Egon, 1890-1918",
+  "date": "1912",
+  "where": "Leopold Collection, Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Egon_Schiele_027.jpg",
+  "refs": [
+   "Mark 13:24-37"
+  ],
+  "days": [
+   "Year B Advent 1st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47298",
+  "licence": "Public domain",
+  "attribution": "Schiele, Egon, 1890-1918. Autumn Tree in the Wind, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 47426,
+  "title": "Jesus with Disciples",
+  "artist": "Olivier, Ferdinand, 1785-1841",
+  "date": "1840",
+  "where": "Sammlung Georg Schäfer, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Ferdinand_Olivier_003.jpg",
+  "refs": [
+   "Mark 1:14-20",
+   "Mark 6:1-13"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47426",
+  "licence": "Public domain",
+  "attribution": "Olivier, Ferdinand, 1785-1841. Jesus with Disciples, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 47427,
+  "title": "Elijah",
+  "artist": "Olivier, Ferdinand, 1785-1841",
+  "date": "1830",
+  "where": "Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Ferdinand_Olivier_004.jpg",
+  "refs": [
+   "Kings I, 17:1-6",
+   "Kings I, 19:1-18"
+  ],
+  "days": [
+   "Year C Proper 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47427",
+  "licence": "Public domain",
+  "attribution": "Olivier, Ferdinand, 1785-1841. Elijah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 47433,
+  "title": "An Angel Frees Peter from Prison",
+  "artist": "Lippi, Filippino, d. 1504",
+  "date": "1481",
+  "where": "Santa Maria del Carmine (Church : Florence, Italy), Florence, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Filippino_Lippi_002.jpg",
+  "refs": [
+   "Acts 12:1-11"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47433",
+  "licence": "Public domain",
+  "attribution": "Lippi, Filippino, d. 1504. An Angel Frees Peter from Prison, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 47441,
   "title": "The Third of May",
   "artist": "Goya, Francisco, 1746-1828",
@@ -127,6 +799,26 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/47441",
   "licence": "Public domain",
   "attribution": "Goya, Francisco, 1746-1828. The Third of May, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 47443,
+  "title": "Adoration of the Magi",
+  "artist": "Giorgione, 1477-1511",
+  "date": "1500-1510",
+  "where": "National Gallery (Great Britain), London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Giorgione_010.jpg",
+  "refs": [
+   "Mark 2:1-12"
+  ],
+  "days": [
+   "Year A Epiphany of the Lord",
+   "Year B Epiphany of the Lord",
+   "Year C Epiphany of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47443",
+  "licence": "Public domain",
+  "attribution": "Giorgione, 1477-1511. Adoration of the Magi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 47774,
@@ -171,6 +863,24 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Angelico, fra, approximately 1400-1455. Noli Me Tangere - \"Do not hold me.\", from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 47861,
+  "title": "Peter Preaching - [Lectionary selection, Fifth Sunday of Easter, Year C]",
+  "artist": "Angelico, fra, approximately 1400-1455",
+  "date": "1433",
+  "where": "Museo Nazionale di San Marco, Florence, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Fra_Angelico_092.jpg",
+  "refs": [
+   "Acts 11:1-18"
+  ],
+  "days": [
+   "Year C Easter 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/47861",
+  "licence": "Public domain",
+  "attribution": "Angelico, fra, approximately 1400-1455. Peter Preaching - [Lectionary selection, Fifth Sunday of Easter, Year C], from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 48047,
   "title": "Christ Expelling the Money Changers in the Temple",
   "artist": "Greco, 1541?-1614",
@@ -209,6 +919,26 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Vernet, Emile-Jean-Horace, 1789-1863. Judah and Tamar, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 48725,
+  "title": "Altar of the Mystical Lamb - Throne of God the Father",
+  "artist": "Eyck, Hubert van, 1366-1426",
+  "date": "1426-1432",
+  "where": "Sint-Baafskathedraal te Gent, Ghent, Belgium",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jan_van_Eyck_035.jpg",
+  "refs": [
+   "Psalm 50:1-8, 22-23"
+  ],
+  "days": [
+   "Year C Ascension of the Lord",
+   "Year C New Year’s Day",
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/48725",
+  "licence": "Public domain",
+  "attribution": "Eyck, Hubert van, 1366-1426. Altar of the Mystical Lamb - Throne of God the Father, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 49140,
   "title": "Christ in the House of Mary and Martha",
   "artist": "Velázquez, Diego, 1599-1660",
@@ -225,6 +955,50 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/49140",
   "licence": "Public domain",
   "attribution": "Velázquez, Diego, 1599-1660. Christ in the House of Mary and Martha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49155,
+  "title": "Jesus Appears on Lake Tiberias",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Duccio_di_Buoninsegna_015.jpg",
+  "refs": [
+   "John 21:1-19"
+  ],
+  "days": [
+   "Year C Easter 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/49155",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Jesus Appears on Lake Tiberias, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49249,
+  "title": "Christ Washes the Apostles' Feet (top); Last Supper (bottom)",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "1308-1311",
+  "where": "Museo dell’Opera del Duomo (Siena, Italy), Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Duccio_di_Buoninsegna_029.jpg",
+  "refs": [
+   "Matthew 26:14-27:66",
+   "Mark 14:1-15:47",
+   "John 13:1-17, 31b-35",
+   "Luke 22:14-23:56",
+   "John 18:1-19:42"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year B Liturgy of Pass",
+   "Year A Maundy Thursday",
+   "Year C Liturgy of Pass",
+   "Year A Good Friday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/49249",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Washes the Apostles' Feet (top); Last Supper (bottom), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 49605,
@@ -262,6 +1036,25 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Vermeer, Johannes, 1632-1675. Christ with Mary and Martha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 49946,
+  "title": "Christ as Sol Invictus",
+  "artist": null,
+  "date": "3rd century",
+  "where": "St. Peter's Basilica, Vatican City",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/WK_ChristAsSol.jpg",
+  "refs": [
+   "Psalm 37:1-11, 39-40",
+   "Ephesians 5:8-14"
+  ],
+  "days": [
+   "Year A Lent 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/49946",
+  "licence": "Public domain",
+  "attribution": "Christ as Sol Invictus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 49955,
   "title": "Three Youths in the Fiery Furnace",
   "artist": null,
@@ -276,6 +1069,191 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/49955",
   "licence": "Public domain",
   "attribution": "Three Youths in the Fiery Furnace, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 49967,
+  "title": "Gedachtniskirche (Memorial Church)",
+  "artist": null,
+  "date": null,
+  "where": "Speyer, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/WK_Kapernaum_Gedaechtniskirche_Speyer.jpg",
+  "refs": [
+   "Luke 7:1-10",
+   "Matthew 8:5-13"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/49967",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Gedachtniskirche (Memorial Church), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50249,
+  "title": "Elijah in the Desert",
+  "artist": "Allston, Washington, 1779-1843",
+  "date": "1818",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_70-1.jpg",
+  "refs": [
+   "Kings I, 17:1-6"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50249",
+  "licence": "Public domain",
+  "attribution": "Allston, Washington, 1779-1843. Elijah in the Desert, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50252,
+  "title": "Apples",
+  "artist": "Whittredge, Worthington, 1820-1910",
+  "date": "1867",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_48-490.jpg",
+  "refs": [
+   "Proverbs 7:1-4",
+   "Psalm 17:1-9"
+  ],
+  "days": [
+   "Year A Proper 25th Sunday",
+   "Year C Easter 6th Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50252",
+  "licence": "Public domain",
+  "attribution": "Whittredge, Worthington, 1820-1910. Apples, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50259,
+  "title": "Libby Prison",
+  "artist": "Blythe, David Gilmour, 1815-1865",
+  "date": "1863",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_48-414.jpg",
+  "refs": [
+   "Isaiah 42:1-9",
+   "Psalm 120",
+   "Psalm 9:15-20"
+  ],
+  "days": [
+   "Year B Holy Monday",
+   "Year B Proper 28th Sunday",
+   "Year C Proper 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50259",
+  "licence": "Public domain",
+  "attribution": "Blythe, David Gilmour, 1815-1865. Libby Prison, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50263,
+  "title": "April Showers",
+  "artist": "Heade, Martin Johnson, 1819-1904",
+  "date": "1868",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_47-1173.jpg",
+  "refs": [
+   "Hosea 5:15-6:6",
+   "Psalm 147"
+  ],
+  "days": [
+   "Year B Epiphany 5th Sunday",
+   "Year A Proper 5th Sunday",
+   "Year B Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50263",
+  "licence": "Public domain",
+  "attribution": "Heade, Martin Johnson, 1819-1904. April Showers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50271,
+  "title": "Clouds (Landscape near Cornish)",
+  "artist": "Platt, Charles A. (Charles Adams), 1861-1933",
+  "date": "1894",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_37-1173.jpg",
+  "refs": [
+   "Psalm 147:1-11, 20c",
+   "Job 37:16"
+  ],
+  "days": [
+   "Year B Proper 24th Sunday",
+   "Year B Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50271",
+  "licence": "Public domain",
+  "attribution": "Platt, Charles A. (Charles Adams), 1861-1933. Clouds (Landscape near Cornish), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50275,
+  "title": "Hope",
+  "artist": "Burne-Jones, Edward Coley, 1833-1898",
+  "date": "1896",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_40-778.jpg",
+  "refs": [
+   "Matthew 25:31-46",
+   "Psalm 142:7",
+   "Timothy II, 1:1-14",
+   "Wisdom of Solomon 12:13, 16-19"
+  ],
+  "days": [
+   "Year A New Year’s Day",
+   "Year C Proper 22nd Sunday",
+   "Year A Proper 11th Sunday",
+   "Year A Reign of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50275",
+  "licence": "Public domain",
+  "attribution": "Burne-Jones, Edward Coley, 1833-1898. Hope, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50280,
+  "title": "Morning on the Seine, near Giverny",
+  "artist": "Monet, Claude, 1840-1926",
+  "date": "1896",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_39-655.jpg",
+  "refs": [
+   "Psalm 90:1-6, 13-17",
+   "Psalm 92:1-4, 12-15",
+   "Psalm 30"
+  ],
+  "days": [
+   "Year A Proper 25th Sunday",
+   "Year C Epiphany 8th Sunday",
+   "Year B Epiphany 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50280",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Monet, Claude, 1840-1926. Morning on the Seine, near Giverny, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50281,
+  "title": "Homer Dictating to Scribes",
+  "artist": "Gelder, Aert de, 1645-1727",
+  "date": "ca. 1700-1710",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_39-45.jpg",
+  "refs": [
+   "Job 32:7",
+   "Corinthians I, 1:18-31"
+  ],
+  "days": [
+   "Year B Holy Tuesday",
+   "Year A Holy Tuesday",
+   "Year C Holy Tuesday",
+   "Year A Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50281",
+  "licence": "Public domain",
+  "attribution": "Gelder, Aert de, 1645-1727. Homer Dictating to Scribes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 50284,
@@ -294,6 +1272,193 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/50284",
   "licence": "Public domain",
   "attribution": "Gauguin, Paul, 1848-1903. Where Do We Come From? What Are We? Where Are We Going?, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50303,
+  "title": "Young Beggars",
+  "artist": "Decamps, Alexandre-Gabriel, 1803-1860",
+  "date": "1803-1860",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_23-508.jpg",
+  "refs": [
+   "Psalm 147",
+   "Amos 8:4-7"
+  ],
+  "days": [
+   "Year B Epiphany 5th Sunday",
+   "Year B Proper 23rd Sunday",
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50303",
+  "licence": "Public domain",
+  "attribution": "Decamps, Alexandre-Gabriel, 1803-1860. Young Beggars, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50325,
+  "title": "Abraham Lincoln",
+  "artist": "Hunt, William Morris, 1824-1879",
+  "date": "1865",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_19-9.jpg",
+  "refs": [
+   "Hebrews 2:14-18",
+   "Psalm 106"
+  ],
+  "days": [
+   "Year B Presentation of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50325",
+  "licence": "Public domain",
+  "attribution": "Hunt, William Morris, 1824-1879. Abraham Lincoln, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50496,
+  "title": "Fox in a Trap",
+  "artist": "Troyon, Constant, 1810-1865",
+  "date": "1855-1865",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_21-8.jpg",
+  "refs": [
+   "Job 18:9-10",
+   "Isaiah 8:14",
+   "Psalm 31:4",
+   "Amos 3:15"
+  ],
+  "days": [
+   "Year C Proper 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50496",
+  "licence": "Public domain",
+  "attribution": "Troyon, Constant, 1810-1865. Fox in a Trap, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50498,
+  "title": "The Angel Releasing St. Peter from Prison",
+  "artist": "Allston, Washington, 1779-1843",
+  "date": "1814-1816",
+  "where": "National Gallery of Art (U.S.), Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_21-1379.jpg",
+  "refs": [
+   "Acts 12:1-11"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50498",
+  "licence": "Public domain",
+  "attribution": "Allston, Washington, 1779-1843. The Angel Releasing St. Peter from Prison, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50630,
+  "title": "Saul Reproved by Samuel",
+  "artist": "Copley, John Singleton, 1738-1815",
+  "date": "1798",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_25-99.jpg",
+  "refs": [
+   "Samuel I, 13:1-15"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50630",
+  "licence": "Public domain",
+  "attribution": "Copley, John Singleton, 1738-1815. Saul Reproved by Samuel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50929,
+  "title": "A Buckwheat Field on Thomas Cole's Farm",
+  "artist": "Farrer, Thomas Charles, 1839-1891",
+  "date": "1863",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/buckwheat392897g6fsak.jpg",
+  "refs": [
+   "Psalm 148",
+   "Psalm 72:16",
+   "Psalm 147:12-20"
+  ],
+  "days": [
+   "Year C Easter 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50929",
+  "licence": "Public domain",
+  "attribution": "Farrer, Thomas Charles, 1839-1891. A Buckwheat Field on Thomas Cole's Farm, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50934,
+  "title": "Woodland Interior",
+  "artist": "Durand, A. B. (Asher Brown), 1796-1886",
+  "date": "1855",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_63-269.jpg",
+  "refs": [
+   "Psalm 96:1-9, (10-13)"
+  ],
+  "days": [
+   "Year A Proper 24th Sunday",
+   "Year C Epiphany 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50934",
+  "licence": "Public domain",
+  "attribution": "Durand, A. B. (Asher Brown), 1796-1886. Woodland Interior, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50937,
+  "title": "Hummingbirds with Nest",
+  "artist": "Heade, Martin Johnson, 1819-1904",
+  "date": "1863",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_64-429.jpg",
+  "refs": [
+   "Psalm 84"
+  ],
+  "days": [
+   "Year B Proper 16th Sunday",
+   "Year C Presentation of the Lord",
+   "Year A Presentation of the Lord",
+   "Year B Presentation of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50937",
+  "licence": "Public domain",
+  "attribution": "Heade, Martin Johnson, 1819-1904. Hummingbirds with Nest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 50942,
+  "title": "Fruit Displayed on a Stand",
+  "artist": "Caillebotte, Gustave, 1848-1894",
+  "date": "1881-1882",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_1979-196.jpg",
+  "refs": [
+   "Psalm 128"
+  ],
+  "days": [
+   "Year A Proper 12th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/50942",
+  "licence": "Public domain",
+  "attribution": "Caillebotte, Gustave, 1848-1894. Fruit Displayed on a Stand, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 51103,
+  "title": "St. Peter Released from Prison",
+  "artist": "West, Benjamin, 1738-1820",
+  "date": "1800",
+  "where": "Museum of Fine Arts, Boston, Boston",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MFA_58-974.jpg",
+  "refs": [
+   "Acts 12:1-11"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/51103",
+  "licence": "Public domain",
+  "attribution": "West, Benjamin, 1738-1820. St. Peter Released from Prison, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 51130,
@@ -315,6 +1480,41 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Bachiacca, 1494-1557. Moses Striking the Rock and Bringing Forth the Water, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 53079,
+  "title": "A View of the Mountain Pass Called the Notch of the White Mountans (Crawford Notch)",
+  "artist": "Cole, Thomas, 1801-1848",
+  "date": "1839",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Thomas_Cole.jpg",
+  "refs": [
+   "Psalm 8"
+  ],
+  "days": [
+   "Year B Proper 24th Sunday",
+   "Year C Holy Name of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/53079",
+  "licence": "Public domain",
+  "attribution": "Cole, Thomas, 1801-1848. A View of the Mountain Pass Called the Notch of the White Mountans (Crawford Notch), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54104,
+  "title": "Sacrifice of Jephthah’s Daughter",
+  "artist": "Opie, John, 1761-1807",
+  "date": "1867",
+  "where": "National Museum Cardiff, Cardiff, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jephtha111aza0n.jpg",
+  "refs": [
+   "Judges 11:29-40"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54104",
+  "licence": "Public domain",
+  "attribution": "Opie, John, 1761-1807. Sacrifice of Jephthah’s Daughter, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 54125,
   "title": "Ecce Ancilla Domini! (Behold the Lord's Servant)",
   "artist": "Rossetti, Dante Gabriel, 1828-1882",
@@ -333,6 +1533,120 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Rossetti, Dante Gabriel, 1828-1882. Ecce Ancilla Domini! (Behold the Lord's Servant), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 54139,
+  "title": "Jesus, Judas, and the Others",
+  "artist": null,
+  "date": "ca. 1500-1530",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/B_WednesdayofHolyWeek.jpg",
+  "refs": [
+   "John 13:21-32"
+  ],
+  "days": [
+   "Year A Holy Wednesday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54139",
+  "licence": "CC0",
+  "attribution": "Jesus, Judas, and the Others, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54150,
+  "title": "Salvation Mountain",
+  "artist": "Knight, Leonard, 1931-",
+  "date": "1993-2009",
+  "where": "Salvation Mountain, Niland, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/B_TrinitySunday.jpg",
+  "refs": [
+   "Mark 8:31-38",
+   "John 3:1-17",
+   "Luke 9:51-62"
+  ],
+  "days": [
+   "Year C Proper 8th Sunday",
+   "Year B Trinity Sunday",
+   "Year B Lent 2nd Sunday",
+   "Year A Lent 2nd Sunday",
+   "Year A Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54150",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Knight, Leonard, 1931-. Salvation Mountain, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54177,
+  "title": "Nathan rebukes David with the parable of the poor man's lamb.",
+  "artist": null,
+  "date": "ca. 1130",
+  "where": "Basilique Sainte-Marie-Madeleine de Vézelay, Vezelay, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/B_Proper13.jpg",
+  "refs": [
+   "Samuel II, 11:26-12:13a"
+  ],
+  "days": [
+   "Year B Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54177",
+  "licence": "Public domain",
+  "attribution": "Nathan rebukes David with the parable of the poor man's lamb., from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54179,
+  "title": "Esther and Haman before Ahasuerus",
+  "artist": "Victors, Jan, 1619-1676",
+  "date": "between 1635 and 1640",
+  "where": "Wallraf-Richartz-Museum, Cologne, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/B_Proper21.jpg",
+  "refs": [
+   "Esther 7:1-6, 9-10; 9:20-22"
+  ],
+  "days": [
+   "Year B Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54179",
+  "licence": "Public domain",
+  "attribution": "Victors, Jan, 1619-1676. Esther and Haman before Ahasuerus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54182,
+  "title": "Summer, or, Ruth and Boaz",
+  "artist": "Poussin, Nicolas, 1594?-1665",
+  "date": "1660-1664",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/B_Proper27.jpg",
+  "refs": [
+   "Ruth 3:1-5; 4:13-17"
+  ],
+  "days": [
+   "Year B Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54182",
+  "licence": "Public domain",
+  "attribution": "Poussin, Nicolas, 1594?-1665. Summer, or, Ruth and Boaz, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54212,
+  "title": "Christ in the House of Simon*",
+  "artist": "Bouts, Dieric, 1415-1475",
+  "date": "ca. 1440-1450",
+  "where": "Staatliche Museen, Berlin, Berlin, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/C_Proper6.jpg",
+  "refs": [
+   "Luke 7:36-8:3"
+  ],
+  "days": [
+   "Year C Proper 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54212",
+  "licence": "Public domain",
+  "attribution": "Bouts, Dieric, 1415-1475. Christ in the House of Simon*, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 54223,
   "title": "The prophet Habakkuk",
   "artist": "Donatello, 1386?-1466",
@@ -349,6 +1663,45 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/54223",
   "licence": "CC BY-SA 4.0",
   "attribution": "Donatello, 1386?-1466. The prophet Habakkuk, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54225,
+  "title": "The Prophet Joel",
+  "artist": "Michelangelo Buonarroti, 1475-1564",
+  "date": "1508-1512",
+  "where": "Sistine Chapel, Vatican City",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/C_Proper25.jpg",
+  "refs": [
+   "Joel 2:23-32"
+  ],
+  "days": [
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54225",
+  "licence": "Public domain",
+  "attribution": "Michelangelo Buonarroti, 1475-1564. The Prophet Joel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54318,
+  "title": "Jesus washing the disciples' feet, detail of mural",
+  "artist": "Paynter, David, 1900-1975",
+  "date": "1929",
+  "where": "Trinity College Chapel, Kandy, Sri Lanka",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/larger-Jesus washing detail.jpg",
+  "refs": [
+   "John 13:1-17, 31b-35"
+  ],
+  "days": [
+   "Year A Maundy Thursday",
+   "Year B Maundy Thursday",
+   "Year C Maundy Thursday",
+   "Year B Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54318",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Paynter, David, 1900-1975. Jesus washing the disciples' feet, detail of mural, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 54429,
@@ -371,6 +1724,44 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/54429",
   "licence": "Public domain",
   "attribution": "San Clemente - \"Triumph of the Cross\" - mosaics in apse of 12th century church, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54435,
+  "title": "Santa Prassede",
+  "artist": null,
+  "date": "780",
+  "where": "S. Prassede (Church : Rome, Italy), Rome, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Interior_of_Basilica_di_Santa_Prassede,_Rome38.jpg",
+  "refs": [
+   "Isaiah 58:1-9a, (9b-12)",
+   "Psalm 112:1-9 (10)"
+  ],
+  "days": [
+   "Year A Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54435",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Santa Prassede, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54439,
+  "title": "Santa Prassede",
+  "artist": null,
+  "date": "780",
+  "where": "S. Prassede (Church : Rome, Italy), Rome, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Santa_Prassede-571.jpg",
+  "refs": [
+   "Isaiah 58:1-9a, (9b-12)",
+   "Psalm 112:1-9 (10)"
+  ],
+  "days": [
+   "Year A Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54439",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Santa Prassede, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 54557,
@@ -464,6 +1855,78 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Bellini, Giovanni, 1426?-1516. Saint Francis in the Desert, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 54940,
+  "title": "Third Class Carriage",
+  "artist": "Daumier, Honoré, 1808-1879",
+  "date": "1856-1858",
+  "where": "Palace of the Legion of Honor, San Francisco, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/daumier-third.jpg",
+  "refs": [
+   "Psalm 147"
+  ],
+  "days": [
+   "Year B Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54940",
+  "licence": "Public domain",
+  "attribution": "Daumier, Honoré, 1808-1879. Third Class Carriage, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 54984,
+  "title": "Parable of the Unjust Judge",
+  "artist": "Millais, John Everett, 1829-1896",
+  "date": "1863",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/johnemparable.jpg",
+  "refs": [
+   "Luke 18:1-8"
+  ],
+  "days": [
+   "Year C Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/54984",
+  "licence": "Public domain",
+  "attribution": "Millais, John Everett, 1829-1896. Parable of the Unjust Judge, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55003,
+  "title": "Tower of Siloam",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "ca. 1886-1894",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/bmtower.jpg",
+  "refs": [
+   "Luke 13:1-9"
+  ],
+  "days": [
+   "Year C Lent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55003",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Tower of Siloam, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55033,
+  "title": "Esther and King Ahasuerus",
+  "artist": null,
+  "date": "15th century",
+  "where": "Vange Church, Uppland, Sweden",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/esteroch.jpg",
+  "refs": [
+   "Esther 7:1-6, 9-10; 9:20-22"
+  ],
+  "days": [
+   "Year B Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55033",
+  "licence": "Public domain",
+  "attribution": "Esther and King Ahasuerus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55038,
   "title": "Disciples John and Peter on their way to the tomb on Easter morning",
   "artist": "Burnand, Eugène, 1850-1921",
@@ -483,6 +1946,181 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/55038",
   "licence": "Public domain",
   "attribution": "Burnand, Eugène, 1850-1921. Disciples John and Peter on their way to the tomb on Easter morning, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55160,
+  "title": "Prophet Hannah in the temple; Samuel's prayer testing",
+  "artist": "Workshop of Rembrandt",
+  "date": "17th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BVis-hannah-temple.jpg",
+  "refs": [
+   "Samuel I, 1:4-20"
+  ],
+  "days": [
+   "Year B Visitation of Mary to Elizabeth",
+   "Year B Epiphany 2nd Sunday",
+   "Year B Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55160",
+  "licence": "Public domain",
+  "attribution": "Workshop of Rembrandt. Prophet Hannah in the temple; Samuel's prayer testing, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55161,
+  "title": "Hannah, prophetess and mother of Samuel, thanking God",
+  "artist": null,
+  "date": "10th century",
+  "where": "Bibliothèque nationale de France, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BVis-hannah-bn.jpg",
+  "refs": [
+   "Samuel I, 1:4-20"
+  ],
+  "days": [
+   "Year A Visitation of Mary to Elizabeth",
+   "Year B Visitation of Mary to Elizabeth",
+   "Year C Visitation of Mary to Elizabeth",
+   "Year B Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55161",
+  "licence": "Public domain",
+  "attribution": "Hannah, prophetess and mother of Samuel, thanking God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55165,
+  "title": "He Who is of God Hears the Word of God",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "ca. 1886-1894",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BEast07-tissot.jpg",
+  "refs": [
+   "John 17:6-19"
+  ],
+  "days": [
+   "Year B Easter 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55165",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. He Who is of God Hears the Word of God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55181,
+  "title": "Hannah Giving Her Son Samuel to the Priest",
+  "artist": "Victors, Jan, 1619-1676",
+  "date": "1645",
+  "where": "Staatliche Museen, Berlin, Berlin, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BVis-hannah7.jpg",
+  "refs": [
+   "Samuel I, 1:4-20"
+  ],
+  "days": [
+   "Year C Christmas 1st Sunday",
+   "Year B Visitation of Mary to Elizabeth",
+   "Year B Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55181",
+  "licence": "Public domain",
+  "attribution": "Victors, Jan, 1619-1676. Hannah Giving Her Son Samuel to the Priest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55188,
+  "title": "Holy Spirit as Breath",
+  "artist": null,
+  "date": "980-993",
+  "where": "Stadtbibliothek Trier, Trier, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BPDay-codex.jpg",
+  "refs": [
+   "Acts 10:44-48"
+  ],
+  "days": [
+   "Year A Day of Pentecost",
+   "Year B Easter 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55188",
+  "licence": "Public domain",
+  "attribution": "Holy Spirit as Breath, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55198,
+  "title": "King David Playing the Harp",
+  "artist": "Rubens, Peter Paul, 1577-1640",
+  "date": "early 17th c.",
+  "where": "Städel, Frankfurt, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BEast06-Davidold.jpg",
+  "refs": [
+   "Psalm 51:1-12",
+   "Psalm 20"
+  ],
+  "days": [
+   "Year A Proper 6th Sunday",
+   "Year B Lent 5th  Sunday",
+   "Year B Proper 6th Sunday",
+   "Year B Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55198",
+  "licence": "Public domain",
+  "attribution": "Rubens, Peter Paul, 1577-1640. King David Playing the Harp, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55200,
+  "title": "Hope",
+  "artist": "Watts, George Frederick, 1817-1904",
+  "date": "1886",
+  "where": "Tate Britain, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BEast06-lyre.jpg",
+  "refs": [
+   "Psalm 71:1-14"
+  ],
+  "days": [
+   "Year C Proper 16th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55200",
+  "licence": "Public domain",
+  "attribution": "Watts, George Frederick, 1817-1904. Hope, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55215,
+  "title": "Christ in the House of Simon the Pharisee",
+  "artist": "Rubens, Peter Paul, 1577-1640",
+  "date": "ca. 1618-1620",
+  "where": "Gosudarstvennyĭ Ėrmitazh (Russia), St. Petersburg, Russia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/rubens-feast.jpg",
+  "refs": [
+   "Luke 7:36-8:3"
+  ],
+  "days": [
+   "Year C Proper 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55215",
+  "licence": "Public domain",
+  "attribution": "Rubens, Peter Paul, 1577-1640. Christ in the House of Simon the Pharisee, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55288,
+  "title": "Christ in Glory",
+  "artist": null,
+  "date": null,
+  "where": "St. Charles Seminary, Carthagena, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Saint_Charles_Seminary_mosaic.jpg",
+  "refs": [
+   "Haggai 1:15b-2:9"
+  ],
+  "days": [
+   "Year C Advent 1st Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55288",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Christ in Glory, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 55312,
@@ -505,6 +2143,98 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Anointing of David, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 55318,
+  "title": "Ruth and Naomi in Boaz' fields",
+  "artist": "Heemskerk, Martin van, 1498-1574",
+  "date": "ca. 1530-1540",
+  "where": "Kunsthistorisches Museum Wien, Wien, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jan_van_Scorel_006.jpg",
+  "refs": [
+   "Ruth 3:1-5; 4:13-17"
+  ],
+  "days": [
+   "Year B Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55318",
+  "licence": "Public domain",
+  "attribution": "Heemskerk, Martin van, 1498-1574. Ruth and Naomi in Boaz' fields, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55330,
+  "title": "Ruth meets Boaz as she gleans and Ruth visits Boaz",
+  "artist": "William, de Brailes, active 13th century",
+  "date": "13th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/brailes-boaz.jpg",
+  "refs": [
+   "Ruth 2:1-13"
+  ],
+  "days": [
+   "Year B Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55330",
+  "licence": "Public domain",
+  "attribution": "William, de Brailes, active 13th century. Ruth meets Boaz as she gleans and Ruth visits Boaz, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55336,
+  "title": "Miraculous Draught of Fishes",
+  "artist": "Bassano, Jacopo, approximately 1518-1592",
+  "date": "1545",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Fishes-Bassano.jpg",
+  "refs": [
+   "John 21:1-19"
+  ],
+  "days": [
+   "Year C Easter 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55336",
+  "licence": "Public domain",
+  "attribution": "Bassano, Jacopo, approximately 1518-1592. Miraculous Draught of Fishes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55337,
+  "title": "Miraculous Draught of Fishes",
+  "artist": "Beuckelaer, Joachim, approximately 1533-1575",
+  "date": "1563",
+  "where": "Getty Center, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Beuckelaer_-_The_Miraculous.jpg",
+  "refs": [
+   "John 21:1-19"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday",
+   "Year C Easter 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55337",
+  "licence": "Public domain",
+  "attribution": "Beuckelaer, Joachim, approximately 1533-1575. Miraculous Draught of Fishes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55340,
+  "title": "Miraculous Draught of Fishes",
+  "artist": "Raphael, 1483-1520",
+  "date": "1515",
+  "where": "Victoria and Albert Museum, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/RaphaelFishes.jpg",
+  "refs": [
+   "John 21:1-19"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday",
+   "Year C Easter 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55340",
+  "licence": "Public domain",
+  "attribution": "Raphael, 1483-1520. Miraculous Draught of Fishes, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55346,
   "title": "Sermon on the Mount",
   "artist": "Bruegel, Jan, 1568-1625",
@@ -525,6 +2255,51 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Bruegel, Jan, 1568-1625. Sermon on the Mount, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 55347,
+  "title": "Sermon on the Mount, detail",
+  "artist": "Olrik, Henrik, 1830-1890",
+  "date": "ca. 1860",
+  "where": "Sankt Matthaeus Kirke, Copenhagen, Denmark",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Sankt_Matthaeus_Kirke.jpg",
+  "refs": [
+   "Matthew 5:1-12",
+   "Matthew 6:24-34",
+   "Samuel I, 2:1-10",
+   "Luke 14:25-33"
+  ],
+  "days": [
+   "Year B Visitation of Mary to Elizabeth",
+   "Year C Visitation of Mary to Elizabeth",
+   "Year C Proper 18th Sunday",
+   "Year A Epiphany 8th Sunday",
+   "Year A Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55347",
+  "licence": "Public domain",
+  "attribution": "Olrik, Henrik, 1830-1890. Sermon on the Mount, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55353,
+  "title": "Wrath",
+  "artist": "Bosch, Hieronymus, -1516",
+  "date": "15th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bosch_Ira.jpg",
+  "refs": [
+   "Psalm 37:1-11, 39-40",
+   "Leviticus 19:1-2, 9-18"
+  ],
+  "days": [
+   "Year C Epiphany 7th Sunday",
+   "Year A Epiphany 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55353",
+  "licence": "Public domain",
+  "attribution": "Bosch, Hieronymus, -1516. Wrath, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55366,
   "title": "Brow of the Hill Near Nazareth",
   "artist": "Tissot, James, 1836-1902",
@@ -541,6 +2316,800 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/55366",
   "licence": "Public domain",
   "attribution": "Tissot, James, 1836-1902. Brow of the Hill Near Nazareth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55391,
+  "title": "White hen with chickens",
+  "artist": "Hamilton, Anton Ignaz",
+  "date": "18th century",
+  "where": "Lazienki Palace, Warsaw, Poland",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/hen-with-chicks.jpg",
+  "refs": [
+   "Psalm 17:1-9",
+   "Luke 13:31-35"
+  ],
+  "days": [
+   "Year C Proper 27th Sunday",
+   "Year C Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55391",
+  "licence": "Public domain",
+  "attribution": "Hamilton, Anton Ignaz. White hen with chickens, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55392,
+  "title": "Holy Face and Ten Names of God",
+  "artist": "Dirc, van Delft, active 1365-1404",
+  "date": "ca. 1400-1404",
+  "where": "Walters Art Museum, Baltimore, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/delft-holy-face.jpg",
+  "refs": [
+   "Psalm 27",
+   "Psalm 80:1-7, 17-19"
+  ],
+  "days": [
+   "Year A Advent 4th Sunday",
+   "Year C Lent 2nd Sunday",
+   "Year A Holy Name of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55392",
+  "licence": "Public domain",
+  "attribution": "Dirc, van Delft, active 1365-1404. Holy Face and Ten Names of God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55397,
+  "title": "Right hand",
+  "artist": "Rodin, Auguste, 1840-1917",
+  "date": null,
+  "where": "Cantor Center for the Arts, Stanford, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Rodin_right_hand.jpg",
+  "refs": [
+   "Psalm 63:1-8"
+  ],
+  "days": [
+   "Year C Lent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55397",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Rodin, Auguste, 1840-1917. Right hand, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55398,
+  "title": "Helping Hands",
+  "artist": null,
+  "date": "2000",
+  "where": "Mandela Gardens, Millenium Square, Leeds, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Helping_Hands_sculpture.jpg",
+  "refs": [
+   "Psalm 63:1-8",
+   "Philippians 2:1-13",
+   "Luke 16:1-13"
+  ],
+  "days": [
+   "Year A Proper 21st Sunday",
+   "Year C Proper 20th Sunday",
+   "Year C Lent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55398",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Helping Hands, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55402,
+  "title": "God's Hand",
+  "artist": "Milles, Carl, 1875-1955",
+  "date": "1949-1953",
+  "where": "Frank Murphy Hall, Detroit, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/770px-Guds_hand_2007.jpg",
+  "refs": [
+   "Psalm 63:1-8",
+   "Isaiah 63:7-9",
+   "Mark 2:23-3:6",
+   "Corinthians II, 4:5-12"
+  ],
+  "days": [
+   "Year B Proper 4th Sunday",
+   "Year A New Year’s Day",
+   "Year A Christmas 1st Sunday",
+   "Year A Proper 9th Sunday",
+   "Year A Holy Name of Jesus",
+   "Year B Holy Name of Jesus",
+   "Year C Holy Name of Jesus",
+   "Year C Lent 3rd Sunday",
+   "Year B Epiphany 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55402",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Milles, Carl, 1875-1955. God's Hand, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55404,
+  "title": "La Mano Poderosa",
+  "artist": "Anonymous",
+  "date": null,
+  "where": "Smithsonian American Art Museum, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/WLA_amart_La_Mano_Poderosa.jpg",
+  "refs": [
+   "Psalm 63:1-8",
+   "Isaiah 63:7-9"
+  ],
+  "days": [
+   "Year A Christmas 1st Sunday",
+   "Year C Lent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55404",
+  "licence": "CC BY-SA 2.5",
+  "attribution": "Anonymous. La Mano Poderosa, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55406,
+  "title": "In the Orchard, or, Gardener near a Gnarled Apple Tree",
+  "artist": "Gogh, Vincent van, 1853-1890",
+  "date": "1883",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Van_Gogh_Orchard.jpg",
+  "refs": [
+   "Luke 13:1-9"
+  ],
+  "days": [
+   "Year C Lent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55406",
+  "licence": "Public domain",
+  "attribution": "Gogh, Vincent van, 1853-1890. In the Orchard, or, Gardener near a Gnarled Apple Tree, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55408,
+  "title": "As the Old Sing, the Young Pipe",
+  "artist": "Jordaens, Jacob, 1593-1678",
+  "date": "17th century",
+  "where": "Private Collection, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jordaens01.jpg",
+  "refs": [
+   "Psalm 98"
+  ],
+  "days": [
+   "Year A Advent 3rd Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55408",
+  "licence": "Public domain",
+  "attribution": "Jordaens, Jacob, 1593-1678. As the Old Sing, the Young Pipe, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55409,
+  "title": "Sing Forth the Honour of His Name",
+  "artist": null,
+  "date": null,
+  "where": "Church of St. Brendan the Navigator, Bantry, County Cork, Ireland",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bantry-window.jpg",
+  "refs": [
+   "Psalm 66:1-9"
+  ],
+  "days": [
+   "Year C Advent 3rd Sunday",
+   "Year C Proper 23rd Sunday",
+   "Year C Proper 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55409",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Sing Forth the Honour of His Name, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55410,
+  "title": "Dancing Lesson",
+  "artist": "Eakins, Thomas",
+  "date": "1878",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/dancing_lesson_thomas_eakins.jpg",
+  "refs": [
+   "Psalm 98",
+   "Psalm 30",
+   "Psalm 149"
+  ],
+  "days": [
+   "Year C Easter 3rd Sunday",
+   "Year B Nativity of the Lord Proper I",
+   "Year A Proper 18th Sunday",
+   "Year C Proper 9th Sunday",
+   "Year C Proper 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55410",
+  "licence": "Public domain",
+  "attribution": "Eakins, Thomas. Dancing Lesson, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55411,
+  "title": "Christ in Glory",
+  "artist": "Bassano, Francesco, approximately 1470-approximately 1539",
+  "date": "16th century",
+  "where": "Capitoline Museum, Rome, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Christ_in_Glory.jpg",
+  "refs": [
+   "Mark 8:31-38"
+  ],
+  "days": [
+   "Year B Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55411",
+  "licence": "Public domain",
+  "attribution": "Bassano, Francesco, approximately 1470-approximately 1539. Christ in Glory, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55412,
+  "title": "Small angel playing (detail from Madonna of Spedalingo)",
+  "artist": "Fiorentino, Rosso, 1494-1540",
+  "date": "1518",
+  "where": "Uffizi Gallery, Florence, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Rosso_Fiorentino_Spedalingo.jpg",
+  "refs": [
+   "Psalm 98",
+   "Psalm 92:1-4, 12-15",
+   "Psalm 150"
+  ],
+  "days": [
+   "Year B Nativity of the Lord Proper I",
+   "Year C Easter 2nd Sunday",
+   "Year C Epiphany 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55412",
+  "licence": "Public domain",
+  "attribution": "Fiorentino, Rosso, 1494-1540. Small angel playing (detail from Madonna of Spedalingo), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55426,
+  "title": "Laughter",
+  "artist": "Boccioni, Umberto, 1882-1916",
+  "date": "1911",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Umberto_Boccioni_-_Laughter.jpg",
+  "refs": [
+   "Psalm 126"
+  ],
+  "days": [
+   "Year C Lent 5th  Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55426",
+  "licence": "Public domain",
+  "attribution": "Boccioni, Umberto, 1882-1916. Laughter, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55432,
+  "title": "Entry into Jerusalem",
+  "artist": "Lorenzetti, Pietro, active 1320-1348",
+  "date": "1320",
+  "where": "Church of San Francesco, lower basilica, Assisi, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Assisi-entry.jpg",
+  "refs": [
+   "Luke 19:28-40",
+   "Matthew 21:1-11",
+   "Mark 11:1-11",
+   "John 12:12-16",
+   "Luke 13:31-35"
+  ],
+  "days": [
+   "Year C Liturgy of Palms",
+   "Year A Liturgy of Palms",
+   "Year B Liturgy of Palms",
+   "Year C Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55432",
+  "licence": "Public domain",
+  "attribution": "Lorenzetti, Pietro, active 1320-1348. Entry into Jerusalem, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55466,
+  "title": "Devil Causes the House of Job's Son to Fall Upon Job's Children",
+  "artist": "Bartolo, di Fredi, 1330-1410",
+  "date": "14th century",
+  "where": "Collegiate Church, San Gimignano, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/house_of_Job_falls_on_his_children.jpg",
+  "refs": [
+   "Job 1:18-19"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55466",
+  "licence": "Public domain",
+  "attribution": "Bartolo, di Fredi, 1330-1410. Devil Causes the House of Job's Son to Fall Upon Job's Children, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55469,
+  "title": "Evolution -- Monument to the Drum",
+  "artist": "Jimenez Rodriguez, Jesus D.",
+  "date": "20th-21st centuries",
+  "where": "Tobarra, Spain",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tobarra-monumento-al-tambor-2.jpg",
+  "refs": [
+   "Psalm 92:1-4, 12-15"
+  ],
+  "days": [
+   "Year B Proper 6th Sunday",
+   "Year C Epiphany 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55469",
+  "licence": "Public domain",
+  "attribution": "Jimenez Rodriguez, Jesus D.. Evolution -- Monument to the Drum, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55471,
+  "title": "Job",
+  "artist": "Bonnat, Léon Joseph Florentin, 1833-1922",
+  "date": "1880",
+  "where": "Musee Bonnat, Bayonne, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bonnat02.jpg",
+  "refs": [
+   "Job 14:1-14",
+   "Job 19:23-27a"
+  ],
+  "days": [
+   "Year A Holy Saturday",
+   "Year B Holy Saturday",
+   "Year C Holy Saturday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55471",
+  "licence": "Public domain",
+  "attribution": "Bonnat, Léon Joseph Florentin, 1833-1922. Job, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55473,
+  "title": "Vision of Cornelius the Centurion",
+  "artist": "Eeckhout, Gerbrand van den, 1621-1674",
+  "date": "1664",
+  "where": "Walters Art Museum, Baltimore, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Vision_of_Cornelius_Walters_372492.jpg",
+  "refs": [
+   "Acts 10:1-8"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55473",
+  "licence": "Public domain",
+  "attribution": "Eeckhout, Gerbrand van den, 1621-1674. Vision of Cornelius the Centurion, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55476,
+  "title": "Ullswater, early morning",
+  "artist": "Glover, John, 1767-1849",
+  "date": "ca. 1824",
+  "where": "Art Gallery of New South Wales, Sydney, Australia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/John_Glover_-_Ullswater.jpg",
+  "refs": [
+   "Psalm 30",
+   "Lamentations 3:1-9, 19-24"
+  ],
+  "days": [
+   "Year C Holy Saturday",
+   "Year C Easter 3rd Sunday",
+   "Year B Proper 8th Sunday",
+   "Year C Proper 9th Sunday",
+   "Year B Epiphany 6th Sunday",
+   "Year C Proper 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55476",
+  "licence": "Public domain",
+  "attribution": "Glover, John, 1767-1849. Ullswater, early morning, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55477,
+  "title": "Moses the Abyssinian",
+  "artist": null,
+  "date": "11th-12th centuries",
+  "where": "Deir Mar Musa al-Habashi, Syria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Frescoes_Monastery_of_Saint_Moses.jpg",
+  "refs": [
+   "Romans 8:26-39"
+  ],
+  "days": [
+   "",
+   "Year A Proper 12th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55477",
+  "licence": "CC BY 2.0",
+  "attribution": "Moses the Abyssinian, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55479,
+  "title": "Memorial to the Persecuted - Bearing a Heavy Weight Together",
+  "artist": "Gáspár, Péter",
+  "date": "1999",
+  "where": "Komarno, Slovakia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Komarom554.jpg",
+  "refs": [
+   "Zechariah 9:9-12",
+   "Psalm 70",
+   "Matthew 11:16-19, 25-30",
+   "Psalm 145:8-14"
+  ],
+  "days": [
+   "Year A Proper 9th Sunday",
+   "Year C Holy Wednesday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55479",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Gáspár, Péter. Memorial to the Persecuted - Bearing a Heavy Weight Together, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55489,
+  "title": "Children of the Sea",
+  "artist": "Israëls, Jozef, 1824-1911",
+  "date": "1872",
+  "where": "Rijksmuseum Amsterdam, Amsterdam, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jozef_Israels_children.jpg",
+  "refs": [
+   "Hosea 1:2-10"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55489",
+  "licence": "Public domain",
+  "attribution": "Israëls, Jozef, 1824-1911. Children of the Sea, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55490,
+  "title": "Hosea and Gomer in an Embrace",
+  "artist": null,
+  "date": "1372",
+  "where": "Den Haag, The Hague, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Hosea_and_Gomer-Haag.jpg",
+  "refs": [
+   "Hosea 1:2-10"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55490",
+  "licence": "Public domain",
+  "attribution": "Hosea and Gomer in an Embrace, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55491,
+  "title": "Spring",
+  "artist": "Millet, Jean François, 1814-1875",
+  "date": "ca. 1868-1873",
+  "where": "Musee D'Orsay, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Millet-Spring7.jpg",
+  "refs": [
+   "Psalm 85",
+   "Isaiah 55:10-13",
+   "Psalm 65"
+  ],
+  "days": [
+   "Year A Easter Vigil",
+   "Year C Proper 12th Sunday",
+   "Year B Easter Vigil",
+   "Year C Easter Vigil",
+   "Year C Proper 10th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55491",
+  "licence": "Public domain",
+  "attribution": "Millet, Jean François, 1814-1875. Spring, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55492,
+  "title": "Justice and Peace Kissing",
+  "artist": null,
+  "date": "ca. 1650",
+  "where": "Schloss Friedenstein, Gotha, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Friedenskuss-Psalm-85v.jpg",
+  "refs": [
+   "Psalm 85"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday",
+   "Year A Advent 2nd  Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55492",
+  "licence": "CC BY 2.0",
+  "attribution": "Justice and Peace Kissing, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55493,
+  "title": "Kiss of Peace",
+  "artist": "Cameron, Julia Margaret, 1815-1879",
+  "date": "1869",
+  "where": "Royal Photographic Society, Bath, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Cameron_Kuss_des_Friedens_1869.jpg",
+  "refs": [
+   "Psalm 85"
+  ],
+  "days": [
+   "Year C Proper 12th Sunday",
+   "Year A Proper 25th Sunday",
+   "Year A Advent 2nd  Sunday",
+   "Year A Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55493",
+  "licence": "Public domain",
+  "attribution": "Cameron, Julia Margaret, 1815-1879. Kiss of Peace, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55496,
+  "title": "Hand of God",
+  "artist": "Rodin, Auguste, 1840-1917",
+  "date": "ca. 1898",
+  "where": "Rhode Island School of Design Museum, Providence, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/RISD_Rodin_Hand_of_God.jpg",
+  "refs": [
+   "Jeremiah 18:1-11",
+   "Psalm 138"
+  ],
+  "days": [
+   "Year A New Year’s Day",
+   "Year C Proper 12th Sunday",
+   "Year B Proper 12th Sunday",
+   "Year C Proper 18th Sunday",
+   "Year A Holy Name of Jesus",
+   "Year B Holy Name of Jesus",
+   "Year C Holy Name of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55496",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Rodin, Auguste, 1840-1917. Hand of God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55503,
+  "title": "Francis of Assisi blessing the birds, detail",
+  "artist": "Mileham, Harry, 1873-1957",
+  "date": "1945",
+  "where": "St. Mary's Church, Norfolk, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Francis-with-birds.jpg",
+  "refs": [
+   "Hosea 11:1-11",
+   "Psalm 84"
+  ],
+  "days": [
+   "Year C Presentation of the Lord",
+   "Year A Presentation of the Lord",
+   "Year B Presentation of the Lord",
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55503",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Mileham, Harry, 1873-1957. Francis of Assisi blessing the birds, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55504,
+  "title": "The Natchez",
+  "artist": "Delacroix, Eugène, 1798-1863",
+  "date": "1835",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Delacroix_Natchez.jpg",
+  "refs": [
+   "Hosea 11:1-11",
+   "Psalm 139:1-6, 13-18"
+  ],
+  "days": [
+   "Year C Proper 18th Sunday",
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55504",
+  "licence": "Public domain",
+  "attribution": "Delacroix, Eugène, 1798-1863. The Natchez, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55506,
+  "title": "Steps",
+  "artist": "Fluegel, Robert J.",
+  "date": "2010",
+  "where": "Cap Haitien, Haiti",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/crutches-Haiti.jpg",
+  "refs": [
+   "Hosea 11:1-11"
+  ],
+  "days": [
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55506",
+  "licence": "Public domain",
+  "attribution": "Fluegel, Robert J.. Steps, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55508,
+  "title": "Sunday Morning",
+  "artist": "Wood, Thomas Waterman, 1823-1903",
+  "date": "ca. 1877",
+  "where": "Smithsonian American Art Museum, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Wood-Sunday-morning.jpg",
+  "refs": [
+   "Hosea 11:1-11",
+   "Psalm 116:1-2, 12-19"
+  ],
+  "days": [
+   "Year A Easter 3rd Sunday",
+   "Year A Easter 6th Sunday",
+   "",
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55508",
+  "licence": "Public domain",
+  "attribution": "Wood, Thomas Waterman, 1823-1903. Sunday Morning, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55512,
+  "title": "St. Lawrence Distributing the Riches of the Church",
+  "artist": "Strozzi, Bernardo, 1581-1644",
+  "date": "ca. 1625",
+  "where": "St. Louis Art Museum, St. Louis, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/strozzi-lawrence-riches.jpg",
+  "refs": [
+   "Luke 12:13-21",
+   "Psalm 146:5-10"
+  ],
+  "days": [
+   "Year A Advent 3rd Sunday",
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55512",
+  "licence": "Public domain",
+  "attribution": "Strozzi, Bernardo, 1581-1644. St. Lawrence Distributing the Riches of the Church, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55525,
+  "title": "Widow Costard's cow and goods, distrained for taxes, are redeemed by the generosity of Johnny Pearmain",
+  "artist": "Penny, Edward, 1714-1791",
+  "date": "1782",
+  "where": "Yale Center for British Art, New Haven, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/widow-goods-redeemed.jpg",
+  "refs": [
+   "Matthew 18:21-35",
+   "Isaiah 1:1, 10-20",
+   "Psalm 146:5-10"
+  ],
+  "days": [
+   "Year A Advent 3rd Sunday",
+   "Year A Proper 19th Sunday",
+   "Year A Thanksgiving Day",
+   "Year C Proper 20th Sunday",
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55525",
+  "licence": "Public domain",
+  "attribution": "Penny, Edward, 1714-1791. Widow Costard's cow and goods, distrained for taxes, are redeemed by the generosity of Johnny Pearmain, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55529,
+  "title": "Beacon, off Mount Desert Island",
+  "artist": "Church, Frederic Edwin, 1826-1900",
+  "date": "1851",
+  "where": "Private Collection",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Beacon_Frederic_Edwin_Church.jpg",
+  "refs": [
+   "Psalm 50:1-8, 22-23"
+  ],
+  "days": [
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55529",
+  "licence": "Public domain",
+  "attribution": "Church, Frederic Edwin, 1826-1900. Beacon, off Mount Desert Island, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55530,
+  "title": "Sunrise",
+  "artist": "Hofheinz-Döring, Margret, 1910-",
+  "date": "1991",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Sonnenaufgang-heinz-doring.jpg",
+  "refs": [
+   "Psalm 50:1-8, 22-23"
+  ],
+  "days": [
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55530",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Hofheinz-Döring, Margret, 1910-. Sunrise, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55531,
+  "title": "Sacrifice of the Old Covenant",
+  "artist": "Rubens, Peter Paul, 1577-1640",
+  "date": "1626",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Sacrifice_of_the_Old_Covenant_Rubens.jpg",
+  "refs": [
+   "Psalm 50:1-8, 22-23"
+  ],
+  "days": [
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55531",
+  "licence": "Public domain",
+  "attribution": "Rubens, Peter Paul, 1577-1640. Sacrifice of the Old Covenant, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55536,
+  "title": "Eye of Providence",
+  "artist": null,
+  "date": "19th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Eye_of_Providence_(icon).jpg",
+  "refs": [
+   "Psalm 33:12-22"
+  ],
+  "days": [
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55536",
+  "licence": "Public domain",
+  "attribution": "Eye of Providence, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55537,
+  "title": "Eye of Providence",
+  "artist": null,
+  "date": null,
+  "where": "Church of St. Anthony of Padua, Bento Goncalves, Brazil",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/1280px-Saint_Anthony_Brazil.jpg",
+  "refs": [
+   "Psalm 33:12-22"
+  ],
+  "days": [
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55537",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Eye of Providence, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55546,
+  "title": "Saint Anthony Convent, Canindé, Ceará, Brazil (Franciscans) - Eucharistic Chapel",
+  "artist": null,
+  "date": "20th century",
+  "where": "Saint Anthony Convent, Caninde, Ceara, Brazil",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Saint_Anthony_Convent3.jpg",
+  "refs": [
+   "Luke 12:32-40",
+   "Psalm 119:105-112"
+  ],
+  "days": [
+   "Year C Proper 14th Sunday",
+   "Year A Proper 10th Sunday",
+   "Year A Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55546",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Saint Anthony Convent, Canindé, Ceará, Brazil (Franciscans) - Eucharistic Chapel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 55553,
@@ -563,6 +3132,122 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Eastern Orthodox icon of Jesus Christ as the True Vine, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 55562,
+  "title": "Great Depression: unemployed, destitute man leaning against vacant store",
+  "artist": "Lange, Dorothea",
+  "date": "1935",
+  "where": "Franklin D. Roosevelt Presidential Library and Museum, Hyde Park, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Destitute_man_vacant_store.jpg",
+  "refs": [
+   "Psalm 82",
+   "Isaiah 60:1-6"
+  ],
+  "days": [
+   "Year B Epiphany of the Lord",
+   "Year C Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55562",
+  "licence": "Public domain",
+  "attribution": "Lange, Dorothea. Great Depression: unemployed, destitute man leaning against vacant store, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55563,
+  "title": "\"I Don't Give to Idlers!\"",
+  "artist": "Pigal, Edmé Jean, 1798-1872",
+  "date": null,
+  "where": "National Institutes of Health, Bethesda, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Refusing_a_beggar_with_one_leg_and_a_crutch.jpg",
+  "refs": [
+   "Psalm 82",
+   "Isaiah 60:1-6"
+  ],
+  "days": [
+   "Year B Epiphany of the Lord",
+   "Year C Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55563",
+  "licence": "Public domain",
+  "attribution": "Pigal, Edmé Jean, 1798-1872. \"I Don't Give to Idlers!\", from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55568,
+  "title": "Church of All Nations - original floor mosaics and current floor",
+  "artist": "Barluzzi, Antonio",
+  "date": "1919-1924",
+  "where": "Jerusalem, Israel",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Church_of_All_Nations_20091021_mosaic.jpg",
+  "refs": [
+   "Psalm 82"
+  ],
+  "days": [
+   "Year C Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55568",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Barluzzi, Antonio. Church of All Nations - original floor mosaics and current floor, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55570,
+  "title": "Church of All Nations - tympanum showing Christ as intercessor/conduit",
+  "artist": "Barluzzi, Antonio",
+  "date": "1919-1924",
+  "where": "Jerusalem, Israel",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Church_of_all_nations.jpg",
+  "refs": [
+   "Psalm 82"
+  ],
+  "days": [
+   "Year C Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55570",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Barluzzi, Antonio. Church of All Nations - tympanum showing Christ as intercessor/conduit, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55597,
+  "title": "Childbirth",
+  "artist": null,
+  "date": "ca. 2000",
+  "where": "Gdansk, Poland",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gdańsk_aleja_Hallera_17_(detal).jpg",
+  "refs": [
+   "Psalm 71:1-14"
+  ],
+  "days": [
+   "Year B Holy Tuesday",
+   "Year A Holy Tuesday",
+   "Year C Holy Tuesday",
+   "Year A Proper 22nd Sunday",
+   "Year C Proper 16th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55597",
+  "licence": "CC0",
+  "attribution": "Childbirth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55599,
+  "title": "Peace Secure - Safe and Protected",
+  "artist": "Nast, Thomas, 1840-1902",
+  "date": "1875",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Peace_Secure-Safe_and_Protected.jpg",
+  "refs": [
+   "Psalm 71:1-14"
+  ],
+  "days": [
+   "Year C Proper 16th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55599",
+  "licence": "Public domain",
+  "attribution": "Nast, Thomas, 1840-1902. Peace Secure - Safe and Protected, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55613,
   "title": "Mount Horeb, Sinai",
   "artist": "Frith, Francis",
@@ -583,6 +3268,185 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Frith, Francis. Mount Horeb, Sinai, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 55623,
+  "title": "Christ Teaches Humility",
+  "artist": "Lauder, Robert Scott, 1803-1869",
+  "date": null,
+  "where": "Scottish National Gallery, Edinburgh, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Christ_Teacheth_Humility.jpg",
+  "refs": [
+   "Matthew 23:1-12",
+   "Luke 14:1, 7-14",
+   "Micah 6:1-8"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday",
+   "Year A Proper 26th Sunday",
+   "Year A Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55623",
+  "licence": "Public domain",
+  "attribution": "Lauder, Robert Scott, 1803-1869. Christ Teaches Humility, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55624,
+  "title": "The Beggars",
+  "artist": "Bruegel, Pieter, approximately 1525-1569",
+  "date": "1568",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Pieter_Bruegel_the_Elder_-_The_Cripples.jpg",
+  "refs": [
+   "Luke 14:1, 7-14"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55624",
+  "licence": "Public domain",
+  "attribution": "Bruegel, Pieter, approximately 1525-1569. The Beggars, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55626,
+  "title": "Blind Beggar",
+  "artist": "Bastien-Lepage, Jules, 1848-1884",
+  "date": null,
+  "where": "Musée des Beaux-Arts de Tournai, Tournai, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jules_Bastien-Lepage_The_Blind_Beggar.jpg",
+  "refs": [
+   "Luke 14:1, 7-14",
+   "Leviticus 19:1-2, 9-18"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday",
+   "Year A Lent 4th Sunday",
+   "Year A Epiphany 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55626",
+  "licence": "Public domain",
+  "attribution": "Bastien-Lepage, Jules, 1848-1884. Blind Beggar, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55627,
+  "title": "Blind Men",
+  "artist": "Ivanov, Sergey, 1864-1910",
+  "date": "1883",
+  "where": "Yekaterinburg Museum of Fine Arts, Yekaterinburg, Russia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/1883_Ivanov_Blinde_anagoria.jpg",
+  "refs": [
+   "Luke 14:1, 7-14",
+   "Matthew 15:(10-20), 21-28"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday",
+   "Year A Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55627",
+  "licence": "Public domain",
+  "attribution": "Ivanov, Sergey, 1864-1910. Blind Men, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55630,
+  "title": "Francis of Assisi",
+  "artist": null,
+  "date": null,
+  "where": "Sacro Monte di Orta, Orta San Giulio, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Sacro_Monte_di_Orta_014.jpg",
+  "refs": [
+   "Sirach 10:12-18",
+   "Matthew 23:1-12",
+   "Micah 6:1-8"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday",
+   "Year A Proper 26th Sunday",
+   "Year A Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55630",
+  "licence": "Public domain",
+  "attribution": "Francis of Assisi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55632,
+  "title": "Children in a Democracy -- On Arizona Highway 87, Maricopa County",
+  "artist": "Lange, Dorothea",
+  "date": "1940",
+  "where": "National Archives and Records Administration, College Park, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/On_Arizona_Highway_87.jpg",
+  "refs": [
+   "Luke 14:1, 7-14"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday",
+   "Year A Proper 22nd Sunday",
+   "Year A Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55632",
+  "licence": "Public domain",
+  "attribution": "Lange, Dorothea. Children in a Democracy -- On Arizona Highway 87, Maricopa County, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55639,
+  "title": "Water-Lily Pond and Weeping Willow",
+  "artist": "Monet, Claude, 1840-1926",
+  "date": "1916-1919",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Claude_Monet-willow.jpg",
+  "refs": [
+   "Psalm 1"
+  ],
+  "days": [
+   "Year C Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55639",
+  "licence": "Public domain",
+  "attribution": "Monet, Claude, 1840-1926. Water-Lily Pond and Weeping Willow, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55642,
+  "title": "Philemon and Apphia",
+  "artist": null,
+  "date": "early 21st century?",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Philemon_and_Apphia.jpg",
+  "refs": [
+   "Philemon 1:1-21"
+  ],
+  "days": [
+   "Year C Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55642",
+  "licence": "Public domain",
+  "attribution": "Philemon and Apphia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55645,
+  "title": "The Windstorm",
+  "artist": "Parreiras, Antônio, 1860-1937",
+  "date": "1888",
+  "where": "Pinacoteca do Estado de São Paulo, Sao Paolo, Brazil",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Parreiras-ventania-pinac.jpg",
+  "refs": [
+   "Mark 13:24-37",
+   "Jeremiah 4:11-12, 22-28"
+  ],
+  "days": [
+   "Year B Advent 1st Sunday",
+   "Year C Proper 19th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55645",
+  "licence": "Public domain",
+  "attribution": "Parreiras, Antônio, 1860-1937. The Windstorm, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55647,
   "title": "The Course of Empire. Desolation",
   "artist": "Cole, Thomas, 1801-1848",
@@ -601,6 +3465,233 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/55647",
   "licence": "Public domain",
   "attribution": "Cole, Thomas, 1801-1848. The Course of Empire. Desolation, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55657,
+  "title": "Peter Williams (1750-1823)",
+  "artist": "Anonymous",
+  "date": "ca. 1810-1815",
+  "where": "New York Historical Society, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/WLA_nyhistorical_Unidentified.jpg",
+  "refs": [
+   "Philemon 1:1-21",
+   "Isaiah 61:1-4, 8-11"
+  ],
+  "days": [
+   "Year B Advent 3rd Sunday",
+   "",
+   "Year C Proper 18th Sunday",
+   "Year A Holy Name of Jesus",
+   "Year B Holy Name of Jesus",
+   "Year C Holy Name of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55657",
+  "licence": "CC BY 2.5",
+  "attribution": "Anonymous. Peter Williams (1750-1823), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55668,
+  "title": "Young Boy Singing",
+  "artist": "Candlelight Master",
+  "date": "1650",
+  "where": "Fine Arts Museums of San Francisco, San Francisco, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Candlelight_Master_Young_Boy_Singing.jpg",
+  "refs": [
+   "Psalm 98"
+  ],
+  "days": [
+   "Year A Advent 3rd Sunday",
+   "Year C Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55668",
+  "licence": "Public domain",
+  "attribution": "Candlelight Master. Young Boy Singing, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55670,
+  "title": "Village Choir",
+  "artist": "Webster, Thomas George, 1800-1886",
+  "date": "1847",
+  "where": "Victoria and Albert Museum, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Thomas_Webster_-_A_Village_Choir.jpg",
+  "refs": [
+   "Psalm 98",
+   "Psalm 100",
+   "Ephesians 5:15-20"
+  ],
+  "days": [
+   "Year B Proper 15th Sunday",
+   "Year B Easter 4th Sunday",
+   "Year A Ash Wednesday",
+   "Year A Reign of Christ",
+   "Year C Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55670",
+  "licence": "Public domain",
+  "attribution": "Webster, Thomas George, 1800-1886. Village Choir, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55672,
+  "title": "St. Roch and the Redeemer",
+  "artist": "Mezzastris, Pierantonio, approximately 1430-1506",
+  "date": "ca. 1480",
+  "where": "Church of San Giacomo, Foligno, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Foligno107.jpg",
+  "refs": [
+   "Psalm 78:1-2, 34-38"
+  ],
+  "days": [
+   "Year C Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55672",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Mezzastris, Pierantonio, approximately 1430-1506. St. Roch and the Redeemer, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55676,
+  "title": "For God so Loved the World...",
+  "artist": null,
+  "date": "2000",
+  "where": "Rampton Parish Church, Rampton, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/milen-banner.jpg",
+  "refs": [
+   "John 3:1-17",
+   "John 3:14-21"
+  ],
+  "days": [
+   "Year A Lent 2nd Sunday",
+   "Year B Lent 4th Sunday",
+   "Year A Holy Cross",
+   "Year C Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55676",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "For God so Loved the World..., from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55677,
+  "title": "Fountain of Eternal Life",
+  "artist": "Fredericks, Marshall M., 1908-1998",
+  "date": "1964",
+  "where": "Memorial Plaza, Cleveland, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Fountain_of_Eternal_Life.jpg",
+  "refs": [
+   "John 3:1-17",
+   "John I, 5:9-13",
+   "John 3:14-21"
+  ],
+  "days": [
+   "Year A Lent 2nd Sunday",
+   "Year B Easter 7th Sunday",
+   "Year B Lent 4th Sunday",
+   "Year A Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55677",
+  "licence": "Public domain",
+  "attribution": "Fredericks, Marshall M., 1908-1998. Fountain of Eternal Life, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55678,
+  "title": "Savior of the World",
+  "artist": "Vrelant, Guillaume, -1481",
+  "date": "ca. 1460-1469",
+  "where": "J. Paul Getty Museum, Los Angeles, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Willem_Vrelan.jpg",
+  "refs": [
+   "John 3:1-17",
+   "John 3:14-21"
+  ],
+  "days": [
+   "Year A Lent 2nd Sunday",
+   "Year B Lent 4th Sunday",
+   "Year A Holy Cross",
+   "Year C Holy Cross"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55678",
+  "licence": "Public domain",
+  "attribution": "Vrelant, Guillaume, -1481. Savior of the World, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55681,
+  "title": "El Salvador killed more than 75,000",
+  "artist": null,
+  "date": null,
+  "where": "San Salvador, El Salvador",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/El_Salvador_killed_more_than_75.000.jpg",
+  "refs": [
+   "Psalm 14"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55681",
+  "licence": "CC BY 2.0",
+  "attribution": "El Salvador killed more than 75,000, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55682,
+  "title": "Starry Night",
+  "artist": "Gogh, Vincent van, 1853-1890",
+  "date": "1888",
+  "where": "Musée d'Orsay, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Vincent_van_Gogh_-_Starry_Night8.jpg",
+  "refs": [
+   "Daniel 12:1-3",
+   "Psalm 8",
+   "Exodus 32:7-14"
+  ],
+  "days": [
+   "Year C Trinity Sunday",
+   "Year A Christmas 2nd Sunday",
+   "Year B Proper 28th Sunday",
+   "Year C Proper 19th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55682",
+  "licence": "Public domain",
+  "attribution": "Gogh, Vincent van, 1853-1890. Starry Night, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55687,
+  "title": "For I know my iniquity, and my sin is always before me.",
+  "artist": "Anonymous",
+  "date": "1794",
+  "where": "Bibliothèque nationale de France, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Deputé_à_la_Convention_nationale.jpg",
+  "refs": [
+   "Psalm 51"
+  ],
+  "days": [
+   "Year C Proper 19th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55687",
+  "licence": "Public domain",
+  "attribution": "Anonymous. For I know my iniquity, and my sin is always before me., from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55694,
+  "title": "Wasted Gallantry",
+  "artist": "Hope, James, 1819-1892",
+  "date": "ca. 1862",
+  "where": "National Park Service, Antietam, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Wasted_Gallantry_by_Captain_James_Hope.jpg",
+  "refs": [
+   "Psalm 79:1-9"
+  ],
+  "days": [
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55694",
+  "licence": "Public domain",
+  "attribution": "Hope, James, 1819-1892. Wasted Gallantry, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 55695,
@@ -624,6 +3715,136 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Rembrandt Harmenszoon van Rijn, 1606-1669. Jeremiah lamenting the destruction of Jerusalem, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 55696,
+  "title": "Mill Children in Macon",
+  "artist": "Hine, Lewis Wickes, 1874-1940",
+  "date": "1909",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Mill_Children_in_Macon.jpg",
+  "refs": [
+   "Amos 8:4-7"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday",
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55696",
+  "licence": "Public domain",
+  "attribution": "Hine, Lewis Wickes, 1874-1940. Mill Children in Macon, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55697,
+  "title": "Sculpture at the Bonegilla Migrant Camp",
+  "artist": null,
+  "date": "ca. 2000",
+  "where": "Bonegilla, Australia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BonegillaMigrantCampSculpture.jpg",
+  "refs": [
+   "Amos 8:4-7"
+  ],
+  "days": [
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55697",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Sculpture at the Bonegilla Migrant Camp, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55698,
+  "title": "Dust Bowl Oklahoma",
+  "artist": null,
+  "date": "1936",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Dust_Bowl_Oklahoma.jpg",
+  "refs": [
+   "Psalm 113"
+  ],
+  "days": [
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55698",
+  "licence": "Public domain",
+  "attribution": "Dust Bowl Oklahoma, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55699,
+  "title": "Motherhood",
+  "artist": "Alves, Nelly Romeo",
+  "date": null,
+  "where": "Catacumba Park, Rio de Janeiro, Brazil",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Motherhood-scul.jpg",
+  "refs": [
+   "Hosea 11:1-11",
+   "Psalm 113"
+  ],
+  "days": [
+   "Year C Proper 20th Sunday",
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55699",
+  "licence": "CC BY-SA 2.5",
+  "attribution": "Alves, Nelly Romeo. Motherhood, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55709,
+  "title": "Right Hand of God Protecting the Faithful against the Demons",
+  "artist": "Fouquet, Jean, approximately 1420-approximately 1480",
+  "date": "1460",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/La_Descente_du_Saint-Esprit.jpg",
+  "refs": [
+   "Psalm 91:1-6, 14-16"
+  ],
+  "days": [
+   "Year A Easter 7th Sunday",
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55709",
+  "licence": "Public domain",
+  "attribution": "Fouquet, Jean, approximately 1420-approximately 1480. Right Hand of God Protecting the Faithful against the Demons, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55710,
+  "title": "Beware of Luxury",
+  "artist": "Steen, Jan, 1626-1679",
+  "date": "1663",
+  "where": "Kunsthistorisches Museum Wien, Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jan_Steen_-_Beware_of_Luxury.jpg",
+  "refs": [
+   "Amos 6:1a, 4-7"
+  ],
+  "days": [
+   "Year C Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55710",
+  "licence": "Public domain",
+  "attribution": "Steen, Jan, 1626-1679. Beware of Luxury, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55719,
+  "title": "Tom Paine's nightly pest",
+  "artist": "Gillray, James, 1756-1815",
+  "date": "1792",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tom_Paines_nightly_pest.jpg",
+  "refs": [
+   "Psalm 37:1-9"
+  ],
+  "days": [
+   "Year C Proper 22nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55719",
+  "licence": "Public domain",
+  "attribution": "Gillray, James, 1756-1815. Tom Paine's nightly pest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 55720,
   "title": "Rich Man and the Poor Lazarus",
   "artist": "Terbrugghen, Hendrik, 1588?-1629",
@@ -640,6 +3861,498 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/55720",
   "licence": "Public domain",
   "attribution": "Terbrugghen, Hendrik, 1588?-1629. Rich Man and the Poor Lazarus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55729,
+  "title": "Jesus Heals the Ten Lepers",
+  "artist": "Anonymous",
+  "date": "17th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jesus_sanat_decem.jpg",
+  "refs": [
+   "Luke 17:11-19"
+  ],
+  "days": [
+   "Year A Thanksgiving Day",
+   "Year C Proper 23rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55729",
+  "licence": "Public domain",
+  "attribution": "Anonymous. Jesus Heals the Ten Lepers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55736,
+  "title": "Prayer and Praise",
+  "artist": "Cameron, Julia Margaret, 1815-1879",
+  "date": "1865",
+  "where": "J. Paul Getty Museum, Los Angeles, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Julia_Margaret-praise.jpg",
+  "refs": [
+   "Psalm 100"
+  ],
+  "days": [
+   "Year C Thanksgiving Day"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55736",
+  "licence": "Public domain",
+  "attribution": "Cameron, Julia Margaret, 1815-1879. Prayer and Praise, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55737,
+  "title": "Rainbow in the Berkshire Hills",
+  "artist": "Inness, George, 1825-1894",
+  "date": "1869",
+  "where": "White House Administrative Office (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/The_Rainbow_inness.jpg",
+  "refs": [
+   "Corinthians I, 3:1-9",
+   "Isaiah 55:10-13",
+   "Psalm 65",
+   "Psalm 100"
+  ],
+  "days": [
+   "Year A Nativity of the Lord Proper I",
+   "Year A Epiphany 6th Sunday",
+   "Year C Thanksgiving Day",
+   "Year A Proper 10th Sunday",
+   "Year C Epiphany 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55737",
+  "licence": "Public domain",
+  "attribution": "Inness, George, 1825-1894. Rainbow in the Berkshire Hills, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55739,
+  "title": "Thanksgiving in camp (of General Louis Blenker) during the US Civil War on Thursday November 28th 1861",
+  "artist": "Waud, Alfred R. (Alfred Rudolph), 1828-1891",
+  "date": "1861",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Thanksgiving_1861_croped.jpg",
+  "refs": [
+   "Psalm 100"
+  ],
+  "days": [
+   "Year C Thanksgiving Day"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55739",
+  "licence": "Public domain",
+  "attribution": "Waud, Alfred R. (Alfred Rudolph), 1828-1891. Thanksgiving in camp (of General Louis Blenker) during the US Civil War on Thursday November 28th 1861, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55747,
+  "title": "Plaque with the prophet Joel",
+  "artist": "Anonymous",
+  "date": "7th century",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Anonymous_Plaque_Joel_Louvre_AC864.jpg",
+  "refs": [
+   "Joel 2:23-32"
+  ],
+  "days": [
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55747",
+  "licence": "CC BY 2.5",
+  "attribution": "Anonymous. Plaque with the prophet Joel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55748,
+  "title": "River Landscape",
+  "artist": "Bruegel, Jan, 1568-1625",
+  "date": "1607",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jan_Brueghel_the_Elder_River_Landscape.jpg",
+  "refs": [
+   "Psalm 65"
+  ],
+  "days": [
+   "Year A Christmas 2nd Sunday",
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55748",
+  "licence": "Public domain",
+  "attribution": "Bruegel, Jan, 1568-1625. River Landscape, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55749,
+  "title": "Harvesters",
+  "artist": "Bruegel, Pieter, approximately 1525-1569",
+  "date": "1565",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Pieter_Bruegel_harv.jpg",
+  "refs": [
+   "Psalm 72",
+   "Psalm 65"
+  ],
+  "days": [
+   "Year A Advent 2nd  Sunday",
+   "Year C Proper 25th Sunday",
+   "Year B Proper 6th Sunday",
+   "Year A Proper 10th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55749",
+  "licence": "Public domain",
+  "attribution": "Bruegel, Pieter, approximately 1525-1569. Harvesters, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55754,
+  "title": "Swallow's Nest",
+  "artist": null,
+  "date": "1883",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Die_Gartenlaube_(1883).jpg",
+  "refs": [
+   "Psalm 84"
+  ],
+  "days": [
+   "Year B Proper 16th Sunday",
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55754",
+  "licence": "Public domain",
+  "attribution": "Swallow's Nest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55755,
+  "title": "Blue Swallow",
+  "artist": "Sharpe, Richard Bowdler, 1847-1909",
+  "date": "1894",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Blue_Swallow_-_Hirundo_atrocaerulea.jpg",
+  "refs": [
+   "Psalm 84"
+  ],
+  "days": [
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55755",
+  "licence": "Public domain",
+  "attribution": "Sharpe, Richard Bowdler, 1847-1909. Blue Swallow, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55757,
+  "title": "Rain in an Oak Forest",
+  "artist": "Shishkin, Ivan Ivanovich, 1832-1898",
+  "date": "1891",
+  "where": "Gosudarstvennai︠a︡ Tretʹi︠a︡kovskai︠a︡ galerei︠a︡, Moscow, Russia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Shishkin_DozVDubLesu_114.jpg",
+  "refs": [
+   "Psalm 84",
+   "Psalm 72",
+   "Jeremiah 14:7-10, 19-22"
+  ],
+  "days": [
+   "Year A Advent 2nd  Sunday",
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55757",
+  "licence": "Public domain",
+  "attribution": "Shishkin, Ivan Ivanovich, 1832-1898. Rain in an Oak Forest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55760,
+  "title": "Yerres, the Effect of Rain",
+  "artist": "Caillebotte, Gustave, 1848-1894",
+  "date": "1875",
+  "where": "Indiana University Art Museum, Bloomington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/G_Caillebotte_-_LYerres_pluie.jpg",
+  "refs": [
+   "Psalm 84",
+   "Psalm 65",
+   "Jeremiah 14:7-10, 19-22"
+  ],
+  "days": [
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55760",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Caillebotte, Gustave, 1848-1894. Yerres, the Effect of Rain, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55764,
+  "title": "Pharisee and the Publican",
+  "artist": "Millais, John Everett, 1829-1896",
+  "date": null,
+  "where": "Tate Britain, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/MillaisThe_Pharisee.jpg",
+  "refs": [
+   "Luke 18:9-14"
+  ],
+  "days": [
+   "Year A Proper 26th Sunday",
+   "Year C Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55764",
+  "licence": "Public domain",
+  "attribution": "Millais, John Everett, 1829-1896. Pharisee and the Publican, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55770,
+  "title": "A Mighty Fortress is Our God...",
+  "artist": "Kuehl, Gotthardt, 1850-1915",
+  "date": "1896",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gotthardt_Kuehl_Ein.jpg",
+  "refs": [
+   "Isaiah 35:1-10",
+   "Psalm 149"
+  ],
+  "days": [
+   "Year C All Saints Day",
+   "Year A Advent 3rd Sunday",
+   "Year A Proper 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55770",
+  "licence": "Public domain",
+  "attribution": "Kuehl, Gotthardt, 1850-1915. A Mighty Fortress is Our God..., from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55771,
+  "title": "Angel musicians",
+  "artist": "Macheln, Georg Anton",
+  "date": "17th century",
+  "where": "Church of St. Magnus, Bad Schussenried, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bad_Schussenried_Kloster.jpg",
+  "refs": [
+   "Psalm 149"
+  ],
+  "days": [
+   "Year C All Saints Day"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55771",
+  "licence": "Public domain",
+  "attribution": "Macheln, Georg Anton. Angel musicians, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55772,
+  "title": "Karlskirche Fresco",
+  "artist": "Rottmayr, Johann Michael, 1654-1730",
+  "date": "17th-18th centuries",
+  "where": "St. Karl Borromäus, Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Karlskirche_Frescos_-_Glaube_4.jpg",
+  "refs": [
+   "Psalm 149"
+  ],
+  "days": [
+   "Year C All Saints Day"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55772",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Rottmayr, Johann Michael, 1654-1730. Karlskirche Fresco, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55786,
+  "title": "Jane Addams",
+  "artist": "Brush, George de Forest, 1855-1941",
+  "date": "1906",
+  "where": "Smithsonian American Art Museum, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jane_Addams,_1906.jpg",
+  "refs": [
+   "Micah 6:1-8",
+   "Amos 5:18-24",
+   "Isaiah 1:1, 10-20",
+   "Isaiah 61:1-4, 8-11"
+  ],
+  "days": [
+   "Year A Proper 17th Sunday",
+   "Year A Proper 26th Sunday",
+   "Year C Proper 26th Sunday",
+   "Year B Advent 3rd Sunday",
+   "Year A Proper 27th Sunday",
+   "Year A Holy Monday",
+   "Year A Ash Wednesday",
+   "Year A Epiphany 4thSunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55786",
+  "licence": "CC BY 2.0",
+  "attribution": "Brush, George de Forest, 1855-1941. Jane Addams, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55792,
+  "title": "Silver Chalice from the Byzantine period",
+  "artist": null,
+  "date": null,
+  "where": "Walters Art Museum, Baltimore, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Byzantine_-_ChaliceS.jpg",
+  "refs": [
+   "Haggai 1:15b-2:9"
+  ],
+  "days": [
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55792",
+  "licence": "Public domain",
+  "attribution": "Silver Chalice from the Byzantine period, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55795,
+  "title": "Jesus Christ, the light of the world",
+  "artist": null,
+  "date": "2010",
+  "where": "Aulendorf, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Aulendorf_-_Blumenteppich_zu_Fronleichnam.jpg",
+  "refs": [
+   "John 9:1-41",
+   "Matthew 5:13-20",
+   "John 8:12"
+  ],
+  "days": [
+   "Year A Lent 4th Sunday",
+   "Year A Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55795",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Jesus Christ, the light of the world, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55797,
+  "title": "Saying Grace",
+  "artist": "Bega, Cornelis Pietersz., approximately 1631-1664",
+  "date": "1663",
+  "where": "Rijksmuseum Amsterdam, Amsterdam, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BegaPrayer.jpg",
+  "refs": [
+   "Romans 8:26-39",
+   "Philippians 4:4-9",
+   "Acts 2:42-47"
+  ],
+  "days": [
+   "Year A Epiphany 2nd Sunday",
+   "Year B Advent 3rd Sunday",
+   "Year B Lent 3rd Sunday",
+   "Year C Thanksgiving Day",
+   "Year A Ash Wednesday",
+   "Year A Easter 4th Sunday",
+   "Year A Proper 12th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55797",
+  "licence": "Public domain",
+  "attribution": "Bega, Cornelis Pietersz., approximately 1631-1664. Saying Grace, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55807,
+  "title": "Hannah presenting her son Samuel to the priest Eli",
+  "artist": "Eeckhout, Gerbrand van den, 1621-1674",
+  "date": "ca. 1665",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/samuel-eli-eeckhout.jpg",
+  "refs": [
+   "Samuel I, 1:4-20"
+  ],
+  "days": [
+   "Year B Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55807",
+  "licence": "Public domain",
+  "attribution": "Eeckhout, Gerbrand van den, 1621-1674. Hannah presenting her son Samuel to the priest Eli, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55848,
+  "title": "Interior of the Church of the Light",
+  "artist": "Andō, Tadao, 1941-",
+  "date": "1999",
+  "where": "Church of the Light, Ibaraki, Japan",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Church_of_Light-Ando.jpg",
+  "refs": [
+   "John 9:1-41",
+   "John 12:20-36",
+   "Ephesians 5:8-14",
+   "Matthew 4:12-23",
+   "Romans 13:11-14",
+   "John 3:14-21",
+   "Peter I, 2:2-10"
+  ],
+  "days": [
+   "Year B Holy Tuesday",
+   "Year A Holy Tuesday",
+   "Year C Holy Tuesday",
+   "Year A Easter 5th Sunday",
+   "Year A Advent 1st Sunday",
+   "Year A Lent 4th Sunday",
+   "Year B Lent 4th Sunday",
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55848",
+  "licence": "CC BY-SA 2.5",
+  "attribution": "Andō, Tadao, 1941-. Interior of the Church of the Light, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55869,
+  "title": "Winnowing Grain",
+  "artist": "Johnson, Eastman, 1824-1906",
+  "date": "ca. 1873-1879",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Eastman_Johnson_-_Winnowing_Grain.jpg",
+  "refs": [
+   "Psalm 1"
+  ],
+  "days": [
+   "Year A Christmas 2nd Sunday",
+   "Year B Easter 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55869",
+  "licence": "Public domain",
+  "attribution": "Johnson, Eastman, 1824-1906. Winnowing Grain, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55884,
+  "title": "God the Father, Mary, and Christ",
+  "artist": "Anonymous",
+  "date": "1690-1710",
+  "where": "Musée du quai Branly, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Etiopia-dio-abba668.jpg",
+  "refs": [
+   "Romans 8:12-25"
+  ],
+  "days": [
+   "Year A Proper 11th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55884",
+  "licence": "CC BY 3.0",
+  "attribution": "Anonymous. God the Father, Mary, and Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55904,
+  "title": "Disciples See Christ Walking on the Water",
+  "artist": "Tanner, Henry Ossawa, 1859-1937",
+  "date": "ca. 1907",
+  "where": "Des Moines Art Center, Des Moines, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/tanner-walk-water-3002.jpg",
+  "refs": [
+   "John 6:1-21",
+   "Matthew 14:22-33"
+  ],
+  "days": [
+   "Year B Proper 12th Sunday",
+   "Year A Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55904",
+  "licence": "Public domain",
+  "attribution": "Tanner, Henry Ossawa, 1859-1937. Disciples See Christ Walking on the Water, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 55968,
@@ -660,6 +4373,939 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/55968",
   "licence": "Public domain",
   "attribution": "Roberti, Ercole de', -1496. Israelites Gathering Manna, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55992,
+  "title": "China 1944: A destitute boy with a wicker basket in the Poor People's Refuge in Changsa",
+  "artist": "Beaton, Cecil, 1904-1980",
+  "date": "1944",
+  "where": "Imperial War Museum, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Cecil_Beaton2885741.jpg",
+  "refs": [
+   "Isaiah 25:1-9",
+   "Psalm 41"
+  ],
+  "days": [
+   "",
+   "Year B Epiphany 7th Sunday",
+   "Year A Proper 23rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55992",
+  "licence": "Public domain",
+  "attribution": "Beaton, Cecil, 1904-1980. China 1944: A destitute boy with a wicker basket in the Poor People's Refuge in Changsa, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55993,
+  "title": "Autumn Foliage",
+  "artist": "Thomson, Thomas John, 1877-1917",
+  "date": "1915",
+  "where": "Art Gallery of Ontario, Ontario, Canada",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tom_Thomson_293462659.jpg",
+  "refs": [
+   "Psalm 96:1-9, (10-13)"
+  ],
+  "days": [
+   "Year A Proper 24th Sunday",
+   "Year C Epiphany 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55993",
+  "licence": "Public domain",
+  "attribution": "Thomson, Thomas John, 1877-1917. Autumn Foliage, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55997,
+  "title": "The Defeat of Sisera",
+  "artist": "Giordano, Luca, 1634-1705",
+  "date": "17th century",
+  "where": "Museo del Prado, Madrid, Spain",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Giordano-defeat320198.jpg",
+  "refs": [
+   "Judges 4:1-7"
+  ],
+  "days": [
+   "Year A Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55997",
+  "licence": "Public domain",
+  "attribution": "Giordano, Luca, 1634-1705. The Defeat of Sisera, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55998,
+  "title": "Deborah Beneath the Palm Tree",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "1896-1902",
+  "where": "Jewish Museum (New York City), New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tissot_Deborah_Beneath_the_Palm_Tree.jpg",
+  "refs": [
+   "Judges 4:1-7"
+  ],
+  "days": [
+   "Year A Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55998",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Deborah Beneath the Palm Tree, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 55999,
+  "title": "Deborah Judging Israel",
+  "artist": "Lawrie, Lee, 1877-1963",
+  "date": "1922-1932",
+  "where": "Nebraska State Capitol, Lincoln, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Nebraska_Debo3520.jpg",
+  "refs": [
+   "Judges 4:1-7"
+  ],
+  "days": [
+   "Year A Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/55999",
+  "licence": "CC0",
+  "attribution": "Lawrie, Lee, 1877-1963. Deborah Judging Israel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56000,
+  "title": "Deborah with her Lyre",
+  "artist": null,
+  "date": "16th century",
+  "where": "Saint-Germain-l'Auxerrois, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Paris_Saint-Germain-lAuxerrois245.jpg",
+  "refs": [
+   "Judges 4:1-7"
+  ],
+  "days": [
+   "Year A Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56000",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Deborah with her Lyre, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56011,
+  "title": "Christ and the Lepers",
+  "artist": null,
+  "date": "1035-1040",
+  "where": "Diocesan Museum of the Archdiocese of Munich and Freising, Freising, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/aureus-lepers.jpg",
+  "refs": [
+   "Luke 17:11-19"
+  ],
+  "days": [
+   "Year C Thanksgiving Day",
+   "Year A Thanksgiving Day",
+   "Year C Proper 23rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56011",
+  "licence": "Public domain",
+  "attribution": "Christ and the Lepers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56060,
+  "title": "Soup Kitchen for the Jewish Poor",
+  "artist": null,
+  "date": "1902",
+  "where": "London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/soup-jewish301988467.jpg",
+  "refs": [
+   "Luke 3:7-18",
+   "Psalm 41"
+  ],
+  "days": [
+   "Year C Advent 3rd Sunday",
+   "Year B Epiphany 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56060",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Soup Kitchen for the Jewish Poor, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56109,
+  "title": "Father of These Children...",
+  "artist": "Lange, Dorothea",
+  "date": "ca. 1944-1946",
+  "where": "National Archives and Records Administration, College Park, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Lange-alien-sm349isjd.jpg",
+  "refs": [
+   "Luke 13:31-35"
+  ],
+  "days": [
+   "Year C Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56109",
+  "licence": "Public domain",
+  "attribution": "Lange, Dorothea. Father of These Children..., from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56149,
+  "title": "Raising of the Son of the Widow of Nain",
+  "artist": "Anonymous",
+  "date": "ca. 1180",
+  "where": "Duomo di Monreale, Monreale, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Nain_widows_son_is_resurrected_by_Christ.jpg",
+  "refs": [
+   "Luke 7:11-17"
+  ],
+  "days": [
+   "Year C Proper 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56149",
+  "licence": "Public domain",
+  "attribution": "Anonymous. Raising of the Son of the Widow of Nain, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56198,
+  "title": "Paz -- Peace",
+  "artist": "Emnamizouni",
+  "date": "2015",
+  "where": "Tunisia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Paz_peace-2ks8.jpg",
+  "refs": [
+   "Psalm 122",
+   "Luke 10:1-11, 16-20"
+  ],
+  "days": [
+   "Year A Advent 1st Sunday",
+   "Year C Proper 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56198",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Emnamizouni. Paz -- Peace, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56228,
+  "title": "Wheat Field in Rain",
+  "artist": "Gogh, Vincent van, 1853-1890",
+  "date": "1889",
+  "where": "Philadelphia Museum of Art, Philadelphia, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/gogh-rain-2kjj1.jpg",
+  "refs": [
+   "James 5:7-10"
+  ],
+  "days": [
+   "Year A Advent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56228",
+  "licence": "Public domain",
+  "attribution": "Gogh, Vincent van, 1853-1890. Wheat Field in Rain, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56263,
+  "title": "Christ and Nicodemus",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "ca. 1886-1894",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/nico-tissot-23908cdyha.jpg",
+  "refs": [
+   "John 3:1-17"
+  ],
+  "days": [
+   "Year B Trinity Sunday",
+   "Year A Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56263",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Christ and Nicodemus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56275,
+  "title": "Jesus Preaching in the Present",
+  "artist": null,
+  "date": "20th century",
+  "where": "Söraby kyrka, Rottne, Sweden",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0009.jpg",
+  "refs": [
+   "Acts 10:34-43"
+  ],
+  "days": [
+   "Year A Baptism of the Lord",
+   "Year B Proper 11th Sunday",
+   "Year C Epiphany 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56275",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Jesus Preaching in the Present, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56280,
+  "title": "Decorated Incipit from Psalm 1",
+  "artist": null,
+  "date": "1240-1250",
+  "where": "Getty Center, Los Angeles, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0014.jpg",
+  "refs": [
+   "Malachi 3:1-4",
+   "Psalm 1"
+  ],
+  "days": [
+   "Year C Presentation of the Lord",
+   "Year A Presentation of the Lord",
+   "Year B Presentation of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56280",
+  "licence": "Public domain",
+  "attribution": "Decorated Incipit from Psalm 1, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56281,
+  "title": "Niagra Falls from the American Side",
+  "artist": "Church, Frederic Edwin, 1826-1900",
+  "date": "1867",
+  "where": "Scottish National Gallery, Edinburgh, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0016.jpg",
+  "refs": [
+   "Psalm 96"
+  ],
+  "days": [
+   "Year A Nativity of the Lord Proper I"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56281",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Church, Frederic Edwin, 1826-1900. Niagra Falls from the American Side, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56287,
+  "title": "Four Men Kneeling before God",
+  "artist": "Boucicaut Master, active 15th century",
+  "date": "1413-1415",
+  "where": "J. Paul Getty Museum, Los Angeles, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0022.jpg",
+  "refs": [
+   "Psalm 27:1, 4-9"
+  ],
+  "days": [
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56287",
+  "licence": "Public domain",
+  "attribution": "Boucicaut Master, active 15th century. Four Men Kneeling before God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56288,
+  "title": "Veil of St Veronica",
+  "artist": "Greco, 1541?-1614",
+  "date": "1580-1582",
+  "where": "Private collection",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0023.jpg",
+  "refs": [
+   "Psalm 27:1, 4-9"
+  ],
+  "days": [
+   "Year A Epiphany 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56288",
+  "licence": "Public domain",
+  "attribution": "Greco, 1541?-1614. Veil of St Veronica, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56300,
+  "title": "The Money Changer and His Wife or The Banker and His Wife",
+  "artist": "Marinus Claeszoon van Reymerswaele",
+  "date": "16th century",
+  "where": "Musée des beaux-arts de Valenciennes, Valenciennes, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Marinus_Van_Reymerswale_The_Banker_and_His_Wife.jpg",
+  "refs": [
+   "Psalm 112:1-9 (10)"
+  ],
+  "days": [
+   "Year A Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56300",
+  "licence": "Public domain",
+  "attribution": "Marinus Claeszoon van Reymerswaele. The Money Changer and His Wife or The Banker and His Wife, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56306,
+  "title": "Sun",
+  "artist": "Munch, Edvard, 1863-1944",
+  "date": "1912-1913",
+  "where": "Munch Museum, Oslo, Norway",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0041.jpg",
+  "refs": [
+   "Matthew 5:38-48",
+   "Psalm 31:9-16"
+  ],
+  "days": [
+   "Year A Easter 5th Sunday",
+   "Year A Easter 4th Sunday",
+   "Year A Epiphany 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56306",
+  "licence": "Public domain",
+  "attribution": "Munch, Edvard, 1863-1944. Sun, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56320,
+  "title": "Solar Eclipse from Mount Santa Lucia",
+  "artist": "Watkins, Carleton E., 1829-1916",
+  "date": "1889",
+  "where": "Getty Center, Los Angeles, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0056.jpg",
+  "refs": [
+   "Mark 13:24-37"
+  ],
+  "days": [
+   "Year B Advent 1st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56320",
+  "licence": "Public domain",
+  "attribution": "Watkins, Carleton E., 1829-1916. Solar Eclipse from Mount Santa Lucia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56321,
+  "title": "Christ in Glory",
+  "artist": "McLean, Helen",
+  "date": "2000-2010",
+  "where": "Church of the Transfiguration, Barnstable, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0058.jpg",
+  "refs": [
+   "Mark 13:24-37",
+   "John 14:1-14",
+   "Job 19:23-27a"
+  ],
+  "days": [
+   "Year A Easter 5th Sunday",
+   "Year B Advent 1st Sunday",
+   "Year C Proper 27th Sunday",
+   "Year A Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56321",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "McLean, Helen. Christ in Glory, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56329,
+  "title": "Dancing on the Barn Floor",
+  "artist": "Mount, William Sidney, 1807-1868",
+  "date": "1831",
+  "where": "Long Island Museum of American Art, History, and Carriages, Stony Brook, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0065.jpg",
+  "refs": [
+   "Psalm 126"
+  ],
+  "days": [
+   "Year B Advent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56329",
+  "licence": "Public domain",
+  "attribution": "Mount, William Sidney, 1807-1868. Dancing on the Barn Floor, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56380,
+  "title": "Wilderness of Engedi",
+  "artist": null,
+  "date": "1843",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0114.jpg",
+  "refs": [
+   "Psalm 29"
+  ],
+  "days": [
+   "Year B Baptism of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56380",
+  "licence": "CC BY 4.0",
+  "attribution": "Wilderness of Engedi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56387,
+  "title": "Prophet Jonah Before the Walls of Nineveh",
+  "artist": "Rembrandt Harmenszoon van Rijn, 1606-1669",
+  "date": "ca. 1655",
+  "where": "Albertina Museum, Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0121.jpg",
+  "refs": [
+   "Jonah 3:1-5, 10"
+  ],
+  "days": [
+   "Year A Proper 20th Sunday",
+   "Year B Epiphany 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56387",
+  "licence": "Public domain",
+  "attribution": "Rembrandt Harmenszoon van Rijn, 1606-1669. Prophet Jonah Before the Walls of Nineveh, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56414,
+  "title": "Sunset sets the sky ablaze at South Dakota's Waubay National Wildlife Refuge",
+  "artist": "Neuharth, Spencer",
+  "date": null,
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ACT0148.jpg",
+  "refs": [
+   "Psalm 50:1-6",
+   "Psalm 46"
+  ],
+  "days": [
+   "Year A Proper 4th Sunday",
+   "Year B Transfiguration Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56414",
+  "licence": "Public domain",
+  "attribution": "Neuharth, Spencer. Sunset sets the sky ablaze at South Dakota's Waubay National Wildlife Refuge, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56458,
+  "title": "Samuel Relating to Eli the Judgments of God upon Eli's House",
+  "artist": "Copley, John Singleton, 1738-1815",
+  "date": "1780",
+  "where": "Wadsworth Atheneum, Hartford, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/samelis987xcv.jpg",
+  "refs": [
+   "Samuel I, 3:1-10"
+  ],
+  "days": [
+   "Year B Proper 4th Sunday",
+   "Year B Epiphany 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56458",
+  "licence": "Public domain",
+  "attribution": "Copley, John Singleton, 1738-1815. Samuel Relating to Eli the Judgments of God upon Eli's House, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56472,
+  "title": "Living Cross",
+  "artist": "Hall, Sarah",
+  "date": "21st century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Living_Cross_by_Sarah_Hall.jpg",
+  "refs": [
+   "Psalm 51"
+  ],
+  "days": [
+   "Year B Ash Wednesday",
+   "Year B Epiphany 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56472",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Hall, Sarah. Living Cross, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56474,
+  "title": "Pharisee and the Publican",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "1886-1894",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/publi3d0x.jpg",
+  "refs": [
+   "Luke 18:9-14",
+   "Matthew 6:1-6, 16-21"
+  ],
+  "days": [
+   "Year C Proper 25th Sunday",
+   "Year B Ash Wednesday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56474",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Pharisee and the Publican, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56488,
+  "title": "Faith",
+  "artist": "Lecomte, Felix",
+  "date": "1792",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Faith_and_Charity_MET_ES4850.jpg",
+  "refs": [
+   "Psalm 25:1-10"
+  ],
+  "days": [
+   "Year B Lent 1st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56488",
+  "licence": "CC0",
+  "attribution": "Lecomte, Felix. Faith, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56514,
+  "title": "Get Thee Behind Me, Satan!",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "ca. 1886-1894",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/cmfgbl0697ka.jpg",
+  "refs": [
+   "Mark 8:31-38",
+   "Matthew 16:21-28"
+  ],
+  "days": [
+   "Year A Proper 17th Sunday",
+   "Year B Proper 19th Sunday",
+   "Year B Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56514",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Get Thee Behind Me, Satan!, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56518,
+  "title": "Ascension",
+  "artist": "Saget, Father George",
+  "date": "1963",
+  "where": "Abbaye de Keur Moussa, Keur Moussa, Senegal",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/mouls9cxlkn43589fvdnjk.jpg",
+  "refs": [
+   "Luke 24:44-53",
+   "John 17:1-11"
+  ],
+  "days": [
+   "Year A Ascension of the Lord",
+   "Year B Ascension of the Lord",
+   "Year C Ascension of the Lord",
+   "Year A Easter 7th Sunday",
+   "Year B Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56518",
+  "licence": "CC BY 2.0",
+  "attribution": "Saget, Father George. Ascension, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56583,
+  "title": "Adams Memorial",
+  "artist": "Saint-Gaudens, Augustus, 1848-1907",
+  "date": "1886-1891",
+  "where": "Smithsonian American Art Museum, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/1280px-Smithsonian-Saint-Gaudens-Adams_Memorial-2264.jpg",
+  "refs": [
+   "Psalm 130"
+  ],
+  "days": [
+   "Year B Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56583",
+  "licence": "Public domain",
+  "attribution": "Saint-Gaudens, Augustus, 1848-1907. Adams Memorial, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56589,
+  "title": "Seat of Wisdom - Sedes Sapientiae",
+  "artist": null,
+  "date": "16th century",
+  "where": "Museum M, Leuven, Belgium",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Sedes0386-2xazl.jpg",
+  "refs": [
+   "Psalm 111"
+  ],
+  "days": [
+   "Year B Proper 19th Sunday",
+   "Year B Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56589",
+  "licence": "CC0",
+  "attribution": "Seat of Wisdom - Sedes Sapientiae, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56590,
+  "title": "Christ Accused by the Pharisees",
+  "artist": "Duccio, di Buoninsegna, -1319?",
+  "date": "ca. 1308-1311",
+  "where": "Museo dell'Opera del Duomo, Siena, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Duccio_di_Buoninsegna_-_Christ_Accused_by_the_Pharisees_(detail)_-_WGA06802.jpg",
+  "refs": [
+   "John 6:51-58"
+  ],
+  "days": [
+   "Year B Proper 15th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56590",
+  "licence": "Public domain",
+  "attribution": "Duccio, di Buoninsegna, -1319?. Christ Accused by the Pharisees, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56592,
+  "title": "Chinese Orthodox communion bread seal",
+  "artist": null,
+  "date": "21st century",
+  "where": "Church of the Apostles, Hong Kong, China",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Chinese_Orthodox_communion_bread_seal.jpg",
+  "refs": [
+   "John 6:35, 41-51",
+   "John 6:51-58"
+  ],
+  "days": [
+   "Year B Proper 15th Sunday",
+   "Year B Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56592",
+  "licence": "CC0",
+  "attribution": "Chinese Orthodox communion bread seal, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56595,
+  "title": "Underground Railroad",
+  "artist": "Webber, Charles T.",
+  "date": "1893",
+  "where": "Cincinnati Art Museum, Cincinnati, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Charles_T._Webber_-_The_Underground_Railroad_-_Google_Art_Project.jpg",
+  "refs": [
+   "Joshua 24:1-2a, 14-18"
+  ],
+  "days": [
+   "Year A Christmas 2nd Sunday",
+   "Year B Proper 16th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56595",
+  "licence": "Public domain",
+  "attribution": "Webber, Charles T.. Underground Railroad, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56602,
+  "title": "Moneylender and his Wife",
+  "artist": "Matsys, Quentin",
+  "date": "1514",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Quentin_Massys_001.jpg",
+  "refs": [
+   "Psalm 15"
+  ],
+  "days": [
+   "Year B Proper 17th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56602",
+  "licence": "Public domain",
+  "attribution": "Matsys, Quentin. Moneylender and his Wife, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56604,
+  "title": "Head of a Pharisee",
+  "artist": "Munkácsy, Mihály, 1844-1900",
+  "date": "1881",
+  "where": "Hungarian National Museum, Budapest, Hungary",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Mihaly_Munkacsy_Head_of_a_Pharisee.jpg",
+  "refs": [
+   "Mark 7:1-8, 14-15, 21-23",
+   "Mark 2:13-22"
+  ],
+  "days": [
+   "Year B Proper 17th Sunday",
+   "Year B Epiphany 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56604",
+  "licence": "Public domain",
+  "attribution": "Munkácsy, Mihály, 1844-1900. Head of a Pharisee, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56605,
+  "title": "Mother of God of Tenderness Towards Evil Hearts",
+  "artist": "Petrov-Vodkin, Kuzma",
+  "date": "1914",
+  "where": "Russian Museum, St. Petersburg, Russia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Kuzma_Petrov-Vodkin_-_The_Mother_of_God_of_Tenderness_Towards_Evil_Hearts_-_Google_Art_Project.jpg",
+  "refs": [
+   "Mark 7:1-8, 14-15, 21-23"
+  ],
+  "days": [
+   "Year B Proper 17th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56605",
+  "licence": "Public domain",
+  "attribution": "Petrov-Vodkin, Kuzma. Mother of God of Tenderness Towards Evil Hearts, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56607,
+  "title": "Charity Bazaar for the Widows and Orphans of German, Austrian, Hungarian and their allied solders",
+  "artist": null,
+  "date": "1916",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/charity-bazar3420.jpg",
+  "refs": [
+   "Psalm 146"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56607",
+  "licence": "Public domain",
+  "attribution": "Charity Bazaar for the Widows and Orphans of German, Austrian, Hungarian and their allied solders, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56610,
+  "title": "Hunger Wall",
+  "artist": null,
+  "date": "1968",
+  "where": "National Museum of African American History and Culture, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/1280px-NMAAHC_(33628525655).jpg",
+  "refs": [
+   "James 2:1-10, (11-13), 14-17"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56610",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Hunger Wall, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56611,
+  "title": "Bethlehem Girl",
+  "artist": "Verlat, Charles",
+  "date": "1876",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Charles_Verlat_-_Jeune_fille_de_Bethlehem.jpg",
+  "refs": [
+   "Mark 7:24-37"
+  ],
+  "days": [
+   "Year B Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56611",
+  "licence": "Public domain",
+  "attribution": "Verlat, Charles. Bethlehem Girl, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56615,
+  "title": "Prophet Elijah and the Widow of Zarephath",
+  "artist": "Strozzi, Bernardo, 1581-1644",
+  "date": "ca. 1640-1644",
+  "where": "Kunsthistorisches Museum, Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bernardo_Strozzi_-_The_prophet_Elias_and_the_widow_of_Serepta.jpg",
+  "refs": [
+   "Mark 8:27-38"
+  ],
+  "days": [
+   "Year B Proper 19th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56615",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Strozzi, Bernardo, 1581-1644. Prophet Elijah and the Widow of Zarephath, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56623,
+  "title": "Saint Verena washes the hair of a plague patient",
+  "artist": null,
+  "date": "1525",
+  "where": "Landesmuseum Württemberg, Württemberg, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/764px-1525_Heilige_Verena_wäscht_einem_Pestkranken_die_Haare_anagoria.jpg",
+  "refs": [
+   "James 3:13 - 4:3, 7-8a"
+  ],
+  "days": [
+   "Year B Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56623",
+  "licence": "Public domain",
+  "attribution": "Saint Verena washes the hair of a plague patient, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56633,
+  "title": "Maistre Robert, a Blind Healer, Healing by Laying-On of Hands",
+  "artist": "Anonymous",
+  "date": null,
+  "where": "Wellcome Collection, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Maistre_Robert__healing_by_laying-on_of_hands.jpg",
+  "refs": [
+   "James 5:13-20"
+  ],
+  "days": [
+   "Year B Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56633",
+  "licence": "CC BY 4.0",
+  "attribution": "Anonymous. Maistre Robert, a Blind Healer, Healing by Laying-On of Hands, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56643,
+  "title": "African American Children Posed for Portrait on a Porch",
+  "artist": null,
+  "date": "1899-1900",
+  "where": "Library of Congress, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/on_a_porch_LCCN99472390.jpg",
+  "refs": [
+   "Psalm 26"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday",
+   ""
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56643",
+  "licence": "Public domain",
+  "attribution": "African American Children Posed for Portrait on a Porch, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56654,
+  "title": "Immigrants' Ship",
+  "artist": "Dollman, John Charles, 1851-1934",
+  "date": "1884",
+  "where": "Art Gallery of South Australia, Adelaide, Australia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/3mklsd923jbowhd.jpg",
+  "refs": [
+   "Psalm 91:9-16"
+  ],
+  "days": [
+   "Year A Easter Vigil",
+   "Year B Easter Vigil",
+   "Year C Easter Vigil",
+   "Year B Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56654",
+  "licence": "Public domain",
+  "attribution": "Dollman, John Charles, 1851-1934. Immigrants' Ship, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56657,
+  "title": "Bread for First Communion",
+  "artist": null,
+  "date": "2006",
+  "where": "Poland",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bread_for_1st_Communion_mass2yf.jpg",
+  "refs": [
+   "John 6:24-35",
+   "Psalm 34:1-8, (19-22)"
+  ],
+  "days": [
+   "Year B Proper 25th Sunday",
+   "Year B Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56657",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Bread for First Communion, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 56665,
@@ -683,6 +5329,78 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Tissot, James, 1836-1902. Widow's Mite, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 56670,
+  "title": "Harvesters Resting (Ruth and Boaz)",
+  "artist": "Millet, Jean François, 1642-1679",
+  "date": "1850-1853",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/harvest329832874786uvnj.jpg",
+  "refs": [
+   "Ruth 3:1-5; 4:13-17"
+  ],
+  "days": [
+   "Year B Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56670",
+  "licence": "Public domain",
+  "attribution": "Millet, Jean François, 1642-1679. Harvesters Resting (Ruth and Boaz), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56674,
+  "title": "After a Thunderstorm -The Oxbow",
+  "artist": "Cole, Thomas, 1801-1848",
+  "date": "1836",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/oxbow0101010a.jpg",
+  "refs": [
+   "Samuel I, 2:1-10"
+  ],
+  "days": [
+   "Year B Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56674",
+  "licence": "Public domain",
+  "attribution": "Cole, Thomas, 1801-1848. After a Thunderstorm -The Oxbow, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56676,
+  "title": "Snap the Whip",
+  "artist": "Homer, Winslow, 1836-1910",
+  "date": "1872",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/sanp0wmaoxcme.jpg",
+  "refs": [
+   "Psalm 16"
+  ],
+  "days": [
+   "Year B Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56676",
+  "licence": "Public domain",
+  "attribution": "Homer, Winslow, 1836-1910. Snap the Whip, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56692,
+  "title": "Wheat",
+  "artist": "Linnell, John, 1792-1882",
+  "date": "1860",
+  "where": "National Gallery of Victoria, Melbourne, Australia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/wheatxxxxx9879rfuh.jpg",
+  "refs": [
+   "Psalm 126"
+  ],
+  "days": [
+   "Year B Thanksgiving Day"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56692",
+  "licence": "Public domain",
+  "attribution": "Linnell, John, 1792-1882. Wheat, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 56713,
   "title": "John the Baptist Preaching",
   "artist": "Ghirlandaio, Domenico, 1449-1494",
@@ -701,6 +5419,99 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/56713",
   "licence": "Public domain",
   "attribution": "Ghirlandaio, Domenico, 1449-1494. John the Baptist Preaching, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56795,
+  "title": "Christ before Caiaphas",
+  "artist": "Bondone, Giotto di, 1266?-1337",
+  "date": "1305",
+  "where": "Cappella Scrovegni (Arena Chapel), Padua, Padua, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Caiaphas02o3kei2jcr.jpg",
+  "refs": [
+   "Luke 22:14-23:56",
+   "Psalm 31:9-16"
+  ],
+  "days": [
+   "Year C Liturgy of Pass"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56795",
+  "licence": "Public domain",
+  "attribution": "Bondone, Giotto di, 1266?-1337. Christ before Caiaphas, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56818,
+  "title": "Hand of God",
+  "artist": null,
+  "date": "1992",
+  "where": "St. Elizabeth Ann Seton Parish, Pickerington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/hand00q00x0ghggfd.jpg",
+  "refs": [
+   "Joel 2:1-2, 12-17",
+   "Psalm 41"
+  ],
+  "days": [
+   "Year B Epiphany 7th Sunday",
+   "Year C Ash Wednesday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56818",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Hand of God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56823,
+  "title": "Guardian Angel",
+  "artist": null,
+  "date": "1907",
+  "where": "Antonskirche (St. Anthony of Padua), Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Antonsplatz_22wshd823.jpg",
+  "refs": [
+   "Psalm 91:9-16"
+  ],
+  "days": [
+   "Year C Lent 1st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56823",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Guardian Angel, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56827,
+  "title": "Catskills",
+  "artist": "Durand, A. B. (Asher Brown), 1796-1886",
+  "date": "1859",
+  "where": "Walters Art Museum, Baltimore, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Asher_Brown_Durand_-_The_Catskills_-_Walters_37122.jpg",
+  "refs": [
+   "Psalm 27"
+  ],
+  "days": [
+   "Year C Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56827",
+  "licence": "Public domain",
+  "attribution": "Durand, A. B. (Asher Brown), 1796-1886. Catskills, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56844,
+  "title": "Return from the Harvest",
+  "artist": "Bouguereau, William Adolphe, 1825-1905",
+  "date": "1878",
+  "where": "Cummer Museum of Art and Gardens, Jacksonville, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/child029knv87yuh23qciuh.jpg",
+  "refs": [
+   "Psalm 126"
+  ],
+  "days": [
+   "Year C Lent 5th  Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56844",
+  "licence": "Public domain",
+  "attribution": "Bouguereau, William Adolphe, 1825-1905. Return from the Harvest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 56885,
@@ -725,6 +5536,673 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Caravaggio, Michelangelo Merisi da, 1573-1610. Supper at Emmaus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 56887,
+  "title": "Dorcas",
+  "artist": null,
+  "date": "1896",
+  "where": "St Twrog's Church, Maentwrog, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Dorcas0239.jpg",
+  "refs": [
+   "Acts 9:36-43"
+  ],
+  "days": [
+   "Year C Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56887",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Dorcas, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56889,
+  "title": "Mourning Tabitha",
+  "artist": null,
+  "date": "20th century",
+  "where": "Southwark Cathedral, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tabithab398sdf7yfv.jpg",
+  "refs": [
+   "Acts 9:36-43"
+  ],
+  "days": [
+   "Year C Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56889",
+  "licence": "CC0",
+  "attribution": "Mourning Tabitha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56890,
+  "title": "Raising of Tabitha",
+  "artist": "Didron, Edouard",
+  "date": "1881",
+  "where": "Périgueux Cathedral, Périgueux, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tabithanbvj2020.jpg",
+  "refs": [
+   "Acts 9:36-43"
+  ],
+  "days": [
+   "Year C Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56890",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Didron, Edouard. Raising of Tabitha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56892,
+  "title": "Raising of Tabitha",
+  "artist": "Santafede, Fabrizio",
+  "date": "1603-1608",
+  "where": "Pio Monte della Misericordia, Naples, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/tabithajnlikmy867.jpg",
+  "refs": [
+   "Acts 9:36-43"
+  ],
+  "days": [
+   "Year C Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56892",
+  "licence": "Public domain",
+  "attribution": "Santafede, Fabrizio. Raising of Tabitha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56933,
+  "title": "Paradise Landscape with Animals",
+  "artist": "Bruegel, Jan, 1568-1625",
+  "date": "1613-1615",
+  "where": "Museum of Fine Arts, Budapest, Budapest, Hungary",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/animalsbqxwax8p.jpg",
+  "refs": [
+   "Psalm 148"
+  ],
+  "days": [
+   "Year C Easter 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56933",
+  "licence": "Public domain",
+  "attribution": "Bruegel, Jan, 1568-1625. Paradise Landscape with Animals, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56934,
+  "title": "Orchard in Spring",
+  "artist": "Sisley, Alfred, 1839-1899",
+  "date": "1881",
+  "where": "Museum Boijmans Van Beuningen, Rotterdam, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/springplil22x.jpg",
+  "refs": [
+   "Psalm 148"
+  ],
+  "days": [
+   "Year C Easter 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56934",
+  "licence": "Public domain",
+  "attribution": "Sisley, Alfred, 1839-1899. Orchard in Spring, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56935,
+  "title": "Snow Storm",
+  "artist": "Turner, J. M. W. (Joseph Mallord William), 1775-1851",
+  "date": "ca. 1842",
+  "where": "Tate Britain, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/snowbczaqpm19c4.jpg",
+  "refs": [
+   "Psalm 148"
+  ],
+  "days": [
+   "Year C Easter 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56935",
+  "licence": "Public domain",
+  "attribution": "Turner, J. M. W. (Joseph Mallord William), 1775-1851. Snow Storm, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56939,
+  "title": "Sunlight on the Coast",
+  "artist": "Homer, Winslow, 1836-1910",
+  "date": "1890",
+  "where": "Toledo Museum of Art, Toledo, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/coastmlpqh61.jpg",
+  "refs": [
+   "Psalm 97"
+  ],
+  "days": [
+   "Year C Easter 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56939",
+  "licence": "Public domain",
+  "attribution": "Homer, Winslow, 1836-1910. Sunlight on the Coast, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56944,
+  "title": "Celebration Day",
+  "artist": null,
+  "date": "2014",
+  "where": "Bujora Catholic Church, Mwanza, Tanzania",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Holy_celebration21obt.jpg",
+  "refs": [
+   "Romans 8:14-17"
+  ],
+  "days": [
+   "",
+   "Year C Day of Pentecost"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56944",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Celebration Day, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56947,
+  "title": "Garden of Eden",
+  "artist": "Cole, Thomas, 1801-1848",
+  "date": "1828",
+  "where": "Amon Carter Museum of American Art, Fort Worth, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/garden7mmb328cb3.jpg",
+  "refs": [
+   "Psalm 104:24-34, 35b"
+  ],
+  "days": [
+   "Year C Day of Pentecost",
+   "Year A Day of Pentecost"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56947",
+  "licence": "Public domain",
+  "attribution": "Cole, Thomas, 1801-1848. Garden of Eden, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56972,
+  "title": "Quiver Tree Forest",
+  "artist": "Stieglitz, Hans",
+  "date": "2012",
+  "where": "Quiver Tree Forest, Keetmanshoop, Namibia",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Trees8892886bbdpq.jpg",
+  "refs": [
+   "Psalm 66:1-9"
+  ],
+  "days": [
+   "Year C Proper 9th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56972",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Stieglitz, Hans. Quiver Tree Forest, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56988,
+  "title": "Saint Ranerius Frees the Poor From Prison",
+  "artist": "Sassetta, approximately 1400-1450",
+  "date": "1437-1444",
+  "where": "Louvre, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/poor2028nc8u.jpg",
+  "refs": [
+   "Amos 8:1-12"
+  ],
+  "days": [
+   "Year C Proper 11th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56988",
+  "licence": "Public domain",
+  "attribution": "Sassetta, approximately 1400-1450. Saint Ranerius Frees the Poor From Prison, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 56994,
+  "title": "Land Stewardship Lab",
+  "artist": null,
+  "date": "2017",
+  "where": "Witte Museum, San Antonio, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/landnbvcxhgj1298.jpg",
+  "refs": [
+   "Psalm 52"
+  ],
+  "days": [
+   "Year C Proper 11th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/56994",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Land Stewardship Lab, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57003,
+  "title": "Wisconsin Fields",
+  "artist": "Chen, Yinan",
+  "date": "2013",
+  "where": "Madison, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/wisc6709hre.jpg",
+  "refs": [
+   "Psalm 107:1-9, 43"
+  ],
+  "days": [
+   "Year C Proper 13th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57003",
+  "licence": "Public Domain",
+  "attribution": "Chen, Yinan. Wisconsin Fields, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57010,
+  "title": "Winged Altarpiece Shaped Like a Heart",
+  "artist": "Cranach, Lucas the younger, 1515-1586",
+  "date": "1584",
+  "where": "Germanisches Nationalmuseum, Nuremberg, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/cran2708iuyokjgm.jpg",
+  "refs": [
+   "Matthew 26:14-27:66",
+   "Mark 14:1-15:47",
+   "Luke 22:14-23:56",
+   "Psalm 33:12-22"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year B Liturgy of Pass",
+   "Year C Liturgy of Pass",
+   "Year C Proper 14th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57010",
+  "licence": "Public domain",
+  "attribution": "Cranach, Lucas the younger, 1515-1586. Winged Altarpiece Shaped Like a Heart, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57021,
+  "title": "Singing Windows",
+  "artist": "J. & R. Lamb Studios",
+  "date": "1932",
+  "where": "University Chapel, Tuskegee, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tuskee2b0-98ytfd.jpg",
+  "refs": [
+   "Luke 2:1-14, (15-20)",
+   "Genesis 28:10-19a",
+   "Exodus 20:1-17",
+   "Psalm 47"
+  ],
+  "days": [
+   "Year A Ascension of the Lord",
+   "Year A Nativity of the Lord Proper I",
+   "Year B Lent 3rd Sunday",
+   "Year A Proper 11th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57021",
+  "licence": "Public domain",
+  "attribution": "J. & R. Lamb Studios. Singing Windows, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57041,
+  "title": "Sweet Honey in the Rock live at Ravinia",
+  "artist": null,
+  "date": "2006",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Sweet_Honey_in_the_Roc4h3289675k.jpg",
+  "refs": [
+   "Psalm 81:1, 10-16"
+  ],
+  "days": [
+   "Year C Proper 17th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57041",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Sweet Honey in the Rock live at Ravinia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57045,
+  "title": "Brothers #1",
+  "artist": "Dove, Arthur Garfield, 1880-1946",
+  "date": "1941",
+  "where": "Honolulu Museum of Art, Honolulu, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/brothers09oplk13.jpg",
+  "refs": [
+   "Philemon 1:1-21"
+  ],
+  "days": [
+   "Year C Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57045",
+  "licence": "Public domain",
+  "attribution": "Dove, Arthur Garfield, 1880-1946. Brothers #1, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57047,
+  "title": "Reading Woman",
+  "artist": "Elinga, Pieter Janssens, 1623-1682",
+  "date": "1665-1670",
+  "where": "Alte Pinakothek, Munich, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/readn56b87rgw6.jpg",
+  "refs": [
+   "Psalm 1"
+  ],
+  "days": [
+   "Year C Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57047",
+  "licence": "Public domain",
+  "attribution": "Elinga, Pieter Janssens, 1623-1682. Reading Woman, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57051,
+  "title": "Memorial to Hungarian Forced Labor Captives after World War II",
+  "artist": null,
+  "date": "20th century",
+  "where": "Tomcsányi Castle, Vásárosnamény, Hungary",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/hungary823yuwgsd9c.jpg",
+  "refs": [
+   "Psalm 14"
+  ],
+  "days": [
+   "Year C Proper 19th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57051",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Memorial to Hungarian Forced Labor Captives after World War II, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57057,
+  "title": "Bible Quilt",
+  "artist": "Powers, Harriet, 1837-1910",
+  "date": "1895-1898",
+  "where": "Museum of Fine Arts, Boston, Boston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Quiltbn321qwa0k.jpg",
+  "refs": [
+   "Matthew 26:14-27:66",
+   "Mark 14:1-15:47",
+   "Luke 22:14-23:56",
+   "Luke 24:13-49",
+   "Matthew 28:1-10",
+   "Luke 24:1-12",
+   "Psalm 113"
+  ],
+  "days": [
+   "Year A Liturgy of Pass",
+   "Year B Liturgy of Pass",
+   "Year C Liturgy of Pass",
+   "Year A Resurrection of the Lord",
+   "",
+   "Year C Resurrection of the Lord",
+   "Year C Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57057",
+  "licence": "Public domain",
+  "attribution": "Powers, Harriet, 1837-1910. Bible Quilt, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57065,
+  "title": "Works of Mercy with Dives and Lazarus",
+  "artist": null,
+  "date": "ca. 1550",
+  "where": "Wellcome Collection, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Mercy096812yiurym.jpg",
+  "refs": [
+   "Psalm 91:1-6, 14-16"
+  ],
+  "days": [
+   "Year C Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57065",
+  "licence": "CC BY 4.0",
+  "attribution": "Works of Mercy with Dives and Lazarus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57066,
+  "title": "Rich Man and the Poor Man Lazarus",
+  "artist": null,
+  "date": "ca. 1846",
+  "where": "Rila Monastery, Rila, Bulgaria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Rila398jfvnbdf93io.jpg",
+  "refs": [
+   "Amos 6:1a, 4-7"
+  ],
+  "days": [
+   "Year C Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57066",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Rich Man and the Poor Man Lazarus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57156,
+  "title": "Shepherd Tending His Flock",
+  "artist": "Millet, Jean François, 1814-1875",
+  "date": "1860-1865",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Millet-kj48f791k2098fdg4x .jpg",
+  "refs": [
+   "Luke 17:5-10"
+  ],
+  "days": [
+   "Year C Proper 22nd Sunday",
+   "Year B Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57156",
+  "licence": "Public domain",
+  "attribution": "Millet, Jean François, 1814-1875. Shepherd Tending His Flock, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57157,
+  "title": "Mustard Seed",
+  "artist": null,
+  "date": "2012",
+  "where": "Marcy's Door Free Clinic, Tainan, Taiwan",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Mustard76325252ds.jpg",
+  "refs": [
+   "Luke 17:5-10"
+  ],
+  "days": [
+   "Year C Proper 22nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57157",
+  "licence": "CC BY 3.0",
+  "attribution": "Mustard Seed, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57167,
+  "title": "Old Woman Reading",
+  "artist": "Dou, Gerard, 1613-1675",
+  "date": "ca. 1631-1632",
+  "where": "Rijksmuseum Amsterdam, Amsterdam, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Gerard_Dou_005cxmndsfjkhw87930-.jpg",
+  "refs": [
+   "Psalm 119:97-104"
+  ],
+  "days": [
+   "Year C Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57167",
+  "licence": "Public domain",
+  "attribution": "Dou, Gerard, 1613-1675. Old Woman Reading, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57169,
+  "title": "Mountain of the Holy Cross",
+  "artist": "Moran, Thomas, 1837-1926",
+  "date": "1890",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/cross8eu3784efhj4576hf.jpg",
+  "refs": [
+   "Psalm 121"
+  ],
+  "days": [
+   "Year C Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57169",
+  "licence": "Public domain",
+  "attribution": "Moran, Thomas, 1837-1926. Mountain of the Holy Cross, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57171,
+  "title": "Hands of God, the Holy Spirit, and Lamb of Christ",
+  "artist": null,
+  "date": "20th century",
+  "where": "Cathedral Basilica of Our Lady of Miracle, Caacupe, Paraguay",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/HOlymzxcxc8943m.jpg",
+  "refs": [
+   "John 1:29-42",
+   "Psalm 121"
+  ],
+  "days": [
+   "Year A Epiphany 2nd Sunday",
+   "Year A Lent 2nd Sunday",
+   "Year A Proper 24th Sunday",
+   "Year C Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57171",
+  "licence": "CC BY 3.0",
+  "attribution": "Hands of God, the Holy Spirit, and Lamb of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57173,
+  "title": "Siesta",
+  "artist": "Malhoa, José, 1855-1933",
+  "date": "1909",
+  "where": "Museu Nacional de Belas Artes, Rio de Janeiro, Brazil",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Josemcv09657yuh.jpg",
+  "refs": [
+   "Psalm 121"
+  ],
+  "days": [
+   "Year C Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57173",
+  "licence": "Public domain",
+  "attribution": "Malhoa, José, 1855-1933. Siesta, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57175,
+  "title": "Justice as Protector",
+  "artist": "Hirsch, Stefan, 1899-1964",
+  "date": "1938",
+  "where": "Charles E. Simmons, Jr. Federal Court House, Aiken, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/justiceb8b7c65v9nmhtbt.jpg",
+  "refs": [
+   "Luke 18:1-8"
+  ],
+  "days": [
+   "Year C Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57175",
+  "licence": "Public domain",
+  "attribution": "Hirsch, Stefan, 1899-1964. Justice as Protector, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57179,
+  "title": "Ten Commandments",
+  "artist": null,
+  "date": "1979",
+  "where": "Saint Augustine Parish Church, Baliuag, Philippines",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BaliuagChurchjf9702_02.jpg",
+  "refs": [
+   "Exodus 20:1-17",
+   "Psalm 119:137-144"
+  ],
+  "days": [
+   "Year C Proper 26th Sunday",
+   "Year B Lent 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57179",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Ten Commandments, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57192,
+  "title": "Storm in the Rocky Mountains, Mt. Rosalie",
+  "artist": "Bierstadt, Albert, 1830-1902",
+  "date": "1866",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Bierstadt45677y5yehfgb.jpg",
+  "refs": [
+   "Psalm 98"
+  ],
+  "days": [
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57192",
+  "licence": "Public domain",
+  "attribution": "Bierstadt, Albert, 1830-1902. Storm in the Rocky Mountains, Mt. Rosalie, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57197,
+  "title": "Gospel Choir Of Angels",
+  "artist": "Ashkar, Tim",
+  "date": "19th century",
+  "where": "Private collection",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/19th_century_black_heavenwqiueh.jpg",
+  "refs": [
+   "Psalm 72",
+   "Luke 20:27-38"
+  ],
+  "days": [
+   "Year A Advent 2nd  Sunday",
+   "Year C Proper 27th Sunday",
+   "Year B Epiphany 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57197",
+  "licence": "Public domain",
+  "attribution": "Ashkar, Tim. Gospel Choir Of Angels, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57223,
+  "title": "Heavy Sea at Pourville",
+  "artist": "Monet, Claude, 1840-1926",
+  "date": "1897",
+  "where": "National Museum of Western Art, Tokyo, Japan",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Monetn590fdj5k.jpg",
+  "refs": [
+   "Psalm 98"
+  ],
+  "days": [
+   "Year C Proper 28th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57223",
+  "licence": "Public domain",
+  "attribution": "Monet, Claude, 1840-1926. Heavy Sea at Pourville, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57233,
+  "title": "Christ and Saint John the Evangelist",
+  "artist": null,
+  "date": "1300-1320",
+  "where": "Cleveland Museum of Art, Cleveland, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Johnmjkdnsi8867325.jpg",
+  "refs": [
+   "John 13:21-32",
+   "Psalm 46"
+  ],
+  "days": [
+   "Year C Reign of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57233",
+  "licence": "CC0",
+  "attribution": "Christ and Saint John the Evangelist, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 57260,
   "title": "Tribute Money",
   "artist": "Masaccio, 1401-1428",
@@ -742,6 +6220,148 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/57260",
   "licence": "Public domain",
   "attribution": "Masaccio, 1401-1428. Tribute Money, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57263,
+  "title": "Jael and Sisera",
+  "artist": "Lazzarini, Gregorio",
+  "date": "17th century",
+  "where": "Private collection",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jaelvu8948hud12.jpg",
+  "refs": [
+   "Judges 4:17-23",
+   "Judges 5:2–31"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57263",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Lazzarini, Gregorio. Jael and Sisera, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57265,
+  "title": "Deborah, Jael and Barak",
+  "artist": "Bray, Salomon de, 1597-1664",
+  "date": "1635",
+  "where": "Museum Catharijneconvent, Utrecht, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jaelbmcvniokjn0z.jpg",
+  "refs": [
+   "Judges 4:17-23",
+   "Judges 5:2–31"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57265",
+  "licence": "Public domain",
+  "attribution": "Bray, Salomon de, 1597-1664. Deborah, Jael and Barak, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57267,
+  "title": "Sacrifice of Jephthah’s Daughter",
+  "artist": null,
+  "date": "1240-1249",
+  "where": "Morgan Library & Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jep965762670987c.jpg",
+  "refs": [
+   "Judges 11:29-40"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57267",
+  "licence": "Public domain",
+  "attribution": "Sacrifice of Jephthah’s Daughter, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57304,
+  "title": "Son of Man",
+  "artist": "McFall, David",
+  "date": "1988",
+  "where": "Canterbury Cathedral, Canterbury, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/son6729bhila856.jpg",
+  "refs": [
+   "John 9:1-41",
+   "Matthew 24:36-44"
+  ],
+  "days": [
+   "Year A Advent 1st Sunday",
+   "Year A Lent 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57304",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "McFall, David. Son of Man, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57306,
+  "title": "Blind Man Washes in the Pool of Siloam",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "1886-1894",
+  "where": "Brooklyn Museum, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Siloam9834uefh283.jpg",
+  "refs": [
+   "John 9:1-41"
+  ],
+  "days": [
+   "Year A Lent 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57306",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Blind Man Washes in the Pool of Siloam, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57307,
+  "title": "Healing the Man Born Blind",
+  "artist": "Carracci, Annibale, 1560-1609",
+  "date": "1605-1606",
+  "where": "Museu Nacional d'Art de Catalunya, Barcelona, Spain",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/blindnvxjfhu7yure.jpg",
+  "refs": [
+   "John 9:1-41"
+  ],
+  "days": [
+   "Year A Lent 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57307",
+  "licence": "Public domain",
+  "attribution": "Carracci, Annibale, 1560-1609. Healing the Man Born Blind, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57311,
+  "title": "At the Deathbed",
+  "artist": "Munch, Edvard, 1863-1944",
+  "date": "1895",
+  "where": "KODE Art museums and Composer Homes, Bergen, Norway",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/deathbvcg5498t.jpg",
+  "refs": [
+   "Psalm 130"
+  ],
+  "days": [
+   "Year A Lent 5th  Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57311",
+  "licence": "Public domain",
+  "attribution": "Munch, Edvard, 1863-1944. At the Deathbed, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57317,
+  "title": "Mountain Landscape",
+  "artist": "Brabazon, Hercules Brabazon, 1821-1906",
+  "date": null,
+  "where": "Phillips Collection, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/mount489rueihdfsknxzm.jpg",
+  "refs": [
+   "Psalm 121"
+  ],
+  "days": [
+   "Year A Lent 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57317",
+  "licence": "Public domain",
+  "attribution": "Brabazon, Hercules Brabazon, 1821-1906. Mountain Landscape, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 57355,
@@ -764,6 +6384,677 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Caravaggio, Michelangelo Merisi da, 1573-1610. The Entombment of Christ, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 57371,
+  "title": "Great Isaiah Scroll MA A (1QIsa)",
+  "artist": null,
+  "date": "1st century",
+  "where": "Israel Museum, Jerusalem, Israel",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/scrolldh4j3g675d12.jpg",
+  "refs": [
+   "Psalm 40:1-11"
+  ],
+  "days": [
+   "Year A Annunciation of the Lord"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57371",
+  "licence": "Public domain",
+  "attribution": "Great Isaiah Scroll MA A (1QIsa), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57420,
+  "title": "Fog",
+  "artist": null,
+  "date": "2005",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/fog1289234thgn.jpg",
+  "refs": [
+   "Psalm 68:1-10, 32-35"
+  ],
+  "days": [
+   "Year A Easter 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57420",
+  "licence": "CC BY-SA 2.5",
+  "attribution": "Fog, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57432,
+  "title": "Jacob Tending His Flock",
+  "artist": "Ribera, Jusepe de, 1591-1652",
+  "date": "1634",
+  "where": "El Escorial, Madrid, Spain",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jacob31d12sal.jpg",
+  "refs": [
+   "Psalm 105:1-11, 45b"
+  ],
+  "days": [
+   "Year A Proper 12th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57432",
+  "licence": "Public domain",
+  "attribution": "Ribera, Jusepe de, 1591-1652. Jacob Tending His Flock, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57472,
+  "title": "Holy Spirit",
+  "artist": "Anonymous",
+  "date": "ca. 1970-1999",
+  "where": "Saint Paul Church, Yellow Springs, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/holy-dove932fi2h3u.jpg",
+  "refs": [
+   "Acts 10:44-48"
+  ],
+  "days": [
+   "Year B Easter 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57472",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Anonymous. Holy Spirit, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57523,
+  "title": "Praying Hands, or Study of the Hands of an Apostle",
+  "artist": "Dürer, Albrecht, 1471-1528",
+  "date": "1508-1512",
+  "where": "Albertina Museum, Vienna, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BProp21bw.jpg",
+  "refs": [
+   "James 5:13-20"
+  ],
+  "days": [
+   "Year B Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57523",
+  "licence": "Public domain",
+  "attribution": "Dürer, Albrecht, 1471-1528. Praying Hands, or Study of the Hands of an Apostle, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57577,
+  "title": "Meditation",
+  "artist": "Jawlensky, Alexej von, 1864-1941",
+  "date": "1936",
+  "where": "Museum Pfalzgalerie Kaiserslautern, Kaiserslautern, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Alexej_von_Jawlensky_-_Meditation28937eet.jpg",
+  "refs": [
+   "Psalm 105:1-6, 23-26, 45b"
+  ],
+  "days": [
+   "Year A Proper 17th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57577",
+  "licence": "Public domain",
+  "attribution": "Jawlensky, Alexej von, 1864-1941. Meditation, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57583,
+  "title": "Wisdom",
+  "artist": "Olusola David, Ayibiowu",
+  "date": "2008",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/wisdom238978g43j6.jpg",
+  "refs": [
+   "Proverbs 9:1-6",
+   "Psalm 119:33-40"
+  ],
+  "days": [
+   "Year B Proper 19th Sunday",
+   "Year B Proper 15th Sunday",
+   "Year A Proper 18th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57583",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Olusola David, Ayibiowu. Wisdom, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57586,
+  "title": "God our Father on the Rainbow",
+  "artist": "Milles, Carl, 1875-1955, Fredericks, Marshall M., 1908-1998",
+  "date": "1995",
+  "where": "Nacka Stand, Stockholm, Sweden",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/god28dsf543h768f32.jpg",
+  "refs": [
+   "Psalm 138"
+  ],
+  "days": [
+   "Year A Proper 16th Sunday",
+   "Year A Proper 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57586",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Milles, Carl, 1875-1955, Fredericks, Marshall M., 1908-1998. God our Father on the Rainbow, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57590,
+  "title": "Rocky Mountain Sheep",
+  "artist": "Bierstadt, Albert, 1830-1902",
+  "date": "ca. 1879",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ram239fdny712oji.jpg",
+  "refs": [
+   "Psalm 114"
+  ],
+  "days": [
+   "Year A Proper 19th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57590",
+  "licence": "Public domain",
+  "attribution": "Bierstadt, Albert, 1830-1902. Rocky Mountain Sheep, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57597,
+  "title": "Jonah",
+  "artist": "Watts, George Frederick, 1817-1904",
+  "date": "1894",
+  "where": "Tate Britain, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jonah3097621fcghre3w2.jpg",
+  "refs": [
+   "Jonah 3:10-4:11"
+  ],
+  "days": [
+   "Year A Proper 20th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57597",
+  "licence": "Public domain",
+  "attribution": "Watts, George Frederick, 1817-1904. Jonah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57604,
+  "title": "Clare and Francis",
+  "artist": null,
+  "date": "20th century",
+  "where": "Monastery of the Poor Clares, Canindé, Brazil",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/claren29nk80ojmnyt.jpg",
+  "refs": [
+   "Psalm 25:1-10"
+  ],
+  "days": [
+   "Year A Proper 21st Sunday",
+   "Year B Proper 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57604",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Clare and Francis, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57622,
+  "title": "Figure of Job",
+  "artist": null,
+  "date": "ca. 1750-1850",
+  "where": "Science Museum, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/job2uhj69hj8576873bsdfg.jpg",
+  "refs": [
+   "Job 1:1, 2:1-10",
+   "Job 19:23-27a"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday",
+   "Year C Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57622",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Figure of Job, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57623,
+  "title": "Job Mocked by His Wife",
+  "artist": "Traversi, Gaspare, 1722 or 1723-1770",
+  "date": "18th century",
+  "where": "National Museum, Warsaw, Warsaw, Poland",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/job38mvvfknrnvucwwqxqzp0.jpg",
+  "refs": [
+   "Job 1:1, 2:1-10"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57623",
+  "licence": "Public domain",
+  "attribution": "Traversi, Gaspare, 1722 or 1723-1770. Job Mocked by His Wife, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57626,
+  "title": "Job and His Daughters",
+  "artist": null,
+  "date": "5th century",
+  "where": "Biblioteca Nazionale Vittorio Emanuele III, Naples, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/job389s321wxqz.jpg",
+  "refs": [
+   "Job 42:1-6, 10-17"
+  ],
+  "days": [
+   "Year B Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57626",
+  "licence": "Public domain",
+  "attribution": "Job and His Daughters, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57634,
+  "title": "Job on the Ash Heap",
+  "artist": "Ribera, Jusepe de, 1591-1652",
+  "date": "ca. 1630",
+  "where": "Private collection",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/job202kfkgob93jd62bfzp.jpg",
+  "refs": [
+   "Job 1:1, 2:1-10"
+  ],
+  "days": [
+   "Year B Proper 22nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57634",
+  "licence": "Public domain",
+  "attribution": "Ribera, Jusepe de, 1591-1652. Job on the Ash Heap, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57653,
+  "title": "Lions",
+  "artist": null,
+  "date": "13th century",
+  "where": "Vatopedi Monastery, Mount Athos, Greece",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobVPEDI590fol29v.jpg",
+  "refs": [
+   "Job 4:10-11"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57653",
+  "licence": "Public domain",
+  "attribution": "Lions, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57661,
+  "title": "YHWH Responds to Job",
+  "artist": null,
+  "date": "12th century",
+  "where": "Monastery of Great Lavra, Mount Athos, Greece",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobLB100fol165.jpg",
+  "refs": [
+   "Job 38:1-7, (34-41)",
+   "Job 38:1-11"
+  ],
+  "days": [
+   "Year B Proper 24th Sunday",
+   "Year B Proper 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57661",
+  "licence": "Public domain",
+  "attribution": "YHWH Responds to Job, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57662,
+  "title": "Job Finishes His Defense",
+  "artist": null,
+  "date": "12th century",
+  "where": "Monastery of Great Lavra, Mount Athos, Greece",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobLB100fol124.jpg",
+  "refs": [
+   "Job 29"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57662",
+  "licence": "CC0",
+  "attribution": "Job Finishes His Defense, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57663,
+  "title": "Death of Job",
+  "artist": null,
+  "date": "1100-1125",
+  "where": "Biblioteca apostolica vaticana, Vatican City",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobVAT1231fol453.jpg",
+  "refs": [
+   "Job 42:1-6, 10-17"
+  ],
+  "days": [
+   "Year B Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57663",
+  "licence": "Public domain",
+  "attribution": "Death of Job, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57665,
+  "title": "Adversary of Job",
+  "artist": null,
+  "date": "1100-1125",
+  "where": "Biblioteca apostolica vaticana, Vatican City",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobVAT1231fol240v.jpg",
+  "refs": [
+   "Job 16:10-14"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57665",
+  "licence": "Public domain",
+  "attribution": "Adversary of Job, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57668,
+  "title": "Anger of God",
+  "artist": null,
+  "date": "ca. 1300",
+  "where": "Greek Patriarchal Library, Jerusalem, Israel",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobTAPHOU5fol90.jpg",
+  "refs": [
+   "Job 9:13"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57668",
+  "licence": "Public domain",
+  "attribution": "Anger of God, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57669,
+  "title": "Lions and Serpent",
+  "artist": null,
+  "date": "ca. 1300",
+  "where": "Greek Patriarchal Library, Jerusalem, Israel",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobTAPHOU5fol58.jpg",
+  "refs": [
+   "Job 4:10-11"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57669",
+  "licence": "Public domain",
+  "attribution": "Lions and Serpent, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57679,
+  "title": "Restoration of Job",
+  "artist": null,
+  "date": "9th century",
+  "where": "Monastery of St. John the Theologian, Patmos, Greece",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobPAT171p507.jpg",
+  "refs": [
+   "Job 42:1-6, 10-17",
+   "Job 42:11"
+  ],
+  "days": [
+   "Year B Proper 25th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57679",
+  "licence": "Public domain",
+  "attribution": "Restoration of Job, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57682,
+  "title": "Eliphaz Speaks",
+  "artist": null,
+  "date": "9th century",
+  "where": "Monastery of St. John the Theologian, Patmos, Greece",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jobPAT171p75.jpg",
+  "refs": [
+   "Job 4:1"
+  ],
+  "days": [],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57682",
+  "licence": "Public domain",
+  "attribution": "Eliphaz Speaks, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57742,
+  "title": "Spirit of Justice",
+  "artist": "Jennewein, Carl Paul, 1890-1978",
+  "date": "1961",
+  "where": "Rayburn House Office Building, Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Anonymous_photo_Spirit_of_Justice_(Washington_D.C.,_U.S.A.).jpg",
+  "refs": [
+   "Psalm 99"
+  ],
+  "days": [
+   "Year A Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57742",
+  "licence": "Public domain",
+  "attribution": "Jennewein, Carl Paul, 1890-1978. Spirit of Justice, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57744,
+  "title": "Winter in Southern Louisiana",
+  "artist": "Woodward, Ellsworth, 1861-1939",
+  "date": "1911",
+  "where": "Mississippi Museum of Art, Jackson, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/E_Woodward_Winter_in_Southern_Louisiana.jpg",
+  "refs": [
+   "Psalm 96:1-9, (10-13)"
+  ],
+  "days": [
+   "Year A Proper 24th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57744",
+  "licence": "Public domain",
+  "attribution": "Woodward, Ellsworth, 1861-1939. Winter in Southern Louisiana, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57767,
+  "title": "Ark of the Covenant",
+  "artist": null,
+  "date": "ca. 1400-1500",
+  "where": "Museum Meermanno, The Hague, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/arkcov92jk90k87.jpg",
+  "refs": [
+   "Joshua 3:7-17"
+  ],
+  "days": [
+   "Year A Proper 26th Sunday",
+   "Year A Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57767",
+  "licence": "Public domain",
+  "attribution": "Ark of the Covenant, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57773,
+  "title": "Sunday School",
+  "artist": null,
+  "date": "2010",
+  "where": "Korean Central Presbyterian Church, Centreville, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Kor14253dx3s1o9.jpg",
+  "refs": [
+   "Psalm 78:1-7"
+  ],
+  "days": [
+   "Year A Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57773",
+  "licence": "CC BY 2.0",
+  "attribution": "Sunday School, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57807,
+  "title": "Pastoral Visit, Virginia",
+  "artist": "Brooke, Richard Norris, 1847-1920",
+  "date": "1881",
+  "where": "National Gallery of Art (U.S.), Washington, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/pastor9832jh78rfvbn.jpg",
+  "refs": [
+   "Ephesians 1:11-23",
+   "Psalm 25:1-10"
+  ],
+  "days": [
+   "Year C Advent 1st Sunday",
+   "",
+   "Year A Reign of Christ"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57807",
+  "licence": "Public domain",
+  "attribution": "Brooke, Richard Norris, 1847-1920. Pastoral Visit, Virginia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57835,
+  "title": "Jonah Preaching to the People of Ninevah",
+  "artist": "Vaccaro, Andrea, 1604-1670",
+  "date": "17th century",
+  "where": "Museo de Bellas Artes de Sevilla, Seville, Spain",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jonah23bh89tcgv42n.jpg",
+  "refs": [
+   "Jonah 3:1-5, 10"
+  ],
+  "days": [
+   "Year B Epiphany 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57835",
+  "licence": "Public domain",
+  "attribution": "Vaccaro, Andrea, 1604-1670. Jonah Preaching to the People of Ninevah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57913,
+  "title": "Snow-covered Landscape",
+  "artist": "Renoir, Auguste, 1841-1919",
+  "date": "1875",
+  "where": "Musée de l'Orangerie, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/snow698tuihjfbv24563y4utjgk.jpg",
+  "refs": [
+   "Psalm 147"
+  ],
+  "days": [
+   "Year B Christmas 2nd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57913",
+  "licence": "Public domain",
+  "attribution": "Renoir, Auguste, 1841-1919. Snow-covered Landscape, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57915,
+  "title": "Paz y Bien (Peace and All Good)",
+  "artist": null,
+  "date": "1969",
+  "where": "Parroquia de los Santos Reyes (Parish of the Holy Kings), Mexico City, Mexico",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/paz983jig78tfy.jpg",
+  "refs": [
+   "Psalm 8",
+   "Philippians 4:4-9"
+  ],
+  "days": [
+   "Year C Advent 3rd Sunday",
+   "Year B Holy Name of Jesus",
+   "Year C Holy Name of Jesus"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57915",
+  "licence": "CC BY 2.0",
+  "attribution": "Paz y Bien (Peace and All Good), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57921,
+  "title": "Gust of Wind",
+  "artist": "Courbet, Gustave, 1819-1877",
+  "date": "1865",
+  "where": "Museum of Fine Arts, Houston, Houston, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/wind2938jk760978bb6drc.jpg",
+  "refs": [
+   "Psalm 29"
+  ],
+  "days": [
+   "Year B Trinity Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57921",
+  "licence": "Public domain",
+  "attribution": "Courbet, Gustave, 1819-1877. Gust of Wind, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57933,
+  "title": "Harvest Moon",
+  "artist": "Palmer, Samuel, 1805-1881",
+  "date": "ca. 1833",
+  "where": "Yale Center for British Art, New Haven, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/moon3278ijt762145drt34hj.jpg",
+  "refs": [
+   "Psalm 81:1, 10-16"
+  ],
+  "days": [
+   "Year B Proper 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57933",
+  "licence": "Public domain",
+  "attribution": "Palmer, Samuel, 1805-1881. Harvest Moon, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57934,
+  "title": "Gleaners",
+  "artist": "Millet, Jean François, 1814-1875",
+  "date": "1857",
+  "where": "Musée d'Orsay, Paris, France",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/millet92j4738bvhfiasg.jpg",
+  "refs": [
+   "Mark 2:23-3:6"
+  ],
+  "days": [
+   "Year B Proper 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57934",
+  "licence": "Public domain",
+  "attribution": "Millet, Jean François, 1814-1875. Gleaners, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57939,
+  "title": "Healing Mural",
+  "artist": null,
+  "date": "1970",
+  "where": "Hospital Teodoro Maldonado Carbo, Guayaquil, Ecuador",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/hospitalj238ygv .jpg",
+  "refs": [
+   "Mark 2:23-3:6"
+  ],
+  "days": [
+   "Year B Proper 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57939",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Healing Mural, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57945,
+  "title": "Caring for Children at the Orphanage in Haarlem: three Acts of Mercy",
+  "artist": "Bray, Jan de, approximately 1627-1607",
+  "date": "1663",
+  "where": "Frans Hals Museum, Haarlem, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/children398266ed76.jpg",
+  "refs": [
+   "Mark 3:20-35"
+  ],
+  "days": [
+   "Year B Proper 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57945",
+  "licence": "Public domain",
+  "attribution": "Bray, Jan de, approximately 1627-1607. Caring for Children at the Orphanage in Haarlem: three Acts of Mercy, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 57953,
   "title": "Storm on the Sea of Galilee",
   "artist": "Rembrandt Harmenszoon van Rijn, 1606-1669",
@@ -784,6 +7075,68 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/57953",
   "licence": "Public domain",
   "attribution": "Rembrandt Harmenszoon van Rijn, 1606-1669. Storm on the Sea of Galilee, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57993,
+  "title": "Ruth and Naomi",
+  "artist": "Victors, Jan, 1619-1676",
+  "date": "1653",
+  "where": "Agnes Etherington Art Centre, Kingston, Canada",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ruth267dc1290hixz06.jpg",
+  "refs": [
+   "Ruth 3:1-5; 4:13-17",
+   "Ruth 1:1-18"
+  ],
+  "days": [
+   "Year B Proper 27th Sunday",
+   "Year B Proper 26th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57993",
+  "licence": "Public domain",
+  "attribution": "Victors, Jan, 1619-1676. Ruth and Naomi, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 57994,
+  "title": "Scribe Stood to Test Jesus",
+  "artist": "Tissot, James, 1836-1902",
+  "date": "1886-1894",
+  "where": "Brooklyn Museum, Brooklyn, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/tempt82h2367drpo1.jpg",
+  "refs": [
+   "Mark 7:1-8, 14-15, 21-23",
+   "Luke 6:20-31",
+   "Mark 12:28-34"
+  ],
+  "days": [
+   "Year C All Saints Day",
+   "Year B Proper 17th Sunday",
+   "Year B Proper 26th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/57994",
+  "licence": "Public domain",
+  "attribution": "Tissot, James, 1836-1902. Scribe Stood to Test Jesus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58151,
+  "title": "Miraculous Draught of Fish",
+  "artist": "Bouts, Albrecht, -1549",
+  "date": "16th Century",
+  "where": "Museum Leuven, Leuven, Belgium",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/bouts9679iou90ju9ui67sdc.jpg",
+  "refs": [
+   "John 21:1-19",
+   "Luke 5:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday",
+   "Year C Easter 3rd Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58151",
+  "licence": "Public domain",
+  "attribution": "Bouts, Albrecht, -1549. Miraculous Draught of Fish, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 58171,
@@ -856,6 +7209,63 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/58311",
   "licence": "Public domain",
   "attribution": "Poussin, Nicolas, 1594?-1665. Massacre of the Innocents, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58315,
+  "title": "Baptism of the Chamberlain of Queen Candace of Ethiopia, detail",
+  "artist": "Attributed to Hendrik van Balen and Jan Brueghel (II)",
+  "date": "ca. 1625-1630",
+  "where": "Mauritshuis, The Hague, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/eunuch2378hvor7326g.jpg",
+  "refs": [
+   "Acts 8:26-40"
+  ],
+  "days": [
+   "Year B Easter 5th Sunday",
+   ""
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58315",
+  "licence": "Public domain",
+  "attribution": "Attributed to Hendrik van Balen and Jan Brueghel (II). Baptism of the Chamberlain of Queen Candace of Ethiopia, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58316,
+  "title": "Baptism of the Chamberlain of Queen Candace of Ethiopia",
+  "artist": "Anonymous",
+  "date": "ca. 1615-1635",
+  "where": "British Museum, London, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/eunuch1039bhi2456.jpg",
+  "refs": [
+   "Acts 8:26-40"
+  ],
+  "days": [
+   "Year B Easter 5th Sunday",
+   ""
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58316",
+  "licence": "Public domain",
+  "attribution": "Anonymous. Baptism of the Chamberlain of Queen Candace of Ethiopia, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58317,
+  "title": "Baptism of the Eunuch, detail",
+  "artist": "Rembrandt Harmenszoon van Rijn, 1606-1669",
+  "date": "1626",
+  "where": "Museum Catharijneconvent, Utrecht, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/eunuch23897rem2908837.jpg",
+  "refs": [
+   "Acts 8:26-40"
+  ],
+  "days": [
+   "Year B Easter 5th Sunday",
+   ""
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58317",
+  "licence": "Public domain",
+  "attribution": "Rembrandt Harmenszoon van Rijn, 1606-1669. Baptism of the Eunuch, detail, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 58321,
@@ -2030,6 +8440,24 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Bellini, Giovanni, 1426?-1516. Blood of the Redeemer, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 58430,
+  "title": "Fishing Boats on the Beach at Les Saintes-Maries-de-la-Mer",
+  "artist": "Gogh, Vincent van, 1853-1890",
+  "date": "1888",
+  "where": "Van Gogh Museum, Amsterdam, Netherlands",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/boats390vn78l.jpg",
+  "refs": [
+   "Psalm 107:1-3, 23-32"
+  ],
+  "days": [
+   "Year B Proper 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58430",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Gogh, Vincent van, 1853-1890. Fishing Boats on the Beach at Les Saintes-Maries-de-la-Mer, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 58432,
   "title": "David is Anointed and Affirmed as King",
   "artist": null,
@@ -2326,6 +8754,61 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Foppa, Vincenzo, active 1459-1490. Rainbow Dome, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 58449,
+  "title": "Olive Trees",
+  "artist": "Gogh, Vincent van, 1853-1890",
+  "date": "1889",
+  "where": "Metropolitan Museum of Art, New York, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/BProp06_58449.jpg",
+  "refs": [
+   "Psalm 92:1-4, 12-15",
+   "Ezekiel 17:22-24"
+  ],
+  "days": [
+   "Year B Proper 6th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58449",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Gogh, Vincent van, 1853-1890. Olive Trees, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58452,
+  "title": "Barn Swallows",
+  "artist": "Audubon, John James, 1785-1851",
+  "date": "1827",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/swallow-nest9238fji98.jpg",
+  "refs": [
+   "Psalm 84"
+  ],
+  "days": [
+   "Year B Proper 16th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58452",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Audubon, John James, 1785-1851. Barn Swallows, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58459,
+  "title": "Banquet of Esther and Ahasuerus",
+  "artist": "Victors, Jan, 1619-1676",
+  "date": "1640s",
+  "where": "Gemäldegalerie Alte Meister, Kassel, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/esther328dbg78.jpg",
+  "refs": [
+   "Esther 7:1-6, 9-10; 9:20-22"
+  ],
+  "days": [
+   "Year B Proper 21st Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58459",
+  "licence": "Public domain",
+  "attribution": "Victors, Jan, 1619-1676. Banquet of Esther and Ahasuerus, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 58465,
   "title": "Hospitality of Abraham",
   "artist": "Rublev, Andreĭ, Saint, -approximately 1430",
@@ -2588,6 +9071,80 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Church, Frederic Edwin, 1826-1900. Twilight in the Wilderness, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 58479,
+  "title": "Naomi and Ruth",
+  "artist": "Pynas, Jacob Symonsz (1592-1650)",
+  "date": "before 1650",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ruth23897yhgbgtfrdery.jpg",
+  "refs": [
+   "Ruth 1:1-18"
+  ],
+  "days": [
+   "Year B Proper 26th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58479",
+  "licence": "Public domain",
+  "attribution": "Pynas, Jacob Symonsz (1592-1650). Naomi and Ruth, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58591,
+  "title": "St. Peter Healing the Crippled Beggar",
+  "artist": "Gerung, Matthias, approximately 1500-approximately 1570",
+  "date": "1530-1532",
+  "where": "Bavarian State Library, Munich, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/otto2903ey8t87g.jpg",
+  "refs": [
+   "Acts 3:1-10"
+  ],
+  "days": [
+   "Year B Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58591",
+  "licence": "Public domain",
+  "attribution": "Gerung, Matthias, approximately 1500-approximately 1570. St. Peter Healing the Crippled Beggar, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58592,
+  "title": "Cornerstone, Ceres Bethel of A.M.E. Church 1870 L. Benson, Pastor",
+  "artist": null,
+  "date": null,
+  "where": "Ceres Bethel AME Church, Jefferson, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/corner29jf438u.jpg",
+  "refs": [
+   "Psalm 118:1-2, 19-29"
+  ],
+  "days": [
+   "Year B Resurrection of the Lord",
+   "Year B Easter 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58592",
+  "licence": "CC BY-SA 2.0",
+  "attribution": "Cornerstone, Ceres Bethel of A.M.E. Church 1870 L. Benson, Pastor, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58594,
+  "title": "Philip and the Ethiopian Eunuch",
+  "artist": "Boeckl, Herbert, 1894-1966",
+  "date": "20th century",
+  "where": "Seckau Abbey, Styria, Austria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/ethiop902jn8h7.jpg",
+  "refs": [
+   "Acts 8:26-40"
+  ],
+  "days": [
+   "Year B Easter 5th Sunday",
+   ""
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58594",
+  "licence": "CC BY-SA 4.0",
+  "attribution": "Boeckl, Herbert, 1894-1966. Philip and the Ethiopian Eunuch, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 58604,
   "title": "Story of David and Goliath",
   "artist": "Pesellino, approximately 1422-1457",
@@ -2809,6 +9366,43 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/58624",
   "licence": "Public domain",
   "attribution": "Katsushika, Hokusai, 1760-1849. Under the Wave off Kanagawa, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58691,
+  "title": "Washing of the Feet",
+  "artist": "Bondone, Giotto di, 1266?-1337",
+  "date": "1303",
+  "where": "Scrovegni Chapel, Padua, Italy",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/washingfeet36hrmx29.jpg",
+  "refs": [
+   "John 13:1-17, 31b-35"
+  ],
+  "days": [
+   "Year A Maundy Thursday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58691",
+  "licence": "Public domain",
+  "attribution": "Bondone, Giotto di, 1266?-1337. Washing of the Feet, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58813,
+  "title": "Jesus the Bridegroom",
+  "artist": "Anonymous",
+  "date": "19th century",
+  "where": "Our Lady of Saidnaya Monastery, Saidnaya, Syria",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/jesusbridegroom2175bhwr.jpg",
+  "refs": [
+   "Mark 2:13-22"
+  ],
+  "days": [
+   "",
+   "Year B Epiphany 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58813",
+  "licence": "Public domain",
+  "attribution": "Anonymous. Jesus the Bridegroom, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 58823,
@@ -3213,6 +9807,114 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/58894",
   "licence": "Public domain",
   "attribution": "Patinir, Joachim, approximately 1485-1524. Landscape with the Destruction of Sodom and Gomorrah, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 58975,
+  "title": "Healing Touch",
+  "artist": "Holmes, Tim",
+  "date": "1987",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Tim_Holmes_The_Healing_Touch.jpg",
+  "refs": [
+   "Psalm 107:1-3, 17-22"
+  ],
+  "days": [
+   "Year B Lent 4th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/58975",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Holmes, Tim. Healing Touch, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 59003,
+  "title": "Oikumene",
+  "artist": "Pope, Ronald R.",
+  "date": null,
+  "where": "Derby Museum and Art Gallery, Derby, United Kingdom",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Ronald_R_Pope_Oikumene.jpg",
+  "refs": [
+   "John 17:20-26"
+  ],
+  "days": [
+   "Year C Easter 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59003",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Pope, Ronald R.. Oikumene, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 59009,
+  "title": "Messages of Thanks and Answered Prayers",
+  "artist": null,
+  "date": null,
+  "where": "Our Lady of Guadalupe Church, New Orleans, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Anonymous_Messages_of_Thanks_and_Answered_Prayers.jpg",
+  "refs": [
+   "Psalm 138"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59009",
+  "licence": "CC BY 2.5",
+  "attribution": "Messages of Thanks and Answered Prayers, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 59010,
+  "title": "Valencian Fisherwomen",
+  "artist": "Bastida, Joaquín Sorolla y, 1863-1923",
+  "date": null,
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Joaquin_Sorolla_Bastida_Valencian_Fisherwomen.jpg",
+  "refs": [
+   "Luke 5:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59010",
+  "licence": "Public domain",
+  "attribution": "Bastida, Joaquín Sorolla y, 1863-1923. Valencian Fisherwomen, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 59012,
+  "title": "The Calling of Peter and Andrew",
+  "artist": "de Wet, Jacob Willemsz",
+  "date": "17th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Jacob_Willemsz_de_Wet _The_Calling_of_St_Peter_and_St_Andrew.jpg",
+  "refs": [
+   "Luke 5:1-11"
+  ],
+  "days": [
+   "Year C Epiphany 5th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59012",
+  "licence": "Public domain",
+  "attribution": "de Wet, Jacob Willemsz. The Calling of Peter and Andrew, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 59086,
+  "title": "Elijah and Elisha",
+  "artist": "Poulakis, Theodōros, approximately 1622-1692",
+  "date": "17th century",
+  "where": null,
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/Theodoros_Poulakis_Elijah_and_Elisha.jpg",
+  "refs": [
+   "Kings II, 2:1-18"
+  ],
+  "days": [
+   "Year C Proper 8th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59086",
+  "licence": "Public domain",
+  "attribution": "Poulakis, Theodōros, approximately 1622-1692. Elijah and Elisha, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 59105,
@@ -3790,6 +10492,24 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "attribution": "Cranach, Lucas, 1472-1553. Christ as the Man of Sorrows, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
+  "id": 59144,
+  "title": "Prayers for Reconciliation (after WWII Bombings)",
+  "artist": null,
+  "date": null,
+  "where": "Reconciliation Church, Dresden, Germany",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/reconciliationdresden39f8g7sa.jpg",
+  "refs": [
+   "Psalm 37:1-11, 39-40"
+  ],
+  "days": [
+   "Year C Epiphany 7th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59144",
+  "licence": "CC BY 3.0",
+  "attribution": "Prayers for Reconciliation (after WWII Bombings), from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
   "id": 59154,
   "title": "Prophet Zechariah",
   "artist": "Michelangelo Buonarroti, 1475-1564",
@@ -4236,6 +10956,24 @@ export const ACT_CATALOGUE: CatalogueArtwork[] = [
   "act": "https://act.library.vanderbilt.edu/artworks/59721",
   "licence": "Public domain",
   "attribution": "Theophanes the Greek and workshop. Transfiguration, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
+ },
+ {
+  "id": 59752,
+  "title": "Orphan with Balloon",
+  "artist": null,
+  "date": "2006-2017",
+  "where": "National Orphan Train Museum, Union Pacific Railroad Depot, Concordia, United States",
+  "img": "https://iiif-act.library.vanderbilt.edu/jpeg/National_Orphan_Train_Museum_Statue_62897d.jpg",
+  "refs": [
+   "Psalm 146"
+  ],
+  "days": [
+   "Year B Proper 27th Sunday"
+  ],
+  "essay": "",
+  "act": "https://act.library.vanderbilt.edu/artworks/59752",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Orphan with Balloon, from Art in the Christian Tradition, a project of the Vanderbilt University Divinity Library, Nashville, TN. Original source: Wikimedia Commons."
  },
  {
   "id": 59753,

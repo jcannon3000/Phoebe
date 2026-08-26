@@ -128,6 +128,112 @@ function place(a) {
   return [a.building, a.city, a.country].map(tidy).filter(Boolean).join(", ");
 }
 
+/**
+ * ── Phase 2: the LECTIONARY expansion ──
+ *
+ * The VCS subset above is ~230 works — the ones with a thevcs.org essay. The
+ * practice's whole point is that the day's picture follows the day's readings,
+ * and an audit across the full two-year Daily Office cycle (2026–2027, MP+EP
+ * lessons and psalms) found the VCS subset alone connects at chapter level or
+ * better on barely 60% of days, with psalms almost entirely uncovered.
+ *
+ * So this phase reads scripts/visio-target-readings.json (generated from the
+ * server's own lectionary by artifacts/api-server/src/gen-visio-targets.mjs),
+ * collapses the uncovered readings to book+chapter groups, and queries ACT for
+ * each. Hits are kept only when ACT's own scripture tags actually match the
+ * chapter — the query is fuzzy text search, so the tags are the truth — and
+ * every image still goes through the same Commons licence gate as phase 1.
+ *
+ * These works have no VCS essay. `essay` is "" for them: the practice already
+ * treats an essay-less day as "show the picture, plainly" (visio.tsx hasEssay),
+ * and the closing card's reflection pill guards on a real http(s) URL.
+ */
+import { readFileSync, existsSync } from "fs";
+
+/** Book-name normalisation, mirroring the client's parseRef ("Samuel I" ⇄ "1 Samuel"). */
+function bookAndChapters(ref) {
+  const cleaned = String(ref || "").trim().replace(/\s+/g, " ").replace(/\./g, "");
+  const lead = /^([123])\s+/.exec(cleaned);
+  const rest = lead ? cleaned.slice(lead[0].length) : cleaned;
+  const digit = rest.search(/\d/);
+  let name = (digit < 0 ? rest : rest.slice(0, digit)).replace(/[\s,]+$/, "").trim().toLowerCase();
+  if (!name) return null;
+  const roman = /^(.*?)\s+(i{1,3})$/.exec(name);
+  if (roman) name = `${roman[2].length} ${roman[1]}`;
+  else if (lead) name = `${lead[1]} ${name}`;
+  const chapters = new Set();
+  const nums = digit < 0 ? "" : rest.slice(digit);
+  const m = /^(\d+)(?::\d+)?(?:\s*[-\u2013]\s*(?:(\d+):)?\d+)?/.exec(nums);
+  if (m) {
+    const c1 = parseInt(m[1], 10);
+    const c2 = m[2] ? parseInt(m[2], 10) : c1;
+    for (let c = c1; c <= Math.min(c2, c1 + 40); c++) chapters.add(c);
+  }
+  return { book: name, chapters };
+}
+
+function chapterMatches(artRefs, book, chapter) {
+  for (const r of artRefs ?? []) {
+    const p = bookAndChapters(r);
+    if (p && p.book === book && p.chapters.has(chapter)) return true;
+  }
+  return false;
+}
+
+const TARGETS_PATH = resolve(REPO_ROOT, "scripts/visio-target-readings.json");
+/** How many works we try to hold per uncovered chapter — more than one so the
+ *  rotation has something to rotate through on repeated lections (owner). */
+const PER_CHAPTER = 4;
+
+async function harvestForLectionary(alreadyIds) {
+  if (!existsSync(TARGETS_PATH)) {
+    console.log("No visio-target-readings.json — skipping the lectionary expansion phase.");
+    return [];
+  }
+  const rows = JSON.parse(readFileSync(TARGETS_PATH, "utf8"));
+  // Collapse uncovered readings (score<2 = nothing at chapter level today)
+  // to book+chapter groups, weighted by how many days they appear on.
+  const groups = new Map(); // "book|chapter" -> { book, chapter, days, label }
+  for (const r of rows) {
+    if (r.score >= 2) continue;
+    const p = bookAndChapters(r.ref);
+    if (!p || p.chapters.size === 0) continue;
+    for (const c of p.chapters) {
+      const k = `${p.book}|${c}`;
+      const g = groups.get(k) ?? { book: p.book, chapter: c, days: 0 };
+      g.days += r.days;
+      groups.set(k, g);
+    }
+  }
+  const ordered = [...groups.values()].sort((a, b) => b.days - a.days);
+  console.log(`Lectionary expansion: ${ordered.length} uncovered chapters to query`);
+  const found = new Map();
+  let done = 0;
+  for (const g of ordered) {
+    done++;
+    // Query text the way ACT's own tags write it ("1 Samuel 7" not "1 samuel 7").
+    const label = `${g.book.replace(/^(\d) /, "$1 ").replace(/\b\w/g, (ch) => ch.toUpperCase())} ${g.chapter}`;
+    let d;
+    try { d = await actSearch({ q: label, page: 1, hitsPerPage: 50 }); }
+    catch (e) { console.warn(`  query failed for ${label}: ${e.message}`); continue; }
+    let keptHere = 0;
+    for (const h of d.hits ?? []) {
+      if (keptHere >= PER_CHAPTER) break;
+      if (found.has(h.id) || alreadyIds.has(h.id)) continue;
+      if (h.image_is_public !== 1 || !h.image_filename) continue;
+      if (!h.scriptures?.length) continue;
+      if (!chapterMatches(h.scriptures, g.book, g.chapter)) continue;
+      if (!commonsTitle(h.copyright_source)) continue;
+      found.set(h.id, h);
+      keptHere++;
+    }
+    if (done % 50 === 0) console.log(`  …${done}/${ordered.length} chapters, ${found.size} candidates`);
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  console.log(`  ${found.size} candidate records from the lectionary expansion`);
+  return [...found.values()];
+}
+
 const main = async () => {
   console.log("Harvesting ACT…");
   const all = await harvest();
@@ -136,13 +242,18 @@ const main = async () => {
   const withEssay = all.filter((a) => essayUrl(a.notes) && a.image_filename && a.image_is_public === 1);
   console.log(`  ${withEssay.length} have a VCS essay AND a public image`);
 
-  const titles = [...new Set(withEssay.map((a) => commonsTitle(a.copyright_source)).filter(Boolean))];
+  // Phase 2 — works matched to the lectionary's uncovered chapters. No essay
+  // required (see the phase's own header); everything else identical.
+  const expansion = await harvestForLectionary(new Set(withEssay.map((a) => a.id)));
+  const candidates = [...withEssay, ...expansion];
+
+  const titles = [...new Set(candidates.map((a) => commonsTitle(a.copyright_source)).filter(Boolean))];
   console.log(`Verifying ${titles.length} file licences against Commons…`);
   const lic = await resolveLicences(titles);
 
   const kept = [];
   const dropped = { noCommonsSource: 0, unresolved: 0, notFree: 0, noScripture: 0 };
-  for (const a of withEssay) {
+  for (const a of candidates) {
     const ct = commonsTitle(a.copyright_source);
     if (!ct) { dropped.noCommonsSource++; continue; }
     const l = lic.get(ct);
@@ -171,7 +282,9 @@ const main = async () => {
       img: ACT_IMAGE(a.image_filename),
       refs: a.scriptures,
       days: a.liturgicalDays ?? [],
-      essay: essayUrl(a.notes),
+      // "" = no VCS essay (a lectionary-expansion work). The practice shows
+      // the picture plainly on those days; the reflection pill self-hides.
+      essay: essayUrl(a.notes) ?? "",
       act: ACT_ARTWORK(a.id),
       licence: clean,
       attribution: attribution(a, artist),
